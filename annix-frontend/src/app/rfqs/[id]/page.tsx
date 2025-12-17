@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { browserBaseUrl } from '@/lib/api-config';
 
 interface SteelSpecification {
   id: number;
@@ -85,7 +86,7 @@ export default function RfqDetailsPage() {
   const fetchRfqDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/rfq/${id}`);
+      const response = await fetch(`${browserBaseUrl()}/rfq/${id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch RFQ details');
       }

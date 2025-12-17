@@ -1,2 +1,5 @@
 annix-frontend-latest.tar.gz
 annix-backend-latest.tar.gz
+.idea
+backend-dev.log
+frontend-dev.log

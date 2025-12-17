@@ -59,19 +59,19 @@ export class PopulateWeldTypesAndPipeEndConfigurationsData1699375000000 implemen
 
     // Insert weld types data (ignore if already exists)
     await queryRunner.query(`
-      INSERT INTO "weld_types" ("code", "description") VALUES
-      ('FW_STR', 'Flange weld for straight pipe connections'),
-      ('FW_FIT', 'Flange weld for fitting connections'),
-      ('BW_NO_XRAY', 'Butt weld without X-ray inspection'),
-      ('BW_XRAY', 'Butt weld with X-ray inspection'),
-      ('MW', 'Mitre weld for angular connections'),
-      ('BRW_90', 'Branch weld at 90 degree angle'),
-      ('LW_LT45', 'Lateral weld at less than 45 degrees'),
-      ('LW_45_UP', 'Lateral weld at 45 degrees and above'),
-      ('GST_BEND', 'Gusset and sweep tee bend welds'),
-      ('GRL', 'Grinding preparation for rubber lining'),
-      ('YP', 'Y-piece branch connection weld')
-      ON CONFLICT ("code") DO NOTHING;
+      INSERT INTO "weld_types" ("weld_code", "weld_name", "category", "description") VALUES
+      ('FW_STR', 'Flange Weld - Straight Pipe', 'FLANGE', 'Flange weld for straight pipe connections'),
+      ('FW_FIT', 'Flange Weld - Fitting', 'FLANGE', 'Flange weld for fitting connections'),
+      ('BW_NO_XRAY', 'Butt Weld - No X-ray', 'BUTT', 'Butt weld without X-ray inspection'),
+      ('BW_XRAY', 'Butt Weld - With X-ray', 'BUTT', 'Butt weld with X-ray inspection'),
+      ('MW', 'Mitre Weld', 'ANGLE', 'Mitre weld for angular connections'),
+      ('BRW_90', 'Branch Weld 90deg', 'BRANCH', 'Branch weld at 90 degree angle'),
+      ('LW_LT45', 'Lateral Weld <45deg', 'LATERAL', 'Lateral weld at less than 45 degrees'),
+      ('LW_45_UP', 'Lateral Weld 45deg+', 'LATERAL', 'Lateral weld at 45 degrees and above'),
+      ('GST_BEND', 'Gusset/Sweep Tee Bend', 'BEND', 'Gusset and sweep tee bend welds'),
+      ('GRL', 'Grinding Prep - Rubber Lining', 'PREP', 'Grinding preparation for rubber lining'),
+      ('YP', 'Y-Piece Branch Weld', 'BRANCH', 'Y-piece branch connection weld')
+      ON CONFLICT ("weld_code") DO NOTHING;
     `);
 
     // Insert pipe end configurations data (ignore if already exists)
@@ -79,10 +79,10 @@ export class PopulateWeldTypesAndPipeEndConfigurationsData1699375000000 implemen
       INSERT INTO "pipe_end_configurations" ("config_code", "config_name", "weld_count", "description", "weld_type_id") VALUES
       ('PE', 'Plain Ended', 0, 'Plain ended pipe - no welds required', NULL),
       ('FOE', 'Flanged One End', 0, 'Flanged one end - no additional welds', NULL),
-      ('FBE', 'Flanged Both Ends', 2, 'Flanged both ends - 2 flange welds required', (SELECT id FROM weld_types WHERE code = 'FW_STR' LIMIT 1)),
-      ('FOE_LF', 'FOE + Loose Flange', 1, 'FOE with loose flange - 1 flange weld', (SELECT id FROM weld_types WHERE code = 'FW_STR' LIMIT 1)),
-      ('FOE_RF', 'FOE + Rotating Flange', 2, 'FOE with rotating flange - 2 flange welds', (SELECT id FROM weld_types WHERE code = 'FW_STR' LIMIT 1)),
-      ('2X_RF', '2x Rotating Flanges', 2, '2 rotating flanges - 2 flange welds', (SELECT id FROM weld_types WHERE code = 'FW_STR' LIMIT 1))
+      ('FBE', 'Flanged Both Ends', 2, 'Flanged both ends - 2 flange welds required', (SELECT id FROM weld_types WHERE weld_code = 'FW_STR' LIMIT 1)),
+      ('FOE_LF', 'FOE + Loose Flange', 1, 'FOE with loose flange - 1 flange weld', (SELECT id FROM weld_types WHERE weld_code = 'FW_STR' LIMIT 1)),
+      ('FOE_RF', 'FOE + Rotating Flange', 2, 'FOE with rotating flange - 2 flange welds', (SELECT id FROM weld_types WHERE weld_code = 'FW_STR' LIMIT 1)),
+      ('2X_RF', '2x Rotating Flanges', 2, '2 rotating flanges - 2 flange welds', (SELECT id FROM weld_types WHERE weld_code = 'FW_STR' LIMIT 1))
       ON CONFLICT ("config_code") DO NOTHING;
     `);
   }
@@ -90,6 +90,6 @@ export class PopulateWeldTypesAndPipeEndConfigurationsData1699375000000 implemen
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Delete the data we inserted
     await queryRunner.query(`DELETE FROM "pipe_end_configurations" WHERE "config_code" IN ('PE', 'FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF')`);
-    await queryRunner.query(`DELETE FROM "weld_types" WHERE "code" IN ('FW_STR', 'FW_FIT', 'BW_NO_XRAY', 'BW_XRAY', 'MW', 'BRW_90', 'LW_LT45', 'LW_45_UP', 'GST_BEND', 'GRL', 'YP')`);
+    await queryRunner.query(`DELETE FROM "weld_types" WHERE "weld_code" IN ('FW_STR', 'FW_FIT', 'BW_NO_XRAY', 'BW_XRAY', 'MW', 'BRW_90', 'LW_LT45', 'LW_45_UP', 'GST_BEND', 'GRL', 'YP')`);
   }
 }

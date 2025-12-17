@@ -1,10 +1,20 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Annix1760346138102 implements MigrationInterface {
-    name = 'Annix1760346138102'
+export class Annix1699374000000 implements MigrationInterface {
+    name = 'Annix1699374000000'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`CREATE TABLE "weld_types" ("id" SERIAL NOT NULL, "code" character varying(20) NOT NULL, "description" character varying(255) NOT NULL, CONSTRAINT "UQ_cadd2e7f8d3d2229ff9197ba08d" UNIQUE ("code"), CONSTRAINT "PK_7d6bf7e7e1fd6c82a84383bcc12" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "weld_types" (
+            "id" SERIAL NOT NULL,
+            "weld_code" character varying(50) NOT NULL,
+            "weld_name" character varying(200) NOT NULL,
+            "category" character varying(100),
+            "description" text,
+            "created_at" TIMESTAMP NOT NULL DEFAULT now(),
+            "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
+            CONSTRAINT "PK_weld_types" PRIMARY KEY ("id"),
+            CONSTRAINT "UQ_weld_types_code" UNIQUE ("weld_code")
+        )`);
         await queryRunner.query(`CREATE TABLE "user" ("id" SERIAL NOT NULL, "username" character varying, "email" character varying, "password" character varying, "salt" character varying NOT NULL, CONSTRAINT "UQ_78a916df40e02a9deb1c4b75edb" UNIQUE ("username"), CONSTRAINT "UQ_e12875dfb3b1d92d7d7c5377e22" UNIQUE ("email"), CONSTRAINT "PK_cace4a159ff9f2512dd42373760" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "user_role" ("id" SERIAL NOT NULL, "name" character varying NOT NULL, CONSTRAINT "UQ_31f96f2013b7ac833d7682bf021" UNIQUE ("name"), CONSTRAINT "PK_fb2e442d14add3cefbdf33c4561" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "fitting_types" ("id" SERIAL NOT NULL, "name" character varying NOT NULL, CONSTRAINT "UQ_5078ad66482e8b42b82e7c6dbe8" UNIQUE ("name"), CONSTRAINT "UQ_5078ad66482e8b42b82e7c6dbe8" UNIQUE ("name"), CONSTRAINT "PK_08bdd2a74b6cecce4d2a224fe0f" PRIMARY KEY ("id"))`);

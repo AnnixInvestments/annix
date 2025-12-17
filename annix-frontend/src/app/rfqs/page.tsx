@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { browserBaseUrl } from '@/lib/api-config';
 
 interface RfqListItem {
   id: number;
@@ -30,7 +31,7 @@ export default function RfqListPage() {
   const fetchRfqs = async () => {
     try {
       setLoading(true);
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/rfq');
+      const response = await fetch(`${browserBaseUrl()}/rfq`);
       if (!response.ok) {
         throw new Error('Failed to fetch RFQs');
       }
