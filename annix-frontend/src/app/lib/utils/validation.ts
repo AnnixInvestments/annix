@@ -21,6 +21,10 @@ export function validatePage1RequiredFields(rfqData: any): ValidationErrors {
     errors.projectName = 'Project/RFQ name is required';
   }
 
+  if (!rfqData.projectType || rfqData.projectType.trim() === '') {
+    errors.projectType = 'Please select a project type';
+  }
+
   // Customer name validation
   if (!rfqData.customerName || rfqData.customerName.trim() === '') {
     errors.customerName = 'Customer name is required';

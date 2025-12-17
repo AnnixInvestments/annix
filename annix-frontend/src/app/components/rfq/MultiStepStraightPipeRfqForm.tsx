@@ -1,24 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRfqForm, StraightPipeEntry, FittingEntry } from '@/app/lib/hooks/useRfqForm';
-import { rfqApi, masterDataApi } from '@/app/lib/api/client';
-import { 
-  validatePage1RequiredFields, 
-  validatePage2Specifications, 
-  validatePage3Items,
-  canProceedToNextStep 
+import React, { useEffect, useState } from 'react';
+import { StraightPipeEntry, useRfqForm } from '@/app/lib/hooks/useRfqForm';
+import { masterDataApi, rfqApi } from '@/app/lib/api/client';
+import {
+  validatePage1RequiredFields,
+  validatePage2Specifications,
+  validatePage3Items
 } from '@/app/lib/utils/validation';
-import { 
-  generateSystemReferenceNumber,
-  generateItemNumber,
+import {
   generateClientItemNumber,
-  generatePipeDescription,
-  calculateScheduleFromPressureAndNB,
-  calculateWallThicknessFromPressureAndNB,
-  updateQuantityOrTotalLength,
-  getAvailableFlangeClasses,
-  getWallThicknessForSchedule,
+  generateSystemReferenceNumber,
   getPipeEndConfigurationDetails
 } from '@/app/lib/utils/systemUtils';
 
@@ -73,6 +65,7 @@ const getFlangesPerPipe = (pipeEndConfig: string): number => {
 
 function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
+  const hasProjectTypeError = Boolean(errors.projectType);
   
   const commonNotes = [
     "All pipes to be hydrostatically tested before delivery",
@@ -138,7 +131,11 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
 
         {/* Project Type Selection */}
         <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-3">
+          <label
+              className={`block text-sm font-semibold mb-3 ${
+                  hasProjectTypeError ? 'text-red-700' : 'text-gray-900'
+              }`}
+          >
             Project Type *
           </label>
           <p className="text-xs text-gray-600 mb-4">
@@ -152,7 +149,15 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
               { value: 'standard', label: 'Standard RFQ', description: 'Regular quotation request' }
             ].map((type) => (
               <div key={type.value} className="relative">
-                <label className="flex flex-col items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                <label
+                    className={`flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                        rfqData.projectType === type.value
+                            ? 'border-blue-600 bg-blue-50 shadow-sm'
+                            : hasProjectTypeError
+                                ? 'border-red-400 hover:border-red-500 hover:bg-red-50/40'
+                                : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                    }`}
+                >
                   <input
                     type="radio"
                     name="projectType"
@@ -160,11 +165,15 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
                     checked={rfqData.projectType === type.value}
                     onChange={(e) => onUpdate('projectType', e.target.value)}
                     className="sr-only"
+                    aria-invalid={hasProjectTypeError && rfqData.projectType !== type.value}
+                    aria-describedby={hasProjectTypeError ? 'project-type-error' : undefined}
                   />
                   <div className={`w-4 h-4 border-2 rounded-full mb-2 flex items-center justify-center ${
                     rfqData.projectType === type.value 
-                      ? 'border-blue-600 bg-blue-600' 
-                      : 'border-gray-300'
+                      ? 'border-blue-600 bg-blue-600'
+                        : hasProjectTypeError
+                            ? 'border-red-400'
+                            : 'border-gray-300'
                   }`}>
                     {rfqData.projectType === type.value && (
                       <div className="w-2 h-2 bg-white rounded-full"></div>
@@ -177,7 +186,9 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
             ))}
           </div>
           {errors.projectType && (
-            <p className="mt-2 text-sm text-red-600">{errors.projectType}</p>
+              <p id="project-type-error" className="mt-2 text-sm text-red-600">
+                {errors.projectType}
+              </p>
           )}
         </div>
 
@@ -804,7 +815,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
       <div className="space-y-6">
         {entries.map((entry: any, index: number) => (
-          <div key={entry.id} className="border-2 border-gray-200 rounded-lg p-5 bg-white shadow-sm">
+          <div key={`${entry.id}-${index}`} className="border-2 border-gray-200 rounded-lg p-5 bg-white shadow-sm">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-3">
                 <h3 className="text-base font-semibold text-gray-800">Item #{index + 1}</h3>
@@ -2868,7 +2879,7 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, errors, loading }: any) 
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Item Requirements</h3>
           <div className="space-y-4">
             {allItems.map((entry: any, index: number) => (
-              <div key={entry.id} className={`border border-gray-100 rounded-lg p-4 ${
+              <div key={`${entry.id}-${entry.itemType}-${index}`} className={`border border-gray-100 rounded-lg p-4 ${
                 entry.itemType === 'bend' ? 'bg-purple-50' : 
                 entry.itemType === 'fitting' ? 'bg-green-50' : 
                 'bg-gray-50'
