@@ -572,7 +572,15 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                 value={globalSpecs?.surfaceProtection || ''}
                 onChange={(e) => onUpdateGlobalSpecs({
                   ...globalSpecs,
-                  surfaceProtection: e.target.value || undefined
+                  surfaceProtection: e.target.value || undefined,
+                  // Clear related fields when changing protection type
+                  externalPrimerType: undefined,
+                  externalPrimerMicrons: undefined,
+                  externalIntermediateType: undefined,
+                  externalIntermediateMicrons: undefined,
+                  externalTopcoatType: undefined,
+                  externalTopcoatMicrons: undefined,
+                  externalPaintConfirmed: undefined
                 })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               >
@@ -591,6 +599,298 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
               </p>
             </div>
           </div>
+
+          {/* Confirmed External Paint Specification - Always visible when confirmed */}
+          {globalSpecs?.externalPaintConfirmed && globalSpecs?.externalPrimerType && (
+            <div className="mt-6">
+              <div className="bg-green-100 border-2 border-green-400 rounded-lg p-4">
+                <h4 className="text-md font-semibold text-green-800 mb-3 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  External Paint Specification (Confirmed)
+                </h4>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-green-700">
+                      <span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}
+                    </span>
+                    <span className="font-semibold text-green-800">{globalSpecs.externalPrimerMicrons} μm</span>
+                  </div>
+
+                  {globalSpecs?.externalIntermediateType && globalSpecs?.externalIntermediateMicrons && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-green-700">
+                        <span className="font-medium">Intermediate:</span> {globalSpecs.externalIntermediateType}
+                      </span>
+                      <span className="font-semibold text-green-800">{globalSpecs.externalIntermediateMicrons} μm</span>
+                    </div>
+                  )}
+
+                  {globalSpecs?.externalTopcoatType && globalSpecs?.externalTopcoatMicrons && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-green-700">
+                        <span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType}
+                      </span>
+                      <span className="font-semibold text-green-800">{globalSpecs.externalTopcoatMicrons} μm</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center text-sm pt-2 mt-2 border-t border-green-300">
+                    <span className="font-semibold text-green-800">Total Dry Film Thickness (DFT)</span>
+                    <span className="font-bold text-base text-green-900">
+                      {(globalSpecs.externalPrimerMicrons || 0) +
+                       (globalSpecs.externalIntermediateMicrons || 0) +
+                       (globalSpecs.externalTopcoatMicrons || 0)} μm
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      externalPaintConfirmed: false,
+                      surfaceProtection: 'Paint Externally'
+                    })}
+                    className="px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm"
+                  >
+                    Edit Specification
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Paint Externally Options - Only show when selected AND not confirmed */}
+          {globalSpecs?.surfaceProtection === 'Paint Externally' && !globalSpecs?.externalPaintConfirmed && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h4 className="text-md font-semibold text-gray-800 mb-4">External Paint Specifications</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Primer Type
+                  </label>
+                  <select
+                    value={globalSpecs?.externalPrimerType || ''}
+                    onChange={(e) => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      externalPrimerType: e.target.value || undefined
+                    })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="">Select primer type...</option>
+                    <option value="Inorganic Zinc Silicate">Inorganic Zinc Silicate</option>
+                    <option value="Organic Zinc Epoxy">Organic Zinc Epoxy</option>
+                    <option value="Zinc Phosphate Epoxy">Zinc Phosphate Epoxy</option>
+                    <option value="Epoxy Primer">Epoxy Primer</option>
+                    <option value="Polyurethane Primer">Polyurethane Primer</option>
+                    <option value="Red Oxide Primer">Red Oxide Primer</option>
+                    <option value="Alkyd Primer">Alkyd Primer</option>
+                    <option value="Shop Primer">Shop Primer</option>
+                    <option value="Etch Primer">Etch Primer</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Select the primer type for external coating
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Primer Thickness (microns)
+                  </label>
+                  <input
+                    type="number"
+                    value={globalSpecs?.externalPrimerMicrons || ''}
+                    onChange={(e) => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      externalPrimerMicrons: e.target.value ? Number(e.target.value) : undefined
+                    })}
+                    placeholder="e.g., 50-75"
+                    min="0"
+                    max="500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Dry film thickness in microns (typical: 50-75μm for zinc primers)
+                  </p>
+                </div>
+              </div>
+
+              {/* Optional Intermediate Coat */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h4 className="text-md font-semibold text-gray-800 mb-4">Intermediate Coat (Optional)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Intermediate Coat Type
+                    </label>
+                    <select
+                      value={globalSpecs?.externalIntermediateType || ''}
+                      onChange={(e) => onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        externalIntermediateType: e.target.value || undefined
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">None (No intermediate coat)</option>
+                      <option value="MIO Epoxy (Micaceous Iron Oxide)">MIO Epoxy (Micaceous Iron Oxide)</option>
+                      <option value="Glass Flake Epoxy">Glass Flake Epoxy</option>
+                      <option value="High Build Epoxy">High Build Epoxy</option>
+                      <option value="Epoxy Polyamide">Epoxy Polyamide</option>
+                      <option value="Epoxy Phenalkamine">Epoxy Phenalkamine</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Optional barrier coat between primer and topcoat
+                    </p>
+                  </div>
+
+                  {globalSpecs?.externalIntermediateType && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">
+                        Intermediate Coat Thickness (microns)
+                      </label>
+                      <input
+                        type="number"
+                        value={globalSpecs?.externalIntermediateMicrons || ''}
+                        onChange={(e) => onUpdateGlobalSpecs({
+                          ...globalSpecs,
+                          externalIntermediateMicrons: e.target.value ? Number(e.target.value) : undefined
+                        })}
+                        placeholder="e.g., 125-200"
+                        min="0"
+                        max="500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Dry film thickness in microns (typical: 125-200μm for MIO epoxy)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Topcoat / Finish Coat */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h4 className="text-md font-semibold text-gray-800 mb-4">Topcoat / Finish Coat (Optional)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Topcoat Type
+                    </label>
+                    <select
+                      value={globalSpecs?.externalTopcoatType || ''}
+                      onChange={(e) => onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        externalTopcoatType: e.target.value || undefined
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">None (No topcoat)</option>
+                      <option value="Aliphatic Polyurethane">Aliphatic Polyurethane</option>
+                      <option value="Acrylic Polyurethane">Acrylic Polyurethane</option>
+                      <option value="Polysiloxane">Polysiloxane</option>
+                      <option value="Epoxy Topcoat">Epoxy Topcoat</option>
+                      <option value="Alkyd Topcoat">Alkyd Topcoat</option>
+                      <option value="Acrylic Topcoat">Acrylic Topcoat</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Final protective coat for UV and weather resistance
+                    </p>
+                  </div>
+
+                  {globalSpecs?.externalTopcoatType && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">
+                        Topcoat Thickness (microns)
+                      </label>
+                      <input
+                        type="number"
+                        value={globalSpecs?.externalTopcoatMicrons || ''}
+                        onChange={(e) => onUpdateGlobalSpecs({
+                          ...globalSpecs,
+                          externalTopcoatMicrons: e.target.value ? Number(e.target.value) : undefined
+                        })}
+                        placeholder="e.g., 50-75"
+                        min="0"
+                        max="500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Dry film thickness in microns (typical: 50-75μm for polyurethane)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Paint Specification Summary - shows when primer is selected */}
+              {globalSpecs?.externalPrimerType && globalSpecs?.externalPrimerMicrons && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <h4 className="text-md font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      External Paint Specification (Review)
+                    </h4>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-amber-700">
+                          <span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}
+                        </span>
+                        <span className="font-semibold text-amber-800">{globalSpecs.externalPrimerMicrons} μm</span>
+                      </div>
+
+                      {globalSpecs?.externalIntermediateType && globalSpecs?.externalIntermediateMicrons && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-amber-700">
+                            <span className="font-medium">Intermediate:</span> {globalSpecs.externalIntermediateType}
+                          </span>
+                          <span className="font-semibold text-amber-800">{globalSpecs.externalIntermediateMicrons} μm</span>
+                        </div>
+                      )}
+
+                      {globalSpecs?.externalTopcoatType && globalSpecs?.externalTopcoatMicrons && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-amber-700">
+                            <span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType}
+                          </span>
+                          <span className="font-semibold text-amber-800">{globalSpecs.externalTopcoatMicrons} μm</span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center text-sm pt-2 mt-2 border-t border-amber-300">
+                        <span className="font-semibold text-amber-800">Total Dry Film Thickness (DFT)</span>
+                        <span className="font-bold text-base text-amber-900">
+                          {(globalSpecs.externalPrimerMicrons || 0) +
+                           (globalSpecs.externalIntermediateMicrons || 0) +
+                           (globalSpecs.externalTopcoatMicrons || 0)} μm
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        onClick={() => onUpdateGlobalSpecs({
+                          ...globalSpecs,
+                          externalPaintConfirmed: true,
+                          surfaceProtection: ''
+                        })}
+                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                      >
+                        Confirm Paint Specification
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Future Additions Notice */}
