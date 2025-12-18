@@ -96,13 +96,13 @@ function Set-EnvValue {
 
 function Test-PortInUse {
     param(
-        [string]$Host,
+        [string]$DbHost,
         [int]$Port
     )
 
     $client = New-Object System.Net.Sockets.TcpClient
     try {
-        $async = $client.BeginConnect($Host, $Port, $null, $null)
+        $async = $client.BeginConnect($DbHost, $Port, $null, $null)
         if ($async.AsyncWaitHandle.WaitOne(200) -and $client.Connected) {
             $client.EndConnect($async)
             return $true
@@ -119,13 +119,13 @@ function Test-PortInUse {
 
 function Find-AvailablePort {
     param(
-        [string]$Host,
+        [string]$DbHost,
         [int]$Start,
         [int]$End
     )
 
     for ($port = $Start; $port -le $End; $port++) {
-        if (-not (Test-PortInUse -Host $Host -Port $port)) {
+        if (-not (Test-PortInUse -DbHost $DbHost -Port $port)) {
             return $port
         }
     }
@@ -136,7 +136,7 @@ function Find-AvailablePort {
 function Wait-DockerPostgresReady {
     param(
         [string]$ContainerName,
-        [string]$Host,
+        [string]$DbHost,
         [int]$Port,
         [string]$User,
         [string]$Password
@@ -148,8 +148,8 @@ function Wait-DockerPostgresReady {
     }
 
     for ($i = 0; $i -lt $retries; $i++) {
-        if (Invoke-PsqlScript -Host $Host -Port $Port -User $User -Password $Password -Database "postgres" -Script "SELECT 1;" -Mode "docker" -ContainerName $ContainerName) {
-            Write-Info "Docker Postgres is ready at $Host:$Port."
+        if (Invoke-PsqlScript -DbHost $DbHost -Port $Port -User $User -Password $Password -Database "postgres" -Script "SELECT 1;" -Mode "docker" -ContainerName $ContainerName) {
+            Write-Info "Docker Postgres is ready at ${DbHost}:$Port."
             return
         }
         Start-Sleep -Seconds 1
@@ -174,9 +174,9 @@ function Ensure-DockerPostgres {
         Throw-Error "Docker daemon is not reachable. Start Docker Desktop before running this script."
     }
 
-    $host = Get-EnvValue "DATABASE_HOST" "localhost"
-    if ($host -ne "localhost" -and $host -ne "127.0.0.1") {
-        Throw-Error "USE_DOCKER_POSTGRES expects DATABASE_HOST=localhost or 127.0.0.1 (found $host)."
+    $dbHost = Get-EnvValue "DATABASE_HOST" "localhost"
+    if ($dbHost -ne "localhost" -and $dbHost -ne "127.0.0.1") {
+        Throw-Error "USE_DOCKER_POSTGRES expects DATABASE_HOST=localhost or 127.0.0.1 (found $dbHost)."
     }
 
     $originalPort = [int](Get-EnvValue "DATABASE_PORT" "5432")
@@ -209,12 +209,12 @@ function Ensure-DockerPostgres {
     if ($existingPort) {
         $port = [int]$existingPort
         Set-EnvValue -Key "DATABASE_PORT" -Value "$port"
-        Set-EnvValue -Key "DATABASE_HOST" -Value $host
+        Set-EnvValue -Key "DATABASE_HOST" -Value $dbHost
     }
 
-    if (Test-PortInUse -Host $host -Port $port) {
+    if (Test-PortInUse -DbHost $dbHost -Port $port) {
         if ($existingRunning) {
-            Write-Info "Reusing running container $container on $host:$port."
+            Write-Info "Reusing running container $container on ${dbHost}:$port."
         }
         else {
             if ($containerExists) {
@@ -230,7 +230,7 @@ function Ensure-DockerPostgres {
             if ($env:DOCKER_POSTGRES_PORT_FALLBACK_END) {
                 $fallbackEnd = [int]$env:DOCKER_POSTGRES_PORT_FALLBACK_END
             }
-            $port = Find-AvailablePort -Host $host -Start $fallbackStart -End $fallbackEnd
+            $port = Find-AvailablePort -DbHost $dbHost -Start $fallbackStart -End $fallbackEnd
             Set-EnvValue -Key "DATABASE_PORT" -Value "$port"
             Write-Info "Port $originalPort is already in use; Docker Postgres will listen on $port instead."
         }
@@ -258,7 +258,7 @@ function Ensure-DockerPostgres {
         docker start $container | Out-Null
     }
 
-    Wait-DockerPostgresReady -ContainerName $container -Host "localhost" -Port 5432 -User $superUser -Password $superPass
+    Wait-DockerPostgresReady -ContainerName $container -DbHost "localhost" -Port 5432 -User $superUser -Password $superPass
 }
 
 function Install-Backend {
@@ -293,8 +293,8 @@ function Start-ServiceJobs {
     }
 
     foreach ($definition in @(
-        @{ Name = "backend"; WorkingDir = $BackendDir; Command = @("yarn", "start:dev"); Log = Join-Path $RepoRoot $BackendLog },
-        @{ Name = "frontend"; WorkingDir = $FrontendDir; Command = @("npm", "run", "dev"); Log = Join-Path $RepoRoot $FrontendLog }
+        @{ Name = "backend"; WorkingDir = $BackendDir; Command = "yarn start:dev"; Log = Join-Path $RepoRoot $BackendLog },
+        @{ Name = "frontend"; WorkingDir = $FrontendDir; Command = "npm run dev"; Log = Join-Path $RepoRoot $FrontendLog }
     )) {
         if (Test-Path $definition.Log) {
             Remove-Item $definition.Log
@@ -306,7 +306,7 @@ function Start-ServiceJobs {
                 param($WorkingDir, $Command)
                 Set-StrictMode -Version Latest
                 Set-Location $WorkingDir
-                & $Command[0] $Command[1..($Command.Count - 1)]
+                Invoke-Expression $Command
             } -ArgumentList $definition.WorkingDir, $definition.Command
         }
     }
@@ -354,7 +354,7 @@ function Start-ServiceJobs {
 
 function Test-DbConnection {
     param(
-        [string]$Host,
+        [string]$DbHost,
         [string]$Port,
         [string]$User,
         [string]$Password,
@@ -364,15 +364,15 @@ function Test-DbConnection {
     )
 
     if ($Mode -eq "docker") {
-        return Invoke-PsqlScript -Host $Host -Port $Port -User $User -Password $Password -Database $Database -Script "SELECT 1;" -Mode "docker" -ContainerName $ContainerName
+        return Invoke-PsqlScript -DbHost $DbHost -Port $Port -User $User -Password $Password -Database $Database -Script "SELECT 1;" -Mode "docker" -ContainerName $ContainerName
     }
 
-    return Invoke-PsqlScript -Host $Host -Port $Port -User $User -Password $Password -Database $Database -Script "SELECT 1;"
+    return Invoke-PsqlScript -DbHost $DbHost -Port $Port -User $User -Password $Password -Database $Database -Script "SELECT 1;"
 }
 
 function Invoke-PsqlScript {
     param(
-        [string]$Host,
+        [string]$DbHost,
         [string]$Port,
         [string]$User,
         [string]$Password,
@@ -386,7 +386,7 @@ function Invoke-PsqlScript {
         if (-not $ContainerName) {
             Throw-Error "Container name is required when running psql inside Docker."
         }
-        $dockerArgs = @("exec", "-i", "-e", "PGPASSWORD=$Password", $ContainerName, "psql", "-h", $Host, "-p", $Port, "-U", $User, "-d", $Database, "-v", "ON_ERROR_STOP=1")
+        $dockerArgs = @("exec", "-i", "-e", "PGPASSWORD=$Password", $ContainerName, "psql", "-h", $DbHost, "-p", $Port, "-U", $User, "-d", $Database, "-v", "ON_ERROR_STOP=1")
         $Script | & docker @dockerArgs > $null 2>&1
         return $LASTEXITCODE -eq 0
     }
@@ -398,7 +398,7 @@ function Invoke-PsqlScript {
     $original = $env:PGPASSWORD
     if ($Password) { $env:PGPASSWORD = $Password } else { Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue }
     try {
-        $Script | & psql -h $Host -p $Port -U $User -d $Database -v ON_ERROR_STOP=1 > $null 2>&1
+        $Script | & psql -h $DbHost -p $Port -U $User -d $Database -v ON_ERROR_STOP=1 > $null 2>&1
         return $LASTEXITCODE -eq 0
     }
     finally {
@@ -437,7 +437,7 @@ function Ensure-Database {
         $psqlPort = "5432"
     }
 
-    if (Test-DbConnection -Host $psqlHost -Port $psqlPort -User $dbUser -Password $dbPass -Database $dbName -Mode $psqlMode -ContainerName $dockerContainer) {
+    if (Test-DbConnection -DbHost $psqlHost -Port $psqlPort -User $dbUser -Password $dbPass -Database $dbName -Mode $psqlMode -ContainerName $dockerContainer) {
         Write-Info "Database $dbName already accessible as $dbUser."
         return
     }
@@ -464,12 +464,12 @@ BEGIN
 END $$;
 "@
 
-    if (-not (Invoke-PsqlScript -Host $psqlHost -Port $psqlPort -User $superUser -Password $superPass -Database "postgres" -Script $script -Mode $psqlMode -ContainerName $dockerContainer)) {
+    if (-not (Invoke-PsqlScript -DbHost $psqlHost -Port $psqlPort -User $superUser -Password $superPass -Database "postgres" -Script $script -Mode $psqlMode -ContainerName $dockerContainer)) {
         Write-Host "[run-dev] Automatic provisioning failed. Set PG_SUPERPASS (and optionally PG_SUPERUSER) if superuser access requires credentials." -ForegroundColor Yellow
         return
     }
 
-    if (Test-DbConnection -Host $psqlHost -Port $psqlPort -User $dbUser -Password $dbPass -Database $dbName -Mode $psqlMode -ContainerName $dockerContainer) {
+    if (Test-DbConnection -DbHost $psqlHost -Port $psqlPort -User $dbUser -Password $dbPass -Database $dbName -Mode $psqlMode -ContainerName $dockerContainer) {
         Write-Info "Provisioned database $dbName for $dbUser."
     }
     else {
