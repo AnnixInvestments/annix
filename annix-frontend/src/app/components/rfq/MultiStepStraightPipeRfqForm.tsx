@@ -559,6 +559,40 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           </div>
         </div>
 
+        {/* Surface Protection */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Surface Protection</h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Surface Protection Type
+              </label>
+              <select
+                value={globalSpecs?.surfaceProtection || ''}
+                onChange={(e) => onUpdateGlobalSpecs({
+                  ...globalSpecs,
+                  surfaceProtection: e.target.value || undefined
+                })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              >
+                <option value="">Select surface protection...</option>
+                <option value="Raw Steel">Raw Steel</option>
+                <option value="Paint Externally">Paint Externally</option>
+                <option value="Paint Internally">Paint Internally</option>
+                <option value="Rubber Line Externally">Rubber Line Externally</option>
+                <option value="Rubber Line Internally">Rubber Line Internally</option>
+                <option value="Ceramic Line">Ceramic Line</option>
+                <option value="HDPE Line">HDPE Line</option>
+                <option value="PU Line">PU Line</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Select the required surface protection for the piping
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Future Additions Notice */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-blue-800 mb-2">Coming Soon</h3>
@@ -566,7 +600,6 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
             Additional specifications will be added here in future updates:
           </p>
           <ul className="text-blue-600 text-sm mt-2 space-y-1">
-            <li>• Surface Protection requirements</li>
             <li>• Design Factors</li>
             <li>• Additional material specifications</li>
           </ul>
@@ -2856,7 +2889,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
   );
 }
 
-function ReviewSubmitStep({ entries, rfqData, onSubmit, errors, loading }: any) {
+function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, loading }: any) {
   // Use unified items array that includes both straight pipes and bends
   const allItems = rfqData.items || entries || [];
   
@@ -3016,6 +3049,13 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, errors, loading }: any) 
         {/* Submit Section */}
         <div className="border-t border-gray-200 pt-6">
           <div className="flex flex-col sm:flex-row gap-4 justify-end">
+            <button
+              onClick={onPrevStep}
+              disabled={loading}
+              className="px-6 py-3 text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            >
+              ← Previous Step
+            </button>
             <button
               onClick={onSubmit}
               disabled={loading}
@@ -3754,6 +3794,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             entries={rfqData.straightPipeEntries}
             rfqData={rfqData}
             onSubmit={handleSubmit}
+            onPrevStep={prevStep}
             errors={validationErrors}
             loading={isSubmitting}
           />
@@ -3869,23 +3910,24 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         </div>
       </div>
 
-      {/* Fixed Navigation Buttons - Bottom Right */}
-      <div className="fixed bottom-6 right-6 z-40 flex gap-3">
-        <button
-          onClick={prevStep}
-          disabled={currentStep === 1}
-          className="px-6 py-3 text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm transition-colors shadow-lg"
-        >
-          ← Previous Step
-        </button>
-        <button
-          onClick={nextStep}
-          disabled={currentStep === 4}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm transition-colors shadow-lg"
-        >
-          {currentStep === 4 ? 'Final Step' : 'Next Step →'}
-        </button>
-      </div>
+      {/* Fixed Navigation Buttons - Bottom Right (hidden on step 4 which has inline buttons) */}
+      {currentStep < 4 && (
+        <div className="fixed bottom-6 right-6 z-40 flex gap-3">
+          <button
+            onClick={prevStep}
+            disabled={currentStep === 1}
+            className="px-6 py-3 text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm transition-colors shadow-lg"
+          >
+            ← Previous Step
+          </button>
+          <button
+            onClick={nextStep}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-sm transition-colors shadow-lg"
+          >
+            Next Step →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
