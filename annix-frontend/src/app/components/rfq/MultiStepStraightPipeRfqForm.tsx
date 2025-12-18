@@ -348,12 +348,37 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
   const workingPressures = [6, 10, 16, 25, 40, 63, 100, 160, 250, 320, 400, 630]; // Bar values
   const workingTemperatures = [-29, -20, 0, 20, 50, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500]; // Celsius values
 
+  const hasErrors = errors && (errors.workingPressure || errors.workingTemperature);
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Specifications</h2>
       <p className="text-gray-600 mb-8">
         Define the working conditions and material specifications for your RFQ. These will be applied to all items unless overridden.
       </p>
+
+      {/* Validation Error Banner */}
+      {hasErrors && (
+        <div className="mb-6 bg-red-50 border-l-4 border-red-500 rounded-lg p-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-semibold text-red-800">Required fields missing</h3>
+              <p className="text-sm text-red-700 mt-1">
+                Please complete the following required fields to continue:
+              </p>
+              <ul className="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
+                {errors.workingPressure && <li>{errors.workingPressure}</li>}
+                {errors.workingTemperature && <li>{errors.workingTemperature}</li>}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-8">
         {/* Working Conditions */}
@@ -366,8 +391,8 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Working Pressure */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Working Pressure (bar)
+              <label className={`block text-sm font-semibold mb-2 ${errors.workingPressure ? 'text-red-700' : 'text-gray-900'}`}>
+                Working Pressure (bar) <span className="text-red-600">*</span>
               </label>
               <select
                 value={globalSpecs?.workingPressureBar || ''}
@@ -375,7 +400,11 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   ...globalSpecs,
                   workingPressureBar: e.target.value ? Number(e.target.value) : undefined
                 })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 text-gray-900 ${
+                  errors.workingPressure
+                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50'
+                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                }`}
               >
                 <option value="">Select pressure...</option>
                 {workingPressures.map((pressure) => (
@@ -384,15 +413,19 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-gray-500">
-                Leave empty to specify per item. Item-level values take priority.
-              </p>
+              {errors.workingPressure ? (
+                <p className="mt-1 text-sm text-red-600 font-medium">{errors.workingPressure}</p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-500">
+                  Leave empty to specify per item. Item-level values take priority.
+                </p>
+              )}
             </div>
 
             {/* Working Temperature */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Working Temperature (°C)
+              <label className={`block text-sm font-semibold mb-2 ${errors.workingTemperature ? 'text-red-700' : 'text-gray-900'}`}>
+                Working Temperature (°C) <span className="text-red-600">*</span>
               </label>
               <select
                 value={globalSpecs?.workingTemperatureC || ''}
@@ -400,7 +433,11 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   ...globalSpecs,
                   workingTemperatureC: e.target.value ? Number(e.target.value) : undefined
                 })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 text-gray-900 ${
+                  errors.workingTemperature
+                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50'
+                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                }`}
               >
                 <option value="">Select temperature...</option>
                 {workingTemperatures.map((temp) => (
@@ -409,9 +446,13 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-gray-500">
-                Leave empty to specify per item. Item-level values take priority.
-              </p>
+              {errors.workingTemperature ? (
+                <p className="mt-1 text-sm text-red-600 font-medium">{errors.workingTemperature}</p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-500">
+                  Leave empty to specify per item. Item-level values take priority.
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -3805,24 +3846,6 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
               ))}
             </nav>
           </div>
-
-          {/* Navigation Buttons */}
-          <div className="px-4 py-3 border-t border-gray-200 space-y-2">
-            <button
-              onClick={nextStep}
-              disabled={currentStep === 4}
-              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm transition-colors"
-            >
-              {currentStep === 4 ? 'Final Step' : 'Next Step →'}
-            </button>
-            <button
-              onClick={prevStep}
-              disabled={currentStep === 1}
-              className="w-full px-6 py-3 text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm transition-colors"
-            >
-              ← Previous Step
-            </button>
-          </div>
         </div>
 
         {/* Main Content Area - FULL WIDTH */}
@@ -3844,6 +3867,24 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Fixed Navigation Buttons - Bottom Right */}
+      <div className="fixed bottom-6 right-6 z-40 flex gap-3">
+        <button
+          onClick={prevStep}
+          disabled={currentStep === 1}
+          className="px-6 py-3 text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm transition-colors shadow-lg"
+        >
+          ← Previous Step
+        </button>
+        <button
+          onClick={nextStep}
+          disabled={currentStep === 4}
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm transition-colors shadow-lg"
+        >
+          {currentStep === 4 ? 'Final Step' : 'Next Step →'}
+        </button>
       </div>
     </div>
   );
