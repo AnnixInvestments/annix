@@ -21,8 +21,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: registry.tytodev.online
-          username: tyto
-          password: 42CgoXSCmvgBUK5G
+          username: ${{ secrets.TYTO_REGISTRY_USERNAME }}
+          password: ${{ secrets.TYTO_REGISTRY_PASSWORD }}
       
       - name: Build and push Backend Docker image
         uses: docker/build-push-action@v5

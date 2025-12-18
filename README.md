@@ -17,7 +17,7 @@ This repository houses the NestJS API (`annix-backend`) and the Next.js applicat
 ### Common Requirements
 
 - **Node.js 22.21.1** (via [nvm](https://github.com/nvm-sh/nvm), [nvm-windows](https://github.com/coreybutler/nvm-windows), or the installers from [nodejs.org](https://nodejs.org/en/download/current))
-- **PostgreSQL 15** plus the `psql` client on your `PATH`
+- **PostgreSQL 15** plus the `psql` client on your `PATH` (or enable the Dockerized Postgres option below so the scripts exec `psql` inside the container for you)
 - Ability to run shell/PowerShell scripts (`run-dev.sh` or `run-dev.ps1`)
 
 ### macOS / Linux
@@ -60,6 +60,17 @@ Both helper scripts now bootstrap PostgreSQL automatically:
   - Windows PowerShell: `$env:PG_SUPERPASS = 'your-password'`
 - No manual SQL copy/paste is required; everything is handled automatically when `psql` is available.
 
+### Optional: Run Postgres via Docker
+
+If you prefer not to install PostgreSQL locally but do have Docker running, the helper scripts can spin up a containerized database automatically:
+
+- Set `USE_DOCKER_POSTGRES=1` before invoking `run-dev.sh`/`run-dev.ps1`. The script will create (or restart) a `annix-postgres` container from `postgres:15`, expose it on `localhost:<DATABASE_PORT>` (defaults to 5432), and keep data in the `annix-postgres-data` Docker volume.
+- Override `DOCKER_POSTGRES_PASSWORD` to change the container superuser password. The value is also wired into `PG_SUPERPASS` so migrations and provisioning work without any extra steps.
+- `POSTGRES_CONTAINER_NAME`, `POSTGRES_CONTAINER_VOLUME`, `POSTGRES_CONTAINER_IMAGE`, and `DOCKER_POSTGRES_PASSWORD` can be customized if you have conflicting names/images already.
+- If the requested host port is already in use (for example, a native Postgres instance is still running), the script auto-selects the first free port in the `DOCKER_POSTGRES_PORT_FALLBACK_START`–`DOCKER_POSTGRES_PORT_FALLBACK_END` range (defaults to `55432-55452`) and exports `DATABASE_PORT` for the current run so everything points to the container. Set `DATABASE_PORT` yourself to pin a specific port permanently.
+- If you have the `psql` CLI locally, the scripts use it. If not, they automatically exec `psql` inside the container when provisioning the `annix_user`/`annix_db` role and database. Install the CLI locally if you plan to run manual queries outside the helper scripts.
+- When you are done developing, stop the container with `docker stop annix-postgres` (or remove it entirely via `docker rm -f annix-postgres` if you no longer need the data volume).
+
 ---
 
 ## 2. Helper Run Scripts
@@ -94,6 +105,16 @@ pwsh -ExecutionPolicy Bypass -File ./run-dev.ps1
 # or Windows PowerShell 5.1:
 powershell -ExecutionPolicy Bypass -File .\run-dev.ps1
 ```
+
+Need Docker Postgres instead of a local install? Set the environment variables in the same PowerShell session before launching the script, e.g.:
+
+```powershell
+$env:USE_DOCKER_POSTGRES = '1'
+$env:DOCKER_POSTGRES_PASSWORD = 'super-secret'
+pwsh -ExecutionPolicy Bypass -File ./run-dev.ps1
+```
+
+The PowerShell helper will create (or reuse) the container, auto-select a free port if 5432 is taken, and run `psql` via `docker exec` whenever you don’t have the CLI installed locally.
 
 Both entry points do the same thing: provision Postgres, install dependencies, and keep both apps running until you close the window/press `Ctrl+C`. Define `$env:PG_SUPERPASS` before running if your Postgres superuser needs a password.
 

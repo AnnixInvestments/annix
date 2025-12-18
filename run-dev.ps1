@@ -63,7 +63,7 @@ function Load-EnvFile {
             $value = $pair[1].Trim()
             $value = $value.Trim('"')
             $value = $value.Trim("'")
-            $script:EnvConfig[$key] = $value
+            Set-EnvValue -Key $key -Value $value
         }
     }
 }
@@ -79,12 +79,194 @@ function Get-EnvValue {
     return $Default
 }
 
+function Set-EnvValue {
+    param(
+        [string]$Key,
+        [string]$Value
+    )
+
+    $script:EnvConfig[$Key] = $Value
+    if ($null -ne $Value) {
+        Set-Item -Path Env:$Key -Value $Value
+    }
+    else {
+        Remove-Item -Path Env:$Key -ErrorAction SilentlyContinue
+    }
+}
+
+function Test-PortInUse {
+    param(
+        [string]$Host,
+        [int]$Port
+    )
+
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $async = $client.BeginConnect($Host, $Port, $null, $null)
+        if ($async.AsyncWaitHandle.WaitOne(200) -and $client.Connected) {
+            $client.EndConnect($async)
+            return $true
+        }
+    }
+    catch {
+        return $false
+    }
+    finally {
+        $client.Dispose()
+    }
+    return $false
+}
+
+function Find-AvailablePort {
+    param(
+        [string]$Host,
+        [int]$Start,
+        [int]$End
+    )
+
+    for ($port = $Start; $port -le $End; $port++) {
+        if (-not (Test-PortInUse -Host $Host -Port $port)) {
+            return $port
+        }
+    }
+
+    Throw-Error "Unable to find a free port between $Start and $End for Docker Postgres."
+}
+
+function Wait-DockerPostgresReady {
+    param(
+        [string]$ContainerName,
+        [string]$Host,
+        [int]$Port,
+        [string]$User,
+        [string]$Password
+    )
+
+    $retries = 30
+    if ($env:DOCKER_POSTGRES_READY_RETRIES) {
+        $retries = [int]$env:DOCKER_POSTGRES_READY_RETRIES
+    }
+
+    for ($i = 0; $i -lt $retries; $i++) {
+        if (Invoke-PsqlScript -Host $Host -Port $Port -User $User -Password $Password -Database "postgres" -Script "SELECT 1;" -Mode "docker" -ContainerName $ContainerName) {
+            Write-Info "Docker Postgres is ready at $Host:$Port."
+            return
+        }
+        Start-Sleep -Seconds 1
+    }
+
+    Write-Info "Docker Postgres did not report ready after waiting. Continuing anyway..."
+}
+
+function Ensure-DockerPostgres {
+    if ($env:USE_DOCKER_POSTGRES -ne "1") {
+        return
+    }
+
+    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+        Throw-Error "USE_DOCKER_POSTGRES=1 but docker is not available."
+    }
+
+    try {
+        docker info | Out-Null
+    }
+    catch {
+        Throw-Error "Docker daemon is not reachable. Start Docker Desktop before running this script."
+    }
+
+    $host = Get-EnvValue "DATABASE_HOST" "localhost"
+    if ($host -ne "localhost" -and $host -ne "127.0.0.1") {
+        Throw-Error "USE_DOCKER_POSTGRES expects DATABASE_HOST=localhost or 127.0.0.1 (found $host)."
+    }
+
+    $originalPort = [int](Get-EnvValue "DATABASE_PORT" "5432")
+    $port = $originalPort
+    $container = if ($env:POSTGRES_CONTAINER_NAME) { $env:POSTGRES_CONTAINER_NAME } else { "annix-postgres" }
+    $volume = if ($env:POSTGRES_CONTAINER_VOLUME) { $env:POSTGRES_CONTAINER_VOLUME } else { "annix-postgres-data" }
+    $image = if ($env:POSTGRES_CONTAINER_IMAGE) { $env:POSTGRES_CONTAINER_IMAGE } else { "postgres:15" }
+    $superUser = if ($env:PG_SUPERUSER) { $env:PG_SUPERUSER } else { "postgres" }
+    $dockerSuperPass = if ($env:DOCKER_POSTGRES_PASSWORD) { $env:DOCKER_POSTGRES_PASSWORD } else { "postgres" }
+    $superPass = if ($env:PG_SUPERPASS) { $env:PG_SUPERPASS } else { $dockerSuperPass }
+    Set-EnvValue -Key "PG_SUPERUSER" -Value $superUser
+    Set-EnvValue -Key "PG_SUPERPASS" -Value $superPass
+
+    $containerExists = $false
+    $existingRunning = $false
+    $existingPort = $null
+
+    try {
+        docker inspect $container | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            $containerExists = $true
+            $existingRunning = ((docker inspect -f "{{.State.Running}}" $container).Trim() -eq "true")
+            $existingPort = (docker inspect -f "{{range $p,$cfg := .NetworkSettings.Ports}}{{if eq $p \"5432/tcp\"}}{{(index $cfg 0).HostPort}}{{end}}{{end}}" $container).Trim()
+        }
+    }
+    catch {
+        $containerExists = $false
+    }
+
+    if ($existingPort) {
+        $port = [int]$existingPort
+        Set-EnvValue -Key "DATABASE_PORT" -Value "$port"
+        Set-EnvValue -Key "DATABASE_HOST" -Value $host
+    }
+
+    if (Test-PortInUse -Host $host -Port $port) {
+        if ($existingRunning) {
+            Write-Info "Reusing running container $container on $host:$port."
+        }
+        else {
+            if ($containerExists) {
+                Write-Info "Removing stopped container $container to adjust port mapping..."
+                docker rm $container | Out-Null
+                $containerExists = $false
+            }
+            $fallbackStart = 55432
+            $fallbackEnd = 55452
+            if ($env:DOCKER_POSTGRES_PORT_FALLBACK_START) {
+                $fallbackStart = [int]$env:DOCKER_POSTGRES_PORT_FALLBACK_START
+            }
+            if ($env:DOCKER_POSTGRES_PORT_FALLBACK_END) {
+                $fallbackEnd = [int]$env:DOCKER_POSTGRES_PORT_FALLBACK_END
+            }
+            $port = Find-AvailablePort -Host $host -Start $fallbackStart -End $fallbackEnd
+            Set-EnvValue -Key "DATABASE_PORT" -Value "$port"
+            Write-Info "Port $originalPort is already in use; Docker Postgres will listen on $port instead."
+        }
+    }
+
+    try {
+        docker volume inspect $volume | Out-Null
+    }
+    catch {
+        docker volume create $volume | Out-Null
+    }
+
+    if (-not $containerExists) {
+        Write-Info "Creating Postgres container $container ($image)..."
+        docker run -d `
+            --name $container `
+            -e "POSTGRES_USER=$superUser" `
+            -e "POSTGRES_PASSWORD=$superPass" `
+            -p "$port`:5432" `
+            -v "$volume`:/var/lib/postgresql/data" `
+            $image | Out-Null
+    }
+    elseif (-not $existingRunning) {
+        Write-Info "Starting Postgres container $container..."
+        docker start $container | Out-Null
+    }
+
+    Wait-DockerPostgresReady -ContainerName $container -Host "localhost" -Port 5432 -User $superUser -Password $superPass
+}
+
 function Install-Backend {
     Push-Location $BackendDir
     try {
-        Write-Info "Installing backend dependencies…"
+        Write-Info "Installing backend dependencies..."
         yarn install | Out-Null
-        Write-Info "Running backend migrations…"
+        Write-Info "Running backend migrations..."
         yarn migration:run
     }
     finally {
@@ -95,7 +277,7 @@ function Install-Backend {
 function Install-Frontend {
     Push-Location $FrontendDir
     try {
-        Write-Info "Installing frontend dependencies…"
+        Write-Info "Installing frontend dependencies..."
         npm install | Out-Null
     }
     finally {
@@ -176,26 +358,16 @@ function Test-DbConnection {
         [string]$Port,
         [string]$User,
         [string]$Password,
-        [string]$Database
+        [string]$Database,
+        [string]$Mode = "host",
+        [string]$ContainerName = $null
     )
 
-    if (-not (Get-Command psql -ErrorAction SilentlyContinue)) {
-        return $false
+    if ($Mode -eq "docker") {
+        return Invoke-PsqlScript -Host $Host -Port $Port -User $User -Password $Password -Database $Database -Script "SELECT 1;" -Mode "docker" -ContainerName $ContainerName
     }
 
-    $original = $env:PGPASSWORD
-    if ($Password) { $env:PGPASSWORD = $Password } else { Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue }
-    try {
-        & psql -h $Host -p $Port -U $User -d $Database -c "SELECT 1;" > $null 2>&1
-        return $LASTEXITCODE -eq 0
-    }
-    finally {
-        if ($null -ne $original) {
-            $env:PGPASSWORD = $original
-        } else {
-            Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
-        }
-    }
+    return Invoke-PsqlScript -Host $Host -Port $Port -User $User -Password $Password -Database $Database -Script "SELECT 1;"
 }
 
 function Invoke-PsqlScript {
@@ -205,8 +377,23 @@ function Invoke-PsqlScript {
         [string]$User,
         [string]$Password,
         [string]$Database,
-        [string]$Script
+        [string]$Script,
+        [string]$Mode = "host",
+        [string]$ContainerName = $null
     )
+
+    if ($Mode -eq "docker") {
+        if (-not $ContainerName) {
+            Throw-Error "Container name is required when running psql inside Docker."
+        }
+        $dockerArgs = @("exec", "-i", "-e", "PGPASSWORD=$Password", $ContainerName, "psql", "-h", $Host, "-p", $Port, "-U", $User, "-d", $Database, "-v", "ON_ERROR_STOP=1")
+        $Script | & docker @dockerArgs > $null 2>&1
+        return $LASTEXITCODE -eq 0
+    }
+
+    if (-not (Get-Command psql -ErrorAction SilentlyContinue)) {
+        return $false
+    }
 
     $original = $env:PGPASSWORD
     if ($Password) { $env:PGPASSWORD = $Password } else { Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue }
@@ -224,18 +411,33 @@ function Invoke-PsqlScript {
 }
 
 function Ensure-Database {
-    if (-not (Get-Command psql -ErrorAction SilentlyContinue)) {
-        Write-Info "psql not found; skipping automatic database provisioning (install PostgreSQL to enable)."
-        return
-    }
-
     $dbHost = Get-EnvValue "DATABASE_HOST" "localhost"
     $dbPort = Get-EnvValue "DATABASE_PORT" "5432"
     $dbUser = Get-EnvValue "DATABASE_USERNAME" "annix_user"
     $dbPass = Get-EnvValue "DATABASE_PASSWORD" "annix_password"
     $dbName = Get-EnvValue "DATABASE_NAME" "annix_db"
+    $psqlMode = "host"
+    $dockerContainer = if ($env:POSTGRES_CONTAINER_NAME) { $env:POSTGRES_CONTAINER_NAME } else { "annix-postgres" }
 
-    if (Test-DbConnection -Host $dbHost -Port $dbPort -User $dbUser -Password $dbPass -Database $dbName) {
+    if (-not (Get-Command psql -ErrorAction SilentlyContinue)) {
+        if ($env:USE_DOCKER_POSTGRES -eq "1") {
+            $psqlMode = "docker"
+            Write-Info "psql not found on host; using docker exec into $dockerContainer for provisioning."
+        }
+        else {
+            Write-Info "psql not found; skipping automatic database provisioning (install PostgreSQL or enable Docker Postgres)."
+            return
+        }
+    }
+
+    $psqlHost = $dbHost
+    $psqlPort = $dbPort
+    if ($psqlMode -eq "docker") {
+        $psqlHost = "localhost"
+        $psqlPort = "5432"
+    }
+
+    if (Test-DbConnection -Host $psqlHost -Port $psqlPort -User $dbUser -Password $dbPass -Database $dbName -Mode $psqlMode -ContainerName $dockerContainer) {
         Write-Info "Database $dbName already accessible as $dbUser."
         return
     }
@@ -244,7 +446,7 @@ function Ensure-Database {
     if ([string]::IsNullOrWhiteSpace($superUser)) { $superUser = "postgres" }
     $superPass = $env:PG_SUPERPASS
 
-    Write-Info "Attempting to provision PostgreSQL role/database via $superUser…"
+    Write-Info "Attempting to provision PostgreSQL role/database via $superUser..."
     $script = @"
 DO $$
 BEGIN
@@ -262,12 +464,12 @@ BEGIN
 END $$;
 "@
 
-    if (-not (Invoke-PsqlScript -Host $dbHost -Port $dbPort -User $superUser -Password $superPass -Database "postgres" -Script $script)) {
+    if (-not (Invoke-PsqlScript -Host $psqlHost -Port $psqlPort -User $superUser -Password $superPass -Database "postgres" -Script $script -Mode $psqlMode -ContainerName $dockerContainer)) {
         Write-Host "[run-dev] Automatic provisioning failed. Set PG_SUPERPASS (and optionally PG_SUPERUSER) if superuser access requires credentials." -ForegroundColor Yellow
         return
     }
 
-    if (Test-DbConnection -Host $dbHost -Port $dbPort -User $dbUser -Password $dbPass -Database $dbName) {
+    if (Test-DbConnection -Host $psqlHost -Port $psqlPort -User $dbUser -Password $dbPass -Database $dbName -Mode $psqlMode -ContainerName $dockerContainer) {
         Write-Info "Provisioned database $dbName for $dbUser."
     }
     else {
@@ -278,9 +480,10 @@ END $$;
 Use-NodeVersion
 Ensure-EnvFile
 Load-EnvFile
+Ensure-DockerPostgres
 Ensure-Database
 Install-Backend
 Install-Frontend
 
-Write-Info "Logs → $(Join-Path $RepoRoot $BackendLog) and $(Join-Path $RepoRoot $FrontendLog)"
+Write-Info "Logs -> $(Join-Path $RepoRoot $BackendLog) and $(Join-Path $RepoRoot $FrontendLog)"
 Start-ServiceJobs
