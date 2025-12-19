@@ -13,6 +13,9 @@ import {
   generateSystemReferenceNumber,
   getPipeEndConfigurationDetails
 } from '@/app/lib/utils/systemUtils';
+import GoogleMapLocationPicker from '@/app/components/GoogleMapLocationPicker';
+
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 interface Props {
   onSuccess: (rfqId: string) => void;
@@ -65,8 +68,29 @@ const getFlangesPerPipe = (pipeEndConfig: string): number => {
 
 function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const hasProjectTypeError = Boolean(errors.projectType);
-  
+
+  const handleLocationSelect = (
+    location: { lat: number; lng: number },
+    addressComponents?: { address: string; region: string; country: string }
+  ) => {
+    onUpdate("latitude", location.lat);
+    onUpdate("longitude", location.lng);
+    if (addressComponents) {
+      if (addressComponents.address) {
+        onUpdate("siteAddress", addressComponents.address);
+      }
+      if (addressComponents.region) {
+        onUpdate("region", addressComponents.region);
+      }
+      if (addressComponents.country) {
+        onUpdate("country", addressComponents.country);
+      }
+    }
+    setShowMapPicker(false);
+  };
+
   const commonNotes = [
     "All pipes to be hydrostatically tested before delivery",
     "Material certificates required (EN 10204 3.1)",
@@ -338,6 +362,581 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
           <p className="mt-1 text-xs text-gray-500">
             Use the dropdown above to quickly add common notes, or type custom notes here.
           </p>
+        </div>
+
+        {/* Environmental Intelligence Section */}
+        <div className="mt-8 pt-8 border-t-2 border-gray-300">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-blue-600 rounded-lg">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Environmental Intelligence</h3>
+                <p className="text-sm text-gray-600">Pipeline Corrosion Engineering & External Coating Specification</p>
+              </div>
+            </div>
+
+            {/* Location Selection */}
+            <div className="bg-white rounded-lg p-5 mb-4 border border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Project Location
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setShowMapPicker(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  Pick on Map
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Latitude *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.00001"
+                    value={rfqData.latitude || ''}
+                    onChange={(e) => onUpdate('latitude', e.target.value ? parseFloat(e.target.value) : undefined)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="-26.20227 (≥5 decimal places)"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Precision required for environmental analysis
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Longitude *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.00001"
+                    value={rfqData.longitude || ''}
+                    onChange={(e) => onUpdate('longitude', e.target.value ? parseFloat(e.target.value) : undefined)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="28.04363 (≥5 decimal places)"
+                  />
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Site Address / Location Description
+                </label>
+                <input
+                  type="text"
+                  value={rfqData.siteAddress || ''}
+                  onChange={(e) => onUpdate('siteAddress', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="e.g., Secunda Refinery, Mpumalanga, South Africa"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Region / Province
+                  </label>
+                  <input
+                    type="text"
+                    value={rfqData.region || ''}
+                    onChange={(e) => onUpdate('region', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="e.g., Gauteng, Western Cape"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    value={rfqData.country || ''}
+                    onChange={(e) => onUpdate('country', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="e.g., South Africa"
+                  />
+                </div>
+              </div>
+
+              {showMapPicker && (
+                <GoogleMapLocationPicker
+                  apiKey={GOOGLE_MAPS_API_KEY}
+                  initialLocation={
+                    rfqData.latitude && rfqData.longitude
+                      ? { lat: rfqData.latitude, lng: rfqData.longitude }
+                      : undefined
+                  }
+                  onLocationSelect={handleLocationSelect}
+                  onClose={() => setShowMapPicker(false)}
+                />
+              )}
+            </div>
+
+            {/* Environmental Data */}
+            <div className="bg-white rounded-lg p-5 mb-4 border border-gray-200">
+              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                </svg>
+                Environmental Profile
+              </h4>
+
+              {/* Soil Conditions */}
+              <div className="mb-6">
+                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2">Soil Conditions</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Soil Type
+                    </label>
+                    <select
+                      value={rfqData.soilType || ''}
+                      onChange={(e) => onUpdate('soilType', e.target.value || undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">Select soil type...</option>
+                      <option value="Sandy">Sandy</option>
+                      <option value="Clay">Clay</option>
+                      <option value="Loam">Loam</option>
+                      <option value="Silt">Silt</option>
+                      <option value="Peat">Peat</option>
+                      <option value="Rocky">Rocky</option>
+                      <option value="Marshy">Marshy / Wetland</option>
+                      <option value="Saline">Saline Soil</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Soil Resistivity (Ω·cm)
+                    </label>
+                    <select
+                      value={rfqData.soilResistivity || ''}
+                      onChange={(e) => onUpdate('soilResistivity', e.target.value || undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">Select resistivity...</option>
+                      <option value="<500">&lt;500 (Very Corrosive)</option>
+                      <option value="500-1000">500-1,000 (Corrosive)</option>
+                      <option value="1000-2000">1,000-2,000 (Moderately Corrosive)</option>
+                      <option value="2000-5000">2,000-5,000 (Mildly Corrosive)</option>
+                      <option value="5000-10000">5,000-10,000 (Low Corrosivity)</option>
+                      <option value=">10000">&gt;10,000 (Non-Corrosive)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Soil Moisture / Drainage
+                    </label>
+                    <select
+                      value={rfqData.soilMoisture || ''}
+                      onChange={(e) => onUpdate('soilMoisture', e.target.value || undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">Select moisture level...</option>
+                      <option value="Dry">Dry (Well Drained)</option>
+                      <option value="Normal">Normal Drainage</option>
+                      <option value="Wet">Wet (Poor Drainage)</option>
+                      <option value="Saturated">Saturated / Waterlogged</option>
+                      <option value="Fluctuating">Fluctuating Water Table</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Atmospheric Conditions */}
+              <div className="mb-6">
+                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2">Atmospheric Conditions</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Min Temperature (°C)
+                    </label>
+                    <input
+                      type="number"
+                      value={rfqData.tempMin ?? ''}
+                      onChange={(e) => onUpdate('tempMin', e.target.value ? Number(e.target.value) : undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="e.g., -5"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Mean Temperature (°C)
+                    </label>
+                    <input
+                      type="number"
+                      value={rfqData.tempMean ?? ''}
+                      onChange={(e) => onUpdate('tempMean', e.target.value ? Number(e.target.value) : undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="e.g., 18"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Max Temperature (°C)
+                    </label>
+                    <input
+                      type="number"
+                      value={rfqData.tempMax ?? ''}
+                      onChange={(e) => onUpdate('tempMax', e.target.value ? Number(e.target.value) : undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="e.g., 38"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Relative Humidity (%)
+                    </label>
+                    <select
+                      value={rfqData.humidity || ''}
+                      onChange={(e) => onUpdate('humidity', e.target.value || undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">Select humidity range...</option>
+                      <option value="<30">&lt;30% (Arid)</option>
+                      <option value="30-50">30-50% (Low)</option>
+                      <option value="50-70">50-70% (Moderate)</option>
+                      <option value="70-80">70-80% (High)</option>
+                      <option value=">80">&gt;80% (Very High)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Annual Rainfall
+                    </label>
+                    <select
+                      value={rfqData.rainfall || ''}
+                      onChange={(e) => onUpdate('rainfall', e.target.value || undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">Select rainfall level...</option>
+                      <option value="<250">&lt;250mm (Arid)</option>
+                      <option value="250-500">250-500mm (Semi-Arid)</option>
+                      <option value="500-1000">500-1000mm (Moderate)</option>
+                      <option value="1000-2000">1000-2000mm (High)</option>
+                      <option value=">2000">&gt;2000mm (Very High)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Marine & Special Conditions */}
+              <div>
+                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2">Marine & Special Conditions</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Marine Influence / Coastal Proximity
+                    </label>
+                    <select
+                      value={rfqData.marineInfluence || ''}
+                      onChange={(e) => onUpdate('marineInfluence', e.target.value || undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">Select marine influence...</option>
+                      <option value="None">None (Inland &gt;50km)</option>
+                      <option value="Low">Low (20-50km from coast)</option>
+                      <option value="Moderate">Moderate (5-20km from coast)</option>
+                      <option value="High">High (1-5km from coast)</option>
+                      <option value="Severe">Severe (&lt;1km / Direct exposure)</option>
+                      <option value="Splash">Splash Zone / Offshore</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Flooding / Water Table Risk
+                    </label>
+                    <select
+                      value={rfqData.floodingRisk || ''}
+                      onChange={(e) => onUpdate('floodingRisk', e.target.value || undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">Select flooding risk...</option>
+                      <option value="None">None</option>
+                      <option value="Low">Low (Rare flooding)</option>
+                      <option value="Moderate">Moderate (Occasional)</option>
+                      <option value="High">High (Frequent)</option>
+                      <option value="Permanent">Permanent water exposure</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Industrial Atmospheric Pollution
+                    </label>
+                    <select
+                      value={rfqData.industrialPollution || ''}
+                      onChange={(e) => onUpdate('industrialPollution', e.target.value || undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">Select pollution level...</option>
+                      <option value="None">None (Rural)</option>
+                      <option value="Low">Low (Light industrial)</option>
+                      <option value="Moderate">Moderate (Urban/Industrial)</option>
+                      <option value="High">High (Heavy industrial)</option>
+                      <option value="Severe">Severe (Chemical/Petrochemical)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Time of Wetness (TOW) - ISO 9223
+                    </label>
+                    <select
+                      value={rfqData.timeOfWetness || ''}
+                      onChange={(e) => onUpdate('timeOfWetness', e.target.value || undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">Select TOW category...</option>
+                      <option value="T1">T1 (&lt;10 hours/year)</option>
+                      <option value="T2">T2 (10-250 hours/year)</option>
+                      <option value="T3">T3 (250-2500 hours/year)</option>
+                      <option value="T4">T4 (2500-5500 hours/year)</option>
+                      <option value="T5">T5 (&gt;5500 hours/year)</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Based on RH &gt;80% and temp above dew point
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Corrosion Severity Classification */}
+            <div className="bg-white rounded-lg p-5 mb-4 border border-gray-200">
+              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Corrosion Severity Classification
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Soil Corrosivity (AMPP SP0169)
+                  </label>
+                  <select
+                    value={rfqData.soilCorrosivity || ''}
+                    onChange={(e) => onUpdate('soilCorrosivity', e.target.value || undefined)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="">Select soil corrosivity...</option>
+                    <option value="Mild">Mild</option>
+                    <option value="Moderate">Moderately Corrosive</option>
+                    <option value="Severe">Severely Corrosive</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    ISO 12944 Corrosivity Category
+                  </label>
+                  <select
+                    value={rfqData.iso12944Category || ''}
+                    onChange={(e) => onUpdate('iso12944Category', e.target.value || undefined)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="">Select ISO 12944 category...</option>
+                    <option value="C1">C1 - Very Low</option>
+                    <option value="C2">C2 - Low</option>
+                    <option value="C3">C3 - Medium</option>
+                    <option value="C4">C4 - High</option>
+                    <option value="C5-I">C5-I - Very High (Industrial)</option>
+                    <option value="C5-M">C5-M - Very High (Marine)</option>
+                    <option value="CX">CX - Extreme</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Overall Environment Severity
+                </label>
+                <select
+                  value={rfqData.environmentSeverity || ''}
+                  onChange={(e) => onUpdate('environmentSeverity', e.target.value || undefined)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                >
+                  <option value="">Select overall severity...</option>
+                  <option value="Low">Low - Benign conditions</option>
+                  <option value="Moderate">Moderate - Standard protection required</option>
+                  <option value="High">High - Enhanced protection required</option>
+                  <option value="Severe">Severe - Maximum protection required</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Coating System Recommendations */}
+            <div className="bg-white rounded-lg p-5 mb-4 border border-gray-200">
+              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Coating System Recommendations (ISO 21809)
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Suitable External Coating Families
+                  </label>
+                  <select
+                    value={rfqData.recommendedCoatingFamily || ''}
+                    onChange={(e) => onUpdate('recommendedCoatingFamily', e.target.value || undefined)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="">Select recommended coating...</option>
+                    <option value="FBE">FBE (Fusion Bonded Epoxy)</option>
+                    <option value="2LPE">2LPE (2-Layer Polyethylene)</option>
+                    <option value="3LPE">3LPE (3-Layer Polyethylene)</option>
+                    <option value="3LPP">3LPP (3-Layer Polypropylene)</option>
+                    <option value="PU">Polyurethane Coating</option>
+                    <option value="Coal Tar Enamel">Coal Tar Enamel</option>
+                    <option value="Concrete Weight">Concrete Weight Coating</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Minimum Coating Thickness
+                  </label>
+                  <select
+                    value={rfqData.minCoatingThickness || ''}
+                    onChange={(e) => onUpdate('minCoatingThickness', e.target.value || undefined)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="">Select minimum thickness...</option>
+                    <option value="≥0.3mm">≥0.3mm (FBE Standard)</option>
+                    <option value="≥0.5mm">≥0.5mm (FBE Enhanced)</option>
+                    <option value="≥1.8mm">≥1.8mm (2LPE)</option>
+                    <option value="≥2.5mm">≥2.5mm (3LPE Standard)</option>
+                    <option value="≥3.0mm">≥3.0mm (3LPE/3LPP Enhanced)</option>
+                    <option value="≥3.5mm">≥3.5mm (3LPP High Performance)</option>
+                    <option value="≥5.0mm">≥5.0mm (Severe conditions)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Surface Preparation Standard
+                  </label>
+                  <select
+                    value={rfqData.surfacePrep || ''}
+                    onChange={(e) => onUpdate('surfacePrep', e.target.value || undefined)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="">Select surface prep...</option>
+                    <option value="SSPC-SP6">SSPC-SP6 / Sa 2 (Commercial Blast)</option>
+                    <option value="SSPC-SP10">SSPC-SP10 / Sa 2½ (Near-White Blast)</option>
+                    <option value="SSPC-SP5">SSPC-SP5 / Sa 3 (White Metal Blast)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Cathodic Protection Compatibility
+                  </label>
+                  <select
+                    value={rfqData.cpCompatibility || ''}
+                    onChange={(e) => onUpdate('cpCompatibility', e.target.value || undefined)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="">Select CP requirement...</option>
+                    <option value="Required">CP Required - Coating must be compatible</option>
+                    <option value="Recommended">CP Recommended</option>
+                    <option value="Not Required">CP Not Required</option>
+                    <option value="TBD">To Be Determined</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Additional Protection Flags */}
+              <div className="mt-4">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Additional Protection Requirements
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={rfqData.requiresConcreteCoating || false}
+                      onChange={(e) => onUpdate('requiresConcreteCoating', e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Concrete Coating</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={rfqData.requiresRockShield || false}
+                      onChange={(e) => onUpdate('requiresRockShield', e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Rock Shield</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={rfqData.requiresHolidayDetection || false}
+                      onChange={(e) => onUpdate('requiresHolidayDetection', e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Holiday Detection</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={rfqData.requiresFieldJointCoating || false}
+                      onChange={(e) => onUpdate('requiresFieldJointCoating', e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Field Joint Coating</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Engineering Disclaimer */}
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <h5 className="text-sm font-bold text-amber-800 mb-1">Engineering Disclaimer & Traceability</h5>
+                  <p className="text-xs text-amber-700 leading-relaxed">
+                    Environmental and coating recommendations are <strong>indicative</strong> and based on generalized datasets
+                    and standards interpretations (ISO 12944, ISO 21809, AMPP SP0169, ISO 9223). Final coating selection
+                    <strong> must be validated</strong> by project-specific soil investigations, climate data, and applicable
+                    governing codes. These outputs do not replace detailed corrosion engineering studies.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                    <span className="bg-amber-200 text-amber-800 px-2 py-0.5 rounded">ISO 12944</span>
+                    <span className="bg-amber-200 text-amber-800 px-2 py-0.5 rounded">ISO 21809</span>
+                    <span className="bg-amber-200 text-amber-800 px-2 py-0.5 rounded">AMPP SP0169</span>
+                    <span className="bg-amber-200 text-amber-800 px-2 py-0.5 rounded">ISO 9223</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
