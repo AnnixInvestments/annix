@@ -272,6 +272,264 @@ function hasCompleteProfile(profile: MaterialTransferProfile): boolean {
   );
 }
 
+interface ExternalEnvironmentProfile {
+  installation: {
+    type?: "AboveGround" | "Buried" | "Submerged" | "Splash";
+    uvExposure?: "None" | "Moderate" | "High";
+    mechanicalRisk?: "Low" | "Medium" | "High";
+  };
+  atmosphere: {
+    iso12944Category?: "C1" | "C2" | "C3" | "C4" | "C5" | "CX";
+    marineInfluence?: "None" | "Coastal" | "Offshore";
+    industrialPollution?: "None" | "Moderate" | "Heavy";
+  };
+  soil: {
+    soilType?: "Sandy" | "Clay" | "Rocky" | "Marshy";
+    resistivity?: "VeryLow" | "Low" | "Medium" | "High";
+    moisture?: "Dry" | "Normal" | "Wet" | "Saturated";
+  };
+  operating: {
+    temperature?: "Ambient" | "Elevated" | "High" | "Cyclic";
+    cathodicProtection?: boolean;
+    serviceLife?: "Short" | "Medium" | "Long" | "Extended";
+  };
+}
+
+interface ExternalCoatingRecommendation {
+  coating: string;
+  coatingType: string;
+  system: string;
+  thicknessRange: string;
+  standardsBasis: string[];
+  rationale: string;
+  engineeringNotes: string[];
+}
+
+interface ExternalDamageMechanisms {
+  atmosphericCorrosion: "Low" | "Moderate" | "High" | "Severe";
+  soilCorrosion: "Low" | "Moderate" | "High" | "Severe";
+  mechanicalDamage: "Low" | "Moderate" | "High";
+  dominantMechanism: "Atmospheric" | "Soil/Buried" | "Marine" | "Mechanical" | "Mixed";
+}
+
+function classifyExternalDamageMechanisms(profile: ExternalEnvironmentProfile): ExternalDamageMechanisms {
+  const { installation, atmosphere, soil } = profile;
+
+  const atmosphericSeverity = (): "Low" | "Moderate" | "High" | "Severe" => {
+    if (atmosphere.iso12944Category === "CX" || atmosphere.marineInfluence === "Offshore") {
+      return "Severe";
+    }
+    if (atmosphere.iso12944Category === "C5" || atmosphere.marineInfluence === "Coastal" || atmosphere.industrialPollution === "Heavy") {
+      return "High";
+    }
+    if (atmosphere.iso12944Category === "C3" || atmosphere.iso12944Category === "C4" || atmosphere.industrialPollution === "Moderate") {
+      return "Moderate";
+    }
+    return "Low";
+  };
+
+  const soilSeverity = (): "Low" | "Moderate" | "High" | "Severe" => {
+    if (installation.type !== "Buried") return "Low";
+    if (soil.resistivity === "VeryLow" && soil.moisture === "Saturated") {
+      return "Severe";
+    }
+    if (soil.resistivity === "VeryLow" || soil.resistivity === "Low" || soil.moisture === "Wet" || soil.moisture === "Saturated") {
+      return "High";
+    }
+    if (soil.resistivity === "Medium" || soil.soilType === "Clay") {
+      return "Moderate";
+    }
+    return "Low";
+  };
+
+  const mechanicalSeverity = (): "Low" | "Moderate" | "High" => {
+    if (installation.mechanicalRisk === "High") return "High";
+    if (installation.mechanicalRisk === "Medium" || installation.type === "Buried") return "Moderate";
+    return "Low";
+  };
+
+  const atmospheric = atmosphericSeverity();
+  const soilCorrosion = soilSeverity();
+  const mechanical = mechanicalSeverity();
+
+  const dominantMechanism = (): "Atmospheric" | "Soil/Buried" | "Marine" | "Mechanical" | "Mixed" => {
+    if (atmosphere.marineInfluence === "Offshore" || atmosphere.marineInfluence === "Coastal") return "Marine";
+    if (installation.type === "Buried" && (soilCorrosion === "Severe" || soilCorrosion === "High")) return "Soil/Buried";
+    if (atmospheric === "Severe" || atmospheric === "High") return "Atmospheric";
+    if (mechanical === "High") return "Mechanical";
+    return "Mixed";
+  };
+
+  return {
+    atmosphericCorrosion: atmospheric,
+    soilCorrosion,
+    mechanicalDamage: mechanical,
+    dominantMechanism: dominantMechanism()
+  };
+}
+
+function recommendExternalCoating(profile: ExternalEnvironmentProfile, damage: ExternalDamageMechanisms): ExternalCoatingRecommendation {
+  const { installation, operating } = profile;
+
+  if (installation.type === "Buried") {
+    if (damage.soilCorrosion === "Severe" || damage.soilCorrosion === "High") {
+      return {
+        coating: "Fusion Bonded Epoxy (FBE) or 3-Layer Polyethylene (3LPE)",
+        coatingType: "Paint",
+        system: "FBE: 350-500μm or 3LPE: 1.8-3.0mm total",
+        thicknessRange: "350–3000 μm",
+        standardsBasis: ["ISO 21809-1", "ISO 21809-2", "NACE SP0169", "AS/NZS 4822"],
+        rationale: "Severe soil corrosivity requires heavy-duty pipeline coating with CP compatibility",
+        engineeringNotes: [
+          "FBE provides excellent adhesion and CP compatibility",
+          "3LPE recommended for rocky terrain or high mechanical stress",
+          "Ensure holiday detection testing per NACE SP0188",
+          "Field joint coating critical - use compatible shrink sleeves"
+        ]
+      };
+    }
+    return {
+      coating: "Coal Tar Epoxy or Polyurethane Coating",
+      coatingType: "Paint",
+      system: "Primer + 2 coats, 400-600μm DFT",
+      thicknessRange: "400–600 μm",
+      standardsBasis: ["ISO 21809-3", "AWWA C222", "NACE SP0169"],
+      rationale: "Moderate soil conditions with cathodic protection compatibility",
+      engineeringNotes: [
+        "Coal tar epoxy for proven long-term performance",
+        "Ensure proper surface preparation to Sa 2½",
+        "Consider wrap coating for additional mechanical protection"
+      ]
+    };
+  }
+
+  if (damage.dominantMechanism === "Marine" || damage.atmosphericCorrosion === "Severe") {
+    return {
+      coating: "High-Build Epoxy System",
+      coatingType: "Paint",
+      system: "Zinc-rich primer + Epoxy MIO intermediate + Polyurethane topcoat",
+      thicknessRange: "320–450 μm total DFT",
+      standardsBasis: ["ISO 12944-5", "ISO 12944-6", "NORSOK M-501", "SSPC-PA 2"],
+      rationale: "Marine/offshore environment requires maximum corrosion protection",
+      engineeringNotes: [
+        "Zinc-rich primer (60-80μm) for cathodic protection",
+        "Epoxy MIO intermediate (150-200μm) for barrier protection",
+        "Polyurethane topcoat (60-80μm) for UV and gloss retention",
+        "Consider thermal spray aluminium (TSA) for splash zones"
+      ]
+    };
+  }
+
+  if (damage.atmosphericCorrosion === "High") {
+    return {
+      coating: "Epoxy-Polyurethane System",
+      coatingType: "Paint",
+      system: "Zinc phosphate primer + Epoxy intermediate + Polyurethane topcoat",
+      thicknessRange: "250–350 μm total DFT",
+      standardsBasis: ["ISO 12944-5", "AS/NZS 2312.1", "SSPC-PA 2"],
+      rationale: "Industrial or coastal atmosphere with high corrosion risk",
+      engineeringNotes: [
+        "Zinc phosphate primer (50-75μm) for steel adhesion",
+        "High-build epoxy intermediate (125-175μm)",
+        "Aliphatic polyurethane topcoat for UV stability",
+        "Recoat intervals per ISO 12944-9"
+      ]
+    };
+  }
+
+  if (installation.mechanicalRisk === "High" || installation.type === "Splash") {
+    return {
+      coating: "Rubber Coating or Polyurea",
+      coatingType: "Rubber Lined",
+      system: "Chloroprene rubber 3-6mm or Polyurea 1.5-3mm",
+      thicknessRange: "1500–6000 μm",
+      standardsBasis: ["ASTM D4541", "ASTM D2000", "ISO 4649"],
+      rationale: "High mechanical stress or splash zone requires impact-resistant coating",
+      engineeringNotes: [
+        "Chloroprene (Neoprene) rubber for abrasion and weathering",
+        "Polyurea for rapid application and seamless coverage",
+        "Shore A hardness 50-70 for impact absorption",
+        "Consider armoring at support points"
+      ]
+    };
+  }
+
+  if (damage.atmosphericCorrosion === "Moderate") {
+    return {
+      coating: "Alkyd or Acrylic System",
+      coatingType: "Paint",
+      system: "Alkyd primer + Alkyd/Acrylic topcoat",
+      thicknessRange: "150–250 μm total DFT",
+      standardsBasis: ["ISO 12944-5", "AS/NZS 2312.1"],
+      rationale: "Moderate atmospheric exposure - cost-effective protection",
+      engineeringNotes: [
+        "Suitable for C2-C3 environments",
+        "Alkyd primer (50-75μm) on prepared steel",
+        "Acrylic topcoat for better UV resistance than alkyd",
+        "Regular maintenance inspection recommended"
+      ]
+    };
+  }
+
+  if (operating.temperature === "Elevated" || operating.temperature === "High") {
+    return {
+      coating: "Silicone or Epoxy Phenolic",
+      coatingType: "Paint",
+      system: "Heat-resistant primer + Silicone topcoat",
+      thicknessRange: "75–150 μm total DFT",
+      standardsBasis: ["ISO 12944-5", "ASTM D6695"],
+      rationale: "Elevated temperature service requires heat-resistant coating",
+      engineeringNotes: [
+        "Silicone coatings for temperatures up to 540°C",
+        "Epoxy phenolic for temperatures up to 200°C with chemical resistance",
+        "Inorganic zinc silicate primer for high-temp applications",
+        "Cure requirements critical for performance"
+      ]
+    };
+  }
+
+  if (installation.uvExposure === "None" && damage.atmosphericCorrosion === "Low") {
+    return {
+      coating: "Hot-Dip Galvanizing",
+      coatingType: "Galvanized",
+      system: "HDG per ISO 1461",
+      thicknessRange: "45–85 μm (depends on steel thickness)",
+      standardsBasis: ["ISO 1461", "ASTM A123", "AS/NZS 4680"],
+      rationale: "Indoor or sheltered environment with low corrosion risk",
+      engineeringNotes: [
+        "Minimum 45μm for steel <1.5mm, 85μm for steel >6mm",
+        "Self-healing zinc protection",
+        "Can be duplex coated (galvanized + paint) for extended life",
+        "Ensure proper drainage design to avoid wet storage stain"
+      ]
+    };
+  }
+
+  return {
+    coating: "Standard Epoxy System",
+    coatingType: "Paint",
+    system: "Epoxy primer + Epoxy topcoat",
+    thicknessRange: "200–300 μm total DFT",
+    standardsBasis: ["ISO 12944-5", "SSPC-PA 2"],
+    rationale: "General-purpose protection for mild environments",
+    engineeringNotes: [
+      "Epoxy primer (75-100μm) for adhesion",
+      "High-build epoxy topcoat (125-200μm)",
+      "Good chemical and abrasion resistance",
+      "Note: Epoxy may chalk under UV - consider PU topcoat for exposed areas"
+    ]
+  };
+}
+
+function hasCompleteExternalProfile(profile: ExternalEnvironmentProfile): boolean {
+  const { installation, atmosphere, operating } = profile;
+  return !!(
+    installation.type &&
+    atmosphere.iso12944Category &&
+    operating.serviceLife
+  );
+}
+
 function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);
@@ -1367,6 +1625,374 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
         {/* External Coating */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">External Coating</h3>
+
+          {/* External Environment Profile - Coating Recommendation Assistant */}
+          {!globalSpecs?.externalCoatingConfirmed && (
+            <div className="mb-6">
+              <button
+                type="button"
+                onClick={() => onUpdateGlobalSpecs({
+                  ...globalSpecs,
+                  showExternalCoatingProfile: !globalSpecs?.showExternalCoatingProfile
+                })}
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium text-sm mb-3"
+              >
+                <svg className={`w-4 h-4 transition-transform ${globalSpecs?.showExternalCoatingProfile ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                {globalSpecs?.showExternalCoatingProfile ? 'Hide' : 'Show'} Coating Recommendation Assistant (ISO 12944/21809)
+              </button>
+
+              {globalSpecs?.showExternalCoatingProfile && (
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <h4 className="text-md font-semibold text-orange-900">External Environment Profile</h4>
+                  </div>
+                  <p className="text-xs text-orange-700 mb-4">
+                    Define your environmental conditions to receive standards-based coating recommendations per ISO 12944 & ISO 21809.
+                  </p>
+
+                  {/* Installation Conditions */}
+                  <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+                    <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                      Installation Conditions
+                    </h5>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Installation Type *</label>
+                        <select
+                          value={globalSpecs?.ecpInstallationType || ""}
+                          onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpInstallationType: e.target.value || undefined })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                        >
+                          <option value="">Select...</option>
+                          <option value="AboveGround">Above Ground</option>
+                          <option value="Buried">Buried / Underground</option>
+                          <option value="Submerged">Submerged</option>
+                          <option value="Splash">Splash / Tidal Zone</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">UV Exposure</label>
+                        <select
+                          value={globalSpecs?.ecpUvExposure || ""}
+                          onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpUvExposure: e.target.value || undefined })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                        >
+                          <option value="">Select...</option>
+                          <option value="None">None (Indoor/Buried)</option>
+                          <option value="Moderate">Moderate</option>
+                          <option value="High">High (Full Sun)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Mechanical Risk</label>
+                        <select
+                          value={globalSpecs?.ecpMechanicalRisk || ""}
+                          onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpMechanicalRisk: e.target.value || undefined })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                        >
+                          <option value="">Select...</option>
+                          <option value="Low">Low</option>
+                          <option value="Medium">Medium (Traffic/Handling)</option>
+                          <option value="High">High (Rocky/Abrasive)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Atmospheric Environment */}
+                  <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+                    <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                      Atmospheric Environment
+                    </h5>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">ISO 12944 Category *</label>
+                        <select
+                          value={globalSpecs?.ecpIso12944Category || ""}
+                          onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpIso12944Category: e.target.value || undefined })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                        >
+                          <option value="">Select...</option>
+                          <option value="C1">C1 - Very Low (Heated interiors)</option>
+                          <option value="C2">C2 - Low (Rural, low pollution)</option>
+                          <option value="C3">C3 - Medium (Urban, mild industrial)</option>
+                          <option value="C4">C4 - High (Industrial, coastal)</option>
+                          <option value="C5">C5 - Very High (Heavy industrial, marine)</option>
+                          <option value="CX">CX - Extreme (Offshore, severe industrial)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Marine Influence</label>
+                        <select
+                          value={globalSpecs?.ecpMarineInfluence || ""}
+                          onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpMarineInfluence: e.target.value || undefined })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                        >
+                          <option value="">Select...</option>
+                          <option value="None">None (Inland)</option>
+                          <option value="Coastal">Coastal (&lt;5km from sea)</option>
+                          <option value="Offshore">Offshore / Marine</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Industrial Pollution</label>
+                        <select
+                          value={globalSpecs?.ecpIndustrialPollution || ""}
+                          onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpIndustrialPollution: e.target.value || undefined })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                        >
+                          <option value="">Select...</option>
+                          <option value="None">None / Rural</option>
+                          <option value="Moderate">Moderate (Urban/Light industrial)</option>
+                          <option value="Heavy">Heavy (Chemical/Petrochemical)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Soil Conditions (for buried) */}
+                  {globalSpecs?.ecpInstallationType === "Buried" && (
+                    <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+                      <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                        <span className="w-6 h-6 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                        Soil Conditions (Buried Pipeline)
+                      </h5>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Soil Type</label>
+                          <select
+                            value={globalSpecs?.ecpSoilType || ""}
+                            onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpSoilType: e.target.value || undefined })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                          >
+                            <option value="">Select...</option>
+                            <option value="Sandy">Sandy (Well-drained)</option>
+                            <option value="Clay">Clay (Poor drainage)</option>
+                            <option value="Rocky">Rocky / Stony</option>
+                            <option value="Marshy">Marshy / Wetland</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Soil Resistivity</label>
+                          <select
+                            value={globalSpecs?.ecpSoilResistivity || ""}
+                            onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpSoilResistivity: e.target.value || undefined })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                          >
+                            <option value="">Select...</option>
+                            <option value="VeryLow">&lt;500 Ω·cm (Very Corrosive)</option>
+                            <option value="Low">500–2,000 Ω·cm (Corrosive)</option>
+                            <option value="Medium">2,000–10,000 Ω·cm (Moderate)</option>
+                            <option value="High">&gt;10,000 Ω·cm (Low Corrosivity)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Soil Moisture</label>
+                          <select
+                            value={globalSpecs?.ecpSoilMoisture || ""}
+                            onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpSoilMoisture: e.target.value || undefined })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                          >
+                            <option value="">Select...</option>
+                            <option value="Dry">Dry (Well-drained)</option>
+                            <option value="Normal">Normal</option>
+                            <option value="Wet">Wet (Poor drainage)</option>
+                            <option value="Saturated">Saturated / Water table</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Operating Conditions */}
+                  <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+                    <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-red-100 text-red-700 rounded-full flex items-center justify-center text-xs font-bold">{globalSpecs?.ecpInstallationType === "Buried" ? "4" : "3"}</span>
+                      Operating Conditions
+                    </h5>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Operating Temperature</label>
+                        <select
+                          value={globalSpecs?.ecpTemperature || ""}
+                          onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpTemperature: e.target.value || undefined })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                        >
+                          <option value="">Select...</option>
+                          <option value="Ambient">Ambient (-20 to 60°C)</option>
+                          <option value="Elevated">Elevated (60–120°C)</option>
+                          <option value="High">High (120–200°C)</option>
+                          <option value="Cyclic">Cyclic (Thermal cycling)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Service Life Required *</label>
+                        <select
+                          value={globalSpecs?.ecpServiceLife || ""}
+                          onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpServiceLife: e.target.value || undefined })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                        >
+                          <option value="">Select...</option>
+                          <option value="Short">Short (&lt;7 years)</option>
+                          <option value="Medium">Medium (7–15 years)</option>
+                          <option value="Long">Long (15–25 years)</option>
+                          <option value="Extended">Extended (&gt;25 years)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Cathodic Protection?</label>
+                        <select
+                          value={globalSpecs?.ecpCathodicProtection === true ? "true" : globalSpecs?.ecpCathodicProtection === false ? "false" : ""}
+                          onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpCathodicProtection: e.target.value === "true" ? true : e.target.value === "false" ? false : undefined })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                        >
+                          <option value="">Select...</option>
+                          <option value="true">Yes (CP system installed)</option>
+                          <option value="false">No</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recommendation Display */}
+                  {(() => {
+                    const profile: ExternalEnvironmentProfile = {
+                      installation: {
+                        type: globalSpecs?.ecpInstallationType as any,
+                        uvExposure: globalSpecs?.ecpUvExposure as any,
+                        mechanicalRisk: globalSpecs?.ecpMechanicalRisk as any
+                      },
+                      atmosphere: {
+                        iso12944Category: globalSpecs?.ecpIso12944Category as any,
+                        marineInfluence: globalSpecs?.ecpMarineInfluence as any,
+                        industrialPollution: globalSpecs?.ecpIndustrialPollution as any
+                      },
+                      soil: {
+                        soilType: globalSpecs?.ecpSoilType as any,
+                        resistivity: globalSpecs?.ecpSoilResistivity as any,
+                        moisture: globalSpecs?.ecpSoilMoisture as any
+                      },
+                      operating: {
+                        temperature: globalSpecs?.ecpTemperature as any,
+                        cathodicProtection: globalSpecs?.ecpCathodicProtection,
+                        serviceLife: globalSpecs?.ecpServiceLife as any
+                      }
+                    };
+
+                    if (!hasCompleteExternalProfile(profile)) {
+                      return (
+                        <div className="bg-gray-100 rounded-lg p-4 border border-gray-200">
+                          <p className="text-sm text-gray-600 text-center">
+                            Complete the required fields (marked *) to receive a coating recommendation.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    const damage = classifyExternalDamageMechanisms(profile);
+                    const recommendation = recommendExternalCoating(profile, damage);
+
+                    return (
+                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border-2 border-emerald-300">
+                        <div className="flex items-center gap-2 mb-3">
+                          <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <h5 className="text-md font-bold text-emerald-900">Recommended Coating System</h5>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div className="bg-white rounded-lg p-3 border border-emerald-200">
+                            <div className="text-xs font-medium text-gray-500 mb-1">Coating System</div>
+                            <div className="text-lg font-bold text-emerald-800">{recommendation.coating}</div>
+                            <div className="text-xs text-gray-600 mt-1">{recommendation.system}</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-emerald-200">
+                            <div className="text-xs font-medium text-gray-500 mb-1">Dominant Exposure</div>
+                            <div className="text-md font-semibold text-gray-800">{damage.dominantMechanism}</div>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              <span className={`text-xs px-2 py-0.5 rounded ${damage.atmosphericCorrosion === 'Severe' || damage.atmosphericCorrosion === 'High' ? 'bg-red-100 text-red-700' : damage.atmosphericCorrosion === 'Moderate' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                Atm: {damage.atmosphericCorrosion}
+                              </span>
+                              {globalSpecs?.ecpInstallationType === "Buried" && (
+                                <span className={`text-xs px-2 py-0.5 rounded ${damage.soilCorrosion === 'Severe' || damage.soilCorrosion === 'High' ? 'bg-red-100 text-red-700' : damage.soilCorrosion === 'Moderate' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                  Soil: {damage.soilCorrosion}
+                                </span>
+                              )}
+                              <span className={`text-xs px-2 py-0.5 rounded ${damage.mechanicalDamage === 'High' ? 'bg-red-100 text-red-700' : damage.mechanicalDamage === 'Moderate' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                Mech: {damage.mechanicalDamage}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div className="bg-white rounded-lg p-3 border border-emerald-200">
+                            <div className="text-xs font-medium text-gray-500 mb-1">Thickness Range</div>
+                            <div className="text-md font-semibold text-gray-800">{recommendation.thicknessRange}</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-emerald-200">
+                            <div className="text-xs font-medium text-gray-500 mb-1">Rationale</div>
+                            <p className="text-sm text-gray-700">{recommendation.rationale}</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
+                          <div className="text-xs font-medium text-gray-500 mb-2">Applicable Standards</div>
+                          <div className="flex flex-wrap gap-2">
+                            {recommendation.standardsBasis.map((std, i) => (
+                              <span key={i} className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded font-medium">
+                                {std}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
+                          <div className="text-xs font-medium text-gray-500 mb-2">Engineering Notes</div>
+                          <ul className="text-xs text-gray-700 space-y-1">
+                            {recommendation.engineeringNotes.map((note, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-emerald-500 mt-0.5">•</span>
+                                {note}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            externalCoatingType: recommendation.coatingType
+                          })}
+                          className="w-full px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 text-sm flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Apply Recommendation: {recommendation.coatingType}
+                        </button>
+
+                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <p className="text-xs text-amber-800">
+                            <strong>Engineering Disclaimer:</strong> Coating recommendations are indicative and based on ISO 12944, ISO 21809, and related standards. They do not replace project-specific corrosion assessments, manufacturer data sheets, or qualified coating inspector verification. Surface preparation and application conditions are critical to coating performance.
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Show dropdown only if no coating confirmed */}
           {!globalSpecs?.externalCoatingConfirmed && (
