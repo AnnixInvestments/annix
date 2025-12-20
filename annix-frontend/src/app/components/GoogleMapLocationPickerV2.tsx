@@ -14,7 +14,7 @@ interface AddressComponents {
   country: string;
 }
 
-interface GoogleMapLocationPickerProps {
+interface GoogleMapLocationPickerV2Props {
   initialLocation?: Location;
   onLocationSelect: (location: Location, addressComponents?: AddressComponents) => void;
   onClose: () => void;
@@ -33,27 +33,26 @@ const defaultCenter: Location = {
 
 const libraries: ("places" | "geocoding")[] = ["places", "geocoding"];
 
-export default function GoogleMapLocationPicker({
+export default function GoogleMapLocationPickerV2({
   initialLocation,
   onLocationSelect,
   onClose,
   apiKey
-}: GoogleMapLocationPickerProps) {
+}: GoogleMapLocationPickerV2Props) {
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
     libraries
   });
 
-const [selectedLocation, setSelectedLocation] = useState<Location | null>(
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     initialLocation || null
   );
   const [addressInfo, setAddressInfo] = useState<AddressComponents | null>(null);
-  const [isGeocoding, setIsGeocoding] = useState(false);
   const [searchAddress, setSearchAddress] = useState("");
   const mapRef = useRef<google.maps.Map | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
-const onMapLoad = useCallback((map: google.maps.Map) => {
+  const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
   }, []);
 
@@ -61,7 +60,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
     autocompleteRef.current = autocomplete;
   }, []);
 
-  const onPlaceChanged = useCallback(() => {
+  const handlePlaceChanged = useCallback(() => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
       
@@ -108,7 +107,6 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
   const reverseGeocode = useCallback(async (location: Location) => {
     if (!window.google) return;
 
-    setIsGeocoding(true);
     const geocoder = new google.maps.Geocoder();
 
     try {
@@ -131,9 +129,8 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
 
         setAddressInfo({ address, region, country });
       }
-    } catch {
-    } finally {
-      setIsGeocoding(false);
+    } catch (error) {
+      console.error("Geocoding error:", error);
     }
   }, []);
 
@@ -216,11 +213,11 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] md:max-h-[95vh] flex flex-col md:h-auto">
+        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Select Project Location</h3>
-            <p className="text-sm text-gray-600">Click on the map to pin your project location</p>
+            <p className="text-sm text-gray-600">Search for an address or click on the map to pin your project location</p>
           </div>
           <button
             onClick={onClose}
@@ -232,13 +229,13 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
           </button>
         </div>
 
-<div className="relative">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {/* Search Bar with Autocomplete */}
           <div className="absolute top-3 left-3 right-3 z-10">
             <div className="bg-white rounded-lg shadow-md border border-gray-200">
               <Autocomplete
                 onLoad={onAutocompleteLoad}
-                onPlaceChanged={onPlaceChanged}
+                onPlaceChanged={handlePlaceChanged}
                 options={{
                   fields: ["formatted_address", "geometry", "name", "address_components"],
                   types: ["address"]
@@ -257,12 +254,12 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
           </div>
 
           <GoogleMap
-            mapContainerStyle={containerStyle}
-            center={initialLocation || defaultCenter}
-            zoom={initialLocation ? 14 : 6}
+            mapContainerStyle={{ width: "100%", height: "250px", minHeight: "250px" }}
+            center={selectedLocation || initialLocation || defaultCenter}
+            zoom={selectedLocation || initialLocation ? 14 : 6}
             onClick={handleMapClick}
             onLoad={onMapLoad}
-options={{
+            options={{
               streetViewControl: false,
               mapTypeControl: true,
               fullscreenControl: false,
@@ -279,7 +276,7 @@ options={{
 
           <button
             onClick={handleUseCurrentLocation}
-            className="absolute top-3 right-3 bg-white px-3 py-2 rounded-lg shadow-md hover:bg-gray-50 flex items-center gap-2 text-sm font-medium text-gray-700 border border-gray-200"
+            className="absolute top-20 right-3 bg-white px-3 py-2 rounded-lg shadow-md hover:bg-gray-50 flex items-center gap-2 text-sm font-medium text-gray-700 border border-gray-200"
             title="Use my current location"
           >
             <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -291,7 +288,7 @@ options={{
         </div>
 
         {selectedLocation && (
-          <div className="p-4 border-t bg-gray-50">
+          <div className="p-4 border-t bg-gray-50 overflow-y-auto max-h-[200px]">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div className="bg-white p-3 rounded-lg border">
                 <div className="text-xs font-medium text-gray-500 mb-1">Coordinates</div>
@@ -302,12 +299,7 @@ options={{
               <div className="bg-white p-3 rounded-lg border">
                 <div className="text-xs font-medium text-gray-500 mb-1">Address</div>
                 <div className="text-sm text-gray-900">
-                  {isGeocoding ? (
-                    <span className="flex items-center gap-2 text-gray-500">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                      Looking up address...
-                    </span>
-                  ) : addressInfo?.address || "Click to get address"}
+                  {addressInfo?.address || "Click to get address"}
                 </div>
               </div>
             </div>
@@ -327,7 +319,7 @@ options={{
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-3 p-4 border-t bg-white">
+        <div className="flex items-center justify-end gap-3 p-4 border-t bg-white flex-shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
