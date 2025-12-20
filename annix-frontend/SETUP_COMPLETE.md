@@ -22,7 +22,7 @@
 2. **Update Your API Key**:
    Edit `.env.local` and replace `your_google_maps_api_key_here` with your actual key:
    ```
-   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSyD-your-actual-key-here
+   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
    ```
 
 3. **Restart the Dev Server**:
