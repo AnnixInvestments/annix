@@ -14,6 +14,7 @@ import {
   getPipeEndConfigurationDetails
 } from '@/app/lib/utils/systemUtils';
 import GoogleMapLocationPicker from '@/app/components/GoogleMapLocationPicker';
+import { useEnvironmentalIntelligence } from '@/app/lib/hooks/useEnvironmentalIntelligence';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -530,16 +531,27 @@ function hasCompleteExternalProfile(profile: ExternalEnvironmentProfile): boolea
   );
 }
 
-function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
+function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGlobalSpecs }: any) {
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [mapViewConfig, setMapViewConfig] = useState<'default' | 'responsive' | 'compact'>('responsive');
   const hasProjectTypeError = Boolean(errors.projectType);
 
-  const handleLocationSelect = (
+  // Environmental intelligence auto-fill
+  const {
+    isLoading: isLoadingEnvironmental,
+    errors: environmentalErrors,
+    autoFilledFields,
+    metadata: environmentalMetadata,
+    fetchAndApply: fetchEnvironmentalData,
+    wasAutoFilled,
+  } = useEnvironmentalIntelligence();
+
+  const handleLocationSelect = async (
     location: { lat: number; lng: number },
     addressComponents?: { address: string; region: string; country: string }
   ) => {
+    // Update location fields
     onUpdate("latitude", location.lat);
     onUpdate("longitude", location.lng);
     if (addressComponents) {
@@ -554,6 +566,27 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
       }
     }
     setShowMapPicker(false);
+
+    // Fetch environmental data and auto-fill fields
+    if (onUpdateGlobalSpecs) {
+      try {
+        const environmentalData = await fetchEnvironmentalData(
+          location.lat,
+          location.lng,
+          addressComponents?.region,
+          addressComponents?.country
+        );
+
+        // Update globalSpecs with environmental data
+        onUpdateGlobalSpecs({
+          ...globalSpecs,
+          ...environmentalData,
+        });
+      } catch (error) {
+        console.error('Failed to fetch environmental data:', error);
+        // Non-blocking - user can still fill in manually
+      }
+    }
   };
 
   const commonNotes = [
@@ -996,6 +1029,59 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
                   onLocationSelect={handleLocationSelect}
                   onClose={() => setShowMapPicker(false)}
                 />
+              )}
+
+              {/* Environmental Intelligence Loading/Status */}
+              {isLoadingEnvironmental && (
+                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 mt-4">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-sm text-blue-700">
+                    Fetching environmental data for your location...
+                  </span>
+                </div>
+              )}
+
+              {!isLoadingEnvironmental && autoFilledFields.size > 0 && (
+                <div className="p-3 bg-green-50 rounded-lg border border-green-200 mt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm font-medium text-green-700">
+                      Environmental data auto-filled from location
+                    </span>
+                  </div>
+                  {environmentalMetadata?.distanceToCoastKm !== undefined && (
+                    <p className="text-xs text-green-600 ml-7">
+                      Distance to coast: {environmentalMetadata.distanceToCoastKm} km
+                      {environmentalMetadata.humidity !== undefined && ` | Humidity: ${Math.round(environmentalMetadata.humidity)}%`}
+                    </p>
+                  )}
+                  <p className="text-xs text-green-600 mt-1 ml-7">
+                    Auto-filled fields can be modified in the Specifications step if needed.
+                  </p>
+                </div>
+              )}
+
+              {!isLoadingEnvironmental && environmentalErrors.length > 0 && (
+                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span className="text-sm font-medium text-amber-700">
+                      Some environmental data could not be retrieved
+                    </span>
+                  </div>
+                  <ul className="text-xs text-amber-600 ml-7 list-disc list-inside">
+                    {environmentalErrors.map((error, i) => (
+                      <li key={i}>{error}</li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-amber-600 mt-1 ml-7">
+                    Please fill in missing fields manually in the Specifications step.
+                  </p>
+                </div>
               )}
             </div>
 
@@ -7235,6 +7321,8 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             rfqData={rfqData}
             onUpdate={updateRfqField}
             errors={validationErrors}
+            globalSpecs={rfqData.globalSpecs}
+            onUpdateGlobalSpecs={updateGlobalSpecs}
           />
         );
       case 2:

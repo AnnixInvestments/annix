@@ -61,6 +61,7 @@ export default function GoogleMapLocationPicker({
   );
   const [addressInfo, setAddressInfo] = useState<AddressComponents | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [searchAddress, setSearchAddress] = useState("");
   const mapRef = useRef<google.maps.Map | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
@@ -172,6 +173,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
 
   const handleUseCurrentLocation = useCallback(() => {
     if (navigator.geolocation) {
+      setIsGettingLocation(true);
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const location: Location = {
@@ -184,10 +186,13 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
             mapRef.current.panTo(location);
             mapRef.current.setZoom(14);
           }
+          setIsGettingLocation(false);
         },
         () => {
+          setIsGettingLocation(false);
           alert("Unable to get your current location. Please enable location services or select a location on the map.");
-        }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       alert("Geolocation is not supported by your browser.");
@@ -239,12 +244,8 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
     : "p-4 border-t bg-gray-50";
 
   const mapContainerClass = displayConfig.layout === 'responsive'
-    ? "flex-1 overflow-hidden flex flex-col min-h-0"
+    ? "flex-1 overflow-hidden flex flex-col min-h-0 relative"
     : "relative";
-
-  const locationButtonClass = displayConfig.layout === 'responsive'
-    ? "absolute top-20 right-3 bg-white px-3 py-2 rounded-lg shadow-md hover:bg-gray-50 flex items-center gap-2 text-sm font-medium text-gray-700 border border-gray-200"
-    : "absolute top-3 right-3 bg-white px-3 py-2 rounded-lg shadow-md hover:bg-gray-50 flex items-center gap-2 text-sm font-medium text-gray-700 border border-gray-200";
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -312,16 +313,32 @@ options={{
             )}
           </GoogleMap>
 
+          {/* Geolocation Button */}
           <button
             onClick={handleUseCurrentLocation}
-            className={locationButtonClass}
+            disabled={isGettingLocation}
+            className={`absolute top-16 right-3 z-10 px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium border transition-colors ${
+              isGettingLocation
+                ? "bg-blue-100 text-blue-600 border-blue-300 cursor-wait"
+                : "bg-white text-gray-700 border-gray-200 hover:bg-blue-50"
+            }`}
             title="Use my current location"
           >
-            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Use My Location
+            {isGettingLocation ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                Getting location...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="3" strokeWidth={2} />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v4m0 12v4m10-10h-4M6 12H2" />
+                  <circle cx="12" cy="12" r="8" strokeWidth={2} />
+                </svg>
+                My Location
+              </>
+            )}
           </button>
         </div>
 
