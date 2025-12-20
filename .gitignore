@@ -12,6 +12,7 @@ annix-backend-latest.tar.gz
 
 # IDE files
 .idea
+.claude/
 
 # Log files
 backend-dev.log
