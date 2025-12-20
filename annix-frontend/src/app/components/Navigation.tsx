@@ -7,6 +7,21 @@ export default function Navigation() {
   const router = useRouter();
   const pathname = usePathname();
 
+  const navItems = [
+    { label: 'Create RFQ', path: '/rfq', exact: true },
+    { label: 'View RFQs', path: '/rfq/list', exact: false },
+    { label: 'Drawings', path: '/drawings', exact: false },
+    { label: 'BOQ', path: '/boq', exact: false },
+    { label: 'Reviews', path: '/reviews', exact: false },
+  ];
+
+  const isActive = (item: { path: string; exact: boolean }) => {
+    if (item.exact) {
+      return pathname === item.path;
+    }
+    return pathname.startsWith(item.path);
+  };
+
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -17,27 +32,20 @@ export default function Navigation() {
                 Annix RFQ
               </h1>
             </div>
-            <div className="flex gap-4">
-              <button
-                onClick={() => router.push('/')}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                  pathname === '/'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                Create RFQ
-              </button>
-              <button
-                onClick={() => router.push('/rfqs')}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                  pathname.startsWith('/rfqs')
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                View RFQs
-              </button>
+            <div className="flex gap-2">
+              {navItems.map((item) => (
+                <button
+                  key={item.path}
+                  onClick={() => router.push(item.path)}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                    isActive(item)
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>

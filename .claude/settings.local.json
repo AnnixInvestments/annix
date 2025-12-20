@@ -12,7 +12,9 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nchore: update lockfiles and fix PowerShell $Host variable conflict\n\n- Update package-lock.json and yarn.lock with platform-specific dependencies\n- Rename $Host parameter to $DbHost in run-dev.ps1 to avoid conflict with\n  PowerShell''s automatic $Host variable\nEOF\n\\)\")",
       "Bash(git commit:*)",
       "WebSearch",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(git rebase:*)",
+      "Bash(GIT_EDITOR=true git rebase:*)"
     ]
   }
 }

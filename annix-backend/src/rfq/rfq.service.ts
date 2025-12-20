@@ -364,6 +364,8 @@ export class RfqService {
         'items',
         'items.straightPipeDetails',
         'items.straightPipeDetails.steelSpecification',
+        'drawings',
+        'boqs',
       ],
     });
 

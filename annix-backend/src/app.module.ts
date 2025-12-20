@@ -30,6 +30,12 @@ import { WeldTypeModule } from './weld-type/weld-type.module';
 import { PipeEndConfigurationModule } from './pipe-end-configuration/pipe-end-configuration.module';
 import { BendCenterToFaceModule } from './bend-center-to-face/bend-center-to-face.module';
 import { RfqModule } from './rfq/rfq.module';
+// Phase 2 modules
+import { StorageModule } from './storage/storage.module';
+import { AuditModule } from './audit/audit.module';
+import { DrawingsModule } from './drawings/drawings.module';
+import { BoqModule } from './boq/boq.module';
+import { WorkflowModule } from './workflow/workflow.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -61,6 +67,12 @@ import typeormConfig from './config/typeorm';
     PipeEndConfigurationModule,
     BendCenterToFaceModule,
     RfqModule,
+    // Phase 2 modules
+    StorageModule,
+    AuditModule,
+    DrawingsModule,
+    BoqModule,
+    WorkflowModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

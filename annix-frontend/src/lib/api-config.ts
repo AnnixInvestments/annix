@@ -51,7 +51,7 @@ export const apiConfig = {
   basePath: API_BASE_URL,
 };
 
-export const getAuthHeaders = () => {
+export const getAuthHeaders = (): Record<string, string> => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('auth_token');
     if (token) {
