@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from "@react-google-maps/api";
+import { GoogleMapDisplayConfig, GOOGLE_MAP_PRESETS, GoogleMapPreset } from "@/app/config/googleMapsConfig";
 
 interface Location {
   lat: number;
@@ -19,12 +20,8 @@ interface GoogleMapLocationPickerProps {
   onLocationSelect: (location: Location, addressComponents?: AddressComponents) => void;
   onClose: () => void;
   apiKey: string;
+  config?: GoogleMapPreset | GoogleMapDisplayConfig;
 }
-
-const containerStyle = {
-  width: "100%",
-  height: "400px"
-};
 
 const defaultCenter: Location = {
   lat: -26.20227,
@@ -33,18 +30,33 @@ const defaultCenter: Location = {
 
 const libraries: ("places" | "geocoding")[] = ["places", "geocoding"];
 
+function resolveConfig(config?: GoogleMapPreset | GoogleMapDisplayConfig): GoogleMapDisplayConfig {
+  if (!config) {
+    return GOOGLE_MAP_PRESETS.default;
+  }
+
+  if (typeof config === 'string') {
+    return GOOGLE_MAP_PRESETS[config];
+  }
+
+  return config;
+}
+
 export default function GoogleMapLocationPicker({
   initialLocation,
   onLocationSelect,
   onClose,
-  apiKey
+  apiKey,
+  config
 }: GoogleMapLocationPickerProps) {
+  const displayConfig = resolveConfig(config);
+
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
     libraries
   });
 
-const [selectedLocation, setSelectedLocation] = useState<Location | null>(
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     initialLocation || null
   );
   const [addressInfo, setAddressInfo] = useState<AddressComponents | null>(null);
@@ -52,6 +64,12 @@ const [selectedLocation, setSelectedLocation] = useState<Location | null>(
   const [searchAddress, setSearchAddress] = useState("");
   const mapRef = useRef<google.maps.Map | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  const containerStyle = {
+    width: "100%",
+    height: `${displayConfig.mapHeight || 400}px`,
+    minHeight: displayConfig.layout === 'responsive' ? `${displayConfig.mapHeight || 250}px` : undefined
+  };
 
 const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
@@ -76,8 +94,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
       };
 
       setSelectedLocation(location);
-      
-      // Update viewport if available
+
       if (place.geometry.viewport) {
         mapRef.current?.fitBounds(place.geometry.viewport);
       } else {
@@ -85,7 +102,6 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
         mapRef.current?.setZoom(17);
       }
 
-      // Extract address information
       let address = place.formatted_address || "";
       let region = "";
       let country = "";
@@ -214,13 +230,33 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
     );
   }
 
+  const outerContainerClass = displayConfig.layout === 'responsive'
+    ? "bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] md:max-h-[95vh] flex flex-col md:h-auto"
+    : "bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden";
+
+  const addressInfoClass = displayConfig.layout === 'responsive'
+    ? `p-4 border-t bg-gray-50 overflow-y-auto max-h-[${displayConfig.addressInfoMaxHeight || 200}px]`
+    : "p-4 border-t bg-gray-50";
+
+  const mapContainerClass = displayConfig.layout === 'responsive'
+    ? "flex-1 overflow-hidden flex flex-col min-h-0"
+    : "relative";
+
+  const locationButtonClass = displayConfig.layout === 'responsive'
+    ? "absolute top-20 right-3 bg-white px-3 py-2 rounded-lg shadow-md hover:bg-gray-50 flex items-center gap-2 text-sm font-medium text-gray-700 border border-gray-200"
+    : "absolute top-3 right-3 bg-white px-3 py-2 rounded-lg shadow-md hover:bg-gray-50 flex items-center gap-2 text-sm font-medium text-gray-700 border border-gray-200";
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+      <div className={displayConfig.containerClassName || outerContainerClass}>
+        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Select Project Location</h3>
-            <p className="text-sm text-gray-600">Click on the map to pin your project location</p>
+            <p className="text-sm text-gray-600">
+              {displayConfig.layout === 'responsive'
+                ? "Search for an address or click on the map to pin your project location"
+                : "Click on the map to pin your project location"}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -232,8 +268,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
           </button>
         </div>
 
-<div className="relative">
-          {/* Search Bar with Autocomplete */}
+        <div className={mapContainerClass}>
           <div className="absolute top-3 left-3 right-3 z-10">
             <div className="bg-white rounded-lg shadow-md border border-gray-200">
               <Autocomplete
@@ -279,7 +314,7 @@ options={{
 
           <button
             onClick={handleUseCurrentLocation}
-            className="absolute top-3 right-3 bg-white px-3 py-2 rounded-lg shadow-md hover:bg-gray-50 flex items-center gap-2 text-sm font-medium text-gray-700 border border-gray-200"
+            className={locationButtonClass}
             title="Use my current location"
           >
             <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -291,7 +326,7 @@ options={{
         </div>
 
         {selectedLocation && (
-          <div className="p-4 border-t bg-gray-50">
+          <div className={addressInfoClass}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div className="bg-white p-3 rounded-lg border">
                 <div className="text-xs font-medium text-gray-500 mb-1">Coordinates</div>
@@ -302,7 +337,7 @@ options={{
               <div className="bg-white p-3 rounded-lg border">
                 <div className="text-xs font-medium text-gray-500 mb-1">Address</div>
                 <div className="text-sm text-gray-900">
-                  {isGeocoding ? (
+                  {displayConfig.showGeocodingLoader !== false && isGeocoding ? (
                     <span className="flex items-center gap-2 text-gray-500">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                       Looking up address...

@@ -13,7 +13,7 @@ import {
   generateSystemReferenceNumber,
   getPipeEndConfigurationDetails
 } from '@/app/lib/utils/systemUtils';
-import GoogleMapLocationPickerV2 from '@/app/components/GoogleMapLocationPickerV2';
+import GoogleMapLocationPicker from '@/app/components/GoogleMapLocationPicker';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -938,8 +938,9 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors }: any) {
               </div>
 
               {showMapPicker && (
-                <GoogleMapLocationPickerV2
+                <GoogleMapLocationPicker
                   apiKey={GOOGLE_MAPS_API_KEY}
+                  config="responsive"
                   initialLocation={
                     rfqData.latitude && rfqData.longitude
                       ? { lat: rfqData.latitude, lng: rfqData.longitude }
