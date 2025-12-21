@@ -9,6 +9,7 @@
  * 2. Agromonitoring - Soil Moisture
  * 3. USDA SSURGO (US) or SoilGrids-derived (non-US) - Soil Drainage
  * 4. OpenWeatherMap - Temperature & Relative Humidity
+ * 5. OpenWeatherMap Air Pollution - Industrial Atmospheric Pollution
  *
  * Fields Populated:
  * - Soil Type (WRB classification)
@@ -17,6 +18,7 @@
  * - Soil Drainage / Drainage Class
  * - Temperature (min, max, mean)
  * - Relative Humidity (min, max, mean)
+ * - Industrial Atmospheric Pollution (from air quality data)
  *
  * NOT Populated (per requirements):
  * - Soil Resistivity
@@ -30,6 +32,7 @@ import {
   fetchSsurgoDrainage,
   fetchOpenMeteoData,
   fetchOpenWeatherMapData,
+  fetchAirPollutionData,
   extractSoilTexture,
   extractWrbClass,
   extractHumidity,
@@ -37,6 +40,7 @@ import {
   extractWeatherData,
   classifyUsdaSoilTexture,
   classifySoilMoisture,
+  classifyIndustrialPollution,
   deriveDrainageFromSoilGrids,
   wrbToHumanReadable,
 } from '../api/externalApis';
@@ -48,7 +52,7 @@ export interface EnvironmentalData {
   // Location-based (always populated)
   ecpMarineInfluence?: 'None' | 'Coastal' | 'Offshore';
   ecpIso12944Category?: 'C1' | 'C2' | 'C3' | 'C4' | 'C5' | 'CX';
-  ecpIndustrialPollution?: 'None' | 'Moderate' | 'Heavy';
+  ecpIndustrialPollution?: 'None' | 'Low' | 'Moderate' | 'High' | 'Very High';
 
   // Soil data (auto-populated from APIs)
   soilType?: string;           // WRB classification (human-readable)
@@ -84,6 +88,17 @@ export interface EnvironmentalMetadata {
   weather?: {
     temperature: { min: number; max: number; mean: number };
     humidity: { min: number; max: number; mean: number };
+    source: string;
+  };
+  airPollution?: {
+    aqi: number;
+    components: {
+      pm2_5: number;
+      pm10: number;
+      no2: number;
+      so2: number;
+      co: number;
+    };
     source: string;
   };
   fetchTimestamp: string;
@@ -402,14 +417,47 @@ export async function fetchEnvironmentalData(
     errors.push('Temperature and humidity data unavailable');
   }
 
-  // Step 6: Calculate ISO 12944 category (composite of multiple factors)
+  // Step 6: Query OpenWeatherMap Air Pollution API for Industrial Atmospheric Pollution
+  try {
+    const pollutionResponse = await fetchAirPollutionData(location.lat, location.lng);
+    const pollutionData = classifyIndustrialPollution(pollutionResponse);
+
+    if (pollutionData) {
+      // Populate industrial pollution field (replaces heuristic estimation)
+      data.ecpIndustrialPollution = pollutionData.level;
+
+      // Store detailed pollution data in metadata
+      metadata.airPollution = {
+        aqi: pollutionData.aqi,
+        components: pollutionData.components,
+        source: pollutionData.source,
+      };
+
+      if (!dataSources.includes('OpenWeatherMap')) {
+        dataSources.push('OpenWeatherMap');
+      }
+      dataSources.push('OpenWeather Air Pollution API');
+    }
+  } catch (error) {
+    console.error('Air Pollution API error:', error);
+    // Keep the heuristic-based industrial pollution value if API fails
+  }
+
+  // Step 7: Calculate ISO 12944 category (composite of multiple factors)
+  // Use actual pollution data if available, otherwise fall back to heuristic
+  const pollutionForIso = data.ecpIndustrialPollution === 'High' || data.ecpIndustrialPollution === 'Very High'
+    ? 'Heavy'
+    : data.ecpIndustrialPollution === 'Moderate'
+      ? 'Moderate'
+      : 'None';
+
   data.ecpIso12944Category = classifyIso12944(
     data.ecpMarineInfluence || 'None',
     metadata.humidity ?? null,
-    industrialPollution
+    pollutionForIso as 'None' | 'Moderate' | 'Heavy'
   );
 
-  // Step 7: Finalize metadata
+  // Step 8: Finalize metadata
   metadata.dataSources = dataSources;
 
   // Determine if we got complete data (temperature/humidity are optional)

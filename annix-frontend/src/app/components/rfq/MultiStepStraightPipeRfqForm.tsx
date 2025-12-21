@@ -970,27 +970,6 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
             </div>
           )}
 
-          {!isLoadingEnvironmental && autoFilledFields.size > 0 && (
-            <div className="p-3 bg-green-50 rounded-lg border border-green-200 mt-4">
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm font-medium text-green-700">
-                  Environmental data auto-filled from location
-                </span>
-              </div>
-              {environmentalMetadata?.distanceToCoastKm !== undefined && (
-                <p className="text-xs text-green-600 ml-7">
-                  Distance to coast: {environmentalMetadata.distanceToCoastKm} km
-                  {environmentalMetadata.humidity !== undefined && ` | Humidity: ${Math.round(environmentalMetadata.humidity)}%`}
-                </p>
-              )}
-              <p className="text-xs text-green-600 mt-1 ml-7">
-                Auto-filled fields can be modified in the Environmental Intelligence section below if needed.
-              </p>
-            </div>
-          )}
 
           {!isLoadingEnvironmental && environmentalErrors.length > 0 && (
             <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mt-4">
@@ -1373,18 +1352,19 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                     <label className="block text-sm font-semibold text-gray-900 mb-2">
                       Industrial Atmospheric Pollution
                     </label>
-                    <select
-                      value={rfqData.industrialPollution || ''}
-                      onChange={(e) => onUpdate('industrialPollution', e.target.value || undefined)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    <AutoFilledSelect
+                      value={globalSpecs?.ecpIndustrialPollution || rfqData.industrialPollution || ''}
+                      onChange={(value) => onUpdate('industrialPollution', value)}
+                      onOverride={() => markAsOverridden('ecpIndustrialPollution')}
+                      isAutoFilled={wasAutoFilled('ecpIndustrialPollution')}
                     >
                       <option value="">Select pollution level...</option>
-                      <option value="None">None (Rural)</option>
+                      <option value="None">None (Clean air)</option>
                       <option value="Low">Low (Light industrial)</option>
                       <option value="Moderate">Moderate (Urban/Industrial)</option>
                       <option value="High">High (Heavy industrial)</option>
-                      <option value="Severe">Severe (Chemical/Petrochemical)</option>
-                    </select>
+                      <option value="Very High">Very High (Severe industrial)</option>
+                    </AutoFilledSelect>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">

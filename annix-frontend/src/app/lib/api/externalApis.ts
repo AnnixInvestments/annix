@@ -804,3 +804,130 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
 
   return null;
 }
+
+// ============================================================================
+// OpenWeatherMap Air Pollution API - Industrial Atmospheric Pollution
+// ============================================================================
+
+export interface AirPollutionResponse {
+  coord: {
+    lon: number;
+    lat: number;
+  };
+  list: Array<{
+    dt: number;
+    main: {
+      aqi: number; // Air Quality Index: 1=Good, 2=Fair, 3=Moderate, 4=Poor, 5=Very Poor
+    };
+    components: {
+      co: number;      // Carbon monoxide (μg/m³)
+      no: number;      // Nitrogen monoxide (μg/m³)
+      no2: number;     // Nitrogen dioxide (μg/m³)
+      o3: number;      // Ozone (μg/m³)
+      so2: number;     // Sulphur dioxide (μg/m³)
+      pm2_5: number;   // Fine particles (μg/m³)
+      pm10: number;    // Coarse particles (μg/m³)
+      nh3: number;     // Ammonia (μg/m³)
+    };
+  }>;
+}
+
+export interface IndustrialPollutionData {
+  level: 'None' | 'Low' | 'Moderate' | 'High' | 'Very High';
+  aqi: number;
+  components: {
+    pm2_5: number;
+    pm10: number;
+    no2: number;
+    so2: number;
+    co: number;
+  };
+  source: 'OpenWeather Air Pollution API';
+}
+
+/**
+ * Fetch air pollution data from OpenWeatherMap Air Pollution API
+ * Used to determine Industrial Atmospheric Pollution level
+ */
+export async function fetchAirPollutionData(
+  lat: number,
+  lng: number
+): Promise<AirPollutionResponse | null> {
+  if (!OPENWEATHER_API_KEY) {
+    console.warn('OpenWeatherMap API key not configured');
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(
+      `${OPENWEATHER_BASE}/air_pollution?` +
+      `lat=${lat}&lon=${lng}` +
+      `&appid=${OPENWEATHER_API_KEY}`,
+      { signal: controller.signal }
+    );
+
+    if (!response.ok) {
+      throw new Error(`OpenWeatherMap Air Pollution API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Air Pollution API error:', error);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Classify industrial atmospheric pollution level based on AQI
+ * AQI 1-2 = Low, AQI 3 = Moderate, AQI 4 = High, AQI 5 = Very High
+ */
+export function classifyIndustrialPollution(
+  data: AirPollutionResponse | null
+): IndustrialPollutionData | null {
+  if (!data || !data.list || data.list.length === 0) {
+    return null;
+  }
+
+  const current = data.list[0];
+  const aqi = current.main.aqi;
+
+  // Classify based on AQI
+  let level: 'None' | 'Low' | 'Moderate' | 'High' | 'Very High';
+  switch (aqi) {
+    case 1:
+      level = 'None';
+      break;
+    case 2:
+      level = 'Low';
+      break;
+    case 3:
+      level = 'Moderate';
+      break;
+    case 4:
+      level = 'High';
+      break;
+    case 5:
+      level = 'Very High';
+      break;
+    default:
+      level = 'Moderate';
+  }
+
+  return {
+    level,
+    aqi,
+    components: {
+      pm2_5: current.components.pm2_5,
+      pm10: current.components.pm10,
+      no2: current.components.no2,
+      so2: current.components.so2,
+      co: current.components.co,
+    },
+    source: 'OpenWeather Air Pollution API',
+  };
+}
