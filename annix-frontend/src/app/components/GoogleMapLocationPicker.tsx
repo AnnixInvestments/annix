@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from "@react-google-maps/api";
 import { GoogleMapDisplayConfig, GOOGLE_MAP_PRESETS, GoogleMapPreset } from "@/app/config/googleMapsConfig";
+import ManualLocationInput from "./ManualLocationInput";
 
 interface Location {
   lat: number;
@@ -51,20 +52,48 @@ export default function GoogleMapLocationPicker({
 }: GoogleMapLocationPickerProps) {
   const displayConfig = resolveConfig(config);
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: apiKey,
-    libraries
-  });
+  // Validate API key before attempting to load
+  if (!apiKey || apiKey === 'your_google_maps_api_key_here' || apiKey === 'test_key_replacement_needed') {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+        <div className="text-red-600 font-semibold mb-2">Google Maps Configuration Required</div>
+        <div className="text-red-600 text-sm mb-4">
+          A valid Google Maps API key is required to use this feature. 
+          Please configure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your environment variables.
+        </div>
+        <div className="bg-blue-50 p-4 rounded mb-4">
+          <p className="text-blue-700 font-semibold mb-2">Alternative: Manual Location Entry</p>
+          <p className="text-blue-600 text-sm">
+            You can enter the location manually by providing latitude and longitude coordinates.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => {
+              // Show manual input component
+              setShowManualInput(true);
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Enter Location Manually
+          </button>
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
-    initialLocation || null
-  );
-  const [addressInfo, setAddressInfo] = useState<AddressComponents | null>(null);
-  const [isGeocoding, setIsGeocoding] = useState(false);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [searchAddress, setSearchAddress] = useState("");
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [showManualInput, setShowManualInput] = useState(false);
+
+  // If manual input is shown, render that instead
+  if (showManualInput) {
+    return <ManualLocationInput onLocationSelect={onLocationSelect} onClose={onClose} />;
+  }
 
   const containerStyle = {
     width: "100%",
@@ -209,8 +238,27 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-xl p-6 max-w-md">
-          <h3 className="text-lg font-semibold text-red-600 mb-2">Map Loading Error</h3>
-          <p className="text-gray-600 mb-4">Unable to load Google Maps. Please check your API key configuration.</p>
+          <h3 className="text-lg font-semibold text-red-600 mb-2">Google Maps Loading Error</h3>
+          <p className="text-gray-600 mb-2">Unable to load Google Maps. This could be due to:</p>
+          <ul className="text-gray-600 text-sm mb-4 list-disc list-inside space-y-1">
+            <li>Missing or invalid API key</li>
+            <li>API key doesn't have Google Maps JavaScript API enabled</li>
+            <li>API key has incorrect referrer restrictions</li>
+          </ul>
+          <div className="bg-blue-50 p-3 rounded mb-4">
+            <p className="text-blue-700 text-sm">
+              <strong>To fix:</strong> Get a valid API key from 
+              <a href="https://console.cloud.google.com/google/maps-apis/overview" 
+                 target="_blank" rel="noopener noreferrer" 
+                 className="text-blue-600 underline">Google Cloud Console</a>
+              and ensure these APIs are enabled:
+            </p>
+            <ul className="text-blue-700 text-sm mt-2 list-disc list-inside">
+              <li>Maps JavaScript API</li>
+              <li>Places API</li>
+              <li>Geocoding API</li>
+            </ul>
+          </div>
           <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
@@ -253,11 +301,17 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
         <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Select Project Location</h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 mb-2">
               {displayConfig.layout === 'responsive'
                 ? "Search for an address or click on the map to pin your project location"
                 : "Click on the map to pin your project location"}
             </p>
+            <button
+              onClick={() => setShowManualInput(true)}
+              className="text-blue-600 text-sm hover:text-blue-700 underline"
+            >
+              Or enter coordinates manually
+            </button>
           </div>
           <button
             onClick={onClose}

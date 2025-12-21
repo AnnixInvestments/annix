@@ -12,6 +12,7 @@ export default function Navigation() {
     { label: 'View RFQs', path: '/rfq/list', exact: false },
     { label: 'Drawings', path: '/drawings', exact: false },
     { label: 'BOQ', path: '/boq', exact: false },
+    { label: 'Workflow', path: '/workflow', exact: false },
     { label: 'Reviews', path: '/reviews', exact: false },
   ];
 

@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "codegen": "openapi-typescript http://localhost:4000/swagger-yaml -o src/app/lib/api/schema.ts",
+    "codegen": "openapi-typescript http://localhost:4001/swagger-yaml -o src/app/lib/api/schema.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -17,7 +17,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.65.0",
-    "zod": "^4.1.12"
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "^2.8.0",

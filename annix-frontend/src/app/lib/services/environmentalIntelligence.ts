@@ -206,7 +206,7 @@ function classifyIso12944(
 function estimateIndustrialPollution(
   region?: string,
   country?: string
-): 'None' | 'Moderate' | 'Heavy' {
+): 'None' | 'Low' | 'Moderate' | 'High' | 'Very High' {
   if (!region && !country) return 'None';
 
   const locationStr = `${region || ''} ${country || ''}`.toLowerCase();
@@ -217,18 +217,27 @@ function estimateIndustrialPollution(
     'houston', 'los angeles', 'chicago', 'detroit', 'pittsburgh'
   ];
 
-  const moderateIndustrialAreas = [
+  const lowIndustrialAreas = [
     'cape town', 'western cape', 'port elizabeth', 'nelson mandela bay',
     'east london', 'bloemfontein', 'polokwane', 'rustenburg',
     'denver', 'phoenix', 'dallas', 'atlanta'
   ];
 
+  const moderateIndustrialAreas = [
+    'durban', 'ethekwini', 'richards bay',
+    'houston', 'los angeles', 'chicago'
+  ];
+
   for (const area of heavyIndustrialAreas) {
-    if (locationStr.includes(area)) return 'Heavy';
+    if (locationStr.includes(area)) return 'Very High';
   }
 
   for (const area of moderateIndustrialAreas) {
     if (locationStr.includes(area)) return 'Moderate';
+  }
+
+  for (const area of lowIndustrialAreas) {
+    if (locationStr.includes(area)) return 'Low';
   }
 
   return 'None';

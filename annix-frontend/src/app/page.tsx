@@ -96,38 +96,7 @@ export default function HomePage() {
     );
   }
 
-  if (!showForm) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Form Cancelled</h2>
-          <p className="text-gray-600 mb-6">Your RFQ form has been cancelled. No data was saved.</p>
-          <div className="space-y-3">
-            <button
-              onClick={handleGetStarted}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
-            >
-              Start New RFQ
-            </button>
-            <button
-              onClick={() => window.location.href = '/rfqs'}
-              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold"
-            >
-              View All RFQs
-            </button>
-            <button
-              onClick={() => window.location.href = '/'}
-              className="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-semibold"
-            >
-              Back to Home
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show the RFQ form
+  // Form cancelled state should never reach here due to logic above
   return (
     <UnifiedMultiStepRfqForm
       onSuccess={handleFormSuccess}
