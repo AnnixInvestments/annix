@@ -12,6 +12,47 @@ This repository houses the NestJS API (`annix-backend`) and the Next.js applicat
 
 ---
 
+## Architecture & Ports
+
+### Application Components
+
+| Component | Port | Purpose | URL |
+|-----------|------|---------|-----|
+| **Frontend** | `3000` | Next.js web application | http://localhost:3000 |
+| **Backend API** | `4001` | NestJS REST API | http://localhost:4001 |
+| **Swagger UI** | `4001` | API documentation | http://localhost:4001/swagger |
+| **PostgreSQL** | `5432` | Database (native or Docker) | localhost:5432 |
+
+### Environment Variables
+
+Key configuration in `annix-backend/.env`:
+- `PORT=4001` - Backend API port
+- `DATABASE_HOST=localhost` - Database host
+- `DATABASE_PORT=5432` - Database port (auto-adjusted for Docker if needed)
+- `DATABASE_NAME=annix_db` - Database name
+- `DATABASE_USERNAME=annix_user` - Database user
+- `DATABASE_PASSWORD=annix_password` - Database password
+
+Frontend automatically connects to backend via `NEXT_PUBLIC_API_URL=http://localhost:4001`
+
+### Docker Configuration
+
+**Optional Docker PostgreSQL** (enabled via `USE_DOCKER_POSTGRES=1`):
+- Container name: `annix-postgres`
+- Image: `postgres:15`
+- Volume: `annix-postgres-data` (persistent storage)
+- Port: `5432` (auto-fallback to `55432-55452` if occupied)
+- Superuser: `postgres`
+- Password: Set via `DOCKER_POSTGRES_PASSWORD` (default: `postgres`)
+
+**Production Docker images** (via `docker-compose.yaml`):
+- Backend container: `annix_backend` (exposes port `4000` in prod)
+- Frontend container: `annix_frontend`
+
+Docker is completely optional for local development - you can use a native PostgreSQL installation instead.
+
+---
+
 ## 1. Pre‑installation Checklist
 
 ### Common Requirements
