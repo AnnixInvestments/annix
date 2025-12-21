@@ -1,43 +1,78 @@
 /**
  * Environmental Intelligence Service
- * Orchestrates fetching and transforming environmental data from multiple sources
+ *
+ * Automatically populates Environmental Intelligence fields based on geographic location.
+ * No user input required beyond latitude/longitude.
+ *
+ * Data Sources (in execution order):
+ * 1. ISRIC SoilGrids - Soil Type & Soil Texture
+ * 2. Agromonitoring - Soil Moisture
+ * 3. USDA SSURGO (US) or SoilGrids-derived (non-US) - Soil Drainage
+ *
+ * Fields Populated:
+ * - Soil Type (WRB classification)
+ * - Soil Texture (USDA classification)
+ * - Soil Moisture (value + classification)
+ * - Soil Drainage / Drainage Class
+ *
+ * NOT Populated (per requirements):
+ * - Soil Resistivity
+ * - Soil Corrosivity
  */
 
 import {
+  fetchSoilGridsTexture,
+  fetchSoilGridsClassification,
+  fetchAgromonitoringSoilMoisture,
+  fetchSsurgoDrainage,
   fetchOpenMeteoData,
-  fetchSoilData,
-  extractHumidity,
-  extractSoilMoisture,
   extractSoilTexture,
-  type OpenMeteoResponse,
-  type SoilGridsResponse,
+  extractWrbClass,
+  extractHumidity,
+  extractSoilMoistureFromOpenMeteo,
+  classifyUsdaSoilTexture,
+  classifySoilMoisture,
+  deriveDrainageFromSoilGrids,
+  wrbToHumanReadable,
 } from '../api/externalApis';
 
 import { getMarineInfluence } from '../utils/coastlineCalculation';
 
 // Types matching the form's GlobalSpecs environmental fields
 export interface EnvironmentalData {
+  // Location-based (always populated)
   ecpMarineInfluence?: 'None' | 'Coastal' | 'Offshore';
   ecpIso12944Category?: 'C1' | 'C2' | 'C3' | 'C4' | 'C5' | 'CX';
   ecpIndustrialPollution?: 'None' | 'Moderate' | 'Heavy';
-  ecpSoilType?: 'Sandy' | 'Clay' | 'Rocky' | 'Marshy';
-  ecpSoilResistivity?: 'VeryLow' | 'Low' | 'Medium' | 'High';
-  ecpSoilMoisture?: 'Dry' | 'Normal' | 'Wet' | 'Saturated';
+
+  // Soil data (auto-populated from APIs)
+  soilType?: string;           // WRB classification (human-readable)
+  soilTexture?: string;        // USDA soil texture classification
+  soilMoisture?: string;       // Percentage value
+  soilMoistureClass?: 'Low' | 'Moderate' | 'High';
+  soilDrainage?: string;       // Drainage class description
+  soilDrainageSource?: string; // 'USDA SSURGO' or 'model-derived'
+}
+
+export interface EnvironmentalMetadata {
+  distanceToCoastKm?: number;
+  humidity?: number;
+  soilMoistureRaw?: number;
+  soilTexture?: {
+    clay: number | null;
+    sand: number | null;
+    silt: number | null;
+    bulkDensity: number | null;
+    organicCarbon: number | null;
+  };
+  wrbClass?: string;
+  fetchTimestamp: string;
+  dataSources: string[];
 }
 
 export interface EnvironmentalFetchResult {
   data: EnvironmentalData;
-  metadata: {
-    distanceToCoastKm?: number;
-    humidity?: number;
-    soilMoisture?: number;
-    soilTexture?: {
-      clay: number | null;
-      sand: number | null;
-      silt: number | null;
-      coarseFragments: number | null;
-    };
-  };
+  metadata: EnvironmentalMetadata;
   errors: string[];
   isComplete: boolean;
 }
@@ -47,6 +82,9 @@ interface LocationCoordinates {
   lng: number;
 }
 
+// Countries that use SSURGO
+const SSURGO_COUNTRIES = ['united states', 'usa', 'us', 'america'];
+
 // Thresholds for environmental classification
 const THRESHOLDS = {
   humidity: {
@@ -55,17 +93,15 @@ const THRESHOLDS = {
     moderate: 60,
     low: 45,
   },
-  soilMoisture: {
-    saturated: 0.4,
-    wet: 0.25,
-    normal: 0.1,
-  },
-  soilTexture: {
-    clay: 40,       // % for Clay classification
-    sand: 70,       // % for Sandy classification
-    coarse: 30,     // % for Rocky classification
-  },
 };
+
+/**
+ * Check if location is in the United States
+ */
+function isUnitedStates(country?: string): boolean {
+  if (!country) return false;
+  return SSURGO_COUNTRIES.some(c => country.toLowerCase().includes(c));
+}
 
 /**
  * Classify ISO 12944 corrosivity category based on environmental factors
@@ -75,174 +111,59 @@ function classifyIso12944(
   humidity: number | null,
   industrialPollution: 'None' | 'Moderate' | 'Heavy'
 ): 'C1' | 'C2' | 'C3' | 'C4' | 'C5' | 'CX' {
-  // CX: Extreme (offshore marine)
-  if (marineInfluence === 'Offshore') {
-    return 'CX';
-  }
+  if (marineInfluence === 'Offshore') return 'CX';
 
-  // C5: Very high (coastal with high humidity or heavy industrial)
   if (marineInfluence === 'Coastal') {
-    if (humidity !== null && humidity > THRESHOLDS.humidity.veryHigh) {
-      return 'C5';
-    }
-    if (industrialPollution === 'Heavy') {
-      return 'C5';
-    }
-    return 'C4'; // Coastal defaults to at least C4
-  }
-
-  // Heavy industrial pollution
-  if (industrialPollution === 'Heavy') {
+    if (humidity !== null && humidity > THRESHOLDS.humidity.veryHigh) return 'C5';
+    if (industrialPollution === 'Heavy') return 'C5';
     return 'C4';
   }
 
-  // Moderate industrial pollution
+  if (industrialPollution === 'Heavy') return 'C4';
+
   if (industrialPollution === 'Moderate') {
-    if (humidity !== null && humidity > THRESHOLDS.humidity.high) {
-      return 'C4';
-    }
+    if (humidity !== null && humidity > THRESHOLDS.humidity.high) return 'C4';
     return 'C3';
   }
 
-  // No coastal or industrial - classify by humidity
   if (humidity !== null) {
-    if (humidity > THRESHOLDS.humidity.high) {
-      return 'C3';
-    }
-    if (humidity > THRESHOLDS.humidity.moderate) {
-      return 'C2';
-    }
+    if (humidity > THRESHOLDS.humidity.high) return 'C3';
+    if (humidity > THRESHOLDS.humidity.moderate) return 'C2';
     return 'C1';
   }
 
-  // Default to moderate if no data
   return 'C2';
 }
 
 /**
- * Classify soil type based on texture percentages
- */
-function classifySoilType(
-  clay: number | null,
-  sand: number | null,
-  coarseFragments: number | null,
-  moisture: number | null
-): 'Sandy' | 'Clay' | 'Rocky' | 'Marshy' {
-  // Rocky: high coarse fragments
-  if (coarseFragments !== null && coarseFragments > THRESHOLDS.soilTexture.coarse) {
-    return 'Rocky';
-  }
-
-  // Marshy: high moisture with organic indication (using moisture as proxy)
-  if (moisture !== null && moisture > THRESHOLDS.soilMoisture.saturated) {
-    return 'Marshy';
-  }
-
-  // Clay: high clay content
-  if (clay !== null && clay > THRESHOLDS.soilTexture.clay) {
-    return 'Clay';
-  }
-
-  // Sandy: high sand content
-  if (sand !== null && sand > THRESHOLDS.soilTexture.sand) {
-    return 'Sandy';
-  }
-
-  // Default based on relative proportions
-  if (clay !== null && sand !== null) {
-    return clay > sand ? 'Clay' : 'Sandy';
-  }
-
-  return 'Sandy'; // Default
-}
-
-/**
- * Classify soil moisture level
- */
-function classifySoilMoistureLevel(
-  moisture: number | null
-): 'Dry' | 'Normal' | 'Wet' | 'Saturated' {
-  if (moisture === null) {
-    return 'Normal'; // Default
-  }
-
-  if (moisture > THRESHOLDS.soilMoisture.saturated) {
-    return 'Saturated';
-  }
-  if (moisture > THRESHOLDS.soilMoisture.wet) {
-    return 'Wet';
-  }
-  if (moisture > THRESHOLDS.soilMoisture.normal) {
-    return 'Normal';
-  }
-  return 'Dry';
-}
-
-/**
- * Classify soil resistivity based on moisture and clay content
- * Lower resistivity = more corrosive
- */
-function classifySoilResistivity(
-  moisture: number | null,
-  clay: number | null
-): 'VeryLow' | 'Low' | 'Medium' | 'High' {
-  const moistureLevel = classifySoilMoistureLevel(moisture);
-  const isHighClay = clay !== null && clay > THRESHOLDS.soilTexture.clay;
-
-  // Very low resistivity (very corrosive): saturated + high clay
-  if (moistureLevel === 'Saturated' && isHighClay) {
-    return 'VeryLow';
-  }
-
-  // Low resistivity (corrosive): wet conditions or high clay
-  if (moistureLevel === 'Saturated' || moistureLevel === 'Wet') {
-    return isHighClay ? 'VeryLow' : 'Low';
-  }
-
-  // Medium resistivity: normal conditions
-  if (moistureLevel === 'Normal') {
-    return isHighClay ? 'Low' : 'Medium';
-  }
-
-  // High resistivity (low corrosivity): dry, especially sandy
-  return 'High';
-}
-
-/**
  * Estimate industrial pollution level based on region/country heuristics
- * This is a simplified heuristic - for more accuracy, additional data sources would be needed
  */
 function estimateIndustrialPollution(
   region?: string,
   country?: string
 ): 'None' | 'Moderate' | 'Heavy' {
-  if (!region && !country) {
-    return 'None';
-  }
+  if (!region && !country) return 'None';
 
   const locationStr = `${region || ''} ${country || ''}`.toLowerCase();
 
-  // Known industrial regions in South Africa
   const heavyIndustrialAreas = [
     'johannesburg', 'pretoria', 'gauteng', 'durban', 'ethekwini',
-    'richards bay', 'secunda', 'sasolburg', 'vanderbijlpark'
+    'richards bay', 'secunda', 'sasolburg', 'vanderbijlpark',
+    'houston', 'los angeles', 'chicago', 'detroit', 'pittsburgh'
   ];
 
   const moderateIndustrialAreas = [
     'cape town', 'western cape', 'port elizabeth', 'nelson mandela bay',
-    'east london', 'bloemfontein', 'polokwane', 'rustenburg'
+    'east london', 'bloemfontein', 'polokwane', 'rustenburg',
+    'denver', 'phoenix', 'dallas', 'atlanta'
   ];
 
   for (const area of heavyIndustrialAreas) {
-    if (locationStr.includes(area)) {
-      return 'Heavy';
-    }
+    if (locationStr.includes(area)) return 'Heavy';
   }
 
   for (const area of moderateIndustrialAreas) {
-    if (locationStr.includes(area)) {
-      return 'Moderate';
-    }
+    if (locationStr.includes(area)) return 'Moderate';
   }
 
   return 'None';
@@ -250,85 +171,202 @@ function estimateIndustrialPollution(
 
 /**
  * Main function to fetch and transform environmental data from location
+ *
+ * Execution Order (as specified):
+ * 1. Accept latitude and longitude
+ * 2. Query SoilGrids → Populate Soil Type, Soil Texture
+ * 3. Query Agromonitoring → Populate Soil Moisture
+ * 4. Determine Soil Drainage (SSURGO for US, derived for others)
+ * 5. Populate all Environmental Intelligence fields
+ * 6. Attach data source and timestamp as internal metadata
  */
 export async function fetchEnvironmentalData(
   location: LocationCoordinates,
   addressInfo?: { region?: string; country?: string }
 ): Promise<EnvironmentalFetchResult> {
   const errors: string[] = [];
-  const metadata: EnvironmentalFetchResult['metadata'] = {};
-
-  // Initialize with partial data
+  const dataSources: string[] = [];
   const data: EnvironmentalData = {};
 
-  // 1. Calculate marine influence (local calculation - always succeeds)
+  // Initialize metadata
+  const metadata: EnvironmentalMetadata = {
+    fetchTimestamp: new Date().toISOString(),
+    dataSources: [],
+  };
+
+  // Step 1: Calculate marine influence (local calculation - always succeeds)
   const marineResult = getMarineInfluence(location.lat, location.lng);
   data.ecpMarineInfluence = marineResult.influence;
   metadata.distanceToCoastKm = marineResult.distanceToCoastKm;
+  dataSources.push('Coastline calculation');
 
-  // 2. Estimate industrial pollution from region/country
+  // Estimate industrial pollution from region/country
   const industrialPollution = estimateIndustrialPollution(
     addressInfo?.region,
     addressInfo?.country
   );
   data.ecpIndustrialPollution = industrialPollution;
 
-  // 3. Fetch external API data in parallel
-  const apiResults = await Promise.allSettled([
-    fetchOpenMeteoData(location.lat, location.lng),
-    fetchSoilData(location.lat, location.lng),
-  ]);
+  // Step 2: Query SoilGrids for Soil Type and Texture
+  let soilTextureData: ReturnType<typeof extractSoilTexture> | null = null;
 
-  // Process Open-Meteo results
-  let humidity: number | null = null;
-  let soilMoisture: number | null = null;
+  try {
+    const [textureResponse, classResponse] = await Promise.all([
+      fetchSoilGridsTexture(location.lat, location.lng),
+      fetchSoilGridsClassification(location.lat, location.lng),
+    ]);
 
-  if (apiResults[0].status === 'fulfilled') {
-    const meteoData = apiResults[0].value;
-    humidity = extractHumidity(meteoData);
-    soilMoisture = extractSoilMoisture(meteoData);
-    metadata.humidity = humidity ?? undefined;
-    metadata.soilMoisture = soilMoisture ?? undefined;
+    // Extract soil texture
+    soilTextureData = extractSoilTexture(textureResponse);
+    metadata.soilTexture = soilTextureData;
 
-    // Classify soil moisture
-    data.ecpSoilMoisture = classifySoilMoistureLevel(soilMoisture);
-  } else {
-    errors.push('Weather data unavailable - humidity and soil moisture not auto-filled');
+    // Get WRB classification for Soil Type
+    const wrbClass = extractWrbClass(classResponse);
+    metadata.wrbClass = wrbClass || undefined;
+
+    if (wrbClass) {
+      data.soilType = wrbToHumanReadable(wrbClass);
+      dataSources.push('ISRIC SoilGrids');
+    }
+
+    // Determine USDA Soil Texture
+    if (soilTextureData.clay !== null &&
+        soilTextureData.sand !== null &&
+        soilTextureData.silt !== null) {
+      data.soilTexture = classifyUsdaSoilTexture(
+        soilTextureData.clay,
+        soilTextureData.sand,
+        soilTextureData.silt
+      );
+    }
+  } catch (error) {
+    console.error('SoilGrids API error:', error);
+    errors.push('Soil type and texture data unavailable');
   }
 
-  // Process SoilGrids results
-  let soilTexture: ReturnType<typeof extractSoilTexture> | null = null;
+  // Step 3: Query Agromonitoring for Soil Moisture
+  let soilMoistureValue: number | null = null;
 
-  if (apiResults[1].status === 'fulfilled') {
-    soilTexture = extractSoilTexture(apiResults[1].value);
-    metadata.soilTexture = soilTexture;
+  try {
+    const agroData = await fetchAgromonitoringSoilMoisture(location.lat, location.lng);
 
-    // Classify soil type
-    data.ecpSoilType = classifySoilType(
-      soilTexture.clay,
-      soilTexture.sand,
-      soilTexture.coarseFragments,
-      soilMoisture
-    );
+    if (agroData && agroData.moisture !== undefined) {
+      soilMoistureValue = agroData.moisture;
+      metadata.soilMoistureRaw = soilMoistureValue;
 
-    // Classify soil resistivity
-    data.ecpSoilResistivity = classifySoilResistivity(
-      soilMoisture,
-      soilTexture.clay
-    );
-  } else {
-    errors.push('Soil data unavailable - soil type and resistivity not auto-filled');
+      const moistureResult = classifySoilMoisture(soilMoistureValue);
+      data.soilMoisture = moistureResult.percentage;
+      data.soilMoistureClass = moistureResult.classification;
+      dataSources.push('Agromonitoring');
+    } else {
+      // Fallback to Open-Meteo if Agromonitoring fails
+      try {
+        const meteoData = await fetchOpenMeteoData(location.lat, location.lng);
+        const meteoMoisture = extractSoilMoistureFromOpenMeteo(meteoData);
+        const humidity = extractHumidity(meteoData);
+
+        if (meteoMoisture !== null) {
+          soilMoistureValue = meteoMoisture;
+          metadata.soilMoistureRaw = soilMoistureValue;
+
+          const moistureResult = classifySoilMoisture(soilMoistureValue);
+          data.soilMoisture = moistureResult.percentage;
+          data.soilMoistureClass = moistureResult.classification;
+          dataSources.push('Open-Meteo (fallback)');
+        }
+
+        if (humidity !== null) {
+          metadata.humidity = humidity;
+        }
+      } catch {
+        errors.push('Soil moisture data unavailable');
+      }
+    }
+  } catch (error) {
+    console.error('Soil moisture fetch error:', error);
+    errors.push('Soil moisture data unavailable');
   }
 
-  // 4. Calculate ISO 12944 category (composite of multiple factors)
+  // Ensure we have humidity data for ISO classification
+  if (metadata.humidity === undefined) {
+    try {
+      const meteoData = await fetchOpenMeteoData(location.lat, location.lng);
+      const humidity = extractHumidity(meteoData);
+      if (humidity !== null) {
+        metadata.humidity = humidity;
+        if (!dataSources.includes('Open-Meteo') && !dataSources.includes('Open-Meteo (fallback)')) {
+          dataSources.push('Open-Meteo');
+        }
+      }
+    } catch {
+      // Non-critical - continue without humidity
+    }
+  }
+
+  // Step 4: Determine Soil Drainage
+  const isUS = isUnitedStates(addressInfo?.country);
+
+  if (isUS) {
+    // Use USDA SSURGO for US locations
+    try {
+      const ssurgoDrainage = await fetchSsurgoDrainage(location.lat, location.lng);
+      if (ssurgoDrainage) {
+        data.soilDrainage = ssurgoDrainage;
+        data.soilDrainageSource = 'USDA SSURGO';
+        dataSources.push('USDA SSURGO');
+      } else {
+        // Fallback to derived if SSURGO doesn't have data
+        if (soilTextureData) {
+          const derived = deriveDrainageFromSoilGrids(
+            soilTextureData.clay,
+            soilTextureData.bulkDensity,
+            soilTextureData.organicCarbon
+          );
+          data.soilDrainage = derived.class;
+          data.soilDrainageSource = 'model-derived';
+        }
+      }
+    } catch {
+      // Fallback to derived
+      if (soilTextureData) {
+        const derived = deriveDrainageFromSoilGrids(
+          soilTextureData.clay,
+          soilTextureData.bulkDensity,
+          soilTextureData.organicCarbon
+        );
+        data.soilDrainage = derived.class;
+        data.soilDrainageSource = 'model-derived';
+      }
+    }
+  } else {
+    // Derive from SoilGrids for non-US locations
+    if (soilTextureData) {
+      const derived = deriveDrainageFromSoilGrids(
+        soilTextureData.clay,
+        soilTextureData.bulkDensity,
+        soilTextureData.organicCarbon
+      );
+      data.soilDrainage = derived.class;
+      data.soilDrainageSource = 'model-derived';
+    }
+  }
+
+  // Step 5: Calculate ISO 12944 category (composite of multiple factors)
   data.ecpIso12944Category = classifyIso12944(
     data.ecpMarineInfluence || 'None',
-    humidity,
+    metadata.humidity ?? null,
     industrialPollution
   );
 
+  // Step 6: Finalize metadata
+  metadata.dataSources = dataSources;
+
   // Determine if we got complete data
-  const isComplete = errors.length === 0;
+  const isComplete = errors.length === 0 &&
+    data.soilType !== undefined &&
+    data.soilTexture !== undefined &&
+    data.soilMoisture !== undefined &&
+    data.soilDrainage !== undefined;
 
   return {
     data,

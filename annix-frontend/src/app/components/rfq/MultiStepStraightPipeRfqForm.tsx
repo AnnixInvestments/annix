@@ -804,6 +804,214 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           </div>
         </div>
 
+        {/* Project Location */}
+        <div className="bg-white rounded-lg p-5 border border-gray-200">
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Project Location
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowMapPicker(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                Pick on Map
+              </button>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <label className="block text-xs font-medium text-gray-700 mb-2">Map View Style</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMapViewConfig('default')}
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    mapViewConfig === 'default'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                  }`}
+                >
+                  Desktop
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapViewConfig('responsive')}
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    mapViewConfig === 'responsive'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                  }`}
+                >
+                  Mobile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapViewConfig('compact')}
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    mapViewConfig === 'compact'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                  }`}
+                >
+                  Compact
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {mapViewConfig === 'default' && 'Standard map view with full features'}
+                {mapViewConfig === 'responsive' && 'Optimized for mobile devices with flexible layout'}
+                {mapViewConfig === 'compact' && 'Smaller map view for quick location selection'}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Latitude
+              </label>
+              <input
+                type="number"
+                step="0.00001"
+                value={rfqData.latitude || ''}
+                onChange={(e) => onUpdate('latitude', e.target.value ? parseFloat(e.target.value) : undefined)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                placeholder="-26.20227 (≥5 decimal places)"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Precision required for environmental analysis
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Longitude
+              </label>
+              <input
+                type="number"
+                step="0.00001"
+                value={rfqData.longitude || ''}
+                onChange={(e) => onUpdate('longitude', e.target.value ? parseFloat(e.target.value) : undefined)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                placeholder="28.04363 (≥5 decimal places)"
+              />
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Site Address / Location Description
+            </label>
+            <input
+              type="text"
+              value={rfqData.siteAddress || ''}
+              onChange={(e) => onUpdate('siteAddress', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              placeholder="e.g., Secunda Refinery, Mpumalanga, South Africa"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Region / Province
+              </label>
+              <input
+                type="text"
+                value={rfqData.region || ''}
+                onChange={(e) => onUpdate('region', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                placeholder="e.g., Gauteng, Western Cape"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Country
+              </label>
+              <input
+                type="text"
+                value={rfqData.country || ''}
+                onChange={(e) => onUpdate('country', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                placeholder="e.g., South Africa"
+              />
+            </div>
+          </div>
+
+          {showMapPicker && (
+            <GoogleMapLocationPicker
+              apiKey={GOOGLE_MAPS_API_KEY}
+              config={mapViewConfig}
+              initialLocation={
+                rfqData.latitude && rfqData.longitude
+                  ? { lat: rfqData.latitude, lng: rfqData.longitude }
+                  : undefined
+              }
+              onLocationSelect={handleLocationSelect}
+              onClose={() => setShowMapPicker(false)}
+            />
+          )}
+
+          {/* Environmental Intelligence Loading/Status */}
+          {isLoadingEnvironmental && (
+            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 mt-4">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <span className="text-sm text-blue-700">
+                Fetching environmental data for your location...
+              </span>
+            </div>
+          )}
+
+          {!isLoadingEnvironmental && autoFilledFields.size > 0 && (
+            <div className="p-3 bg-green-50 rounded-lg border border-green-200 mt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-green-700">
+                  Environmental data auto-filled from location
+                </span>
+              </div>
+              {environmentalMetadata?.distanceToCoastKm !== undefined && (
+                <p className="text-xs text-green-600 ml-7">
+                  Distance to coast: {environmentalMetadata.distanceToCoastKm} km
+                  {environmentalMetadata.humidity !== undefined && ` | Humidity: ${Math.round(environmentalMetadata.humidity)}%`}
+                </p>
+              )}
+              <p className="text-xs text-green-600 mt-1 ml-7">
+                Auto-filled fields can be modified in the Environmental Intelligence section below if needed.
+              </p>
+            </div>
+          )}
+
+          {!isLoadingEnvironmental && environmentalErrors.length > 0 && (
+            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mt-4">
+              <div className="flex items-center gap-2 mb-1">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span className="text-sm font-medium text-amber-700">
+                  Some environmental data could not be retrieved
+                </span>
+              </div>
+              <ul className="text-xs text-amber-600 ml-7 list-disc list-inside">
+                {environmentalErrors.map((error, i) => (
+                  <li key={i}>{error}</li>
+                ))}
+              </ul>
+              <p className="text-xs text-amber-600 mt-1 ml-7">
+                Please fill in missing fields manually in the Environmental Intelligence section below.
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Supporting Documents */}
         <RfqDocumentUpload
           documents={pendingDocuments || []}
@@ -893,214 +1101,6 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               </div>
             </div>
 
-            {/* Location Selection */}
-            <div className="bg-white rounded-lg p-5 mb-4 border border-gray-200">
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Project Location
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={() => setShowMapPicker(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                    </svg>
-                    Pick on Map
-                  </button>
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                  <label className="block text-xs font-medium text-gray-700 mb-2">Map View Style</label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setMapViewConfig('default')}
-                      className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                        mapViewConfig === 'default'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                      }`}
-                    >
-                      Desktop
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMapViewConfig('responsive')}
-                      className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                        mapViewConfig === 'responsive'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                      }`}
-                    >
-                      Mobile
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMapViewConfig('compact')}
-                      className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                        mapViewConfig === 'compact'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                      }`}
-                    >
-                      Compact
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    {mapViewConfig === 'default' && 'Standard map view with full features'}
-                    {mapViewConfig === 'responsive' && 'Optimized for mobile devices with flexible layout'}
-                    {mapViewConfig === 'compact' && 'Smaller map view for quick location selection'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Latitude *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.00001"
-                    value={rfqData.latitude || ''}
-                    onChange={(e) => onUpdate('latitude', e.target.value ? parseFloat(e.target.value) : undefined)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="-26.20227 (≥5 decimal places)"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Precision required for environmental analysis
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Longitude *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.00001"
-                    value={rfqData.longitude || ''}
-                    onChange={(e) => onUpdate('longitude', e.target.value ? parseFloat(e.target.value) : undefined)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="28.04363 (≥5 decimal places)"
-                  />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  Site Address / Location Description
-                </label>
-                <input
-                  type="text"
-                  value={rfqData.siteAddress || ''}
-                  onChange={(e) => onUpdate('siteAddress', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="e.g., Secunda Refinery, Mpumalanga, South Africa"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Region / Province
-                  </label>
-                  <input
-                    type="text"
-                    value={rfqData.region || ''}
-                    onChange={(e) => onUpdate('region', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="e.g., Gauteng, Western Cape"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Country
-                  </label>
-                  <input
-                    type="text"
-                    value={rfqData.country || ''}
-                    onChange={(e) => onUpdate('country', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="e.g., South Africa"
-                  />
-                </div>
-              </div>
-
-              {showMapPicker && (
-                <GoogleMapLocationPicker
-                  apiKey={GOOGLE_MAPS_API_KEY}
-                  config={mapViewConfig}
-                  initialLocation={
-                    rfqData.latitude && rfqData.longitude
-                      ? { lat: rfqData.latitude, lng: rfqData.longitude }
-                      : undefined
-                  }
-                  onLocationSelect={handleLocationSelect}
-                  onClose={() => setShowMapPicker(false)}
-                />
-              )}
-
-              {/* Environmental Intelligence Loading/Status */}
-              {isLoadingEnvironmental && (
-                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 mt-4">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  <span className="text-sm text-blue-700">
-                    Fetching environmental data for your location...
-                  </span>
-                </div>
-              )}
-
-              {!isLoadingEnvironmental && autoFilledFields.size > 0 && (
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200 mt-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="text-sm font-medium text-green-700">
-                      Environmental data auto-filled from location
-                    </span>
-                  </div>
-                  {environmentalMetadata?.distanceToCoastKm !== undefined && (
-                    <p className="text-xs text-green-600 ml-7">
-                      Distance to coast: {environmentalMetadata.distanceToCoastKm} km
-                      {environmentalMetadata.humidity !== undefined && ` | Humidity: ${Math.round(environmentalMetadata.humidity)}%`}
-                    </p>
-                  )}
-                  <p className="text-xs text-green-600 mt-1 ml-7">
-                    Auto-filled fields can be modified in the Specifications step if needed.
-                  </p>
-                </div>
-              )}
-
-              {!isLoadingEnvironmental && environmentalErrors.length > 0 && (
-                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mt-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <span className="text-sm font-medium text-amber-700">
-                      Some environmental data could not be retrieved
-                    </span>
-                  </div>
-                  <ul className="text-xs text-amber-600 ml-7 list-disc list-inside">
-                    {environmentalErrors.map((error, i) => (
-                      <li key={i}>{error}</li>
-                    ))}
-                  </ul>
-                  <p className="text-xs text-amber-600 mt-1 ml-7">
-                    Please fill in missing fields manually in the Specifications step.
-                  </p>
-                </div>
-              )}
-            </div>
-
             {/* Environmental Data */}
             <div className="bg-white rounded-lg p-5 mb-4 border border-gray-200">
               <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -1110,64 +1110,114 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 Environmental Profile
               </h4>
 
-              {/* Soil Conditions */}
+              {/* Soil Conditions - Auto-populated from location */}
               <div className="mb-6">
-                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2">Soil Conditions</h5>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2 flex items-center gap-2">
+                  Soil Conditions
+                  {(globalSpecs?.soilType || globalSpecs?.soilTexture) && (
+                    <span className="text-xs font-normal text-green-600 bg-green-50 px-2 py-0.5 rounded">Auto-filled</span>
+                  )}
+                </h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Soil Type
+                      Soil Type (WRB Classification)
                     </label>
-                    <select
-                      value={rfqData.soilType || ''}
+                    <input
+                      type="text"
+                      value={globalSpecs?.soilType || rfqData.soilType || ''}
                       onChange={(e) => onUpdate('soilType', e.target.value || undefined)}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="e.g., Cambisol, Ferralsol, Luvisol"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Auto-populated from ISRIC SoilGrids based on location
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Soil Texture (USDA Classification)
+                    </label>
+                    <select
+                      value={globalSpecs?.soilTexture || rfqData.soilTexture || ''}
+                      onChange={(e) => onUpdate('soilTexture', e.target.value || undefined)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                     >
-                      <option value="">Select soil type...</option>
-                      <option value="Sandy">Sandy</option>
-                      <option value="Clay">Clay</option>
+                      <option value="">Select soil texture...</option>
+                      <option value="Sand">Sand</option>
+                      <option value="Loamy Sand">Loamy Sand</option>
+                      <option value="Sandy Loam">Sandy Loam</option>
                       <option value="Loam">Loam</option>
+                      <option value="Silt Loam">Silt Loam</option>
                       <option value="Silt">Silt</option>
-                      <option value="Peat">Peat</option>
-                      <option value="Rocky">Rocky</option>
-                      <option value="Marshy">Marshy / Wetland</option>
-                      <option value="Saline">Saline Soil</option>
+                      <option value="Sandy Clay Loam">Sandy Clay Loam</option>
+                      <option value="Clay Loam">Clay Loam</option>
+                      <option value="Silty Clay Loam">Silty Clay Loam</option>
+                      <option value="Sandy Clay">Sandy Clay</option>
+                      <option value="Silty Clay">Silty Clay</option>
+                      <option value="Clay">Clay</option>
                     </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Based on clay/sand/silt content from SoilGrids
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Soil Moisture
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={globalSpecs?.soilMoisture || ''}
+                        readOnly
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900"
+                        placeholder="Auto-detected"
+                      />
+                      <select
+                        value={globalSpecs?.soilMoistureClass || rfqData.soilMoistureClass || ''}
+                        onChange={(e) => onUpdate('soilMoistureClass', e.target.value || undefined)}
+                        className="w-32 px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      >
+                        <option value="">Class</option>
+                        <option value="Low">Low</option>
+                        <option value="Moderate">Moderate</option>
+                        <option value="High">High</option>
+                      </select>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Surface soil moisture from Agromonitoring API
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Soil Resistivity (Ω·cm)
+                      Soil Drainage Class
                     </label>
-                    <select
-                      value={rfqData.soilResistivity || ''}
-                      onChange={(e) => onUpdate('soilResistivity', e.target.value || undefined)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    >
-                      <option value="">Select resistivity...</option>
-                      <option value="<500">&lt;500 (Very Corrosive)</option>
-                      <option value="500-1000">500-1,000 (Corrosive)</option>
-                      <option value="1000-2000">1,000-2,000 (Moderately Corrosive)</option>
-                      <option value="2000-5000">2,000-5,000 (Mildly Corrosive)</option>
-                      <option value="5000-10000">5,000-10,000 (Low Corrosivity)</option>
-                      <option value=">10000">&gt;10,000 (Non-Corrosive)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Soil Moisture / Drainage
-                    </label>
-                    <select
-                      value={rfqData.soilMoisture || ''}
-                      onChange={(e) => onUpdate('soilMoisture', e.target.value || undefined)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    >
-                      <option value="">Select moisture level...</option>
-                      <option value="Dry">Dry (Well Drained)</option>
-                      <option value="Normal">Normal Drainage</option>
-                      <option value="Wet">Wet (Poor Drainage)</option>
-                      <option value="Saturated">Saturated / Waterlogged</option>
-                      <option value="Fluctuating">Fluctuating Water Table</option>
-                    </select>
+                    <div className="flex gap-2">
+                      <select
+                        value={globalSpecs?.soilDrainage || rfqData.soilDrainage || ''}
+                        onChange={(e) => onUpdate('soilDrainage', e.target.value || undefined)}
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      >
+                        <option value="">Select drainage...</option>
+                        <option value="Very Poorly Drained">Very Poorly Drained</option>
+                        <option value="Poorly Drained">Poorly Drained</option>
+                        <option value="Somewhat Poorly Drained">Somewhat Poorly Drained</option>
+                        <option value="Poor">Poor</option>
+                        <option value="Moderate">Moderate</option>
+                        <option value="Moderately Well Drained">Moderately Well Drained</option>
+                        <option value="Well Drained">Well Drained</option>
+                        <option value="Well">Well</option>
+                        <option value="Somewhat Excessively Drained">Somewhat Excessively Drained</option>
+                        <option value="Excessively Drained">Excessively Drained</option>
+                      </select>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {globalSpecs?.soilDrainageSource === 'USDA SSURGO'
+                        ? 'From USDA SSURGO (US locations)'
+                        : 'Derived from soil properties'}
+                    </p>
                   </div>
                 </div>
               </div>
