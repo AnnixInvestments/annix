@@ -34,6 +34,8 @@ export interface UseEnvironmentalIntelligenceResult {
   clearAutoFilled: () => void;
   /** Check if a specific field was auto-filled */
   wasAutoFilled: (fieldName: string) => boolean;
+  /** Mark a field as manually overridden (removes auto-filled styling) */
+  markAsOverridden: (fieldName: string) => void;
 }
 
 /**
@@ -102,6 +104,17 @@ export function useEnvironmentalIntelligence(): UseEnvironmentalIntelligenceResu
     [autoFilledFields]
   );
 
+  const markAsOverridden = useCallback(
+    (fieldName: string) => {
+      setAutoFilledFields((prev) => {
+        const next = new Set(prev);
+        next.delete(fieldName);
+        return next;
+      });
+    },
+    []
+  );
+
   return {
     isLoading,
     errors,
@@ -110,5 +123,6 @@ export function useEnvironmentalIntelligence(): UseEnvironmentalIntelligenceResu
     fetchAndApply,
     clearAutoFilled,
     wasAutoFilled,
+    markAsOverridden,
   };
 }

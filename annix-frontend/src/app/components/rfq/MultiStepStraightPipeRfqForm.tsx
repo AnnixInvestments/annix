@@ -16,6 +16,7 @@ import {
 import GoogleMapLocationPicker from '@/app/components/GoogleMapLocationPicker';
 import { useEnvironmentalIntelligence } from '@/app/lib/hooks/useEnvironmentalIntelligence';
 import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
+import { AutoFilledInput, AutoFilledSelect, AutoFilledDisplay } from '@/app/components/rfq/AutoFilledField';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -552,6 +553,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
     metadata: environmentalMetadata,
     fetchAndApply: fetchEnvironmentalData,
     wasAutoFilled,
+    markAsOverridden,
   } = useEnvironmentalIntelligence();
 
   const handleLocationSelect = async (
@@ -1112,36 +1114,32 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
 
               {/* Soil Conditions - Auto-populated from location */}
               <div className="mb-6">
-                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2 flex items-center gap-2">
+                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2">
                   Soil Conditions
-                  {(globalSpecs?.soilType || globalSpecs?.soilTexture) && (
-                    <span className="text-xs font-normal text-green-600 bg-green-50 px-2 py-0.5 rounded">Auto-filled</span>
-                  )}
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">
                       Soil Type (WRB Classification)
                     </label>
-                    <input
+                    <AutoFilledInput
                       type="text"
                       value={globalSpecs?.soilType || rfqData.soilType || ''}
-                      onChange={(e) => onUpdate('soilType', e.target.value || undefined)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      onChange={(value) => onUpdate('soilType', value)}
+                      onOverride={() => markAsOverridden('soilType')}
+                      isAutoFilled={wasAutoFilled('soilType')}
                       placeholder="e.g., Cambisol, Ferralsol, Luvisol"
                     />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Auto-populated from ISRIC SoilGrids based on location
-                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">
                       Soil Texture (USDA Classification)
                     </label>
-                    <select
+                    <AutoFilledSelect
                       value={globalSpecs?.soilTexture || rfqData.soilTexture || ''}
-                      onChange={(e) => onUpdate('soilTexture', e.target.value || undefined)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      onChange={(value) => onUpdate('soilTexture', value)}
+                      onOverride={() => markAsOverridden('soilTexture')}
+                      isAutoFilled={wasAutoFilled('soilTexture')}
                     >
                       <option value="">Select soil texture...</option>
                       <option value="Sand">Sand</option>
@@ -1156,10 +1154,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                       <option value="Sandy Clay">Sandy Clay</option>
                       <option value="Silty Clay">Silty Clay</option>
                       <option value="Clay">Clay</option>
-                    </select>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Based on clay/sand/silt content from SoilGrids
-                    </p>
+                    </AutoFilledSelect>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1168,67 +1163,66 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                       Soil Moisture
                     </label>
                     <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={globalSpecs?.soilMoisture || ''}
-                        readOnly
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900"
-                        placeholder="Auto-detected"
-                      />
-                      <select
-                        value={globalSpecs?.soilMoistureClass || rfqData.soilMoistureClass || ''}
-                        onChange={(e) => onUpdate('soilMoistureClass', e.target.value || undefined)}
-                        className="w-32 px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      >
-                        <option value="">Class</option>
-                        <option value="Low">Low</option>
-                        <option value="Moderate">Moderate</option>
-                        <option value="High">High</option>
-                      </select>
+                      <div className="flex-1">
+                        <AutoFilledDisplay
+                          value={globalSpecs?.soilMoisture}
+                          isAutoFilled={wasAutoFilled('soilMoisture')}
+                          label="Auto-detected"
+                        />
+                      </div>
+                      <div className="w-32">
+                        <AutoFilledSelect
+                          value={globalSpecs?.soilMoistureClass || rfqData.soilMoistureClass || ''}
+                          onChange={(value) => onUpdate('soilMoistureClass', value)}
+                          onOverride={() => markAsOverridden('soilMoistureClass')}
+                          isAutoFilled={wasAutoFilled('soilMoistureClass')}
+                          className="w-full"
+                        >
+                          <option value="">Class</option>
+                          <option value="Low">Low</option>
+                          <option value="Moderate">Moderate</option>
+                          <option value="High">High</option>
+                        </AutoFilledSelect>
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Surface soil moisture from Agromonitoring API
-                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">
                       Soil Drainage Class
                     </label>
-                    <div className="flex gap-2">
-                      <select
-                        value={globalSpecs?.soilDrainage || rfqData.soilDrainage || ''}
-                        onChange={(e) => onUpdate('soilDrainage', e.target.value || undefined)}
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      >
-                        <option value="">Select drainage...</option>
-                        <option value="Very Poorly Drained">Very Poorly Drained</option>
-                        <option value="Poorly Drained">Poorly Drained</option>
-                        <option value="Somewhat Poorly Drained">Somewhat Poorly Drained</option>
-                        <option value="Poor">Poor</option>
-                        <option value="Moderate">Moderate</option>
-                        <option value="Moderately Well Drained">Moderately Well Drained</option>
-                        <option value="Well Drained">Well Drained</option>
-                        <option value="Well">Well</option>
-                        <option value="Somewhat Excessively Drained">Somewhat Excessively Drained</option>
-                        <option value="Excessively Drained">Excessively Drained</option>
-                      </select>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      {globalSpecs?.soilDrainageSource === 'USDA SSURGO'
-                        ? 'From USDA SSURGO (US locations)'
-                        : 'Derived from soil properties'}
-                    </p>
+                    <AutoFilledSelect
+                      value={globalSpecs?.soilDrainage || rfqData.soilDrainage || ''}
+                      onChange={(value) => onUpdate('soilDrainage', value)}
+                      onOverride={() => markAsOverridden('soilDrainage')}
+                      isAutoFilled={wasAutoFilled('soilDrainage')}
+                    >
+                      <option value="">Select drainage...</option>
+                      <option value="Very Poorly Drained">Very Poorly Drained</option>
+                      <option value="Poorly Drained">Poorly Drained</option>
+                      <option value="Somewhat Poorly Drained">Somewhat Poorly Drained</option>
+                      <option value="Poor">Poor</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Moderately Well Drained">Moderately Well Drained</option>
+                      <option value="Well Drained">Well Drained</option>
+                      <option value="Well">Well</option>
+                      <option value="Somewhat Excessively Drained">Somewhat Excessively Drained</option>
+                      <option value="Excessively Drained">Excessively Drained</option>
+                    </AutoFilledSelect>
+                    {globalSpecs?.soilDrainageSource && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Source: {globalSpecs.soilDrainageSource === 'USDA SSURGO'
+                          ? 'USDA SSURGO (US locations)'
+                          : 'Derived from soil properties'}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Atmospheric Conditions - Auto-populated from OpenWeatherMap */}
               <div className="mb-6">
-                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2 flex items-center gap-2">
+                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2">
                   Atmospheric Conditions
-                  {(globalSpecs?.tempMin !== undefined || globalSpecs?.humidityMean !== undefined) && (
-                    <span className="text-xs font-normal text-green-600 bg-green-50 px-2 py-0.5 rounded">Auto-filled</span>
-                  )}
                 </h5>
 
                 {/* Temperature */}
@@ -1237,41 +1231,41 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs text-gray-600 mb-1">Minimum</label>
-                      <input
+                      <AutoFilledInput
                         type="number"
                         step="0.1"
                         value={globalSpecs?.tempMin ?? rfqData.tempMin ?? ''}
-                        onChange={(e) => onUpdate('tempMin', e.target.value ? Number(e.target.value) : undefined)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        onChange={(value) => onUpdate('tempMin', value)}
+                        onOverride={() => markAsOverridden('tempMin')}
+                        isAutoFilled={wasAutoFilled('tempMin')}
                         placeholder="e.g., -5"
                       />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-600 mb-1">Mean</label>
-                      <input
+                      <AutoFilledInput
                         type="number"
                         step="0.1"
                         value={globalSpecs?.tempMean ?? rfqData.tempMean ?? ''}
-                        onChange={(e) => onUpdate('tempMean', e.target.value ? Number(e.target.value) : undefined)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        onChange={(value) => onUpdate('tempMean', value)}
+                        onOverride={() => markAsOverridden('tempMean')}
+                        isAutoFilled={wasAutoFilled('tempMean')}
                         placeholder="e.g., 18"
                       />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-600 mb-1">Maximum</label>
-                      <input
+                      <AutoFilledInput
                         type="number"
                         step="0.1"
                         value={globalSpecs?.tempMax ?? rfqData.tempMax ?? ''}
-                        onChange={(e) => onUpdate('tempMax', e.target.value ? Number(e.target.value) : undefined)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        onChange={(value) => onUpdate('tempMax', value)}
+                        onOverride={() => markAsOverridden('tempMax')}
+                        isAutoFilled={wasAutoFilled('tempMax')}
                         placeholder="e.g., 38"
                       />
                     </div>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Auto-populated from OpenWeatherMap based on location
-                  </p>
                 </div>
 
                 {/* Relative Humidity */}
@@ -1280,38 +1274,38 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs text-gray-600 mb-1">Minimum</label>
-                      <input
+                      <AutoFilledInput
                         type="number"
                         value={globalSpecs?.humidityMin ?? ''}
-                        onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMin: e.target.value ? Number(e.target.value) : undefined })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMin: value })}
+                        onOverride={() => markAsOverridden('humidityMin')}
+                        isAutoFilled={wasAutoFilled('humidityMin')}
                         placeholder="e.g., 40"
                       />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-600 mb-1">Mean</label>
-                      <input
+                      <AutoFilledInput
                         type="number"
                         value={globalSpecs?.humidityMean ?? ''}
-                        onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMean: e.target.value ? Number(e.target.value) : undefined })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMean: value })}
+                        onOverride={() => markAsOverridden('humidityMean')}
+                        isAutoFilled={wasAutoFilled('humidityMean')}
                         placeholder="e.g., 65"
                       />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-600 mb-1">Maximum</label>
-                      <input
+                      <AutoFilledInput
                         type="number"
                         value={globalSpecs?.humidityMax ?? ''}
-                        onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMax: e.target.value ? Number(e.target.value) : undefined })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMax: value })}
+                        onOverride={() => markAsOverridden('humidityMax')}
+                        isAutoFilled={wasAutoFilled('humidityMax')}
                         placeholder="e.g., 85"
                       />
                     </div>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Auto-populated from OpenWeatherMap based on location
-                  </p>
                 </div>
 
                 {/* Annual Rainfall (manual) */}

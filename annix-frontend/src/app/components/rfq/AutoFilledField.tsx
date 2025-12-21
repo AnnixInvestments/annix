@@ -1,0 +1,203 @@
+'use client';
+
+import React, { useState, useCallback } from 'react';
+
+interface AutoFilledInputProps {
+  type?: 'text' | 'number';
+  value: string | number | undefined;
+  onChange: (value: string | number | undefined) => void;
+  onOverride?: () => void;
+  isAutoFilled: boolean;
+  placeholder?: string;
+  step?: string;
+  readOnly?: boolean;
+  className?: string;
+}
+
+interface AutoFilledSelectProps {
+  value: string | undefined;
+  onChange: (value: string | undefined) => void;
+  onOverride?: () => void;
+  isAutoFilled: boolean;
+  children: React.ReactNode;
+  className?: string;
+}
+
+/**
+ * Styled input field for Environmental Intelligence auto-filled values
+ * - Green border when auto-filled
+ * - Bold black text for auto-filled values
+ * - "Auto-completed (can override)" helper text
+ * - Removes styling when user manually edits
+ */
+export function AutoFilledInput({
+  type = 'text',
+  value,
+  onChange,
+  onOverride,
+  isAutoFilled,
+  placeholder,
+  step,
+  readOnly = false,
+  className = '',
+}: AutoFilledInputProps) {
+  const [hasBeenEdited, setHasBeenEdited] = useState(false);
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
+
+      // Mark as edited if it was auto-filled
+      if (isAutoFilled && !hasBeenEdited) {
+        setHasBeenEdited(true);
+        onOverride?.();
+      }
+
+      if (type === 'number') {
+        onChange(newValue ? Number(newValue) : undefined);
+      } else {
+        onChange(newValue || undefined);
+      }
+    },
+    [type, onChange, onOverride, isAutoFilled, hasBeenEdited]
+  );
+
+  // Determine if we should show auto-filled styling
+  const showAutoFilledStyle = isAutoFilled && !hasBeenEdited;
+
+  const baseClasses = 'w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 text-gray-900';
+
+  const borderClasses = showAutoFilledStyle
+    ? 'border-2 border-green-500 focus:ring-green-500 focus:border-green-500'
+    : 'border border-gray-300 focus:ring-blue-500 focus:border-blue-500';
+
+  const textClasses = showAutoFilledStyle ? 'font-bold' : '';
+
+  const bgClasses = readOnly ? 'bg-gray-50' : '';
+
+  return (
+    <div className="relative">
+      <input
+        type={type}
+        value={value ?? ''}
+        onChange={handleChange}
+        placeholder={placeholder}
+        step={step}
+        readOnly={readOnly}
+        className={`${baseClasses} ${borderClasses} ${textClasses} ${bgClasses} ${className}`}
+      />
+      {showAutoFilledStyle && (
+        <p className="mt-1 text-xs text-green-600 font-medium flex items-center gap-1">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+          Auto-completed (can override)
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Styled select field for Environmental Intelligence auto-filled values
+ * - Green border when auto-filled
+ * - Bold black text for auto-filled values
+ * - "Auto-completed (can override)" helper text
+ * - Removes styling when user manually edits
+ */
+export function AutoFilledSelect({
+  value,
+  onChange,
+  onOverride,
+  isAutoFilled,
+  children,
+  className = '',
+}: AutoFilledSelectProps) {
+  const [hasBeenEdited, setHasBeenEdited] = useState(false);
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newValue = e.target.value;
+
+      // Mark as edited if it was auto-filled
+      if (isAutoFilled && !hasBeenEdited) {
+        setHasBeenEdited(true);
+        onOverride?.();
+      }
+
+      onChange(newValue || undefined);
+    },
+    [onChange, onOverride, isAutoFilled, hasBeenEdited]
+  );
+
+  // Determine if we should show auto-filled styling
+  const showAutoFilledStyle = isAutoFilled && !hasBeenEdited;
+
+  const baseClasses = 'w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 text-gray-900';
+
+  const borderClasses = showAutoFilledStyle
+    ? 'border-2 border-green-500 focus:ring-green-500 focus:border-green-500'
+    : 'border border-gray-300 focus:ring-blue-500 focus:border-blue-500';
+
+  const textClasses = showAutoFilledStyle ? 'font-bold' : '';
+
+  return (
+    <div className="relative">
+      <select
+        value={value || ''}
+        onChange={handleChange}
+        className={`${baseClasses} ${borderClasses} ${textClasses} ${className}`}
+      >
+        {children}
+      </select>
+      {showAutoFilledStyle && (
+        <p className="mt-1 text-xs text-green-600 font-medium flex items-center gap-1">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+          Auto-completed (can override)
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Read-only display field for auto-filled values that shouldn't be edited
+ * Used for calculated/derived values
+ */
+export function AutoFilledDisplay({
+  value,
+  isAutoFilled,
+  label,
+}: {
+  value: string | number | undefined;
+  isAutoFilled: boolean;
+  label?: string;
+}) {
+  const showAutoFilledStyle = isAutoFilled && value !== undefined;
+
+  const baseClasses = 'w-full px-4 py-3 rounded-lg bg-gray-50 text-gray-900';
+
+  const borderClasses = showAutoFilledStyle
+    ? 'border-2 border-green-500'
+    : 'border border-gray-300';
+
+  const textClasses = showAutoFilledStyle ? 'font-bold' : '';
+
+  return (
+    <div className="relative">
+      <div className={`${baseClasses} ${borderClasses} ${textClasses}`}>
+        {value ?? <span className="text-gray-400">{label || 'Auto-detected'}</span>}
+      </div>
+      {showAutoFilledStyle && (
+        <p className="mt-1 text-xs text-green-600 font-medium flex items-center gap-1">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+          Auto-completed
+        </p>
+      )}
+    </div>
+  );
+}
