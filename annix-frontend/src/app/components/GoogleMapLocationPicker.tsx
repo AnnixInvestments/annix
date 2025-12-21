@@ -64,6 +64,7 @@ export default function GoogleMapLocationPicker({
   );
   const [addressInfo, setAddressInfo] = useState<AddressComponents | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [searchAddress, setSearchAddress] = useState("");
   const mapRef = useRef<google.maps.Map | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
