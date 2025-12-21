@@ -2,15 +2,24 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  Res,
+  ParseIntPipe,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBody,
+  ApiConsumes,
+  ApiParam,
 } from '@nestjs/swagger';
 import { RfqService } from './rfq.service';
 import { CreateStraightPipeRfqWithItemDto } from './dto/create-rfq-item.dto';
@@ -18,6 +27,7 @@ import { CreateBendRfqWithItemDto } from './dto/create-bend-rfq-with-item.dto';
 import { CreateBendRfqDto } from './dto/create-bend-rfq.dto';
 import { StraightPipeCalculationResultDto, RfqResponseDto } from './dto/rfq-response.dto';
 import { BendCalculationResultDto } from './dto/bend-calculation-result.dto';
+import { RfqDocumentResponseDto } from './dto/rfq-document.dto';
 import { Rfq } from './entities/rfq.entity';
 
 @ApiTags('RFQ')
@@ -330,5 +340,130 @@ export class RfqController {
   })
   async getRfqById(@Param('id') id: number): Promise<Rfq> {
     return this.rfqService.findRfqById(id);
+  }
+
+  // ==================== Document Endpoints ====================
+
+  @Post(':id/documents')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+  }))
+  @ApiOperation({
+    summary: 'Upload document to RFQ',
+    description: 'Upload a document file (PDF, Excel, Word, etc.) to an RFQ. Maximum 10 documents per RFQ, 50MB per file.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiParam({ name: 'id', description: 'RFQ ID', type: Number })
+  @ApiBody({
+    description: 'Document file to upload',
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'The document file (PDF, Excel, Word, images, etc.)',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Document uploaded successfully',
+    type: RfqDocumentResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'File too large or document limit reached',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'RFQ not found',
+  })
+  async uploadDocument(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<RfqDocumentResponseDto> {
+    return this.rfqService.uploadDocument(id, file);
+  }
+
+  @Get(':id/documents')
+  @ApiOperation({
+    summary: 'Get all documents for RFQ',
+    description: 'Retrieve list of all documents attached to an RFQ',
+  })
+  @ApiParam({ name: 'id', description: 'RFQ ID', type: Number })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Documents retrieved successfully',
+    type: [RfqDocumentResponseDto],
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'RFQ not found',
+  })
+  async getDocuments(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<RfqDocumentResponseDto[]> {
+    return this.rfqService.getDocuments(id);
+  }
+
+  @Get('documents/:documentId/download')
+  @ApiOperation({
+    summary: 'Download document',
+    description: 'Download a specific document by its ID',
+  })
+  @ApiParam({ name: 'documentId', description: 'Document ID', type: Number })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Document file',
+    content: {
+      'application/octet-stream': {
+        schema: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Document not found',
+  })
+  async downloadDocument(
+    @Param('documentId', ParseIntPipe) documentId: number,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { buffer, document } = await this.rfqService.downloadDocument(documentId);
+
+    res.set({
+      'Content-Type': document.mimeType,
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(document.filename)}"`,
+      'Content-Length': buffer.length,
+    });
+
+    res.send(buffer);
+  }
+
+  @Delete('documents/:documentId')
+  @ApiOperation({
+    summary: 'Delete document',
+    description: 'Delete a document from an RFQ',
+  })
+  @ApiParam({ name: 'documentId', description: 'Document ID', type: Number })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Document deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Document not found',
+  })
+  async deleteDocument(
+    @Param('documentId', ParseIntPipe) documentId: number,
+  ): Promise<{ message: string }> {
+    await this.rfqService.deleteDocument(documentId);
+    return { message: 'Document deleted successfully' };
   }
 }

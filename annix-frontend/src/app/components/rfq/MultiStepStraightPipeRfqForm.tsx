@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { StraightPipeEntry, useRfqForm } from '@/app/lib/hooks/useRfqForm';
-import { masterDataApi, rfqApi } from '@/app/lib/api/client';
+import { masterDataApi, rfqApi, rfqDocumentApi } from '@/app/lib/api/client';
 import {
   validatePage1RequiredFields,
   validatePage2Specifications,
@@ -15,12 +15,19 @@ import {
 } from '@/app/lib/utils/systemUtils';
 import GoogleMapLocationPicker from '@/app/components/GoogleMapLocationPicker';
 import { useEnvironmentalIntelligence } from '@/app/lib/hooks/useEnvironmentalIntelligence';
+import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 interface Props {
   onSuccess: (rfqId: string) => void;
   onCancel: () => void;
+}
+
+// Pending document for upload
+interface PendingDocument {
+  file: File;
+  id: string;
 }
 
 // Master data structure for API integration
@@ -531,7 +538,7 @@ function hasCompleteExternalProfile(profile: ExternalEnvironmentProfile): boolea
   );
 }
 
-function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGlobalSpecs }: any) {
+function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGlobalSpecs, pendingDocuments, onAddDocument, onRemoveDocument }: any) {
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [mapViewConfig, setMapViewConfig] = useState<'default' | 'responsive' | 'compact'>('responsive');
@@ -796,6 +803,15 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
             )}
           </div>
         </div>
+
+        {/* Supporting Documents */}
+        <RfqDocumentUpload
+          documents={pendingDocuments || []}
+          onAddDocument={onAddDocument}
+          onRemoveDocument={onRemoveDocument}
+          maxDocuments={10}
+          maxFileSizeMB={50}
+        />
 
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -6684,6 +6700,21 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   const [availablePressureClasses, setAvailablePressureClasses] = useState<any[]>([]);
   // Store dynamic bend options per bend type
   const [bendOptionsCache, setBendOptionsCache] = useState<Record<string, { nominalBores: number[]; degrees: number[] }>>({});
+  // Store pending documents to upload
+  const [pendingDocuments, setPendingDocuments] = useState<PendingDocument[]>([]);
+
+  // Document upload handlers
+  const handleAddDocument = (file: File) => {
+    const newDoc: PendingDocument = {
+      file,
+      id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    };
+    setPendingDocuments(prev => [...prev, newDoc]);
+  };
+
+  const handleRemoveDocument = (id: string) => {
+    setPendingDocuments(prev => prev.filter(doc => doc.id !== id));
+  };
 
   // Load master data from API
   useEffect(() => {
@@ -7281,9 +7312,36 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         const itemType = r.itemType === 'bend' ? 'Bend' : r.itemType === 'fitting' ? 'Fitting' : 'Pipe';
         return `${itemType}: RFQ #${r.rfq?.rfqNumber || r.rfq?.id || 'Created'}`;
       }).join('\n');
-      
+
+      // Upload pending documents to the first RFQ created
+      if (pendingDocuments.length > 0 && results[0]?.rfq?.id) {
+        const rfqId = results[0].rfq.id;
+        console.log(`📎 Uploading ${pendingDocuments.length} document(s) to RFQ #${rfqId}...`);
+
+        let uploadedCount = 0;
+        let failedCount = 0;
+
+        for (const doc of pendingDocuments) {
+          try {
+            await rfqDocumentApi.upload(rfqId, doc.file);
+            uploadedCount++;
+            console.log(`✅ Uploaded: ${doc.file.name}`);
+          } catch (uploadError) {
+            failedCount++;
+            console.error(`❌ Failed to upload ${doc.file.name}:`, uploadError);
+          }
+        }
+
+        if (failedCount > 0) {
+          console.warn(`⚠️ ${failedCount} document(s) failed to upload`);
+        }
+
+        // Clear pending documents after upload attempt
+        setPendingDocuments([]);
+      }
+
       alert(`Success! ${results.length} RFQ${results.length > 1 ? 's' : ''} created successfully!\n\n${itemSummary}`);
-      
+
       // Call the success callback with the first RFQ ID
       onSuccess(results[0]?.rfq?.id || 'success');
       
@@ -7323,6 +7381,9 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             errors={validationErrors}
             globalSpecs={rfqData.globalSpecs}
             onUpdateGlobalSpecs={updateGlobalSpecs}
+            pendingDocuments={pendingDocuments}
+            onAddDocument={handleAddDocument}
+            onRemoveDocument={handleRemoveDocument}
           />
         );
       case 2:

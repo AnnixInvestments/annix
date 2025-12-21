@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { RfqItem } from './rfq-item.entity';
+import { RfqDocument } from './rfq-document.entity';
 import { Drawing } from '../../drawings/entities/drawing.entity';
 import { Boq } from '../../boq/entities/boq.entity';
 import { ApiProperty } from '@nestjs/swagger';
@@ -72,6 +73,10 @@ export class Rfq {
   @ApiProperty({ description: 'RFQ items', type: () => [RfqItem] })
   @OneToMany(() => RfqItem, (item) => item.rfq, { cascade: true })
   items: RfqItem[];
+
+  @ApiProperty({ description: 'Attached documents', type: () => [RfqDocument] })
+  @OneToMany(() => RfqDocument, (doc) => doc.rfq, { cascade: true })
+  documents: RfqDocument[];
 
   @ApiProperty({ description: 'Linked drawings', type: () => [Drawing] })
   @OneToMany(() => Drawing, (drawing) => drawing.rfq)

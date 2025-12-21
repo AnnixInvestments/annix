@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Rfq, RfqStatus } from './entities/rfq.entity';
 import { RfqItem, RfqItemType } from './entities/rfq-item.entity';
 import { StraightPipeRfq, LengthUnit, QuantityType, ScheduleType } from './entities/straight-pipe-rfq.entity';
 import { BendRfq } from './entities/bend-rfq.entity';
+import { RfqDocument } from './entities/rfq-document.entity';
 import { User } from '../user/entities/user.entity';
 import { SteelSpecification } from '../steel-specification/entities/steel-specification.entity';
 import { PipeDimension } from '../pipe-dimension/entities/pipe-dimension.entity';
@@ -12,11 +13,18 @@ import { NbNpsLookup } from '../nb-nps-lookup/entities/nb-nps-lookup.entity';
 import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.entity';
 import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
 import { NutMass } from '../nut-mass/entities/nut-mass.entity';
+import { LocalStorageService } from '../storage/local-storage.service';
 import { CreateStraightPipeRfqWithItemDto } from './dto/create-rfq-item.dto';
 import { CreateBendRfqWithItemDto } from './dto/create-bend-rfq-with-item.dto';
 import { CreateBendRfqDto } from './dto/create-bend-rfq.dto';
 import { StraightPipeCalculationResultDto, RfqResponseDto } from './dto/rfq-response.dto';
 import { BendCalculationResultDto } from './dto/bend-calculation-result.dto';
+import { RfqDocumentResponseDto } from './dto/rfq-document.dto';
+
+// Maximum number of documents allowed per RFQ
+const MAX_DOCUMENTS_PER_RFQ = 10;
+// Maximum file size in bytes (50 MB)
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 @Injectable()
 export class RfqService {
@@ -29,6 +37,8 @@ export class RfqService {
     private straightPipeRfqRepository: Repository<StraightPipeRfq>,
     @InjectRepository(BendRfq)
     private bendRfqRepository: Repository<BendRfq>,
+    @InjectRepository(RfqDocument)
+    private rfqDocumentRepository: Repository<RfqDocument>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
     @InjectRepository(SteelSpecification)
@@ -43,6 +53,7 @@ export class RfqService {
     private boltMassRepository: Repository<BoltMass>,
     @InjectRepository(NutMass)
     private nutMassRepository: Repository<NutMass>,
+    private storageService: LocalStorageService,
   ) {}
 
   async calculateStraightPipeRequirements(
@@ -490,6 +501,116 @@ export class RfqService {
     return {
       rfq: savedRfq,
       calculation,
+    };
+  }
+
+  // ==================== Document Management Methods ====================
+
+  async uploadDocument(
+    rfqId: number,
+    file: Express.Multer.File,
+    user?: User,
+  ): Promise<RfqDocumentResponseDto> {
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      throw new BadRequestException(`File size exceeds maximum allowed size of 50MB`);
+    }
+
+    // Find the RFQ
+    const rfq = await this.rfqRepository.findOne({
+      where: { id: rfqId },
+      relations: ['documents'],
+    });
+
+    if (!rfq) {
+      throw new NotFoundException(`RFQ with ID ${rfqId} not found`);
+    }
+
+    // Check document count limit
+    const currentDocCount = rfq.documents?.length || 0;
+    if (currentDocCount >= MAX_DOCUMENTS_PER_RFQ) {
+      throw new BadRequestException(
+        `Maximum number of documents (${MAX_DOCUMENTS_PER_RFQ}) reached for this RFQ`
+      );
+    }
+
+    // Upload file to storage
+    const subPath = `rfq-documents/${rfqId}`;
+    const storageResult = await this.storageService.upload(file, subPath);
+
+    // Create document record
+    const document = this.rfqDocumentRepository.create({
+      rfq,
+      filename: file.originalname,
+      filePath: storageResult.path,
+      mimeType: file.mimetype,
+      fileSizeBytes: file.size,
+      uploadedBy: user,
+    });
+
+    const savedDocument = await this.rfqDocumentRepository.save(document);
+
+    return this.mapDocumentToResponse(savedDocument);
+  }
+
+  async getDocuments(rfqId: number): Promise<RfqDocumentResponseDto[]> {
+    const rfq = await this.rfqRepository.findOne({
+      where: { id: rfqId },
+    });
+
+    if (!rfq) {
+      throw new NotFoundException(`RFQ with ID ${rfqId} not found`);
+    }
+
+    const documents = await this.rfqDocumentRepository.find({
+      where: { rfq: { id: rfqId } },
+      relations: ['uploadedBy'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return documents.map(doc => this.mapDocumentToResponse(doc));
+  }
+
+  async getDocumentById(documentId: number): Promise<RfqDocument> {
+    const document = await this.rfqDocumentRepository.findOne({
+      where: { id: documentId },
+      relations: ['rfq', 'uploadedBy'],
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document with ID ${documentId} not found`);
+    }
+
+    return document;
+  }
+
+  async downloadDocument(documentId: number): Promise<{ buffer: Buffer; document: RfqDocument }> {
+    const document = await this.getDocumentById(documentId);
+    const buffer = await this.storageService.download(document.filePath);
+
+    return { buffer, document };
+  }
+
+  async deleteDocument(documentId: number, user?: User): Promise<void> {
+    const document = await this.getDocumentById(documentId);
+
+    // Delete file from storage
+    await this.storageService.delete(document.filePath);
+
+    // Delete database record
+    await this.rfqDocumentRepository.remove(document);
+  }
+
+  private mapDocumentToResponse(document: RfqDocument): RfqDocumentResponseDto {
+    return {
+      id: document.id,
+      rfqId: document.rfq?.id,
+      filename: document.filename,
+      mimeType: document.mimeType,
+      fileSizeBytes: Number(document.fileSizeBytes),
+      downloadUrl: `/api/rfq/documents/${document.id}/download`,
+      uploadedBy: document.uploadedBy?.username,
+      createdAt: document.createdAt,
     };
   }
 }

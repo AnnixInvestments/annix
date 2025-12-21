@@ -124,6 +124,17 @@ export interface RfqResponse {
   itemCount: number;
 }
 
+export interface RfqDocument {
+  id: number;
+  rfqId: number;
+  filename: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  downloadUrl: string;
+  uploadedBy?: string;
+  createdAt: Date;
+}
+
 export interface SteelSpecification {
   id: number;
   steelSpecName: string;
@@ -306,6 +317,48 @@ class ApiClient {
 
   async getRfqById(id: number): Promise<any> {
     return this.request(`/rfq/${id}`);
+  }
+
+  // RFQ Document endpoints
+  async uploadRfqDocument(rfqId: number, file: File): Promise<RfqDocument> {
+    const url = `${this.baseURL}/rfq/${rfqId}/documents`;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      // Don't set Content-Type header - browser will set it with boundary for multipart
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error (${response.status}): ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async getRfqDocuments(rfqId: number): Promise<RfqDocument[]> {
+    return this.request<RfqDocument[]>(`/rfq/${rfqId}/documents`);
+  }
+
+  async downloadRfqDocument(documentId: number): Promise<Blob> {
+    const url = `${this.baseURL}/rfq/documents/${documentId}/download`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error (${response.status}): ${errorText}`);
+    }
+
+    return response.blob();
+  }
+
+  async deleteRfqDocument(documentId: number): Promise<void> {
+    await this.request(`/rfq/documents/${documentId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Master data endpoints
@@ -601,4 +654,11 @@ export const masterDataApi = {
 export const authApi = {
   login: (email: string, password: string) => apiClient.login(email, password),
   logout: () => apiClient.clearToken(),
+};
+
+export const rfqDocumentApi = {
+  upload: (rfqId: number, file: File) => apiClient.uploadRfqDocument(rfqId, file),
+  getByRfqId: (rfqId: number) => apiClient.getRfqDocuments(rfqId),
+  download: (documentId: number) => apiClient.downloadRfqDocument(documentId),
+  delete: (documentId: number) => apiClient.deleteRfqDocument(documentId),
 };
