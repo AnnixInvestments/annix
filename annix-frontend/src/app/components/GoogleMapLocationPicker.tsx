@@ -52,13 +52,30 @@ export default function GoogleMapLocationPicker({
 }: GoogleMapLocationPickerProps) {
   const displayConfig = resolveConfig(config);
 
-  // Validate API key before attempting to load
-  if (!apiKey || apiKey === 'your_google_maps_api_key_here' || apiKey === 'test_key_replacement_needed') {
+  const [showManualInput, setShowManualInput] = useState(false);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: apiKey,
+    libraries
+  });
+
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
+    initialLocation || null
+  );
+  const [addressInfo, setAddressInfo] = useState<AddressComponents | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [searchAddress, setSearchAddress] = useState("");
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  const invalidApiKey = !apiKey || apiKey === 'your_google_maps_api_key_here' || apiKey === 'test_key_replacement_needed';
+
+  if (invalidApiKey) {
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
         <div className="text-red-600 font-semibold mb-2">Google Maps Configuration Required</div>
         <div className="text-red-600 text-sm mb-4">
-          A valid Google Maps API key is required to use this feature. 
+          A valid Google Maps API key is required to use this feature.
           Please configure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your environment variables.
         </div>
         <div className="bg-blue-50 p-4 rounded mb-4">
@@ -68,16 +85,13 @@ export default function GoogleMapLocationPicker({
           </p>
         </div>
         <div className="flex gap-3">
-          <button 
-            onClick={() => {
-              // Show manual input component
-              setShowManualInput(true);
-            }}
+          <button
+            onClick={() => setShowManualInput(true)}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Enter Location Manually
           </button>
-          <button 
+          <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
           >
@@ -88,9 +102,6 @@ export default function GoogleMapLocationPicker({
     );
   }
 
-  const [showManualInput, setShowManualInput] = useState(false);
-
-  // If manual input is shown, render that instead
   if (showManualInput) {
     return <ManualLocationInput onLocationSelect={onLocationSelect} onClose={onClose} />;
   }
