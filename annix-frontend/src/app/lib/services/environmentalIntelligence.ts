@@ -5,13 +5,19 @@
  * No user input required beyond latitude/longitude.
  *
  * Data Sources (in execution order):
- * 1. ISRIC SoilGrids - Soil Type & Soil Texture
- * 2. Agromonitoring - Soil Moisture
- * 3. USDA SSURGO (US) or SoilGrids-derived (non-US) - Soil Drainage
- * 4. OpenWeatherMap - Temperature & Relative Humidity
- * 5. OpenWeatherMap Air Pollution - Industrial Atmospheric Pollution
+ * 1. Coastline Calculation - Distance to Coast, Marine Influence, Air Salt Content, Flood Risk
+ * 2. ISRIC SoilGrids - Soil Type & Soil Texture
+ * 3. Agromonitoring - Soil Moisture
+ * 4. USDA SSURGO (US) or SoilGrids-derived (non-US) - Soil Drainage
+ * 5. OpenWeatherMap - Temperature, Relative Humidity, Time of Wetness (TOW)
+ * 6. OpenWeatherMap Air Pollution - Industrial Atmospheric Pollution
  *
  * Fields Populated:
+ * - Distance to Coast (exact, formatted)
+ * - Marine Influence (detailed ISO-aligned classification)
+ * - Air Salt Content (chloride deposition, ISO 9223 S0-S3)
+ * - Time of Wetness (ISO 9223 T1-T5)
+ * - Flooding / Water Table Risk
  * - Soil Type (WRB classification)
  * - Soil Texture (USDA classification)
  * - Soil Moisture (value + classification)
@@ -45,7 +51,13 @@ import {
   wrbToHumanReadable,
 } from '../api/externalApis';
 
-import { getMarineInfluence } from '../utils/coastlineCalculation';
+import {
+  getMarineEnvironmentalData,
+  type MarineEnvironmentalData,
+  type AirSaltContentResult,
+  type TimeOfWetnessResult,
+  type FloodRiskLevel,
+} from '../utils/coastlineCalculation';
 
 // Types matching the form's GlobalSpecs environmental fields
 export interface EnvironmentalData {
@@ -53,6 +65,14 @@ export interface EnvironmentalData {
   ecpMarineInfluence?: 'None' | 'Coastal' | 'Offshore';
   ecpIso12944Category?: 'C1' | 'C2' | 'C3' | 'C4' | 'C5' | 'CX';
   ecpIndustrialPollution?: 'None' | 'Low' | 'Moderate' | 'High' | 'Very High';
+
+  // Marine & Special Conditions (auto-populated from coastline calculation)
+  distanceToCoast?: number;           // Distance in km
+  distanceToCoastFormatted?: string;  // Formatted string (e.g., "500 m" or "2.50 km")
+  detailedMarineInfluence?: 'Extreme Marine' | 'Severe Marine' | 'High Marine' | 'Moderate Marine' | 'Low / Non-Marine';
+  airSaltContent?: AirSaltContentResult;  // Chloride deposition classification
+  timeOfWetness?: TimeOfWetnessResult;    // TOW classification (ISO 9223)
+  floodRisk?: FloodRiskLevel;             // Flooding / Water Table Risk
 
   // Soil data (auto-populated from APIs)
   soilType?: string;           // WRB classification (human-readable)
@@ -71,6 +91,15 @@ export interface EnvironmentalData {
   humidityMin?: number;        // Minimum relative humidity (%)
   humidityMax?: number;        // Maximum relative humidity (%)
   humidityMean?: number;       // Mean/average relative humidity (%)
+
+  // Additional Atmospheric Conditions (auto-populated from OpenWeatherMap)
+  annualRainfall?: string;     // Rainfall category (<250, 250-500, 500-1000, 1000-2000, >2000)
+  windSpeed?: number;          // Mean wind speed in m/s
+  windDirection?: string;      // Prevailing direction (N, NE, E, SE, S, SW, W, NW)
+  uvIndex?: number;            // UV index value
+  uvExposure?: 'Low' | 'Moderate' | 'High' | 'Very High';
+  snowExposure?: 'None' | 'Low' | 'Moderate' | 'High';
+  fogFrequency?: 'Low' | 'Moderate' | 'High';
 }
 
 export interface EnvironmentalMetadata {
@@ -101,6 +130,7 @@ export interface EnvironmentalMetadata {
     };
     source: string;
   };
+  marineEnvironmental?: MarineEnvironmentalData;
   fetchTimestamp: string;
   dataSources: string[];
 }
@@ -229,11 +259,25 @@ export async function fetchEnvironmentalData(
     dataSources: [],
   };
 
-  // Step 1: Calculate marine influence (local calculation - always succeeds)
-  const marineResult = getMarineInfluence(location.lat, location.lng);
-  data.ecpMarineInfluence = marineResult.influence;
-  metadata.distanceToCoastKm = marineResult.distanceToCoastKm;
+  // Step 1: Calculate marine environmental data (local calculation - always succeeds)
+  // Note: We'll recalculate with humidity/temp after weather data is fetched
+  const initialMarineData = getMarineEnvironmentalData(location.lat, location.lng);
+  data.ecpMarineInfluence = initialMarineData.marineInfluence;
+  data.distanceToCoast = initialMarineData.distanceToCoastKm;
+  data.distanceToCoastFormatted = initialMarineData.distanceToCoastFormatted;
+  data.detailedMarineInfluence = initialMarineData.detailedMarineInfluence;
+  data.airSaltContent = initialMarineData.airSaltContent;
+  data.floodRisk = initialMarineData.floodRisk;
+  metadata.distanceToCoastKm = initialMarineData.distanceToCoastKm;
+  metadata.marineEnvironmental = initialMarineData;
   dataSources.push('Coastline calculation');
+
+  console.log('[Environmental] Step 1 - Marine data calculated:', {
+    distanceToCoast: data.distanceToCoastFormatted,
+    marineInfluence: data.detailedMarineInfluence,
+    airSaltContent: data.airSaltContent?.level,
+    floodRisk: data.floodRisk,
+  });
 
   // Estimate industrial pollution from region/country
   const industrialPollution = estimateIndustrialPollution(
@@ -402,6 +446,29 @@ export async function fetchEnvironmentalData(
       data.humidityMax = weatherData.humidity.max;
       data.humidityMean = weatherData.humidity.mean;
 
+      // Populate additional atmospheric conditions
+      if (weatherData.annualRainfall) {
+        data.annualRainfall = weatherData.annualRainfall;
+      }
+      if (weatherData.windSpeed !== undefined) {
+        data.windSpeed = weatherData.windSpeed;
+      }
+      if (weatherData.windDirection) {
+        data.windDirection = weatherData.windDirection;
+      }
+      if (weatherData.uvIndex !== undefined) {
+        data.uvIndex = weatherData.uvIndex;
+      }
+      if (weatherData.uvExposure) {
+        data.uvExposure = weatherData.uvExposure;
+      }
+      if (weatherData.snowExposure) {
+        data.snowExposure = weatherData.snowExposure;
+      }
+      if (weatherData.fogFrequency) {
+        data.fogFrequency = weatherData.fogFrequency;
+      }
+
       // Update metadata with more accurate humidity
       metadata.humidity = weatherData.humidity.mean;
       metadata.weather = {
@@ -411,6 +478,30 @@ export async function fetchEnvironmentalData(
       };
 
       dataSources.push('OpenWeatherMap');
+
+      console.log('[Environmental] Step 5 - Weather data fetched:', {
+        temp: weatherData.temperature,
+        humidity: weatherData.humidity,
+        windSpeed: weatherData.windSpeed,
+        windDirection: weatherData.windDirection,
+        annualRainfall: weatherData.annualRainfall,
+        uvExposure: weatherData.uvExposure,
+        snowExposure: weatherData.snowExposure,
+        fogFrequency: weatherData.fogFrequency,
+      });
+
+      // Step 5b: Recalculate marine data with humidity/temperature for TOW and enhanced salt content
+      const enhancedMarineData = getMarineEnvironmentalData(
+        location.lat,
+        location.lng,
+        weatherData.humidity.mean,
+        weatherData.temperature.mean
+      );
+      // Update with humidity-enhanced air salt content
+      data.airSaltContent = enhancedMarineData.airSaltContent;
+      // Add Time of Wetness (now available with temp/humidity)
+      data.timeOfWetness = enhancedMarineData.timeOfWetness;
+      metadata.marineEnvironmental = enhancedMarineData;
     }
   } catch (error) {
     console.error('OpenWeatherMap API error:', error);
@@ -467,6 +558,21 @@ export async function fetchEnvironmentalData(
     data.soilMoisture !== undefined &&
     data.soilDrainage !== undefined;
 
+  console.log('[Environmental] Final data to apply:', {
+    fieldsPopulated: Object.keys(data).filter(k => data[k as keyof EnvironmentalData] !== undefined),
+    dataSources,
+    errors,
+    sampleData: {
+      distanceToCoast: data.distanceToCoastFormatted,
+      marineInfluence: data.detailedMarineInfluence,
+      tempMean: data.tempMean,
+      humidityMean: data.humidityMean,
+      windSpeed: data.windSpeed,
+      windDirection: data.windDirection,
+      annualRainfall: data.annualRainfall,
+    }
+  });
+
   return {
     data,
     metadata,
@@ -474,3 +580,6 @@ export async function fetchEnvironmentalData(
     isComplete,
   };
 }
+
+// Re-export marine types for consumers
+export type { AirSaltContentResult, TimeOfWetnessResult, FloodRiskLevel, MarineEnvironmentalData };

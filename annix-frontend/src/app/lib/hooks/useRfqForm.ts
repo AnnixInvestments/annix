@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { CreateStraightPipeRfqDto, StraightPipeCalculationResult } from '@/app/lib/api/client';
+import type { AirSaltContentResult, TimeOfWetnessResult, FloodRiskLevel } from '../services/environmentalIntelligence';
 
 export interface StraightPipeEntry {
   id: string;
@@ -83,11 +84,52 @@ export interface FittingEntry {
 export type PipeItem = StraightPipeEntry | BendEntry | FittingEntry;
 
 export interface GlobalSpecs {
+  // Core pipe specifications
   workingPressureBar?: number;
   workingTemperatureC?: number;
   steelSpecificationId?: number;
   flangeStandardId?: number;
   flangePressureClassId?: number;
+
+  // Environmental Corrosion Protection (ECP) - Location based
+  ecpMarineInfluence?: 'None' | 'Coastal' | 'Offshore';
+  ecpIso12944Category?: 'C1' | 'C2' | 'C3' | 'C4' | 'C5' | 'CX';
+  ecpIndustrialPollution?: 'None' | 'Low' | 'Moderate' | 'High' | 'Very High';
+
+  // Marine & Special Conditions
+  distanceToCoast?: number;
+  distanceToCoastFormatted?: string;
+  detailedMarineInfluence?: 'Extreme Marine' | 'Severe Marine' | 'High Marine' | 'Moderate Marine' | 'Low / Non-Marine';
+  airSaltContent?: AirSaltContentResult;
+  timeOfWetness?: TimeOfWetnessResult;
+  floodRisk?: FloodRiskLevel;
+
+  // Soil data
+  soilType?: string;
+  soilTexture?: string;
+  soilMoisture?: string;
+  soilMoistureClass?: 'Low' | 'Moderate' | 'High';
+  soilDrainage?: string;
+  soilDrainageSource?: string;
+
+  // Temperature data
+  tempMin?: number;
+  tempMax?: number;
+  tempMean?: number;
+
+  // Relative Humidity data
+  humidityMin?: number;
+  humidityMax?: number;
+  humidityMean?: number;
+
+  // Additional Atmospheric Conditions
+  annualRainfall?: string;
+  windSpeed?: number;
+  windDirection?: string;
+  uvIndex?: number;
+  uvExposure?: 'Low' | 'Moderate' | 'High' | 'Very High';
+  snowExposure?: 'None' | 'Low' | 'Moderate' | 'High';
+  fogFrequency?: 'Low' | 'Moderate' | 'High';
 }
 
 export interface RfqFormData {

@@ -602,12 +602,24 @@ export interface OpenWeatherOneCallResponse {
     temp: number;
     humidity: number;
     feels_like: number;
+    wind_speed?: number;
+    wind_deg?: number;
+    uvi?: number;
+    clouds?: number;
+    rain?: { '1h'?: number };
+    snow?: { '1h'?: number };
   };
   hourly?: Array<{
     dt: number;
     temp: number;
     humidity: number;
     feels_like: number;
+    wind_speed?: number;
+    wind_deg?: number;
+    uvi?: number;
+    clouds?: number;
+    rain?: { '1h'?: number };
+    snow?: { '1h'?: number };
   }>;
   daily?: Array<{
     dt: number;
@@ -626,6 +638,12 @@ export interface OpenWeatherOneCallResponse {
       eve: number;
       morn: number;
     };
+    wind_speed?: number;
+    wind_deg?: number;
+    uvi?: number;
+    clouds?: number;
+    rain?: number;
+    snow?: number;
   }>;
 }
 
@@ -640,7 +658,79 @@ export interface WeatherData {
     max: number;
     mean: number;
   };
+  // Wind data
+  windSpeed?: number;              // Mean wind speed in m/s
+  windDirection?: string;          // Prevailing direction (N, NE, E, SE, S, SW, W, NW)
+  windDirectionDegrees?: number;   // Raw degrees for reference
+  // Precipitation data
+  annualRainfall?: string;         // Estimated annual rainfall category
+  dailyRainfall?: number;          // Daily rainfall in mm (for estimation)
+  // UV and solar
+  uvIndex?: number;                // UV index
+  uvExposure?: 'Low' | 'Moderate' | 'High' | 'Very High';
+  // Snow/Ice exposure
+  snowExposure?: 'None' | 'Low' | 'Moderate' | 'High';
+  // Fog/Condensation
+  fogFrequency?: 'Low' | 'Moderate' | 'High';
+  cloudCover?: number;             // Cloud cover percentage
   source: 'OpenWeatherMap';
+}
+
+/**
+ * Convert wind degrees to compass direction
+ */
+function degreesToDirection(degrees: number): string {
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const index = Math.round(degrees / 45) % 8;
+  return directions[index];
+}
+
+/**
+ * Classify UV exposure level based on UV index
+ */
+function classifyUvExposure(uvIndex: number): 'Low' | 'Moderate' | 'High' | 'Very High' {
+  if (uvIndex < 3) return 'Low';
+  if (uvIndex < 6) return 'Moderate';
+  if (uvIndex < 8) return 'High';
+  return 'Very High';
+}
+
+/**
+ * Classify snow exposure based on temperature and snow data
+ */
+function classifySnowExposure(tempMin: number, snowAmount?: number): 'None' | 'Low' | 'Moderate' | 'High' {
+  if (snowAmount && snowAmount > 0) return 'High';
+  if (tempMin <= 0) return 'Moderate';
+  if (tempMin <= 5) return 'Low';
+  return 'None';
+}
+
+/**
+ * Classify fog/condensation frequency based on humidity, cloud cover, and wind
+ */
+function classifyFogFrequency(
+  humidity: number,
+  cloudCover: number,
+  windSpeed: number
+): 'Low' | 'Moderate' | 'High' {
+  // High humidity + high clouds + low wind = more fog
+  const fogScore = (humidity / 100) * 0.5 + (cloudCover / 100) * 0.3 + (1 - Math.min(windSpeed / 10, 1)) * 0.2;
+  if (fogScore > 0.7 && humidity > 80) return 'High';
+  if (fogScore > 0.5 && humidity > 70) return 'Moderate';
+  return 'Low';
+}
+
+/**
+ * Estimate annual rainfall category from daily data
+ */
+function estimateAnnualRainfall(dailyRainfall: number): string {
+  // Rough estimation: multiply daily by 365 and categorize
+  const estimatedAnnual = dailyRainfall * 365;
+  if (estimatedAnnual < 250) return '<250';
+  if (estimatedAnnual < 500) return '250-500';
+  if (estimatedAnnual < 1000) return '500-1000';
+  if (estimatedAnnual < 2000) return '1000-2000';
+  return '>2000';
 }
 
 /**
@@ -711,6 +801,7 @@ async function fetchOpenWeatherMapFallback(
     const data = await response.json();
 
     // Transform standard API response to match One Call structure
+    // Standard API includes: main, wind, clouds, rain, snow, etc.
     return {
       lat: data.coord.lat,
       lon: data.coord.lon,
@@ -720,6 +811,11 @@ async function fetchOpenWeatherMapFallback(
         temp: data.main.temp,
         humidity: data.main.humidity,
         feels_like: data.main.feels_like,
+        wind_speed: data.wind?.speed,
+        wind_deg: data.wind?.deg,
+        clouds: data.clouds?.all,
+        rain: data.rain ? { '1h': data.rain['1h'] || data.rain['3h'] / 3 } : undefined,
+        snow: data.snow ? { '1h': data.snow['1h'] || data.snow['3h'] / 3 } : undefined,
       },
       daily: [{
         dt: data.dt,
@@ -738,6 +834,11 @@ async function fetchOpenWeatherMapFallback(
           eve: data.main.feels_like,
           morn: data.main.feels_like,
         },
+        wind_speed: data.wind?.speed,
+        wind_deg: data.wind?.deg,
+        clouds: data.clouds?.all,
+        rain: data.rain?.['1h'] || (data.rain?.['3h'] ? data.rain['3h'] / 3 : undefined),
+        snow: data.snow?.['1h'] || (data.snow?.['3h'] ? data.snow['3h'] / 3 : undefined),
       }],
     };
   } catch (error) {
@@ -749,7 +850,7 @@ async function fetchOpenWeatherMapFallback(
 }
 
 /**
- * Extract temperature and humidity data from OpenWeatherMap response
+ * Extract comprehensive atmospheric data from OpenWeatherMap response
  */
 export function extractWeatherData(data: OpenWeatherOneCallResponse | null): WeatherData | null {
   if (!data) return null;
@@ -761,6 +862,12 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
     // Calculate humidity min/max from hourly data if available
     let humidityMin = today.humidity;
     let humidityMax = today.humidity;
+    let avgWindSpeed = today.wind_speed ?? 0;
+    let avgWindDeg = today.wind_deg ?? 0;
+    let avgUvi = today.uvi ?? 0;
+    let avgClouds = today.clouds ?? 0;
+    let totalRain = today.rain ?? 0;
+    let totalSnow = today.snow ?? 0;
 
     if (data.hourly && data.hourly.length > 0) {
       // Get first 24 hours of data
@@ -768,36 +875,93 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
       const humidityValues = todayHourly.map(h => h.humidity);
       humidityMin = Math.min(...humidityValues);
       humidityMax = Math.max(...humidityValues);
+
+      // Calculate averages from hourly data
+      const windSpeeds = todayHourly.map(h => h.wind_speed ?? 0);
+      const windDegs = todayHourly.map(h => h.wind_deg ?? 0);
+      const uvis = todayHourly.map(h => h.uvi ?? 0);
+      const clouds = todayHourly.map(h => h.clouds ?? 0);
+
+      avgWindSpeed = windSpeeds.reduce((a, b) => a + b, 0) / windSpeeds.length;
+      avgWindDeg = windDegs.reduce((a, b) => a + b, 0) / windDegs.length;
+      avgUvi = Math.max(...uvis); // Use max UV for the day
+      avgClouds = clouds.reduce((a, b) => a + b, 0) / clouds.length;
+
+      // Sum up rainfall from hourly
+      totalRain = todayHourly.reduce((sum, h) => sum + (h.rain?.['1h'] ?? 0), 0);
+      totalSnow = todayHourly.reduce((sum, h) => sum + (h.snow?.['1h'] ?? 0), 0);
     }
+
+    const tempMin = Math.round(today.temp.min * 10) / 10;
+    const tempMax = Math.round(today.temp.max * 10) / 10;
 
     return {
       temperature: {
-        min: Math.round(today.temp.min * 10) / 10,
-        max: Math.round(today.temp.max * 10) / 10,
-        mean: Math.round(((today.temp.min + today.temp.max) / 2) * 10) / 10,
+        min: tempMin,
+        max: tempMax,
+        mean: Math.round(((tempMin + tempMax) / 2) * 10) / 10,
       },
       humidity: {
         min: humidityMin,
         max: humidityMax,
         mean: today.humidity,
       },
+      // Wind data
+      windSpeed: Math.round(avgWindSpeed * 10) / 10,
+      windDirection: degreesToDirection(avgWindDeg),
+      windDirectionDegrees: Math.round(avgWindDeg),
+      // Precipitation data
+      dailyRainfall: Math.round(totalRain * 10) / 10,
+      annualRainfall: estimateAnnualRainfall(totalRain),
+      // UV and solar
+      uvIndex: Math.round(avgUvi * 10) / 10,
+      uvExposure: classifyUvExposure(avgUvi),
+      // Snow/Ice exposure
+      snowExposure: classifySnowExposure(tempMin, totalSnow),
+      // Fog/Condensation
+      fogFrequency: classifyFogFrequency(today.humidity, avgClouds, avgWindSpeed),
+      cloudCover: Math.round(avgClouds),
       source: 'OpenWeatherMap',
     };
   }
 
   // Fallback to current data if daily not available
   if (data.current) {
+    const temp = data.current.temp;
+    const humidity = data.current.humidity;
+    const windSpeed = data.current.wind_speed ?? 0;
+    const windDeg = data.current.wind_deg ?? 0;
+    const uvi = data.current.uvi ?? 0;
+    const clouds = data.current.clouds ?? 0;
+    const rain = data.current.rain?.['1h'] ?? 0;
+    const snow = data.current.snow?.['1h'] ?? 0;
+
     return {
       temperature: {
-        min: data.current.temp,
-        max: data.current.temp,
-        mean: data.current.temp,
+        min: temp,
+        max: temp,
+        mean: temp,
       },
       humidity: {
-        min: data.current.humidity,
-        max: data.current.humidity,
-        mean: data.current.humidity,
+        min: humidity,
+        max: humidity,
+        mean: humidity,
       },
+      // Wind data
+      windSpeed: Math.round(windSpeed * 10) / 10,
+      windDirection: degreesToDirection(windDeg),
+      windDirectionDegrees: Math.round(windDeg),
+      // Precipitation data
+      dailyRainfall: Math.round(rain * 10) / 10,
+      annualRainfall: estimateAnnualRainfall(rain),
+      // UV and solar
+      uvIndex: Math.round(uvi * 10) / 10,
+      uvExposure: classifyUvExposure(uvi),
+      // Snow/Ice exposure
+      snowExposure: classifySnowExposure(temp, snow),
+      // Fog/Condensation
+      fogFrequency: classifyFogFrequency(humidity, clouds, windSpeed),
+      cloudCover: Math.round(clouds),
       source: 'OpenWeatherMap',
     };
   }
