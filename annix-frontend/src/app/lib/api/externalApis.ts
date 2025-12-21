@@ -90,7 +90,8 @@ export async function fetchSoilGridsTexture(lat: number, lng: number): Promise<S
     );
 
     if (!response.ok) {
-      throw new Error(`SoilGrids API error: ${response.status}`);
+      console.warn(`SoilGrids API error: ${response.status} - Service may be temporarily unavailable`);
+      return null;
     }
 
     return await response.json();
@@ -114,7 +115,8 @@ export async function fetchSoilGridsClassification(lat: number, lng: number): Pr
     );
 
     if (!response.ok) {
-      throw new Error(`SoilGrids Classification API error: ${response.status}`);
+      console.warn(`SoilGrids Classification API error: ${response.status} - Service may be temporarily unavailable`);
+      return null;
     }
 
     return await response.json();
@@ -126,7 +128,7 @@ export async function fetchSoilGridsClassification(lat: number, lng: number): Pr
 /**
  * Extract soil texture percentages from SoilGrids response
  */
-export function extractSoilTexture(data: SoilGridsResponse): {
+export function extractSoilTexture(data: SoilGridsResponse | null): {
   clay: number | null;
   sand: number | null;
   silt: number | null;
@@ -141,7 +143,7 @@ export function extractSoilTexture(data: SoilGridsResponse): {
     organicCarbon: null as number | null,
   };
 
-  if (!data.properties?.layers) {
+  if (!data || !data.properties?.layers) {
     return result;
   }
 
@@ -177,8 +179,8 @@ export function extractSoilTexture(data: SoilGridsResponse): {
 /**
  * Extract WRB soil class from classification response
  */
-export function extractWrbClass(data: SoilGridsClassResponse): string | null {
-  if (!data.properties?.layers?.[0]?.depths?.[0]?.values?.most_probable) {
+export function extractWrbClass(data: SoilGridsClassResponse | null): string | null {
+  if (!data || !data.properties?.layers?.[0]?.depths?.[0]?.values?.most_probable) {
     return null;
   }
   return data.properties.layers[0].depths[0].values.most_probable;

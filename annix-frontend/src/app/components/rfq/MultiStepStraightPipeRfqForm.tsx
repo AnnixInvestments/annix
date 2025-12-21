@@ -543,6 +543,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [mapViewConfig, setMapViewConfig] = useState<'default' | 'responsive' | 'compact'>('responsive');
+  const [showViewDropdown, setShowViewDropdown] = useState(false);
   const hasProjectTypeError = Boolean(errors.projectType);
 
   // Environmental intelligence auto-fill
@@ -814,69 +815,92 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
 
         {/* Project Location */}
         <div className="bg-white rounded-lg p-5 border border-gray-200">
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                Project Location
-              </h4>
-              <button
-                type="button"
-                onClick={() => setShowMapPicker(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
-                Pick on Map
-              </button>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-              <label className="block text-xs font-medium text-gray-700 mb-2">Map View Style</label>
-              <div className="flex gap-2">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Project Location
+            </h4>
+            <div className="relative">
+              <div className="flex items-center shadow-sm rounded-lg overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => setMapViewConfig('default')}
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    mapViewConfig === 'default'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                  }`}
+                  onClick={() => setShowMapPicker(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors text-sm font-medium"
                 >
-                  Desktop
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  Pick on Map
                 </button>
+                <div className="w-px h-6 bg-blue-500"></div>
                 <button
                   type="button"
-                  onClick={() => setMapViewConfig('responsive')}
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    mapViewConfig === 'responsive'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                  }`}
+                  onClick={() => setShowViewDropdown(!showViewDropdown)}
+                  className="px-2 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                 >
-                  Mobile
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMapViewConfig('compact')}
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    mapViewConfig === 'compact'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                  }`}
-                >
-                  Compact
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                {mapViewConfig === 'default' && 'Standard map view with full features'}
-                {mapViewConfig === 'responsive' && 'Optimized for mobile devices with flexible layout'}
-                {mapViewConfig === 'compact' && 'Smaller map view for quick location selection'}
-              </p>
+              {showViewDropdown && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowViewDropdown(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-20 py-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMapViewConfig('default');
+                        setShowViewDropdown(false);
+                        setShowMapPicker(true);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                        mapViewConfig === 'default'
+                          ? 'bg-blue-50 text-blue-700 font-medium'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Desktop
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMapViewConfig('responsive');
+                        setShowViewDropdown(false);
+                        setShowMapPicker(true);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                        mapViewConfig === 'responsive'
+                          ? 'bg-blue-50 text-blue-700 font-medium'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Mobile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMapViewConfig('compact');
+                        setShowViewDropdown(false);
+                        setShowMapPicker(true);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                        mapViewConfig === 'compact'
+                          ? 'bg-blue-50 text-blue-700 font-medium'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Compact
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
