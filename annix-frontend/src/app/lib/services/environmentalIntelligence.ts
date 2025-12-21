@@ -8,12 +8,15 @@
  * 1. ISRIC SoilGrids - Soil Type & Soil Texture
  * 2. Agromonitoring - Soil Moisture
  * 3. USDA SSURGO (US) or SoilGrids-derived (non-US) - Soil Drainage
+ * 4. OpenWeatherMap - Temperature & Relative Humidity
  *
  * Fields Populated:
  * - Soil Type (WRB classification)
  * - Soil Texture (USDA classification)
  * - Soil Moisture (value + classification)
  * - Soil Drainage / Drainage Class
+ * - Temperature (min, max, mean)
+ * - Relative Humidity (min, max, mean)
  *
  * NOT Populated (per requirements):
  * - Soil Resistivity
@@ -26,10 +29,12 @@ import {
   fetchAgromonitoringSoilMoisture,
   fetchSsurgoDrainage,
   fetchOpenMeteoData,
+  fetchOpenWeatherMapData,
   extractSoilTexture,
   extractWrbClass,
   extractHumidity,
   extractSoilMoistureFromOpenMeteo,
+  extractWeatherData,
   classifyUsdaSoilTexture,
   classifySoilMoisture,
   deriveDrainageFromSoilGrids,
@@ -52,6 +57,16 @@ export interface EnvironmentalData {
   soilMoistureClass?: 'Low' | 'Moderate' | 'High';
   soilDrainage?: string;       // Drainage class description
   soilDrainageSource?: string; // 'USDA SSURGO' or 'model-derived'
+
+  // Temperature data (auto-populated from OpenWeatherMap)
+  tempMin?: number;            // Minimum temperature (°C)
+  tempMax?: number;            // Maximum temperature (°C)
+  tempMean?: number;           // Mean/average temperature (°C)
+
+  // Relative Humidity data (auto-populated from OpenWeatherMap)
+  humidityMin?: number;        // Minimum relative humidity (%)
+  humidityMax?: number;        // Maximum relative humidity (%)
+  humidityMean?: number;       // Mean/average relative humidity (%)
 }
 
 export interface EnvironmentalMetadata {
@@ -66,6 +81,11 @@ export interface EnvironmentalMetadata {
     organicCarbon: number | null;
   };
   wrbClass?: string;
+  weather?: {
+    temperature: { min: number; max: number; mean: number };
+    humidity: { min: number; max: number; mean: number };
+    source: string;
+  };
   fetchTimestamp: string;
   dataSources: string[];
 }
@@ -351,17 +371,48 @@ export async function fetchEnvironmentalData(
     }
   }
 
-  // Step 5: Calculate ISO 12944 category (composite of multiple factors)
+  // Step 5: Query OpenWeatherMap for Temperature & Humidity
+  try {
+    const weatherResponse = await fetchOpenWeatherMapData(location.lat, location.lng);
+    const weatherData = extractWeatherData(weatherResponse);
+
+    if (weatherData) {
+      // Populate temperature fields
+      data.tempMin = weatherData.temperature.min;
+      data.tempMax = weatherData.temperature.max;
+      data.tempMean = weatherData.temperature.mean;
+
+      // Populate humidity fields
+      data.humidityMin = weatherData.humidity.min;
+      data.humidityMax = weatherData.humidity.max;
+      data.humidityMean = weatherData.humidity.mean;
+
+      // Update metadata with more accurate humidity
+      metadata.humidity = weatherData.humidity.mean;
+      metadata.weather = {
+        temperature: weatherData.temperature,
+        humidity: weatherData.humidity,
+        source: weatherData.source,
+      };
+
+      dataSources.push('OpenWeatherMap');
+    }
+  } catch (error) {
+    console.error('OpenWeatherMap API error:', error);
+    errors.push('Temperature and humidity data unavailable');
+  }
+
+  // Step 6: Calculate ISO 12944 category (composite of multiple factors)
   data.ecpIso12944Category = classifyIso12944(
     data.ecpMarineInfluence || 'None',
     metadata.humidity ?? null,
     industrialPollution
   );
 
-  // Step 6: Finalize metadata
+  // Step 7: Finalize metadata
   metadata.dataSources = dataSources;
 
-  // Determine if we got complete data
+  // Determine if we got complete data (temperature/humidity are optional)
   const isComplete = errors.length === 0 &&
     data.soilType !== undefined &&
     data.soilTexture !== undefined &&

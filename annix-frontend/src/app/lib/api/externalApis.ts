@@ -6,6 +6,7 @@
  * - Agromonitoring: Soil Moisture (requires API key)
  * - USDA SSURGO: Soil Drainage (US only, no API key)
  * - Open-Meteo: Weather/humidity data (Global, no API key)
+ * - OpenWeatherMap: Temperature & Humidity (Global, requires API key)
  */
 
 // API Base URLs
@@ -13,9 +14,11 @@ const SOILGRIDS_BASE = 'https://rest.isric.org/soilgrids/v2.0';
 const AGROMONITORING_BASE = 'https://api.agromonitoring.com/agro/1.0';
 const SSURGO_BASE = 'https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest';
 const OPEN_METEO_BASE = 'https://api.open-meteo.com/v1';
+const OPENWEATHER_BASE = 'https://api.openweathermap.org/data/2.5';
 
-// Get API key from environment
+// Get API keys from environment
 const AGROMONITORING_API_KEY = process.env.NEXT_PUBLIC_AGROMONITORING_API_KEY || '';
+const OPENWEATHER_API_KEY = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || '';
 
 // ============================================================================
 // ISRIC SoilGrids API - Soil Type & Texture
@@ -584,4 +587,220 @@ export function wrbToHumanReadable(wrbClass: string | null): string {
 
   // Return cleaned up version of the original
   return wrbClass.replace(/s$/, '').replace(/_/g, ' ');
+}
+
+// ============================================================================
+// OpenWeatherMap API - Temperature & Humidity
+// ============================================================================
+
+export interface OpenWeatherOneCallResponse {
+  lat: number;
+  lon: number;
+  timezone: string;
+  current?: {
+    dt: number;
+    temp: number;
+    humidity: number;
+    feels_like: number;
+  };
+  hourly?: Array<{
+    dt: number;
+    temp: number;
+    humidity: number;
+    feels_like: number;
+  }>;
+  daily?: Array<{
+    dt: number;
+    temp: {
+      day: number;
+      min: number;
+      max: number;
+      night: number;
+      eve: number;
+      morn: number;
+    };
+    humidity: number;
+    feels_like: {
+      day: number;
+      night: number;
+      eve: number;
+      morn: number;
+    };
+  }>;
+}
+
+export interface WeatherData {
+  temperature: {
+    min: number;
+    max: number;
+    mean: number;
+  };
+  humidity: {
+    min: number;
+    max: number;
+    mean: number;
+  };
+  source: 'OpenWeatherMap';
+}
+
+/**
+ * Fetch weather data from OpenWeatherMap One Call API
+ * Returns temperature and humidity data for auto-population
+ */
+export async function fetchOpenWeatherMapData(
+  lat: number,
+  lng: number
+): Promise<OpenWeatherOneCallResponse | null> {
+  if (!OPENWEATHER_API_KEY) {
+    console.warn('OpenWeatherMap API key not configured');
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    // Use One Call API 3.0 for comprehensive weather data
+    const response = await fetch(
+      `${OPENWEATHER_BASE}/onecall?` +
+      `lat=${lat}&lon=${lng}` +
+      `&exclude=alerts,minutely` +
+      `&units=metric` +
+      `&appid=${OPENWEATHER_API_KEY}`,
+      { signal: controller.signal }
+    );
+
+    if (!response.ok) {
+      // Fall back to free tier API if One Call fails
+      console.warn('OpenWeatherMap One Call API failed, trying standard API');
+      return await fetchOpenWeatherMapFallback(lat, lng);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('OpenWeatherMap API error:', error);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Fallback to standard OpenWeatherMap API (free tier)
+ */
+async function fetchOpenWeatherMapFallback(
+  lat: number,
+  lng: number
+): Promise<OpenWeatherOneCallResponse | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(
+      `${OPENWEATHER_BASE}/weather?` +
+      `lat=${lat}&lon=${lng}` +
+      `&units=metric` +
+      `&appid=${OPENWEATHER_API_KEY}`,
+      { signal: controller.signal }
+    );
+
+    if (!response.ok) {
+      throw new Error(`OpenWeatherMap API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Transform standard API response to match One Call structure
+    return {
+      lat: data.coord.lat,
+      lon: data.coord.lon,
+      timezone: 'UTC',
+      current: {
+        dt: data.dt,
+        temp: data.main.temp,
+        humidity: data.main.humidity,
+        feels_like: data.main.feels_like,
+      },
+      daily: [{
+        dt: data.dt,
+        temp: {
+          day: data.main.temp,
+          min: data.main.temp_min,
+          max: data.main.temp_max,
+          night: data.main.temp,
+          eve: data.main.temp,
+          morn: data.main.temp,
+        },
+        humidity: data.main.humidity,
+        feels_like: {
+          day: data.main.feels_like,
+          night: data.main.feels_like,
+          eve: data.main.feels_like,
+          morn: data.main.feels_like,
+        },
+      }],
+    };
+  } catch (error) {
+    console.error('OpenWeatherMap fallback API error:', error);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Extract temperature and humidity data from OpenWeatherMap response
+ */
+export function extractWeatherData(data: OpenWeatherOneCallResponse | null): WeatherData | null {
+  if (!data) return null;
+
+  // Try to use daily data first (most accurate for min/max)
+  if (data.daily && data.daily.length > 0) {
+    const today = data.daily[0];
+
+    // Calculate humidity min/max from hourly data if available
+    let humidityMin = today.humidity;
+    let humidityMax = today.humidity;
+
+    if (data.hourly && data.hourly.length > 0) {
+      // Get first 24 hours of data
+      const todayHourly = data.hourly.slice(0, 24);
+      const humidityValues = todayHourly.map(h => h.humidity);
+      humidityMin = Math.min(...humidityValues);
+      humidityMax = Math.max(...humidityValues);
+    }
+
+    return {
+      temperature: {
+        min: Math.round(today.temp.min * 10) / 10,
+        max: Math.round(today.temp.max * 10) / 10,
+        mean: Math.round(((today.temp.min + today.temp.max) / 2) * 10) / 10,
+      },
+      humidity: {
+        min: humidityMin,
+        max: humidityMax,
+        mean: today.humidity,
+      },
+      source: 'OpenWeatherMap',
+    };
+  }
+
+  // Fallback to current data if daily not available
+  if (data.current) {
+    return {
+      temperature: {
+        min: data.current.temp,
+        max: data.current.temp,
+        mean: data.current.temp,
+      },
+      humidity: {
+        min: data.current.humidity,
+        max: data.current.humidity,
+        mean: data.current.humidity,
+      },
+      source: 'OpenWeatherMap',
+    };
+  }
+
+  return null;
 }

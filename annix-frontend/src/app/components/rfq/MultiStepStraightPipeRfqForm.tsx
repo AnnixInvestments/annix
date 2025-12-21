@@ -1222,82 +1222,115 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 </div>
               </div>
 
-              {/* Atmospheric Conditions */}
+              {/* Atmospheric Conditions - Auto-populated from OpenWeatherMap */}
               <div className="mb-6">
-                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2">Atmospheric Conditions</h5>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Min Temperature (°C)
-                    </label>
-                    <input
-                      type="number"
-                      value={rfqData.tempMin ?? ''}
-                      onChange={(e) => onUpdate('tempMin', e.target.value ? Number(e.target.value) : undefined)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      placeholder="e.g., -5"
-                    />
+                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2 flex items-center gap-2">
+                  Atmospheric Conditions
+                  {(globalSpecs?.tempMin !== undefined || globalSpecs?.humidityMean !== undefined) && (
+                    <span className="text-xs font-normal text-green-600 bg-green-50 px-2 py-0.5 rounded">Auto-filled</span>
+                  )}
+                </h5>
+
+                {/* Temperature */}
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Temperature (°C)</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Minimum</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={globalSpecs?.tempMin ?? rfqData.tempMin ?? ''}
+                        onChange={(e) => onUpdate('tempMin', e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        placeholder="e.g., -5"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Mean</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={globalSpecs?.tempMean ?? rfqData.tempMean ?? ''}
+                        onChange={(e) => onUpdate('tempMean', e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        placeholder="e.g., 18"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Maximum</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={globalSpecs?.tempMax ?? rfqData.tempMax ?? ''}
+                        onChange={(e) => onUpdate('tempMax', e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        placeholder="e.g., 38"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Mean Temperature (°C)
-                    </label>
-                    <input
-                      type="number"
-                      value={rfqData.tempMean ?? ''}
-                      onChange={(e) => onUpdate('tempMean', e.target.value ? Number(e.target.value) : undefined)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      placeholder="e.g., 18"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Max Temperature (°C)
-                    </label>
-                    <input
-                      type="number"
-                      value={rfqData.tempMax ?? ''}
-                      onChange={(e) => onUpdate('tempMax', e.target.value ? Number(e.target.value) : undefined)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      placeholder="e.g., 38"
-                    />
-                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Auto-populated from OpenWeatherMap based on location
+                  </p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Relative Humidity (%)
-                    </label>
-                    <select
-                      value={rfqData.humidity || ''}
-                      onChange={(e) => onUpdate('humidity', e.target.value || undefined)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    >
-                      <option value="">Select humidity range...</option>
-                      <option value="<30">&lt;30% (Arid)</option>
-                      <option value="30-50">30-50% (Low)</option>
-                      <option value="50-70">50-70% (Moderate)</option>
-                      <option value="70-80">70-80% (High)</option>
-                      <option value=">80">&gt;80% (Very High)</option>
-                    </select>
+
+                {/* Relative Humidity */}
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Relative Humidity (%)</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Minimum</label>
+                      <input
+                        type="number"
+                        value={globalSpecs?.humidityMin ?? ''}
+                        onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMin: e.target.value ? Number(e.target.value) : undefined })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        placeholder="e.g., 40"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Mean</label>
+                      <input
+                        type="number"
+                        value={globalSpecs?.humidityMean ?? ''}
+                        onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMean: e.target.value ? Number(e.target.value) : undefined })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        placeholder="e.g., 65"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Maximum</label>
+                      <input
+                        type="number"
+                        value={globalSpecs?.humidityMax ?? ''}
+                        onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMax: e.target.value ? Number(e.target.value) : undefined })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        placeholder="e.g., 85"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Annual Rainfall
-                    </label>
-                    <select
-                      value={rfqData.rainfall || ''}
-                      onChange={(e) => onUpdate('rainfall', e.target.value || undefined)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    >
-                      <option value="">Select rainfall level...</option>
-                      <option value="<250">&lt;250mm (Arid)</option>
-                      <option value="250-500">250-500mm (Semi-Arid)</option>
-                      <option value="500-1000">500-1000mm (Moderate)</option>
-                      <option value="1000-2000">1000-2000mm (High)</option>
-                      <option value=">2000">&gt;2000mm (Very High)</option>
-                    </select>
-                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Auto-populated from OpenWeatherMap based on location
+                  </p>
+                </div>
+
+                {/* Annual Rainfall (manual) */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Annual Rainfall
+                  </label>
+                  <select
+                    value={rfqData.rainfall || ''}
+                    onChange={(e) => onUpdate('rainfall', e.target.value || undefined)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="">Select rainfall level...</option>
+                    <option value="<250">&lt;250mm (Arid)</option>
+                    <option value="250-500">250-500mm (Semi-Arid)</option>
+                    <option value="500-1000">500-1000mm (Moderate)</option>
+                    <option value="1000-2000">1000-2000mm (High)</option>
+                    <option value=">2000">&gt;2000mm (Very High)</option>
+                  </select>
                 </div>
               </div>
 
