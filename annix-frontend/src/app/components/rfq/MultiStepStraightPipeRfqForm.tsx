@@ -546,6 +546,21 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
   const [showViewDropdown, setShowViewDropdown] = useState(false);
   const hasProjectTypeError = Boolean(errors.projectType);
 
+  // Track which location fields were auto-filled from the map picker
+  const [locationAutoFilled, setLocationAutoFilled] = useState<{
+    latitude: boolean;
+    longitude: boolean;
+    siteAddress: boolean;
+    region: boolean;
+    country: boolean;
+  }>({
+    latitude: false,
+    longitude: false,
+    siteAddress: false,
+    region: false,
+    country: false,
+  });
+
   // Environmental intelligence auto-fill
   const {
     isLoading: isLoadingEnvironmental,
@@ -561,20 +576,35 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
     location: { lat: number; lng: number },
     addressComponents?: { address: string; region: string; country: string }
   ) => {
-    // Update location fields
+    // Update location fields and mark as auto-filled
     onUpdate("latitude", location.lat);
     onUpdate("longitude", location.lng);
+
+    // Track which fields are being auto-filled
+    const newAutoFilled = {
+      latitude: true,
+      longitude: true,
+      siteAddress: false,
+      region: false,
+      country: false,
+    };
+
     if (addressComponents) {
       if (addressComponents.address) {
         onUpdate("siteAddress", addressComponents.address);
+        newAutoFilled.siteAddress = true;
       }
       if (addressComponents.region) {
         onUpdate("region", addressComponents.region);
+        newAutoFilled.region = true;
       }
       if (addressComponents.country) {
         onUpdate("country", addressComponents.country);
+        newAutoFilled.country = true;
       }
     }
+
+    setLocationAutoFilled(newAutoFilled);
     setShowMapPicker(false);
 
     // Fetch environmental data and auto-fill fields
@@ -909,28 +939,32 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Latitude
               </label>
-              <input
+              <AutoFilledInput
                 type="number"
                 step="0.00001"
-                value={rfqData.latitude || ''}
-                onChange={(e) => onUpdate('latitude', e.target.value ? parseFloat(e.target.value) : undefined)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                value={rfqData.latitude}
+                onChange={(val) => onUpdate('latitude', val)}
+                onOverride={() => setLocationAutoFilled(prev => ({ ...prev, latitude: false }))}
+                isAutoFilled={locationAutoFilled.latitude}
                 placeholder="-26.20227 (≥5 decimal places)"
               />
-              <p className="mt-1 text-xs text-gray-500">
-                Precision required for environmental analysis
-              </p>
+              {!locationAutoFilled.latitude && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Precision required for environmental analysis
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Longitude
               </label>
-              <input
+              <AutoFilledInput
                 type="number"
                 step="0.00001"
-                value={rfqData.longitude || ''}
-                onChange={(e) => onUpdate('longitude', e.target.value ? parseFloat(e.target.value) : undefined)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                value={rfqData.longitude}
+                onChange={(val) => onUpdate('longitude', val)}
+                onOverride={() => setLocationAutoFilled(prev => ({ ...prev, longitude: false }))}
+                isAutoFilled={locationAutoFilled.longitude}
                 placeholder="28.04363 (≥5 decimal places)"
               />
             </div>
@@ -940,11 +974,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
             <label className="block text-sm font-semibold text-gray-900 mb-2">
               Site Address / Location Description
             </label>
-            <input
+            <AutoFilledInput
               type="text"
-              value={rfqData.siteAddress || ''}
-              onChange={(e) => onUpdate('siteAddress', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              value={rfqData.siteAddress}
+              onChange={(val) => onUpdate('siteAddress', val)}
+              onOverride={() => setLocationAutoFilled(prev => ({ ...prev, siteAddress: false }))}
+              isAutoFilled={locationAutoFilled.siteAddress}
               placeholder="e.g., Secunda Refinery, Mpumalanga, South Africa"
             />
           </div>
@@ -954,11 +989,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Region / Province
               </label>
-              <input
+              <AutoFilledInput
                 type="text"
-                value={rfqData.region || ''}
-                onChange={(e) => onUpdate('region', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                value={rfqData.region}
+                onChange={(val) => onUpdate('region', val)}
+                onOverride={() => setLocationAutoFilled(prev => ({ ...prev, region: false }))}
+                isAutoFilled={locationAutoFilled.region}
                 placeholder="e.g., Gauteng, Western Cape"
               />
             </div>
@@ -966,11 +1002,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Country
               </label>
-              <input
+              <AutoFilledInput
                 type="text"
-                value={rfqData.country || ''}
-                onChange={(e) => onUpdate('country', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                value={rfqData.country}
+                onChange={(val) => onUpdate('country', val)}
+                onOverride={() => setLocationAutoFilled(prev => ({ ...prev, country: false }))}
+                isAutoFilled={locationAutoFilled.country}
                 placeholder="e.g., South Africa"
               />
             </div>
@@ -1612,8 +1649,8 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               </div>
             </div>
 
-            {/* Coating System Recommendations */}
-            <div className="bg-white rounded-lg p-5 mb-4 border border-gray-200">
+            {/* Coating System Recommendations - Hidden for now, will be shown on a different page */}
+            <div className="hidden bg-white rounded-lg p-5 mb-4 border border-gray-200">
               <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />

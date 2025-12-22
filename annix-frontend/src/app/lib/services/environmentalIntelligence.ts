@@ -293,29 +293,23 @@ export async function fetchEnvironmentalData(
     addressInfo?.region,
     addressInfo?.country
   );
-  data.ecpIndustrialPollution = industrialPollution;
+  // Map the heuristic values to the expected EnvironmentalData type
+  // 'Heavy' maps to 'High' since the form uses a different scale
+  data.ecpIndustrialPollution = industrialPollution === 'Heavy' ? 'High' : industrialPollution;
 
   // Step 2: Query SoilGrids for Soil Type and Texture
   let soilTextureData: ReturnType<typeof extractSoilTexture> | null = null;
 
-  try {
-    const [textureResponse, classResponse] = await Promise.all([
-      fetchSoilGridsTexture(location.lat, location.lng),
-      fetchSoilGridsClassification(location.lat, location.lng),
-    ]);
+  // Fetch both endpoints in parallel - these now return null on error instead of throwing
+  const [textureResponse, classResponse] = await Promise.all([
+    fetchSoilGridsTexture(location.lat, location.lng),
+    fetchSoilGridsClassification(location.lat, location.lng),
+  ]);
 
-    // Extract soil texture
+  // Process texture response if available
+  if (textureResponse) {
     soilTextureData = extractSoilTexture(textureResponse);
     metadata.soilTexture = soilTextureData;
-
-    // Get WRB classification for Soil Type
-    const wrbClass = extractWrbClass(classResponse);
-    metadata.wrbClass = wrbClass || undefined;
-
-    if (wrbClass) {
-      data.soilType = wrbToHumanReadable(wrbClass);
-      dataSources.push('ISRIC SoilGrids');
-    }
 
     // Determine USDA Soil Texture
     if (soilTextureData.clay !== null &&
@@ -326,10 +320,30 @@ export async function fetchEnvironmentalData(
         soilTextureData.sand,
         soilTextureData.silt
       );
+      dataSources.push('ISRIC SoilGrids');
     }
-  } catch (error) {
-    console.error('SoilGrids API error:', error);
+  }
+
+  // Process classification response if available
+  if (classResponse) {
+    const wrbClass = extractWrbClass(classResponse);
+    metadata.wrbClass = wrbClass || undefined;
+
+    if (wrbClass) {
+      data.soilType = wrbToHumanReadable(wrbClass);
+      if (!dataSources.includes('ISRIC SoilGrids')) {
+        dataSources.push('ISRIC SoilGrids');
+      }
+    }
+  }
+
+  // Add error message if neither API returned data
+  if (!textureResponse && !classResponse) {
     errors.push('Soil type and texture data unavailable');
+  } else if (!classResponse) {
+    errors.push('Soil classification unavailable');
+  } else if (!textureResponse) {
+    errors.push('Soil texture data unavailable');
   }
 
   // Step 3: Query Agromonitoring for Soil Moisture

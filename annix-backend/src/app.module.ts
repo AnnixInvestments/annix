@@ -36,6 +36,8 @@ import { AuditModule } from './audit/audit.module';
 import { DrawingsModule } from './drawings/drawings.module';
 import { BoqModule } from './boq/boq.module';
 import { WorkflowModule } from './workflow/workflow.module';
+import { CustomerModule } from './customer/customer.module';
+import { PublicModule } from './public/public.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -73,6 +75,8 @@ import typeormConfig from './config/typeorm';
     DrawingsModule,
     BoqModule,
     WorkflowModule,
+    CustomerModule,
+    PublicModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 
 export default function Navigation() {
   const router = useRouter();
@@ -28,11 +29,11 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
-            <div className="flex-shrink-0">
+            <Link href="/" className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity">
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Annix RFQ
               </h1>
-            </div>
+            </Link>
             <div className="flex gap-2">
               {navItems.map((item) => (
                 <button

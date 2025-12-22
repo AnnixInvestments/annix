@@ -51,11 +51,17 @@ export default function GoogleMapLocationPicker({
   config
 }: GoogleMapLocationPickerProps) {
   const displayConfig = resolveConfig(config);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualLat, setManualLat] = useState(initialLocation?.lat?.toString() || "");
+  const [manualLng, setManualLng] = useState(initialLocation?.lng?.toString() || "");
+
+  // Check if API key is missing or empty
+  const isApiKeyMissing = !apiKey || apiKey.trim() === "";
 
   const [showManualInput, setShowManualInput] = useState(false);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: apiKey,
+    googleMapsApiKey: apiKey || "placeholder", // Prevent hook error with placeholder
     libraries
   });
 
@@ -246,6 +252,125 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
     }
   }, [initialLocation, isLoaded, reverseGeocode]);
 
+  const handleManualLocationSubmit = useCallback(() => {
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      alert("Please enter valid latitude and longitude values.");
+      return;
+    }
+
+    if (lat < -90 || lat > 90) {
+      alert("Latitude must be between -90 and 90.");
+      return;
+    }
+
+    if (lng < -180 || lng > 180) {
+      alert("Longitude must be between -180 and 180.");
+      return;
+    }
+
+    const location: Location = { lat, lng };
+    onLocationSelect(location, undefined);
+  }, [manualLat, manualLng, onLocationSelect]);
+
+  // Show manual entry form when requested or when API key is missing
+  if (showManualEntry || isApiKeyMissing) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {isApiKeyMissing ? "Google Maps Configuration Required" : "Enter Location Manually"}
+            </h3>
+            {isApiKeyMissing && (
+              <p className="text-sm text-red-600 mt-1">
+                A valid Google Maps API key is required to use the map feature. Please configure <code className="bg-red-100 px-1 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> in your environment variables.
+              </p>
+            )}
+          </div>
+
+          <div className="p-5">
+            <p className="text-sm text-gray-600 mb-4">
+              Enter the latitude and longitude coordinates for your project location.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Latitude *
+                </label>
+                <input
+                  type="number"
+                  step="0.00001"
+                  value={manualLat}
+                  onChange={(e) => setManualLat(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="-26.20227"
+                />
+                <p className="text-xs text-gray-500 mt-1">Range: -90 to 90</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Longitude *
+                </label>
+                <input
+                  type="number"
+                  step="0.00001"
+                  value={manualLng}
+                  onChange={(e) => setManualLng(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="28.04363"
+                />
+                <p className="text-xs text-gray-500 mt-1">Range: -180 to 180</p>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 rounded-lg p-3 mt-4 border border-blue-200">
+              <p className="text-xs text-blue-700">
+                <strong>Tip:</strong> You can find coordinates by searching for your location on{" "}
+                <a
+                  href="https://www.google.com/maps"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-blue-900"
+                >
+                  Google Maps
+                </a>
+                {" "}and right-clicking on the map to copy the coordinates.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleManualLocationSubmit}
+              disabled={!manualLat || !manualLng}
+              className={`px-5 py-2 rounded-lg font-medium flex items-center gap-2 ${
+                manualLat && manualLng
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Confirm Location
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loadError) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -259,9 +384,9 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
           </ul>
           <div className="bg-blue-50 p-3 rounded mb-4">
             <p className="text-blue-700 text-sm">
-              <strong>To fix:</strong> Get a valid API key from 
-              <a href="https://console.cloud.google.com/google/maps-apis/overview" 
-                 target="_blank" rel="noopener noreferrer" 
+              <strong>To fix:</strong> Get a valid API key from
+              <a href="https://console.cloud.google.com/google/maps-apis/overview"
+                 target="_blank" rel="noopener noreferrer"
                  className="text-blue-600 underline">Google Cloud Console</a>
               and ensure these APIs are enabled:
             </p>
@@ -271,12 +396,20 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
               <li>Geocoding API</li>
             </ul>
           </div>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-          >
-            Close
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowManualInput(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Enter Manually
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     );

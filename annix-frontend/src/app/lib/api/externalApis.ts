@@ -75,8 +75,9 @@ export interface SoilGridsClassResponse {
 /**
  * Fetch soil texture data from SoilGrids API (clay, sand, silt, bulk density, organic carbon)
  * Uses 0-5cm depth layer as specified
+ * Returns null if the API is unavailable (graceful degradation)
  */
-export async function fetchSoilGridsTexture(lat: number, lng: number): Promise<SoilGridsResponse> {
+export async function fetchSoilGridsTexture(lat: number, lng: number): Promise<SoilGridsResponse | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -95,6 +96,9 @@ export async function fetchSoilGridsTexture(lat: number, lng: number): Promise<S
     }
 
     return await response.json();
+  } catch (error) {
+    console.warn('SoilGrids Texture API error:', error);
+    return null;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -102,8 +106,9 @@ export async function fetchSoilGridsTexture(lat: number, lng: number): Promise<S
 
 /**
  * Fetch WRB soil classification from SoilGrids
+ * Returns null if the API is unavailable (graceful degradation)
  */
-export async function fetchSoilGridsClassification(lat: number, lng: number): Promise<SoilGridsClassResponse> {
+export async function fetchSoilGridsClassification(lat: number, lng: number): Promise<SoilGridsClassResponse | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -120,6 +125,9 @@ export async function fetchSoilGridsClassification(lat: number, lng: number): Pr
     }
 
     return await response.json();
+  } catch (error) {
+    console.warn('SoilGrids Classification API error:', error);
+    return null;
   } finally {
     clearTimeout(timeoutId);
   }
