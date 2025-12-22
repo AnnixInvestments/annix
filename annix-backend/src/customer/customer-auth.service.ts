@@ -140,7 +140,7 @@ export class CustomerAuthService {
       const deviceBinding = this.deviceBindingRepo.create({
         customerProfileId: savedProfile.id,
         deviceFingerprint: dto.security.deviceFingerprint,
-        registeredIp: dto.security.ipAddress || clientIp,
+        registeredIp: clientIp,
         browserInfo: dto.security.browserInfo,
         isPrimary: true,
         isActive: true,

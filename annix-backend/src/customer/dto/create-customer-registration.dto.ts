@@ -161,11 +161,6 @@ export class DeviceBindingDto {
   @IsNotEmpty()
   deviceFingerprint: string;
 
-  @ApiProperty({ description: 'Client IP address', example: '196.21.45.67' })
-  @IsString()
-  @IsNotEmpty()
-  ipAddress: string;
-
   @ApiPropertyOptional({ description: 'Browser and device information' })
   @IsObject()
   @IsOptional()

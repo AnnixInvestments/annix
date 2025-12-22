@@ -1,46 +1,55 @@
 import { API_BASE_URL } from '@/lib/api-config';
 import { getStoredFingerprint } from '@/app/hooks/useDeviceFingerprint';
 
-// Types for customer portal
+// Types for customer portal - must match backend DTOs
+
+// CompanyDetailsDto from backend
 export interface CustomerCompanyDto {
   legalName: string;
   tradingName?: string;
   registrationNumber: string;
   vatNumber?: string;
   industry?: string;
-  companySize?: 'MICRO' | 'SMALL' | 'MEDIUM' | 'LARGE' | 'ENTERPRISE';
+  companySize?: 'micro' | 'small' | 'medium' | 'large' | 'enterprise'; // lowercase to match backend
   streetAddress: string;
   city: string;
   provinceState: string;
   postalCode: string;
-  country: string;
+  country?: string;
   primaryPhone: string;
   faxNumber?: string;
   generalEmail?: string;
   website?: string;
 }
 
-export interface CustomerProfileDto {
+// UserDetailsDto from backend - includes email and password
+export interface CustomerUserDto {
   firstName: string;
   lastName: string;
   jobTitle?: string;
+  email: string;
+  password: string;
   directPhone?: string;
   mobilePhone?: string;
 }
 
+// DeviceBindingDto from backend
 export interface CustomerSecurityDto {
-  email: string;
-  password: string;
   deviceFingerprint: string;
-  browserInfo: Record<string, any>;
+  browserInfo?: Record<string, any>;
   termsAccepted: boolean;
+  securityPolicyAccepted: boolean;
 }
 
+// CreateCustomerRegistrationDto from backend
 export interface CustomerRegistrationDto {
   company: CustomerCompanyDto;
-  profile: CustomerProfileDto;
+  user: CustomerUserDto;
   security: CustomerSecurityDto;
 }
+
+// Legacy type aliases for compatibility
+export type CustomerProfileDto = Omit<CustomerUserDto, 'email' | 'password'>;
 
 export interface CustomerLoginDto {
   email: string;

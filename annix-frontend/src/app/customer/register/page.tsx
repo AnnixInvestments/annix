@@ -7,19 +7,18 @@ import { useDeviceFingerprint } from '@/app/hooks/useDeviceFingerprint';
 import {
   customerAuthApi,
   CustomerCompanyDto,
-  CustomerProfileDto,
-  CustomerSecurityDto,
+  CustomerUserDto,
   CustomerRegistrationDto,
 } from '@/app/lib/api/customerApi';
 
 type Step = 'company' | 'profile' | 'security' | 'complete';
 
 const COMPANY_SIZE_OPTIONS = [
-  { value: 'MICRO', label: 'Micro (1-9 employees)' },
-  { value: 'SMALL', label: 'Small (10-49 employees)' },
-  { value: 'MEDIUM', label: 'Medium (50-249 employees)' },
-  { value: 'LARGE', label: 'Large (250-999 employees)' },
-  { value: 'ENTERPRISE', label: 'Enterprise (1000+ employees)' },
+  { value: 'micro', label: 'Micro (1-9 employees)' },
+  { value: 'small', label: 'Small (10-49 employees)' },
+  { value: 'medium', label: 'Medium (50-249 employees)' },
+  { value: 'large', label: 'Large (250-999 employees)' },
+  { value: 'enterprise', label: 'Enterprise (1000+ employees)' },
 ];
 
 const INDUSTRY_OPTIONS = [
@@ -47,20 +46,18 @@ export default function CustomerRegistrationPage() {
     country: 'South Africa',
   });
 
-  // Profile data
-  const [profile, setProfile] = useState<Partial<CustomerProfileDto>>({});
+  // User data (profile + credentials)
+  const [user, setUser] = useState<Partial<CustomerUserDto>>({});
 
-  // Security data
+  // Security/form data
   const [security, setSecurity] = useState<{
-    email: string;
-    password: string;
     confirmPassword: string;
     termsAccepted: boolean;
+    securityPolicyAccepted: boolean;
   }>({
-    email: '',
-    password: '',
     confirmPassword: '',
     termsAccepted: false,
+    securityPolicyAccepted: false,
   });
 
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
@@ -87,19 +84,19 @@ export default function CustomerRegistrationPage() {
   };
 
   useEffect(() => {
-    if (security.password) {
-      setPasswordErrors(validatePassword(security.password));
+    if (user.password) {
+      setPasswordErrors(validatePassword(user.password));
     } else {
       setPasswordErrors([]);
     }
-  }, [security.password]);
+  }, [user.password]);
 
   const handleCompanyChange = (field: keyof CustomerCompanyDto, value: string) => {
     setCompany((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleProfileChange = (field: keyof CustomerProfileDto, value: string) => {
-    setProfile((prev) => ({ ...prev, [field]: value }));
+  const handleUserChange = (field: keyof CustomerUserDto, value: string) => {
+    setUser((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSecurityChange = (field: string, value: string | boolean) => {
@@ -119,16 +116,17 @@ export default function CustomerRegistrationPage() {
     );
   };
 
-  const isProfileValid = (): boolean => {
-    return !!(profile.firstName && profile.lastName);
+  const isUserValid = (): boolean => {
+    return !!(user.firstName && user.lastName);
   };
 
   const isSecurityValid = (): boolean => {
     return !!(
-      security.email &&
-      security.password &&
-      security.password === security.confirmPassword &&
+      user.email &&
+      user.password &&
+      user.password === security.confirmPassword &&
       security.termsAccepted &&
+      security.securityPolicyAccepted &&
       passwordErrors.length === 0 &&
       fingerprint
     );
@@ -146,13 +144,20 @@ export default function CustomerRegistrationPage() {
     try {
       const registrationData: CustomerRegistrationDto = {
         company: company as CustomerCompanyDto,
-        profile: profile as CustomerProfileDto,
+        user: {
+          firstName: user.firstName!,
+          lastName: user.lastName!,
+          email: user.email!,
+          password: user.password!,
+          jobTitle: user.jobTitle,
+          directPhone: user.directPhone,
+          mobilePhone: user.mobilePhone,
+        },
         security: {
-          email: security.email,
-          password: security.password,
           deviceFingerprint: fingerprint,
           browserInfo,
           termsAccepted: security.termsAccepted,
+          securityPolicyAccepted: security.securityPolicyAccepted,
         },
       };
 
@@ -422,8 +427,8 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="text"
-            value={profile.firstName || ''}
-            onChange={(e) => handleProfileChange('firstName', e.target.value)}
+            value={user.firstName || ''}
+            onChange={(e) => handleUserChange('firstName', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -434,8 +439,8 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="text"
-            value={profile.lastName || ''}
-            onChange={(e) => handleProfileChange('lastName', e.target.value)}
+            value={user.lastName || ''}
+            onChange={(e) => handleUserChange('lastName', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -444,8 +449,8 @@ export default function CustomerRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Job Title</label>
           <input
             type="text"
-            value={profile.jobTitle || ''}
-            onChange={(e) => handleProfileChange('jobTitle', e.target.value)}
+            value={user.jobTitle || ''}
+            onChange={(e) => handleUserChange('jobTitle', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="e.g., Project Manager"
           />
@@ -455,8 +460,8 @@ export default function CustomerRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Direct Phone</label>
           <input
             type="tel"
-            value={profile.directPhone || ''}
-            onChange={(e) => handleProfileChange('directPhone', e.target.value)}
+            value={user.directPhone || ''}
+            onChange={(e) => handleUserChange('directPhone', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="+27 12 345 6789"
           />
@@ -466,8 +471,8 @@ export default function CustomerRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Mobile Phone</label>
           <input
             type="tel"
-            value={profile.mobilePhone || ''}
-            onChange={(e) => handleProfileChange('mobilePhone', e.target.value)}
+            value={user.mobilePhone || ''}
+            onChange={(e) => handleUserChange('mobilePhone', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="+27 82 123 4567"
           />
@@ -483,7 +488,7 @@ export default function CustomerRegistrationPage() {
         </button>
         <button
           onClick={() => setCurrentStep('security')}
-          disabled={!isProfileValid()}
+          disabled={!isUserValid()}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           Continue
@@ -518,8 +523,8 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="email"
-            value={security.email}
-            onChange={(e) => handleSecurityChange('email', e.target.value)}
+            value={user.email || ''}
+            onChange={(e) => handleUserChange('email', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="your.email@company.co.za"
           />
@@ -531,8 +536,8 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="password"
-            value={security.password}
-            onChange={(e) => handleSecurityChange('password', e.target.value)}
+            value={user.password || ''}
+            onChange={(e) => handleUserChange('password', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
           {passwordErrors.length > 0 && (
@@ -542,7 +547,7 @@ export default function CustomerRegistrationPage() {
               ))}
             </ul>
           )}
-          {security.password && passwordErrors.length === 0 && (
+          {user.password && passwordErrors.length === 0 && (
             <p className="mt-2 text-sm text-green-600">Password meets all requirements</p>
           )}
         </div>
@@ -557,7 +562,7 @@ export default function CustomerRegistrationPage() {
             onChange={(e) => handleSecurityChange('confirmPassword', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
-          {security.confirmPassword && security.password !== security.confirmPassword && (
+          {security.confirmPassword && user.password !== security.confirmPassword && (
             <p className="mt-2 text-sm text-red-600">Passwords do not match</p>
           )}
         </div>
@@ -608,6 +613,19 @@ export default function CustomerRegistrationPage() {
           />
           <label htmlFor="terms" className="ml-2 text-sm text-gray-700">
             I have read and agree to the Terms and Conditions <span className="text-red-500">*</span>
+          </label>
+        </div>
+
+        <div className="flex items-start">
+          <input
+            type="checkbox"
+            id="securityPolicy"
+            checked={security.securityPolicyAccepted}
+            onChange={(e) => handleSecurityChange('securityPolicyAccepted', e.target.checked)}
+            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <label htmlFor="securityPolicy" className="ml-2 text-sm text-gray-700">
+            I understand and accept that my account will be locked to this device for security purposes <span className="text-red-500">*</span>
           </label>
         </div>
       </div>
