@@ -38,6 +38,8 @@ import { BoqModule } from './boq/boq.module';
 import { WorkflowModule } from './workflow/workflow.module';
 import { CustomerModule } from './customer/customer.module';
 import { PublicModule } from './public/public.module';
+import { EmailModule } from './email/email.module';
+import { SupplierModule } from './supplier/supplier.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -77,6 +79,8 @@ import typeormConfig from './config/typeorm';
     WorkflowModule,
     CustomerModule,
     PublicModule,
+    EmailModule,
+    SupplierModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

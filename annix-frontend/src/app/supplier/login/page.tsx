@@ -1,89 +1,121 @@
 'use client';
 
-import React from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
+import { useDeviceFingerprint } from '@/app/hooks/useDeviceFingerprint';
 
 export default function SupplierLoginPage() {
+  const router = useRouter();
+  const { login } = useSupplierAuth();
+  const { fingerprint, browserInfo, isLoading: isFingerprintLoading } = useDeviceFingerprint();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!fingerprint) {
+      setError('Unable to verify device. Please try again.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await login(email, password, fingerprint, browserInfo ?? undefined);
+      router.push('/supplier/portal/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-indigo-100 rounded-2xl text-indigo-600 mb-6">
-            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl text-blue-600 mb-4">
+            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Supplier Portal</h1>
-          <p className="mt-2 text-gray-600">Coming Soon</p>
+          <h1 className="text-3xl font-bold text-gray-900">Supplier Login</h1>
+          <p className="mt-2 text-gray-600">
+            Sign in to access your supplier portal
+          </p>
         </div>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow rounded-lg sm:px-10">
-          <div className="text-center">
-            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-6 mb-6">
-              <svg className="w-12 h-12 text-indigo-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              <h3 className="text-lg font-semibold text-indigo-900 mb-2">
-                Supplier Registration Coming Soon
-              </h3>
-              <p className="text-sm text-indigo-700">
-                We're building a comprehensive supplier portal where you can receive RFQs,
-                submit quotations, and manage your business relationships with Annix customers.
-              </p>
+        <div className="bg-white rounded-lg shadow-md p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="supplier@company.co.za"
+              />
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-start text-left p-4 bg-gray-50 rounded-lg">
-                <svg className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <div>
-                  <p className="font-medium text-gray-900">Receive RFQ Notifications</p>
-                  <p className="text-sm text-gray-500">Get notified when new RFQs match your capabilities</p>
-                </div>
-              </div>
-
-              <div className="flex items-start text-left p-4 bg-gray-50 rounded-lg">
-                <svg className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <div>
-                  <p className="font-medium text-gray-900">Submit Quotations</p>
-                  <p className="text-sm text-gray-500">Respond to RFQs with competitive pricing</p>
-                </div>
-              </div>
-
-              <div className="flex items-start text-left p-4 bg-gray-50 rounded-lg">
-                <svg className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <div>
-                  <p className="font-medium text-gray-900">Track Orders</p>
-                  <p className="text-sm text-gray-500">Manage and track all your orders in one place</p>
-                </div>
-              </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
 
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <p className="text-sm text-gray-600 mb-4">
-                Interested in becoming a supplier? Contact us for early access.
-              </p>
-              <a
-                href="mailto:suppliers@annix.co.za"
-                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                Contact Us
-              </a>
-            </div>
+            <button
+              type="submit"
+              disabled={isLoading || isFingerprintLoading}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Signing in...' : isFingerprintLoading ? 'Verifying device...' : 'Sign In'}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center space-y-2">
+            <p className="text-sm text-gray-600">
+              Don&apos;t have an account?{' '}
+              <Link href="/supplier/register" className="text-blue-600 hover:text-blue-500 font-medium">
+                Register
+              </Link>
+            </p>
           </div>
+
+          {fingerprint && (
+            <div className="mt-6 p-3 bg-gray-50 rounded text-xs text-gray-500">
+              <p className="font-medium">Device Security</p>
+              <p className="mt-1">
+                Your account is bound to this device for security. If you need to change devices, please contact support.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 text-center">
