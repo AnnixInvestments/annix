@@ -124,6 +124,88 @@ export class CustomerAdminController {
     return this.customerAdminService.getLoginHistory(id, limit || 50);
   }
 
+  @Get(':id/documents')
+  @ApiOperation({ summary: 'Get customer documents' })
+  @ApiParam({ name: 'id', description: 'Customer ID' })
+  @ApiResponse({ status: 200, description: 'Customer documents' })
+  async getCustomerDocuments(@Param('id', ParseIntPipe) id: number) {
+    return this.customerAdminService.getCustomerDocuments(id);
+  }
+
+  // Review Queue Endpoints
+
+  @Get('onboarding/pending-review')
+  @ApiOperation({ summary: 'Get customers pending onboarding review' })
+  @ApiResponse({ status: 200, description: 'Pending review list' })
+  async getPendingReview() {
+    return this.customerAdminService.getPendingReviewCustomers();
+  }
+
+  @Get('onboarding/:id')
+  @ApiOperation({ summary: 'Get onboarding details for review' })
+  @ApiParam({ name: 'id', description: 'Onboarding ID' })
+  @ApiResponse({ status: 200, description: 'Onboarding details' })
+  @ApiResponse({ status: 404, description: 'Onboarding not found' })
+  async getOnboardingForReview(@Param('id', ParseIntPipe) id: number) {
+    return this.customerAdminService.getOnboardingForReview(id);
+  }
+
+  @Post('onboarding/:id/approve')
+  @ApiOperation({ summary: 'Approve customer onboarding' })
+  @ApiParam({ name: 'id', description: 'Onboarding ID' })
+  @ApiResponse({ status: 200, description: 'Onboarding approved' })
+  @ApiResponse({ status: 400, description: 'Not in reviewable state' })
+  async approveOnboarding(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ) {
+    const adminUserId = req['user']?.sub || req['user']?.id;
+    const clientIp = this.getClientIp(req);
+    return this.customerAdminService.approveOnboarding(id, adminUserId, clientIp);
+  }
+
+  @Post('onboarding/:id/reject')
+  @ApiOperation({ summary: 'Reject customer onboarding' })
+  @ApiParam({ name: 'id', description: 'Onboarding ID' })
+  @ApiResponse({ status: 200, description: 'Onboarding rejected' })
+  @ApiResponse({ status: 400, description: 'Not in reviewable state' })
+  async rejectOnboarding(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { reason: string; remediationSteps: string },
+    @Req() req: Request,
+  ) {
+    const adminUserId = req['user']?.sub || req['user']?.id;
+    const clientIp = this.getClientIp(req);
+    return this.customerAdminService.rejectOnboarding(
+      id,
+      body.reason,
+      body.remediationSteps,
+      adminUserId,
+      clientIp,
+    );
+  }
+
+  @Post('documents/:id/review')
+  @ApiOperation({ summary: 'Review a customer document' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiResponse({ status: 200, description: 'Document reviewed' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async reviewDocument(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { validationStatus: string; validationNotes?: string },
+    @Req() req: Request,
+  ) {
+    const adminUserId = req['user']?.sub || req['user']?.id;
+    const clientIp = this.getClientIp(req);
+    return this.customerAdminService.reviewDocument(
+      id,
+      body.validationStatus as any,
+      body.validationNotes || null,
+      adminUserId,
+      clientIp,
+    );
+  }
+
   // Helper methods
 
   private getClientIp(req: Request): string {

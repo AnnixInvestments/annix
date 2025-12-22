@@ -14,12 +14,19 @@ import { CustomerCompany } from './customer-company.entity';
 import { CustomerDeviceBinding } from './customer-device-binding.entity';
 import { CustomerSession } from './customer-session.entity';
 import { CustomerLoginAttempt } from './customer-login-attempt.entity';
+import { CustomerOnboarding } from './customer-onboarding.entity';
+import { CustomerDocument } from './customer-document.entity';
 
 export enum CustomerAccountStatus {
   PENDING = 'pending',
   ACTIVE = 'active',
   SUSPENDED = 'suspended',
   DEACTIVATED = 'deactivated',
+}
+
+export enum CustomerRole {
+  CUSTOMER_ADMIN = 'customer_admin',
+  CUSTOMER_STANDARD = 'customer_standard',
 }
 
 @Entity('customer_profiles')
@@ -59,6 +66,15 @@ export class CustomerProfile {
   @Column({ name: 'mobile_phone', length: 30, nullable: true })
   mobilePhone: string;
 
+  // Role within customer organization
+  @Column({
+    name: 'role',
+    type: 'enum',
+    enum: CustomerRole,
+    default: CustomerRole.CUSTOMER_ADMIN,
+  })
+  role: CustomerRole;
+
   // Account status
   @Column({
     name: 'account_status',
@@ -67,6 +83,16 @@ export class CustomerProfile {
     default: CustomerAccountStatus.PENDING,
   })
   accountStatus: CustomerAccountStatus;
+
+  // Email verification
+  @Column({ name: 'email_verified', default: false })
+  emailVerified: boolean;
+
+  @Column({ name: 'email_verification_token', type: 'varchar', length: 500, nullable: true })
+  emailVerificationToken: string | null;
+
+  @Column({ name: 'email_verification_expires', type: 'timestamp', nullable: true })
+  emailVerificationExpires: Date | null;
 
   @Column({ name: 'suspension_reason', type: 'text', nullable: true })
   suspensionReason?: string | null;
@@ -100,4 +126,12 @@ export class CustomerProfile {
 
   @Column({ name: 'security_policy_accepted_at', type: 'timestamp', nullable: true })
   securityPolicyAcceptedAt: Date;
+
+  // Onboarding
+  @OneToOne(() => CustomerOnboarding, (onboarding) => onboarding.customer)
+  onboarding: CustomerOnboarding;
+
+  // Documents
+  @OneToMany(() => CustomerDocument, (document) => document.customer)
+  documents: CustomerDocument[];
 }

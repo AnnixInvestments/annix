@@ -4,9 +4,10 @@ import {
   ConflictException,
   BadRequestException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, MoreThan } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -21,7 +22,10 @@ import {
   CustomerLoginAttempt,
   CustomerSession,
   CustomerAccountStatus,
+  CustomerOnboarding,
+  CustomerRole,
 } from './entities';
+import { CustomerOnboardingStatus } from './entities/customer-onboarding.entity';
 import { LoginFailureReason } from './entities/customer-login-attempt.entity';
 import { SessionInvalidationReason } from './entities/customer-session.entity';
 import {
@@ -32,12 +36,14 @@ import {
 } from './dto';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
+import { EmailService } from '../email/email.service';
 
 // Constants
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCKOUT_MINUTES = 15;
 const SESSION_EXPIRY_HOURS = 1;
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
 
 @Injectable()
 export class CustomerAuthService {
@@ -52,6 +58,8 @@ export class CustomerAuthService {
     private readonly loginAttemptRepo: Repository<CustomerLoginAttempt>,
     @InjectRepository(CustomerSession)
     private readonly sessionRepo: Repository<CustomerSession>,
+    @InjectRepository(CustomerOnboarding)
+    private readonly onboardingRepo: Repository<CustomerOnboarding>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserRole)
@@ -60,6 +68,7 @@ export class CustomerAuthService {
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -121,7 +130,12 @@ export class CustomerAuthService {
       });
       const savedUser = await queryRunner.manager.save(user);
 
-      // 3. Create the customer profile
+      // 3. Generate email verification token
+      const emailVerificationToken = uuidv4();
+      const emailVerificationExpires = new Date();
+      emailVerificationExpires.setHours(emailVerificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS);
+
+      // 4. Create the customer profile (PENDING until email verified)
       const profile = this.profileRepo.create({
         userId: savedUser.id,
         companyId: savedCompany.id,
@@ -130,13 +144,26 @@ export class CustomerAuthService {
         jobTitle: dto.user.jobTitle,
         directPhone: dto.user.directPhone,
         mobilePhone: dto.user.mobilePhone,
-        accountStatus: CustomerAccountStatus.ACTIVE, // Auto-activate for now
+        role: CustomerRole.CUSTOMER_ADMIN, // First user is admin
+        accountStatus: CustomerAccountStatus.PENDING, // Pending until email verified
+        emailVerified: false,
+        emailVerificationToken,
+        emailVerificationExpires,
         termsAcceptedAt: new Date(),
         securityPolicyAcceptedAt: new Date(),
       });
       const savedProfile = await queryRunner.manager.save(profile);
 
-      // 4. Create the device binding
+      // 5. Create onboarding record
+      const onboarding = this.onboardingRepo.create({
+        customerId: savedProfile.id,
+        status: CustomerOnboardingStatus.DRAFT,
+        companyDetailsComplete: true, // Company details captured at registration
+        documentsComplete: false,
+      });
+      await queryRunner.manager.save(onboarding);
+
+      // 6. Create the device binding
       const deviceBinding = this.deviceBindingRepo.create({
         customerProfileId: savedProfile.id,
         deviceFingerprint: dto.security.deviceFingerprint,
@@ -163,9 +190,15 @@ export class CustomerAuthService {
         userAgent: dto.security.browserInfo?.userAgent,
       });
 
+      // Send verification email
+      await this.emailService.sendCustomerVerificationEmail(
+        dto.user.email,
+        emailVerificationToken,
+      );
+
       return {
         success: true,
-        message: 'Registration successful. You can now log in.',
+        message: 'Registration successful. Please check your email to verify your account.',
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -208,6 +241,12 @@ export class CustomerAuthService {
 
     if (!profile) {
       throw new UnauthorizedException('Customer profile not found');
+    }
+
+    // Check email verification
+    if (!profile.emailVerified) {
+      await this.logLoginAttempt(profile.id, dto.email, false, LoginFailureReason.EMAIL_NOT_VERIFIED, dto.deviceFingerprint, clientIp, userAgent);
+      throw new ForbiddenException('Email not verified. Please check your email for the verification link.');
     }
 
     // Check account status
@@ -514,5 +553,111 @@ export class CustomerAuthService {
         invalidationReason: reason,
       },
     );
+  }
+
+  /**
+   * Verify email with token
+   */
+  async verifyEmail(token: string, clientIp: string): Promise<{ success: boolean; message: string }> {
+    const profile = await this.profileRepo.findOne({
+      where: {
+        emailVerificationToken: token,
+        emailVerificationExpires: MoreThan(new Date()),
+      },
+      relations: ['user', 'company'],
+    });
+
+    if (!profile) {
+      throw new BadRequestException('Invalid or expired verification token');
+    }
+
+    if (profile.emailVerified) {
+      return {
+        success: true,
+        message: 'Email already verified. You can log in.',
+      };
+    }
+
+    // Update profile
+    profile.emailVerified = true;
+    profile.emailVerificationToken = null;
+    profile.emailVerificationExpires = null;
+    profile.accountStatus = CustomerAccountStatus.ACTIVE;
+    await this.profileRepo.save(profile);
+
+    // Log the verification
+    await this.auditService.log({
+      entityType: 'customer_profile',
+      entityId: profile.id,
+      action: AuditAction.UPDATE,
+      newValues: {
+        event: 'email_verified',
+        email: profile.user.email,
+      },
+      ipAddress: clientIp,
+    });
+
+    return {
+      success: true,
+      message: 'Email verified successfully. You can now log in.',
+    };
+  }
+
+  /**
+   * Resend verification email
+   */
+  async resendVerificationEmail(email: string, clientIp: string): Promise<{ success: boolean; message: string }> {
+    const user = await this.userRepo.findOne({ where: { email } });
+    if (!user) {
+      // Don't reveal if email exists
+      return {
+        success: true,
+        message: 'If an account exists with this email, a verification link will be sent.',
+      };
+    }
+
+    const profile = await this.profileRepo.findOne({
+      where: { userId: user.id },
+    });
+
+    if (!profile) {
+      return {
+        success: true,
+        message: 'If an account exists with this email, a verification link will be sent.',
+      };
+    }
+
+    if (profile.emailVerified) {
+      throw new BadRequestException('Email is already verified. You can log in.');
+    }
+
+    // Generate new token
+    const emailVerificationToken = uuidv4();
+    const emailVerificationExpires = new Date();
+    emailVerificationExpires.setHours(emailVerificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS);
+
+    profile.emailVerificationToken = emailVerificationToken;
+    profile.emailVerificationExpires = emailVerificationExpires;
+    await this.profileRepo.save(profile);
+
+    // Send verification email
+    await this.emailService.sendCustomerVerificationEmail(email, emailVerificationToken);
+
+    // Log the resend
+    await this.auditService.log({
+      entityType: 'customer_profile',
+      entityId: profile.id,
+      action: AuditAction.UPDATE,
+      newValues: {
+        event: 'verification_email_resent',
+        email,
+      },
+      ipAddress: clientIp,
+    });
+
+    return {
+      success: true,
+      message: 'Verification email sent. Please check your inbox.',
+    };
   }
 }

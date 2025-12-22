@@ -359,3 +359,236 @@ export const customerPortalApi = {
   updateCompanyAddress: (data: Parameters<typeof customerApiClient.updateCompanyAddress>[0]) =>
     customerApiClient.updateCompanyAddress(data),
 };
+
+// Onboarding types and API
+export interface OnboardingStatus {
+  status: 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected';
+  companyDetailsComplete: boolean;
+  documentsComplete: boolean;
+  submittedAt?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+  remediationSteps?: string;
+  requiredDocuments: {
+    type: string;
+    label: string;
+    uploaded: boolean;
+    status?: string;
+  }[];
+}
+
+export interface CustomerDocument {
+  id: number;
+  documentType: string;
+  fileName: string;
+  fileSize: number;
+  uploadedAt: string;
+  expiryDate?: string;
+  validationStatus: string;
+  validationNotes?: string;
+}
+
+export interface PreferredSupplier {
+  id: number;
+  supplierProfileId?: number;
+  supplierName: string;
+  supplierEmail?: string;
+  priority: number;
+  notes?: string;
+  addedBy?: string;
+  createdAt: string;
+  isRegistered: boolean;
+}
+
+export interface SupplierInvitation {
+  id: number;
+  email: string;
+  supplierCompanyName?: string;
+  status: 'pending' | 'accepted' | 'expired' | 'cancelled';
+  createdAt: string;
+  expiresAt: string;
+  acceptedAt?: string;
+  invitedBy?: string;
+  isExpired: boolean;
+}
+
+class CustomerOnboardingApi {
+  private client: CustomerApiClient;
+
+  constructor(client: CustomerApiClient) {
+    this.client = client;
+  }
+
+  async getStatus(): Promise<OnboardingStatus> {
+    return this.client['request']<OnboardingStatus>('/customer/onboarding/status');
+  }
+
+  async updateCompanyDetails(data: Partial<CustomerCompanyDto>): Promise<{ success: boolean; message: string }> {
+    return this.client['request']('/customer/onboarding/company', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async submit(): Promise<{ success: boolean; message: string }> {
+    return this.client['request']('/customer/onboarding/submit', {
+      method: 'POST',
+    });
+  }
+}
+
+class CustomerDocumentApi {
+  private client: CustomerApiClient;
+
+  constructor(client: CustomerApiClient) {
+    this.client = client;
+  }
+
+  async getDocuments(): Promise<CustomerDocument[]> {
+    return this.client['request']<CustomerDocument[]>('/customer/documents');
+  }
+
+  async uploadDocument(file: File, documentType: string, expiryDate?: string): Promise<{ id: number; message: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentType', documentType);
+    if (expiryDate) {
+      formData.append('expiryDate', expiryDate);
+    }
+
+    const response = await fetch(`${this.client['baseURL']}/customer/documents`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.client['accessToken']}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText);
+    }
+
+    return response.json();
+  }
+
+  async deleteDocument(id: number): Promise<{ success: boolean; message: string }> {
+    return this.client['request'](`/customer/documents/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  getDownloadUrl(id: number): string {
+    return `${this.client['baseURL']}/customer/documents/${id}/download`;
+  }
+}
+
+class CustomerSupplierApi {
+  private client: CustomerApiClient;
+
+  constructor(client: CustomerApiClient) {
+    this.client = client;
+  }
+
+  // Preferred Suppliers
+  async getPreferredSuppliers(): Promise<PreferredSupplier[]> {
+    return this.client['request']<PreferredSupplier[]>('/customer/suppliers');
+  }
+
+  async addPreferredSupplier(data: {
+    supplierProfileId?: number;
+    supplierName?: string;
+    supplierEmail?: string;
+    priority?: number;
+    notes?: string;
+  }): Promise<{ id: number; message: string }> {
+    return this.client['request']('/customer/suppliers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePreferredSupplier(
+    id: number,
+    data: { priority?: number; notes?: string }
+  ): Promise<{ success: boolean; message: string }> {
+    return this.client['request'](`/customer/suppliers/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async removePreferredSupplier(id: number): Promise<{ success: boolean; message: string }> {
+    return this.client['request'](`/customer/suppliers/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Invitations
+  async getInvitations(): Promise<SupplierInvitation[]> {
+    return this.client['request']<SupplierInvitation[]>('/customer/suppliers/invitations');
+  }
+
+  async createInvitation(data: {
+    email: string;
+    supplierCompanyName?: string;
+    message?: string;
+  }): Promise<{ id: number; message: string; expiresAt: string }> {
+    return this.client['request']('/customer/suppliers/invite', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async cancelInvitation(id: number): Promise<{ success: boolean; message: string }> {
+    return this.client['request'](`/customer/suppliers/invitations/${id}/cancel`, {
+      method: 'POST',
+    });
+  }
+
+  async resendInvitation(id: number): Promise<{ success: boolean; message: string; expiresAt: string }> {
+    return this.client['request'](`/customer/suppliers/invitations/${id}/resend`, {
+      method: 'POST',
+    });
+  }
+}
+
+// Email verification API
+export const customerEmailApi = {
+  verifyEmail: async (token: string): Promise<{ success: boolean; message: string }> => {
+    const response = await fetch(`${API_BASE_URL}/customer/auth/verify-email/${token}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.message || 'Verification failed');
+      } catch {
+        throw new Error('Verification failed');
+      }
+    }
+    return response.json();
+  },
+
+  resendVerification: async (email: string): Promise<{ success: boolean; message: string }> => {
+    const response = await fetch(`${API_BASE_URL}/customer/auth/resend-verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.message || 'Failed to resend verification');
+      } catch {
+        throw new Error('Failed to resend verification');
+      }
+    }
+    return response.json();
+  },
+};
+
+// Export API instances
+export const customerOnboardingApi = new CustomerOnboardingApi(customerApiClient);
+export const customerDocumentApi = new CustomerDocumentApi(customerApiClient);
+export const customerSupplierApi = new CustomerSupplierApi(customerApiClient);

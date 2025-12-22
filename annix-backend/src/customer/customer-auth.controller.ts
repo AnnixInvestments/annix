@@ -3,10 +3,12 @@ import {
   Post,
   Body,
   Req,
+  Param,
   HttpCode,
   HttpStatus,
+  Get,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { CustomerAuthService } from './customer-auth.service';
@@ -79,6 +81,33 @@ export class CustomerAuthController {
   ): Promise<CustomerLoginResponseDto> {
     const clientIp = this.getClientIp(req);
     return this.customerAuthService.refreshSession(dto, clientIp);
+  }
+
+  @Get('auth/verify-email/:token')
+  @ApiOperation({ summary: 'Verify email with token' })
+  @ApiParam({ name: 'token', description: 'Email verification token' })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  async verifyEmail(
+    @Param('token') token: string,
+    @Req() req: Request,
+  ) {
+    const clientIp = this.getClientIp(req);
+    return this.customerAuthService.verifyEmail(token, clientIp);
+  }
+
+  @Post('auth/resend-verification')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend email verification link' })
+  @ApiBody({ schema: { properties: { email: { type: 'string', format: 'email' } } } })
+  @ApiResponse({ status: 200, description: 'Verification email sent' })
+  @ApiResponse({ status: 400, description: 'Email already verified' })
+  async resendVerification(
+    @Body() body: { email: string },
+    @Req() req: Request,
+  ) {
+    const clientIp = this.getClientIp(req);
+    return this.customerAuthService.resendVerificationEmail(body.email, clientIp);
   }
 
   @Post('auth/verify-device')

@@ -16,6 +16,7 @@ export enum LoginFailureReason {
   ACCOUNT_PENDING = 'account_pending',
   ACCOUNT_DEACTIVATED = 'account_deactivated',
   TOO_MANY_ATTEMPTS = 'too_many_attempts',
+  EMAIL_NOT_VERIFIED = 'email_not_verified',
 }
 
 @Entity('customer_login_attempts')

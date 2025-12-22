@@ -223,4 +223,215 @@ export class EmailService {
       html,
     });
   }
+
+  // Customer Portal Email Methods
+
+  async sendCustomerVerificationEmail(
+    email: string,
+    verificationToken: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const verificationLink = `${frontendUrl}/customer/verify-email?token=${verificationToken}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Verify Your Email - Annix Customer Portal</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb;">Welcome to Annix Customer Portal</h1>
+          <p>Thank you for registering. Please verify your email address to complete your registration.</p>
+          <p style="margin: 30px 0;">
+            <a href="${verificationLink}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Verify Email Address
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${verificationLink}</p>
+          <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you did not register for an Annix Customer account, please ignore this email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      Welcome to Annix Customer Portal
+
+      Thank you for registering. Please verify your email address to complete your registration.
+
+      Click here to verify: ${verificationLink}
+
+      This link will expire in 24 hours.
+
+      If you did not register for an Annix Customer account, please ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: 'Verify Your Email - Annix Customer Portal',
+      html,
+      text,
+    });
+  }
+
+  async sendCustomerOnboardingApprovalEmail(email: string, companyName: string): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const portalLink = `${frontendUrl}/customer/portal/dashboard`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Onboarding Approved - Annix Customer Portal</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #16a34a;">Congratulations!</h1>
+          <p>Your customer onboarding for <strong>${companyName}</strong> has been approved.</p>
+          <p>You can now access all customer portal features, including:</p>
+          <ul>
+            <li>Create and manage RFQs</li>
+            <li>View quotations from suppliers</li>
+            <li>Manage your preferential suppliers</li>
+          </ul>
+          <p style="margin: 30px 0;">
+            <a href="${portalLink}"
+               style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Go to Customer Portal
+            </a>
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            Thank you for choosing Annix.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: 'Onboarding Approved - Annix Customer Portal',
+      html,
+    });
+  }
+
+  async sendCustomerOnboardingRejectionEmail(
+    email: string,
+    companyName: string,
+    reason: string,
+    remediationSteps: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const onboardingLink = `${frontendUrl}/customer/portal/onboarding`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Onboarding Update Required - Annix Customer Portal</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #dc2626;">Action Required</h1>
+          <p>Your customer onboarding for <strong>${companyName}</strong> requires updates before approval.</p>
+
+          <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
+            <strong>Reason:</strong>
+            <p style="margin: 5px 0 0 0;">${reason}</p>
+          </div>
+
+          <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
+            <strong>Steps to Resolve:</strong>
+            <p style="margin: 5px 0 0 0; white-space: pre-line;">${remediationSteps}</p>
+          </div>
+
+          <p style="margin: 30px 0;">
+            <a href="${onboardingLink}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Update Onboarding
+            </a>
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you have questions, please contact our support team.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: 'Action Required - Annix Customer Onboarding',
+      html,
+    });
+  }
+
+  async sendSupplierInvitationEmail(
+    email: string,
+    customerCompanyName: string,
+    invitationToken: string,
+    message?: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const registerLink = `${frontendUrl}/supplier/register?invitation=${invitationToken}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Supplier Invitation - Annix</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb;">You've Been Invited!</h1>
+          <p><strong>${customerCompanyName}</strong> has invited you to register as a supplier on the Annix platform.</p>
+          ${message ? `
+          <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
+            <strong>Message from ${customerCompanyName}:</strong>
+            <p style="margin: 5px 0 0 0;">${message}</p>
+          </div>
+          ` : ''}
+          <p>As a registered supplier, you'll be able to:</p>
+          <ul>
+            <li>Receive RFQ notifications</li>
+            <li>Submit competitive quotations</li>
+            <li>Build your business relationship with ${customerCompanyName}</li>
+          </ul>
+          <p style="margin: 30px 0;">
+            <a href="${registerLink}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Register as Supplier
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${registerLink}</p>
+          <p style="color: #666; font-size: 14px;">This invitation will expire in 7 days.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you did not expect this invitation, please ignore this email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Supplier Invitation from ${customerCompanyName} - Annix`,
+      html,
+    });
+  }
 }

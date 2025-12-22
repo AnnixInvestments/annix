@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, ILike } from 'typeorm';
+import { Repository, Like, ILike, In } from 'typeorm';
 
 import {
   CustomerCompany,
@@ -13,7 +13,11 @@ import {
   CustomerLoginAttempt,
   CustomerSession,
   CustomerAccountStatus,
+  CustomerOnboarding,
+  CustomerDocument,
 } from './entities';
+import { CustomerOnboardingStatus } from './entities/customer-onboarding.entity';
+import { CustomerDocumentValidationStatus } from './entities/customer-document.entity';
 import { SessionInvalidationReason } from './entities/customer-session.entity';
 import {
   CustomerQueryDto,
@@ -26,6 +30,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { User } from '../user/entities/user.entity';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class CustomerAdminService {
@@ -40,9 +45,14 @@ export class CustomerAdminService {
     private readonly loginAttemptRepo: Repository<CustomerLoginAttempt>,
     @InjectRepository(CustomerSession)
     private readonly sessionRepo: Repository<CustomerSession>,
+    @InjectRepository(CustomerOnboarding)
+    private readonly onboardingRepo: Repository<CustomerOnboarding>,
+    @InjectRepository(CustomerDocument)
+    private readonly documentRepo: Repository<CustomerDocument>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly auditService: AuditService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -377,6 +387,296 @@ export class CustomerAdminService {
       userAgent: attempt.userAgent,
       deviceFingerprint: attempt.deviceFingerprint?.substring(0, 20) + '...',
       ipMismatchWarning: attempt.ipMismatchWarning,
+    }));
+  }
+
+  // ==================== REVIEW QUEUE METHODS ====================
+
+  /**
+   * Get customers pending onboarding review
+   */
+  async getPendingReviewCustomers() {
+    const onboardings = await this.onboardingRepo.find({
+      where: {
+        status: In([CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW]),
+      },
+      relations: ['customer', 'customer.company', 'customer.user'],
+      order: { submittedAt: 'ASC' },
+    });
+
+    return onboardings.map(onb => ({
+      id: onb.id,
+      customerId: onb.customerId,
+      status: onb.status,
+      submittedAt: onb.submittedAt,
+      resubmissionCount: onb.resubmissionCount,
+      customer: {
+        id: onb.customer.id,
+        name: `${onb.customer.firstName} ${onb.customer.lastName}`,
+        email: onb.customer.user?.email,
+        companyName: onb.customer.company?.tradingName || onb.customer.company?.legalName,
+      },
+    }));
+  }
+
+  /**
+   * Get onboarding details for review
+   */
+  async getOnboardingForReview(onboardingId: number) {
+    const onboarding = await this.onboardingRepo.findOne({
+      where: { id: onboardingId },
+      relations: ['customer', 'customer.company', 'customer.user', 'reviewedBy'],
+    });
+
+    if (!onboarding) {
+      throw new NotFoundException('Onboarding not found');
+    }
+
+    const documents = await this.documentRepo.find({
+      where: { customerId: onboarding.customerId },
+    });
+
+    return {
+      id: onboarding.id,
+      status: onboarding.status,
+      submittedAt: onboarding.submittedAt,
+      reviewedAt: onboarding.reviewedAt,
+      reviewedBy: onboarding.reviewedBy
+        ? `${onboarding.reviewedBy.username}`
+        : null,
+      rejectionReason: onboarding.rejectionReason,
+      remediationSteps: onboarding.remediationSteps,
+      resubmissionCount: onboarding.resubmissionCount,
+      customer: {
+        id: onboarding.customer.id,
+        firstName: onboarding.customer.firstName,
+        lastName: onboarding.customer.lastName,
+        email: onboarding.customer.user?.email,
+        jobTitle: onboarding.customer.jobTitle,
+        directPhone: onboarding.customer.directPhone,
+        mobilePhone: onboarding.customer.mobilePhone,
+      },
+      company: {
+        id: onboarding.customer.company.id,
+        legalName: onboarding.customer.company.legalName,
+        tradingName: onboarding.customer.company.tradingName,
+        registrationNumber: onboarding.customer.company.registrationNumber,
+        vatNumber: onboarding.customer.company.vatNumber,
+        industry: onboarding.customer.company.industry,
+        streetAddress: onboarding.customer.company.streetAddress,
+        city: onboarding.customer.company.city,
+        provinceState: onboarding.customer.company.provinceState,
+        postalCode: onboarding.customer.company.postalCode,
+        country: onboarding.customer.company.country,
+        primaryPhone: onboarding.customer.company.primaryPhone,
+      },
+      documents: documents.map(doc => ({
+        id: doc.id,
+        documentType: doc.documentType,
+        fileName: doc.fileName,
+        fileSize: doc.fileSize,
+        mimeType: doc.mimeType,
+        uploadedAt: doc.uploadedAt,
+        validationStatus: doc.validationStatus,
+        validationNotes: doc.validationNotes,
+        reviewedAt: doc.reviewedAt,
+        expiryDate: doc.expiryDate,
+      })),
+    };
+  }
+
+  /**
+   * Approve customer onboarding
+   */
+  async approveOnboarding(
+    onboardingId: number,
+    adminUserId: number,
+    clientIp: string,
+  ) {
+    const onboarding = await this.onboardingRepo.findOne({
+      where: { id: onboardingId },
+      relations: ['customer', 'customer.company', 'customer.user'],
+    });
+
+    if (!onboarding) {
+      throw new NotFoundException('Onboarding not found');
+    }
+
+    if (![CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW].includes(onboarding.status)) {
+      throw new BadRequestException('Onboarding is not in a reviewable state');
+    }
+
+    // Update onboarding
+    onboarding.status = CustomerOnboardingStatus.APPROVED;
+    onboarding.reviewedAt = new Date();
+    onboarding.reviewedById = adminUserId;
+    await this.onboardingRepo.save(onboarding);
+
+    // Update profile to ACTIVE
+    const profile = onboarding.customer;
+    profile.accountStatus = CustomerAccountStatus.ACTIVE;
+    await this.profileRepo.save(profile);
+
+    // Approve all documents
+    await this.documentRepo.update(
+      { customerId: onboarding.customerId, validationStatus: CustomerDocumentValidationStatus.PENDING },
+      { validationStatus: CustomerDocumentValidationStatus.VALID, reviewedById: adminUserId, reviewedAt: new Date() },
+    );
+
+    // Send approval email
+    await this.emailService.sendCustomerOnboardingApprovalEmail(
+      profile.user.email,
+      profile.company.tradingName || profile.company.legalName,
+    );
+
+    const adminUser = await this.userRepo.findOne({ where: { id: adminUserId } });
+    await this.auditService.log({
+      entityType: 'customer_onboarding',
+      entityId: onboardingId,
+      action: AuditAction.APPROVE,
+      performedBy: adminUser || undefined,
+      newValues: {
+        status: CustomerOnboardingStatus.APPROVED,
+        customerId: onboarding.customerId,
+      },
+      ipAddress: clientIp,
+    });
+
+    return {
+      success: true,
+      message: 'Customer onboarding approved successfully',
+    };
+  }
+
+  /**
+   * Reject customer onboarding
+   */
+  async rejectOnboarding(
+    onboardingId: number,
+    reason: string,
+    remediationSteps: string,
+    adminUserId: number,
+    clientIp: string,
+  ) {
+    const onboarding = await this.onboardingRepo.findOne({
+      where: { id: onboardingId },
+      relations: ['customer', 'customer.company', 'customer.user'],
+    });
+
+    if (!onboarding) {
+      throw new NotFoundException('Onboarding not found');
+    }
+
+    if (![CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW].includes(onboarding.status)) {
+      throw new BadRequestException('Onboarding is not in a reviewable state');
+    }
+
+    // Update onboarding
+    onboarding.status = CustomerOnboardingStatus.REJECTED;
+    onboarding.reviewedAt = new Date();
+    onboarding.reviewedById = adminUserId;
+    onboarding.rejectionReason = reason;
+    onboarding.remediationSteps = remediationSteps;
+    await this.onboardingRepo.save(onboarding);
+
+    // Send rejection email
+    const profile = onboarding.customer;
+    await this.emailService.sendCustomerOnboardingRejectionEmail(
+      profile.user.email,
+      profile.company.tradingName || profile.company.legalName,
+      reason,
+      remediationSteps,
+    );
+
+    const adminUser = await this.userRepo.findOne({ where: { id: adminUserId } });
+    await this.auditService.log({
+      entityType: 'customer_onboarding',
+      entityId: onboardingId,
+      action: AuditAction.REJECT,
+      performedBy: adminUser || undefined,
+      newValues: {
+        status: CustomerOnboardingStatus.REJECTED,
+        reason,
+        remediationSteps,
+        customerId: onboarding.customerId,
+      },
+      ipAddress: clientIp,
+    });
+
+    return {
+      success: true,
+      message: 'Customer onboarding rejected. Customer has been notified.',
+    };
+  }
+
+  /**
+   * Review a specific document
+   */
+  async reviewDocument(
+    documentId: number,
+    validationStatus: CustomerDocumentValidationStatus,
+    validationNotes: string | null,
+    adminUserId: number,
+    clientIp: string,
+  ) {
+    const document = await this.documentRepo.findOne({
+      where: { id: documentId },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    document.validationStatus = validationStatus;
+    document.validationNotes = validationNotes;
+    document.reviewedById = adminUserId;
+    document.reviewedAt = new Date();
+    await this.documentRepo.save(document);
+
+    const adminUser = await this.userRepo.findOne({ where: { id: adminUserId } });
+    await this.auditService.log({
+      entityType: 'customer_document',
+      entityId: documentId,
+      action: AuditAction.UPDATE,
+      performedBy: adminUser || undefined,
+      newValues: {
+        validationStatus,
+        validationNotes,
+        event: 'document_reviewed',
+      },
+      ipAddress: clientIp,
+    });
+
+    return {
+      success: true,
+      validationStatus,
+      message: `Document marked as ${validationStatus}`,
+    };
+  }
+
+  /**
+   * Get customer documents for admin review
+   */
+  async getCustomerDocuments(customerId: number) {
+    const documents = await this.documentRepo.find({
+      where: { customerId },
+      relations: ['reviewedBy'],
+      order: { uploadedAt: 'DESC' },
+    });
+
+    return documents.map(doc => ({
+      id: doc.id,
+      documentType: doc.documentType,
+      fileName: doc.fileName,
+      fileSize: doc.fileSize,
+      mimeType: doc.mimeType,
+      uploadedAt: doc.uploadedAt,
+      validationStatus: doc.validationStatus,
+      validationNotes: doc.validationNotes,
+      reviewedAt: doc.reviewedAt,
+      reviewedBy: doc.reviewedBy?.username,
+      expiryDate: doc.expiryDate,
+      isRequired: doc.isRequired,
     }));
   }
 }
