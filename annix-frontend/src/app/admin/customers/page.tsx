@@ -20,6 +20,11 @@ export default function AdminCustomersPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // Set page title
+  useEffect(() => {
+    document.title = 'Annix Admin';
+  }, []);
+
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {

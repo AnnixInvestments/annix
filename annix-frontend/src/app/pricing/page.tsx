@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 
 const CheckIcon = () => (
@@ -10,6 +10,10 @@ const CheckIcon = () => (
 );
 
 export default function PricingPage() {
+  useEffect(() => {
+    document.title = 'Annix Pricing';
+  }, []);
+
   const customerTiers = [
     {
       name: 'Free',

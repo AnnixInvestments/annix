@@ -25,6 +25,10 @@ export default function RfqListPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
+    document.title = 'Annix RFQs';
+  }, []);
+
+  useEffect(() => {
     fetchRfqs();
   }, []);
 

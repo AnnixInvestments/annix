@@ -69,6 +69,10 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    document.title = 'Annix Dashboard';
+  }, []);
+
+  useEffect(() => {
     const fetchStats = async () => {
       try {
         const baseUrl = browserBaseUrl();

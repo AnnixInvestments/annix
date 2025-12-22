@@ -20,6 +20,10 @@ export default function WorkflowPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    document.title = 'Annix Workflow';
+  }, []);
+
+  useEffect(() => {
     fetchWorkflows();
   }, []);
 
