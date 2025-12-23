@@ -2373,7 +2373,13 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
   );
 }
 
-function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, errors, fetchAndSelectPressureClass, availablePressureClasses }: any) {
+function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, errors, fetchAndSelectPressureClass, availablePressureClasses, requiredProducts = [] }: any) {
+  // Check which product types are selected
+  const showSteelPipes = requiredProducts.includes('fabricated_steel');
+  const showHdpePipes = requiredProducts.includes('hdpe');
+  const showPvcPipes = requiredProducts.includes('pvc');
+  const showSurfaceProtection = requiredProducts.includes('surface_protection');
+  const showTransportInstall = requiredProducts.includes('transport_install');
   const workingPressures = [6, 10, 16, 25, 40, 63, 100, 160, 250, 320, 400, 630]; // Bar values
   const workingTemperatures = [-29, -20, 0, 20, 50, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500]; // Celsius values
 
@@ -2410,12 +2416,20 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
       )}
 
       <div className="space-y-8">
-        {/* Working Conditions */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            Working Conditions
-            <span className="ml-2 text-sm font-normal text-gray-600">(Optional - Can be specified per item)</span>
-          </h3>
+        {/* Fabricated Steel Pipes & Fittings Section */}
+        {showSteelPipes && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
+              <span className="text-2xl">🔩</span>
+              <h3 className="text-xl font-bold text-gray-900">Fabricated Steel Pipes & Fittings</h3>
+            </div>
+
+            {/* Working Conditions */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Working Conditions
+                <span className="ml-2 text-sm font-normal text-gray-600">(Optional - Can be specified per item)</span>
+              </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Working Pressure */}
@@ -4993,18 +5007,113 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
             </div>
           )}
         </div>
+          </div>
+        )}
 
-        {/* Future Additions Notice */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-800 mb-2">Coming Soon</h3>
-          <p className="text-blue-700 text-sm">
-            Additional specifications will be added here in future updates:
-          </p>
-          <ul className="text-blue-600 text-sm mt-2 space-y-1">
-            <li>• Design Factors</li>
-            <li>• Additional material specifications</li>
-          </ul>
-        </div>
+        {/* HDPE Pipes & Fittings Section */}
+        {showHdpePipes && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
+              <span className="text-2xl">🔵</span>
+              <h3 className="text-xl font-bold text-gray-900">HDPE Pipes & Fittings</h3>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h4 className="text-lg font-semibold text-blue-800">Coming Soon</h4>
+              </div>
+              <p className="text-blue-700 text-sm">
+                HDPE pipe specifications and configuration options will be available in a future update.
+                This will include PE grades, SDR ratings, fusion joint specifications, and more.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* PVC Pipes & Fittings Section */}
+        {showPvcPipes && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
+              <span className="text-2xl">⚪</span>
+              <h3 className="text-xl font-bold text-gray-900">PVC Pipes & Fittings</h3>
+            </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h4 className="text-lg font-semibold text-gray-800">Coming Soon</h4>
+              </div>
+              <p className="text-gray-700 text-sm">
+                PVC pipe specifications and configuration options will be available in a future update.
+                This will include PVC grades, pressure classes, joint types, and more.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Surface Protection Requirements Section */}
+        {showSurfaceProtection && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
+              <span className="text-2xl">🛡️</span>
+              <h3 className="text-xl font-bold text-gray-900">Surface Protection Requirements</h3>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h4 className="text-lg font-semibold text-orange-800">Coming Soon</h4>
+              </div>
+              <p className="text-orange-700 text-sm">
+                Surface protection specifications will be available in a future update.
+                This will include coating systems, cathodic protection, insulation requirements, and more.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Transportation & Installation Section */}
+        {showTransportInstall && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
+              <span className="text-2xl">🚚</span>
+              <h3 className="text-xl font-bold text-gray-900">Transportation & Installation</h3>
+            </div>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h4 className="text-lg font-semibold text-green-800">Coming Soon</h4>
+              </div>
+              <p className="text-green-700 text-sm">
+                Transportation and installation specifications will be available in a future update.
+                This will include delivery requirements, site logistics, installation services, and more.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* No Products Selected Warning */}
+        {!showSteelPipes && !showHdpePipes && !showPvcPipes && !showSurfaceProtection && !showTransportInstall && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+            <div className="flex items-center gap-3">
+              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <h4 className="text-lg font-semibold text-yellow-800">No Products Selected</h4>
+                <p className="text-yellow-700 text-sm mt-1">
+                  Please go back to Stage 1 and select at least one product or service type to configure specifications.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -8211,6 +8320,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             errors={validationErrors}
             fetchAndSelectPressureClass={fetchAndSelectPressureClass}
             availablePressureClasses={availablePressureClasses}
+            requiredProducts={rfqData.requiredProducts}
           />
         );
       case 3:
