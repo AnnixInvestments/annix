@@ -18,6 +18,7 @@ import { useEnvironmentalIntelligence } from '@/app/lib/hooks/useEnvironmentalIn
 import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
 import { AutoFilledInput, AutoFilledSelect, AutoFilledDisplay } from '@/app/components/rfq/AutoFilledField';
 import AddMineModal from '@/app/components/rfq/AddMineModal';
+import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -901,6 +902,51 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
     setIsEditingEnvironmental(true);
   };
 
+  // Customer auth for auto-filling customer fields
+  const { isAuthenticated, customer, profile } = useCustomerAuth();
+
+  // Track which customer fields were auto-filled
+  const [customerAutoFilled, setCustomerAutoFilled] = useState<{
+    customerName: boolean;
+    customerEmail: boolean;
+    customerPhone: boolean;
+  }>({
+    customerName: false,
+    customerEmail: false,
+    customerPhone: false,
+  });
+
+  // Auto-fill customer fields when logged in
+  useEffect(() => {
+    if (isAuthenticated && profile) {
+      const updates: { customerName?: boolean; customerEmail?: boolean; customerPhone?: boolean } = {};
+
+      // Auto-fill customer name if empty
+      if (!rfqData.customerName && (profile.firstName || profile.lastName)) {
+        const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ');
+        onUpdate('customerName', fullName);
+        updates.customerName = true;
+      }
+
+      // Auto-fill customer email if empty
+      if (!rfqData.customerEmail && profile.email) {
+        onUpdate('customerEmail', profile.email);
+        updates.customerEmail = true;
+      }
+
+      // Auto-fill customer phone if empty (try mobilePhone, directPhone, or company primaryPhone)
+      const phoneNumber = profile.mobilePhone || profile.directPhone || profile.company?.primaryPhone;
+      if (!rfqData.customerPhone && phoneNumber) {
+        onUpdate('customerPhone', phoneNumber);
+        updates.customerPhone = true;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        setCustomerAutoFilled(prev => ({ ...prev, ...updates }));
+      }
+    }
+  }, [isAuthenticated, profile, rfqData.customerName, rfqData.customerEmail, rfqData.customerPhone, onUpdate]);
+
   // Derived state for locked sections
   const isLocationLocked = locationConfirmed && !isEditingLocation;
   const isEnvironmentalLocked = environmentalConfirmed && !isEditingEnvironmental;
@@ -910,6 +956,92 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Project/RFQ Details</h2>
       
       <div className="space-y-6">
+        {/* Customer Information - Required fields */}
+        <div className="bg-blue-50 rounded-lg p-5 border border-blue-200">
+          <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            Customer Information
+            {isAuthenticated && (
+              <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                Logged in
+              </span>
+            )}
+          </h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Customer Name *
+              </label>
+              <AutoFilledInput
+                type="text"
+                value={rfqData.customerName}
+                onChange={(val) => onUpdate('customerName', val)}
+                onOverride={() => setCustomerAutoFilled(prev => ({ ...prev, customerName: false }))}
+                isAutoFilled={customerAutoFilled.customerName}
+                placeholder="Customer or company name"
+              />
+              {errors.customerName && (
+                <p className="mt-2 text-sm text-red-600">{errors.customerName}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Customer Email *
+              </label>
+              <AutoFilledInput
+                type="text"
+                value={rfqData.customerEmail}
+                onChange={(val) => onUpdate('customerEmail', val)}
+                onOverride={() => setCustomerAutoFilled(prev => ({ ...prev, customerEmail: false }))}
+                isAutoFilled={customerAutoFilled.customerEmail}
+                placeholder="customer@company.com"
+              />
+              {errors.customerEmail && (
+                <p className="mt-2 text-sm text-red-600">{errors.customerEmail}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Customer Phone *
+              </label>
+              <AutoFilledInput
+                type="text"
+                value={rfqData.customerPhone}
+                onChange={(val) => onUpdate('customerPhone', val)}
+                onOverride={() => setCustomerAutoFilled(prev => ({ ...prev, customerPhone: false }))}
+                isAutoFilled={customerAutoFilled.customerPhone}
+                placeholder="+27 11 555 0123"
+              />
+              {errors.customerPhone && (
+                <p className="mt-2 text-sm text-red-600">{errors.customerPhone}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Required Date *
+              </label>
+              <input
+                type="date"
+                value={rfqData.requiredDate}
+                onChange={(e) => onUpdate('requiredDate', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                required
+              />
+              {errors.requiredDate && (
+                <p className="mt-2 text-sm text-red-600">{errors.requiredDate}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-2">
             Project/RFQ Name
@@ -1003,76 +1135,6 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
             placeholder="Brief description of the RFQ requirements"
           />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Customer Name *
-            </label>
-            <input
-              type="text"
-              value={rfqData.customerName}
-              onChange={(e) => onUpdate('customerName', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="Customer or company name"
-            />
-            {errors.customerName && (
-              <p className="mt-2 text-sm text-red-600">{errors.customerName}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Customer Email *
-            </label>
-            <input
-              type="email"
-              value={rfqData.customerEmail}
-              onChange={(e) => onUpdate('customerEmail', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="customer@company.com"
-              required
-            />
-            {errors.customerEmail && (
-              <p className="mt-2 text-sm text-red-600">{errors.customerEmail}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Customer Phone *
-            </label>
-            <input
-              type="tel"
-              value={rfqData.customerPhone}
-              onChange={(e) => onUpdate('customerPhone', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="+27 11 555 0123"
-              required
-            />
-            {errors.customerPhone && (
-              <p className="mt-2 text-sm text-red-600">{errors.customerPhone}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Required Date *
-            </label>
-            <input
-              type="date"
-              value={rfqData.requiredDate}
-              onChange={(e) => onUpdate('requiredDate', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              required
-            />
-            {errors.requiredDate && (
-              <p className="mt-2 text-sm text-red-600">{errors.requiredDate}</p>
-            )}
-          </div>
         </div>
 
         {/* Project Location */}

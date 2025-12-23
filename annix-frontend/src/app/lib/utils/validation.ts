@@ -42,6 +42,16 @@ export function validatePage1RequiredFields(rfqData: any): ValidationErrors {
     errors.customerEmail = 'Please enter a valid email address';
   }
 
+  // Customer phone validation
+  if (!rfqData.customerPhone || rfqData.customerPhone.trim() === '') {
+    errors.customerPhone = 'Customer phone is required';
+  }
+
+  // Required date validation
+  if (!rfqData.requiredDate || rfqData.requiredDate.trim() === '') {
+    errors.requiredDate = 'Required date is required';
+  }
+
   return errors;
 }
 
