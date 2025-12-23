@@ -233,6 +233,19 @@ export interface MineWithEnvironmentalData {
   liningRecommendation: LiningCoatingRule | null;
 }
 
+export interface CreateSaMineDto {
+  mineName: string;
+  operatingCompany: string;
+  commodityId: number;
+  province: string;
+  district?: string;
+  physicalAddress?: string;
+  mineType?: 'Underground' | 'Open Cast' | 'Both';
+  operationalStatus?: 'Active' | 'Care and Maintenance' | 'Closed';
+  latitude?: number;
+  longitude?: number;
+}
+
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
@@ -648,6 +661,13 @@ class ApiClient {
     return this.request<LiningCoatingRule[]>('/mines/lining-rules');
   }
 
+  async createMine(mineData: CreateSaMineDto): Promise<SaMine> {
+    return this.request<SaMine>('/mines', {
+      method: 'POST',
+      body: JSON.stringify(mineData),
+    });
+  }
+
   async calculateFitting(data: {
     fittingStandard: 'SABS62' | 'SABS719';
     fittingType: string;
@@ -769,4 +789,5 @@ export const minesApi = {
   getMineWithEnvironmentalData: (id: number) => apiClient.getMineWithEnvironmentalData(id),
   getSlurryProfiles: () => apiClient.getSlurryProfiles(),
   getLiningRules: () => apiClient.getLiningRules(),
+  createMine: (mineData: CreateSaMineDto) => apiClient.createMine(mineData),
 };

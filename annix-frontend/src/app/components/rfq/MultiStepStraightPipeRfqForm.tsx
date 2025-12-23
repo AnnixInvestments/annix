@@ -17,6 +17,7 @@ import GoogleMapLocationPicker from '@/app/components/GoogleMapLocationPicker';
 import { useEnvironmentalIntelligence } from '@/app/lib/hooks/useEnvironmentalIntelligence';
 import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
 import { AutoFilledInput, AutoFilledSelect, AutoFilledDisplay } from '@/app/components/rfq/AutoFilledField';
+import AddMineModal from '@/app/components/rfq/AddMineModal';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -551,6 +552,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
   const [selectedMineId, setSelectedMineId] = useState<number | null>(null);
   const [isLoadingMines, setIsLoadingMines] = useState(false);
   const [mineDataLoading, setMineDataLoading] = useState(false);
+  const [showAddMineModal, setShowAddMineModal] = useState(false);
 
   // Track which location fields were auto-filled from the map picker
   const [locationAutoFilled, setLocationAutoFilled] = useState<{
@@ -741,6 +743,25 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
       console.error('Failed to fetch mine environmental data:', error);
     } finally {
       setMineDataLoading(false);
+    }
+  };
+
+  // Handle new mine created from modal
+  const handleMineCreated = (newMine: SaMine) => {
+    // Add the new mine to the list
+    setMines(prevMines => [...prevMines, newMine].sort((a, b) => a.mineName.localeCompare(b.mineName)));
+    // Select the newly created mine
+    handleMineSelect(newMine.id);
+    // Close the modal
+    setShowAddMineModal(false);
+  };
+
+  // Handle mine dropdown change
+  const handleMineDropdownChange = (value: string) => {
+    if (value === 'add-new') {
+      setShowAddMineModal(true);
+    } else {
+      handleMineSelect(value ? Number(value) : null);
     }
   };
 
@@ -1046,11 +1067,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
             <div className="relative">
               <select
                 value={selectedMineId || ''}
-                onChange={(e) => handleMineSelect(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => handleMineDropdownChange(e.target.value)}
                 disabled={isLoadingMines || mineDataLoading}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 appearance-none bg-gradient-to-r from-amber-50 to-orange-50"
               >
                 <option value="">-- Select a mine (optional) --</option>
+                <option value="add-new" className="text-amber-600 font-medium">+ Add a mine not listed</option>
                 {mines.map((mine) => (
                   <option key={mine.id} value={mine.id}>
                     {mine.mineName} - {mine.operatingCompany} ({mine.commodityName || 'Unknown'}) - {mine.province}
@@ -1955,6 +1977,13 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           </div>
         </div>
       </div>
+
+      {/* Add Mine Modal */}
+      <AddMineModal
+        isOpen={showAddMineModal}
+        onClose={() => setShowAddMineModal(false)}
+        onMineCreated={handleMineCreated}
+      />
     </div>
   );
 }

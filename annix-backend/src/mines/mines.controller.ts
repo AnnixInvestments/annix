@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, ParseIntPipe } from '@nestjs/common';
 import { MinesService } from './mines.service';
 import {
   CommodityDto,
@@ -6,6 +6,7 @@ import {
   SlurryProfileDto,
   LiningCoatingRuleDto,
   MineWithEnvironmentalDataDto,
+  CreateSaMineDto,
 } from './dto/mine.dto';
 import { OperationalStatus } from './entities/sa-mine.entity';
 
@@ -35,6 +36,11 @@ export class MinesController {
   @Get('active')
   async getActiveMines(): Promise<SaMineDto[]> {
     return this.minesService.getActiveMines();
+  }
+
+  @Post()
+  async createMine(@Body() createMineDto: CreateSaMineDto): Promise<SaMineDto> {
+    return this.minesService.createMine(createMineDto);
   }
 
   @Get('slurry-profiles')

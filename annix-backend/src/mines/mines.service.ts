@@ -11,7 +11,9 @@ import {
   SlurryProfileDto,
   LiningCoatingRuleDto,
   MineWithEnvironmentalDataDto,
+  CreateSaMineDto,
 } from './dto/mine.dto';
+import { MineType } from './entities/sa-mine.entity';
 
 @Injectable()
 export class MinesService {
@@ -154,6 +156,40 @@ export class MinesService {
       .orderBy('mine.province', 'ASC')
       .getRawMany();
     return result.map((r) => r.province);
+  }
+
+  async createMine(createMineDto: CreateSaMineDto): Promise<SaMineDto> {
+    // Verify commodity exists
+    const commodity = await this.commodityRepository.findOne({
+      where: { id: createMineDto.commodityId },
+    });
+
+    if (!commodity) {
+      throw new NotFoundException(`Commodity with ID ${createMineDto.commodityId} not found`);
+    }
+
+    const mine = this.saMineRepository.create({
+      mineName: createMineDto.mineName,
+      operatingCompany: createMineDto.operatingCompany,
+      commodityId: createMineDto.commodityId,
+      province: createMineDto.province,
+      district: createMineDto.district || null,
+      physicalAddress: createMineDto.physicalAddress || null,
+      mineType: createMineDto.mineType || MineType.UNDERGROUND,
+      operationalStatus: createMineDto.operationalStatus || OperationalStatus.ACTIVE,
+      latitude: createMineDto.latitude || null,
+      longitude: createMineDto.longitude || null,
+    });
+
+    const savedMine = await this.saMineRepository.save(mine);
+
+    // Reload with commodity relation
+    const mineWithRelations = await this.saMineRepository.findOne({
+      where: { id: savedMine.id },
+      relations: ['commodity'],
+    });
+
+    return this.mapMineToDto(mineWithRelations!);
   }
 
   private mapCommodityToDto(commodity: Commodity): CommodityDto {
