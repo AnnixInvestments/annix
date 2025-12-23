@@ -3,6 +3,7 @@
  *
  * Data Sources:
  * - ISRIC SoilGrids: Soil Type & Texture (Global, no API key)
+ * - iSDAsoil: Soil Type & Texture (Africa, requires API key) - Fallback/primary for Africa
  * - Agromonitoring: Soil Moisture (requires API key)
  * - USDA SSURGO: Soil Drainage (US only, no API key)
  * - Open-Meteo: Weather/humidity data (Global, no API key)
@@ -11,6 +12,7 @@
 
 // API Base URLs
 const SOILGRIDS_BASE = 'https://rest.isric.org/soilgrids/v2.0';
+const ISDASOIL_BASE = 'https://api.isda-africa.com';
 const AGROMONITORING_BASE = 'https://api.agromonitoring.com/agro/1.0';
 const SSURGO_BASE = 'https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest';
 const OPEN_METEO_BASE = 'https://api.open-meteo.com/v1';
@@ -19,6 +21,11 @@ const OPENWEATHER_BASE = 'https://api.openweathermap.org/data/2.5';
 // Get API keys from environment
 const AGROMONITORING_API_KEY = process.env.NEXT_PUBLIC_AGROMONITORING_API_KEY || '';
 const OPENWEATHER_API_KEY = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || '';
+const ISDASOIL_USERNAME = process.env.NEXT_PUBLIC_ISDASOIL_USERNAME || '';
+const ISDASOIL_PASSWORD = process.env.NEXT_PUBLIC_ISDASOIL_PASSWORD || '';
+
+// Cache for iSDAsoil token (expires after 60 minutes)
+let iSDAsoilToken: { token: string; expires: number } | null = null;
 
 // ============================================================================
 // ISRIC SoilGrids API - Soil Type & Texture
@@ -236,6 +243,215 @@ export function classifyUsdaSoilTexture(clay: number, sand: number, silt: number
   }
 
   return 'Loam'; // Default
+}
+
+// ============================================================================
+// iSDAsoil API - Soil Type & Texture (Africa-focused)
+// ============================================================================
+
+export interface ISDAsoilPropertyResponse {
+  property: {
+    [key: string]: Array<{
+      value: {
+        value: number;
+      };
+      depth_top: number;
+      depth_bottom: number;
+    }>;
+  };
+}
+
+export interface ISDAsoilTextureData {
+  clay: number | null;
+  sand: number | null;
+  silt: number | null;
+  bulkDensity: number | null;
+}
+
+/**
+ * Get iSDAsoil access token (with caching)
+ * Token expires after 60 minutes
+ */
+async function getISDAsoilToken(): Promise<string | null> {
+  if (!ISDASOIL_USERNAME || !ISDASOIL_PASSWORD) {
+    console.warn('iSDAsoil credentials not configured');
+    return null;
+  }
+
+  // Check if we have a valid cached token
+  if (iSDAsoilToken && iSDAsoilToken.expires > Date.now()) {
+    return iSDAsoilToken.token;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const formData = new URLSearchParams();
+    formData.append('username', ISDASOIL_USERNAME);
+    formData.append('password', ISDASOIL_PASSWORD);
+
+    const response = await fetch(`${ISDASOIL_BASE}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      console.warn(`iSDAsoil login failed: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const token = data.access_token;
+
+    // Cache token for 55 minutes (5 minutes before expiry)
+    iSDAsoilToken = {
+      token,
+      expires: Date.now() + 55 * 60 * 1000,
+    };
+
+    return token;
+  } catch (error) {
+    console.warn('iSDAsoil login error:', error);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Fetch soil texture data from iSDAsoil API
+ * Returns clay, sand, silt percentages and bulk density
+ * Best for African locations where SoilGrids may have limited data
+ */
+export async function fetchISDAsoilTexture(
+  lat: number,
+  lng: number,
+  depth: string = '0-20'
+): Promise<ISDAsoilTextureData | null> {
+  const token = await getISDAsoilToken();
+  if (!token) {
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const properties = ['clay', 'sand', 'silt', 'bulk_density'];
+    const params = new URLSearchParams({
+      lat: lat.toString(),
+      lon: lng.toString(),
+      property: properties.join(','),
+      depth: depth,
+    });
+
+    const response = await fetch(
+      `${ISDASOIL_BASE}/isdasoil/v2/soilproperty?${params.toString()}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        signal: controller.signal,
+      }
+    );
+
+    if (!response.ok) {
+      // Handle 401 by clearing cached token
+      if (response.status === 401) {
+        iSDAsoilToken = null;
+      }
+      console.warn(`iSDAsoil API error: ${response.status}`);
+      return null;
+    }
+
+    const data: ISDAsoilPropertyResponse = await response.json();
+    return extractISDAsoilTexture(data);
+  } catch (error) {
+    console.warn('iSDAsoil API error:', error);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Extract soil texture values from iSDAsoil response
+ */
+function extractISDAsoilTexture(data: ISDAsoilPropertyResponse | null): ISDAsoilTextureData {
+  const result: ISDAsoilTextureData = {
+    clay: null,
+    sand: null,
+    silt: null,
+    bulkDensity: null,
+  };
+
+  if (!data || !data.property) {
+    return result;
+  }
+
+  const props = data.property;
+
+  // Extract values (iSDAsoil returns percentages directly)
+  if (props.clay?.[0]?.value?.value !== undefined) {
+    result.clay = props.clay[0].value.value;
+  }
+  if (props.sand?.[0]?.value?.value !== undefined) {
+    result.sand = props.sand[0].value.value;
+  }
+  if (props.silt?.[0]?.value?.value !== undefined) {
+    result.silt = props.silt[0].value.value;
+  }
+  if (props.bulk_density?.[0]?.value?.value !== undefined) {
+    result.bulkDensity = props.bulk_density[0].value.value;
+  }
+
+  return result;
+}
+
+/**
+ * Derive drainage class from iSDAsoil texture data
+ * Uses clay content and bulk density as primary indicators
+ */
+export function deriveDrainageFromISDAsoil(
+  data: ISDAsoilTextureData
+): { class: 'Poor' | 'Moderate' | 'Well'; source: 'iSDAsoil-derived' } {
+  let drainageClass: 'Poor' | 'Moderate' | 'Well' = 'Moderate';
+
+  // High clay content = poor drainage
+  if (data.clay !== null) {
+    if (data.clay > 45) {
+      drainageClass = 'Poor';
+    } else if (data.clay < 20) {
+      drainageClass = 'Well';
+    }
+  }
+
+  // Adjust based on bulk density (higher = more compacted = poorer drainage)
+  if (data.bulkDensity !== null && data.bulkDensity > 1.6) {
+    if (drainageClass === 'Well') drainageClass = 'Moderate';
+    if (drainageClass === 'Moderate') drainageClass = 'Poor';
+  }
+
+  return {
+    class: drainageClass,
+    source: 'iSDAsoil-derived',
+  };
+}
+
+/**
+ * Check if coordinates are within Africa (rough bounding box)
+ * Used to determine if iSDAsoil should be used as primary source
+ */
+export function isInAfrica(lat: number, lng: number): boolean {
+  // Rough bounding box for Africa
+  // Lat: -35 to 37 (South Africa to Tunisia)
+  // Lng: -18 to 52 (Senegal to Somalia)
+  return lat >= -35 && lat <= 37 && lng >= -18 && lng <= 52;
 }
 
 // ============================================================================
@@ -732,6 +948,94 @@ export function wrbToHumanReadable(wrbClass: string | null): string {
 
   // Return cleaned up version of the original
   return wrbClass.replace(/s$/, '').replace(/_/g, ' ');
+}
+
+/**
+ * Derive typical soil texture from WRB classification
+ * Used as fallback when direct texture measurements are unavailable
+ * Based on typical characteristics of each WRB soil type
+ */
+export function deriveTextureFromWrb(wrbClass: string): {
+  texture: string;
+  clay: number;
+  sand: number;
+  silt: number;
+  bulkDensity: number;
+  drainage: 'Poor' | 'Moderate' | 'Well';
+} | null {
+  if (!wrbClass) return null;
+
+  const wrbLower = wrbClass.toLowerCase();
+
+  // Map WRB classes to typical texture characteristics
+  // Values are approximate typical ranges for each soil type
+  const wrbTextureMap: Record<string, { texture: string; clay: number; sand: number; silt: number; bd: number; drainage: 'Poor' | 'Moderate' | 'Well' }> = {
+    // Clay-rich soils
+    'vertisol': { texture: 'Clay', clay: 50, sand: 15, silt: 35, bd: 1.3, drainage: 'Poor' },
+    'nitisol': { texture: 'Clay', clay: 45, sand: 20, silt: 35, bd: 1.2, drainage: 'Moderate' },
+    'acrisol': { texture: 'Clay Loam', clay: 35, sand: 30, silt: 35, bd: 1.4, drainage: 'Moderate' },
+    'alisol': { texture: 'Clay Loam', clay: 35, sand: 25, silt: 40, bd: 1.3, drainage: 'Poor' },
+    'lixisol': { texture: 'Sandy Clay Loam', clay: 28, sand: 50, silt: 22, bd: 1.5, drainage: 'Moderate' },
+    'luvisol': { texture: 'Clay Loam', clay: 30, sand: 35, silt: 35, bd: 1.4, drainage: 'Moderate' },
+    'plinthosol': { texture: 'Clay Loam', clay: 35, sand: 35, silt: 30, bd: 1.5, drainage: 'Poor' },
+    'planosol': { texture: 'Silty Clay Loam', clay: 35, sand: 15, silt: 50, bd: 1.4, drainage: 'Poor' },
+    'stagnosol': { texture: 'Silty Clay', clay: 42, sand: 10, silt: 48, bd: 1.3, drainage: 'Poor' },
+
+    // Loamy soils
+    'cambisol': { texture: 'Loam', clay: 20, sand: 40, silt: 40, bd: 1.4, drainage: 'Moderate' },
+    'phaeozem': { texture: 'Loam', clay: 22, sand: 38, silt: 40, bd: 1.3, drainage: 'Well' },
+    'chernozem': { texture: 'Loam', clay: 25, sand: 35, silt: 40, bd: 1.2, drainage: 'Well' },
+    'kastanozem': { texture: 'Loam', clay: 22, sand: 40, silt: 38, bd: 1.3, drainage: 'Well' },
+    'umbrisol': { texture: 'Loam', clay: 18, sand: 42, silt: 40, bd: 1.1, drainage: 'Well' },
+    'regosol': { texture: 'Loam', clay: 15, sand: 50, silt: 35, bd: 1.4, drainage: 'Well' },
+    'fluvisol': { texture: 'Silt Loam', clay: 18, sand: 25, silt: 57, bd: 1.3, drainage: 'Moderate' },
+
+    // Sandy soils
+    'arenosol': { texture: 'Sand', clay: 5, sand: 88, silt: 7, bd: 1.6, drainage: 'Well' },
+    'podzol': { texture: 'Sandy Loam', clay: 10, sand: 70, silt: 20, bd: 1.4, drainage: 'Well' },
+
+    // Silty soils
+    'solonchak': { texture: 'Silt Loam', clay: 20, sand: 20, silt: 60, bd: 1.4, drainage: 'Poor' },
+    'solonetz': { texture: 'Silty Clay', clay: 40, sand: 15, silt: 45, bd: 1.5, drainage: 'Poor' },
+
+    // Special soils
+    'ferralsol': { texture: 'Clay', clay: 45, sand: 30, silt: 25, bd: 1.2, drainage: 'Well' },
+    'andosol': { texture: 'Silt Loam', clay: 15, sand: 35, silt: 50, bd: 0.9, drainage: 'Well' },
+    'histosol': { texture: 'Loam', clay: 15, sand: 30, silt: 55, bd: 0.5, drainage: 'Poor' },
+    'gleysol': { texture: 'Silty Clay Loam', clay: 32, sand: 20, silt: 48, bd: 1.4, drainage: 'Poor' },
+    'leptosol': { texture: 'Loam', clay: 18, sand: 45, silt: 37, bd: 1.3, drainage: 'Well' },
+    'calcisol': { texture: 'Loam', clay: 20, sand: 40, silt: 40, bd: 1.5, drainage: 'Moderate' },
+    'gypsisol': { texture: 'Sandy Loam', clay: 12, sand: 60, silt: 28, bd: 1.5, drainage: 'Well' },
+    'durisol': { texture: 'Sandy Loam', clay: 15, sand: 55, silt: 30, bd: 1.6, drainage: 'Moderate' },
+    'cryosol': { texture: 'Silt Loam', clay: 18, sand: 30, silt: 52, bd: 1.2, drainage: 'Poor' },
+    'anthrosol': { texture: 'Loam', clay: 20, sand: 40, silt: 40, bd: 1.3, drainage: 'Moderate' },
+    'technosol': { texture: 'Loam', clay: 20, sand: 45, silt: 35, bd: 1.5, drainage: 'Moderate' },
+    'retisol': { texture: 'Loam', clay: 22, sand: 38, silt: 40, bd: 1.4, drainage: 'Moderate' },
+  };
+
+  // Find matching WRB class
+  for (const [key, value] of Object.entries(wrbTextureMap)) {
+    if (wrbLower.includes(key)) {
+      return {
+        texture: value.texture,
+        clay: value.clay,
+        sand: value.sand,
+        silt: value.silt,
+        bulkDensity: value.bd,
+        drainage: value.drainage,
+      };
+    }
+  }
+
+  // Default to Loam if no match found
+  return {
+    texture: 'Loam',
+    clay: 20,
+    sand: 40,
+    silt: 40,
+    bulkDensity: 1.4,
+    drainage: 'Moderate',
+  };
 }
 
 // ============================================================================

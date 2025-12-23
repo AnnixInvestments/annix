@@ -34,6 +34,9 @@
 import {
   fetchSoilGridsTexture,
   fetchSoilGridsClassification,
+  fetchISDAsoilTexture,
+  isInAfrica,
+  deriveDrainageFromISDAsoil,
   fetchAgromonitoringSoilMoisture,
   fetchSsurgoDrainage,
   fetchOpenMeteoData,
@@ -50,6 +53,8 @@ import {
   classifyIndustrialPollution,
   deriveDrainageFromSoilGrids,
   wrbToHumanReadable,
+  deriveTextureFromWrb,
+  type ISDAsoilTextureData,
 } from '../api/externalApis';
 
 import {
@@ -299,19 +304,29 @@ export async function fetchEnvironmentalData(
 
   // Step 2: Query SoilGrids for Soil Type and Texture
   let soilTextureData: ReturnType<typeof extractSoilTexture> | null = null;
+  let iSDAsoilData: ISDAsoilTextureData | null = null;
+  let soilTextureSource: string | null = null;
 
-  // Fetch both endpoints in parallel - these now return null on error instead of throwing
+  // Check if location is in Africa (prefer iSDAsoil for African locations)
+  const inAfrica = isInAfrica(location.lat, location.lng);
+  console.log(`[Environmental] Step 2 - Location in Africa: ${inAfrica}, coords: ${location.lat}, ${location.lng}`);
+
+  // Fetch SoilGrids endpoints in parallel - these now return null on error instead of throwing
   const [textureResponse, classResponse] = await Promise.all([
     fetchSoilGridsTexture(location.lat, location.lng),
     fetchSoilGridsClassification(location.lat, location.lng),
   ]);
 
-  // Process texture response if available
+  console.log('[Environmental] SoilGrids texture response:', textureResponse ? 'received' : 'null');
+  console.log('[Environmental] SoilGrids class response:', classResponse ? 'received' : 'null');
+
+  // Process SoilGrids texture response if available
   if (textureResponse) {
     soilTextureData = extractSoilTexture(textureResponse);
     metadata.soilTexture = soilTextureData;
+    console.log('[Environmental] Extracted SoilGrids texture:', soilTextureData);
 
-    // Determine USDA Soil Texture
+    // Determine USDA Soil Texture from SoilGrids
     if (soilTextureData.clay !== null &&
         soilTextureData.sand !== null &&
         soilTextureData.silt !== null) {
@@ -320,13 +335,55 @@ export async function fetchEnvironmentalData(
         soilTextureData.sand,
         soilTextureData.silt
       );
+      soilTextureSource = 'ISRIC SoilGrids';
       dataSources.push('ISRIC SoilGrids');
+      console.log(`[Environmental] Soil texture from SoilGrids: ${data.soilTexture}`);
+    } else {
+      console.log('[Environmental] SoilGrids returned incomplete texture data');
     }
   }
 
-  // Process classification response if available
+  // If SoilGrids texture failed or returned incomplete data, try iSDAsoil as fallback
+  // iSDAsoil is especially useful for African locations
+  if (!data.soilTexture) {
+    console.log('[Environmental] Trying iSDAsoil fallback...');
+    iSDAsoilData = await fetchISDAsoilTexture(location.lat, location.lng);
+    console.log('[Environmental] iSDAsoil response:', iSDAsoilData);
+
+    if (iSDAsoilData &&
+        iSDAsoilData.clay !== null &&
+        iSDAsoilData.sand !== null &&
+        iSDAsoilData.silt !== null) {
+      // Use iSDAsoil data for texture classification
+      data.soilTexture = classifyUsdaSoilTexture(
+        iSDAsoilData.clay,
+        iSDAsoilData.sand,
+        iSDAsoilData.silt
+      );
+      soilTextureSource = 'iSDAsoil';
+
+      // Store in metadata for drainage calculation
+      soilTextureData = {
+        clay: iSDAsoilData.clay,
+        sand: iSDAsoilData.sand,
+        silt: iSDAsoilData.silt,
+        bulkDensity: iSDAsoilData.bulkDensity,
+        organicCarbon: null, // iSDAsoil doesn't provide this
+      };
+      metadata.soilTexture = soilTextureData;
+
+      if (!dataSources.includes('iSDAsoil')) {
+        dataSources.push('iSDAsoil');
+      }
+
+      console.log(`[Environmental] Soil texture from iSDAsoil: ${data.soilTexture} (clay: ${iSDAsoilData.clay}%, sand: ${iSDAsoilData.sand}%, silt: ${iSDAsoilData.silt}%)`);
+    }
+  }
+
+  // Process classification response and derive texture from WRB class if needed
+  let wrbClass: string | null = null;
   if (classResponse) {
-    const wrbClass = extractWrbClass(classResponse);
+    wrbClass = extractWrbClass(classResponse);
     metadata.wrbClass = wrbClass || undefined;
 
     if (wrbClass) {
@@ -334,16 +391,39 @@ export async function fetchEnvironmentalData(
       if (!dataSources.includes('ISRIC SoilGrids')) {
         dataSources.push('ISRIC SoilGrids');
       }
+
+      // If we have WRB class but no texture, derive texture from WRB
+      if (!data.soilTexture) {
+        const derivedTexture = deriveTextureFromWrb(wrbClass);
+        if (derivedTexture) {
+          data.soilTexture = derivedTexture.texture;
+          soilTextureSource = 'WRB-derived';
+          // Create synthetic texture data for drainage calculation
+          soilTextureData = {
+            clay: derivedTexture.clay,
+            sand: derivedTexture.sand,
+            silt: derivedTexture.silt,
+            bulkDensity: derivedTexture.bulkDensity,
+            organicCarbon: null,
+          };
+          console.log(`[Environmental] Soil texture derived from WRB class (${wrbClass}): ${data.soilTexture}`);
+        }
+      }
     }
   }
 
-  // Add error message if neither API returned data
-  if (!textureResponse && !classResponse) {
-    errors.push('Soil type and texture data unavailable');
-  } else if (!classResponse) {
+  // Add error message if no soil texture data available from any source
+  if (!data.soilTexture) {
+    console.log('[Environmental] No soil texture available from any source');
+    if (inAfrica) {
+      errors.push('Soil texture data unavailable (SoilGrids and iSDAsoil failed)');
+    } else {
+      errors.push('Soil texture data unavailable');
+    }
+  }
+
+  if (!classResponse && !data.soilType) {
     errors.push('Soil classification unavailable');
-  } else if (!textureResponse) {
-    errors.push('Soil texture data unavailable');
   }
 
   // Step 3: Query Agromonitoring for Soil Moisture
@@ -441,7 +521,7 @@ export async function fetchEnvironmentalData(
       }
     }
   } else {
-    // Derive from SoilGrids for non-US locations
+    // Derive from SoilGrids or iSDAsoil for non-US locations
     if (soilTextureData) {
       const derived = deriveDrainageFromSoilGrids(
         soilTextureData.clay,
@@ -449,7 +529,23 @@ export async function fetchEnvironmentalData(
         soilTextureData.organicCarbon
       );
       data.soilDrainage = derived.class;
-      data.soilDrainageSource = 'model-derived';
+      data.soilDrainageSource = soilTextureSource === 'iSDAsoil' ? 'iSDAsoil-derived' :
+                                soilTextureSource === 'WRB-derived' ? 'WRB-derived' : 'model-derived';
+    } else if (iSDAsoilData) {
+      // Use iSDAsoil data directly for drainage if SoilGrids failed
+      const derived = deriveDrainageFromISDAsoil(iSDAsoilData);
+      data.soilDrainage = derived.class;
+      data.soilDrainageSource = 'iSDAsoil-derived';
+    }
+  }
+
+  // Final fallback: Use WRB-derived drainage if still not set
+  if (!data.soilDrainage && wrbClass) {
+    const wrbDerived = deriveTextureFromWrb(wrbClass);
+    if (wrbDerived) {
+      data.soilDrainage = wrbDerived.drainage;
+      data.soilDrainageSource = 'WRB-derived';
+      console.log(`[Environmental] Soil drainage derived from WRB class (${wrbClass}): ${data.soilDrainage}`);
     }
   }
 
