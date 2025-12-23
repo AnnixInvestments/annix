@@ -44,6 +44,7 @@ import {
   extractHumidity,
   extractSoilMoistureFromOpenMeteo,
   extractWeatherData,
+  extractOpenMeteoWeatherData,
   classifyUsdaSoilTexture,
   classifySoilMoisture,
   classifyIndustrialPollution,
@@ -293,9 +294,8 @@ export async function fetchEnvironmentalData(
     addressInfo?.region,
     addressInfo?.country
   );
-  // Map the heuristic values to the expected EnvironmentalData type
-  // 'Heavy' maps to 'High' since the form uses a different scale
-  data.ecpIndustrialPollution = industrialPollution === 'Heavy' ? 'High' : industrialPollution;
+  // Assign the industrial pollution directly (values already match EnvironmentalData type)
+  data.ecpIndustrialPollution = industrialPollution;
 
   // Step 2: Query SoilGrids for Soil Type and Texture
   let soilTextureData: ReturnType<typeof extractSoilTexture> | null = null;
@@ -453,82 +453,105 @@ export async function fetchEnvironmentalData(
     }
   }
 
-  // Step 5: Query OpenWeatherMap for Temperature & Humidity
+  // Step 5: Query Weather APIs for Temperature & Humidity
+  // First try OpenWeatherMap, then fallback to Open-Meteo (free, no API key required)
+  let weatherData = null;
+
+  // Try OpenWeatherMap first (requires API key)
   try {
     const weatherResponse = await fetchOpenWeatherMapData(location.lat, location.lng);
-    const weatherData = extractWeatherData(weatherResponse);
-
+    weatherData = extractWeatherData(weatherResponse);
     if (weatherData) {
-      // Populate temperature fields
-      data.tempMin = weatherData.temperature.min;
-      data.tempMax = weatherData.temperature.max;
-      data.tempMean = weatherData.temperature.mean;
-
-      // Populate humidity fields
-      data.humidityMin = weatherData.humidity.min;
-      data.humidityMax = weatherData.humidity.max;
-      data.humidityMean = weatherData.humidity.mean;
-
-      // Populate additional atmospheric conditions
-      if (weatherData.annualRainfall) {
-        data.annualRainfall = weatherData.annualRainfall;
-      }
-      if (weatherData.windSpeed !== undefined) {
-        data.windSpeed = weatherData.windSpeed;
-      }
-      if (weatherData.windDirection) {
-        data.windDirection = weatherData.windDirection;
-      }
-      if (weatherData.uvIndex !== undefined) {
-        data.uvIndex = weatherData.uvIndex;
-      }
-      if (weatherData.uvExposure) {
-        data.uvExposure = weatherData.uvExposure;
-      }
-      if (weatherData.snowExposure) {
-        data.snowExposure = weatherData.snowExposure;
-      }
-      if (weatherData.fogFrequency) {
-        data.fogFrequency = weatherData.fogFrequency;
-      }
-
-      // Update metadata with more accurate humidity
-      metadata.humidity = weatherData.humidity.mean;
-      metadata.weather = {
-        temperature: weatherData.temperature,
-        humidity: weatherData.humidity,
-        source: weatherData.source,
-      };
-
-      dataSources.push('OpenWeatherMap');
-
-      console.log('[Environmental] Step 5 - Weather data fetched:', {
-        temp: weatherData.temperature,
-        humidity: weatherData.humidity,
-        windSpeed: weatherData.windSpeed,
-        windDirection: weatherData.windDirection,
-        annualRainfall: weatherData.annualRainfall,
-        uvExposure: weatherData.uvExposure,
-        snowExposure: weatherData.snowExposure,
-        fogFrequency: weatherData.fogFrequency,
-      });
-
-      // Step 5b: Recalculate marine data with humidity/temperature for TOW and enhanced salt content
-      const enhancedMarineData = getMarineEnvironmentalData(
-        location.lat,
-        location.lng,
-        weatherData.humidity.mean,
-        weatherData.temperature.mean
-      );
-      // Update with humidity-enhanced air salt content
-      data.airSaltContent = enhancedMarineData.airSaltContent;
-      // Add Time of Wetness (now available with temp/humidity)
-      data.timeOfWetness = enhancedMarineData.timeOfWetness;
-      metadata.marineEnvironmental = enhancedMarineData;
+      console.log('[Environmental] Step 5 - OpenWeatherMap data fetched successfully');
     }
   } catch (error) {
-    console.error('OpenWeatherMap API error:', error);
-    errors.push('Temperature and humidity data unavailable');
+    console.warn('[Environmental] OpenWeatherMap API error, will try Open-Meteo fallback:', error);
+  }
+
+  // Fallback to Open-Meteo if OpenWeatherMap failed or returned no data
+  if (!weatherData) {
+    try {
+      console.log('[Environmental] Step 5 - Using Open-Meteo (free) for weather data');
+      const openMeteoResponse = await fetchOpenMeteoData(location.lat, location.lng);
+      weatherData = extractOpenMeteoWeatherData(openMeteoResponse);
+      if (weatherData) {
+        console.log('[Environmental] Step 5 - Open-Meteo data fetched successfully');
+      }
+    } catch (error) {
+      console.error('[Environmental] Open-Meteo API error:', error);
+    }
+  }
+
+  if (weatherData) {
+    // Populate temperature fields
+    data.tempMin = weatherData.temperature.min;
+    data.tempMax = weatherData.temperature.max;
+    data.tempMean = weatherData.temperature.mean;
+
+    // Populate humidity fields
+    data.humidityMin = weatherData.humidity.min;
+    data.humidityMax = weatherData.humidity.max;
+    data.humidityMean = weatherData.humidity.mean;
+
+    // Populate additional atmospheric conditions
+    if (weatherData.annualRainfall) {
+      data.annualRainfall = weatherData.annualRainfall;
+    }
+    if (weatherData.windSpeed !== undefined) {
+      data.windSpeed = weatherData.windSpeed;
+    }
+    if (weatherData.windDirection) {
+      data.windDirection = weatherData.windDirection;
+    }
+    if (weatherData.uvIndex !== undefined) {
+      data.uvIndex = weatherData.uvIndex;
+    }
+    if (weatherData.uvExposure) {
+      data.uvExposure = weatherData.uvExposure;
+    }
+    if (weatherData.snowExposure) {
+      data.snowExposure = weatherData.snowExposure;
+    }
+    if (weatherData.fogFrequency) {
+      data.fogFrequency = weatherData.fogFrequency;
+    }
+
+    // Update metadata with more accurate humidity
+    metadata.humidity = weatherData.humidity.mean;
+    metadata.weather = {
+      temperature: weatherData.temperature,
+      humidity: weatherData.humidity,
+      source: weatherData.source,
+    };
+
+    dataSources.push(weatherData.source);
+
+    console.log('[Environmental] Step 5 - Weather data applied:', {
+      source: weatherData.source,
+      temp: weatherData.temperature,
+      humidity: weatherData.humidity,
+      windSpeed: weatherData.windSpeed,
+      windDirection: weatherData.windDirection,
+      annualRainfall: weatherData.annualRainfall,
+      uvExposure: weatherData.uvExposure,
+      snowExposure: weatherData.snowExposure,
+      fogFrequency: weatherData.fogFrequency,
+    });
+
+    // Step 5b: Recalculate marine data with humidity/temperature for TOW and enhanced salt content
+    const enhancedMarineData = getMarineEnvironmentalData(
+      location.lat,
+      location.lng,
+      weatherData.humidity.mean,
+      weatherData.temperature.mean
+    );
+    // Update with humidity-enhanced air salt content
+    data.airSaltContent = enhancedMarineData.airSaltContent;
+    // Add Time of Wetness (now available with temp/humidity)
+    data.timeOfWetness = enhancedMarineData.timeOfWetness;
+    metadata.marineEnvironmental = enhancedMarineData;
+  } else {
+    errors.push('Temperature and humidity data unavailable from all sources');
   }
 
   // Step 6: Query OpenWeatherMap Air Pollution API for Industrial Atmospheric Pollution

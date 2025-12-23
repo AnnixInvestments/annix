@@ -462,7 +462,7 @@ export function deriveDrainageFromSoilGrids(
 }
 
 // ============================================================================
-// Open-Meteo API - Weather/Humidity Data
+// Open-Meteo API - Weather/Humidity Data (Free, no API key required)
 // ============================================================================
 
 export interface OpenMeteoResponse {
@@ -471,17 +471,29 @@ export interface OpenMeteoResponse {
   timezone: string;
   hourly?: {
     time: string[];
+    temperature_2m?: number[];
     relative_humidity_2m: number[];
+    wind_speed_10m?: number[];
+    wind_direction_10m?: number[];
     soil_moisture_0_to_1cm: number[];
+    cloud_cover?: number[];
   };
   daily?: {
     time: string[];
+    temperature_2m_max?: number[];
+    temperature_2m_min?: number[];
+    temperature_2m_mean?: number[];
     precipitation_sum: number[];
+    wind_speed_10m_max?: number[];
+    wind_direction_10m_dominant?: number[];
+    uv_index_max?: number[];
+    snowfall_sum?: number[];
   };
 }
 
 /**
- * Fetch weather and soil moisture data from Open-Meteo API
+ * Fetch comprehensive weather and soil data from Open-Meteo API
+ * This is a free API with no key required - used as primary/fallback for atmospheric data
  */
 export async function fetchOpenMeteoData(lat: number, lng: number): Promise<OpenMeteoResponse> {
   const controller = new AbortController();
@@ -491,10 +503,10 @@ export async function fetchOpenMeteoData(lat: number, lng: number): Promise<Open
     const response = await fetch(
       `${OPEN_METEO_BASE}/forecast?` +
       `latitude=${lat}&longitude=${lng}` +
-      `&hourly=relative_humidity_2m,soil_moisture_0_to_1cm` +
-      `&daily=precipitation_sum` +
+      `&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,soil_moisture_0_to_1cm,cloud_cover` +
+      `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant,uv_index_max,snowfall_sum` +
       `&timezone=auto` +
-      `&forecast_days=1`,
+      `&forecast_days=7`,
       { signal: controller.signal }
     );
 
@@ -506,6 +518,129 @@ export async function fetchOpenMeteoData(lat: number, lng: number): Promise<Open
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+/**
+ * Extract comprehensive weather data from Open-Meteo response
+ * Returns data in the same format as OpenWeatherMap for consistency
+ */
+export function extractOpenMeteoWeatherData(data: OpenMeteoResponse): WeatherData | null {
+  if (!data.hourly && !data.daily) return null;
+
+  // Calculate temperature stats from hourly data or daily data
+  let tempMin = 0, tempMax = 0, tempMean = 0;
+
+  if (data.daily?.temperature_2m_min?.length && data.daily?.temperature_2m_max?.length) {
+    // Use daily min/max - average over the forecast period
+    tempMin = Math.min(...data.daily.temperature_2m_min);
+    tempMax = Math.max(...data.daily.temperature_2m_max);
+    tempMean = (tempMin + tempMax) / 2;
+  } else if (data.hourly?.temperature_2m?.length) {
+    const temps = data.hourly.temperature_2m;
+    tempMin = Math.min(...temps);
+    tempMax = Math.max(...temps);
+    tempMean = temps.reduce((a, b) => a + b, 0) / temps.length;
+  }
+
+  // Calculate humidity stats from hourly data
+  let humidityMin = 0, humidityMax = 0, humidityMean = 0;
+  if (data.hourly?.relative_humidity_2m?.length) {
+    const humidity = data.hourly.relative_humidity_2m;
+    humidityMin = Math.min(...humidity);
+    humidityMax = Math.max(...humidity);
+    humidityMean = Math.round(humidity.reduce((a, b) => a + b, 0) / humidity.length);
+  }
+
+  // Wind speed and direction
+  let windSpeed = 0;
+  let windDeg = 0;
+  if (data.daily?.wind_speed_10m_max?.length) {
+    windSpeed = data.daily.wind_speed_10m_max.reduce((a, b) => a + b, 0) / data.daily.wind_speed_10m_max.length;
+    windSpeed = windSpeed / 3.6; // Convert km/h to m/s
+  } else if (data.hourly?.wind_speed_10m?.length) {
+    const winds = data.hourly.wind_speed_10m;
+    windSpeed = winds.reduce((a, b) => a + b, 0) / winds.length;
+    windSpeed = windSpeed / 3.6; // Convert km/h to m/s
+  }
+  if (data.daily?.wind_direction_10m_dominant?.length) {
+    windDeg = data.daily.wind_direction_10m_dominant.reduce((a, b) => a + b, 0) / data.daily.wind_direction_10m_dominant.length;
+  } else if (data.hourly?.wind_direction_10m?.length) {
+    const dirs = data.hourly.wind_direction_10m;
+    windDeg = dirs.reduce((a, b) => a + b, 0) / dirs.length;
+  }
+
+  // Precipitation - sum over forecast period and estimate annual
+  let totalPrecip = 0;
+  if (data.daily?.precipitation_sum?.length) {
+    totalPrecip = data.daily.precipitation_sum.reduce((a, b) => a + b, 0);
+  }
+  const avgDailyPrecip = data.daily?.precipitation_sum?.length
+    ? totalPrecip / data.daily.precipitation_sum.length
+    : 0;
+
+  // UV Index
+  let uvIndex = 0;
+  if (data.daily?.uv_index_max?.length) {
+    uvIndex = data.daily.uv_index_max.reduce((a, b) => a + b, 0) / data.daily.uv_index_max.length;
+  }
+
+  // Snow exposure
+  let snowSum = 0;
+  if (data.daily?.snowfall_sum?.length) {
+    snowSum = data.daily.snowfall_sum.reduce((a, b) => a + b, 0);
+  }
+
+  // Cloud cover for fog estimation
+  let avgClouds = 0;
+  if (data.hourly?.cloud_cover?.length) {
+    avgClouds = data.hourly.cloud_cover.reduce((a, b) => a + b, 0) / data.hourly.cloud_cover.length;
+  }
+
+  return {
+    temperature: {
+      min: Math.round(tempMin * 10) / 10,
+      max: Math.round(tempMax * 10) / 10,
+      mean: Math.round(tempMean * 10) / 10,
+    },
+    humidity: {
+      min: humidityMin,
+      max: humidityMax,
+      mean: humidityMean,
+    },
+    windSpeed: Math.round(windSpeed * 10) / 10,
+    windDirection: degreesToDirection(windDeg),
+    windDirectionDegrees: Math.round(windDeg),
+    dailyRainfall: Math.round(avgDailyPrecip * 10) / 10,
+    annualRainfall: estimateAnnualRainfallFromOpenMeteo(avgDailyPrecip),
+    uvIndex: Math.round(uvIndex * 10) / 10,
+    uvExposure: classifyUvExposure(uvIndex),
+    snowExposure: classifySnowExposureFromOpenMeteo(tempMin, snowSum),
+    fogFrequency: classifyFogFrequency(humidityMean, avgClouds, windSpeed),
+    cloudCover: Math.round(avgClouds),
+    source: 'Open-Meteo',
+  };
+}
+
+/**
+ * Estimate annual rainfall from Open-Meteo daily average
+ */
+function estimateAnnualRainfallFromOpenMeteo(avgDailyMm: number): string {
+  const estimatedAnnual = avgDailyMm * 365;
+  if (estimatedAnnual < 250) return '<250';
+  if (estimatedAnnual < 500) return '250-500';
+  if (estimatedAnnual < 1000) return '500-1000';
+  if (estimatedAnnual < 2000) return '1000-2000';
+  return '>2000';
+}
+
+/**
+ * Classify snow exposure based on temperature and snowfall data for Open-Meteo
+ */
+function classifySnowExposureFromOpenMeteo(tempMin: number, snowfallMm: number): 'None' | 'Low' | 'Moderate' | 'High' {
+  if (snowfallMm > 0) return 'High';
+  if (tempMin <= 0) return 'Moderate';
+  if (tempMin <= 5) return 'Low';
+  return 'None';
 }
 
 /**
@@ -683,7 +818,7 @@ export interface WeatherData {
   // Fog/Condensation
   fogFrequency?: 'Low' | 'Moderate' | 'High';
   cloudCover?: number;             // Cloud cover percentage
-  source: 'OpenWeatherMap';
+  source: 'OpenWeatherMap' | 'Open-Meteo';
 }
 
 /**
