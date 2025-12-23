@@ -73,31 +73,49 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchStats = async () => {
       try {
         const baseUrl = browserBaseUrl();
-        const response = await fetch(`${baseUrl}/public/stats`);
+        const response = await fetch(`${baseUrl}/public/stats`, {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           throw new Error('Failed to fetch stats');
         }
         const data = await response.json();
         setStats(data);
+        setError(null);
       } catch (err) {
-        console.error('Error fetching stats:', err);
-        setError('Unable to load statistics');
-        // Set default stats on error
+        // Ignore abort errors (component unmounted)
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+        // Set default stats on error (backend may be unavailable)
         setStats({
           totalRfqs: 0,
           totalSuppliers: 0,
           totalCustomers: 0,
           upcomingRfqs: [],
         });
+        // Only set error message if it's not a network connectivity issue
+        if (err instanceof TypeError && err.message === 'Failed to fetch') {
+          // Backend is likely not running - silently use defaults
+          setError(null);
+        } else {
+          setError('Unable to load statistics');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchStats();
+
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   const formatDate = (dateString: string) => {
