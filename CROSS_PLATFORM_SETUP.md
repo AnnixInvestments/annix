@@ -35,35 +35,21 @@ The hooks are **already configured** and will work automatically with Git Bash (
 ✅ **No more yarn.lock conflicts!**
 - Pull changes normally with `git pull`
 - Lock files automatically regenerate for your platform
+- The `run-dev.sh` / `run-dev.ps1` scripts handle everything
 - Commit your work without worrying about platform-specific packages
 
-✅ **How to use:**
+✅ **Workflow (it's automatic!):**
 1. Pull changes: `git pull`
-2. The hook runs automatically
-3. Lock file is regenerated for your platform
-4. Continue working!
-
-### Manual Regeneration (if needed)
-
-If you need to manually regenerate the lock files:
-
-**Frontend:**
-```bash
-cd annix-frontend
-yarn install --check-files
-```
-
-**Backend:**
-```bash
-cd annix-backend
-npm install
-```
+2. Start the app: `./run-dev.sh` (Mac/Linux) or `./run-dev.ps1` (Windows)
+3. If lock files changed, commit them: `git commit -am "Update lock files"`
+4. That's it!
 
 ### Important Notes
 
-- ⚠️ Always commit the regenerated lock files after pulling
-- ⚠️ Don't manually edit lock files
-- ⚠️ If you see lock file changes, they're expected - just commit them
+- ✅ **The run-dev scripts handle everything** - dependency installation, platform-specific packages, etc.
+- ✅ Lock files auto-regenerate when you pull (via git hook)
+- ✅ If you see lock file changes after pulling, just commit them - they're expected
+- ⚠️ Never manually edit lock files
 
 ## Testing the Setup
 
