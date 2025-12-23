@@ -973,7 +973,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Customer Name *
+                Customer Name <span className="text-red-600">*</span>
               </label>
               <AutoFilledInput
                 type="text"
@@ -990,7 +990,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
 
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Customer Email *
+                Customer Email <span className="text-red-600">*</span>
               </label>
               <AutoFilledInput
                 type="text"
@@ -1009,7 +1009,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Customer Phone *
+                Customer Phone <span className="text-red-600">*</span>
               </label>
               <AutoFilledInput
                 type="text"
@@ -1026,7 +1026,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
 
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Required Date *
+                Required Date <span className="text-red-600">*</span>
               </label>
               <input
                 type="date"
@@ -1044,7 +1044,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
 
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-2">
-            Project/RFQ Name
+            Project/RFQ Name <span className="text-red-600">*</span>
           </label>
           <input
             type="text"
@@ -1068,7 +1068,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                   hasProjectTypeError ? 'text-red-700' : 'text-gray-900'
               }`}
           >
-            Project Type *
+            Project Type <span className="text-red-600">*</span>
           </label>
           <p className="text-xs text-gray-600 mb-4">
             Select the type of submission to help suppliers understand the project phase and quote accordingly
@@ -1126,7 +1126,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
 
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-2">
-            RFQ Description
+            RFQ Description <span className="text-red-600">*</span>
           </label>
           <textarea
             value={rfqData.description}
@@ -1140,7 +1140,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
         {/* Required Products/Services Selection */}
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-3">
-            Required Products & Services *
+            Required Products & Services <span className="text-red-600">*</span>
           </label>
           <p className="text-xs text-gray-600 mb-4">
             Select all the products and services required for this RFQ/Tender
