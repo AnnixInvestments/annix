@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import UnifiedMultiStepRfqForm from '@/app/components/rfq/UnifiedMultiStepRfqForm';
+import { CustomerAuthProvider } from '@/app/context/CustomerAuthContext';
 
 export default function RfqPage() {
   const [showForm, setShowForm] = useState(true);
@@ -79,9 +80,11 @@ export default function RfqPage() {
   }
 
   return (
-    <UnifiedMultiStepRfqForm
-      onSuccess={handleFormSuccess}
-      onCancel={handleFormCancel}
-    />
+    <CustomerAuthProvider>
+      <UnifiedMultiStepRfqForm
+        onSuccess={handleFormSuccess}
+        onCancel={handleFormCancel}
+      />
+    </CustomerAuthProvider>
   );
 }
