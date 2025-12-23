@@ -569,6 +569,14 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
     country: false,
   });
 
+  // Section confirmation state - for locking data after user confirms
+  const [locationConfirmed, setLocationConfirmed] = useState(false);
+  const [environmentalConfirmed, setEnvironmentalConfirmed] = useState(false);
+
+  // Edit mode state - for unlocking confirmed sections
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [isEditingEnvironmental, setIsEditingEnvironmental] = useState(false);
+
   // Environmental intelligence auto-fill
   const {
     isLoading: isLoadingEnvironmental,
@@ -735,7 +743,46 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           updatedSpecs.liningApplicationNotes = liningRecommendation.applicationNotes;
         }
 
+        // Also fetch environmental/weather data based on mine location
+        if (mine.latitude && mine.longitude) {
+          try {
+            console.log('[Mine Selection] Fetching environmental data for:', mine.mineName);
+            const environmentalData = await fetchEnvironmentalData(
+              mine.latitude,
+              mine.longitude,
+              mine.province,
+              'South Africa'
+            );
+            console.log('[Mine Selection] Environmental data received:', environmentalData);
+
+            // Merge environmental data with slurry profile data
+            Object.assign(updatedSpecs, environmentalData);
+          } catch (error) {
+            console.error('[Mine Selection] Failed to fetch environmental data:', error);
+            // Non-blocking - user can still fill in manually
+          }
+        }
+
         onUpdateGlobalSpecs(updatedSpecs);
+      } else if (mine.latitude && mine.longitude && onUpdateGlobalSpecs) {
+        // Even without slurry profile, fetch environmental data if we have coordinates
+        try {
+          console.log('[Mine Selection] Fetching environmental data (no slurry profile):', mine.mineName);
+          const environmentalData = await fetchEnvironmentalData(
+            mine.latitude,
+            mine.longitude,
+            mine.province,
+            'South Africa'
+          );
+          console.log('[Mine Selection] Environmental data received:', environmentalData);
+          onUpdateGlobalSpecs({
+            ...globalSpecs,
+            mineSelected: mine.mineName,
+            ...environmentalData,
+          });
+        } catch (error) {
+          console.error('[Mine Selection] Failed to fetch environmental data:', error);
+        }
       }
 
       console.log('[Mine Selection] Auto-filled from mine:', mine.mineName);
@@ -789,6 +836,68 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
     const updatedNotes = newNotes.length > 0 ? newNotes.map(note => `• ${note}`).join('\n') : '';
     onUpdate('notes', updatedNotes);
   };
+
+  // Validation helper functions
+  const hasRequiredLocationData = () => {
+    return !!(
+      rfqData.latitude &&
+      rfqData.longitude &&
+      rfqData.siteAddress &&
+      rfqData.region &&
+      rfqData.country
+    );
+  };
+
+  const hasRequiredEnvironmentalData = () => {
+    // Check key auto-fillable environmental fields
+    const hasAutoFilledData = !!(
+      globalSpecs?.soilType &&
+      globalSpecs?.soilTexture &&
+      globalSpecs?.tempMin !== undefined &&
+      globalSpecs?.tempMax !== undefined &&
+      globalSpecs?.humidityMean !== undefined &&
+      globalSpecs?.annualRainfall &&
+      globalSpecs?.uvExposure &&
+      globalSpecs?.freezeThawCycles &&
+      globalSpecs?.seismicZone
+    );
+
+    // Check manually-entered fields (can use "Unknown" values)
+    const hasManualData = !!(
+      rfqData.soilCorrosivity &&
+      rfqData.iso12944Category &&
+      rfqData.environmentSeverity
+    );
+
+    return hasAutoFilledData && hasManualData;
+  };
+
+  // Handlers for confirmation/edit
+  const handleConfirmLocation = () => {
+    if (hasRequiredLocationData()) {
+      setLocationConfirmed(true);
+      setIsEditingLocation(false);
+    }
+  };
+
+  const handleConfirmEnvironmental = () => {
+    if (hasRequiredEnvironmentalData()) {
+      setEnvironmentalConfirmed(true);
+      setIsEditingEnvironmental(false);
+    }
+  };
+
+  const handleEditLocation = () => {
+    setIsEditingLocation(true);
+  };
+
+  const handleEditEnvironmental = () => {
+    setIsEditingEnvironmental(true);
+  };
+
+  // Derived state for locked sections
+  const isLocationLocked = locationConfirmed && !isEditingLocation;
+  const isEnvironmentalLocked = environmentalConfirmed && !isEditingEnvironmental;
 
   return (
     <div>
@@ -975,18 +1084,28 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 <button
                   type="button"
                   onClick={() => setShowMapPicker(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors text-sm font-medium"
+                  disabled={isLocationLocked}
+                  className={`flex items-center gap-2 px-4 py-2 text-white transition-colors text-sm font-medium ${
+                    isLocationLocked
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                   </svg>
                   Pick on Map
                 </button>
-                <div className="w-px h-6 bg-blue-500"></div>
+                <div className={`w-px h-6 ${isLocationLocked ? 'bg-gray-300' : 'bg-blue-500'}`}></div>
                 <button
                   type="button"
                   onClick={() => setShowViewDropdown(!showViewDropdown)}
-                  className="px-2 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                  disabled={isLocationLocked}
+                  className={`px-2 py-2 text-white transition-colors ${
+                    isLocationLocked
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -1068,8 +1187,8 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               <select
                 value={selectedMineId || ''}
                 onChange={(e) => handleMineDropdownChange(e.target.value)}
-                disabled={isLoadingMines || mineDataLoading}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 appearance-none bg-gradient-to-r from-amber-50 to-orange-50"
+                disabled={isLoadingMines || mineDataLoading || isLocationLocked}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 appearance-none bg-gradient-to-r from-amber-50 to-orange-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="">-- Select a mine (optional) --</option>
                 <option value="add-new" className="text-amber-600 font-medium">+ Add a mine not listed</option>
@@ -1119,6 +1238,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 onOverride={() => setLocationAutoFilled(prev => ({ ...prev, latitude: false }))}
                 isAutoFilled={locationAutoFilled.latitude}
                 placeholder="-26.20227 (≥5 decimal places)"
+                readOnly={isLocationLocked}
               />
               {!locationAutoFilled.latitude && (
                 <p className="mt-1 text-xs text-gray-500">
@@ -1138,6 +1258,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 onOverride={() => setLocationAutoFilled(prev => ({ ...prev, longitude: false }))}
                 isAutoFilled={locationAutoFilled.longitude}
                 placeholder="28.04363 (≥5 decimal places)"
+                readOnly={isLocationLocked}
               />
             </div>
           </div>
@@ -1153,6 +1274,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               onOverride={() => setLocationAutoFilled(prev => ({ ...prev, siteAddress: false }))}
               isAutoFilled={locationAutoFilled.siteAddress}
               placeholder="e.g., Secunda Refinery, Mpumalanga, South Africa"
+              readOnly={isLocationLocked}
             />
           </div>
 
@@ -1168,6 +1290,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 onOverride={() => setLocationAutoFilled(prev => ({ ...prev, region: false }))}
                 isAutoFilled={locationAutoFilled.region}
                 placeholder="e.g., Gauteng, Western Cape"
+                readOnly={isLocationLocked}
               />
             </div>
             <div>
@@ -1181,8 +1304,58 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 onOverride={() => setLocationAutoFilled(prev => ({ ...prev, country: false }))}
                 isAutoFilled={locationAutoFilled.country}
                 placeholder="e.g., South Africa"
+                readOnly={isLocationLocked}
               />
             </div>
+          </div>
+
+          {/* Location Confirmation Button */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            {!locationConfirmed ? (
+              <button
+                type="button"
+                onClick={handleConfirmLocation}
+                disabled={!hasRequiredLocationData()}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold flex items-center gap-2 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Confirm Location Data
+              </button>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-green-700 font-semibold bg-green-50 px-4 py-2 rounded-lg">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Location Confirmed
+                </div>
+                {!isEditingLocation ? (
+                  <button
+                    type="button"
+                    onClick={handleEditLocation}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                  >
+                    Edit
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleConfirmLocation}
+                    disabled={!hasRequiredLocationData()}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 text-sm font-semibold"
+                  >
+                    Re-confirm Changes
+                  </button>
+                )}
+              </div>
+            )}
+            {!hasRequiredLocationData() && !locationConfirmed && (
+              <p className="mt-2 text-sm text-amber-600">
+                Please fill in all location fields to confirm this section.
+              </p>
+            )}
           </div>
 
           {showMapPicker && (
@@ -1777,6 +1950,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="">Select soil corrosivity...</option>
+                    <option value="Unknown">Unknown / Not Tested</option>
                     <option value="Mild">Mild</option>
                     <option value="Moderate">Moderately Corrosive</option>
                     <option value="Severe">Severely Corrosive</option>
@@ -1792,6 +1966,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="">Select ISO 12944 category...</option>
+                    <option value="Unknown">Unknown / To Be Determined</option>
                     <option value="C1">C1 - Very Low</option>
                     <option value="C2">C2 - Low</option>
                     <option value="C3">C3 - Medium</option>
@@ -1813,6 +1988,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 >
                   <option value="">Select overall severity...</option>
+                  <option value="Unknown">Unknown / To Be Assessed</option>
                   <option value="Low">Low - Benign conditions</option>
                   <option value="Moderate">Moderate - Standard protection required</option>
                   <option value="High">High - Enhanced protection required</option>
@@ -1973,6 +2149,55 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Environmental Confirmation Button */}
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              {!environmentalConfirmed ? (
+                <button
+                  type="button"
+                  onClick={handleConfirmEnvironmental}
+                  disabled={!hasRequiredEnvironmentalData()}
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold flex items-center gap-2 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Confirm Environmental Data
+                </button>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 text-green-700 font-semibold bg-green-50 px-4 py-2 rounded-lg">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Environmental Data Confirmed
+                  </div>
+                  {!isEditingEnvironmental ? (
+                    <button
+                      type="button"
+                      onClick={handleEditEnvironmental}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleConfirmEnvironmental}
+                      disabled={!hasRequiredEnvironmentalData()}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 text-sm font-semibold"
+                    >
+                      Re-confirm Changes
+                    </button>
+                  )}
+                </div>
+              )}
+              {!hasRequiredEnvironmentalData() && !environmentalConfirmed && (
+                <p className="mt-2 text-sm text-amber-600">
+                  Please fill in all required environmental fields to confirm this section.
+                </p>
+              )}
             </div>
           </div>
         </div>
