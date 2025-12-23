@@ -12,11 +12,14 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@react-google-maps/api": "^2.20.8",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.2",
     "next": "15.5.9",
     "openapi-fetch": "^0.13.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.65.0",
+    "three": "^0.182.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
