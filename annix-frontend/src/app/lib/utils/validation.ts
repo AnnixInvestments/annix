@@ -52,6 +52,11 @@ export function validatePage1RequiredFields(rfqData: any): ValidationErrors {
     errors.requiredDate = 'Required date is required';
   }
 
+  // Required products validation
+  if (!rfqData.requiredProducts || rfqData.requiredProducts.length === 0) {
+    errors.requiredProducts = 'Please select at least one product or service';
+  }
+
   return errors;
 }
 

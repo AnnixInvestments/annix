@@ -140,6 +140,7 @@ export interface RfqFormData {
   customerEmail: string;
   customerPhone: string;
   requiredDate: string;
+  requiredProducts: string[]; // Selected product/service types
   notes: string;
   globalSpecs: GlobalSpecs;
   items: PipeItem[]; // Unified array for all item types
@@ -171,6 +172,7 @@ export const useRfqForm = () => {
     customerEmail: 'procurement@acme-industrial.co.za',
     customerPhone: '+27 11 555 0123',
     requiredDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    requiredProducts: [], // Selected product/service types
     notes: 'Urgent delivery required by month end',
     globalSpecs: {},
     items: [],
@@ -355,6 +357,7 @@ export const useRfqForm = () => {
       customerEmail: '',
       customerPhone: '',
       requiredDate: '',
+      requiredProducts: [],
       notes: '',
       globalSpecs: {},
       items: [],

@@ -1137,6 +1137,68 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           />
         </div>
 
+        {/* Required Products/Services Selection */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 mb-3">
+            Required Products & Services *
+          </label>
+          <p className="text-xs text-gray-600 mb-4">
+            Select all the products and services required for this RFQ/Tender
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[
+              { value: 'fabricated_steel', label: 'Fabricated Steel Pipes & Fittings', icon: '🔩' },
+              { value: 'hdpe', label: 'HDPE Pipes & Fittings', icon: '🔵' },
+              { value: 'pvc', label: 'PVC Pipes & Fittings', icon: '⚪' },
+              { value: 'surface_protection', label: 'Surface Protection Requirements', icon: '🛡️' },
+              { value: 'transport_install', label: 'Transportation & Installation', icon: '🚚' },
+            ].map((product) => {
+              const isSelected = rfqData.requiredProducts?.includes(product.value);
+              return (
+                <div key={product.value} className="relative">
+                  <label
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      isSelected
+                        ? 'border-blue-600 bg-blue-50 shadow-sm'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        const currentProducts = rfqData.requiredProducts || [];
+                        if (e.target.checked) {
+                          onUpdate('requiredProducts', [...currentProducts, product.value]);
+                        } else {
+                          onUpdate('requiredProducts', currentProducts.filter((p: string) => p !== product.value));
+                        }
+                      }}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 border-2 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isSelected
+                        ? 'border-blue-600 bg-blue-600'
+                        : 'border-gray-300'
+                    }`}>
+                      {isSelected && (
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-lg">{product.icon}</span>
+                    <span className="text-sm font-medium text-gray-900">{product.label}</span>
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+          {errors.requiredProducts && (
+            <p className="mt-2 text-sm text-red-600">{errors.requiredProducts}</p>
+          )}
+        </div>
+
         {/* Project Location */}
         <div className="bg-white rounded-lg p-5 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
