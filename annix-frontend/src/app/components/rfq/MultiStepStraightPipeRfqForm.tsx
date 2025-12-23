@@ -19,6 +19,18 @@ import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
 import { AutoFilledInput, AutoFilledSelect, AutoFilledDisplay } from '@/app/components/rfq/AutoFilledField';
 import AddMineModal from '@/app/components/rfq/AddMineModal';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
+import dynamic from 'next/dynamic';
+
+// Dynamically import 3D components (client-side only, no SSR)
+const Pipe3DPreview = dynamic(() => import('@/app/components/rfq/Pipe3DPreview'), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />
+});
+
+const Bend3DPreview = dynamic(() => import('@/app/components/rfq/Bend3DPreview'), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />
+});
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -5441,6 +5453,21 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   />
                 </div>
 
+                {/* 3D Bend Preview */}
+                {entry.specs?.nominalBoreMm && entry.specs?.bendDegrees && (
+                  <Bend3DPreview
+                    nominalBore={entry.specs.nominalBoreMm}
+                    outerDiameter={entry.calculation?.outsideDiameterMm || entry.specs.nominalBoreMm * 1.1}
+                    wallThickness={entry.calculation?.wallThicknessMm || 5}
+                    bendAngle={entry.specs.bendDegrees}
+                    bendType={entry.specs.bendType || '1.5D'}
+                    tangent1={entry.specs.tangent1Length}
+                    tangent2={entry.specs.tangent2Length}
+                    schedule={entry.specs.scheduleNumber}
+                    materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                  />
+                )}
+
                 {/* Bend Specifications Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -6628,6 +6655,17 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     )}
                   </div>
                 </div>
+
+                {/* 3D Pipe Preview */}
+                {entry.specs?.totalLength && entry.calculation?.outsideDiameterMm && (
+                  <Pipe3DPreview
+                    length={entry.specs.totalLength}
+                    outerDiameter={entry.calculation.outsideDiameterMm}
+                    wallThickness={entry.calculation.wallThicknessMm || 5}
+                    endConfiguration={entry.specs.pipeEndConfig || 'PE'}
+                    materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                  />
+                )}
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Column 1 - Specifications */}
