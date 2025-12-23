@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Rfq, RfqStatus } from '../rfq/entities/rfq.entity';
-import { CustomerProfile } from '../customer/entities/customer-profile.entity';
+import { CustomerProfile } from '../customer/entities';
 import { PublicStatsDto, UpcomingRfqDto } from './dto/public-stats.dto';
 
 @Injectable()
@@ -37,7 +37,7 @@ export class PublicService {
       .where('rfq.requiredDate >= :today', { today })
       .andWhere('rfq.requiredDate <= :thirtyDaysFromNow', { thirtyDaysFromNow })
       .andWhere('rfq.status NOT IN (:...excludedStatuses)', {
-        excludedStatuses: [RfqStatus.CANCELLED, RfqStatus.REJECTED],
+        excludedStatuses: [RfqStatus.REJECTED],
       })
       .orderBy('rfq.requiredDate', 'ASC')
       .limit(10)
