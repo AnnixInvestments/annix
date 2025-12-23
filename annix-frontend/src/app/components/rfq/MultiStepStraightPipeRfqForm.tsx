@@ -849,23 +849,33 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
   };
 
   const hasRequiredEnvironmentalData = () => {
-    // Check key auto-fillable environmental fields
-    // Note: soilType is hidden, so we check soilTexture instead
-    const hasAutoFilledData = !!(
-      globalSpecs?.soilTexture &&
-      globalSpecs?.tempMin !== undefined &&
-      globalSpecs?.tempMax !== undefined &&
-      globalSpecs?.humidityMean !== undefined &&
-      globalSpecs?.annualRainfall &&
-      globalSpecs?.uvExposure &&
-      globalSpecs?.freezeThawCycles &&
-      globalSpecs?.seismicZone
+    // Soil Conditions - all fields required
+    const hasSoilData = !!(
+      (globalSpecs?.soilTexture || rfqData.soilTexture) &&
+      (globalSpecs?.soilMoistureClass || rfqData.soilMoistureClass) &&
+      (globalSpecs?.soilDrainage || rfqData.soilDrainage)
     );
 
-    // Note: Corrosion Severity Classification fields (soilCorrosivity, iso12944Category, environmentSeverity)
-    // are hidden, so they are not required for validation
+    // Atmospheric Conditions - all fields required
+    const hasAtmosphericData = !!(
+      (globalSpecs?.tempMin !== undefined || rfqData.tempMin !== undefined) &&
+      (globalSpecs?.tempMax !== undefined || rfqData.tempMax !== undefined) &&
+      (globalSpecs?.humidityMean !== undefined) &&
+      (globalSpecs?.annualRainfall || rfqData.rainfall) &&
+      (globalSpecs?.windDirection) &&
+      (globalSpecs?.uvExposure) &&
+      (globalSpecs?.snowExposure) &&
+      (globalSpecs?.fogFrequency)
+    );
 
-    return hasAutoFilledData;
+    // Marine & Special Conditions - all dropdown fields required
+    const hasMarineData = !!(
+      (globalSpecs?.detailedMarineInfluence || rfqData.marineInfluence) &&
+      (globalSpecs?.floodRisk || rfqData.floodingRisk) &&
+      (globalSpecs?.ecpIndustrialPollution || rfqData.industrialPollution)
+    );
+
+    return hasSoilData && hasAtmosphericData && hasMarineData;
   };
 
   // Handlers for confirmation/edit
@@ -1528,9 +1538,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                       onChange={(value) => onUpdate('soilTexture', value)}
                       onOverride={() => markAsOverridden('soilTexture')}
                       isAutoFilled={wasAutoFilled('soilTexture')}
+                      disabled={isEnvironmentalLocked}
                     >
                       <option value="">Select soil texture...</option>
-                      <option value="Unknown">Unknown / Not Tested</option>
+                      <option value="Unknown">Unknown</option>
                       <option value="Sand">Sand</option>
                       <option value="Loamy Sand">Loamy Sand</option>
                       <option value="Sandy Loam">Sandy Loam</option>
@@ -1565,9 +1576,11 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                           onChange={(value) => onUpdate('soilMoistureClass', value)}
                           onOverride={() => markAsOverridden('soilMoistureClass')}
                           isAutoFilled={wasAutoFilled('soilMoistureClass')}
+                          disabled={isEnvironmentalLocked}
                           className="w-full"
                         >
                           <option value="">Class</option>
+                          <option value="Unknown">Unknown</option>
                           <option value="Low">Low</option>
                           <option value="Moderate">Moderate</option>
                           <option value="High">High</option>
@@ -1584,9 +1597,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                       onChange={(value) => onUpdate('soilDrainage', value)}
                       onOverride={() => markAsOverridden('soilDrainage')}
                       isAutoFilled={wasAutoFilled('soilDrainage')}
+                      disabled={isEnvironmentalLocked}
                     >
                       <option value="">Select drainage...</option>
-                      <option value="Unknown">Unknown / Not Tested</option>
+                      <option value="Unknown">Unknown</option>
                       <option value="Very Poorly Drained">Very Poorly Drained</option>
                       <option value="Poorly Drained">Poorly Drained</option>
                       <option value="Somewhat Poorly Drained">Somewhat Poorly Drained</option>
@@ -1629,6 +1643,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                         onOverride={() => markAsOverridden('tempMin')}
                         isAutoFilled={wasAutoFilled('tempMin')}
                         placeholder="e.g., -5"
+                        disabled={isEnvironmentalLocked}
                       />
                     </div>
                     <div>
@@ -1641,6 +1656,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                         onOverride={() => markAsOverridden('tempMean')}
                         isAutoFilled={wasAutoFilled('tempMean')}
                         placeholder="e.g., 18"
+                        disabled={isEnvironmentalLocked}
                       />
                     </div>
                     <div>
@@ -1653,6 +1669,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                         onOverride={() => markAsOverridden('tempMax')}
                         isAutoFilled={wasAutoFilled('tempMax')}
                         placeholder="e.g., 38"
+                        disabled={isEnvironmentalLocked}
                       />
                     </div>
                   </div>
@@ -1671,6 +1688,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                         onOverride={() => markAsOverridden('humidityMin')}
                         isAutoFilled={wasAutoFilled('humidityMin')}
                         placeholder="e.g., 40"
+                        disabled={isEnvironmentalLocked}
                       />
                     </div>
                     <div>
@@ -1682,6 +1700,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                         onOverride={() => markAsOverridden('humidityMean')}
                         isAutoFilled={wasAutoFilled('humidityMean')}
                         placeholder="e.g., 65"
+                        disabled={isEnvironmentalLocked}
                       />
                     </div>
                     <div>
@@ -1693,6 +1712,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                         onOverride={() => markAsOverridden('humidityMax')}
                         isAutoFilled={wasAutoFilled('humidityMax')}
                         placeholder="e.g., 85"
+                        disabled={isEnvironmentalLocked}
                       />
                     </div>
                   </div>
@@ -1708,8 +1728,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                     onChange={(value) => onUpdate('rainfall', value)}
                     onOverride={() => markAsOverridden('annualRainfall')}
                     isAutoFilled={wasAutoFilled('annualRainfall')}
+                    disabled={isEnvironmentalLocked}
                   >
                     <option value="">Select rainfall level...</option>
+                    <option value="Unknown">Unknown</option>
                     <option value="<250">&lt;250mm (Arid)</option>
                     <option value="250-500">250-500mm (Semi-Arid)</option>
                     <option value="500-1000">500-1000mm (Moderate)</option>
@@ -1732,6 +1754,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                         onOverride={() => markAsOverridden('windSpeed')}
                         isAutoFilled={wasAutoFilled('windSpeed')}
                         placeholder="e.g., 4.2"
+                        disabled={isEnvironmentalLocked}
                       />
                     </div>
                     <div>
@@ -1741,8 +1764,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                         onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, windDirection: value })}
                         onOverride={() => markAsOverridden('windDirection')}
                         isAutoFilled={wasAutoFilled('windDirection')}
+                        disabled={isEnvironmentalLocked}
                       >
                         <option value="">Select direction...</option>
+                        <option value="Unknown">Unknown</option>
                         <option value="N">N (North)</option>
                         <option value="NE">NE (Northeast)</option>
                         <option value="E">E (East)</option>
@@ -1766,8 +1791,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                         onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, uvExposure: value })}
                         onOverride={() => markAsOverridden('uvExposure')}
                         isAutoFilled={wasAutoFilled('uvExposure')}
+                        disabled={isEnvironmentalLocked}
                       >
                         <option value="">Select UV level...</option>
+                        <option value="Unknown">Unknown</option>
                         <option value="Low">Low (UV Index &lt;3)</option>
                         <option value="Moderate">Moderate (UV Index 3-5)</option>
                         <option value="High">High (UV Index 6-7)</option>
@@ -1786,8 +1813,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                         onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, snowExposure: value })}
                         onOverride={() => markAsOverridden('snowExposure')}
                         isAutoFilled={wasAutoFilled('snowExposure')}
+                        disabled={isEnvironmentalLocked}
                       >
                         <option value="">Select exposure level...</option>
+                        <option value="Unknown">Unknown</option>
                         <option value="None">None</option>
                         <option value="Low">Low (Occasional freezing)</option>
                         <option value="Moderate">Moderate (Seasonal freezing)</option>
@@ -1805,8 +1834,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                     onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, fogFrequency: value })}
                     onOverride={() => markAsOverridden('fogFrequency')}
                     isAutoFilled={wasAutoFilled('fogFrequency')}
+                    disabled={isEnvironmentalLocked}
                   >
                     <option value="">Select frequency...</option>
+                    <option value="Unknown">Unknown</option>
                     <option value="Low">Low (Rare)</option>
                     <option value="Moderate">Moderate (Occasional)</option>
                     <option value="High">High (Frequent)</option>
@@ -1839,8 +1870,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                       onChange={(value) => onUpdate('marineInfluence', value)}
                       onOverride={() => markAsOverridden('detailedMarineInfluence')}
                       isAutoFilled={wasAutoFilled('detailedMarineInfluence')}
+                      disabled={isEnvironmentalLocked}
                     >
                       <option value="">Select marine influence...</option>
+                      <option value="Unknown">Unknown</option>
                       <option value="Extreme Marine">Extreme Marine (≤0.5km)</option>
                       <option value="Severe Marine">Severe Marine (0.5-1km)</option>
                       <option value="High Marine">High Marine (1-5km)</option>
@@ -1878,8 +1911,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                       onChange={(value) => onUpdate('floodingRisk', value)}
                       onOverride={() => markAsOverridden('floodRisk')}
                       isAutoFilled={wasAutoFilled('floodRisk')}
+                      disabled={isEnvironmentalLocked}
                     >
                       <option value="">Select flooding risk...</option>
+                      <option value="Unknown">Unknown</option>
                       <option value="None">None</option>
                       <option value="Low">Low (Rare flooding)</option>
                       <option value="Moderate">Moderate (Occasional)</option>
@@ -1899,8 +1934,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                       onChange={(value) => onUpdate('industrialPollution', value)}
                       onOverride={() => markAsOverridden('ecpIndustrialPollution')}
                       isAutoFilled={wasAutoFilled('ecpIndustrialPollution')}
+                      disabled={isEnvironmentalLocked}
                     >
                       <option value="">Select pollution level...</option>
+                      <option value="Unknown">Unknown</option>
                       <option value="None">None (Clean air)</option>
                       <option value="Low">Low (Light industrial)</option>
                       <option value="Moderate">Moderate (Urban/Industrial)</option>
