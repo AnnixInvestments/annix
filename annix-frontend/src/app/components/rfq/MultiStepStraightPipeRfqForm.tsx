@@ -1219,8 +1219,8 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           maxFileSizeMB={50}
         />
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-2">
+        <div className="border-0 border-none">
+          <label className="block text-sm font-semibold text-gray-900 mb-2 pt-0">
             Additional Notes
             <button
               type="button"
