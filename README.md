@@ -190,7 +190,37 @@ If you already have Postgres/Node running remotely you can adjust the environmen
 
 ---
 
-## 4. Troubleshooting
+## 4. Cross-Platform Development
+
+### Automatic Lock File Management
+
+This project supports development on both **macOS** and **Windows**. Lock files (`yarn.lock` and `package-lock.json`) contain platform-specific dependencies that are automatically managed.
+
+**What happens automatically:**
+- When you `git pull` changes, lock files are regenerated for your platform
+- Git hooks ensure you always have the correct binaries for your OS
+- No more merge conflicts on platform-specific packages (e.g., `@img/sharp-darwin-arm64` vs `@img/sharp-win32-x64`)
+
+**How it works:**
+1. Pull changes normally: `git pull`
+2. Post-merge hook runs automatically and regenerates lock files
+3. Commit the regenerated files: `git commit -am "Update lock files"`
+4. Push your changes: `git push`
+
+**Manual regeneration (if needed):**
+```bash
+# Frontend
+cd annix-frontend && yarn install --check-files
+
+# Backend
+cd annix-backend && npm install
+```
+
+For more details, see [CROSS_PLATFORM_SETUP.md](./CROSS_PLATFORM_SETUP.md).
+
+---
+
+## 5. Troubleshooting
 
 - **Postgres connection errors** – confirm the `annix_user/annix_password` credentials in `annix-backend/.env` match your local Postgres role and that the instance is listening on `localhost:5432`. Use `pg_isready -h localhost -p 5432` (macOS/Linux) or `psql -h localhost -U annix_user annix_db -c "SELECT 1;"` (Windows) to verify connectivity. If automatic provisioning fails because your Postgres superuser needs a password, export `PG_SUPERPASS` (and `PG_SUPERUSER` if you changed the default) before rerunning the script.
 - **Node version warnings** – both apps rely on ES modules and features that require Node 22+. If you cannot install Node 22 system-wide, run the scripts with `NODE_VERSION=<version>` plus `nvm install <version>` beforehand.

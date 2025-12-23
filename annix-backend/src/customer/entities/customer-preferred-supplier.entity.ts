@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { CustomerCompany } from './customer-company.entity';
 import { CustomerProfile } from './customer-profile.entity';
-import { SupplierProfile } from '../../supplier/entities/supplier-profile.entity';
+import { SupplierProfile } from '../../supplier';
 
 @Entity('customer_preferred_suppliers')
 @Index(['customerCompanyId', 'supplierProfileId'], { unique: true })
@@ -33,10 +33,10 @@ export class CustomerPreferredSupplier {
   supplierProfileId: number | null;
 
   // For suppliers not yet in system
-  @Column({ name: 'supplier_name', length: 255, nullable: true })
+  @Column({ name: 'supplier_name', type: 'varchar', length: 255, nullable: true })
   supplierName: string | null;
 
-  @Column({ name: 'supplier_email', length: 255, nullable: true })
+  @Column({ name: 'supplier_email', type: 'varchar', length: 255, nullable: true })
   supplierEmail: string | null;
 
   @ManyToOne(() => CustomerProfile)
