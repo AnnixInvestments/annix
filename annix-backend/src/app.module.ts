@@ -18,6 +18,8 @@ import { FittingTypeModule } from './fitting-type/fitting-type.module';
 import { FittingVariantModule } from './fitting-variant/fitting-variant.module';
 import { FlangeStandardModule } from './flange-standard/flange-standard.module';
 import { FlangePressureClassModule } from './flange-pressure-class/flange-pressure-class.module';
+import { FlangePtRatingModule } from './flange-pt-rating/flange-pt-rating.module';
+import { PipeScheduleModule } from './pipe-schedule/pipe-schedule.module';
 import { BoltModule } from './bolt/bolt.module';
 import { BoltMassModule } from './bolt-mass/bolt-mass.module';
 import { FlangeDimensionModule } from './flange-dimension/flange-dimension.module';
@@ -62,6 +64,8 @@ import typeormConfig from './config/typeorm';
     FittingVariantModule,
     FlangeStandardModule,
     FlangePressureClassModule,
+    FlangePtRatingModule,
+    PipeScheduleModule,
     BoltModule,
     BoltMassModule,
     FlangeDimensionModule,

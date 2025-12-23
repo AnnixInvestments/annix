@@ -2138,7 +2138,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="">Select ISO 12944 category...</option>
-                    <option value="Unknown">Unknown / To Be Determined</option>
+                    <option value="Unknown">Unknown / To Be// Determined</option>
                     <option value="C1">C1 - Very Low</option>
                     <option value="C2">C2 - Low</option>
                     <option value="C3">C3 - Medium</option>
@@ -2248,7 +2248,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                     <option value="Required">CP Required - Coating must be compatible</option>
                     <option value="Recommended">CP Recommended</option>
                     <option value="Not Required">CP Not Required</option>
-                    <option value="TBD">To Be Determined</option>
+                    <option value="TBD">To Be// Determined</option>
                   </select>
                 </div>
               </div>
@@ -2451,10 +2451,21 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
               </label>
               <select
                 value={globalSpecs?.workingPressureBar || ''}
-                onChange={(e) => onUpdateGlobalSpecs({
-                  ...globalSpecs,
-                  workingPressureBar: e.target.value ? Number(e.target.value) : undefined
-                })}
+                onChange={async (e) => {
+                  const newPressure = e.target.value ? Number(e.target.value) : undefined;
+
+                  // If flange standard is already selected, auto-select recommended pressure class
+                  let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
+                  if (newPressure && globalSpecs?.flangeStandardId) {
+                    recommendedPressureClassId = await fetchAndSelectPressureClass(globalSpecs.flangeStandardId, newPressure, globalSpecs?.workingTemperatureC);
+                  }
+
+                  onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    workingPressureBar: newPressure,
+                    flangePressureClassId: recommendedPressureClassId || globalSpecs?.flangePressureClassId
+                  });
+                }}
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 text-gray-900 ${
                   errors.workingPressure
                     ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50'
@@ -2484,10 +2495,25 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
               </label>
               <select
                 value={globalSpecs?.workingTemperatureC || ''}
-                onChange={(e) => onUpdateGlobalSpecs({
-                  ...globalSpecs,
-                  workingTemperatureC: e.target.value ? Number(e.target.value) : undefined
-                })}
+                onChange={async (e) => {
+                  const newTemp = e.target.value ? Number(e.target.value) : undefined;
+
+                  // Auto-update pressure class if ASME B16.5 and both pressure/temp are set
+                  let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
+                  if (newTemp !== undefined && globalSpecs?.workingPressureBar && globalSpecs?.flangeStandardId) {
+                    recommendedPressureClassId = await fetchAndSelectPressureClass(
+                      globalSpecs.flangeStandardId,
+                      globalSpecs.workingPressureBar,
+                      newTemp
+                    );
+                  }
+
+                  onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    workingTemperatureC: newTemp,
+                    flangePressureClassId: recommendedPressureClassId || globalSpecs?.flangePressureClassId
+                  });
+                }}
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 text-gray-900 ${
                   errors.workingTemperature
                     ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50'
@@ -2517,7 +2543,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Material Specifications</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Steel Specification */}
+            {/* Steel Specification - with grouped options */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Steel Specification
@@ -2531,11 +2557,87 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               >
                 <option value="">Select steel specification...</option>
-                {masterData.steelSpecs.map((spec: any) => (
-                  <option key={spec.id} value={spec.id}>
-                    {spec.steelSpecName || spec.steel_spec_name || `Steel Spec ${spec.id}`}
-                  </option>
-                ))}
+                <optgroup label="South African Standards (SABS)">
+                  {masterData.steelSpecs
+                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('SABS'))
+                    .map((spec: any) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.steelSpecName}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Carbon Steel - ASTM A106 (High-Temp Seamless)">
+                  {masterData.steelSpecs
+                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A106'))
+                    .map((spec: any) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.steelSpecName}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Carbon Steel - ASTM A53 (General Purpose)">
+                  {masterData.steelSpecs
+                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A53'))
+                    .map((spec: any) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.steelSpecName}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Line Pipe - API 5L (Oil/Gas Pipelines)">
+                  {masterData.steelSpecs
+                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('API 5L'))
+                    .map((spec: any) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.steelSpecName}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Low Temperature - ASTM A333">
+                  {masterData.steelSpecs
+                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A333'))
+                    .map((spec: any) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.steelSpecName}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Heat Exchangers/Boilers - ASTM A179/A192">
+                  {masterData.steelSpecs
+                    .filter((spec: any) => (spec.steelSpecName || '').match(/^ASTM A1(79|92)/))
+                    .map((spec: any) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.steelSpecName}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Structural Tubing - ASTM A500">
+                  {masterData.steelSpecs
+                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A500'))
+                    .map((spec: any) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.steelSpecName}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Alloy Steel - ASTM A335 (Chrome-Moly)">
+                  {masterData.steelSpecs
+                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A335'))
+                    .map((spec: any) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.steelSpecName}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Stainless Steel - ASTM A312">
+                  {masterData.steelSpecs
+                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A312'))
+                    .map((spec: any) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.steelSpecName}
+                      </option>
+                    ))}
+                </optgroup>
               </select>
               <p className="mt-1 text-xs text-gray-500">
                 Leave empty to specify per item on the next page
@@ -2555,7 +2657,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   // Fetch pressure classes and auto-select recommended
                   let recommendedPressureClassId = undefined;
                   if (standardId && globalSpecs?.workingPressureBar) {
-                    recommendedPressureClassId = await fetchAndSelectPressureClass(standardId, globalSpecs.workingPressureBar);
+                    recommendedPressureClassId = await fetchAndSelectPressureClass(standardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC);
                   } else if (standardId) {
                     await fetchAndSelectPressureClass(standardId);
                   }
@@ -5242,47 +5344,66 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
   };
 
   // Auto-calculate schedule and wall thickness when pressure and NB are available
+  // Uses the new ASME B31.3 pipe schedule API for accurate pressure/temperature-based recommendations
   const autoCalculateSpecs = async (entry: any) => {
     const pressure = globalSpecs?.workingPressureBar;
     const nominalBore = entry.specs.nominalBoreMm;
-    const steelSpecId = globalSpecs?.steelSpecificationId;
-    
-    console.log('🔍 Auto-calculating specs:', { pressure, nominalBore, steelSpecId });
-    
+    const temperature = entry.specs.workingTemperatureC || globalSpecs?.workingTemperatureC || 20;
+
+    console.log('🔍 Auto-calculating specs using ASME B31.3:', { pressure, nominalBore, temperature });
+
     if (pressure && nominalBore) {
       try {
-        const { masterDataApi } = await import('@/app/lib/api/client');
-        
-        // Convert pressure from bar to MPa (1 bar = 0.1 MPa) as expected by API
-        const pressureMpa = pressure * 0.1;
-        
-        console.log('📡 Calling API with:', { nominalBore, pressureMpa });
-        
-        const recommended = await masterDataApi.getRecommendedSpecs(
-          nominalBore,
-          pressureMpa,
-          entry.specs.workingTemperatureC || globalSpecs?.workingTemperatureC || 20,
-          steelSpecId
-        );
-        
-        console.log('✅ API returned:', recommended);
-        
+        const { pipeScheduleApi } = await import('@/app/lib/api/client');
+
+        console.log('📡 Calling pipe-schedule API with:', {
+          nbMm: nominalBore,
+          pressureBar: pressure,
+          temperatureCelsius: temperature
+        });
+
+        const recommended = await pipeScheduleApi.recommend({
+          nbMm: nominalBore,
+          pressureBar: pressure,
+          temperatureCelsius: temperature,
+          materialCode: 'ASTM_A106_Grade_B', // Default to carbon steel A106 Grade B
+        });
+
+        console.log('✅ Pipe schedule API returned:', recommended);
+
+        // Also get available schedules for upgrade options
+        let availableUpgrades: any[] = [];
+        try {
+          const allSchedules = await pipeScheduleApi.getSchedulesByNb(nominalBore);
+          // Filter schedules that are thicker than the recommended one
+          availableUpgrades = allSchedules
+            .filter((s: any) => s.wallThicknessMm > recommended.recommendedWallMm)
+            .map((s: any) => ({
+              id: s.id,
+              schedule_designation: s.schedule,
+              wall_thickness_mm: s.wallThicknessMm
+            }));
+        } catch (err) {
+          console.log('Could not fetch upgrade schedules:', err);
+        }
+
         return {
-          scheduleNumber: recommended.schedule,
-          wallThicknessMm: recommended.wallThickness,
+          scheduleNumber: recommended.recommendedSchedule,
+          wallThicknessMm: recommended.recommendedWallMm,
           workingPressureBar: pressure,
-          minimumSchedule: recommended.schedule,
-          minimumWallThickness: recommended.wallThickness,
-          availableUpgrades: recommended.availableUpgrades || [],
-          isScheduleOverridden: false
+          minimumSchedule: recommended.recommendedSchedule,
+          minimumWallThickness: recommended.minRequiredThicknessMm,
+          availableUpgrades: availableUpgrades,
+          isScheduleOverridden: false,
+          scheduleWarnings: recommended.warnings
         };
       } catch (error) {
-        console.error('❌ Error auto-calculating specs:', error);
-        
+        console.error('❌ Error calling pipe-schedule API:', error);
+
         // Fallback to simple calculation based on pressure and nominal bore
         let fallbackSchedule = 'Sch40';
         let fallbackWallThickness = 3.6;
-        
+
         // Simple pressure-based fallback logic
         if (pressure <= 10) {
           fallbackSchedule = 'Sch10';
@@ -5300,9 +5421,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
           fallbackSchedule = 'Sch160';
           fallbackWallThickness = Math.max(8.0, nominalBore * 0.10);
         }
-        
+
         console.log(`🔧 Using fallback calculation: ${fallbackSchedule} (${fallbackWallThickness}mm) for ${nominalBore}mm NB at ${pressure} bar`);
-        
+
         return {
           scheduleNumber: fallbackSchedule,
           wallThicknessMm: fallbackWallThickness,
@@ -7720,29 +7841,102 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   const getRecommendedPressureClass = (workingPressureBar: number, pressureClasses: any[]) => {
     if (!workingPressureBar || !pressureClasses.length) return null;
 
-    // Extract numeric value from designation (e.g., "4000/3" -> 4000, "600/3" -> 600)
+    // Pressure class mappings for letter/special designations (bar ratings)
+    const specialMappings: { [key: string]: number } = {
+      // BS 10 & AS 2129 Table designations
+      'T/D': 7,    // Table D: ~7 bar
+      'T/E': 14,   // Table E: ~14 bar
+      'T/F': 21,   // Table F: ~21 bar
+      'T/H': 35,   // Table H: ~35 bar (AS 2129)
+      // AWWA C207 Classes (approximate bar ratings)
+      'Class B': 6,   // ~86 psi = 6 bar
+      'Class D': 10,  // ~150 psi = 10 bar
+      'Class E': 17,  // ~250 psi = 17 bar
+      'Class F': 21,  // ~300 psi = 21 bar
+    };
+
+    // ASME Class to bar conversion (approximate at ambient temperature)
+    const asmeClassToBar: { [key: string]: number } = {
+      '75': 10,    // Class 75 ≈ 10 bar (B16.47)
+      '150': 20,   // Class 150 ≈ 20 bar
+      '300': 50,   // Class 300 ≈ 50 bar
+      '400': 68,   // Class 400 ≈ 68 bar
+      '600': 100,  // Class 600 ≈ 100 bar
+      '900': 150,  // Class 900 ≈ 150 bar
+      '1500': 250, // Class 1500 ≈ 250 bar
+      '2500': 420, // Class 2500 ≈ 420 bar
+    };
+
+    // Extract rating from designation
     const classesWithRating = pressureClasses.map(pc => {
-      const match = pc.designation?.match(/^(\d+)/);
-      const rating = match ? parseInt(match[1]) : 0;
-      return { ...pc, rating };
-    }).filter(pc => pc.rating > 0);
+      const designation = pc.designation?.trim();
+
+      // Check if it's a special letter-based designation (BS 10, AS 2129, AWWA)
+      if (specialMappings[designation]) {
+        return { ...pc, barRating: specialMappings[designation] };
+      }
+
+      // Check if it's ASME Class designation (75, 150, 300, etc.)
+      if (asmeClassToBar[designation]) {
+        return { ...pc, barRating: asmeClassToBar[designation] };
+      }
+
+      // Check for API 6A psi format (2000 psi, 5000 psi, etc.)
+      const psiMatch = designation?.match(/^(\d+)\s*psi$/i);
+      if (psiMatch) {
+        // Convert psi to bar (1 psi ≈ 0.0689 bar)
+        return { ...pc, barRating: Math.round(parseInt(psiMatch[1]) * 0.0689) };
+      }
+
+      // Check for PN (Pressure Nominal) format - EN, DIN, GOST, AS 4087
+      // PN values are direct bar ratings (PN 16 = 16 bar)
+      const pnMatch = designation?.match(/^PN\s*(\d+)/i);
+      if (pnMatch) {
+        return { ...pc, barRating: parseInt(pnMatch[1]) };
+      }
+
+      // Check for JIS K format (5K, 10K, etc.) - K values are approx bar
+      const jisMatch = designation?.match(/^(\d+)K$/i);
+      if (jisMatch) {
+        return { ...pc, barRating: parseInt(jisMatch[1]) };
+      }
+
+      // SABS 1123 format (600/3, 1000/3, etc.) - divide by 100
+      const sabsMatch = designation?.match(/^(\d+)\/\d+$/);
+      if (sabsMatch) {
+        const numericValue = parseInt(sabsMatch[1]);
+        // SABS uses rating * 100 (600 = 6 bar, 4000 = 40 bar)
+        if (numericValue >= 500) {
+          return { ...pc, barRating: numericValue / 100 };
+        }
+        // BS 4504 uses direct values (6/3 = 6 bar, 40/3 = 40 bar)
+        return { ...pc, barRating: numericValue };
+      }
+
+      // Fallback: try to extract any leading number
+      const numMatch = designation?.match(/^(\d+)/);
+      if (numMatch) {
+        const num = parseInt(numMatch[1]);
+        // If number is >= 500, assume SABS style
+        return { ...pc, barRating: num >= 500 ? num / 100 : num };
+      }
+
+      return { ...pc, barRating: 0 };
+    }).filter(pc => pc.barRating > 0);
 
     if (classesWithRating.length === 0) return null;
 
-    // Sort by rating ascending
-    classesWithRating.sort((a, b) => a.rating - b.rating);
+    // Sort by bar rating ascending
+    classesWithRating.sort((a, b) => a.barRating - b.barRating);
 
     // Find the lowest rating that meets or exceeds the working pressure
-    // Assuming rating is in some standard unit, we need a rough conversion
-    // For SANS flanges: 600 = ~41 bar, 1000 = ~68 bar, 1600 = ~110 bar, 2500 = ~172 bar, 4000 = ~275 bar
-    // Simplified: rating / 14.5 ≈ bar (rough approximation)
-    const recommended = classesWithRating.find(pc => (pc.rating / 14.5) >= workingPressureBar);
-    
+    const recommended = classesWithRating.find(pc => pc.barRating >= workingPressureBar);
+
     return recommended || classesWithRating[classesWithRating.length - 1]; // Return highest if none match
   };
 
   // Fetch available pressure classes for a standard and auto-select recommended
-  const fetchAndSelectPressureClass = async (standardId: number, workingPressureBar?: number) => {
+    const fetchAndSelectPressureClass = async (standardId: number, workingPressureBar?: number, temperatureCelsius?: number) => {
     try {
       const { masterDataApi } = await import('@/app/lib/api/client');
       const classes = await masterDataApi.getFlangePressureClassesByStandard(standardId);
@@ -7750,12 +7944,33 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
       // Auto-select recommended pressure class if working pressure is available
       if (workingPressureBar && classes.length > 0) {
+        // Check if this is ASME B16.5 and we have temperature data
+        const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
+        if (standard?.code === 'ASME B16.5' && temperatureCelsius !== undefined) {
+          // Use the P/T rating API for temperature-based selection
+          try {
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/flange-pt-ratings/recommended-class?standardId=${standardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}`
+            );
+            if (response.ok) {
+              const recommendedClassId = await response.json();
+              if (recommendedClassId) {
+                console.log(`P/T rating: Selected class ID ${recommendedClassId} for ${workingPressureBar} bar at ${temperatureCelsius}°C`);
+                return recommendedClassId;
+              }
+            }
+          } catch (ptError) {
+            console.warn('P/T rating API not available, falling back to ambient calculation:', ptError);
+          }
+        }
+
+        // Fallback to ambient temperature calculation for other standards or if P/T API fails
         const recommended = getRecommendedPressureClass(workingPressureBar, classes);
         if (recommended) {
           return recommended.id;
         }
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error fetching pressure classes:', error);

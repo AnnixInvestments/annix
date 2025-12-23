@@ -706,6 +706,59 @@ class ApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  // Pipe Schedule API - For ASME B31.3 pressure-based schedule recommendation
+  async recommendPipeSchedule(params: {
+    nbMm: number;
+    pressureBar: number;
+    temperatureCelsius: number;
+    materialCode?: string;
+    corrosionAllowanceMm?: number;
+  }): Promise<{
+    minRequiredThicknessMm: number;
+    recommendedSchedule: string;
+    recommendedWallMm: number;
+    allowableStressMpa: number;
+    warnings: string[];
+    availableSchedules?: Array<{ schedule: string; wallMm: number }>;
+  }> {
+    const queryParams = new URLSearchParams();
+
+    // Convert NB mm to NPS (approximate)
+    const nbToNps: { [key: number]: string } = {
+      15: '1/2', 20: '3/4', 25: '1', 32: '1-1/4', 40: '1-1/2',
+      50: '2', 65: '2-1/2', 80: '3', 100: '4', 125: '5', 150: '6',
+      200: '8', 250: '10', 300: '12', 350: '14', 400: '16',
+      450: '18', 500: '20', 600: '24', 700: '28', 750: '30',
+      800: '32', 900: '36', 1000: '40', 1050: '42', 1200: '48'
+    };
+
+    const nps = nbToNps[params.nbMm] || `${Math.round(params.nbMm / 25.4)}`;
+
+    queryParams.append('nps', nps);
+    queryParams.append('pressureBar', params.pressureBar.toString());
+    queryParams.append('temperatureCelsius', params.temperatureCelsius.toString());
+    queryParams.append('materialCode', params.materialCode || 'ASTM_A106_Grade_B');
+    if (params.corrosionAllowanceMm) {
+      queryParams.append('corrosionAllowanceMm', params.corrosionAllowanceMm.toString());
+    }
+
+    return this.request(`/pipe-schedules/recommend?${queryParams.toString()}`);
+  }
+
+  // Get available schedules for a given NB
+  async getSchedulesByNb(nbMm: number): Promise<Array<{
+    id: number;
+    nps: string;
+    nbMm: number;
+    schedule: string;
+    wallThicknessInch: number;
+    wallThicknessMm: number;
+    outsideDiameterInch: number;
+    standardCode: string;
+  }>> {
+    return this.request(`/pipe-schedules/by-nb?nbMm=${nbMm}`);
+  }
 }
 
 // Create and export the API client instance
@@ -770,6 +823,12 @@ export const masterDataApi = {
 export const authApi = {
   login: (email: string, password: string) => apiClient.login(email, password),
   logout: () => apiClient.clearToken(),
+};
+
+export const pipeScheduleApi = {
+  recommend: (params: Parameters<typeof apiClient.recommendPipeSchedule>[0]) =>
+    apiClient.recommendPipeSchedule(params),
+  getSchedulesByNb: (nbMm: number) => apiClient.getSchedulesByNb(nbMm),
 };
 
 export const rfqDocumentApi = {
