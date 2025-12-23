@@ -422,11 +422,12 @@ function recommendExternalCoating(profile: ExternalEnvironmentProfile, damage: E
       return {
         coating: "Fusion Bonded Epoxy (FBE) or 3-Layer Polyethylene (3LPE)",
         coatingType: "Paint",
-        system: "FBE: 350-500μm or 3LPE: 1.8-3.0mm total",
+        system: "SA 2.5 blast (ISO 8501-1) → FBE: 350-500μm or 3LPE: 1.8-3.0mm total",
         thicknessRange: "350–3000 μm",
-        standardsBasis: ["ISO 21809-1", "ISO 21809-2", "NACE SP0169", "AS/NZS 4822"],
+        standardsBasis: ["ISO 8501-1", "ISO 21809-1", "ISO 21809-2", "NACE SP0169", "AS/NZS 4822"],
         rationale: "Severe soil corrosivity requires heavy-duty pipeline coating with CP compatibility",
         engineeringNotes: [
+          "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
           "FBE provides excellent adhesion and CP compatibility",
           "3LPE recommended for rocky terrain or high mechanical stress",
           "Ensure holiday detection testing per NACE SP0188",
@@ -437,13 +438,13 @@ function recommendExternalCoating(profile: ExternalEnvironmentProfile, damage: E
     return {
       coating: "Coal Tar Epoxy or Polyurethane Coating",
       coatingType: "Paint",
-      system: "Primer + 2 coats, 400-600μm DFT",
+      system: "SA 2.5 blast (ISO 8501-1) → Primer + 2 coats, 400-600μm DFT",
       thicknessRange: "400–600 μm",
-      standardsBasis: ["ISO 21809-3", "AWWA C222", "NACE SP0169"],
+      standardsBasis: ["ISO 8501-1", "ISO 21809-3", "AWWA C222", "NACE SP0169"],
       rationale: "Moderate soil conditions with cathodic protection compatibility",
       engineeringNotes: [
+        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
         "Coal tar epoxy for proven long-term performance",
-        "Ensure proper surface preparation to Sa 2½",
         "Consider wrap coating for additional mechanical protection"
       ]
     };
@@ -453,11 +454,12 @@ function recommendExternalCoating(profile: ExternalEnvironmentProfile, damage: E
     return addUVTopcoatNote({
       coating: "High-Build Epoxy System",
       coatingType: "Paint",
-      system: "Zinc-rich primer + Epoxy MIO intermediate + Polyurethane topcoat",
+      system: "SA 2.5 blast (ISO 8501-1) → Zinc-rich primer + Epoxy MIO intermediate + Polyurethane topcoat",
       thicknessRange: "320–450 μm total DFT",
-      standardsBasis: ["ISO 12944-5", "ISO 12944-6", "NORSOK M-501", "SSPC-PA 2"],
+      standardsBasis: ["ISO 8501-1", "ISO 12944-5", "ISO 12944-6", "NORSOK M-501", "SSPC-PA 2"],
       rationale: "Marine/offshore environment requires maximum corrosion protection",
       engineeringNotes: [
+        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
         "Zinc-rich primer (60-80μm) for cathodic protection",
         "Epoxy MIO intermediate (150-200μm) for barrier protection",
         "Polyurethane topcoat (60-80μm) for UV and gloss retention",
@@ -470,11 +472,12 @@ function recommendExternalCoating(profile: ExternalEnvironmentProfile, damage: E
     return addUVTopcoatNote({
       coating: "Epoxy-Polyurethane System",
       coatingType: "Paint",
-      system: "Zinc phosphate primer + Epoxy intermediate + Polyurethane topcoat",
+      system: "SA 2.5 blast (ISO 8501-1) → Zinc phosphate primer + Epoxy intermediate + Polyurethane topcoat",
       thicknessRange: "250–350 μm total DFT",
-      standardsBasis: ["ISO 12944-5", "AS/NZS 2312.1", "SSPC-PA 2"],
+      standardsBasis: ["ISO 8501-1", "ISO 12944-5", "AS/NZS 2312.1", "SSPC-PA 2"],
       rationale: "Industrial or coastal atmosphere with high corrosion risk",
       engineeringNotes: [
+        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
         "Zinc phosphate primer (50-75μm) for steel adhesion",
         "High-build epoxy intermediate (125-175μm)",
         "Aliphatic polyurethane topcoat for UV stability",
@@ -487,11 +490,12 @@ function recommendExternalCoating(profile: ExternalEnvironmentProfile, damage: E
     return addUVTopcoatNote({
       coating: "Rubber Coating or Polyurea",
       coatingType: "Rubber Lined",
-      system: "Chloroprene rubber 3-6mm or Polyurea 1.5-3mm",
+      system: "SA 2.5 blast (ISO 8501-1) → Chloroprene rubber 3-6mm or Polyurea 1.5-3mm",
       thicknessRange: "1500–6000 μm",
-      standardsBasis: ["ASTM D4541", "ASTM D2000", "ISO 4649"],
+      standardsBasis: ["ISO 8501-1", "ASTM D4541", "ASTM D2000", "ISO 4649"],
       rationale: "High mechanical stress or splash zone requires impact-resistant coating",
       engineeringNotes: [
+        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
         "Chloroprene (Neoprene) rubber for abrasion and weathering",
         "Polyurea for rapid application and seamless coverage",
         "Shore A hardness 50-70 for impact absorption",
@@ -504,11 +508,12 @@ function recommendExternalCoating(profile: ExternalEnvironmentProfile, damage: E
     return addUVTopcoatNote({
       coating: "Alkyd or Acrylic System",
       coatingType: "Paint",
-      system: "Alkyd primer + Alkyd/Acrylic topcoat",
+      system: "SA 2.5 blast (ISO 8501-1) → Alkyd primer + Alkyd/Acrylic topcoat",
       thicknessRange: "150–250 μm total DFT",
-      standardsBasis: ["ISO 12944-5", "AS/NZS 2312.1"],
+      standardsBasis: ["ISO 8501-1", "ISO 12944-5", "AS/NZS 2312.1"],
       rationale: "Moderate atmospheric exposure - cost-effective protection",
       engineeringNotes: [
+        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
         "Suitable for C2-C3 environments",
         "Alkyd primer (50-75μm) on prepared steel",
         "Acrylic topcoat for better UV resistance than alkyd",
@@ -521,11 +526,12 @@ function recommendExternalCoating(profile: ExternalEnvironmentProfile, damage: E
     return addUVTopcoatNote({
       coating: "Silicone or Epoxy Phenolic",
       coatingType: "Paint",
-      system: "Heat-resistant primer + Silicone topcoat",
+      system: "SA 2.5 blast (ISO 8501-1) → Heat-resistant primer + Silicone topcoat",
       thicknessRange: "75–150 μm total DFT",
-      standardsBasis: ["ISO 12944-5", "ASTM D6695"],
+      standardsBasis: ["ISO 8501-1", "ISO 12944-5", "ASTM D6695"],
       rationale: "Elevated temperature service requires heat-resistant coating",
       engineeringNotes: [
+        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
         "Silicone coatings for temperatures up to 540°C",
         "Epoxy phenolic for temperatures up to 200°C with chemical resistance",
         "Inorganic zinc silicate primer for high-temp applications",
@@ -538,11 +544,12 @@ function recommendExternalCoating(profile: ExternalEnvironmentProfile, damage: E
     return {
       coating: "Hot-Dip Galvanizing",
       coatingType: "Galvanized",
-      system: "HDG per ISO 1461",
+      system: "HDG per ISO 1461 (no blasting required - pickling process)",
       thicknessRange: "45–85 μm (depends on steel thickness)",
       standardsBasis: ["ISO 1461", "ASTM A123", "AS/NZS 4680"],
       rationale: "Indoor or sheltered environment with low corrosion risk",
       engineeringNotes: [
+        "Surface prep: Chemical cleaning & pickling (no blast cleaning required)",
         "Minimum 45μm for steel <1.5mm, 85μm for steel >6mm",
         "Self-healing zinc protection",
         "Can be duplex coated (galvanized + paint) for extended life",
@@ -554,11 +561,12 @@ function recommendExternalCoating(profile: ExternalEnvironmentProfile, damage: E
   return addUVTopcoatNote({
     coating: "Standard Epoxy System",
     coatingType: "Paint",
-    system: "Epoxy primer + Epoxy topcoat",
+    system: "SA 2.5 blast (ISO 8501-1) → Epoxy primer + Epoxy topcoat",
     thicknessRange: "200–300 μm total DFT",
-    standardsBasis: ["ISO 12944-5", "SSPC-PA 2"],
+    standardsBasis: ["ISO 8501-1", "ISO 12944-5", "SSPC-PA 2"],
     rationale: "General-purpose protection for mild environments",
     engineeringNotes: [
+      "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
       "Epoxy primer (75-100μm) for adhesion",
       "High-build epoxy topcoat (125-200μm)",
       "Good chemical and abrasion resistance",
@@ -3148,6 +3156,287 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                           </ul>
                         </div>
 
+                        {/* Step 4: Colour Selection */}
+                        <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
+                          <div className="text-xs font-medium text-emerald-700 mb-3 flex items-center gap-2">
+                            <span className="bg-emerald-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                            Select Colours (Optional)
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {/* Topcoat Colour */}
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Topcoat Colour</label>
+                              {!globalSpecs?.showRecCustomColourInput ? (
+                                <select
+                                  value={globalSpecs?.recExternalTopcoatColour || ''}
+                                  onChange={(e) => {
+                                    if (e.target.value === '__ADD_CUSTOM__') {
+                                      onUpdateGlobalSpecs({ ...globalSpecs, showRecCustomColourInput: true });
+                                    } else {
+                                      onUpdateGlobalSpecs({ ...globalSpecs, recExternalTopcoatColour: e.target.value || undefined });
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                >
+                                  <option value="">Select colour...</option>
+                                  <optgroup label="Add Your Own">
+                                    <option value="__ADD_CUSTOM__">+ Add Custom Colour...</option>
+                                  </optgroup>
+                                  {(() => {
+                                    try {
+                                      const customColours = JSON.parse(localStorage.getItem('customTopcoatColours') || '[]');
+                                      if (customColours.length > 0) {
+                                        return (
+                                          <optgroup label="Saved Custom Colours">
+                                            {customColours.map((colour: string, idx: number) => (
+                                              <option key={idx} value={colour}>{colour}</option>
+                                            ))}
+                                          </optgroup>
+                                        );
+                                      }
+                                    } catch (e) {}
+                                    return null;
+                                  })()}
+                                  <optgroup label="SA Mining Colours">
+                                    <option value="Safety Yellow (RAL 1003)">Safety Yellow (RAL 1003)</option>
+                                    <option value="Safety Orange (RAL 2009)">Safety Orange (RAL 2009)</option>
+                                    <option value="Safety Red (RAL 3001)">Safety Red (RAL 3001)</option>
+                                    <option value="Safety Green (RAL 6024)">Safety Green (RAL 6024)</option>
+                                    <option value="Signal Blue (RAL 5005)">Signal Blue (RAL 5005)</option>
+                                    <option value="White (RAL 9003)">White (RAL 9003)</option>
+                                    <option value="Black (RAL 9005)">Black (RAL 9005)</option>
+                                    <option value="Grey (RAL 7035)">Grey (RAL 7035)</option>
+                                  </optgroup>
+                                  <optgroup label="Pipeline (SABS 0140)">
+                                    <option value="Water - Blue (RAL 5015)">Water - Blue (RAL 5015)</option>
+                                    <option value="Steam - Silver Grey (RAL 7001)">Steam - Silver Grey</option>
+                                    <option value="Air - Light Blue (RAL 5012)">Air - Light Blue</option>
+                                    <option value="Gas - Yellow Ochre (RAL 1024)">Gas - Yellow Ochre</option>
+                                    <option value="Fire Services - Red (RAL 3000)">Fire Services - Red</option>
+                                  </optgroup>
+                                </select>
+                              ) : (
+                                <div className="space-y-2">
+                                  <input
+                                    type="text"
+                                    value={globalSpecs?.recCustomColourInput || ''}
+                                    onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, recCustomColourInput: e.target.value })}
+                                    placeholder="Enter colour name"
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                  />
+                                  <div className="flex gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newColour = globalSpecs?.recCustomColourInput?.trim();
+                                        if (newColour) {
+                                          try {
+                                            const existing = JSON.parse(localStorage.getItem('customTopcoatColours') || '[]');
+                                            if (!existing.includes(newColour)) {
+                                              existing.push(newColour);
+                                              localStorage.setItem('customTopcoatColours', JSON.stringify(existing));
+                                            }
+                                          } catch (e) {}
+                                          onUpdateGlobalSpecs({ ...globalSpecs, recExternalTopcoatColour: newColour, showRecCustomColourInput: false, recCustomColourInput: undefined });
+                                        }
+                                      }}
+                                      disabled={!globalSpecs?.recCustomColourInput?.trim()}
+                                      className="flex-1 px-2 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 disabled:opacity-50"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => onUpdateGlobalSpecs({ ...globalSpecs, showRecCustomColourInput: false, recCustomColourInput: undefined })}
+                                      className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Band 1 Colour */}
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Band 1 Colour</label>
+                              {!globalSpecs?.showRecBand1Input ? (
+                                <select
+                                  value={globalSpecs?.recExternalBand1Colour || ''}
+                                  onChange={(e) => {
+                                    if (e.target.value === '__ADD_CUSTOM__') {
+                                      onUpdateGlobalSpecs({ ...globalSpecs, showRecBand1Input: true });
+                                    } else {
+                                      onUpdateGlobalSpecs({
+                                        ...globalSpecs,
+                                        recExternalBand1Colour: e.target.value || undefined,
+                                        ...(e.target.value ? {} : { recExternalBand2Colour: undefined })
+                                      });
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                >
+                                  <option value="">No band required</option>
+                                  <optgroup label="Add Your Own">
+                                    <option value="__ADD_CUSTOM__">+ Add Custom Colour...</option>
+                                  </optgroup>
+                                  {(() => {
+                                    try {
+                                      const customColours = JSON.parse(localStorage.getItem('customBandColours') || '[]');
+                                      if (customColours.length > 0) {
+                                        return (
+                                          <optgroup label="Saved Custom Colours">
+                                            {customColours.map((colour: string, idx: number) => (
+                                              <option key={idx} value={colour}>{colour}</option>
+                                            ))}
+                                          </optgroup>
+                                        );
+                                      }
+                                    } catch (e) {}
+                                    return null;
+                                  })()}
+                                  <optgroup label="Common Band Colours">
+                                    <option value="White (RAL 9003)">White (RAL 9003)</option>
+                                    <option value="Yellow (RAL 1023)">Yellow (RAL 1023)</option>
+                                    <option value="Orange (RAL 2004)">Orange (RAL 2004)</option>
+                                    <option value="Red (RAL 3020)">Red (RAL 3020)</option>
+                                    <option value="Blue (RAL 5015)">Blue (RAL 5015)</option>
+                                    <option value="Green (RAL 6032)">Green (RAL 6032)</option>
+                                    <option value="Black (RAL 9005)">Black (RAL 9005)</option>
+                                  </optgroup>
+                                </select>
+                              ) : (
+                                <div className="space-y-2">
+                                  <input
+                                    type="text"
+                                    value={globalSpecs?.recBand1Input || ''}
+                                    onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, recBand1Input: e.target.value })}
+                                    placeholder="Enter band colour"
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                  />
+                                  <div className="flex gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newColour = globalSpecs?.recBand1Input?.trim();
+                                        if (newColour) {
+                                          try {
+                                            const existing = JSON.parse(localStorage.getItem('customBandColours') || '[]');
+                                            if (!existing.includes(newColour)) {
+                                              existing.push(newColour);
+                                              localStorage.setItem('customBandColours', JSON.stringify(existing));
+                                            }
+                                          } catch (e) {}
+                                          onUpdateGlobalSpecs({ ...globalSpecs, recExternalBand1Colour: newColour, showRecBand1Input: false, recBand1Input: undefined });
+                                        }
+                                      }}
+                                      disabled={!globalSpecs?.recBand1Input?.trim()}
+                                      className="flex-1 px-2 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 disabled:opacity-50"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => onUpdateGlobalSpecs({ ...globalSpecs, showRecBand1Input: false, recBand1Input: undefined })}
+                                      className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Band 2 Colour - Only if Band 1 selected */}
+                            {globalSpecs?.recExternalBand1Colour && (
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1">Band 2 Colour</label>
+                                {!globalSpecs?.showRecBand2Input ? (
+                                  <select
+                                    value={globalSpecs?.recExternalBand2Colour || ''}
+                                    onChange={(e) => {
+                                      if (e.target.value === '__ADD_CUSTOM__') {
+                                        onUpdateGlobalSpecs({ ...globalSpecs, showRecBand2Input: true });
+                                      } else {
+                                        onUpdateGlobalSpecs({ ...globalSpecs, recExternalBand2Colour: e.target.value || undefined });
+                                      }
+                                    }}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                  >
+                                    <option value="">No band required</option>
+                                    <optgroup label="Add Your Own">
+                                      <option value="__ADD_CUSTOM__">+ Add Custom Colour...</option>
+                                    </optgroup>
+                                    {(() => {
+                                      try {
+                                        const customColours = JSON.parse(localStorage.getItem('customBandColours') || '[]');
+                                        if (customColours.length > 0) {
+                                          return (
+                                            <optgroup label="Saved Custom Colours">
+                                              {customColours.map((colour: string, idx: number) => (
+                                                <option key={idx} value={colour}>{colour}</option>
+                                              ))}
+                                            </optgroup>
+                                          );
+                                        }
+                                      } catch (e) {}
+                                      return null;
+                                    })()}
+                                    <optgroup label="Common Band Colours">
+                                      <option value="White (RAL 9003)">White (RAL 9003)</option>
+                                      <option value="Yellow (RAL 1023)">Yellow (RAL 1023)</option>
+                                      <option value="Orange (RAL 2004)">Orange (RAL 2004)</option>
+                                      <option value="Red (RAL 3020)">Red (RAL 3020)</option>
+                                      <option value="Blue (RAL 5015)">Blue (RAL 5015)</option>
+                                      <option value="Green (RAL 6032)">Green (RAL 6032)</option>
+                                      <option value="Black (RAL 9005)">Black (RAL 9005)</option>
+                                    </optgroup>
+                                  </select>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <input
+                                      type="text"
+                                      value={globalSpecs?.recBand2Input || ''}
+                                      onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, recBand2Input: e.target.value })}
+                                      placeholder="Enter band colour"
+                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                    />
+                                    <div className="flex gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const newColour = globalSpecs?.recBand2Input?.trim();
+                                          if (newColour) {
+                                            try {
+                                              const existing = JSON.parse(localStorage.getItem('customBandColours') || '[]');
+                                              if (!existing.includes(newColour)) {
+                                                existing.push(newColour);
+                                                localStorage.setItem('customBandColours', JSON.stringify(existing));
+                                              }
+                                            } catch (e) {}
+                                            onUpdateGlobalSpecs({ ...globalSpecs, recExternalBand2Colour: newColour, showRecBand2Input: false, recBand2Input: undefined });
+                                          }
+                                        }}
+                                        disabled={!globalSpecs?.recBand2Input?.trim()}
+                                        className="flex-1 px-2 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 disabled:opacity-50"
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => onUpdateGlobalSpecs({ ...globalSpecs, showRecBand2Input: false, recBand2Input: undefined })}
+                                        className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
                         <div className="flex gap-3">
                           <button
                             type="button"
@@ -3156,6 +3445,11 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                               externalCoatingType: recommendation.coatingType,
                               externalCoatingConfirmed: true,
                               externalCoatingRecommendationRejected: false,
+                              // Save blasting grade - SA 2.5 is standard for all paint recommendations
+                              externalBlastingGrade: recommendation.coatingType === 'Galvanized' ? undefined : 'SA 2.5 (ISO 8501-1)',
+                              externalTopcoatColour: globalSpecs?.recExternalTopcoatColour,
+                              externalBand1Colour: globalSpecs?.recExternalBand1Colour,
+                              externalBand2Colour: globalSpecs?.recExternalBand2Colour,
                               externalCoatingRecommendation: {
                                 coating: recommendation.coating,
                                 system: recommendation.system,
@@ -3241,6 +3535,14 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   <p className="text-xl font-bold text-green-800 mt-1">{globalSpecs.externalCoatingRecommendation.coating}</p>
                 </div>
 
+                {/* Surface Preparation */}
+                {globalSpecs?.externalBlastingGrade && (
+                  <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                    <span className="font-semibold text-amber-800 text-sm">Surface Preparation:</span>
+                    <p className="text-amber-900 font-medium mt-1">{globalSpecs.externalBlastingGrade}</p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="font-semibold text-gray-700">System:</span>
@@ -3251,6 +3553,33 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                     <p className="text-gray-900 font-medium mt-0.5">{globalSpecs.externalCoatingRecommendation.thicknessRange}</p>
                   </div>
                 </div>
+
+                {/* Colour Specifications */}
+                {(globalSpecs?.externalTopcoatColour || globalSpecs?.externalBand1Colour) && (
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                    <span className="font-semibold text-blue-800 text-sm">Colour Specifications:</span>
+                    <div className="grid grid-cols-3 gap-3 mt-2 text-sm">
+                      {globalSpecs?.externalTopcoatColour && (
+                        <div>
+                          <span className="text-blue-600 text-xs">Topcoat Colour:</span>
+                          <p className="font-medium text-blue-900">{globalSpecs.externalTopcoatColour}</p>
+                        </div>
+                      )}
+                      {globalSpecs?.externalBand1Colour && (
+                        <div>
+                          <span className="text-blue-600 text-xs">Band 1 Colour:</span>
+                          <p className="font-medium text-blue-900">{globalSpecs.externalBand1Colour}</p>
+                        </div>
+                      )}
+                      {globalSpecs?.externalBand2Colour && (
+                        <div>
+                          <span className="text-blue-600 text-xs">Band 2 Colour:</span>
+                          <p className="font-medium text-blue-900">{globalSpecs.externalBand2Colour}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <span className="font-semibold text-gray-700 text-sm">Applicable Standards:</span>
@@ -3720,6 +4049,31 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
            globalSpecs?.externalCoatingType === 'Paint' && !globalSpecs?.externalCoatingConfirmed && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <h4 className="text-md font-semibold text-gray-800 mb-4">External Paint Specifications</h4>
+
+              {/* Surface Preparation / Blasting Specification */}
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Surface Preparation (Blasting Grade)
+                </label>
+                <select
+                  value={globalSpecs?.externalBlastingGrade || ''}
+                  onChange={(e) => onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    externalBlastingGrade: e.target.value || undefined
+                  })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                >
+                  <option value="">Select blasting grade...</option>
+                  <option value="SA 1 (ISO 8501-1)">SA 1 - Light Blast Cleaning (ISO 8501-1)</option>
+                  <option value="SA 2 (ISO 8501-1)">SA 2 - Thorough Blast Cleaning (ISO 8501-1)</option>
+                  <option value="SA 2.5 (ISO 8501-1)">SA 2.5 - Very Thorough Blast Cleaning (ISO 8501-1) - Recommended</option>
+                  <option value="SA 3 (ISO 8501-1)">SA 3 - Blast Cleaning to Visually Clean Steel (ISO 8501-1)</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  ISO 8501-1 surface preparation grade. SA 2.5 is the most common specification for high-performance coatings.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -4010,13 +4364,265 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                         Standard SA mining and pipeline colours per SABS 0140
                       </p>
                     </div>
+
+                    {/* Band 1 Colour - Optional */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">
+                        Band 1 Colour <span className="text-gray-400 font-normal">(Optional)</span>
+                      </label>
+                      {!globalSpecs?.showCustomBand1Input ? (
+                        <select
+                          value={globalSpecs?.externalBand1Colour || ''}
+                          onChange={(e) => {
+                            if (e.target.value === '__ADD_CUSTOM__') {
+                              onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                showCustomBand1Input: true
+                              });
+                            } else {
+                              onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                externalBand1Colour: e.target.value || undefined,
+                                // Clear Band 2 if Band 1 is cleared
+                                ...(e.target.value ? {} : { externalBand2Colour: undefined })
+                              });
+                            }
+                          }}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        >
+                          <option value="">No band required</option>
+                          <optgroup label="Add Your Own">
+                            <option value="__ADD_CUSTOM__">+ Add Custom Band Colour...</option>
+                          </optgroup>
+                          {/* Custom band colours from localStorage */}
+                          {(() => {
+                            try {
+                              const customColours = JSON.parse(localStorage.getItem('customBandColours') || '[]');
+                              if (customColours.length > 0) {
+                                return (
+                                  <optgroup label="Saved Custom Colours">
+                                    {customColours.map((colour: string, idx: number) => (
+                                      <option key={idx} value={colour}>{colour}</option>
+                                    ))}
+                                  </optgroup>
+                                );
+                              }
+                            } catch (e) {}
+                            return null;
+                          })()}
+                          <optgroup label="Common Band Colours">
+                            <option value="White (RAL 9003)">White (RAL 9003)</option>
+                            <option value="Yellow (RAL 1023)">Yellow (RAL 1023)</option>
+                            <option value="Orange (RAL 2004)">Orange (RAL 2004)</option>
+                            <option value="Red (RAL 3020)">Red (RAL 3020)</option>
+                            <option value="Blue (RAL 5015)">Blue (RAL 5015)</option>
+                            <option value="Green (RAL 6032)">Green (RAL 6032)</option>
+                            <option value="Black (RAL 9005)">Black (RAL 9005)</option>
+                            <option value="Grey (RAL 7035)">Grey (RAL 7035)</option>
+                          </optgroup>
+                          <optgroup label="Safety & Warning Bands">
+                            <option value="Safety Yellow Band">Safety Yellow Band</option>
+                            <option value="Caution Orange Band">Caution Orange Band</option>
+                            <option value="Danger Red Band">Danger Red Band</option>
+                            <option value="Warning Black/Yellow Stripe">Warning Black/Yellow Stripe</option>
+                          </optgroup>
+                          <optgroup label="Pipeline Identification Bands">
+                            <option value="Water Identification Blue">Water Identification Blue</option>
+                            <option value="Steam Grey Band">Steam Grey Band</option>
+                            <option value="Gas Yellow Band">Gas Yellow Band</option>
+                            <option value="Fire Red Band">Fire Red Band</option>
+                            <option value="Slurry Black Band">Slurry Black Band</option>
+                          </optgroup>
+                        </select>
+                      ) : (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={globalSpecs?.customBand1Input || ''}
+                            onChange={(e) => onUpdateGlobalSpecs({
+                              ...globalSpecs,
+                              customBand1Input: e.target.value
+                            })}
+                            placeholder="Enter band colour (e.g., Mine Identification Blue)"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newColour = globalSpecs?.customBand1Input?.trim();
+                                if (newColour) {
+                                  try {
+                                    const existing = JSON.parse(localStorage.getItem('customBandColours') || '[]');
+                                    if (!existing.includes(newColour)) {
+                                      existing.push(newColour);
+                                      localStorage.setItem('customBandColours', JSON.stringify(existing));
+                                    }
+                                  } catch (e) {}
+                                  onUpdateGlobalSpecs({
+                                    ...globalSpecs,
+                                    externalBand1Colour: newColour,
+                                    showCustomBand1Input: false,
+                                    customBand1Input: undefined
+                                  });
+                                }
+                              }}
+                              disabled={!globalSpecs?.customBand1Input?.trim()}
+                              className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Save Band Colour
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                showCustomBand1Input: false,
+                                customBand1Input: undefined
+                              })}
+                              className="px-3 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      <p className="mt-1 text-xs text-gray-500">
+                        Identification or safety band colour if required
+                      </p>
+                    </div>
+
+                    {/* Band 2 Colour - Only appears if Band 1 is selected */}
+                    {globalSpecs?.externalBand1Colour && (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                          Band 2 Colour <span className="text-gray-400 font-normal">(Optional)</span>
+                        </label>
+                        {!globalSpecs?.showCustomBand2Input ? (
+                          <select
+                            value={globalSpecs?.externalBand2Colour || ''}
+                            onChange={(e) => {
+                              if (e.target.value === '__ADD_CUSTOM__') {
+                                onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  showCustomBand2Input: true
+                                });
+                              } else {
+                                onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  externalBand2Colour: e.target.value || undefined
+                                });
+                              }
+                            }}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                          >
+                            <option value="">No second band required</option>
+                            <optgroup label="Add Your Own">
+                              <option value="__ADD_CUSTOM__">+ Add Custom Band Colour...</option>
+                            </optgroup>
+                            {/* Custom band colours from localStorage */}
+                            {(() => {
+                              try {
+                                const customColours = JSON.parse(localStorage.getItem('customBandColours') || '[]');
+                                if (customColours.length > 0) {
+                                  return (
+                                    <optgroup label="Saved Custom Colours">
+                                      {customColours.map((colour: string, idx: number) => (
+                                        <option key={idx} value={colour}>{colour}</option>
+                                      ))}
+                                    </optgroup>
+                                  );
+                                }
+                              } catch (e) {}
+                              return null;
+                            })()}
+                            <optgroup label="Common Band Colours">
+                              <option value="White (RAL 9003)">White (RAL 9003)</option>
+                              <option value="Yellow (RAL 1023)">Yellow (RAL 1023)</option>
+                              <option value="Orange (RAL 2004)">Orange (RAL 2004)</option>
+                              <option value="Red (RAL 3020)">Red (RAL 3020)</option>
+                              <option value="Blue (RAL 5015)">Blue (RAL 5015)</option>
+                              <option value="Green (RAL 6032)">Green (RAL 6032)</option>
+                              <option value="Black (RAL 9005)">Black (RAL 9005)</option>
+                              <option value="Grey (RAL 7035)">Grey (RAL 7035)</option>
+                            </optgroup>
+                            <optgroup label="Safety & Warning Bands">
+                              <option value="Safety Yellow Band">Safety Yellow Band</option>
+                              <option value="Caution Orange Band">Caution Orange Band</option>
+                              <option value="Danger Red Band">Danger Red Band</option>
+                              <option value="Warning Black/Yellow Stripe">Warning Black/Yellow Stripe</option>
+                            </optgroup>
+                            <optgroup label="Pipeline Identification Bands">
+                              <option value="Water Identification Blue">Water Identification Blue</option>
+                              <option value="Steam Grey Band">Steam Grey Band</option>
+                              <option value="Gas Yellow Band">Gas Yellow Band</option>
+                              <option value="Fire Red Band">Fire Red Band</option>
+                              <option value="Slurry Black Band">Slurry Black Band</option>
+                            </optgroup>
+                          </select>
+                        ) : (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={globalSpecs?.customBand2Input || ''}
+                              onChange={(e) => onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                customBand2Input: e.target.value
+                              })}
+                              placeholder="Enter band colour (e.g., Mine Identification Blue)"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newColour = globalSpecs?.customBand2Input?.trim();
+                                  if (newColour) {
+                                    try {
+                                      const existing = JSON.parse(localStorage.getItem('customBandColours') || '[]');
+                                      if (!existing.includes(newColour)) {
+                                        existing.push(newColour);
+                                        localStorage.setItem('customBandColours', JSON.stringify(existing));
+                                      }
+                                    } catch (e) {}
+                                    onUpdateGlobalSpecs({
+                                      ...globalSpecs,
+                                      externalBand2Colour: newColour,
+                                      showCustomBand2Input: false,
+                                      customBand2Input: undefined
+                                    });
+                                  }
+                                }}
+                                disabled={!globalSpecs?.customBand2Input?.trim()}
+                                className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Save Band Colour
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  showCustomBand2Input: false,
+                                  customBand2Input: undefined
+                                })}
+                                className="px-3 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        <p className="mt-1 text-xs text-gray-500">
+                          Secondary identification band if required
+                        </p>
+                      </div>
+                    )}
                     </>
                   )}
                 </div>
               </div>
 
               {/* Paint Specification Summary - shows when primer is selected */}
-              {globalSpecs?.externalPrimerType && globalSpecs?.externalPrimerMicrons && (
+              {globalSpecs?.externalPrimerType && globalSpecs?.externalPrimerMicrons && !globalSpecs?.externalPaintSpecConfirmed && (
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                     <h4 className="text-md font-semibold text-amber-800 mb-3 flex items-center gap-2">
@@ -4027,6 +4633,13 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                     </h4>
 
                     <div className="space-y-2">
+                      {/* Surface Preparation / Blasting - Always show */}
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-amber-700">
+                          <span className="font-medium">Surface Prep:</span> {globalSpecs?.externalBlastingGrade || <span className="text-gray-400 italic">Not specified - please select above</span>}
+                        </span>
+                      </div>
+
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-amber-700">
                           <span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}
@@ -4047,13 +4660,31 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-amber-700">
                             <span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType}
-                            {globalSpecs?.externalTopcoatColour && (
-                              <span className="ml-2 text-amber-600">({globalSpecs.externalTopcoatColour})</span>
-                            )}
                           </span>
                           <span className="font-semibold text-amber-800">{globalSpecs.externalTopcoatMicrons} μm</span>
                         </div>
                       )}
+
+                      {/* Topcoat Colour - Always show if topcoat selected */}
+                      {globalSpecs?.externalTopcoatType && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-amber-700">
+                            <span className="font-medium">Topcoat Colour:</span> {globalSpecs?.externalTopcoatColour || <span className="text-gray-400 italic">Not specified</span>}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Band Colours - Always show both */}
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-amber-700">
+                          <span className="font-medium">Band 1:</span> {globalSpecs?.externalBand1Colour || <span className="text-gray-400 italic">None</span>}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-amber-700">
+                          <span className="font-medium">Band 2:</span> {globalSpecs?.externalBand2Colour || <span className="text-gray-400 italic">None</span>}
+                        </span>
+                      </div>
 
                       <div className="flex justify-between items-center text-sm pt-2 mt-2 border-t border-amber-300">
                         <span className="font-semibold text-amber-800">Total Dry Film Thickness (DFT)</span>
@@ -4070,11 +4701,113 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                         type="button"
                         onClick={() => onUpdateGlobalSpecs({
                           ...globalSpecs,
+                          externalPaintSpecConfirmed: true,
                           externalCoatingConfirmed: true
                         })}
-                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm flex items-center gap-2"
                       >
-                        Confirm Paint Specification
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Confirm & Lock Specification
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* LOCKED Paint Specification - Green box when confirmed */}
+              {globalSpecs?.externalPaintSpecConfirmed && globalSpecs?.externalPrimerType && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                      </svg>
+                      <h4 className="text-md font-bold text-green-800">External Paint Specification (Locked)</h4>
+                    </div>
+
+                    <div className="space-y-2">
+                      {/* Surface Preparation / Blasting - Always show */}
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-green-700">
+                          <span className="font-medium">Surface Prep:</span> {globalSpecs?.externalBlastingGrade || <span className="text-gray-400 italic">Not specified</span>}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-green-700">
+                          <span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}
+                        </span>
+                        <span className="font-semibold text-green-800">{globalSpecs.externalPrimerMicrons} μm</span>
+                      </div>
+
+                      {globalSpecs?.externalIntermediateType && globalSpecs?.externalIntermediateMicrons && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-green-700">
+                            <span className="font-medium">Intermediate:</span> {globalSpecs.externalIntermediateType}
+                          </span>
+                          <span className="font-semibold text-green-800">{globalSpecs.externalIntermediateMicrons} μm</span>
+                        </div>
+                      )}
+
+                      {globalSpecs?.externalTopcoatType && globalSpecs?.externalTopcoatMicrons && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-green-700">
+                            <span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType}
+                            {globalSpecs?.externalTopcoatColour && (
+                              <span className="ml-2 text-green-600">({globalSpecs.externalTopcoatColour})</span>
+                            )}
+                          </span>
+                          <span className="font-semibold text-green-800">{globalSpecs.externalTopcoatMicrons} μm</span>
+                        </div>
+                      )}
+
+                      {/* Topcoat Colour - Always show if topcoat selected */}
+                      {globalSpecs?.externalTopcoatType && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-green-700">
+                            <span className="font-medium">Topcoat Colour:</span> {globalSpecs?.externalTopcoatColour || <span className="text-gray-400 italic">Not specified</span>}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Band Colours - Always show both */}
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-green-700">
+                          <span className="font-medium">Band 1:</span> {globalSpecs?.externalBand1Colour || <span className="text-gray-400 italic">None</span>}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-green-700">
+                          <span className="font-medium">Band 2:</span> {globalSpecs?.externalBand2Colour || <span className="text-gray-400 italic">None</span>}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm pt-2 mt-2 border-t border-green-300">
+                        <span className="font-semibold text-green-800">Total Dry Film Thickness (DFT)</span>
+                        <span className="font-bold text-base text-green-900">
+                          {(globalSpecs.externalPrimerMicrons || 0) +
+                           (globalSpecs.externalIntermediateMicrons || 0) +
+                           (globalSpecs.externalTopcoatMicrons || 0)} μm
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        onClick={() => onUpdateGlobalSpecs({
+                          ...globalSpecs,
+                          externalPaintSpecConfirmed: false,
+                          externalCoatingConfirmed: false
+                        })}
+                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Unlock & Edit Specification
                       </button>
                     </div>
                   </div>
@@ -4088,8 +4821,38 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Internal Lining</h3>
 
+          {/* Auto-set to Galvanized when external is galvanized */}
+          {globalSpecs?.externalCoatingType === 'Galvanized' && (
+            <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+                <h4 className="text-md font-bold text-green-800">Internal Coating: Hot-Dip Galvanized (Auto-set)</h4>
+              </div>
+              <p className="text-sm text-green-700 mb-3">
+                When external coating is galvanized, the internal surface is also galvanized as part of the same hot-dip galvanizing process.
+              </p>
+              <div className="bg-white rounded-lg p-3 border border-green-300">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-green-600 font-medium">Process:</span>
+                    <span className="text-green-800 ml-2">Hot-Dip Galvanizing (ISO 1461)</span>
+                  </div>
+                  <div>
+                    <span className="text-green-600 font-medium">Thickness:</span>
+                    <span className="text-green-800 ml-2">45-85 μm (internal surfaces)</span>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-green-600 mt-3">
+                Note: Internal and external galvanizing occur simultaneously - no separate internal lining required.
+              </p>
+            </div>
+          )}
+
           {/* Material Transfer Profile - Lining Recommendation Assistant */}
-          {!globalSpecs?.internalLiningConfirmed && (
+          {!globalSpecs?.internalLiningConfirmed && globalSpecs?.externalCoatingType !== 'Galvanized' && (
             <div className="mb-4">
               <button
                 type="button"
@@ -4442,8 +5205,8 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
             </div>
           )}
 
-          {/* Show dropdown only if no lining confirmed */}
-          {!globalSpecs?.internalLiningConfirmed && (
+          {/* Show dropdown only if no lining confirmed AND external is not galvanized */}
+          {!globalSpecs?.internalLiningConfirmed && globalSpecs?.externalCoatingType !== 'Galvanized' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -9036,92 +9799,28 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   return (
     <div className="h-screen bg-gray-100 overflow-hidden">
       <div className="flex h-full">
-        {/* Vertical Side Navigation - Condensed */}
-        <div className="w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
-          {/* Header */}
-          <div className="px-3 py-3 border-b border-gray-200">
-            <div className="flex justify-between items-center">
-              <h1 className="text-base font-bold text-gray-900">
-                Create RFQ
-              </h1>
-              <button
-                onClick={onCancel}
-                className="text-gray-400 hover:text-gray-600 text-xl"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-
-          {/* Vertical Progress Steps - Compact */}
-          <div className="flex-1 px-2 py-3 overflow-y-auto">
-            <nav className="space-y-1.5">
-              {steps.map((step) => (
-                <div
-                  key={step.number}
-                  className={`relative flex items-center p-2 rounded-lg transition-all ${
-                    step.number === currentStep
-                      ? 'bg-blue-50 border border-blue-500'
-                      : step.number < currentStep
-                      ? 'bg-green-50 border border-green-500'
-                      : 'bg-gray-50 border border-gray-200'
-                  }`}
-                >
-                  {/* Step Number/Checkmark */}
-                  <div
-                    className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                      step.number === currentStep
-                        ? 'bg-blue-600 text-white'
-                        : step.number < currentStep
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-300 text-gray-600'
-                    }`}
-                  >
-                    {step.number < currentStep ? '✓' : step.number}
-                  </div>
-
-                  {/* Step Content - More Compact */}
-                  <div className="ml-2 flex-1 min-w-0">
-                    <p
-                      className={`text-xs font-semibold truncate ${
-                        step.number === currentStep
-                          ? 'text-blue-900'
-                          : step.number < currentStep
-                          ? 'text-green-900'
-                          : 'text-gray-600'
-                      }`}
-                    >
-                      {step.title}
-                    </p>
-                  </div>
-
-                  {/* Active Indicator */}
-                  {step.number === currentStep && (
-                    <div className="flex-shrink-0 ml-1">
-                      <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </nav>
-          </div>
-        </div>
-
-        {/* Main Content Area - FULL WIDTH */}
+        {/* Main Content Area - FULL WIDTH (No Sidebar) */}
         <div className="flex-1 flex flex-col min-h-0">
           {/* Fixed Top Header Bar */}
           <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <h1 className="text-lg font-bold text-gray-900">
+                <h1 className="text-lg font-bold text-gray-900">Create RFQ</h1>
+                <span className="text-sm text-gray-500">•</span>
+                <span className="text-sm font-medium text-blue-600">
                   {steps.find(s => s.number === currentStep)?.title || 'RFQ'}
-                </h1>
-                <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                  Step {currentStep} of 4
                 </span>
               </div>
-              <div className="text-sm text-gray-500">
-                {rfqData?.projectName || 'New RFQ'}
+              <div className="flex items-center gap-3">
+                <div className="text-sm text-gray-500">
+                  {rfqData?.projectName || 'New RFQ'}
+                </div>
+                <button
+                  onClick={onCancel}
+                  className="text-gray-400 hover:text-gray-600 text-xl px-2"
+                >
+                  ✕
+                </button>
               </div>
             </div>
           </div>
@@ -9147,28 +9846,10 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           </div>
 
           {/* Fixed Bottom Navigation Toolbar */}
-          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-2.5 shadow-lg">
+          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg">
             <div className="flex items-center justify-between">
-              {/* Left side - Progress bar */}
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4].map((step) => (
-                    <div
-                      key={step}
-                      className={`h-1.5 w-6 rounded-full transition-colors ${
-                        step < currentStep
-                          ? 'bg-green-500'
-                          : step === currentStep
-                          ? 'bg-blue-600'
-                          : 'bg-gray-200'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Right side - Navigation buttons */}
-              <div className="flex items-center gap-2">
+              {/* Left side - Previous button */}
+              <div className="w-32">
                 <button
                   onClick={prevStep}
                   disabled={currentStep === 1}
@@ -9176,6 +9857,54 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
                 >
                   ← Previous
                 </button>
+              </div>
+
+              {/* Center - Step Navigation Icons */}
+              <div className="flex items-center gap-3">
+                {steps.map((step, idx) => (
+                  <div key={step.number} className="flex items-center">
+                    <button
+                      onClick={() => setCurrentStep(step.number)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                        step.number === currentStep
+                          ? 'bg-blue-100 border-2 border-blue-500'
+                          : step.number < currentStep
+                          ? 'bg-green-100 border border-green-400 hover:bg-green-200'
+                          : 'bg-gray-100 border border-gray-300 hover:bg-gray-200'
+                      }`}
+                    >
+                      <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
+                          step.number === currentStep
+                            ? 'bg-blue-600 text-white'
+                            : step.number < currentStep
+                            ? 'bg-green-600 text-white'
+                            : 'bg-gray-400 text-white'
+                        }`}
+                      >
+                        {step.number < currentStep ? '✓' : step.number}
+                      </div>
+                      <span
+                        className={`text-sm font-medium hidden md:inline ${
+                          step.number === currentStep
+                            ? 'text-blue-800'
+                            : step.number < currentStep
+                            ? 'text-green-800'
+                            : 'text-gray-600'
+                        }`}
+                      >
+                        {step.title}
+                      </span>
+                    </button>
+                    {idx < steps.length - 1 && (
+                      <div className={`w-8 h-0.5 mx-1 ${step.number < currentStep ? 'bg-green-400' : 'bg-gray-300'}`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Right side - Next/Submit button */}
+              <div className="w-32 flex justify-end">
                 {currentStep < 4 ? (
                   <button
                     onClick={nextStep}
