@@ -850,8 +850,8 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
 
   const hasRequiredEnvironmentalData = () => {
     // Check key auto-fillable environmental fields
+    // Note: soilType is hidden, so we check soilTexture instead
     const hasAutoFilledData = !!(
-      globalSpecs?.soilType &&
       globalSpecs?.soilTexture &&
       globalSpecs?.tempMin !== undefined &&
       globalSpecs?.tempMax !== undefined &&
@@ -862,14 +862,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
       globalSpecs?.seismicZone
     );
 
-    // Check manually-entered fields (can use "Unknown" values)
-    const hasManualData = !!(
-      rfqData.soilCorrosivity &&
-      rfqData.iso12944Category &&
-      rfqData.environmentSeverity
-    );
+    // Note: Corrosion Severity Classification fields (soilCorrosivity, iso12944Category, environmentSeverity)
+    // are hidden, so they are not required for validation
 
-    return hasAutoFilledData && hasManualData;
+    return hasAutoFilledData;
   };
 
   // Handlers for confirmation/edit
@@ -1509,7 +1505,8 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                   Soil Conditions
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
+                  {/* HIDDEN: Soil Type (WRB Classification) - Hidden per user request, may be used in future */}
+                  <div className="hidden">
                     <label className="block text-sm font-semibold text-gray-900 mb-2">
                       Soil Type (WRB Classification)
                     </label>
@@ -1533,6 +1530,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                       isAutoFilled={wasAutoFilled('soilTexture')}
                     >
                       <option value="">Select soil texture...</option>
+                      <option value="Unknown">Unknown / Not Tested</option>
                       <option value="Sand">Sand</option>
                       <option value="Loamy Sand">Loamy Sand</option>
                       <option value="Sandy Loam">Sandy Loam</option>
@@ -1588,6 +1586,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                       isAutoFilled={wasAutoFilled('soilDrainage')}
                     >
                       <option value="">Select drainage...</option>
+                      <option value="Unknown">Unknown / Not Tested</option>
                       <option value="Very Poorly Drained">Very Poorly Drained</option>
                       <option value="Poorly Drained">Poorly Drained</option>
                       <option value="Somewhat Poorly Drained">Somewhat Poorly Drained</option>
@@ -1930,8 +1929,8 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               </div>
             </div>
 
-            {/* Corrosion Severity Classification */}
-            <div className="bg-white rounded-lg p-5 mb-4 border border-gray-200">
+            {/* HIDDEN: Corrosion Severity Classification - Hidden per user request, may be used in this area or another area in future */}
+            <div className="hidden bg-white rounded-lg p-5 mb-4 border border-gray-200">
               <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -1997,7 +1996,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               </div>
             </div>
 
-            {/* Coating System Recommendations - Hidden for now, will be shown on a different page */}
+            {/* HIDDEN: Coating System Recommendations (ISO 21809) - Hidden for now, will be shown on a different page */}
             <div className="hidden bg-white rounded-lg p-5 mb-4 border border-gray-200">
               <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
