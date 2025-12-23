@@ -40,6 +40,7 @@ import { CustomerModule } from './customer/customer.module';
 import { PublicModule } from './public/public.module';
 import { EmailModule } from './email/email.module';
 import { SupplierModule } from './supplier/supplier.module';
+import { MinesModule } from './mines/mines.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -81,6 +82,7 @@ import typeormConfig from './config/typeorm';
     PublicModule,
     EmailModule,
     SupplierModule,
+    MinesModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

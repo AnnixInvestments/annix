@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { StraightPipeEntry, useRfqForm } from '@/app/lib/hooks/useRfqForm';
-import { masterDataApi, rfqApi, rfqDocumentApi } from '@/app/lib/api/client';
+import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, SaMine, MineWithEnvironmentalData } from '@/app/lib/api/client';
 import {
   validatePage1RequiredFields,
   validatePage2Specifications,
@@ -546,6 +546,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
   const [showViewDropdown, setShowViewDropdown] = useState(false);
   const hasProjectTypeError = Boolean(errors.projectType);
 
+  // SA Mines state
+  const [mines, setMines] = useState<SaMine[]>([]);
+  const [selectedMineId, setSelectedMineId] = useState<number | null>(null);
+  const [isLoadingMines, setIsLoadingMines] = useState(false);
+  const [mineDataLoading, setMineDataLoading] = useState(false);
+
   // Track which location fields were auto-filled from the map picker
   const [locationAutoFilled, setLocationAutoFilled] = useState<{
     latitude: boolean;
@@ -647,6 +653,96 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
     "Urgent delivery required - please expedite",
     "Client inspection required before dispatch"
   ];
+
+  // Fetch SA mines on mount
+  useEffect(() => {
+    const fetchMines = async () => {
+      setIsLoadingMines(true);
+      try {
+        const activeMines = await minesApi.getActiveMines();
+        setMines(activeMines);
+      } catch (error) {
+        console.error('Failed to fetch mines:', error);
+      } finally {
+        setIsLoadingMines(false);
+      }
+    };
+    fetchMines();
+  }, []);
+
+  // Handle mine selection
+  const handleMineSelect = async (mineId: number | null) => {
+    setSelectedMineId(mineId);
+
+    if (!mineId) {
+      return;
+    }
+
+    setMineDataLoading(true);
+    try {
+      // Fetch mine with environmental data (includes slurry profile and lining recommendation)
+      const mineData = await minesApi.getMineWithEnvironmentalData(mineId);
+      const { mine, slurryProfile, liningRecommendation } = mineData;
+
+      // Auto-fill location fields
+      if (mine.latitude && mine.longitude) {
+        onUpdate('latitude', mine.latitude);
+        onUpdate('longitude', mine.longitude);
+      }
+      if (mine.physicalAddress) {
+        onUpdate('siteAddress', mine.physicalAddress);
+      }
+      if (mine.province) {
+        onUpdate('region', mine.province);
+      }
+      onUpdate('country', 'South Africa');
+
+      // Mark location fields as auto-filled
+      setLocationAutoFilled({
+        latitude: !!mine.latitude,
+        longitude: !!mine.longitude,
+        siteAddress: !!mine.physicalAddress,
+        region: !!mine.province,
+        country: true,
+      });
+
+      // Auto-fill environmental intelligence from slurry profile
+      if (slurryProfile && onUpdateGlobalSpecs) {
+        const updatedSpecs = {
+          ...globalSpecs,
+          // Slurry characteristics from commodity profile
+          mineSelected: mine.mineName,
+          mineCommodity: slurryProfile.commodityName,
+          slurryPHMin: slurryProfile.phMin,
+          slurryPHMax: slurryProfile.phMax,
+          slurrySGMin: slurryProfile.typicalSgMin,
+          slurrySGMax: slurryProfile.typicalSgMax,
+          slurrySolidsMin: slurryProfile.solidsConcentrationMin,
+          slurrySolidsMax: slurryProfile.solidsConcentrationMax,
+          slurryTempMin: slurryProfile.tempMin,
+          slurryTempMax: slurryProfile.tempMax,
+          abrasionRisk: slurryProfile.abrasionRisk,
+          corrosionRisk: slurryProfile.corrosionRisk,
+          primaryFailureMode: slurryProfile.primaryFailureMode,
+        };
+
+        // Add lining recommendation if available
+        if (liningRecommendation) {
+          updatedSpecs.recommendedLining = liningRecommendation.recommendedLining;
+          updatedSpecs.recommendedCoating = liningRecommendation.recommendedCoating;
+          updatedSpecs.liningApplicationNotes = liningRecommendation.applicationNotes;
+        }
+
+        onUpdateGlobalSpecs(updatedSpecs);
+      }
+
+      console.log('[Mine Selection] Auto-filled from mine:', mine.mineName);
+    } catch (error) {
+      console.error('Failed to fetch mine environmental data:', error);
+    } finally {
+      setMineDataLoading(false);
+    }
+  };
 
   // Auto-generate RFQ number if field is empty
   useEffect(() => {
@@ -932,6 +1028,60 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 </>
               )}
             </div>
+          </div>
+
+          {/* SA Mines Dropdown */}
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Quick Select: South African Mine
+              </span>
+            </label>
+            <p className="text-xs text-gray-600 mb-2">
+              Select a mine to auto-fill location and slurry profile data
+            </p>
+            <div className="relative">
+              <select
+                value={selectedMineId || ''}
+                onChange={(e) => handleMineSelect(e.target.value ? Number(e.target.value) : null)}
+                disabled={isLoadingMines || mineDataLoading}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 appearance-none bg-gradient-to-r from-amber-50 to-orange-50"
+              >
+                <option value="">-- Select a mine (optional) --</option>
+                {mines.map((mine) => (
+                  <option key={mine.id} value={mine.id}>
+                    {mine.mineName} - {mine.operatingCompany} ({mine.commodityName || 'Unknown'}) - {mine.province}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                {(isLoadingMines || mineDataLoading) ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
+                ) : (
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </div>
+            </div>
+            {selectedMineId && (
+              <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-amber-800">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="font-medium">
+                    Location and slurry profile auto-filled from mine data
+                  </span>
+                </div>
+                <p className="text-xs text-amber-700 mt-1 ml-6">
+                  Environmental intelligence will be populated based on commodity type
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

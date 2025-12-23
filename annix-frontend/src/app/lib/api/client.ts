@@ -175,6 +175,64 @@ export interface PipePressure {
   allowableStressMpa: number;
 }
 
+// SA Mines types
+export interface Commodity {
+  id: number;
+  commodityName: string;
+  typicalProcessRoute: string | null;
+  applicationNotes: string | null;
+}
+
+export interface SaMine {
+  id: number;
+  mineName: string;
+  operatingCompany: string;
+  commodityId: number;
+  commodityName?: string;
+  province: string;
+  district: string | null;
+  physicalAddress: string | null;
+  mineType: 'Underground' | 'Open Cast' | 'Both';
+  operationalStatus: 'Active' | 'Care and Maintenance' | 'Closed';
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface SlurryProfile {
+  id: number;
+  commodityId: number;
+  commodityName?: string;
+  profileName: string | null;
+  typicalSgMin: number;
+  typicalSgMax: number;
+  solidsConcentrationMin: number;
+  solidsConcentrationMax: number;
+  phMin: number;
+  phMax: number;
+  tempMin: number;
+  tempMax: number;
+  abrasionRisk: 'Low' | 'Medium' | 'High' | 'Very High';
+  corrosionRisk: 'Low' | 'Medium' | 'High' | 'Very High';
+  primaryFailureMode: string | null;
+  notes: string | null;
+}
+
+export interface LiningCoatingRule {
+  id: number;
+  abrasionLevel: 'Low' | 'Medium' | 'High' | 'Very High';
+  corrosionLevel: 'Low' | 'Medium' | 'High' | 'Very High';
+  recommendedLining: string;
+  recommendedCoating: string | null;
+  applicationNotes: string | null;
+  priority: number;
+}
+
+export interface MineWithEnvironmentalData {
+  mine: SaMine;
+  slurryProfile: SlurryProfile | null;
+  liningRecommendation: LiningCoatingRule | null;
+}
+
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
@@ -552,6 +610,44 @@ class ApiClient {
     return this.request<string[]>(`/fittings/angle-ranges?fittingType=${fittingType}&nominalDiameterMm=${nominalDiameterMm}`);
   }
 
+  // Mines endpoints
+  async getCommodities(): Promise<Commodity[]> {
+    return this.request<Commodity[]>('/mines/commodities');
+  }
+
+  async getProvinces(): Promise<string[]> {
+    return this.request<string[]>('/mines/provinces');
+  }
+
+  async getMines(commodityId?: number, province?: string, status?: string): Promise<SaMine[]> {
+    const params = new URLSearchParams();
+    if (commodityId) params.append('commodityId', commodityId.toString());
+    if (province) params.append('province', province);
+    if (status) params.append('status', status);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request<SaMine[]>(`/mines${query}`);
+  }
+
+  async getActiveMines(): Promise<SaMine[]> {
+    return this.request<SaMine[]>('/mines/active');
+  }
+
+  async getMineById(id: number): Promise<SaMine> {
+    return this.request<SaMine>(`/mines/${id}`);
+  }
+
+  async getMineWithEnvironmentalData(id: number): Promise<MineWithEnvironmentalData> {
+    return this.request<MineWithEnvironmentalData>(`/mines/${id}/environmental-data`);
+  }
+
+  async getSlurryProfiles(): Promise<SlurryProfile[]> {
+    return this.request<SlurryProfile[]>('/mines/slurry-profiles');
+  }
+
+  async getLiningRules(): Promise<LiningCoatingRule[]> {
+    return this.request<LiningCoatingRule[]>('/mines/lining-rules');
+  }
+
   async calculateFitting(data: {
     fittingStandard: 'SABS62' | 'SABS719';
     fittingType: string;
@@ -661,4 +757,16 @@ export const rfqDocumentApi = {
   getByRfqId: (rfqId: number) => apiClient.getRfqDocuments(rfqId),
   download: (documentId: number) => apiClient.downloadRfqDocument(documentId),
   delete: (documentId: number) => apiClient.deleteRfqDocument(documentId),
+};
+
+export const minesApi = {
+  getCommodities: () => apiClient.getCommodities(),
+  getProvinces: () => apiClient.getProvinces(),
+  getMines: (commodityId?: number, province?: string, status?: string) =>
+    apiClient.getMines(commodityId, province, status),
+  getActiveMines: () => apiClient.getActiveMines(),
+  getMineById: (id: number) => apiClient.getMineById(id),
+  getMineWithEnvironmentalData: (id: number) => apiClient.getMineWithEnvironmentalData(id),
+  getSlurryProfiles: () => apiClient.getSlurryProfiles(),
+  getLiningRules: () => apiClient.getLiningRules(),
 };
