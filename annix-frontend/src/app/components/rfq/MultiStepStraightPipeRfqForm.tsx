@@ -1000,26 +1000,26 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">Project/RFQ Details</h2>
-      
-      <div className="space-y-3">
+      <h2 className="text-lg font-bold text-gray-900 mb-2">Project/RFQ Details</h2>
+
+      <div className="space-y-2">
         {/* Customer Information - Required fields */}
-        <div className="bg-blue-50 rounded-lg p-5 border border-blue-200">
-          <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+          <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
             Customer Information
             {isAuthenticated && (
-              <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+              <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
                 Logged in
               </span>
             )}
           </h4>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
+              <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Customer Name <span className="text-red-600">*</span>
               </label>
               <AutoFilledInput
@@ -1028,15 +1028,15 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 onChange={(val) => onUpdate('customerName', val)}
                 onOverride={() => setCustomerAutoFilled(prev => ({ ...prev, customerName: false }))}
                 isAutoFilled={customerAutoFilled.customerName}
-                placeholder="Customer or company name"
+                placeholder="Customer name"
               />
               {errors.customerName && (
-                <p className="mt-2 text-sm text-red-600">{errors.customerName}</p>
+                <p className="mt-1 text-xs text-red-600">{errors.customerName}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
+              <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Customer Email <span className="text-red-600">*</span>
               </label>
               <AutoFilledInput
@@ -1045,17 +1045,15 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 onChange={(val) => onUpdate('customerEmail', val)}
                 onOverride={() => setCustomerAutoFilled(prev => ({ ...prev, customerEmail: false }))}
                 isAutoFilled={customerAutoFilled.customerEmail}
-                placeholder="customer@company.com"
+                placeholder="email@company.com"
               />
               {errors.customerEmail && (
-                <p className="mt-2 text-sm text-red-600">{errors.customerEmail}</p>
+                <p className="mt-1 text-xs text-red-600">{errors.customerEmail}</p>
               )}
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
+              <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Customer Phone <span className="text-red-600">*</span>
               </label>
               <AutoFilledInput
@@ -1067,190 +1065,154 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 placeholder="+27 11 555 0123"
               />
               {errors.customerPhone && (
-                <p className="mt-2 text-sm text-red-600">{errors.customerPhone}</p>
+                <p className="mt-1 text-xs text-red-600">{errors.customerPhone}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
+              <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Required Date <span className="text-red-600">*</span>
               </label>
               <input
                 type="date"
                 value={rfqData.requiredDate}
                 onChange={(e) => onUpdate('requiredDate', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
                 required
               />
               {errors.requiredDate && (
-                <p className="mt-2 text-sm text-red-600">{errors.requiredDate}</p>
+                <p className="mt-1 text-xs text-red-600">{errors.requiredDate}</p>
               )}
             </div>
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-2">
-            Project/RFQ Name <span className="text-red-600">*</span>
-          </label>
-          <input
-            type="text"
-            value={rfqData.projectName}
-            onChange={(e) => onUpdate('projectName', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            placeholder="Enter project/RFQ name (auto-generated if left empty)"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Leave empty for system-generated RFQ number (e.g., RFQ-2025-001)
-          </p>
-          {errors.projectName && (
-            <p className="mt-2 text-sm text-red-600">{errors.projectName}</p>
-          )}
+        {/* Project Name and Description - Side by Side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              Project/RFQ Name <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              value={rfqData.projectName}
+              onChange={(e) => onUpdate('projectName', e.target.value)}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+              placeholder="Enter name (auto-generated if empty)"
+            />
+            {errors.projectName && (
+              <p className="mt-1 text-xs text-red-600">{errors.projectName}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              RFQ Description <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              value={rfqData.description}
+              onChange={(e) => onUpdate('description', e.target.value)}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+              placeholder="Brief description of requirements"
+            />
+          </div>
         </div>
 
-        {/* Project Type Selection */}
+        {/* Project Type Selection - Compact */}
         <div>
-          <label
-              className={`block text-sm font-semibold mb-3 ${
-                  hasProjectTypeError ? 'text-red-700' : 'text-gray-900'
-              }`}
-          >
+          <label className={`block text-xs font-semibold mb-1 ${hasProjectTypeError ? 'text-red-700' : 'text-gray-900'}`}>
             Project Type <span className="text-red-600">*</span>
           </label>
-          <p className="text-xs text-gray-600 mb-4">
-            Select the type of submission to help suppliers understand the project phase and quote accordingly
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 gap-2">
             {[
-              { value: 'feasibility', label: 'Feasibility Study', description: 'Early phase cost estimation' },
-              { value: 'phase1', label: 'Phase 1 Tender', description: 'First round tender submission' },
-              { value: 'retender', label: 'Re-Tender', description: 'Follow-up tender submission' },
-              { value: 'standard', label: 'Standard RFQ', description: 'Regular quotation request' }
+              { value: 'feasibility', label: 'Feasibility' },
+              { value: 'phase1', label: 'Phase 1 Tender' },
+              { value: 'retender', label: 'Re-Tender' },
+              { value: 'standard', label: 'Standard RFQ' }
             ].map((type) => (
-              <div key={type.value} className="relative">
-                <label
-                    className={`flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        rfqData.projectType === type.value
-                            ? 'border-blue-600 bg-blue-50 shadow-sm'
-                            : hasProjectTypeError
-                                ? 'border-red-400 hover:border-red-500 hover:bg-red-50/40'
-                                : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                    }`}
-                >
-                  <input
-                    type="radio"
-                    name="projectType"
-                    value={type.value}
-                    checked={rfqData.projectType === type.value}
-                    onChange={(e) => onUpdate('projectType', e.target.value)}
-                    className="sr-only"
-                    aria-invalid={hasProjectTypeError && rfqData.projectType !== type.value}
-                    aria-describedby={hasProjectTypeError ? 'project-type-error' : undefined}
-                  />
-                  <div className={`w-4 h-4 border-2 rounded-full mb-2 flex items-center justify-center ${
-                    rfqData.projectType === type.value 
-                      ? 'border-blue-600 bg-blue-600'
-                        : hasProjectTypeError
-                            ? 'border-red-400'
-                            : 'border-gray-300'
-                  }`}>
-                    {rfqData.projectType === type.value && (
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                    )}
-                  </div>
-                  <span className="text-sm font-medium text-gray-900 text-center">{type.label}</span>
-                  <span className="text-xs text-gray-500 text-center mt-1">{type.description}</span>
-                </label>
-              </div>
+              <label
+                key={type.value}
+                className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg cursor-pointer transition-colors text-sm ${
+                  rfqData.projectType === type.value
+                    ? 'border-blue-600 bg-blue-50'
+                    : hasProjectTypeError
+                      ? 'border-red-400 hover:border-red-500'
+                      : 'border-gray-200 hover:border-blue-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="projectType"
+                  value={type.value}
+                  checked={rfqData.projectType === type.value}
+                  onChange={(e) => onUpdate('projectType', e.target.value)}
+                  className="sr-only"
+                />
+                <div className={`w-3 h-3 border-2 rounded-full flex items-center justify-center ${
+                  rfqData.projectType === type.value ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
+                }`}>
+                  {rfqData.projectType === type.value && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
+                </div>
+                <span className="font-medium text-gray-900">{type.label}</span>
+              </label>
             ))}
           </div>
-          {errors.projectType && (
-              <p id="project-type-error" className="mt-2 text-sm text-red-600">
-                {errors.projectType}
-              </p>
-          )}
+          {errors.projectType && <p className="mt-1 text-xs text-red-600">{errors.projectType}</p>}
         </div>
 
+        {/* Required Products/Services Selection - Compact */}
         <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-2">
-            RFQ Description <span className="text-red-600">*</span>
-          </label>
-          <textarea
-            value={rfqData.description}
-            onChange={(e) => onUpdate('description', e.target.value)}
-            rows={3}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            placeholder="Brief description of the RFQ requirements"
-          />
-        </div>
-
-        {/* Required Products/Services Selection */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-3">
+          <label className="block text-xs font-semibold text-gray-900 mb-1">
             Required Products & Services <span className="text-red-600">*</span>
           </label>
-          <p className="text-xs text-gray-600 mb-4">
-            Select all the products and services required for this RFQ/Tender
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-5 gap-2">
             {[
-              { value: 'fabricated_steel', label: 'Fabricated Steel Pipes & Fittings', icon: '🔩' },
-              { value: 'hdpe', label: 'HDPE Pipes & Fittings', icon: '🔵' },
-              { value: 'pvc', label: 'PVC Pipes & Fittings', icon: '⚪' },
-              { value: 'surface_protection', label: 'Surface Protection Requirements', icon: '🛡️' },
-              { value: 'transport_install', label: 'Transportation & Installation', icon: '🚚' },
+              { value: 'fabricated_steel', label: 'Steel Pipes', icon: '🔩' },
+              { value: 'hdpe', label: 'HDPE Pipes', icon: '🔵' },
+              { value: 'pvc', label: 'PVC Pipes', icon: '⚪' },
+              { value: 'surface_protection', label: 'Surface Protection', icon: '🛡️' },
+              { value: 'transport_install', label: 'Transport/Install', icon: '🚚' },
             ].map((product) => {
               const isSelected = rfqData.requiredProducts?.includes(product.value);
               return (
-                <div key={product.value} className="relative">
-                  <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      isSelected
-                        ? 'border-blue-600 bg-blue-50 shadow-sm'
-                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={(e) => {
-                        const currentProducts = rfqData.requiredProducts || [];
-                        if (e.target.checked) {
-                          onUpdate('requiredProducts', [...currentProducts, product.value]);
-                        } else {
-                          onUpdate('requiredProducts', currentProducts.filter((p: string) => p !== product.value));
-                        }
-                      }}
-                      className="sr-only"
-                    />
-                    <div className={`w-5 h-5 border-2 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      isSelected
-                        ? 'border-blue-600 bg-blue-600'
-                        : 'border-gray-300'
-                    }`}>
-                      {isSelected && (
-                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-lg">{product.icon}</span>
-                    <span className="text-sm font-medium text-gray-900">{product.label}</span>
-                  </label>
-                </div>
+                <label
+                  key={product.value}
+                  className={`flex items-center gap-2 px-2 py-2 border-2 rounded-lg cursor-pointer transition-all text-xs ${
+                    isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => {
+                      const currentProducts = rfqData.requiredProducts || [];
+                      if (e.target.checked) {
+                        onUpdate('requiredProducts', [...currentProducts, product.value]);
+                      } else {
+                        onUpdate('requiredProducts', currentProducts.filter((p: string) => p !== product.value));
+                      }
+                    }}
+                    className="sr-only"
+                  />
+                  <div className={`w-4 h-4 border-2 rounded flex items-center justify-center flex-shrink-0 ${
+                    isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
+                  }`}>
+                    {isSelected && <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+                  </div>
+                  <span>{product.icon}</span>
+                  <span className="font-medium text-gray-900">{product.label}</span>
+                </label>
               );
             })}
           </div>
-          {errors.requiredProducts && (
-            <p className="mt-2 text-sm text-red-600">{errors.requiredProducts}</p>
-          )}
+          {errors.requiredProducts && <p className="mt-1 text-xs text-red-600">{errors.requiredProducts}</p>}
         </div>
 
-        {/* Project Location */}
-        <div className="bg-white rounded-lg p-5 border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {/* Project Location - Compact */}
+        <div className="bg-white rounded-lg p-3 border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
@@ -1262,29 +1224,25 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                   type="button"
                   onClick={() => setShowMapPicker(true)}
                   disabled={isLocationLocked}
-                  className={`flex items-center gap-2 px-4 py-2 text-white transition-colors text-sm font-medium ${
-                    isLocationLocked
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700'
+                  className={`flex items-center gap-1 px-3 py-1.5 text-white transition-colors text-xs font-medium ${
+                    isLocationLocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
                   }`}
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                   </svg>
                   Pick on Map
                 </button>
-                <div className={`w-px h-6 ${isLocationLocked ? 'bg-gray-300' : 'bg-blue-500'}`}></div>
+                <div className={`w-px h-5 ${isLocationLocked ? 'bg-gray-300' : 'bg-blue-500'}`}></div>
                 <button
                   type="button"
                   onClick={() => setShowViewDropdown(!showViewDropdown)}
                   disabled={isLocationLocked}
-                  className={`px-2 py-2 text-white transition-colors ${
-                    isLocationLocked
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700'
+                  className={`px-1.5 py-1.5 text-white transition-colors ${
+                    isLocationLocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -1347,25 +1305,22 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
             </div>
           </div>
 
-          {/* SA Mines Dropdown */}
-          <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* SA Mines Dropdown - Compact */}
+          <div className="mb-2">
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              <span className="flex items-center gap-1">
+                <svg className="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
-                Quick Select: South African Mine
+                Quick Select: SA Mine (auto-fills location & slurry)
               </span>
             </label>
-            <p className="text-xs text-gray-600 mb-2">
-              Select a mine to auto-fill location and slurry profile data
-            </p>
             <div className="relative">
               <select
                 value={selectedMineId || ''}
                 onChange={(e) => handleMineDropdownChange(e.target.value)}
                 disabled={isLoadingMines || mineDataLoading || isLocationLocked}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 appearance-none bg-gradient-to-r from-amber-50 to-orange-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 text-sm appearance-none bg-gradient-to-r from-amber-50 to-orange-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="">-- Select a mine (optional) --</option>
                 <option value="add-new" className="text-amber-600 font-medium">+ Add a mine not listed</option>
@@ -1375,26 +1330,22 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                   </option>
                 ))}
               </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                 {(isLoadingMines || mineDataLoading) ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600"></div>
                 ) : (
-                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 )}
               </div>
             </div>
             {selectedMineId && (
-              <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-center gap-2 text-sm text-amber-800">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="font-medium">
-                    Location and slurry profile auto-filled from mine data
-                  </span>
-                </div>
+              <div className="mt-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Location & slurry auto-filled
                 <p className="text-xs text-amber-700 mt-1 ml-6">
                   Environmental intelligence will be populated based on commodity type
                 </p>
@@ -1582,20 +1533,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           )}
         </div>
 
-        <div className="border-0 border-none">
-          <label className="block text-sm font-semibold text-gray-900 mb-2 pt-0">
-            Additional Notes
-            <button
-              type="button"
-              className="ml-2 text-blue-600 hover:text-blue-800 text-sm"
-              title="Common notes available"
-            >
-              ⓘ
-            </button>
-          </label>
-          
-          {/* Common Notes Dropdown */}
-          <div className="mb-3">
+        {/* Additional Notes - Compact */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              Quick Notes
+            </label>
             <select
               onChange={(e) => {
                 if (e.target.value) {
@@ -1603,80 +1546,70 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                   e.target.value = '';
                 }
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
             >
-              <option value="">Select common note to add...</option>
+              <option value="">Add common note...</option>
               {commonNotes.map((note, index) => (
                 <option key={index} value={note} disabled={additionalNotes.includes(note)}>
                   {note}
                 </option>
               ))}
             </select>
+            {additionalNotes.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {additionalNotes.map((note, index) => (
+                  <span key={index} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                    {note.substring(0, 20)}...
+                    <button type="button" onClick={() => removeNote(note)} className="text-red-500 hover:text-red-700 font-bold">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-
-          {/* Selected Notes Display */}
-          {additionalNotes.length > 0 && (
-            <div className="mb-3 space-y-2">
-              <p className="text-sm font-medium text-gray-700">Selected Notes:</p>
-              {additionalNotes.map((note, index) => (
-                <div key={index} className="flex items-center justify-between bg-blue-50 px-3 py-2 rounded-lg">
-                  <span className="text-sm text-blue-800">• {note}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeNote(note)}
-                    className="text-red-600 hover:text-red-800 text-sm font-medium"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Custom Notes Textarea */}
-          <textarea
-            value={rfqData.notes}
-            onChange={(e) => onUpdate('notes', e.target.value)}
-            rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            placeholder="Enter any additional custom requirements, delivery instructions, or other important information..."
-          />
-          
-          <p className="mt-1 text-xs text-gray-500">
-            Use the dropdown above to quickly add common notes, or type custom notes here.
-          </p>
+          <div>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              Custom Notes
+            </label>
+            <textarea
+              value={rfqData.notes}
+              onChange={(e) => onUpdate('notes', e.target.value)}
+              rows={2}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+              placeholder="Additional requirements..."
+            />
+          </div>
         </div>
 
-        {/* Environmental Intelligence Section */}
-        <div className="mt-8 pt-8 border-t-2 border-gray-300">
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-blue-600 rounded-lg">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {/* Environmental Intelligence Section - Compact */}
+        <div className="mt-4 pt-4 border-t border-gray-300">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 bg-blue-600 rounded">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900">Environmental Intelligence</h3>
-                <p className="text-sm text-gray-600">Pipeline Corrosion Engineering & External Coating Specification</p>
+                <h3 className="text-sm font-bold text-gray-900">Environmental Intelligence</h3>
+                <p className="text-xs text-gray-600">Pipeline Corrosion & Coating Data</p>
               </div>
             </div>
 
-            {/* Environmental Data */}
-            <div className="bg-white rounded-lg p-5 mb-4 border border-gray-200">
-              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Environmental Data - Compact */}
+            <div className="bg-white rounded-lg p-3 mb-2 border border-gray-200">
+              <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
                 </svg>
                 Environmental Profile
               </h4>
 
               {/* Soil Conditions - Auto-populated from location */}
-              <div className="mb-4">
-                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2">
+              <div className="mb-2">
+                <h5 className="text-xs font-semibold text-gray-700 mb-2 border-b pb-1">
                   Soil Conditions
                 </h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
                   {/* HIDDEN: Soil Type (WRB Classification) - Hidden per user request, may be used in future */}
                   <div className="hidden">
                     <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -2401,18 +2334,18 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
         </div>
       </div>
 
-      {/* Supporting Documents Section - At Bottom */}
-      <div className="mt-8 pt-8 border-t-2 border-gray-300">
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-200">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-purple-600 rounded-lg">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {/* Supporting Documents Section - At Bottom - Compact */}
+      <div className="mt-4 pt-4 border-t border-gray-300">
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-3 border border-purple-200">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-purple-600 rounded">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
             <div>
-              <h3 className="text-xl font-bold text-gray-900">Supporting Documents</h3>
-              <p className="text-sm text-gray-600">Upload specifications, drawings, or other relevant documents</p>
+              <h3 className="text-sm font-bold text-gray-900">Supporting Documents</h3>
+              <p className="text-xs text-gray-600">Specifications, drawings, or requirements</p>
             </div>
           </div>
 
@@ -2426,7 +2359,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 maxFileSizeMB={50}
               />
 
-              <div className="mt-6 pt-4 border-t border-purple-200">
+              <div className="mt-3 pt-2 border-t border-purple-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -2436,9 +2369,9 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                       setDocumentsConfirmed(true);
                     }
                   }}
-                  className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold flex items-center gap-2 transition-colors"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold flex items-center gap-2 transition-colors text-sm"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   Confirm Documents
@@ -2446,31 +2379,31 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               </div>
             </>
           ) : (
-            <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4">
+            <div className="bg-green-50 border border-green-400 rounded-lg p-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-green-700 font-semibold">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  Documents Confirmed ({pendingDocuments?.length || 0} file{(pendingDocuments?.length || 0) !== 1 ? 's' : ''})
+                  Confirmed ({pendingDocuments?.length || 0} file{(pendingDocuments?.length || 0) !== 1 ? 's' : ''})
                 </div>
                 <button
                   type="button"
                   onClick={() => setDocumentsConfirmed(false)}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                  className="text-blue-600 hover:text-blue-800 text-xs font-medium underline"
                 >
                   Edit
                 </button>
               </div>
               {pendingDocuments && pendingDocuments.length > 0 && (
-                <div className="mt-3 space-y-1">
+                <div className="mt-1 flex flex-wrap gap-1">
                   {pendingDocuments.map((doc: any, idx: number) => (
-                    <div key={idx} className="text-sm text-green-700 flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span key={idx} className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                       </svg>
-                      {doc.name || doc.file?.name}
-                    </div>
+                      {(doc.name || doc.file?.name)?.substring(0, 20)}...
+                    </span>
                   ))}
                 </div>
               )}
