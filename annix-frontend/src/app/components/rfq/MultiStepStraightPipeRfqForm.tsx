@@ -3989,6 +3989,13 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                 </h4>
 
                 <div className="space-y-2">
+                  {/* Surface Preparation / Blasting - Always show */}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-green-700">
+                      <span className="font-medium">Surface Prep:</span> {globalSpecs?.externalBlastingGrade || <span className="text-gray-400 italic">Not specified</span>}
+                    </span>
+                  </div>
+
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-green-700">
                       <span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}
@@ -4009,13 +4016,31 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-green-700">
                         <span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType}
-                        {globalSpecs?.externalTopcoatColour && (
-                          <span className="ml-2 text-green-600">({globalSpecs.externalTopcoatColour})</span>
-                        )}
                       </span>
                       <span className="font-semibold text-green-800">{globalSpecs.externalTopcoatMicrons} μm</span>
                     </div>
                   )}
+
+                  {/* Topcoat Colour - Always show */}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-green-700">
+                      <span className="font-medium">Topcoat Colour:</span> {globalSpecs?.externalTopcoatColour || <span className="text-gray-400 italic">Not specified</span>}
+                    </span>
+                  </div>
+
+                  {/* Band 1 - Always show */}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-green-700">
+                      <span className="font-medium">Band 1:</span> {globalSpecs?.externalBand1Colour || <span className="text-gray-400 italic">None</span>}
+                    </span>
+                  </div>
+
+                  {/* Band 2 - Always show */}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-green-700">
+                      <span className="font-medium">Band 2:</span> {globalSpecs?.externalBand2Colour || <span className="text-gray-400 italic">None</span>}
+                    </span>
+                  </div>
 
                   <div className="flex justify-between items-center text-sm pt-2 mt-2 border-t border-green-300">
                     <span className="font-semibold text-green-800">Total Dry Film Thickness (DFT)</span>
