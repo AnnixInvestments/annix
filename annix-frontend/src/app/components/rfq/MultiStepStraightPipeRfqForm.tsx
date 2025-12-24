@@ -591,6 +591,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
   const [showViewDropdown, setShowViewDropdown] = useState(false);
   const hasProjectTypeError = Boolean(errors.projectType);
 
+  // Document upload confirmation state
+  const [documentsConfirmed, setDocumentsConfirmed] = useState(false);
+  const [showNoDocumentsPopup, setShowNoDocumentsPopup] = useState(false);
+
   // SA Mines state
   const [mines, setMines] = useState<SaMine[]>([]);
   const [selectedMineId, setSelectedMineId] = useState<number | null>(null);
@@ -1578,15 +1582,6 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           )}
         </div>
 
-        {/* Supporting Documents */}
-        <RfqDocumentUpload
-          documents={pendingDocuments || []}
-          onAddDocument={onAddDocument}
-          onRemoveDocument={onRemoveDocument}
-          maxDocuments={10}
-          maxFileSizeMB={50}
-        />
-
         <div className="border-0 border-none">
           <label className="block text-sm font-semibold text-gray-900 mb-2 pt-0">
             Additional Notes
@@ -2405,6 +2400,125 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           </div>
         </div>
       </div>
+
+      {/* Supporting Documents Section - At Bottom */}
+      <div className="mt-8 pt-8 border-t-2 border-gray-300">
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-200">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-purple-600 rounded-lg">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Supporting Documents</h3>
+              <p className="text-sm text-gray-600">Upload specifications, drawings, or other relevant documents</p>
+            </div>
+          </div>
+
+          {!documentsConfirmed ? (
+            <>
+              <RfqDocumentUpload
+                documents={pendingDocuments || []}
+                onAddDocument={onAddDocument}
+                onRemoveDocument={onRemoveDocument}
+                maxDocuments={10}
+                maxFileSizeMB={50}
+              />
+
+              <div className="mt-6 pt-4 border-t border-purple-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!pendingDocuments || pendingDocuments.length === 0) {
+                      setShowNoDocumentsPopup(true);
+                    } else {
+                      setDocumentsConfirmed(true);
+                    }
+                  }}
+                  className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold flex items-center gap-2 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Confirm Documents
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-green-700 font-semibold">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Documents Confirmed ({pendingDocuments?.length || 0} file{(pendingDocuments?.length || 0) !== 1 ? 's' : ''})
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDocumentsConfirmed(false)}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                >
+                  Edit
+                </button>
+              </div>
+              {pendingDocuments && pendingDocuments.length > 0 && (
+                <div className="mt-3 space-y-1">
+                  {pendingDocuments.map((doc: any, idx: number) => (
+                    <div key={idx} className="text-sm text-green-700 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      {doc.name || doc.file?.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* No Documents Confirmation Popup */}
+      {showNoDocumentsPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-amber-100 rounded-full">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">No Documents Uploaded</h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              You haven't uploaded any supporting documents. Documents such as specifications, drawings, or requirements help suppliers provide accurate quotes.
+            </p>
+            <p className="text-gray-700 font-medium mb-4">
+              Would you like to proceed without uploading documents?
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNoDocumentsPopup(false);
+                  setDocumentsConfirmed(true);
+                }}
+                className="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
+              >
+                Proceed Without Documents
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNoDocumentsPopup(false)}
+                className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors"
+              >
+                Upload Documents
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Mine Modal */}
       <AddMineModal
@@ -9507,6 +9621,37 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     }
   };
 
+  // State for save progress feedback
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+
+  // Save progress handler - saves current RFQ data to localStorage
+  const handleSaveProgress = () => {
+    try {
+      const saveData = {
+        rfqData,
+        pendingDocuments: pendingDocuments.map((doc: any) => ({
+          name: doc.name || doc.file?.name,
+          size: doc.size || doc.file?.size,
+          type: doc.type || doc.file?.type,
+          // Note: Cannot save actual file objects to localStorage, only metadata
+        })),
+        currentStep,
+        savedAt: new Date().toISOString(),
+      };
+
+      localStorage.setItem('annix_rfq_draft', JSON.stringify(saveData));
+
+      // Show confirmation
+      setShowSaveConfirmation(true);
+      setTimeout(() => setShowSaveConfirmation(false), 3000);
+
+      console.log('✅ RFQ progress saved to localStorage');
+    } catch (error) {
+      console.error('Failed to save progress:', error);
+      alert('Failed to save progress. Please try again.');
+    }
+  };
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setValidationErrors({});
@@ -9823,6 +9968,18 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
   return (
     <div className="h-screen bg-gray-100 overflow-hidden">
+      {/* Save Progress Confirmation Toast */}
+      {showSaveConfirmation && (
+        <div className="fixed top-4 right-4 z-50 animate-pulse">
+          <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-medium">Progress Saved!</span>
+          </div>
+        </div>
+      )}
+
       <div className="flex h-full">
         {/* Main Content Area - FULL WIDTH (No Sidebar) */}
         <div className="flex-1 flex flex-col min-h-0">
@@ -9928,8 +10085,17 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
                 ))}
               </div>
 
-              {/* Right side - Next/Submit button */}
-              <div className="w-32 flex justify-end">
+              {/* Right side - Save Progress & Next/Submit buttons */}
+              <div className="flex items-center gap-3 justify-end">
+                <button
+                  onClick={handleSaveProgress}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                  </svg>
+                  Save Progress
+                </button>
                 {currentStep < 4 ? (
                   <button
                     onClick={nextStep}
