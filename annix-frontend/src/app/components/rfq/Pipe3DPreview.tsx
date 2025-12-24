@@ -187,8 +187,8 @@ const CameraRig = ({ viewMode, targets }: { viewMode: string, targets: any }) =>
       targetLookAt = targets.outlet.lookAt;
     }
 
-    camera.position.lerp(vec.set(...targetPos), 0.05);
-    orbit.target.lerp(new THREE.Vector3(...targetLookAt), 0.05);
+    camera.position.lerp(vec.set(targetPos[0], targetPos[1], targetPos[2]), 0.05);
+    orbit.target.lerp(new THREE.Vector3(targetLookAt[0], targetLookAt[1], targetLookAt[2]), 0.05);
     orbit.update();
   });
 

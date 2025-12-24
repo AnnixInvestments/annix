@@ -101,7 +101,7 @@ const DimensionLine = ({ start, end, label, color = "black" }: any) => {
   return (
     <group>
       <Line points={[p1, p2]} color={color} lineWidth={1} />
-      <Text position={[midX, midY, 0]} fontSize={0.2} color={color} anchorX="center" anchorY="center" outlineWidth={0.02} outlineColor="white">
+      <Text position={[midX, midY, 0]} fontSize={0.2} color={color} anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="white">
         {label}
       </Text>
     </group>

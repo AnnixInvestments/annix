@@ -1595,468 +1595,152 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               </div>
             </div>
 
-            {/* Environmental Data - Compact */}
-            <div className="bg-white rounded-lg p-3 mb-2 border border-gray-200">
-              <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-                </svg>
-                Environmental Profile
-              </h4>
-
-              {/* Soil Conditions - Auto-populated from location */}
-              <div className="mb-2">
-                <h5 className="text-xs font-semibold text-gray-700 mb-2 border-b pb-1">
-                  Soil Conditions
-                </h5>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
-                  {/* HIDDEN: Soil Type (WRB Classification) - Hidden per user request, may be used in future */}
-                  <div className="hidden">
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Soil Type (WRB Classification)
-                    </label>
-                    <AutoFilledInput
-                      type="text"
-                      value={globalSpecs?.soilType || rfqData.soilType || ''}
-                      onChange={(value) => onUpdate('soilType', value)}
-                      onOverride={() => markAsOverridden('soilType')}
-                      isAutoFilled={wasAutoFilled('soilType')}
-                      placeholder="e.g., Cambisol, Ferralsol, Luvisol"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Soil Texture (USDA Classification)
-                    </label>
-                    <AutoFilledSelect
-                      value={globalSpecs?.soilTexture || rfqData.soilTexture || ''}
-                      onChange={(value) => onUpdate('soilTexture', value)}
-                      onOverride={() => markAsOverridden('soilTexture')}
-                      isAutoFilled={wasAutoFilled('soilTexture')}
-                      disabled={isEnvironmentalLocked}
-                    >
-                      <option value="">Select soil texture...</option>
-                      <option value="Unknown">Unknown</option>
-                      <option value="Sand">Sand</option>
-                      <option value="Loamy Sand">Loamy Sand</option>
-                      <option value="Sandy Loam">Sandy Loam</option>
-                      <option value="Loam">Loam</option>
-                      <option value="Silt Loam">Silt Loam</option>
-                      <option value="Silt">Silt</option>
-                      <option value="Sandy Clay Loam">Sandy Clay Loam</option>
-                      <option value="Clay Loam">Clay Loam</option>
-                      <option value="Silty Clay Loam">Silty Clay Loam</option>
-                      <option value="Sandy Clay">Sandy Clay</option>
-                      <option value="Silty Clay">Silty Clay</option>
-                      <option value="Clay">Clay</option>
-                    </AutoFilledSelect>
-                  </div>
+            {/* Environmental Data - Ultra Compact */}
+            <div className="bg-white rounded p-2 border border-gray-200">
+              {/* Soil Row - All 4 columns */}
+              <div className="grid grid-cols-4 gap-1 mb-1">
+                <div className="hidden">
+                  <AutoFilledInput type="text" value={globalSpecs?.soilType || rfqData.soilType || ''} onChange={(value) => onUpdate('soilType', value)} onOverride={() => markAsOverridden('soilType')} isAutoFilled={wasAutoFilled('soilType')} placeholder="Soil type" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Soil Moisture
-                    </label>
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <AutoFilledDisplay
-                          value={globalSpecs?.soilMoisture}
-                          isAutoFilled={wasAutoFilled('soilMoisture')}
-                          label="Auto-detected"
-                        />
-                      </div>
-                      <div className="w-32">
-                        <AutoFilledSelect
-                          value={globalSpecs?.soilMoistureClass || rfqData.soilMoistureClass || ''}
-                          onChange={(value) => onUpdate('soilMoistureClass', value)}
-                          onOverride={() => markAsOverridden('soilMoistureClass')}
-                          isAutoFilled={wasAutoFilled('soilMoistureClass')}
-                          disabled={isEnvironmentalLocked}
-                          className="w-full"
-                        >
-                          <option value="">Class</option>
-                          <option value="Unknown">Unknown</option>
-                          <option value="Low">Low</option>
-                          <option value="Moderate">Moderate</option>
-                          <option value="High">High</option>
-                        </AutoFilledSelect>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Soil Drainage Class
-                    </label>
-                    <AutoFilledSelect
-                      value={globalSpecs?.soilDrainage || rfqData.soilDrainage || ''}
-                      onChange={(value) => onUpdate('soilDrainage', value)}
-                      onOverride={() => markAsOverridden('soilDrainage')}
-                      isAutoFilled={wasAutoFilled('soilDrainage')}
-                      disabled={isEnvironmentalLocked}
-                    >
-                      <option value="">Select drainage...</option>
-                      <option value="Unknown">Unknown</option>
-                      <option value="Very Poorly Drained">Very Poorly Drained</option>
-                      <option value="Poorly Drained">Poorly Drained</option>
-                      <option value="Somewhat Poorly Drained">Somewhat Poorly Drained</option>
-                      <option value="Poor">Poor</option>
-                      <option value="Moderate">Moderate</option>
-                      <option value="Moderately Well Drained">Moderately Well Drained</option>
-                      <option value="Well Drained">Well Drained</option>
-                      <option value="Well">Well</option>
-                      <option value="Somewhat Excessively Drained">Somewhat Excessively Drained</option>
-                      <option value="Excessively Drained">Excessively Drained</option>
-                    </AutoFilledSelect>
-                    {globalSpecs?.soilDrainageSource && (
-                      <p className="mt-1 text-xs text-gray-500">
-                        Source: {globalSpecs.soilDrainageSource === 'USDA SSURGO'
-                          ? 'USDA SSURGO (US locations)'
-                          : 'Derived from soil properties'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Atmospheric Conditions - Auto-populated from OpenWeatherMap */}
-              <div className="mb-4">
-                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2">
-                  Atmospheric Conditions
-                </h5>
-
-                {/* Temperature */}
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Temperature (°C)</label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">Minimum</label>
-                      <AutoFilledInput
-                        type="number"
-                        step="0.1"
-                        value={globalSpecs?.tempMin ?? rfqData.tempMin ?? ''}
-                        onChange={(value) => onUpdate('tempMin', value)}
-                        onOverride={() => markAsOverridden('tempMin')}
-                        isAutoFilled={wasAutoFilled('tempMin')}
-                        placeholder="e.g., -5"
-                        disabled={isEnvironmentalLocked}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">Mean</label>
-                      <AutoFilledInput
-                        type="number"
-                        step="0.1"
-                        value={globalSpecs?.tempMean ?? rfqData.tempMean ?? ''}
-                        onChange={(value) => onUpdate('tempMean', value)}
-                        onOverride={() => markAsOverridden('tempMean')}
-                        isAutoFilled={wasAutoFilled('tempMean')}
-                        placeholder="e.g., 18"
-                        disabled={isEnvironmentalLocked}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">Maximum</label>
-                      <AutoFilledInput
-                        type="number"
-                        step="0.1"
-                        value={globalSpecs?.tempMax ?? rfqData.tempMax ?? ''}
-                        onChange={(value) => onUpdate('tempMax', value)}
-                        onOverride={() => markAsOverridden('tempMax')}
-                        isAutoFilled={wasAutoFilled('tempMax')}
-                        placeholder="e.g., 38"
-                        disabled={isEnvironmentalLocked}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Relative Humidity */}
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Relative Humidity (%)</label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">Minimum</label>
-                      <AutoFilledInput
-                        type="number"
-                        value={globalSpecs?.humidityMin ?? ''}
-                        onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMin: value })}
-                        onOverride={() => markAsOverridden('humidityMin')}
-                        isAutoFilled={wasAutoFilled('humidityMin')}
-                        placeholder="e.g., 40"
-                        disabled={isEnvironmentalLocked}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">Mean</label>
-                      <AutoFilledInput
-                        type="number"
-                        value={globalSpecs?.humidityMean ?? ''}
-                        onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMean: value })}
-                        onOverride={() => markAsOverridden('humidityMean')}
-                        isAutoFilled={wasAutoFilled('humidityMean')}
-                        placeholder="e.g., 65"
-                        disabled={isEnvironmentalLocked}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">Maximum</label>
-                      <AutoFilledInput
-                        type="number"
-                        value={globalSpecs?.humidityMax ?? ''}
-                        onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMax: value })}
-                        onOverride={() => markAsOverridden('humidityMax')}
-                        isAutoFilled={wasAutoFilled('humidityMax')}
-                        placeholder="e.g., 85"
-                        disabled={isEnvironmentalLocked}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Annual Rainfall */}
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Annual Rainfall
-                  </label>
-                  <AutoFilledSelect
-                    value={globalSpecs?.annualRainfall || rfqData.rainfall || ''}
-                    onChange={(value) => onUpdate('rainfall', value)}
-                    onOverride={() => markAsOverridden('annualRainfall')}
-                    isAutoFilled={wasAutoFilled('annualRainfall')}
-                    disabled={isEnvironmentalLocked}
-                  >
-                    <option value="">Select rainfall level...</option>
-                    <option value="Unknown">Unknown</option>
-                    <option value="<250">&lt;250mm (Arid)</option>
-                    <option value="250-500">250-500mm (Semi-Arid)</option>
-                    <option value="500-1000">500-1000mm (Moderate)</option>
-                    <option value="1000-2000">1000-2000mm (High)</option>
-                    <option value=">2000">&gt;2000mm (Very High)</option>
-                  </AutoFilledSelect>
-                </div>
-
-                {/* Wind Speed and Direction */}
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Wind</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">Speed (m/s)</label>
-                      <AutoFilledInput
-                        type="number"
-                        step="0.1"
-                        value={globalSpecs?.windSpeed ?? ''}
-                        onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, windSpeed: value })}
-                        onOverride={() => markAsOverridden('windSpeed')}
-                        isAutoFilled={wasAutoFilled('windSpeed')}
-                        placeholder="e.g., 4.2"
-                        disabled={isEnvironmentalLocked}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">Prevailing Direction</label>
-                      <AutoFilledSelect
-                        value={globalSpecs?.windDirection || ''}
-                        onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, windDirection: value })}
-                        onOverride={() => markAsOverridden('windDirection')}
-                        isAutoFilled={wasAutoFilled('windDirection')}
-                        disabled={isEnvironmentalLocked}
-                      >
-                        <option value="">Select direction...</option>
-                        <option value="Unknown">Unknown</option>
-                        <option value="N">N (North)</option>
-                        <option value="NE">NE (Northeast)</option>
-                        <option value="E">E (East)</option>
-                        <option value="SE">SE (Southeast)</option>
-                        <option value="S">S (South)</option>
-                        <option value="SW">SW (Southwest)</option>
-                        <option value="W">W (West)</option>
-                        <option value="NW">NW (Northwest)</option>
-                      </AutoFilledSelect>
-                    </div>
-                  </div>
-                </div>
-
-                {/* UV Exposure and Snow/Ice */}
-                <div className="mb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">UV Exposure / Solar Radiation</label>
-                      <AutoFilledSelect
-                        value={globalSpecs?.uvExposure || ''}
-                        onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, uvExposure: value })}
-                        onOverride={() => markAsOverridden('uvExposure')}
-                        isAutoFilled={wasAutoFilled('uvExposure')}
-                        disabled={isEnvironmentalLocked}
-                      >
-                        <option value="">Select UV level...</option>
-                        <option value="Unknown">Unknown</option>
-                        <option value="Low">Low (UV Index &lt;3)</option>
-                        <option value="Moderate">Moderate (UV Index 3-5)</option>
-                        <option value="High">High (UV Index 6-7)</option>
-                        <option value="Very High">Very High (UV Index 8+)</option>
-                      </AutoFilledSelect>
-                      {globalSpecs?.uvIndex !== undefined && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          UV Index: {globalSpecs.uvIndex}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Snow / Ice Exposure</label>
-                      <AutoFilledSelect
-                        value={globalSpecs?.snowExposure || ''}
-                        onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, snowExposure: value })}
-                        onOverride={() => markAsOverridden('snowExposure')}
-                        isAutoFilled={wasAutoFilled('snowExposure')}
-                        disabled={isEnvironmentalLocked}
-                      >
-                        <option value="">Select exposure level...</option>
-                        <option value="Unknown">Unknown</option>
-                        <option value="None">None</option>
-                        <option value="Low">Low (Occasional freezing)</option>
-                        <option value="Moderate">Moderate (Seasonal freezing)</option>
-                        <option value="High">High (Prolonged freezing)</option>
-                      </AutoFilledSelect>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Fog/Condensation */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Fog / Condensation Frequency</label>
-                  <AutoFilledSelect
-                    value={globalSpecs?.fogFrequency || ''}
-                    onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, fogFrequency: value })}
-                    onOverride={() => markAsOverridden('fogFrequency')}
-                    isAutoFilled={wasAutoFilled('fogFrequency')}
-                    disabled={isEnvironmentalLocked}
-                  >
-                    <option value="">Select frequency...</option>
+                  <label className="block text-xs text-gray-600">Soil Texture</label>
+                  <AutoFilledSelect value={globalSpecs?.soilTexture || rfqData.soilTexture || ''} onChange={(value) => onUpdate('soilTexture', value)} onOverride={() => markAsOverridden('soilTexture')} isAutoFilled={wasAutoFilled('soilTexture')} disabled={isEnvironmentalLocked}>
+                    <option value="">Select...</option>
                     <option value="Unknown">Unknown</option>
-                    <option value="Low">Low (Rare)</option>
-                    <option value="Moderate">Moderate (Occasional)</option>
-                    <option value="High">High (Frequent)</option>
+                    <option value="Sand">Sand</option>
+                    <option value="Loamy Sand">Loamy Sand</option>
+                    <option value="Sandy Loam">Sandy Loam</option>
+                    <option value="Loam">Loam</option>
+                    <option value="Silt Loam">Silt Loam</option>
+                    <option value="Silt">Silt</option>
+                    <option value="Sandy Clay Loam">Sandy Clay Loam</option>
+                    <option value="Clay Loam">Clay Loam</option>
+                    <option value="Silty Clay Loam">Silty Clay Loam</option>
+                    <option value="Sandy Clay">Sandy Clay</option>
+                    <option value="Silty Clay">Silty Clay</option>
+                    <option value="Clay">Clay</option>
+                  </AutoFilledSelect>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600">Moisture</label>
+                  <AutoFilledSelect value={globalSpecs?.soilMoistureClass || rfqData.soilMoistureClass || ''} onChange={(value) => onUpdate('soilMoistureClass', value)} onOverride={() => markAsOverridden('soilMoistureClass')} isAutoFilled={wasAutoFilled('soilMoistureClass')} disabled={isEnvironmentalLocked}>
+                    <option value="">Select...</option>
+                    <option value="Unknown">Unknown</option>
+                    <option value="Low">Low</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="High">High</option>
+                  </AutoFilledSelect>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600">Drainage</label>
+                  <AutoFilledSelect value={globalSpecs?.soilDrainage || rfqData.soilDrainage || ''} onChange={(value) => onUpdate('soilDrainage', value)} onOverride={() => markAsOverridden('soilDrainage')} isAutoFilled={wasAutoFilled('soilDrainage')} disabled={isEnvironmentalLocked}>
+                    <option value="">Select...</option>
+                    <option value="Unknown">Unknown</option>
+                    <option value="Poor">Poor</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="Well">Well</option>
+                  </AutoFilledSelect>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600">Rainfall</label>
+                  <AutoFilledSelect value={globalSpecs?.annualRainfall || rfqData.rainfall || ''} onChange={(value) => onUpdate('rainfall', value)} onOverride={() => markAsOverridden('annualRainfall')} isAutoFilled={wasAutoFilled('annualRainfall')} disabled={isEnvironmentalLocked}>
+                    <option value="">Select...</option>
+                    <option value="Unknown">Unknown</option>
+                    <option value="<250">&lt;250mm</option>
+                    <option value="250-500">250-500mm</option>
+                    <option value="500-1000">500-1000mm</option>
+                    <option value="1000-2000">1000-2000mm</option>
+                    <option value=">2000">&gt;2000mm</option>
                   </AutoFilledSelect>
                 </div>
               </div>
 
-              {/* Marine & Special Conditions */}
-              <div>
-                <h5 className="text-md font-semibold text-gray-700 mb-3 border-b pb-2">Marine & Special Conditions</h5>
-
-                {/* Row 1: Distance to Coast and Marine Influence */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Distance to Coast
-                    </label>
-                    <AutoFilledDisplay
-                      value={globalSpecs?.distanceToCoastFormatted}
-                      isAutoFilled={wasAutoFilled('distanceToCoast')}
-                      label="Auto-detected from location"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Marine Influence / Coastal Proximity
-                    </label>
-                    <AutoFilledSelect
-                      value={globalSpecs?.detailedMarineInfluence || rfqData.marineInfluence || ''}
-                      onChange={(value) => onUpdate('marineInfluence', value)}
-                      onOverride={() => markAsOverridden('detailedMarineInfluence')}
-                      isAutoFilled={wasAutoFilled('detailedMarineInfluence')}
-                      disabled={isEnvironmentalLocked}
-                    >
-                      <option value="">Select marine influence...</option>
-                      <option value="Unknown">Unknown</option>
-                      <option value="Extreme Marine">Extreme Marine (≤0.5km)</option>
-                      <option value="Severe Marine">Severe Marine (0.5-1km)</option>
-                      <option value="High Marine">High Marine (1-5km)</option>
-                      <option value="Moderate Marine">Moderate Marine (5-20km)</option>
-                      <option value="Low / Non-Marine">Low / Non-Marine (&gt;20km)</option>
-                    </AutoFilledSelect>
-                  </div>
+              {/* Atmospheric Row - Temperature */}
+              <div className="grid grid-cols-6 gap-1 mb-1">
+                <div>
+                  <label className="block text-xs text-gray-600">Temp Min °C</label>
+                  <AutoFilledInput type="number" step="0.1" value={globalSpecs?.tempMin ?? rfqData.tempMin ?? ''} onChange={(value) => onUpdate('tempMin', value)} onOverride={() => markAsOverridden('tempMin')} isAutoFilled={wasAutoFilled('tempMin')} placeholder="-5" disabled={isEnvironmentalLocked} />
                 </div>
-
-                {/* Row 2: Air Salt Content and Flood Risk */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Air Salt Content (Chloride Deposition)
-                    </label>
-                    <AutoFilledDisplay
-                      value={globalSpecs?.airSaltContent ?
-                        `${globalSpecs.airSaltContent.level} (${globalSpecs.airSaltContent.isoCategory}) - ${globalSpecs.airSaltContent.estimatedDeposition}` :
-                        undefined}
-                      isAutoFilled={wasAutoFilled('airSaltContent')}
-                      label="Auto-detected from location"
-                    />
-                    {globalSpecs?.airSaltContent && (
-                      <p className="mt-1 text-xs text-gray-500">
-                        ISO 9223 Category: {globalSpecs.airSaltContent.isoCategory}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Flooding / Water Table Risk
-                    </label>
-                    <AutoFilledSelect
-                      value={globalSpecs?.floodRisk || rfqData.floodingRisk || ''}
-                      onChange={(value) => onUpdate('floodingRisk', value)}
-                      onOverride={() => markAsOverridden('floodRisk')}
-                      isAutoFilled={wasAutoFilled('floodRisk')}
-                      disabled={isEnvironmentalLocked}
-                    >
-                      <option value="">Select flooding risk...</option>
-                      <option value="Unknown">Unknown</option>
-                      <option value="None">None</option>
-                      <option value="Low">Low (Rare flooding)</option>
-                      <option value="Moderate">Moderate (Occasional)</option>
-                      <option value="High">High (Frequent)</option>
-                    </AutoFilledSelect>
-                  </div>
+                <div>
+                  <label className="block text-xs text-gray-600">Temp Mean</label>
+                  <AutoFilledInput type="number" step="0.1" value={globalSpecs?.tempMean ?? rfqData.tempMean ?? ''} onChange={(value) => onUpdate('tempMean', value)} onOverride={() => markAsOverridden('tempMean')} isAutoFilled={wasAutoFilled('tempMean')} placeholder="18" disabled={isEnvironmentalLocked} />
                 </div>
+                <div>
+                  <label className="block text-xs text-gray-600">Temp Max</label>
+                  <AutoFilledInput type="number" step="0.1" value={globalSpecs?.tempMax ?? rfqData.tempMax ?? ''} onChange={(value) => onUpdate('tempMax', value)} onOverride={() => markAsOverridden('tempMax')} isAutoFilled={wasAutoFilled('tempMax')} placeholder="38" disabled={isEnvironmentalLocked} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600">Humidity %</label>
+                  <AutoFilledInput type="number" value={globalSpecs?.humidityMean ?? ''} onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMean: value })} onOverride={() => markAsOverridden('humidityMean')} isAutoFilled={wasAutoFilled('humidityMean')} placeholder="65" disabled={isEnvironmentalLocked} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600">Wind m/s</label>
+                  <AutoFilledInput type="number" step="0.1" value={globalSpecs?.windSpeed ?? ''} onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, windSpeed: value })} onOverride={() => markAsOverridden('windSpeed')} isAutoFilled={wasAutoFilled('windSpeed')} placeholder="4.2" disabled={isEnvironmentalLocked} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600">UV Level</label>
+                  <AutoFilledSelect value={globalSpecs?.uvExposure || ''} onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, uvExposure: value })} onOverride={() => markAsOverridden('uvExposure')} isAutoFilled={wasAutoFilled('uvExposure')} disabled={isEnvironmentalLocked}>
+                    <option value="">Select...</option>
+                    <option value="Unknown">Unknown</option>
+                    <option value="Low">Low</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="High">High</option>
+                    <option value="Very High">Very High</option>
+                  </AutoFilledSelect>
+                </div>
+              </div>
 
-                {/* Row 3: Industrial Pollution and Time of Wetness */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Industrial Atmospheric Pollution
-                    </label>
-                    <AutoFilledSelect
-                      value={globalSpecs?.ecpIndustrialPollution || rfqData.industrialPollution || ''}
-                      onChange={(value) => onUpdate('industrialPollution', value)}
-                      onOverride={() => markAsOverridden('ecpIndustrialPollution')}
-                      isAutoFilled={wasAutoFilled('ecpIndustrialPollution')}
-                      disabled={isEnvironmentalLocked}
-                    >
-                      <option value="">Select pollution level...</option>
-                      <option value="Unknown">Unknown</option>
-                      <option value="None">None (Clean air)</option>
-                      <option value="Low">Low (Light industrial)</option>
-                      <option value="Moderate">Moderate (Urban/Industrial)</option>
-                      <option value="High">High (Heavy industrial)</option>
-                      <option value="Very High">Very High (Severe industrial)</option>
-                    </AutoFilledSelect>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Time of Wetness (TOW) - ISO 9223
-                    </label>
-                    <AutoFilledDisplay
-                      value={globalSpecs?.timeOfWetness ?
-                        `${globalSpecs.timeOfWetness.level} (${globalSpecs.timeOfWetness.isoCategory}) - ${globalSpecs.timeOfWetness.estimatedHours}` :
-                        undefined}
-                      isAutoFilled={wasAutoFilled('timeOfWetness')}
-                      label="Auto-detected (requires temp/humidity)"
-                    />
-                    {globalSpecs?.timeOfWetness && (
-                      <p className="mt-1 text-xs text-gray-500">
-                        ISO 9223 Category: {globalSpecs.timeOfWetness.isoCategory} - Based on RH ≥80% and temp &gt;0°C
-                      </p>
-                    )}
-                  </div>
+              {/* Marine & Special Conditions - Compact Row 1 */}
+              <div className="grid grid-cols-3 gap-1 mb-1">
+                <div>
+                  <label className="block text-xs text-gray-600">Coast Distance</label>
+                  <AutoFilledDisplay value={globalSpecs?.distanceToCoastFormatted} isAutoFilled={wasAutoFilled('distanceToCoast')} label="Auto" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600">Marine Influence</label>
+                  <AutoFilledSelect value={globalSpecs?.detailedMarineInfluence || rfqData.marineInfluence || ''} onChange={(value) => onUpdate('marineInfluence', value)} onOverride={() => markAsOverridden('detailedMarineInfluence')} isAutoFilled={wasAutoFilled('detailedMarineInfluence')} disabled={isEnvironmentalLocked}>
+                    <option value="">Select...</option>
+                    <option value="Unknown">Unknown</option>
+                    <option value="Extreme Marine">Extreme (≤0.5km)</option>
+                    <option value="Severe Marine">Severe (0.5-1km)</option>
+                    <option value="High Marine">High (1-5km)</option>
+                    <option value="Moderate Marine">Moderate (5-20km)</option>
+                    <option value="Low / Non-Marine">Low (&gt;20km)</option>
+                  </AutoFilledSelect>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600">Air Salt Content</label>
+                  <AutoFilledDisplay value={globalSpecs?.airSaltContent ? `${globalSpecs.airSaltContent.level} (${globalSpecs.airSaltContent.isoCategory})` : undefined} isAutoFilled={wasAutoFilled('airSaltContent')} label="Auto" />
+                </div>
+              </div>
+              {/* Marine & Special Conditions - Compact Row 2 */}
+              <div className="grid grid-cols-3 gap-1">
+                <div>
+                  <label className="block text-xs text-gray-600">Flood Risk</label>
+                  <AutoFilledSelect value={globalSpecs?.floodRisk || rfqData.floodingRisk || ''} onChange={(value) => onUpdate('floodingRisk', value)} onOverride={() => markAsOverridden('floodRisk')} isAutoFilled={wasAutoFilled('floodRisk')} disabled={isEnvironmentalLocked}>
+                    <option value="">Select...</option>
+                    <option value="Unknown">Unknown</option>
+                    <option value="None">None</option>
+                    <option value="Low">Low</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="High">High</option>
+                  </AutoFilledSelect>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600">Industrial Pollution</label>
+                  <AutoFilledSelect value={globalSpecs?.ecpIndustrialPollution || rfqData.industrialPollution || ''} onChange={(value) => onUpdate('industrialPollution', value)} onOverride={() => markAsOverridden('ecpIndustrialPollution')} isAutoFilled={wasAutoFilled('ecpIndustrialPollution')} disabled={isEnvironmentalLocked}>
+                    <option value="">Select...</option>
+                    <option value="Unknown">Unknown</option>
+                    <option value="None">None</option>
+                    <option value="Low">Low</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="High">High</option>
+                    <option value="Very High">Very High</option>
+                  </AutoFilledSelect>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600">Time of Wetness</label>
+                  <AutoFilledDisplay value={globalSpecs?.timeOfWetness ? `${globalSpecs.timeOfWetness.level} (${globalSpecs.timeOfWetness.isoCategory})` : undefined} isAutoFilled={wasAutoFilled('timeOfWetness')} label="Auto" />
                 </div>
               </div>
             </div>
@@ -9005,6 +8689,7 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
 export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Props) {
   const {
     currentStep,
+    setCurrentStep,
     rfqData,
     updateRfqField,
     updateGlobalSpecs,
