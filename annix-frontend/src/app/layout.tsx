@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Amix Investments signature font - elegant cursive for branding
+// Annix App signature font - elegant cursive for branding
 const greatVibes = Great_Vibes({
   variable: "--font-great-vibes",
   subsets: ["latin"],
@@ -21,8 +21,8 @@ const greatVibes = Great_Vibes({
 });
 
 export const metadata: Metadata = {
-  title: "Amix Investments - RFQ System",
-  description: "Amix Investments Request for Quotation Management System",
+  title: "Annix App - RFQ System",
+  description: "Annix App Request for Quotation Management System",
 };
 
 export default function RootLayout({

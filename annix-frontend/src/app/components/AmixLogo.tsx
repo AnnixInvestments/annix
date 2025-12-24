@@ -22,16 +22,16 @@ const sizeMap = {
 };
 
 /**
- * Amix Investments Logo Component
+ * Annix App Logo Component
  *
  * Usage:
  * - <AmixLogo /> - Default medium size with text
  * - <AmixLogo size="lg" /> - Large logo with text
  * - <AmixLogo showText={false} /> - Logo only
- * - <AmixLogo useSignatureFont /> - Use Great Vibes font for "Amix" text
+ * - <AmixLogo useSignatureFont /> - Use Great Vibes font for "Annix" text
  *
  * To use the actual logo image:
- * 1. Save the logo as: public/images/amix-logo.png
+ * 1. Save the logo as: public/images/annix-logo.png
  * 2. The component will automatically use it
  */
 export default function AmixLogo({
@@ -52,8 +52,8 @@ export default function AmixLogo({
         {/*
           TODO: Replace this SVG with the actual logo image:
           <Image
-            src="/images/amix-logo.png"
-            alt="Amix Investments"
+            src="/images/annix-logo.png"
+            alt="Annix App"
             width={logoSize}
             height={logoSize}
             priority
@@ -98,13 +98,13 @@ export default function AmixLogo({
             }`}
             style={{ color: '#FFA500' }}
           >
-            Amix
+            Annix
           </span>
           <span
             className="text-xs tracking-wider uppercase"
             style={{ color: '#FFA500', opacity: 0.8 }}
           >
-            Investments
+            App
           </span>
         </div>
       )}

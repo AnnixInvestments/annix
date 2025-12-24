@@ -1,8 +1,8 @@
 /**
- * Amix Investments Brand Constants
+ * Annix App Brand Constants
  *
  * This file contains all branding colors, fonts, and reusable styles
- * for the Amix Investments / Annix application.
+ * for the Annix App application.
  */
 
 // Brand Colors

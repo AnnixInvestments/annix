@@ -295,6 +295,29 @@ function hasCompleteProfile(profile: MaterialTransferProfile): boolean {
   );
 }
 
+/**
+ * Map steel specification name to P-T rating material group.
+ * This determines which ASME B16.5 material group to use for pressure-temperature ratings.
+ */
+function getFlangeMaterialGroup(steelSpecName?: string): string {
+  if (!steelSpecName) return 'Carbon Steel A105 (Group 1.1)';
+
+  const specUpper = steelSpecName.toUpperCase();
+
+  // Stainless Steel 316/316L (ASTM A312 TP316, TP316L)
+  if (specUpper.includes('316') || specUpper.includes('TP316')) {
+    return 'Stainless Steel 316 (Group 2.2)';
+  }
+
+  // Stainless Steel 304/304L (ASTM A312 TP304, TP304L)
+  if (specUpper.includes('304') || specUpper.includes('TP304')) {
+    return 'Stainless Steel 304 (Group 2.1)';
+  }
+
+  // All other steels (carbon steel, alloy steel, etc.) use Carbon Steel A105 ratings
+  return 'Carbon Steel A105 (Group 1.1)';
+}
+
 interface ExternalEnvironmentProfile {
   installation: {
     type?: "AboveGround" | "Buried" | "Submerged" | "Splash";
@@ -1454,12 +1477,14 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           <label className="block text-xs font-semibold text-gray-900 mb-1">
             Required Products & Services <span className="text-red-600">*</span>
           </label>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {[
               { value: 'fabricated_steel', label: 'Steel Pipes', icon: '🔩' },
+              { value: 'fasteners_gaskets', label: 'Nuts, Bolts, Washers & Gaskets', icon: '⚙️' },
               { value: 'surface_protection', label: 'Surface Protection', icon: '🛡️' },
               { value: 'hdpe', label: 'HDPE Pipes', icon: '🔵' },
               { value: 'pvc', label: 'PVC Pipes', icon: '⚪' },
+              { value: 'structural_steel', label: 'Structural Steel', icon: '🏗️' },
               { value: 'transport_install', label: 'Transport/Install', icon: '🚚' },
             ].map((product) => {
               const isSelected = rfqData.requiredProducts?.includes(product.value);
@@ -2447,8 +2472,10 @@ function deriveTemperatureCategory(tempC: number | undefined | null): string | u
 function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, errors, fetchAndSelectPressureClass, availablePressureClasses, requiredProducts = [], rfqData }: any) {
   // Check which product types are selected
   const showSteelPipes = requiredProducts.includes('fabricated_steel');
+  const showFastenersGaskets = requiredProducts.includes('fasteners_gaskets');
   const showHdpePipes = requiredProducts.includes('hdpe');
   const showPvcPipes = requiredProducts.includes('pvc');
+  const showStructuralSteel = requiredProducts.includes('structural_steel');
   const showSurfaceProtection = requiredProducts.includes('surface_protection');
   const showTransportInstall = requiredProducts.includes('transport_install');
   const workingPressures = [6, 10, 16, 25, 40, 63, 100, 160, 250, 320, 400, 630]; // Bar values
@@ -2462,14 +2489,46 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
   const isEcpTemperatureAutoFilled = !globalSpecs?.ecpTemperature && !!derivedTempCategory;
 
   // Derive atmospheric fields from Page 1 Environmental Intelligence data
-  const effectiveIso12944 = globalSpecs?.ecpIso12944Category || rfqData?.iso12944Category;
-  const isIso12944AutoFilled = !globalSpecs?.ecpIso12944Category && !!rfqData?.iso12944Category;
+  // Check multiple sources: user override (ecp prefix), rfqData, and globalSpecs (from mine selection)
+  const derivedIso12944 = rfqData?.iso12944Category || globalSpecs?.iso12944Category;
+  const effectiveIso12944 = globalSpecs?.ecpIso12944Category || derivedIso12944;
+  const isIso12944AutoFilled = !globalSpecs?.ecpIso12944Category && !!derivedIso12944;
 
-  const effectiveMarineInfluence = globalSpecs?.ecpMarineInfluence || rfqData?.marineInfluence || globalSpecs?.detailedMarineInfluence;
-  const isMarineInfluenceAutoFilled = !globalSpecs?.ecpMarineInfluence && !!(rfqData?.marineInfluence || globalSpecs?.detailedMarineInfluence);
+  const derivedMarineInfluence = rfqData?.marineInfluence || globalSpecs?.detailedMarineInfluence || globalSpecs?.marineInfluence;
+  const effectiveMarineInfluence = globalSpecs?.ecpMarineInfluence || derivedMarineInfluence;
+  const isMarineInfluenceAutoFilled = !globalSpecs?.ecpMarineInfluence && !!derivedMarineInfluence;
 
-  const effectiveIndustrialPollution = globalSpecs?.ecpIndustrialPollution || rfqData?.industrialPollution;
-  const isIndustrialPollutionAutoFilled = !globalSpecs?.ecpIndustrialPollution && !!rfqData?.industrialPollution;
+  const derivedIndustrialPollution = rfqData?.industrialPollution || globalSpecs?.industrialPollution;
+  const effectiveIndustrialPollution = globalSpecs?.ecpIndustrialPollution || derivedIndustrialPollution;
+  const isIndustrialPollutionAutoFilled = !globalSpecs?.ecpIndustrialPollution && !!derivedIndustrialPollution;
+
+  // Derive Installation Conditions from Page 1 data
+  // Installation Type: Default to AboveGround for mining applications
+  const derivedInstallationType = globalSpecs?.mineSelected ? 'AboveGround' : undefined;
+  const effectiveInstallationType = globalSpecs?.ecpInstallationType || derivedInstallationType;
+  const isInstallationTypeAutoFilled = !globalSpecs?.ecpInstallationType && !!derivedInstallationType;
+
+  // UV Exposure: Derive from ISO 12944 category or mining environment
+  const deriveUvExposure = (): string | undefined => {
+    // If mine is selected, mining environments typically have high UV exposure (outdoor operations)
+    if (globalSpecs?.mineSelected) {
+      // If we have ISO 12944, use it to refine
+      const iso = effectiveIso12944;
+      if (iso === 'C5' || iso === 'CX') return 'High';
+      if (iso === 'C3' || iso === 'C4') return 'Moderate';
+      if (iso === 'C1' || iso === 'C2') return 'Moderate';
+      return 'High'; // Default for mining is High (outdoor)
+    }
+    return undefined;
+  };
+  const derivedUvExposure = deriveUvExposure();
+  const effectiveUvExposure = globalSpecs?.ecpUvExposure || derivedUvExposure;
+  const isUvExposureAutoFilled = !globalSpecs?.ecpUvExposure && !!derivedUvExposure;
+
+  // Mechanical Risk: Mining environments are typically high mechanical risk
+  const derivedMechanicalRisk = globalSpecs?.mineSelected ? 'High' : undefined;
+  const effectiveMechanicalRisk = globalSpecs?.ecpMechanicalRisk || derivedMechanicalRisk;
+  const isMechanicalRiskAutoFilled = !globalSpecs?.ecpMechanicalRisk && !!derivedMechanicalRisk;
 
   // Helper for auto-filled field styling
   const autoFilledClass = (isAutoFilled: boolean) =>
@@ -2479,26 +2538,21 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 
   return (
     <div>
-      <h2 className="text-lg font-bold text-gray-900 mb-2">Specifications</h2>
-      <p className="text-gray-600 text-sm mb-4">
-        Define the working conditions and material specifications for your RFQ.
+      <h2 className="text-md font-bold text-gray-900 mb-1">Specifications</h2>
+      <p className="text-gray-600 text-xs mb-2">
+        Define working conditions and material specifications.
       </p>
 
       {/* Validation Error Banner */}
       {hasErrors && (
-        <div className="mb-4 bg-red-50 border-l-4 border-red-500 rounded-lg p-3">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-semibold text-red-800">Required fields missing</h3>
-              <p className="text-sm text-red-700 mt-1">
-                Please complete the following required fields to continue:
-              </p>
-              <ul className="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
+        <div className="mb-2 bg-red-50 border-l-4 border-red-500 rounded p-2">
+          <div className="flex items-start gap-2">
+            <svg className="h-4 w-4 text-red-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <h3 className="text-xs font-semibold text-red-800">Required fields missing</h3>
+              <ul className="mt-1 text-xs text-red-700 list-disc list-inside">
                 {errors.workingPressure && <li>{errors.workingPressure}</li>}
                 {errors.workingTemperature && <li>{errors.workingTemperature}</li>}
               </ul>
@@ -2507,134 +2561,129 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* Fabricated Steel Pipes & Fittings Section */}
         {showSteelPipes && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center gap-2 pb-1 border-b border-gray-200">
-              <span className="text-lg">🔩</span>
-              <h3 className="text-base font-bold text-gray-900">Fabricated Steel Pipes & Fittings</h3>
+              <span className="text-sm">🔩</span>
+              <h3 className="text-sm font-bold text-gray-900">Fabricated Steel Pipes & Fittings</h3>
             </div>
 
             {/* Working Conditions */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 className="text-sm font-semibold text-gray-800 mb-3">
+            <div className="bg-white border border-gray-200 rounded-lg p-3">
+              <h3 className="text-xs font-semibold text-gray-800 mb-2">
                 Working Conditions
-                <span className="ml-2 text-xs font-normal text-gray-600">(Optional)</span>
+                <span className="ml-2 text-xs font-normal text-gray-500">(Optional)</span>
               </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {/* Working Pressure */}
             <div>
-              <label className={`block text-sm font-semibold mb-2 ${errors.workingPressure ? 'text-red-700' : 'text-gray-900'}`}>
+              <label className={`block text-xs font-semibold mb-1 ${errors.workingPressure ? 'text-red-700' : 'text-gray-900'}`}>
                 Working Pressure (bar) <span className="text-red-600">*</span>
               </label>
               <select
                 value={globalSpecs?.workingPressureBar || ''}
                 onChange={async (e) => {
                   const newPressure = e.target.value ? Number(e.target.value) : undefined;
-
-                  // If flange standard is already selected, auto-select recommended pressure class
                   let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
                   if (newPressure && globalSpecs?.flangeStandardId) {
-                    recommendedPressureClassId = await fetchAndSelectPressureClass(globalSpecs.flangeStandardId, newPressure, globalSpecs?.workingTemperatureC);
+                    // Get material group from selected steel spec
+                    const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
+                    const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
+                    recommendedPressureClassId = await fetchAndSelectPressureClass(globalSpecs.flangeStandardId, newPressure, globalSpecs?.workingTemperatureC, materialGroup);
                   }
-
                   onUpdateGlobalSpecs({
                     ...globalSpecs,
                     workingPressureBar: newPressure,
                     flangePressureClassId: recommendedPressureClassId || globalSpecs?.flangePressureClassId
                   });
                 }}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 text-gray-900 ${
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 text-gray-900 ${
                   errors.workingPressure
-                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50'
-                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    ? 'border-red-500 focus:ring-red-500 bg-red-50'
+                    : 'border-gray-300 focus:ring-blue-500'
                 }`}
               >
                 <option value="">Select pressure...</option>
                 {workingPressures.map((pressure) => (
-                  <option key={pressure} value={pressure}>
-                    {pressure} bar
-                  </option>
+                  <option key={pressure} value={pressure}>{pressure} bar</option>
                 ))}
               </select>
-              {errors.workingPressure ? (
-                <p className="mt-1 text-sm text-red-600 font-medium">{errors.workingPressure}</p>
-              ) : (
-                <p className="mt-1 text-xs text-gray-500">
-                  Leave empty to specify per item. Item-level values take priority.
-                </p>
-              )}
+              {errors.workingPressure && <p className="mt-0.5 text-xs text-red-600">{errors.workingPressure}</p>}
             </div>
 
             {/* Working Temperature */}
             <div>
-              <label className={`block text-sm font-semibold mb-2 ${errors.workingTemperature ? 'text-red-700' : 'text-gray-900'}`}>
+              <label className={`block text-xs font-semibold mb-1 ${errors.workingTemperature ? 'text-red-700' : 'text-gray-900'}`}>
                 Working Temperature (°C) <span className="text-red-600">*</span>
               </label>
               <select
                 value={globalSpecs?.workingTemperatureC || ''}
                 onChange={async (e) => {
                   const newTemp = e.target.value ? Number(e.target.value) : undefined;
-
-                  // Auto-update pressure class if ASME B16.5 and both pressure/temp are set
                   let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
                   if (newTemp !== undefined && globalSpecs?.workingPressureBar && globalSpecs?.flangeStandardId) {
+                    // Get material group from selected steel spec
+                    const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
+                    const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
                     recommendedPressureClassId = await fetchAndSelectPressureClass(
-                      globalSpecs.flangeStandardId,
-                      globalSpecs.workingPressureBar,
-                      newTemp
+                      globalSpecs.flangeStandardId, globalSpecs.workingPressureBar, newTemp, materialGroup
                     );
                   }
-
                   onUpdateGlobalSpecs({
                     ...globalSpecs,
                     workingTemperatureC: newTemp,
                     flangePressureClassId: recommendedPressureClassId || globalSpecs?.flangePressureClassId
                   });
                 }}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 text-gray-900 ${
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 text-gray-900 ${
                   errors.workingTemperature
-                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50'
-                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    ? 'border-red-500 focus:ring-red-500 bg-red-50'
+                    : 'border-gray-300 focus:ring-blue-500'
                 }`}
               >
                 <option value="">Select temperature...</option>
                 {workingTemperatures.map((temp) => (
-                  <option key={temp} value={temp}>
-                    {temp}°C
-                  </option>
+                  <option key={temp} value={temp}>{temp}°C</option>
                 ))}
               </select>
-              {errors.workingTemperature ? (
-                <p className="mt-1 text-sm text-red-600 font-medium">{errors.workingTemperature}</p>
-              ) : (
-                <p className="mt-1 text-xs text-gray-500">
-                  Leave empty to specify per item. Item-level values take priority.
-                </p>
-              )}
+              {errors.workingTemperature && <p className="mt-0.5 text-xs text-red-600">{errors.workingTemperature}</p>}
             </div>
           </div>
         </div>
 
         {/* Material Specifications */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Material Specifications</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <h3 className="text-xs font-semibold text-gray-800 mb-2">Material Specifications</h3>
+
+          <div className="grid grid-cols-3 gap-3">
             {/* Steel Specification - with grouped options */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Steel Specification
-              </label>
+              <label className="block text-xs font-semibold text-gray-900 mb-1">Steel Specification</label>
               <select
                 value={globalSpecs?.steelSpecificationId || ''}
-                onChange={(e) => onUpdateGlobalSpecs({
-                  ...globalSpecs,
-                  steelSpecificationId: e.target.value ? Number(e.target.value) : undefined
-                })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                onChange={async (e) => {
+                  const newSpecId = e.target.value ? Number(e.target.value) : undefined;
+                  let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
+
+                  // Recalculate pressure class when steel spec changes (affects material group for P-T ratings)
+                  if (newSpecId && globalSpecs?.flangeStandardId && globalSpecs?.workingPressureBar) {
+                    const newSteelSpec = masterData.steelSpecs?.find((s: any) => s.id === newSpecId);
+                    const materialGroup = getFlangeMaterialGroup(newSteelSpec?.steelSpecName);
+                    recommendedPressureClassId = await fetchAndSelectPressureClass(
+                      globalSpecs.flangeStandardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup
+                    );
+                  }
+
+                  onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    steelSpecificationId: newSpecId,
+                    flangePressureClassId: recommendedPressureClassId || globalSpecs?.flangePressureClassId
+                  });
+                }}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
               >
                 <option value="">Select steel specification...</option>
                 <optgroup label="South African Standards (SABS)">
@@ -2719,80 +2768,60 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                     ))}
                 </optgroup>
               </select>
-              <p className="mt-1 text-xs text-gray-500">
-                Leave empty to specify per item on the next page
-              </p>
             </div>
 
             {/* Flange Standard */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Flange Standard
-              </label>
+              <label className="block text-xs font-semibold text-gray-900 mb-1">Flange Standard</label>
               <select
                 value={globalSpecs?.flangeStandardId || ''}
                 onChange={async (e) => {
                   const standardId = e.target.value ? Number(e.target.value) : undefined;
-                  
-                  // Fetch pressure classes and auto-select recommended
                   let recommendedPressureClassId = undefined;
+                  // Get material group from selected steel spec
+                  const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
+                  const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
                   if (standardId && globalSpecs?.workingPressureBar) {
-                    recommendedPressureClassId = await fetchAndSelectPressureClass(standardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC);
+                    recommendedPressureClassId = await fetchAndSelectPressureClass(standardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup);
                   } else if (standardId) {
                     await fetchAndSelectPressureClass(standardId);
                   }
-                  
                   onUpdateGlobalSpecs({
                     ...globalSpecs,
                     flangeStandardId: standardId,
                     flangePressureClassId: recommendedPressureClassId || globalSpecs?.flangePressureClassId
                   });
                 }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
               >
                 <option value="">Select flange standard...</option>
                 {masterData.flangeStandards.map((standard: any) => (
-                  <option key={standard.id} value={standard.id}>
-                    {standard.code}
-                  </option>
+                  <option key={standard.id} value={standard.id}>{standard.code}</option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-gray-500">
-                Leave empty to specify per item on the next page
-              </p>
             </div>
-            
-            {/* Flange Pressure Class - shown after standard is selected */}
-            {globalSpecs?.flangeStandardId && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  Flange Pressure Class
-                  {globalSpecs?.workingPressureBar && (
-                    <span className="ml-2 text-xs text-blue-600 font-normal">
-                      (Auto-selected for {globalSpecs.workingPressureBar} bar)
-                    </span>
-                  )}
-                </label>
-                <select
-                  value={globalSpecs?.flangePressureClassId || ''}
-                  onChange={(e) => onUpdateGlobalSpecs({
-                    ...globalSpecs,
-                    flangePressureClassId: e.target.value ? Number(e.target.value) : undefined
-                  })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                >
-                  <option value="">Select pressure class...</option>
-                  {availablePressureClasses.map((pc: any) => (
-                    <option key={pc.id} value={pc.id}>
-                      {pc.designation}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  Recommended class auto-selected, but can be overridden
-                </p>
-              </div>
-            )}
+
+            {/* Flange Pressure Class */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-900 mb-1">
+                Pressure Class
+                {globalSpecs?.workingPressureBar && <span className="ml-1 text-xs text-blue-600 font-normal">(auto)</span>}
+              </label>
+              <select
+                value={globalSpecs?.flangePressureClassId || ''}
+                onChange={(e) => onUpdateGlobalSpecs({
+                  ...globalSpecs,
+                  flangePressureClassId: e.target.value ? Number(e.target.value) : undefined
+                })}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                disabled={!globalSpecs?.flangeStandardId}
+              >
+                <option value="">Select class...</option>
+                {availablePressureClasses.map((pc: any) => (
+                  <option key={pc.id} value={pc.id}>{pc.designation}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -2800,82 +2829,91 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
         {showSurfaceProtection && (
         <>
         {/* External Coating */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">External Coating</h3>
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <h3 className="text-xs font-semibold text-gray-800 mb-2">External Coating</h3>
 
           {/* External Environment Profile - Coating Recommendation Assistant */}
           {!globalSpecs?.externalCoatingConfirmed && (
-            <div className="mb-4">
+            <div className="mb-2">
               <button
                 type="button"
                 onClick={() => onUpdateGlobalSpecs({
                   ...globalSpecs,
                   showExternalCoatingProfile: !globalSpecs?.showExternalCoatingProfile
                 })}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium text-sm mb-3"
+                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-medium text-xs mb-2"
               >
-                <svg className={`w-4 h-4 transition-transform ${globalSpecs?.showExternalCoatingProfile ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-3 h-3 transition-transform ${globalSpecs?.showExternalCoatingProfile ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-                {globalSpecs?.showExternalCoatingProfile ? 'Hide' : 'Show'} Coating Recommendation Assistant (ISO 12944/21809)
+                {globalSpecs?.showExternalCoatingProfile ? 'Hide' : 'Show'} Coating Assistant (ISO 12944/21809)
               </button>
 
               {globalSpecs?.showExternalCoatingProfile && (
-                <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
-                    <h4 className="text-md font-semibold text-orange-900">External Environment Profile</h4>
+                    <h4 className="text-sm font-semibold text-orange-900">External Environment Profile</h4>
                   </div>
-                  <p className="text-xs text-orange-700 mb-4">
-                    Define your environmental conditions to receive standards-based coating recommendations per ISO 12944 & ISO 21809.
-                  </p>
 
                   {/* Installation Conditions */}
-                  <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-                    <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <span className="w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                  <div className="bg-white rounded-md p-2 mb-2 border border-gray-200">
+                    <h5 className="text-xs font-semibold text-gray-800 mb-2 flex items-center gap-1.5">
+                      <span className="w-4 h-4 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-[10px] font-bold">1</span>
                       Installation Conditions
+                      {(isInstallationTypeAutoFilled || isUvExposureAutoFilled || isMechanicalRiskAutoFilled) && (
+                        <span className="ml-2 text-xs font-medium text-emerald-600">✓ Auto-filled from Mine Selection</span>
+                      )}
                     </h5>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Installation Type *</label>
+                        <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                          Installation Type *
+                          {isInstallationTypeAutoFilled && <span className="ml-1 text-emerald-600">(Auto)</span>}
+                        </label>
                         <select
-                          value={globalSpecs?.ecpInstallationType || ""}
+                          value={effectiveInstallationType || ""}
                           onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpInstallationType: e.target.value || undefined })}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isInstallationTypeAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="AboveGround">Above Ground</option>
-                          <option value="Buried">Buried / Underground</option>
+                          <option value="Buried">Buried</option>
                           <option value="Submerged">Submerged</option>
-                          <option value="Splash">Splash / Tidal Zone</option>
+                          <option value="Splash">Splash Zone</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">UV Exposure</label>
+                        <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                          UV Exposure
+                          {isUvExposureAutoFilled && <span className="ml-1 text-emerald-600">(Auto)</span>}
+                        </label>
                         <select
-                          value={globalSpecs?.ecpUvExposure || ""}
+                          value={effectiveUvExposure || ""}
                           onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpUvExposure: e.target.value || undefined })}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isUvExposureAutoFilled)}`}
                         >
                           <option value="">Select...</option>
-                          <option value="None">None (Indoor/Buried)</option>
+                          <option value="None">None</option>
                           <option value="Moderate">Moderate</option>
-                          <option value="High">High (Full Sun)</option>
+                          <option value="High">High</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Mechanical Risk</label>
+                        <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                          Mechanical Risk
+                          {isMechanicalRiskAutoFilled && <span className="ml-1 text-emerald-600">(Auto)</span>}
+                        </label>
                         <select
-                          value={globalSpecs?.ecpMechanicalRisk || ""}
+                          value={effectiveMechanicalRisk || ""}
                           onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpMechanicalRisk: e.target.value || undefined })}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isMechanicalRiskAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="Low">Low</option>
-                          <option value="Medium">Medium (Traffic/Handling)</option>
+                          <option value="Medium">Medium</option>
                           <option value="High">High (Rocky/Abrasive)</option>
                         </select>
                       </div>
@@ -2947,7 +2985,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   </div>
 
                   {/* Soil Conditions (for buried) */}
-                  {globalSpecs?.ecpInstallationType === "Buried" && (
+                  {effectiveInstallationType === "Buried" && (
                     <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
                       <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
                         <span className="w-6 h-6 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-xs font-bold">3</span>
@@ -3003,7 +3041,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   {/* Operating Conditions */}
                   <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
                     <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <span className="w-6 h-6 bg-red-100 text-red-700 rounded-full flex items-center justify-center text-xs font-bold">{globalSpecs?.ecpInstallationType === "Buried" ? "4" : "3"}</span>
+                      <span className="w-6 h-6 bg-red-100 text-red-700 rounded-full flex items-center justify-center text-xs font-bold">{effectiveInstallationType === "Buried" ? "4" : "3"}</span>
                       Operating Conditions
                     </h5>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -3063,9 +3101,9 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   {(() => {
                     const profile: ExternalEnvironmentProfile = {
                       installation: {
-                        type: globalSpecs?.ecpInstallationType as any,
-                        uvExposure: globalSpecs?.ecpUvExposure as any,
-                        mechanicalRisk: globalSpecs?.ecpMechanicalRisk as any
+                        type: effectiveInstallationType as any,
+                        uvExposure: effectiveUvExposure as any,
+                        mechanicalRisk: effectiveMechanicalRisk as any
                       },
                       atmosphere: {
                         iso12944Category: effectiveIso12944 as any,
@@ -3126,7 +3164,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                               <span className={`text-xs px-2 py-0.5 rounded ${damage.atmosphericCorrosion === 'Severe' || damage.atmosphericCorrosion === 'High' ? 'bg-red-100 text-red-700' : damage.atmosphericCorrosion === 'Moderate' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
                                 Atm: {damage.atmosphericCorrosion}
                               </span>
-                              {globalSpecs?.ecpInstallationType === "Buried" && (
+                              {effectiveInstallationType === "Buried" && (
                                 <span className={`text-xs px-2 py-0.5 rounded ${damage.soilCorrosion === 'Severe' || damage.soilCorrosion === 'High' ? 'bg-red-100 text-red-700' : damage.soilCorrosion === 'Moderate' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
                                   Soil: {damage.soilCorrosion}
                                 </span>
@@ -3474,12 +3512,12 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                 rationale: recommendation.rationale,
                                 engineeringNotes: recommendation.engineeringNotes,
                                 environmentProfile: {
-                                  installationType: globalSpecs?.ecpInstallationType,
+                                  installationType: effectiveInstallationType,
                                   iso12944Category: effectiveIso12944,
                                   marineInfluence: effectiveMarineInfluence,
                                   industrialPollution: effectiveIndustrialPollution,
-                                  uvExposure: globalSpecs?.ecpUvExposure,
-                                  mechanicalRisk: globalSpecs?.ecpMechanicalRisk,
+                                  uvExposure: effectiveUvExposure,
+                                  mechanicalRisk: effectiveMechanicalRisk,
                                   temperature: effectiveEcpTemperature,
                                   serviceLife: globalSpecs?.ecpServiceLife
                                 },
@@ -4859,81 +4897,66 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
         </div>
 
         {/* Internal Lining */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Internal Lining</h3>
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <h3 className="text-xs font-semibold text-gray-800 mb-2">Internal Lining</h3>
 
           {/* Auto-set to Galvanized when external is galvanized */}
           {globalSpecs?.externalCoatingType === 'Galvanized' && (
-            <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+            <div className="bg-green-50 border-2 border-green-500 rounded-lg p-2 mb-2">
+              <div className="flex items-center gap-1.5 mb-1">
+                <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                 </svg>
-                <h4 className="text-md font-bold text-green-800">Internal Coating: Hot-Dip Galvanized (Auto-set)</h4>
+                <h4 className="text-xs font-bold text-green-800">Internal: Hot-Dip Galvanized (Auto-set)</h4>
               </div>
-              <p className="text-sm text-green-700 mb-3">
-                When external coating is galvanized, the internal surface is also galvanized as part of the same hot-dip galvanizing process.
-              </p>
-              <div className="bg-white rounded-lg p-3 border border-green-300">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-green-600 font-medium">Process:</span>
-                    <span className="text-green-800 ml-2">Hot-Dip Galvanizing (ISO 1461)</span>
-                  </div>
-                  <div>
-                    <span className="text-green-600 font-medium">Thickness:</span>
-                    <span className="text-green-800 ml-2">45-85 μm (internal surfaces)</span>
-                  </div>
+              <div className="bg-white rounded p-2 border border-green-300">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><span className="text-green-600 font-medium">Process:</span> <span className="text-green-800">ISO 1461</span></div>
+                  <div><span className="text-green-600 font-medium">Thickness:</span> <span className="text-green-800">45-85 μm</span></div>
                 </div>
               </div>
-              <p className="text-xs text-green-600 mt-3">
-                Note: Internal and external galvanizing occur simultaneously - no separate internal lining required.
-              </p>
             </div>
           )}
 
           {/* Material Transfer Profile - Lining Recommendation Assistant */}
           {!globalSpecs?.internalLiningConfirmed && globalSpecs?.externalCoatingType !== 'Galvanized' && (
-            <div className="mb-4">
+            <div className="mb-2">
               <button
                 type="button"
                 onClick={() => onUpdateGlobalSpecs({
                   ...globalSpecs,
                   showMaterialTransferProfile: !globalSpecs?.showMaterialTransferProfile
                 })}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium text-sm mb-3"
+                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-medium text-xs mb-2"
               >
-                <svg className={`w-4 h-4 transition-transform ${globalSpecs?.showMaterialTransferProfile ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-3 h-3 transition-transform ${globalSpecs?.showMaterialTransferProfile ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-                {globalSpecs?.showMaterialTransferProfile ? 'Hide' : 'Show'} Lining Recommendation Assistant (ASTM/ISO)
+                {globalSpecs?.showMaterialTransferProfile ? 'Hide' : 'Show'} Lining Assistant (ASTM/ISO)
               </button>
 
               {globalSpecs?.showMaterialTransferProfile && (
-                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-xl p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
-                    <h4 className="text-md font-semibold text-indigo-900">Material Transfer Profile</h4>
+                    <h4 className="text-sm font-semibold text-indigo-900">Material Transfer Profile</h4>
                   </div>
-                  <p className="text-xs text-indigo-700 mb-4">
-                    Define your application parameters to receive standards-based lining recommendations per ASTM/ISO guidelines.
-                  </p>
 
                   {/* Material Properties */}
-                  <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-                    <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <span className="w-6 h-6 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                  <div className="bg-white rounded-md p-2 mb-2 border border-gray-200">
+                    <h5 className="text-xs font-semibold text-gray-800 mb-2 flex items-center gap-1.5">
+                      <span className="w-4 h-4 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-[10px] font-bold">1</span>
                       Material Properties
                     </h5>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Particle Size</label>
+                        <label className="block text-[10px] font-medium text-gray-700 mb-0.5">Particle Size</label>
                         <select
                           value={globalSpecs?.mtpParticleSize || ""}
                           onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, mtpParticleSize: e.target.value || undefined })}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
                           <option value="Fine">Fine (&lt;0.5mm D50)</option>
@@ -6389,6 +6412,112 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           </div>
         )}
 
+        {/* Nuts, Bolts, Washers & Gaskets Section */}
+        {showFastenersGaskets && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
+              <span className="text-2xl">⚙️</span>
+              <h3 className="text-xl font-bold text-gray-900">Nuts, Bolts, Washers & Gaskets</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Bolt/Nut/Washer Grade Selection */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Bolt, Nut & Washer Grade
+                </label>
+                <select
+                  value={globalSpecs?.boltGrade || ''}
+                  onChange={(e) => onUpdateGlobalSpecs('boltGrade', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+                >
+                  <option value="">Select bolt grade...</option>
+                  <optgroup label="Carbon Steel (Standard Temperature)">
+                    <option value="B7/2H">ASTM A193 B7 / A194 2H (Standard, -40°C to 400°C)</option>
+                    <option value="B7/2H-HDG">ASTM A193 B7 / A194 2H - Hot Dip Galvanized</option>
+                    <option value="B16/4">ASTM A193 B16 / A194 4 (High Temperature, to 540°C)</option>
+                  </optgroup>
+                  <optgroup label="Low Temperature Service">
+                    <option value="B7M/2HM">ASTM A320 B7M / A194 2HM (-100°C to 200°C)</option>
+                    <option value="L7/7">ASTM A320 L7 / A194 7 (-100°C to 200°C)</option>
+                    <option value="L7M/7M">ASTM A320 L7M / A194 7M (-100°C to 200°C)</option>
+                    <option value="L43/7">ASTM A320 L43 / A194 7 (to -100°C)</option>
+                  </optgroup>
+                  <optgroup label="Stainless Steel">
+                    <option value="B8/8">ASTM A193 B8 / A194 8 (304 SS)</option>
+                    <option value="B8M/8M">ASTM A193 B8M / A194 8M (316 SS)</option>
+                    <option value="B8C/8C">ASTM A193 B8C / A194 8C (347 SS)</option>
+                    <option value="B8T/8T">ASTM A193 B8T / A194 8T (321 SS)</option>
+                  </optgroup>
+                  <optgroup label="High Alloy / Special">
+                    <option value="B8S/8S">ASTM A193 B8S / A194 8S (Duplex 2205)</option>
+                    <option value="Monel">Monel 400/K-500</option>
+                    <option value="Inconel">Inconel 625/718</option>
+                  </optgroup>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Grade selection affects temperature range and corrosion resistance
+                </p>
+              </div>
+
+              {/* Gasket Type Selection */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Gasket Type & Thickness
+                </label>
+                <select
+                  value={globalSpecs?.gasketType || ''}
+                  onChange={(e) => onUpdateGlobalSpecs('gasketType', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+                >
+                  <option value="">Select gasket type...</option>
+                  <optgroup label="Spiral Wound (ASME B16.20)">
+                    <option value="SW-CGI-316">Spiral Wound - CGI/316SS - 3.2mm (Standard)</option>
+                    <option value="SW-CGI-316-IR">Spiral Wound - CGI/316SS with Inner Ring - 3.2mm</option>
+                    <option value="SW-Graphite-316">Spiral Wound - Graphite/316SS - 4.5mm (High Temp)</option>
+                    <option value="SW-PTFE-316">Spiral Wound - PTFE/316SS - 3.2mm (Chemical Service)</option>
+                  </optgroup>
+                  <optgroup label="Ring Joint (RTJ) - ASME B16.20">
+                    <option value="RTJ-R-SS">RTJ Ring - Soft Iron/SS 304 (R-Series)</option>
+                    <option value="RTJ-RX-SS">RTJ Ring - SS 316 (RX-Series, High Pressure)</option>
+                    <option value="RTJ-BX-SS">RTJ Ring - SS 316 (BX-Series, API 6A)</option>
+                    <option value="RTJ-R-Inconel">RTJ Ring - Inconel 625 (High Temp/Corrosive)</option>
+                  </optgroup>
+                  <optgroup label="Non-Metallic">
+                    <option value="PTFE-1.5">PTFE Sheet - 1.5mm (Chemical Service)</option>
+                    <option value="PTFE-3.0">PTFE Sheet - 3.0mm (Chemical Service)</option>
+                    <option value="Graphite-1.5">Flexible Graphite - 1.5mm (High Temp to 450°C)</option>
+                    <option value="Graphite-3.0">Flexible Graphite - 3.0mm (High Temp to 450°C)</option>
+                    <option value="CAF-1.5">Compressed Asbestos Free (CAF) - 1.5mm</option>
+                    <option value="CAF-3.0">Compressed Asbestos Free (CAF) - 3.0mm</option>
+                  </optgroup>
+                  <optgroup label="Rubber/Elastomer">
+                    <option value="EPDM-3.0">EPDM Rubber - 3.0mm (Water/Steam)</option>
+                    <option value="NBR-3.0">Nitrile (NBR) - 3.0mm (Oil/Fuel)</option>
+                    <option value="Viton-3.0">Viton (FKM) - 3.0mm (Chemical/High Temp)</option>
+                    <option value="Neoprene-3.0">Neoprene - 3.0mm (General Purpose)</option>
+                  </optgroup>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Select based on pressure class, temperature, and media compatibility
+                </p>
+              </div>
+            </div>
+
+            {/* Info note */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-amber-700 text-xs">
+                  Bolt quantities and dimensions will be automatically calculated based on your flange selections per ASME B16.5/B16.47 standards.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Surface Protection Requirements Section */}
         {showSurfaceProtection && (
           <div className="space-y-3">
@@ -6434,7 +6563,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
         )}
 
         {/* No Products Selected Warning */}
-        {!showSteelPipes && !showHdpePipes && !showPvcPipes && !showSurfaceProtection && !showTransportInstall && (
+        {!showSteelPipes && !showFastenersGaskets && !showHdpePipes && !showPvcPipes && !showStructuralSteel && !showSurfaceProtection && !showTransportInstall && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <div className="flex items-center gap-3">
               <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -7107,8 +7236,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             specs: { ...entry.specs, workingPressureBar: pressure }
                           });
                           
-                          // Auto-select flange specifications based on pressure
+                          // Auto-select flange specifications based on pressure and temperature
                           const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                          const temperature = entry.specs?.workingTemperatureC ? parseFloat(String(entry.specs.workingTemperatureC)) : undefined;
+                          // Get material group from steel specification
+                          const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
+                          const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
                           if (pressure > 0 && flangeStandardId && autoSelectFlangeSpecs) {
                             setTimeout(() => {
                               autoSelectFlangeSpecs(
@@ -7116,7 +7249,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 'bend',
                                 pressure,
                                 flangeStandardId,
-                                (updates: any) => onUpdateEntry(entry.id, { specs: { ...entry.specs, ...updates } })
+                                (updates: any) => onUpdateEntry(entry.id, { specs: { ...entry.specs, ...updates } }),
+                                temperature,
+                                materialGroup
                               );
                             }, 300);
                           }
@@ -7143,6 +7278,26 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           onUpdateEntry(entry.id, {
                             specs: { ...entry.specs, workingTemperatureC: temperature }
                           });
+
+                          // Re-select flange pressure class when temperature changes
+                          const pressure = entry.specs?.workingPressureBar;
+                          const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                          // Get material group from steel specification
+                          const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
+                          const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
+                          if (pressure && pressure > 0 && flangeStandardId && autoSelectFlangeSpecs) {
+                            setTimeout(() => {
+                              autoSelectFlangeSpecs(
+                                entry.id,
+                                'bend',
+                                pressure,
+                                flangeStandardId,
+                                (updates: any) => onUpdateEntry(entry.id, { specs: { ...entry.specs, ...updates } }),
+                                temperature,
+                                materialGroup
+                              );
+                            }, 300);
+                          }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 text-gray-900"
                         min="-200"
@@ -7151,7 +7306,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         placeholder="20"
                       />
                       <p className="mt-0.5 text-xs text-gray-500">
-                        Operating temperature for specification selection
+                        Operating temperature affects flange P/T rating
                       </p>
                     </div>
                   </div>
@@ -7489,8 +7644,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             specs: { ...entry.specs, workingPressureBar: pressure }
                           });
                           
-                          // Auto-select flange specifications based on pressure
+                          // Auto-select flange specifications based on pressure and temperature
                           const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                          const temperature = entry.specs?.workingTemperatureC ? parseFloat(String(entry.specs.workingTemperatureC)) : undefined;
+                          // Get material group from steel specification
+                          const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
+                          const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
                           if (pressure > 0 && flangeStandardId && autoSelectFlangeSpecs) {
                             setTimeout(() => {
                               autoSelectFlangeSpecs(
@@ -7498,7 +7657,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 'straight-pipe',
                                 pressure,
                                 flangeStandardId,
-                                (updates: any) => onUpdateEntry(entry.id, { specs: { ...entry.specs, ...updates } })
+                                (updates: any) => onUpdateEntry(entry.id, { specs: { ...entry.specs, ...updates } }),
+                                temperature,
+                                materialGroup
                               );
                             }, 300);
                           }
@@ -7525,6 +7686,26 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           onUpdateEntry(entry.id, {
                             specs: { ...entry.specs, workingTemperatureC: temperature }
                           });
+
+                          // Re-select flange pressure class when temperature changes
+                          const pressure = entry.specs?.workingPressureBar;
+                          const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                          // Get material group from steel specification
+                          const steelSpec2 = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
+                          const materialGroup2 = getFlangeMaterialGroup(steelSpec2?.steelSpecName);
+                          if (pressure && pressure > 0 && flangeStandardId && autoSelectFlangeSpecs) {
+                            setTimeout(() => {
+                              autoSelectFlangeSpecs(
+                                entry.id,
+                                'straight-pipe',
+                                pressure,
+                                flangeStandardId,
+                                (updates: any) => onUpdateEntry(entry.id, { specs: { ...entry.specs, ...updates } }),
+                                temperature,
+                                materialGroup2
+                              );
+                            }, 300);
+                          }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 text-gray-900"
                         min="-200"
@@ -7533,7 +7714,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         placeholder="20"
                       />
                       <p className="mt-0.5 text-xs text-gray-500">
-                        Operating temperature for specification selection
+                        Operating temperature affects flange P/T rating
                       </p>
                     </div>
                   </div>
@@ -9045,15 +9226,111 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           nominalBores
         });
       } catch (error) {
-        // Silently handle backend unavailable - fallback to empty arrays
+        // Silently handle backend unavailable - use fallback data
         if (error instanceof Error && error.message !== 'Backend unavailable') {
           console.error('Error loading master data:', error);
         }
+        // Fallback steel specifications
+        const fallbackSteelSpecs = [
+          // South African Standards
+          { id: 1, steelSpecName: 'SABS 62 ERW Medium' },
+          { id: 2, steelSpecName: 'SABS 62 ERW Heavy' },
+          { id: 3, steelSpecName: 'SABS 719 ERW' },
+          // Carbon Steel - ASTM A106 (High-Temp Seamless)
+          { id: 4, steelSpecName: 'ASTM A106 Grade A' },
+          { id: 5, steelSpecName: 'ASTM A106 Grade B' },
+          { id: 6, steelSpecName: 'ASTM A106 Grade C' },
+          // Carbon Steel - ASTM A53 (General Purpose)
+          { id: 7, steelSpecName: 'ASTM A53 Grade A' },
+          { id: 8, steelSpecName: 'ASTM A53 Grade B' },
+          // Line Pipe - API 5L (Oil/Gas Pipelines)
+          { id: 9, steelSpecName: 'API 5L Grade A' },
+          { id: 10, steelSpecName: 'API 5L Grade B' },
+          { id: 11, steelSpecName: 'API 5L X42' },
+          { id: 12, steelSpecName: 'API 5L X46' },
+          { id: 13, steelSpecName: 'API 5L X52' },
+          { id: 14, steelSpecName: 'API 5L X56' },
+          { id: 15, steelSpecName: 'API 5L X60' },
+          { id: 16, steelSpecName: 'API 5L X65' },
+          { id: 17, steelSpecName: 'API 5L X70' },
+          { id: 18, steelSpecName: 'API 5L X80' },
+          // Low Temperature - ASTM A333
+          { id: 19, steelSpecName: 'ASTM A333 Grade 1' },
+          { id: 20, steelSpecName: 'ASTM A333 Grade 3' },
+          { id: 21, steelSpecName: 'ASTM A333 Grade 6' },
+          // Heat Exchangers/Boilers
+          { id: 22, steelSpecName: 'ASTM A179' },
+          { id: 23, steelSpecName: 'ASTM A192' },
+          // Structural Tubing - ASTM A500
+          { id: 24, steelSpecName: 'ASTM A500 Grade A' },
+          { id: 25, steelSpecName: 'ASTM A500 Grade B' },
+          { id: 26, steelSpecName: 'ASTM A500 Grade C' },
+          // Alloy Steel - ASTM A335 (Chrome-Moly)
+          { id: 27, steelSpecName: 'ASTM A335 P5' },
+          { id: 28, steelSpecName: 'ASTM A335 P9' },
+          { id: 29, steelSpecName: 'ASTM A335 P11' },
+          { id: 30, steelSpecName: 'ASTM A335 P22' },
+          { id: 31, steelSpecName: 'ASTM A335 P91' },
+          // Stainless Steel - ASTM A312
+          { id: 32, steelSpecName: 'ASTM A312 TP304' },
+          { id: 33, steelSpecName: 'ASTM A312 TP304L' },
+          { id: 34, steelSpecName: 'ASTM A312 TP316' },
+          { id: 35, steelSpecName: 'ASTM A312 TP316L' },
+          { id: 36, steelSpecName: 'ASTM A312 TP321' },
+          { id: 37, steelSpecName: 'ASTM A312 TP347' },
+        ];
+        // Fallback flange standards
+        const fallbackFlangeStandards = [
+          // South African Standards
+          { id: 1, code: 'SABS 1123' },
+          // British Standards
+          { id: 2, code: 'BS 4504' },
+          { id: 3, code: 'BS 10' },
+          { id: 4, code: 'BS 1560' },
+          // European Standards
+          { id: 5, code: 'EN 1092-1' },
+          { id: 6, code: 'DIN 2501' },
+          // American Standards (ASME/ANSI)
+          { id: 7, code: 'ASME B16.5' },
+          { id: 8, code: 'ASME B16.47 Series A' },
+          { id: 9, code: 'ASME B16.47 Series B' },
+          { id: 10, code: 'ANSI B16.5' },
+          // API Standards
+          { id: 11, code: 'API 6A' },
+          // Japanese Standards
+          { id: 12, code: 'JIS B2220' },
+        ];
+        // Fallback nominal bores
+        const fallbackNominalBores = [
+          { id: 1, nominalDiameterMm: 15, outsideDiameterMm: 21.3 },
+          { id: 2, nominalDiameterMm: 20, outsideDiameterMm: 26.7 },
+          { id: 3, nominalDiameterMm: 25, outsideDiameterMm: 33.4 },
+          { id: 4, nominalDiameterMm: 32, outsideDiameterMm: 42.2 },
+          { id: 5, nominalDiameterMm: 40, outsideDiameterMm: 48.3 },
+          { id: 6, nominalDiameterMm: 50, outsideDiameterMm: 60.3 },
+          { id: 7, nominalDiameterMm: 65, outsideDiameterMm: 73.0 },
+          { id: 8, nominalDiameterMm: 80, outsideDiameterMm: 88.9 },
+          { id: 9, nominalDiameterMm: 100, outsideDiameterMm: 114.3 },
+          { id: 10, nominalDiameterMm: 125, outsideDiameterMm: 139.7 },
+          { id: 11, nominalDiameterMm: 150, outsideDiameterMm: 168.3 },
+          { id: 12, nominalDiameterMm: 200, outsideDiameterMm: 219.1 },
+          { id: 13, nominalDiameterMm: 250, outsideDiameterMm: 273.0 },
+          { id: 14, nominalDiameterMm: 300, outsideDiameterMm: 323.8 },
+          { id: 15, nominalDiameterMm: 350, outsideDiameterMm: 355.6 },
+          { id: 16, nominalDiameterMm: 400, outsideDiameterMm: 406.4 },
+          { id: 17, nominalDiameterMm: 450, outsideDiameterMm: 457.2 },
+          { id: 18, nominalDiameterMm: 500, outsideDiameterMm: 508.0 },
+          { id: 19, nominalDiameterMm: 600, outsideDiameterMm: 609.6 },
+          { id: 20, nominalDiameterMm: 750, outsideDiameterMm: 762.0 },
+          { id: 21, nominalDiameterMm: 900, outsideDiameterMm: 914.4 },
+          { id: 22, nominalDiameterMm: 1000, outsideDiameterMm: 1016.0 },
+          { id: 23, nominalDiameterMm: 1200, outsideDiameterMm: 1219.2 },
+        ];
         setMasterData({
-          steelSpecs: [],
-          flangeStandards: [],
+          steelSpecs: fallbackSteelSpecs,
+          flangeStandards: fallbackFlangeStandards,
           pressureClasses: [],
-          nominalBores: []
+          nominalBores: fallbackNominalBores
         });
       } finally {
         setIsLoadingMasterData(false);
@@ -9063,11 +9340,61 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     loadMasterData();
   }, []);
 
-  // Helper function to recommend pressure class based on working pressure (in bar)
-  const getRecommendedPressureClass = (workingPressureBar: number, pressureClasses: any[]) => {
+  // Temperature derating factors based on ASME B16.5 Carbon Steel A105
+  // Returns the percentage of ambient rating available at given temperature
+  const getTemperatureDerating = (temperatureCelsius: number): number => {
+    // Derating points from ASME B16.5 (approximate)
+    const deratingCurve = [
+      { temp: -29, factor: 1.00 },
+      { temp: 38, factor: 1.00 },   // Ambient - 100%
+      { temp: 93, factor: 0.91 },
+      { temp: 149, factor: 0.81 },
+      { temp: 204, factor: 0.70 },
+      { temp: 260, factor: 0.60 },
+      { temp: 316, factor: 0.49 },
+      { temp: 343, factor: 0.43 },
+      { temp: 371, factor: 0.39 },
+      { temp: 399, factor: 0.33 },
+      { temp: 427, factor: 0.28 },
+      { temp: 454, factor: 0.23 },
+      { temp: 482, factor: 0.18 },
+      { temp: 510, factor: 0.12 },
+      { temp: 538, factor: 0.07 },
+    ];
+
+    // Below minimum temp - use 100%
+    if (temperatureCelsius <= deratingCurve[0].temp) {
+      return 1.0;
+    }
+
+    // Above maximum temp - use minimum factor
+    if (temperatureCelsius >= deratingCurve[deratingCurve.length - 1].temp) {
+      return deratingCurve[deratingCurve.length - 1].factor;
+    }
+
+    // Find surrounding points and interpolate
+    for (let i = 0; i < deratingCurve.length - 1; i++) {
+      if (temperatureCelsius >= deratingCurve[i].temp && temperatureCelsius <= deratingCurve[i + 1].temp) {
+        const lower = deratingCurve[i];
+        const upper = deratingCurve[i + 1];
+        const tempRange = upper.temp - lower.temp;
+        const factorRange = upper.factor - lower.factor;
+        const tempOffset = temperatureCelsius - lower.temp;
+        return lower.factor + (factorRange * tempOffset / tempRange);
+      }
+    }
+
+    return 1.0;
+  };
+
+  // Helper function to recommend pressure class based on working pressure (in bar) and temperature
+  const getRecommendedPressureClass = (workingPressureBar: number, pressureClasses: any[], temperatureCelsius?: number) => {
     if (!workingPressureBar || !pressureClasses.length) return null;
 
-    // Pressure class mappings for letter/special designations (bar ratings)
+    // Get temperature derating factor (defaults to 1.0 for ambient/unknown)
+    const deratingFactor = temperatureCelsius !== undefined ? getTemperatureDerating(temperatureCelsius) : 1.0;
+
+    // Pressure class mappings for letter/special designations (bar ratings at ambient)
     const specialMappings: { [key: string]: number } = {
       // BS 10 & AS 2129 Table designations
       'T/D': 7,    // Table D: ~7 bar
@@ -9081,73 +9408,72 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
       'Class F': 21,  // ~300 psi = 21 bar
     };
 
-    // ASME Class to bar conversion (approximate at ambient temperature)
+    // ASME Class to bar conversion (at ambient temperature ~38°C)
     const asmeClassToBar: { [key: string]: number } = {
       '75': 10,    // Class 75 ≈ 10 bar (B16.47)
       '150': 20,   // Class 150 ≈ 20 bar
-      '300': 50,   // Class 300 ≈ 50 bar
+      '300': 51,   // Class 300 ≈ 51 bar
       '400': 68,   // Class 400 ≈ 68 bar
-      '600': 100,  // Class 600 ≈ 100 bar
-      '900': 150,  // Class 900 ≈ 150 bar
-      '1500': 250, // Class 1500 ≈ 250 bar
-      '2500': 420, // Class 2500 ≈ 420 bar
+      '600': 102,  // Class 600 ≈ 102 bar
+      '900': 153,  // Class 900 ≈ 153 bar
+      '1500': 255, // Class 1500 ≈ 255 bar
+      '2500': 425, // Class 2500 ≈ 425 bar
     };
 
-    // Extract rating from designation
+    // Extract rating from designation and apply temperature derating
     const classesWithRating = pressureClasses.map(pc => {
       const designation = pc.designation?.trim();
+      let ambientRating = 0;
 
       // Check if it's a special letter-based designation (BS 10, AS 2129, AWWA)
       if (specialMappings[designation]) {
-        return { ...pc, barRating: specialMappings[designation] };
+        ambientRating = specialMappings[designation];
       }
-
       // Check if it's ASME Class designation (75, 150, 300, etc.)
-      if (asmeClassToBar[designation]) {
-        return { ...pc, barRating: asmeClassToBar[designation] };
+      else if (asmeClassToBar[designation]) {
+        ambientRating = asmeClassToBar[designation];
       }
-
       // Check for API 6A psi format (2000 psi, 5000 psi, etc.)
-      const psiMatch = designation?.match(/^(\d+)\s*psi$/i);
-      if (psiMatch) {
-        // Convert psi to bar (1 psi ≈ 0.0689 bar)
-        return { ...pc, barRating: Math.round(parseInt(psiMatch[1]) * 0.0689) };
-      }
-
-      // Check for PN (Pressure Nominal) format - EN, DIN, GOST, AS 4087
-      // PN values are direct bar ratings (PN 16 = 16 bar)
-      const pnMatch = designation?.match(/^PN\s*(\d+)/i);
-      if (pnMatch) {
-        return { ...pc, barRating: parseInt(pnMatch[1]) };
-      }
-
-      // Check for JIS K format (5K, 10K, etc.) - K values are approx bar
-      const jisMatch = designation?.match(/^(\d+)K$/i);
-      if (jisMatch) {
-        return { ...pc, barRating: parseInt(jisMatch[1]) };
-      }
-
-      // SABS 1123 format (600/3, 1000/3, etc.) - divide by 100
-      const sabsMatch = designation?.match(/^(\d+)\/\d+$/);
-      if (sabsMatch) {
-        const numericValue = parseInt(sabsMatch[1]);
-        // SABS uses rating * 100 (600 = 6 bar, 4000 = 40 bar)
-        if (numericValue >= 500) {
-          return { ...pc, barRating: numericValue / 100 };
+      else {
+        const psiMatch = designation?.match(/^(\d+)\s*psi$/i);
+        if (psiMatch) {
+          ambientRating = Math.round(parseInt(psiMatch[1]) * 0.0689);
         }
-        // BS 4504 uses direct values (6/3 = 6 bar, 40/3 = 40 bar)
-        return { ...pc, barRating: numericValue };
+        // Check for PN (Pressure Nominal) format - EN, DIN, GOST, AS 4087
+        else {
+          const pnMatch = designation?.match(/^PN\s*(\d+)/i);
+          if (pnMatch) {
+            ambientRating = parseInt(pnMatch[1]);
+          }
+          // Check for JIS K format (5K, 10K, etc.)
+          else {
+            const jisMatch = designation?.match(/^(\d+)K$/i);
+            if (jisMatch) {
+              ambientRating = parseInt(jisMatch[1]);
+            }
+            // SABS 1123 format (600/3, 1000/3, etc.)
+            else {
+              const sabsMatch = designation?.match(/^(\d+)\/\d+$/);
+              if (sabsMatch) {
+                const numericValue = parseInt(sabsMatch[1]);
+                ambientRating = numericValue >= 500 ? numericValue / 100 : numericValue;
+              }
+              // Fallback: try to extract any leading number
+              else {
+                const numMatch = designation?.match(/^(\d+)/);
+                if (numMatch) {
+                  const num = parseInt(numMatch[1]);
+                  ambientRating = num >= 500 ? num / 100 : num;
+                }
+              }
+            }
+          }
+        }
       }
 
-      // Fallback: try to extract any leading number
-      const numMatch = designation?.match(/^(\d+)/);
-      if (numMatch) {
-        const num = parseInt(numMatch[1]);
-        // If number is >= 500, assume SABS style
-        return { ...pc, barRating: num >= 500 ? num / 100 : num };
-      }
-
-      return { ...pc, barRating: 0 };
+      // Apply temperature derating to get actual rating at operating temperature
+      const actualRating = ambientRating * deratingFactor;
+      return { ...pc, barRating: actualRating, ambientRating };
     }).filter(pc => pc.barRating > 0);
 
     if (classesWithRating.length === 0) return null;
@@ -9155,14 +9481,132 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     // Sort by bar rating ascending
     classesWithRating.sort((a, b) => a.barRating - b.barRating);
 
-    // Find the lowest rating that meets or exceeds the working pressure
+    // Find the lowest rating that meets or exceeds the working pressure at operating temperature
     const recommended = classesWithRating.find(pc => pc.barRating >= workingPressureBar);
+
+    if (recommended) {
+      console.log(`Fallback P/T: Selected ${recommended.designation} (${recommended.barRating.toFixed(1)} bar at ${temperatureCelsius ?? 'ambient'}°C) for ${workingPressureBar} bar`);
+    }
 
     return recommended || classesWithRating[classesWithRating.length - 1]; // Return highest if none match
   };
 
+  // Fallback pressure classes by flange standard
+  const getFallbackPressureClasses = (standardId: number) => {
+    const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
+    const code = standard?.code || '';
+
+    // SABS 1123 pressure classes
+    if (code.includes('SABS 1123')) {
+      return [
+        { id: 101, designation: '600/3', standardId },
+        { id: 102, designation: '1000/3', standardId },
+        { id: 103, designation: '1600/3', standardId },
+        { id: 104, designation: '2500/3', standardId },
+        { id: 105, designation: '4000/3', standardId },
+      ];
+    }
+    // BS 4504 pressure classes
+    if (code.includes('BS 4504')) {
+      return [
+        { id: 201, designation: '6/3', standardId },
+        { id: 202, designation: '10/3', standardId },
+        { id: 203, designation: '16/3', standardId },
+        { id: 204, designation: '25/3', standardId },
+        { id: 205, designation: '40/3', standardId },
+        { id: 206, designation: '64/3', standardId },
+        { id: 207, designation: '100/3', standardId },
+        { id: 208, designation: '160/3', standardId },
+      ];
+    }
+    // BS 10 pressure classes
+    if (code.includes('BS 10')) {
+      return [
+        { id: 301, designation: 'T/D', standardId },
+        { id: 302, designation: 'T/E', standardId },
+        { id: 303, designation: 'T/F', standardId },
+        { id: 304, designation: 'T/H', standardId },
+      ];
+    }
+    // EN 1092-1 / DIN 2501 pressure classes (PN ratings)
+    if (code.includes('EN 1092') || code.includes('DIN 2501')) {
+      return [
+        { id: 401, designation: 'PN 6', standardId },
+        { id: 402, designation: 'PN 10', standardId },
+        { id: 403, designation: 'PN 16', standardId },
+        { id: 404, designation: 'PN 25', standardId },
+        { id: 405, designation: 'PN 40', standardId },
+        { id: 406, designation: 'PN 63', standardId },
+        { id: 407, designation: 'PN 100', standardId },
+        { id: 408, designation: 'PN 160', standardId },
+        { id: 409, designation: 'PN 250', standardId },
+        { id: 410, designation: 'PN 320', standardId },
+        { id: 411, designation: 'PN 400', standardId },
+      ];
+    }
+    // ASME B16.5 / ANSI B16.5 pressure classes
+    if (code.includes('ASME B16.5') || code.includes('ANSI B16.5')) {
+      return [
+        { id: 501, designation: '150', standardId },
+        { id: 502, designation: '300', standardId },
+        { id: 503, designation: '400', standardId },
+        { id: 504, designation: '600', standardId },
+        { id: 505, designation: '900', standardId },
+        { id: 506, designation: '1500', standardId },
+        { id: 507, designation: '2500', standardId },
+      ];
+    }
+    // ASME B16.47 Series A & B pressure classes
+    if (code.includes('ASME B16.47')) {
+      return [
+        { id: 601, designation: '75', standardId },
+        { id: 602, designation: '150', standardId },
+        { id: 603, designation: '300', standardId },
+        { id: 604, designation: '400', standardId },
+        { id: 605, designation: '600', standardId },
+        { id: 606, designation: '900', standardId },
+      ];
+    }
+    // API 6A pressure classes (psi ratings)
+    if (code.includes('API 6A')) {
+      return [
+        { id: 701, designation: '2000 psi', standardId },
+        { id: 702, designation: '3000 psi', standardId },
+        { id: 703, designation: '5000 psi', standardId },
+        { id: 704, designation: '10000 psi', standardId },
+        { id: 705, designation: '15000 psi', standardId },
+        { id: 706, designation: '20000 psi', standardId },
+      ];
+    }
+    // JIS B2220 pressure classes (K ratings)
+    if (code.includes('JIS')) {
+      return [
+        { id: 801, designation: '5K', standardId },
+        { id: 802, designation: '10K', standardId },
+        { id: 803, designation: '16K', standardId },
+        { id: 804, designation: '20K', standardId },
+        { id: 805, designation: '30K', standardId },
+        { id: 806, designation: '40K', standardId },
+        { id: 807, designation: '63K', standardId },
+      ];
+    }
+    // BS 1560 pressure classes (same as ASME)
+    if (code.includes('BS 1560')) {
+      return [
+        { id: 901, designation: '150', standardId },
+        { id: 902, designation: '300', standardId },
+        { id: 903, designation: '600', standardId },
+        { id: 904, designation: '900', standardId },
+        { id: 905, designation: '1500', standardId },
+        { id: 906, designation: '2500', standardId },
+      ];
+    }
+    // Default empty
+    return [];
+  };
+
   // Fetch available pressure classes for a standard and auto-select recommended
-    const fetchAndSelectPressureClass = async (standardId: number, workingPressureBar?: number, temperatureCelsius?: number) => {
+  const fetchAndSelectPressureClass = async (standardId: number, workingPressureBar?: number, temperatureCelsius?: number, materialGroup?: string) => {
     try {
       const { masterDataApi } = await import('@/app/lib/api/client');
       const classes = await masterDataApi.getFlangePressureClassesByStandard(standardId);
@@ -9170,28 +9614,29 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
       // Auto-select recommended pressure class if working pressure is available
       if (workingPressureBar && classes.length > 0) {
-        // Check if this is ASME B16.5 and we have temperature data
-        const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
-        if (standard?.code === 'ASME B16.5' && temperatureCelsius !== undefined) {
-          // Use the P/T rating API for temperature-based selection
+        // Try P/T rating API for temperature-based selection (works for any standard with P/T data)
+        if (temperatureCelsius !== undefined) {
           try {
+            // Build URL with material group if provided
+            const ptMaterialGroup = materialGroup || 'Carbon Steel A105 (Group 1.1)';
             const response = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/flange-pt-ratings/recommended-class?standardId=${standardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}`
+              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/flange-pt-ratings/recommended-class?standardId=${standardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`
             );
             if (response.ok) {
               const recommendedClassId = await response.json();
               if (recommendedClassId) {
-                console.log(`P/T rating: Selected class ID ${recommendedClassId} for ${workingPressureBar} bar at ${temperatureCelsius}°C`);
+                const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
+                console.log(`P/T rating: Selected class ID ${recommendedClassId} for ${standard?.code || standardId} at ${workingPressureBar} bar, ${temperatureCelsius}°C (${ptMaterialGroup})`);
                 return recommendedClassId;
               }
             }
           } catch (ptError) {
-            console.warn('P/T rating API not available, falling back to ambient calculation:', ptError);
+            // Silently fall back to ambient calculation if P/T API fails
           }
         }
 
-        // Fallback to ambient temperature calculation for other standards or if P/T API fails
-        const recommended = getRecommendedPressureClass(workingPressureBar, classes);
+        // Fallback to temperature-derated calculation if P/T API not available
+        const recommended = getRecommendedPressureClass(workingPressureBar, classes, temperatureCelsius);
         if (recommended) {
           return recommended.id;
         }
@@ -9199,10 +9644,22 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
       return null;
     } catch (error) {
+      // Use fallback pressure classes when backend is unavailable
+      const fallbackClasses = getFallbackPressureClasses(standardId);
+      setAvailablePressureClasses(fallbackClasses);
+
       if (error instanceof Error && error.message !== 'Backend unavailable') {
         console.error('Error fetching pressure classes:', error);
       }
-      setAvailablePressureClasses([]);
+
+      // Auto-select recommended from fallback classes with temperature derating
+      if (workingPressureBar && fallbackClasses.length > 0) {
+        const recommended = getRecommendedPressureClass(workingPressureBar, fallbackClasses, temperatureCelsius);
+        if (recommended) {
+          return recommended.id;
+        }
+      }
+
       return null;
     }
   };
@@ -9267,11 +9724,13 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
   // Auto-select flange specifications based on item-level operating conditions
   const autoSelectFlangeSpecs = async (
-    entryId: string, 
+    entryId: string,
     entryType: 'straight-pipe' | 'bend',
-    workingPressureBar: number, 
+    workingPressureBar: number,
     flangeStandardId?: number,
-    updateCallback?: (updates: any) => void
+    updateCallback?: (updates: any) => void,
+    temperatureCelsius?: number,
+    materialGroup?: string
   ) => {
     if (!workingPressureBar || !flangeStandardId) return;
 
@@ -9279,18 +9738,42 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
       // Fetch pressure classes for the standard and get recommendation
       const { masterDataApi } = await import('@/app/lib/api/client');
       const classes = await masterDataApi.getFlangePressureClassesByStandard(flangeStandardId);
-      
+
       if (classes.length > 0) {
-        const recommended = getRecommendedPressureClass(workingPressureBar, classes);
-        
+        let recommendedId: number | null = null;
+
+        // Try P/T rating API for temperature-based selection with material group
+        if (temperatureCelsius !== undefined) {
+          try {
+            const ptMaterialGroup = materialGroup || 'Carbon Steel A105 (Group 1.1)';
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/flange-pt-ratings/recommended-class?standardId=${flangeStandardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`
+            );
+            if (response.ok) {
+              recommendedId = await response.json();
+              if (recommendedId && updateCallback) {
+                const recommendedClass = classes.find((c: any) => c.id === recommendedId);
+                updateCallback({
+                  flangePressureClassId: recommendedId,
+                  autoSelectedPressureClass: true
+                });
+                console.log(`Auto-selected pressure class ${recommendedClass?.designation || recommendedId} for ${workingPressureBar} bar at ${temperatureCelsius}°C (${ptMaterialGroup})`);
+                return;
+              }
+            }
+          } catch {
+            // Fall back to local calculation
+          }
+        }
+
+        // Fallback to local temperature-derated calculation
+        const recommended = getRecommendedPressureClass(workingPressureBar, classes, temperatureCelsius);
         if (recommended && updateCallback) {
-          // Call the update callback with the recommended pressure class
           updateCallback({
             flangePressureClassId: recommended.id,
-            autoSelectedPressureClass: true // Flag to show it was auto-selected
+            autoSelectedPressureClass: true
           });
-
-          console.log(`Auto-selected pressure class ${recommended.designation} for ${workingPressureBar} bar`);
+          console.log(`Auto-selected pressure class ${recommended.designation} for ${workingPressureBar} bar at ${temperatureCelsius ?? 'ambient'}°C`);
         }
       }
     } catch (error) {
@@ -9942,15 +10425,20 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             </div>
           </div>
 
-          {/* Fixed Bottom Navigation Toolbar */}
-          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg">
+          {/* Fixed Bottom Navigation Toolbar - matches top navbar */}
+          <div className="flex-shrink-0 px-4 py-3 shadow-lg" style={{ backgroundColor: '#001F3F' }}>
             <div className="flex items-center justify-between">
               {/* Left side - Previous button */}
               <div className="w-32">
                 <button
                   onClick={prevStep}
                   disabled={currentStep === 1}
-                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
+                  className="px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: currentStep === 1 ? 'transparent' : '#003366',
+                    color: '#FFA500',
+                    border: '1px solid #FFA500'
+                  }}
                 >
                   ← Previous
                 </button>
@@ -9962,39 +10450,51 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
                   <div key={step.number} className="flex items-center">
                     <button
                       onClick={() => setCurrentStep(step.number)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                        step.number === currentStep
-                          ? 'bg-blue-100 border-2 border-blue-500'
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all"
+                      style={{
+                        backgroundColor: step.number === currentStep
+                          ? '#FFA500'
                           : step.number < currentStep
-                          ? 'bg-green-100 border border-green-400 hover:bg-green-200'
-                          : 'bg-gray-100 border border-gray-300 hover:bg-gray-200'
-                      }`}
+                          ? '#003366'
+                          : 'transparent',
+                        border: step.number === currentStep
+                          ? '2px solid #FFA500'
+                          : step.number < currentStep
+                          ? '1px solid #4CAF50'
+                          : '1px solid rgba(255, 165, 0, 0.3)'
+                      }}
                     >
                       <div
-                        className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
-                          step.number === currentStep
-                            ? 'bg-blue-600 text-white'
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
+                        style={{
+                          backgroundColor: step.number === currentStep
+                            ? '#001F3F'
                             : step.number < currentStep
-                            ? 'bg-green-600 text-white'
-                            : 'bg-gray-400 text-white'
-                        }`}
+                            ? '#4CAF50'
+                            : 'rgba(255, 165, 0, 0.3)',
+                          color: '#FFFFFF'
+                        }}
                       >
                         {step.number < currentStep ? '✓' : step.number}
                       </div>
                       <span
-                        className={`text-sm font-medium hidden md:inline ${
-                          step.number === currentStep
-                            ? 'text-blue-800'
+                        className="text-sm font-medium hidden md:inline"
+                        style={{
+                          color: step.number === currentStep
+                            ? '#001F3F'
                             : step.number < currentStep
-                            ? 'text-green-800'
-                            : 'text-gray-600'
-                        }`}
+                            ? '#4CAF50'
+                            : 'rgba(255, 165, 0, 0.6)'
+                        }}
                       >
                         {step.title}
                       </span>
                     </button>
                     {idx < steps.length - 1 && (
-                      <div className={`w-8 h-0.5 mx-1 ${step.number < currentStep ? 'bg-green-400' : 'bg-gray-300'}`} />
+                      <div
+                        className="w-8 h-0.5 mx-1"
+                        style={{ backgroundColor: step.number < currentStep ? '#4CAF50' : 'rgba(255, 165, 0, 0.3)' }}
+                      />
                     )}
                   </div>
                 ))}
@@ -10004,7 +10504,12 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
               <div className="flex items-center gap-3 justify-end">
                 <button
                   onClick={handleSaveProgress}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all"
+                  style={{
+                    backgroundColor: '#003366',
+                    color: '#FFA500',
+                    border: '1px solid #FFA500'
+                  }}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -10014,14 +10519,16 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
                 {currentStep < 4 ? (
                   <button
                     onClick={nextStep}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
+                    className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
+                    style={{ backgroundColor: '#FFA500', color: '#001F3F' }}
                   >
                     Next →
                   </button>
                 ) : (
                   <button
                     onClick={() => {/* Submit logic handled in step 4 */}}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm"
+                    className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
+                    style={{ backgroundColor: '#4CAF50', color: '#FFFFFF' }}
                   >
                     Submit RFQ
                   </button>

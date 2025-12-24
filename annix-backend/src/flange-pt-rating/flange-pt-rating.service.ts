@@ -49,6 +49,28 @@ export class FlangePtRatingService {
     });
   }
 
+  /**
+   * Get available material groups with P-T rating data
+   */
+  async getAvailableMaterialGroups(): Promise<{ name: string; description: string }[]> {
+    const distinctGroups = await this.ptRatingRepository
+      .createQueryBuilder('rating')
+      .select('DISTINCT rating.material_group', 'materialGroup')
+      .getRawMany();
+
+    // Map to user-friendly names with descriptions
+    const materialGroupInfo: { [key: string]: string } = {
+      'Carbon Steel A105 (Group 1.1)': 'General service carbon steel',
+      'Stainless Steel 304 (Group 2.1)': 'Austenitic SS - slightly higher ratings at elevated temps',
+      'Stainless Steel 316 (Group 2.2)': 'Corrosion-resistant austenitic SS',
+    };
+
+    return distinctGroups.map(g => ({
+      name: g.materialGroup,
+      description: materialGroupInfo[g.materialGroup] || g.materialGroup,
+    }));
+  }
+
   async findByStandardAndMaterial(standardId: number, materialGroup: string): Promise<FlangePtRating[]> {
     return this.ptRatingRepository.find({
       where: {

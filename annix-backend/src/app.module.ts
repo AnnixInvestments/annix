@@ -19,6 +19,7 @@ import { FittingVariantModule } from './fitting-variant/fitting-variant.module';
 import { FlangeStandardModule } from './flange-standard/flange-standard.module';
 import { FlangePressureClassModule } from './flange-pressure-class/flange-pressure-class.module';
 import { FlangePtRatingModule } from './flange-pt-rating/flange-pt-rating.module';
+import { FlangeBoltingModule } from './flange-bolting/flange-bolting.module';
 import { PipeScheduleModule } from './pipe-schedule/pipe-schedule.module';
 import { BoltModule } from './bolt/bolt.module';
 import { BoltMassModule } from './bolt-mass/bolt-mass.module';
@@ -43,6 +44,9 @@ import { PublicModule } from './public/public.module';
 import { EmailModule } from './email/email.module';
 import { SupplierModule } from './supplier/supplier.module';
 import { MinesModule } from './mines/mines.module';
+import { CoatingSpecificationModule } from './coating-specification/coating-specification.module';
+import { PipeSizingModule } from './pipe-sizing/pipe-sizing.module';
+import { StructuralSteelModule } from './structural-steel/structural-steel.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -65,6 +69,7 @@ import typeormConfig from './config/typeorm';
     FlangeStandardModule,
     FlangePressureClassModule,
     FlangePtRatingModule,
+    FlangeBoltingModule,
     PipeScheduleModule,
     BoltModule,
     BoltMassModule,
@@ -87,6 +92,9 @@ import typeormConfig from './config/typeorm';
     EmailModule,
     SupplierModule,
     MinesModule,
+    CoatingSpecificationModule,
+    PipeSizingModule,
+    StructuralSteelModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

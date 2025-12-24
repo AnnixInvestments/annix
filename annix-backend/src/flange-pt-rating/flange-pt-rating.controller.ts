@@ -21,6 +21,11 @@ export class FlangePtRatingController {
     return this.ptRatingService.findAll();
   }
 
+  @Get('material-groups')
+  getMaterialGroups() {
+    return this.ptRatingService.getAvailableMaterialGroups();
+  }
+
   @Get('by-pressure-class')
   findByPressureClass(@Query('pressureClassId') pressureClassId: string) {
     return this.ptRatingService.findByPressureClass(Number(pressureClassId));
@@ -35,7 +40,7 @@ export class FlangePtRatingController {
     return this.ptRatingService.getMaxPressureAtTemperature(
       Number(pressureClassId),
       Number(temperatureCelsius),
-      materialGroup || 'Carbon Steel A105',
+      materialGroup || 'Carbon Steel A105 (Group 1.1)',
     );
   }
 
@@ -50,7 +55,7 @@ export class FlangePtRatingController {
       Number(standardId),
       Number(workingPressureBar),
       Number(temperatureCelsius),
-      materialGroup || 'Carbon Steel A105',
+      materialGroup || 'Carbon Steel A105 (Group 1.1)',
     );
   }
 }
