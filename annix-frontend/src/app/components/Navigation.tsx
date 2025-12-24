@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import AmixLogo from './AmixLogo';
 
 export default function Navigation() {
   const router = useRouter();
@@ -25,30 +26,47 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+    <nav
+      className="sticky top-0 z-50 shadow-lg amix-toolbar"
+      style={{ backgroundColor: '#001F3F' }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Annix RFQ
-              </h1>
+            {/* Amix Logo */}
+            <Link
+              href="/"
+              className="flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+            >
+              <AmixLogo size="sm" showText useSignatureFont />
             </Link>
-            <div className="flex gap-2">
+
+            {/* Navigation Items */}
+            <div className="flex gap-1">
               {navItems.map((item) => (
                 <button
                   key={item.path}
                   onClick={() => router.push(item.path)}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
                     isActive(item)
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'bg-[#FFA500] text-[#001F3F]'
+                      : 'text-[#FFA500] hover:bg-[#003366] hover:text-[#FFB733]'
                   }`}
                 >
                   {item.label}
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Right side - can add user menu, etc. */}
+          <div className="flex items-center gap-3">
+            <span
+              className="text-sm font-medium"
+              style={{ color: '#FFA500', opacity: 0.8 }}
+            >
+              RFQ System
+            </span>
           </div>
         </div>
       </div>

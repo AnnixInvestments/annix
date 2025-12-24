@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Great_Vibes } from "next/font/google";
 import "./globals.css";
 import Navigation from "./components/Navigation";
 
@@ -13,9 +13,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Amix Investments signature font - elegant cursive for branding
+const greatVibes = Great_Vibes({
+  variable: "--font-great-vibes",
+  subsets: ["latin"],
+  weight: "400",
+});
+
 export const metadata: Metadata = {
-  title: "Annix RFQ System",
-  description: "Request for Quotation Management System",
+  title: "Amix Investments - RFQ System",
+  description: "Amix Investments Request for Quotation Management System",
 };
 
 export default function RootLayout({
@@ -26,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${greatVibes.variable} antialiased`}
       >
         <Navigation />
         {children}

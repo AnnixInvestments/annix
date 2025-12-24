@@ -1,6 +1,16 @@
 @import "tailwindcss";
 
+/* Amix Investments Brand Colors */
 :root {
+  /* Brand Colors */
+  --amix-navy: #001F3F;
+  --amix-navy-light: #003366;
+  --amix-navy-dark: #001529;
+  --amix-orange: #FFA500;
+  --amix-orange-light: #FFB733;
+  --amix-orange-dark: #CC8400;
+
+  /* Legacy variables (for compatibility) */
   --background: #ffffff;
   --foreground: #171717;
 }
@@ -10,11 +20,19 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Amix Brand Colors for Tailwind */
+  --color-amix-navy: #001F3F;
+  --color-amix-navy-light: #003366;
+  --color-amix-navy-dark: #001529;
+  --color-amix-orange: #FFA500;
+  --color-amix-orange-light: #FFB733;
+  --color-amix-orange-dark: #CC8400;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: var(--amix-navy);
     --foreground: #ededed;
   }
 }
@@ -23,4 +41,36 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Amix Signature Font Utility */
+.font-amix-signature {
+  font-family: var(--font-great-vibes), 'Great Vibes', cursive;
+}
+
+/* Brand-specific utility classes */
+.amix-nav-gradient {
+  background: linear-gradient(135deg, var(--amix-navy) 0%, var(--amix-navy-light) 100%);
+}
+
+.amix-text-glow {
+  text-shadow: 0 0 10px rgba(255, 165, 0, 0.5);
+}
+
+/* Toolbar/Navigation specific styles */
+.amix-toolbar {
+  background-color: var(--amix-navy);
+  color: var(--amix-orange);
+}
+
+.amix-toolbar a,
+.amix-toolbar button {
+  color: var(--amix-orange);
+  transition: all 0.2s ease;
+}
+
+.amix-toolbar a:hover,
+.amix-toolbar button:hover {
+  color: var(--amix-orange-light);
+  text-shadow: 0 0 8px rgba(255, 165, 0, 0.4);
 }
