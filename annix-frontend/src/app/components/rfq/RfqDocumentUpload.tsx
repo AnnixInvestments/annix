@@ -28,7 +28,7 @@ function formatFileSize(bytes: number): string {
 function getFileIcon(mimeType: string): React.ReactNode {
   if (mimeType === 'application/pdf') {
     return (
-      <svg className="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+      <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13h2a1.5 1.5 0 0 1 0 3h-1v2H8v-5h.5zm4.5 0h2a1.5 1.5 0 0 1 1.5 1.5v2a1.5 1.5 0 0 1-1.5 1.5h-2v-5zm-3.5 1v1h1a.5.5 0 0 0 0-1h-1zm4.5 0v3h1a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5h-1z"/>
       </svg>
     );
@@ -36,7 +36,7 @@ function getFileIcon(mimeType: string): React.ReactNode {
 
   if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType === 'application/vnd.ms-excel') {
     return (
-      <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+      <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 24 24">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8 13h8v2H8v-2zm0 4h8v2H8v-2zm0-8h3v2H8V9z"/>
       </svg>
     );
@@ -44,7 +44,7 @@ function getFileIcon(mimeType: string): React.ReactNode {
 
   if (mimeType.includes('word') || mimeType === 'application/msword') {
     return (
-      <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+      <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8 13h8v1H8v-1zm0 2h8v1H8v-1zm0 2h5v1H8v-1z"/>
       </svg>
     );
@@ -52,7 +52,7 @@ function getFileIcon(mimeType: string): React.ReactNode {
 
   if (mimeType.startsWith('image/')) {
     return (
-      <svg className="w-8 h-8 text-purple-500" fill="currentColor" viewBox="0 0 24 24">
+      <svg className="w-5 h-5 text-purple-500" fill="currentColor" viewBox="0 0 24 24">
         <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z"/>
       </svg>
     );
@@ -60,7 +60,7 @@ function getFileIcon(mimeType: string): React.ReactNode {
 
   // Default document icon
   return (
-    <svg className="w-8 h-8 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+    <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z"/>
     </svg>
   );
@@ -130,44 +130,27 @@ export default function RfqDocumentUpload({
   }, [validateAndAddFile]);
 
   return (
-    <div className="bg-white rounded-lg p-5 border border-gray-200">
-      <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        Supporting Documents
-        <span className="text-sm font-normal text-gray-500">
-          ({documents.length}/{maxDocuments})
-        </span>
-      </h4>
-
-      <p className="text-sm text-gray-600 mb-4">
-        Upload any relevant documents such as specifications, drawings, or requirements.
-        Accepted formats: PDF, Excel, Word, images, CAD files, etc.
-      </p>
-
+    <div className="space-y-2">
       {/* Error message */}
       {error && (
-        <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm text-red-700">{error}</span>
-          </div>
+        <div className="p-2 bg-red-50 rounded border border-red-200 flex items-center gap-2">
+          <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-xs text-red-700">{error}</span>
         </div>
       )}
 
-      {/* Drop zone */}
+      {/* Compact drop zone */}
       {documents.length < maxDocuments && (
         <div
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+          className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors cursor-pointer ${
             isDragOver
               ? 'border-blue-500 bg-blue-50'
-              : 'border-gray-300 hover:border-gray-400 bg-gray-50'
+              : 'border-gray-300 hover:border-gray-400 bg-white'
           }`}
         >
           <input
@@ -177,58 +160,42 @@ export default function RfqDocumentUpload({
             onChange={handleFileSelect}
             className="hidden"
           />
-          <label htmlFor="document-upload" className="cursor-pointer">
-            <svg
-              className="w-12 h-12 mx-auto text-gray-400 mb-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              />
+          <label htmlFor="document-upload" className="cursor-pointer flex items-center justify-center gap-3">
+            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            <p className="text-sm text-gray-600 mb-1">
-              <span className="font-medium text-blue-600">Click to upload</span> or drag and drop
-            </p>
-            <p className="text-xs text-gray-500">
-              Maximum file size: {maxFileSizeMB}MB
-            </p>
+            <div className="text-left">
+              <p className="text-sm text-gray-600">
+                <span className="font-medium text-blue-600">Click to upload</span> or drag & drop
+                <span className="text-gray-400 ml-2">({documents.length}/{maxDocuments})</span>
+              </p>
+              <p className="text-xs text-gray-400">PDF, Excel, Word, images, CAD • Max {maxFileSizeMB}MB</p>
+            </div>
           </label>
         </div>
       )}
 
-      {/* Document list */}
+      {/* Compact document list */}
       {documents.length > 0 && (
-        <div className="mt-4 space-y-2">
-          <h5 className="text-sm font-medium text-gray-700 mb-2">
-            Attached Documents
-          </h5>
+        <div className="flex flex-wrap gap-2">
           {documents.map((doc) => (
             <div
               key={doc.id}
-              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+              className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded border border-gray-200 text-sm"
             >
-              {getFileIcon(doc.file.type)}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {doc.file.name}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {formatFileSize(doc.file.size)}
-                </p>
-              </div>
+              <div className="w-5 h-5 flex-shrink-0">{getFileIcon(doc.file.type)}</div>
+              <span className="text-gray-700 truncate max-w-[150px]" title={doc.file.name}>
+                {doc.file.name}
+              </span>
+              <span className="text-xs text-gray-400">{formatFileSize(doc.file.size)}</span>
               <button
                 type="button"
                 onClick={() => onRemoveDocument(doc.id)}
-                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                title="Remove document"
+                className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                title="Remove"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
@@ -236,18 +203,14 @@ export default function RfqDocumentUpload({
         </div>
       )}
 
-      {/* Limit reached message */}
+      {/* Limit reached - inline */}
       {documents.length >= maxDocuments && (
-        <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span className="text-sm text-amber-700">
-              Maximum document limit reached. Remove a document to add more.
-            </span>
-          </div>
-        </div>
+        <p className="text-xs text-amber-600 flex items-center gap-1">
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          Maximum limit reached. Remove a document to add more.
+        </p>
       )}
     </div>
   );

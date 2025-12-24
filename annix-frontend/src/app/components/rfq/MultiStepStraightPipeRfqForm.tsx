@@ -634,6 +634,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
     fetchAndApply: fetchEnvironmentalData,
     wasAutoFilled,
     markAsOverridden,
+    markFieldsAsAutoFilled,
   } = useEnvironmentalIntelligence();
 
   const handleLocationSelect = async (
@@ -693,8 +694,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
         console.log('[Form] Updated globalSpecs:', updatedSpecs);
         onUpdateGlobalSpecs(updatedSpecs);
       } catch (error) {
-        console.error('Failed to fetch environmental data:', error);
-        // Non-blocking - user can still fill in manually
+        // Silently handle - user can still fill in manually
+        if (error instanceof Error && error.message !== 'Backend unavailable') {
+          console.error('Failed to fetch environmental data:', error);
+        }
       }
     }
   };
@@ -712,6 +715,50 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
     "Client inspection required before dispatch"
   ];
 
+  // Fallback mines data when API is unavailable - Complete list of SA mines (alphabetical order)
+  const fallbackMines: SaMine[] = [
+    { id: 18, mineName: 'Amandelbult Mine', operatingCompany: 'Anglo American Platinum', commodityId: 3, commodityName: 'PGM', province: 'Limpopo', district: 'Waterberg', physicalAddress: 'Thabazimbi, Limpopo', mineType: 'Underground', operationalStatus: 'Active', latitude: -24.8167, longitude: 27.3667 },
+    { id: 23, mineName: 'Bathopele Mine', operatingCompany: 'Anglo American Platinum', commodityId: 3, commodityName: 'PGM', province: 'North West', district: 'Bojanala', physicalAddress: 'Rustenburg, North West', mineType: 'Underground', operationalStatus: 'Active', latitude: -25.6333, longitude: 27.3000 },
+    { id: 14, mineName: 'Beatrix Mine', operatingCompany: 'Sibanye-Stillwater', commodityId: 2, commodityName: 'Gold', province: 'Free State', district: 'Lejweleputswa', physicalAddress: 'Welkom, Free State', mineType: 'Underground', operationalStatus: 'Active', latitude: -28.0000, longitude: 26.7500 },
+    { id: 29, mineName: 'Beeshoek Mine', operatingCompany: 'Assmang', commodityId: 4, commodityName: 'Iron Ore', province: 'Northern Cape', district: 'Siyanda', physicalAddress: 'Postmasburg, Northern Cape', mineType: 'Open Cast', operationalStatus: 'Active', latitude: -28.4333, longitude: 23.1500 },
+    { id: 32, mineName: 'Black Mountain Mine', operatingCompany: 'Vedanta Zinc', commodityId: 5, commodityName: 'Copper/Base Metals', province: 'Northern Cape', district: 'Namakwa', physicalAddress: 'Aggeneys, Northern Cape', mineType: 'Underground', operationalStatus: 'Active', latitude: -29.2333, longitude: 18.8167 },
+    { id: 38, mineName: 'Cullinan Mine', operatingCompany: 'Petra Diamonds', commodityId: 6, commodityName: 'Diamonds', province: 'Gauteng', district: 'Tshwane', physicalAddress: 'Cullinan, Gauteng', mineType: 'Underground', operationalStatus: 'Active', latitude: -25.6833, longitude: 28.5167 },
+    { id: 15, mineName: 'Driefontein Mine', operatingCompany: 'Sibanye-Stillwater', commodityId: 2, commodityName: 'Gold', province: 'Gauteng', district: 'West Rand', physicalAddress: 'Carletonville, Gauteng', mineType: 'Underground', operationalStatus: 'Active', latitude: -26.3833, longitude: 27.5167 },
+    { id: 37, mineName: 'Finsch Mine', operatingCompany: 'Petra Diamonds', commodityId: 6, commodityName: 'Diamonds', province: 'Northern Cape', district: 'Frances Baard', physicalAddress: 'Lime Acres, Northern Cape', mineType: 'Underground', operationalStatus: 'Active', latitude: -28.3833, longitude: 23.4500 },
+    { id: 33, mineName: 'Gamsberg Mine', operatingCompany: 'Vedanta Zinc', commodityId: 5, commodityName: 'Copper/Base Metals', province: 'Northern Cape', district: 'Namakwa', physicalAddress: 'Aggeneys, Northern Cape', mineType: 'Open Cast', operationalStatus: 'Active', latitude: -29.2500, longitude: 18.9333 },
+    { id: 3, mineName: 'Goedehoop Colliery', operatingCompany: 'Anglo American', commodityId: 1, commodityName: 'Coal', province: 'Mpumalanga', district: 'Nkangala', physicalAddress: 'Middelburg, Mpumalanga', mineType: 'Underground', operationalStatus: 'Active', latitude: -25.7700, longitude: 29.4700 },
+    { id: 4, mineName: 'Greenside Colliery', operatingCompany: 'Anglo American', commodityId: 1, commodityName: 'Coal', province: 'Mpumalanga', district: 'Nkangala', physicalAddress: 'Witbank, Mpumalanga', mineType: 'Underground', operationalStatus: 'Active', latitude: -25.8900, longitude: 29.1600 },
+    { id: 6, mineName: 'Grootegeluk Mine', operatingCompany: 'Exxaro', commodityId: 1, commodityName: 'Coal', province: 'Limpopo', district: 'Waterberg', physicalAddress: 'Lephalale, Limpopo', mineType: 'Open Cast', operationalStatus: 'Active', latitude: -23.6500, longitude: 27.7000 },
+    { id: 20, mineName: 'Impala Rustenburg', operatingCompany: 'Impala Platinum', commodityId: 3, commodityName: 'PGM', province: 'North West', district: 'Bojanala', physicalAddress: 'Rustenburg, North West', mineType: 'Underground', operationalStatus: 'Active', latitude: -25.6667, longitude: 27.2500 },
+    { id: 1, mineName: 'Isibonelo Colliery', operatingCompany: 'Anglo American', commodityId: 1, commodityName: 'Coal', province: 'Mpumalanga', district: 'Nkangala', physicalAddress: 'Ogies, Mpumalanga', mineType: 'Open Cast', operationalStatus: 'Active', latitude: -26.0167, longitude: 29.0500 },
+    { id: 30, mineName: 'Khumani Mine', operatingCompany: 'Assmang', commodityId: 4, commodityName: 'Iron Ore', province: 'Northern Cape', district: 'John Taolo Gaetsewe', physicalAddress: 'Kathu, Northern Cape', mineType: 'Open Cast', operationalStatus: 'Active', latitude: -27.2167, longitude: 22.9500 },
+    { id: 2, mineName: 'Khwezela Colliery', operatingCompany: 'Anglo American', commodityId: 1, commodityName: 'Coal', province: 'Mpumalanga', district: 'Nkangala', physicalAddress: 'Emalahleni, Mpumalanga', mineType: 'Both', operationalStatus: 'Active', latitude: -25.8700, longitude: 29.2100 },
+    { id: 16, mineName: 'Kloof Mine', operatingCompany: 'Sibanye-Stillwater', commodityId: 2, commodityName: 'Gold', province: 'Gauteng', district: 'West Rand', physicalAddress: 'Westonaria, Gauteng', mineType: 'Underground', operationalStatus: 'Active', latitude: -26.4000, longitude: 27.5833 },
+    { id: 39, mineName: 'Koffiefontein Mine', operatingCompany: 'Petra Diamonds', commodityId: 6, commodityName: 'Diamonds', province: 'Free State', district: 'Xhariep', physicalAddress: 'Koffiefontein, Free State', mineType: 'Underground', operationalStatus: 'Active', latitude: -29.4167, longitude: 25.0000 },
+    { id: 27, mineName: 'Kolomela Mine', operatingCompany: 'Kumba Iron Ore', commodityId: 4, commodityName: 'Iron Ore', province: 'Northern Cape', district: 'Siyanda', physicalAddress: 'Postmasburg, Northern Cape', mineType: 'Open Cast', operationalStatus: 'Active', latitude: -28.3333, longitude: 23.0833 },
+    { id: 24, mineName: 'Kroondal Mine', operatingCompany: 'Sibanye-Stillwater', commodityId: 3, commodityName: 'PGM', province: 'North West', district: 'Bojanala', physicalAddress: 'Rustenburg, North West', mineType: 'Underground', operationalStatus: 'Active', latitude: -25.6500, longitude: 27.3167 },
+    { id: 12, mineName: 'Kusasalethu Mine', operatingCompany: 'Harmony Gold', commodityId: 2, commodityName: 'Gold', province: 'Gauteng', district: 'West Rand', physicalAddress: 'Carletonville, Gauteng', mineType: 'Underground', operationalStatus: 'Active', latitude: -26.3667, longitude: 27.3833 },
+    { id: 5, mineName: 'Mafube Colliery', operatingCompany: 'Exxaro', commodityId: 1, commodityName: 'Coal', province: 'Mpumalanga', district: 'Nkangala', physicalAddress: 'Belfast, Mpumalanga', mineType: 'Open Cast', operationalStatus: 'Active', latitude: -25.6800, longitude: 30.0400 },
+    { id: 25, mineName: 'Marikana Mine', operatingCompany: 'Sibanye-Stillwater', commodityId: 3, commodityName: 'PGM', province: 'North West', district: 'Bojanala', physicalAddress: 'Marikana, North West', mineType: 'Underground', operationalStatus: 'Active', latitude: -25.7000, longitude: 27.4833 },
+    { id: 21, mineName: 'Marula Mine', operatingCompany: 'Impala Platinum', commodityId: 3, commodityName: 'PGM', province: 'Limpopo', district: 'Sekhukhune', physicalAddress: 'Burgersfort, Limpopo', mineType: 'Underground', operationalStatus: 'Active', latitude: -24.5000, longitude: 30.1500 },
+    { id: 7, mineName: 'Matla Colliery', operatingCompany: 'Eskom', commodityId: 1, commodityName: 'Coal', province: 'Mpumalanga', district: 'Nkangala', physicalAddress: 'Kriel, Mpumalanga', mineType: 'Underground', operationalStatus: 'Active', latitude: -26.2500, longitude: 29.2500 },
+    { id: 11, mineName: 'Moab Khotsong Mine', operatingCompany: 'Harmony Gold', commodityId: 2, commodityName: 'Gold', province: 'North West', district: 'Dr Kenneth Kaunda', physicalAddress: 'Orkney, North West', mineType: 'Underground', operationalStatus: 'Active', latitude: -26.9833, longitude: 26.6667 },
+    { id: 17, mineName: 'Mogalakwena Mine', operatingCompany: 'Anglo American Platinum', commodityId: 3, commodityName: 'PGM', province: 'Limpopo', district: 'Waterberg', physicalAddress: 'Mokopane, Limpopo', mineType: 'Open Cast', operationalStatus: 'Active', latitude: -23.9333, longitude: 28.7667 },
+    { id: 10, mineName: 'Mponeng Mine', operatingCompany: 'Harmony Gold', commodityId: 2, commodityName: 'Gold', province: 'Gauteng', district: 'West Rand', physicalAddress: 'Carletonville, Gauteng', mineType: 'Underground', operationalStatus: 'Active', latitude: -26.4000, longitude: 27.3833 },
+    { id: 8, mineName: 'New Denmark Colliery', operatingCompany: 'Eskom', commodityId: 1, commodityName: 'Coal', province: 'Mpumalanga', district: 'Gert Sibande', physicalAddress: 'Standerton, Mpumalanga', mineType: 'Open Cast', operationalStatus: 'Active', latitude: -26.9300, longitude: 29.2400 },
+    { id: 31, mineName: 'Palabora Mining Company', operatingCompany: 'Palabora Mining Company', commodityId: 5, commodityName: 'Copper/Base Metals', province: 'Limpopo', district: 'Mopani', physicalAddress: 'Phalaborwa, Limpopo', mineType: 'Underground', operationalStatus: 'Active', latitude: -23.9667, longitude: 31.1333 },
+    { id: 34, mineName: 'Prieska Zinc-Copper', operatingCompany: 'Orion Minerals', commodityId: 5, commodityName: 'Copper/Base Metals', province: 'Northern Cape', district: 'Siyanda', physicalAddress: 'Prieska, Northern Cape', mineType: 'Underground', operationalStatus: 'Care and Maintenance', latitude: -29.6667, longitude: 22.7500 },
+    { id: 26, mineName: 'Sishen Mine', operatingCompany: 'Kumba Iron Ore', commodityId: 4, commodityName: 'Iron Ore', province: 'Northern Cape', district: 'John Taolo Gaetsewe', physicalAddress: 'Kathu, Northern Cape', mineType: 'Open Cast', operationalStatus: 'Active', latitude: -27.2000, longitude: 23.0000 },
+    { id: 9, mineName: 'South Deep Mine', operatingCompany: 'Gold Fields', commodityId: 2, commodityName: 'Gold', province: 'Gauteng', district: 'West Rand', physicalAddress: 'Westonaria, Gauteng', mineType: 'Underground', operationalStatus: 'Active', latitude: -26.4167, longitude: 27.6667 },
+    { id: 13, mineName: 'Target Mine', operatingCompany: 'Harmony Gold', commodityId: 2, commodityName: 'Gold', province: 'Free State', district: 'Lejweleputswa', physicalAddress: 'Allanridge, Free State', mineType: 'Underground', operationalStatus: 'Active', latitude: -27.7667, longitude: 26.6333 },
+    { id: 28, mineName: 'Thabazimbi Mine', operatingCompany: 'Kumba Iron Ore', commodityId: 4, commodityName: 'Iron Ore', province: 'Limpopo', district: 'Waterberg', physicalAddress: 'Thabazimbi, Limpopo', mineType: 'Both', operationalStatus: 'Care and Maintenance', latitude: -24.5833, longitude: 27.4000 },
+    { id: 22, mineName: 'Two Rivers Mine', operatingCompany: 'Impala Platinum', commodityId: 3, commodityName: 'PGM', province: 'Limpopo', district: 'Sekhukhune', physicalAddress: 'Steelpoort, Limpopo', mineType: 'Underground', operationalStatus: 'Active', latitude: -24.6833, longitude: 30.1000 },
+    { id: 19, mineName: 'Unki Mine', operatingCompany: 'Anglo American Platinum', commodityId: 3, commodityName: 'PGM', province: 'Limpopo', district: 'Capricorn', physicalAddress: 'Polokwane, Limpopo', mineType: 'Underground', operationalStatus: 'Active', latitude: -23.9000, longitude: 29.4500 },
+    { id: 35, mineName: 'Venetia Mine', operatingCompany: 'De Beers', commodityId: 6, commodityName: 'Diamonds', province: 'Limpopo', district: 'Vhembe', physicalAddress: 'Musina, Limpopo', mineType: 'Underground', operationalStatus: 'Active', latitude: -22.4500, longitude: 29.3167 },
+    { id: 36, mineName: 'Voorspoed Mine', operatingCompany: 'De Beers', commodityId: 6, commodityName: 'Diamonds', province: 'Free State', district: 'Lejweleputswa', physicalAddress: 'Kroonstad, Free State', mineType: 'Open Cast', operationalStatus: 'Active', latitude: -27.7667, longitude: 27.2333 },
+    { id: 40, mineName: 'Williamson Mine', operatingCompany: 'Petra Diamonds', commodityId: 6, commodityName: 'Diamonds', province: 'Free State', district: 'Xhariep', physicalAddress: 'Jagersfontein, Free State', mineType: 'Open Cast', operationalStatus: 'Care and Maintenance', latitude: -29.7667, longitude: 25.4333 },
+  ];
+
   // Fetch SA mines on mount
   useEffect(() => {
     const fetchMines = async () => {
@@ -720,13 +767,137 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
         const activeMines = await minesApi.getActiveMines();
         setMines(activeMines);
       } catch (error) {
-        console.error('Failed to fetch mines:', error);
+        // Silently use fallback mines when backend is unavailable
+        if (error instanceof Error && error.message !== 'Backend unavailable') {
+          console.error('Failed to fetch mines:', error);
+        }
+        setMines(fallbackMines);
       } finally {
         setIsLoadingMines(false);
       }
     };
     fetchMines();
   }, []);
+
+  // Fallback slurry profiles by commodity when API is unavailable
+  const fallbackSlurryProfiles: Record<string, any> = {
+    'Coal': { phMin: 6.5, phMax: 8.5, typicalSgMin: 1.10, typicalSgMax: 1.35, solidsConcentrationMin: 20, solidsConcentrationMax: 45, tempMin: 15, tempMax: 45, abrasionRisk: 'Medium', corrosionRisk: 'Low', primaryFailureMode: 'Abrasion' },
+    'Gold': { phMin: 10.0, phMax: 11.5, typicalSgMin: 1.30, typicalSgMax: 1.50, solidsConcentrationMin: 40, solidsConcentrationMax: 55, tempMin: 20, tempMax: 60, abrasionRisk: 'Very High', corrosionRisk: 'High', primaryFailureMode: 'Abrasion' },
+    'PGM': { phMin: 8.0, phMax: 10.0, typicalSgMin: 1.25, typicalSgMax: 1.45, solidsConcentrationMin: 35, solidsConcentrationMax: 50, tempMin: 20, tempMax: 55, abrasionRisk: 'Very High', corrosionRisk: 'Medium', primaryFailureMode: 'Abrasion' },
+    'Iron Ore': { phMin: 6.5, phMax: 8.0, typicalSgMin: 1.50, typicalSgMax: 2.00, solidsConcentrationMin: 50, solidsConcentrationMax: 70, tempMin: 15, tempMax: 40, abrasionRisk: 'Very High', corrosionRisk: 'Low', primaryFailureMode: 'Abrasion' },
+    'Copper/Base Metals': { phMin: 1.5, phMax: 4.0, typicalSgMin: 1.20, typicalSgMax: 1.40, solidsConcentrationMin: 25, solidsConcentrationMax: 45, tempMin: 25, tempMax: 65, abrasionRisk: 'High', corrosionRisk: 'Very High', primaryFailureMode: 'Corrosion' },
+    'Diamonds': { phMin: 6.5, phMax: 8.0, typicalSgMin: 1.40, typicalSgMax: 1.80, solidsConcentrationMin: 30, solidsConcentrationMax: 50, tempMin: 15, tempMax: 35, abrasionRisk: 'Medium', corrosionRisk: 'Low', primaryFailureMode: 'Abrasion' },
+  };
+
+  // Fallback environmental data by South African province (typical values)
+  const fallbackEnvironmentalByProvince: Record<string, any> = {
+    'Mpumalanga': {
+      tempMin: 8, tempMax: 28, tempMean: 18, humidityMin: 45, humidityMax: 85, humidityMean: 65,
+      annualRainfall: '500-1000', ecpMarineInfluence: 'None', ecpIso12944Category: 'C3',
+      ecpIndustrialPollution: 'Moderate', soilType: 'Ferralsols', soilTexture: 'Clay Loam',
+      soilMoisture: '25%', soilMoistureClass: 'Moderate', soilDrainage: 'Moderate',
+      distanceToCoastFormatted: '350 km', detailedMarineInfluence: 'Low / Non-Marine',
+      floodRisk: 'Moderate', uvExposure: 'High', windSpeed: 3.5,
+      airSaltContent: { level: 'Very Low', isoCategory: 'S0' },
+      timeOfWetness: { level: 'Medium', isoCategory: 'T3' },
+    },
+    'Limpopo': {
+      tempMin: 10, tempMax: 32, tempMean: 22, humidityMin: 35, humidityMax: 75, humidityMean: 55,
+      annualRainfall: '250-500', ecpMarineInfluence: 'None', ecpIso12944Category: 'C2',
+      ecpIndustrialPollution: 'Low', soilType: 'Lixisols', soilTexture: 'Sandy Clay Loam',
+      soilMoisture: '18%', soilMoistureClass: 'Low', soilDrainage: 'Well',
+      distanceToCoastFormatted: '400 km', detailedMarineInfluence: 'Low / Non-Marine',
+      floodRisk: 'Low', uvExposure: 'Very High', windSpeed: 2.8,
+      airSaltContent: { level: 'Very Low', isoCategory: 'S0' },
+      timeOfWetness: { level: 'Low', isoCategory: 'T2' },
+    },
+    'Gauteng': {
+      tempMin: 5, tempMax: 28, tempMean: 16, humidityMin: 40, humidityMax: 80, humidityMean: 60,
+      annualRainfall: '500-1000', ecpMarineInfluence: 'None', ecpIso12944Category: 'C3',
+      ecpIndustrialPollution: 'High', soilType: 'Acrisols', soilTexture: 'Clay Loam',
+      soilMoisture: '22%', soilMoistureClass: 'Moderate', soilDrainage: 'Moderate',
+      distanceToCoastFormatted: '500 km', detailedMarineInfluence: 'Low / Non-Marine',
+      floodRisk: 'Moderate', uvExposure: 'High', windSpeed: 4.2,
+      airSaltContent: { level: 'Very Low', isoCategory: 'S0' },
+      timeOfWetness: { level: 'Medium', isoCategory: 'T3' },
+    },
+    'North West': {
+      tempMin: 3, tempMax: 32, tempMean: 18, humidityMin: 30, humidityMax: 70, humidityMean: 50,
+      annualRainfall: '250-500', ecpMarineInfluence: 'None', ecpIso12944Category: 'C2',
+      ecpIndustrialPollution: 'Moderate', soilType: 'Luvisols', soilTexture: 'Sandy Loam',
+      soilMoisture: '15%', soilMoistureClass: 'Low', soilDrainage: 'Well',
+      distanceToCoastFormatted: '450 km', detailedMarineInfluence: 'Low / Non-Marine',
+      floodRisk: 'Low', uvExposure: 'High', windSpeed: 3.8,
+      airSaltContent: { level: 'Very Low', isoCategory: 'S0' },
+      timeOfWetness: { level: 'Low', isoCategory: 'T2' },
+    },
+    'Northern Cape': {
+      tempMin: 2, tempMax: 35, tempMean: 19, humidityMin: 20, humidityMax: 60, humidityMean: 40,
+      annualRainfall: '<250', ecpMarineInfluence: 'None', ecpIso12944Category: 'C2',
+      ecpIndustrialPollution: 'Low', soilType: 'Calcisols', soilTexture: 'Sandy Loam',
+      soilMoisture: '10%', soilMoistureClass: 'Low', soilDrainage: 'Well',
+      distanceToCoastFormatted: '300 km', detailedMarineInfluence: 'Low / Non-Marine',
+      floodRisk: 'None', uvExposure: 'Very High', windSpeed: 4.5,
+      airSaltContent: { level: 'Very Low', isoCategory: 'S0' },
+      timeOfWetness: { level: 'Very Low', isoCategory: 'T1' },
+    },
+    'Free State': {
+      tempMin: 0, tempMax: 30, tempMean: 15, humidityMin: 35, humidityMax: 75, humidityMean: 55,
+      annualRainfall: '500-1000', ecpMarineInfluence: 'None', ecpIso12944Category: 'C2',
+      ecpIndustrialPollution: 'Low', soilType: 'Vertisols', soilTexture: 'Clay',
+      soilMoisture: '20%', soilMoistureClass: 'Moderate', soilDrainage: 'Moderate',
+      distanceToCoastFormatted: '400 km', detailedMarineInfluence: 'Low / Non-Marine',
+      floodRisk: 'Moderate', uvExposure: 'High', windSpeed: 4.0,
+      airSaltContent: { level: 'Very Low', isoCategory: 'S0' },
+      timeOfWetness: { level: 'Medium', isoCategory: 'T3' },
+    },
+    'KwaZulu-Natal': {
+      tempMin: 12, tempMax: 28, tempMean: 20, humidityMin: 60, humidityMax: 90, humidityMean: 75,
+      annualRainfall: '1000-2000', ecpMarineInfluence: 'Coastal', ecpIso12944Category: 'C4',
+      ecpIndustrialPollution: 'Moderate', soilType: 'Nitisols', soilTexture: 'Clay',
+      soilMoisture: '35%', soilMoistureClass: 'High', soilDrainage: 'Moderate',
+      distanceToCoastFormatted: '50 km', detailedMarineInfluence: 'Moderate Marine',
+      floodRisk: 'High', uvExposure: 'High', windSpeed: 3.2,
+      airSaltContent: { level: 'Medium', isoCategory: 'S2' },
+      timeOfWetness: { level: 'High', isoCategory: 'T4' },
+    },
+    'Eastern Cape': {
+      tempMin: 8, tempMax: 26, tempMean: 17, humidityMin: 55, humidityMax: 85, humidityMean: 70,
+      annualRainfall: '500-1000', ecpMarineInfluence: 'Coastal', ecpIso12944Category: 'C3',
+      ecpIndustrialPollution: 'Low', soilType: 'Cambisols', soilTexture: 'Loam',
+      soilMoisture: '28%', soilMoistureClass: 'Moderate', soilDrainage: 'Well',
+      distanceToCoastFormatted: '100 km', detailedMarineInfluence: 'Low / Non-Marine',
+      floodRisk: 'Moderate', uvExposure: 'High', windSpeed: 4.8,
+      airSaltContent: { level: 'Low', isoCategory: 'S1' },
+      timeOfWetness: { level: 'Medium', isoCategory: 'T3' },
+    },
+    'Western Cape': {
+      tempMin: 7, tempMax: 26, tempMean: 16, humidityMin: 50, humidityMax: 85, humidityMean: 68,
+      annualRainfall: '500-1000', ecpMarineInfluence: 'Coastal', ecpIso12944Category: 'C4',
+      ecpIndustrialPollution: 'Low', soilType: 'Arenosols', soilTexture: 'Sandy Loam',
+      soilMoisture: '18%', soilMoistureClass: 'Low', soilDrainage: 'Well',
+      distanceToCoastFormatted: '30 km', detailedMarineInfluence: 'High Marine',
+      floodRisk: 'Moderate', uvExposure: 'High', windSpeed: 5.2,
+      airSaltContent: { level: 'High', isoCategory: 'S3' },
+      timeOfWetness: { level: 'Medium', isoCategory: 'T3' },
+    },
+  };
+
+  // Get fallback environmental data for a province
+  const getFallbackEnvironmentalData = (province: string) => {
+    return fallbackEnvironmentalByProvince[province] || fallbackEnvironmentalByProvince['Gauteng'];
+  };
+
+  // Fallback lining recommendations by risk levels
+  const getFallbackLiningRecommendation = (abrasionRisk: string, corrosionRisk: string) => {
+    if (abrasionRisk === 'Very High' && corrosionRisk === 'Low') return { recommendedLining: 'Ceramic Tile (95% Al2O3)', recommendedCoating: 'None' };
+    if (abrasionRisk === 'Very High' && corrosionRisk === 'Medium') return { recommendedLining: 'Ceramic + Rubber Composite', recommendedCoating: 'Rubber Backing' };
+    if (abrasionRisk === 'High' && corrosionRisk === 'Very High') return { recommendedLining: 'Rubber + Ceramic Composite', recommendedCoating: 'Rubber Backed Ceramic' };
+    if (corrosionRisk === 'Very High') return { recommendedLining: 'HDPE/UHMWPE Lining', recommendedCoating: 'N/A - Self Protecting' };
+    if (abrasionRisk === 'High') return { recommendedLining: 'Ceramic Tile Lining', recommendedCoating: 'None' };
+    if (abrasionRisk === 'Medium') return { recommendedLining: 'Rubber Lining (Hard)', recommendedCoating: 'Epoxy Coating' };
+    return { recommendedLining: 'Standard Steel', recommendedCoating: 'Epoxy Paint' };
+  };
 
   // Handle mine selection
   const handleMineSelect = async (mineId: number | null) => {
@@ -806,8 +977,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
             // Merge environmental data with slurry profile data
             Object.assign(updatedSpecs, environmentalData);
           } catch (error) {
-            console.error('[Mine Selection] Failed to fetch environmental data:', error);
-            // Non-blocking - user can still fill in manually
+            // Silently handle - user can still fill in manually
+            if (error instanceof Error && error.message !== 'Backend unavailable') {
+              console.error('[Mine Selection] Failed to fetch environmental data:', error);
+            }
           }
         }
 
@@ -829,13 +1002,133 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
             ...environmentalData,
           });
         } catch (error) {
-          console.error('[Mine Selection] Failed to fetch environmental data:', error);
+          // Silently handle - user can still fill in manually
+          if (error instanceof Error && error.message !== 'Backend unavailable') {
+            console.error('[Mine Selection] Failed to fetch environmental data:', error);
+          }
         }
       }
 
       console.log('[Mine Selection] Auto-filled from mine:', mine.mineName);
     } catch (error) {
-      console.error('Failed to fetch mine environmental data:', error);
+      // When backend is unavailable, use fallback mine data from local list
+      const fallbackMine = fallbackMines.find(m => m.id === mineId);
+      if (fallbackMine) {
+        console.log('[Mine Selection] Using fallback data for:', fallbackMine.mineName);
+
+        // Auto-fill location fields from fallback data
+        if (fallbackMine.latitude && fallbackMine.longitude) {
+          onUpdate('latitude', fallbackMine.latitude);
+          onUpdate('longitude', fallbackMine.longitude);
+        }
+        if (fallbackMine.physicalAddress) {
+          onUpdate('siteAddress', fallbackMine.physicalAddress);
+        }
+        if (fallbackMine.province) {
+          onUpdate('region', fallbackMine.province);
+        }
+        onUpdate('country', 'South Africa');
+
+        // Mark location fields as auto-filled
+        setLocationAutoFilled({
+          latitude: !!fallbackMine.latitude,
+          longitude: !!fallbackMine.longitude,
+          siteAddress: !!fallbackMine.physicalAddress,
+          region: !!fallbackMine.province,
+          country: true,
+        });
+
+        // Auto-fill environmental intelligence from fallback data
+        if (onUpdateGlobalSpecs) {
+          const slurryProfile = fallbackMine.commodityName ? fallbackSlurryProfiles[fallbackMine.commodityName] : null;
+          const envData = getFallbackEnvironmentalData(fallbackMine.province);
+          const liningRec = slurryProfile ? getFallbackLiningRecommendation(slurryProfile.abrasionRisk, slurryProfile.corrosionRisk) : null;
+
+          const updatedSpecs: any = {
+            ...globalSpecs,
+            mineSelected: fallbackMine.mineName,
+            mineCommodity: fallbackMine.commodityName,
+            // Environmental Intelligence fields from province data
+            tempMin: envData.tempMin,
+            tempMax: envData.tempMax,
+            tempMean: envData.tempMean,
+            humidityMin: envData.humidityMin,
+            humidityMax: envData.humidityMax,
+            humidityMean: envData.humidityMean,
+            annualRainfall: envData.annualRainfall,
+            ecpMarineInfluence: envData.ecpMarineInfluence,
+            ecpIso12944Category: envData.ecpIso12944Category,
+            ecpIndustrialPollution: envData.ecpIndustrialPollution,
+            soilType: envData.soilType,
+            soilTexture: envData.soilTexture,
+            soilMoisture: envData.soilMoisture,
+            soilMoistureClass: envData.soilMoistureClass,
+            soilDrainage: envData.soilDrainage,
+            distanceToCoastFormatted: envData.distanceToCoastFormatted,
+            detailedMarineInfluence: envData.detailedMarineInfluence,
+            // Additional environmental fields
+            floodRisk: envData.floodRisk,
+            uvExposure: envData.uvExposure,
+            windSpeed: envData.windSpeed,
+            airSaltContent: envData.airSaltContent,
+            timeOfWetness: envData.timeOfWetness,
+          };
+
+          // Add slurry profile data if available
+          if (slurryProfile) {
+            updatedSpecs.slurryPHMin = slurryProfile.phMin;
+            updatedSpecs.slurryPHMax = slurryProfile.phMax;
+            updatedSpecs.slurrySGMin = slurryProfile.typicalSgMin;
+            updatedSpecs.slurrySGMax = slurryProfile.typicalSgMax;
+            updatedSpecs.slurrySolidsMin = slurryProfile.solidsConcentrationMin;
+            updatedSpecs.slurrySolidsMax = slurryProfile.solidsConcentrationMax;
+            updatedSpecs.slurryTempMin = slurryProfile.tempMin;
+            updatedSpecs.slurryTempMax = slurryProfile.tempMax;
+            updatedSpecs.abrasionRisk = slurryProfile.abrasionRisk;
+            updatedSpecs.corrosionRisk = slurryProfile.corrosionRisk;
+            updatedSpecs.primaryFailureMode = slurryProfile.primaryFailureMode;
+          }
+
+          // Add lining recommendation if available
+          if (liningRec) {
+            updatedSpecs.recommendedLining = liningRec.recommendedLining;
+            updatedSpecs.recommendedCoating = liningRec.recommendedCoating;
+          }
+
+          onUpdateGlobalSpecs(updatedSpecs);
+
+          // Mark environmental fields as auto-filled for green styling
+          markFieldsAsAutoFilled([
+            'tempMin',
+            'tempMax',
+            'tempMean',
+            'humidityMin',
+            'humidityMax',
+            'humidityMean',
+            'annualRainfall',
+            'ecpMarineInfluence',
+            'ecpIso12944Category',
+            'ecpIndustrialPollution',
+            'soilType',
+            'soilTexture',
+            'soilMoisture',
+            'soilMoistureClass',
+            'soilDrainage',
+            'distanceToCoast',
+            'distanceToCoastFormatted',
+            'detailedMarineInfluence',
+            'uvExposure',
+            'windSpeed',
+            'floodRisk',
+            'airSaltContent',
+            'timeOfWetness',
+          ]);
+
+          console.log('[Mine Selection] Auto-filled with fallback data for:', fallbackMine.mineName);
+        }
+      } else if (error instanceof Error && error.message !== 'Backend unavailable') {
+        console.error('Failed to fetch mine environmental data:', error);
+      }
     } finally {
       setMineDataLoading(false);
     }
@@ -897,26 +1190,22 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
   };
 
   const hasRequiredEnvironmentalData = () => {
-    // Soil Conditions - all fields required
+    // Soil Conditions - visible fields required
     const hasSoilData = !!(
       (globalSpecs?.soilTexture || rfqData.soilTexture) &&
       (globalSpecs?.soilMoistureClass || rfqData.soilMoistureClass) &&
       (globalSpecs?.soilDrainage || rfqData.soilDrainage)
     );
 
-    // Atmospheric Conditions - all fields required
+    // Atmospheric Conditions - only visible fields required
     const hasAtmosphericData = !!(
       (globalSpecs?.tempMin !== undefined || rfqData.tempMin !== undefined) &&
       (globalSpecs?.tempMax !== undefined || rfqData.tempMax !== undefined) &&
       (globalSpecs?.humidityMean !== undefined) &&
-      (globalSpecs?.annualRainfall || rfqData.rainfall) &&
-      (globalSpecs?.windDirection) &&
-      (globalSpecs?.uvExposure) &&
-      (globalSpecs?.snowExposure) &&
-      (globalSpecs?.fogFrequency)
+      (globalSpecs?.annualRainfall || rfqData.rainfall)
     );
 
-    // Marine & Special Conditions - all dropdown fields required
+    // Marine & Special Conditions - visible dropdown fields required
     const hasMarineData = !!(
       (globalSpecs?.detailedMarineInfluence || rfqData.marineInfluence) &&
       (globalSpecs?.floodRisk || rfqData.floodingRisk) &&
@@ -1125,10 +1414,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           </label>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { value: 'feasibility', label: 'Feasibility' },
+              { value: 'standard', label: 'Standard RFQ' },
               { value: 'phase1', label: 'Phase 1 Tender' },
               { value: 'retender', label: 'Re-Tender' },
-              { value: 'standard', label: 'Standard RFQ' }
+              { value: 'feasibility', label: 'Feasibility' }
             ].map((type) => (
               <label
                 key={type.value}
@@ -1168,9 +1457,9 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           <div className="grid grid-cols-5 gap-2">
             {[
               { value: 'fabricated_steel', label: 'Steel Pipes', icon: '🔩' },
+              { value: 'surface_protection', label: 'Surface Protection', icon: '🛡️' },
               { value: 'hdpe', label: 'HDPE Pipes', icon: '🔵' },
               { value: 'pvc', label: 'PVC Pipes', icon: '⚪' },
-              { value: 'surface_protection', label: 'Surface Protection', icon: '🛡️' },
               { value: 'transport_install', label: 'Transport/Install', icon: '🚚' },
             ].map((product) => {
               const isSelected = rfqData.requiredProducts?.includes(product.value);
@@ -1206,6 +1495,53 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
             })}
           </div>
           {errors.requiredProducts && <p className="mt-1 text-xs text-red-600">{errors.requiredProducts}</p>}
+        </div>
+
+        {/* Additional Notes - Compact */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              Quick Notes
+            </label>
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  addNote(e.target.value);
+                  e.target.value = '';
+                }
+              }}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+            >
+              <option value="">Add common note...</option>
+              {commonNotes.map((note, index) => (
+                <option key={index} value={note} disabled={additionalNotes.includes(note)}>
+                  {note}
+                </option>
+              ))}
+            </select>
+            {additionalNotes.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {additionalNotes.map((note, index) => (
+                  <span key={index} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                    {note.substring(0, 20)}...
+                    <button type="button" onClick={() => removeNote(note)} className="text-red-500 hover:text-red-700 font-bold">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              Custom Notes
+            </label>
+            <textarea
+              value={rfqData.notes}
+              onChange={(e) => onUpdate('notes', e.target.value)}
+              rows={2}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+              placeholder="Additional requirements..."
+            />
+          </div>
         </div>
 
         {/* Project Location - Compact */}
@@ -1533,53 +1869,6 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           )}
         </div>
 
-        {/* Additional Notes - Compact */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div>
-            <label className="block text-xs font-semibold text-gray-900 mb-1">
-              Quick Notes
-            </label>
-            <select
-              onChange={(e) => {
-                if (e.target.value) {
-                  addNote(e.target.value);
-                  e.target.value = '';
-                }
-              }}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
-            >
-              <option value="">Add common note...</option>
-              {commonNotes.map((note, index) => (
-                <option key={index} value={note} disabled={additionalNotes.includes(note)}>
-                  {note}
-                </option>
-              ))}
-            </select>
-            {additionalNotes.length > 0 && (
-              <div className="mt-1 flex flex-wrap gap-1">
-                {additionalNotes.map((note, index) => (
-                  <span key={index} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
-                    {note.substring(0, 20)}...
-                    <button type="button" onClick={() => removeNote(note)} className="text-red-500 hover:text-red-700 font-bold">×</button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-900 mb-1">
-              Custom Notes
-            </label>
-            <textarea
-              value={rfqData.notes}
-              onChange={(e) => onUpdate('notes', e.target.value)}
-              rows={2}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
-              placeholder="Additional requirements..."
-            />
-          </div>
-        </div>
-
         {/* Environmental Intelligence Section - Compact */}
         <div className="mt-4 pt-4 border-t border-gray-300">
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
@@ -1656,7 +1945,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               </div>
 
               {/* Atmospheric Row - Temperature */}
-              <div className="grid grid-cols-6 gap-1 mb-1">
+              <div className="grid grid-cols-5 gap-1 mb-1">
                 <div>
                   <label className="block text-xs text-gray-600">Temp Min °C</label>
                   <AutoFilledInput type="number" step="0.1" value={globalSpecs?.tempMin ?? rfqData.tempMin ?? ''} onChange={(value) => onUpdate('tempMin', value)} onOverride={() => markAsOverridden('tempMin')} isAutoFilled={wasAutoFilled('tempMin')} placeholder="-5" disabled={isEnvironmentalLocked} />
@@ -1672,10 +1961,6 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 <div>
                   <label className="block text-xs text-gray-600">Humidity %</label>
                   <AutoFilledInput type="number" value={globalSpecs?.humidityMean ?? ''} onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, humidityMean: value })} onOverride={() => markAsOverridden('humidityMean')} isAutoFilled={wasAutoFilled('humidityMean')} placeholder="65" disabled={isEnvironmentalLocked} />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600">Wind m/s</label>
-                  <AutoFilledInput type="number" step="0.1" value={globalSpecs?.windSpeed ?? ''} onChange={(value) => onUpdateGlobalSpecs({ ...globalSpecs, windSpeed: value })} onOverride={() => markAsOverridden('windSpeed')} isAutoFilled={wasAutoFilled('windSpeed')} placeholder="4.2" disabled={isEnvironmentalLocked} />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600">UV Level</label>
@@ -6334,7 +6619,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
           scheduleWarnings: recommended.warnings
         };
       } catch (error) {
-        console.error('❌ Error calling pipe-schedule API:', error);
+        if (error instanceof Error && error.message !== 'Backend unavailable') {
+          console.error('❌ Error calling pipe-schedule API:', error);
+        }
 
         // Fallback to simple calculation based on pressure and nominal bore
         let fallbackSchedule = 'Sch40';
@@ -8758,8 +9045,10 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           nominalBores
         });
       } catch (error) {
-        console.error('Error loading master data:', error);
-        // Fallback to empty arrays
+        // Silently handle backend unavailable - fallback to empty arrays
+        if (error instanceof Error && error.message !== 'Backend unavailable') {
+          console.error('Error loading master data:', error);
+        }
         setMasterData({
           steelSpecs: [],
           flangeStandards: [],
@@ -8910,7 +9199,9 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
       return null;
     } catch (error) {
-      console.error('Error fetching pressure classes:', error);
+      if (error instanceof Error && error.message !== 'Backend unavailable') {
+        console.error('Error fetching pressure classes:', error);
+      }
       setAvailablePressureClasses([]);
       return null;
     }
@@ -8920,7 +9211,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   const fetchAvailableSchedules = async (entryId: string, steelSpecId: number, nominalBoreMm: number) => {
     try {
       const { masterDataApi } = await import('@/app/lib/api/client');
-      
+
       // Find the nominal outside diameter ID from nominalBoreMm
       const nominalBore = masterData.nominalBores?.find(nb => nb.nominal_diameter_mm === nominalBoreMm);
       if (!nominalBore) {
@@ -8929,16 +9220,18 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
       }
 
       const dimensions = await masterDataApi.getPipeDimensionsAll(steelSpecId, nominalBore.id);
-      
+
       // Store in map
       setAvailableSchedulesMap(prev => ({
         ...prev,
         [entryId]: dimensions
       }));
-      
+
       return dimensions;
     } catch (error) {
-      console.error('Error fetching available schedules:', error);
+      if (error instanceof Error && error.message !== 'Backend unavailable') {
+        console.error('Error fetching available schedules:', error);
+      }
       setAvailableSchedulesMap(prev => ({
         ...prev,
         [entryId]: []
@@ -8956,16 +9249,18 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     try {
       const { masterDataApi } = await import('@/app/lib/api/client');
       const options = await masterDataApi.getBendOptions(bendType);
-      
+
       // Cache the result
       setBendOptionsCache(prev => ({
         ...prev,
         [bendType]: options
       }));
-      
+
       return options;
     } catch (error) {
-      console.error(`Error fetching bend options for ${bendType}:`, error);
+      if (error instanceof Error && error.message !== 'Backend unavailable') {
+        console.error(`Error fetching bend options for ${bendType}:`, error);
+      }
       return { nominalBores: [], degrees: [] };
     }
   };
@@ -9033,8 +9328,10 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         const result = await rfqApi.calculate(entry.specs);
         updateEntryCalculation(entry.id, result);
       } catch (error: any) {
-        console.error(`Auto-calculation error for entry ${entry.id}:`, error);
-        // Silently fail for auto-calculation - don't show alerts
+        // Silently handle when backend is unavailable
+        if (!(error instanceof Error && error.message === 'Backend unavailable')) {
+          console.error(`Auto-calculation error for entry ${entry.id}:`, error);
+        }
       }
     };
 

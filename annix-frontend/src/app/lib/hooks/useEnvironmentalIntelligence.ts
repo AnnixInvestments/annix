@@ -36,6 +36,8 @@ export interface UseEnvironmentalIntelligenceResult {
   wasAutoFilled: (fieldName: string) => boolean;
   /** Mark a field as manually overridden (removes auto-filled styling) */
   markAsOverridden: (fieldName: string) => void;
+  /** Mark multiple fields as auto-filled (for fallback data) */
+  markFieldsAsAutoFilled: (fieldNames: string[]) => void;
 }
 
 /**
@@ -115,6 +117,17 @@ export function useEnvironmentalIntelligence(): UseEnvironmentalIntelligenceResu
     []
   );
 
+  const markFieldsAsAutoFilled = useCallback(
+    (fieldNames: string[]) => {
+      setAutoFilledFields((prev) => {
+        const next = new Set(prev);
+        fieldNames.forEach((field) => next.add(field));
+        return next;
+      });
+    },
+    []
+  );
+
   return {
     isLoading,
     errors,
@@ -124,5 +137,6 @@ export function useEnvironmentalIntelligence(): UseEnvironmentalIntelligenceResu
     clearAutoFilled,
     wasAutoFilled,
     markAsOverridden,
+    markFieldsAsAutoFilled,
   };
 }

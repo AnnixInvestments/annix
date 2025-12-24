@@ -49,9 +49,12 @@ export default function Navigation() {
                   onClick={() => router.push(item.path)}
                   className={`px-4 py-2 rounded-lg font-semibold transition-all ${
                     isActive(item)
-                      ? 'bg-[#FFA500] text-[#001F3F]'
-                      : 'text-[#FFA500] hover:bg-[#003366] hover:text-[#FFB733]'
+                      ? 'bg-[#FFA500]'
+                      : 'hover:bg-[#003366]'
                   }`}
+                  style={{
+                    color: isActive(item) ? '#FFFFFF' : '#FFA500'
+                  }}
                 >
                   {item.label}
                 </button>

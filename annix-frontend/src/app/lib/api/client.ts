@@ -278,8 +278,7 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    console.log(`API Request: ${url}`);
-    
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -295,14 +294,22 @@ class ApiClient {
       headers,
     };
 
-    const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API Error (${response.status}): ${errorText}`);
-    }
+    try {
+      const response = await fetch(url, config);
 
-    return response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API Error (${response.status}): ${errorText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      // Silently handle network errors (backend unavailable)
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        throw new Error('Backend unavailable');
+      }
+      throw error;
+    }
   }
 
   // Auth endpoints
