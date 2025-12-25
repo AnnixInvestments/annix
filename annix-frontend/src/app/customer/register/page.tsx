@@ -9,7 +9,9 @@ import {
   CustomerCompanyDto,
   CustomerUserDto,
   CustomerRegistrationDto,
+  DocumentValidationResult,
 } from '@/app/lib/api/customerApi';
+import DocumentIssueModal from '@/app/components/customer/DocumentIssueModal';
 
 type Step = 'company' | 'documents' | 'profile' | 'security' | 'complete';
 
@@ -81,6 +83,44 @@ export default function CustomerRegistrationPage() {
     companyRegDocument: null,
   });
 
+  // Document validation state
+  const [validationState, setValidationState] = useState<{
+    isValidating: boolean;
+    showIssueModal: boolean;
+    issueType: 'mismatch' | 'ocr_failed' | null;
+    validationResult: null | {
+      documentType: 'vat' | 'registration';
+      mismatches: Array<{
+        field: string;
+        expected: string;
+        extracted: string;
+        similarity?: number;
+      }>;
+      extractedData: any;
+    };
+  }>({
+    isValidating: false,
+    showIssueModal: false,
+    issueType: null,
+    validationResult: null,
+  });
+
+  const [documentsValidated, setDocumentsValidated] = useState<{
+    vat: boolean;
+    registration: boolean;
+  }>({
+    vat: false,
+    registration: false,
+  });
+
+  const [pendingManualReview, setPendingManualReview] = useState<{
+    vat: boolean;
+    registration: boolean;
+  }>({
+    vat: false,
+    registration: false,
+  });
+
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
 
   // Validate password requirements
@@ -122,6 +162,123 @@ export default function CustomerRegistrationPage() {
 
   const handleSecurityChange = (field: string, value: string | boolean) => {
     setSecurity((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Document validation handlers
+  const validateDocument = async (file: File, documentType: 'vat' | 'registration') => {
+    setValidationState(prev => ({ ...prev, isValidating: true }));
+    setError(null);
+
+    try {
+      const expectedData = documentType === 'vat'
+        ? {
+            vatNumber: company.vatNumber,
+            registrationNumber: company.registrationNumber,
+            companyName: company.legalName,
+          }
+        : {
+            registrationNumber: company.registrationNumber,
+            companyName: company.legalName,
+            streetAddress: company.streetAddress,
+            city: company.city,
+            provinceState: company.provinceState,
+            postalCode: company.postalCode,
+          };
+
+      const result = await customerAuthApi.validateDocument(file, documentType, expectedData);
+
+      console.log('=== VALIDATION RESULT ===');
+      console.log('Document Type:', documentType);
+      console.log('Expected Data:', expectedData);
+      console.log('Validation Result:', result);
+      console.log('=========================');
+
+      if (result.ocrFailed) {
+        // OCR failed - show modal with option to go back or proceed with manual review
+        setValidationState({
+          isValidating: false,
+          showIssueModal: true,
+          issueType: 'ocr_failed',
+          validationResult: {
+            documentType,
+            mismatches: [],
+            extractedData: result.extractedData,
+          },
+        });
+        return;
+      }
+
+      if (!result.isValid && result.mismatches.length > 0) {
+        // Show modal with mismatches
+        setValidationState({
+          isValidating: false,
+          showIssueModal: true,
+          issueType: 'mismatch',
+          validationResult: {
+            documentType,
+            mismatches: result.mismatches,
+            extractedData: result.extractedData,
+          },
+        });
+      } else {
+        // Document validated successfully
+        setDocumentsValidated(prev => ({ ...prev, [documentType]: true }));
+        setValidationState(prev => ({ ...prev, isValidating: false }));
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Validation failed';
+      // Show OCR failed modal on error
+      setValidationState({
+        isValidating: false,
+        showIssueModal: true,
+        issueType: 'ocr_failed',
+        validationResult: {
+          documentType,
+          mismatches: [],
+          extractedData: {},
+        },
+      });
+    }
+  };
+
+  const handleFileSelect = async (file: File, documentType: 'vat' | 'registration') => {
+    const docKey = documentType === 'vat' ? 'vatDocument' : 'companyRegDocument';
+    setDocuments(prev => ({ ...prev, [docKey]: file }));
+
+    // Trigger validation immediately
+    await validateDocument(file, documentType);
+  };
+
+  const handleGoBackToReview = () => {
+    // Clear the document that had issues
+    const { documentType } = validationState.validationResult!;
+
+    if (documentType === 'vat') {
+      setDocuments(prev => ({ ...prev, vatDocument: null }));
+      setDocumentsValidated(prev => ({ ...prev, vat: false }));
+      setPendingManualReview(prev => ({ ...prev, vat: false }));
+    } else {
+      setDocuments(prev => ({ ...prev, companyRegDocument: null }));
+      setDocumentsValidated(prev => ({ ...prev, registration: false }));
+      setPendingManualReview(prev => ({ ...prev, registration: false }));
+    }
+
+    // Close modal
+    setValidationState({ isValidating: false, showIssueModal: false, issueType: null, validationResult: null });
+
+    // Take user back to Step 1
+    setCurrentStep('company');
+  };
+
+  const handleProceedWithManualReview = () => {
+    const { documentType } = validationState.validationResult!;
+
+    // Mark document as pending manual review
+    setPendingManualReview(prev => ({ ...prev, [documentType]: true }));
+    setDocumentsValidated(prev => ({ ...prev, [documentType]: true }));
+
+    // Close modal
+    setValidationState({ isValidating: false, showIssueModal: false, issueType: null, validationResult: null });
   };
 
   const isCompanyValid = (): boolean => {
@@ -512,13 +669,41 @@ export default function CustomerRegistrationPage() {
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
             onChange={(e) => {
-              const file = e.target.files?.[0] || null;
-              setDocuments((prev) => ({ ...prev, vatDocument: file }));
+              const file = e.target.files?.[0];
+              if (file) {
+                handleFileSelect(file, 'vat');
+              }
             }}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            disabled={validationState.isValidating}
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
           />
-          {documents.vatDocument && (
+          {validationState.isValidating && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Validating document...
+            </div>
+          )}
+          {documents.vatDocument && !validationState.isValidating && (
             <p className="mt-2 text-sm text-green-600">✓ {documents.vatDocument.name} selected</p>
+          )}
+          {documentsValidated.vat && !validationState.isValidating && !pendingManualReview.vat && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              Document validated successfully
+            </div>
+          )}
+          {pendingManualReview.vat && !validationState.isValidating && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-orange-600">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              Pending manual verification - limited access until verified
+            </div>
           )}
         </div>
 
@@ -539,13 +724,41 @@ export default function CustomerRegistrationPage() {
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
             onChange={(e) => {
-              const file = e.target.files?.[0] || null;
-              setDocuments((prev) => ({ ...prev, companyRegDocument: file }));
+              const file = e.target.files?.[0];
+              if (file) {
+                handleFileSelect(file, 'registration');
+              }
             }}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            disabled={validationState.isValidating}
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
           />
-          {documents.companyRegDocument && (
+          {validationState.isValidating && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Validating document...
+            </div>
+          )}
+          {documents.companyRegDocument && !validationState.isValidating && (
             <p className="mt-2 text-sm text-green-600">✓ {documents.companyRegDocument.name} selected</p>
+          )}
+          {documentsValidated.registration && !validationState.isValidating && !pendingManualReview.registration && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              Document validated successfully
+            </div>
+          )}
+          {pendingManualReview.registration && !validationState.isValidating && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-orange-600">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              Pending manual verification - limited access until verified
+            </div>
           )}
         </div>
 
@@ -643,7 +856,7 @@ export default function CustomerRegistrationPage() {
 
       <div className="flex justify-between mt-8">
         <button
-          onClick={() => setCurrentStep('company')}
+          onClick={() => setCurrentStep('documents')}
           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
         >
           Back
@@ -885,6 +1098,19 @@ export default function CustomerRegistrationPage() {
           </p>
         )}
       </div>
+
+      {/* Document Issue Modal */}
+      {validationState.validationResult && (
+        <DocumentIssueModal
+          isOpen={validationState.showIssueModal}
+          onClose={() => setValidationState(prev => ({ ...prev, showIssueModal: false }))}
+          documentType={validationState.validationResult.documentType}
+          issueType={validationState.issueType || 'mismatch'}
+          mismatches={validationState.validationResult.mismatches}
+          onGoBackToReview={handleGoBackToReview}
+          onProceedWithManualReview={handleProceedWithManualReview}
+        />
+      )}
     </div>
   );
 }

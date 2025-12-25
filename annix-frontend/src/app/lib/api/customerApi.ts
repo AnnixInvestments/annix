@@ -51,6 +51,32 @@ export interface CustomerRegistrationDto {
 // Legacy type aliases for compatibility
 export type CustomerProfileDto = Omit<CustomerUserDto, 'email' | 'password'>;
 
+// Document validation types
+export interface DocumentValidationResult {
+  success: boolean;
+  isValid: boolean;
+  mismatches: Array<{
+    field: string;
+    expected: string;
+    extracted: string;
+    similarity?: number;
+  }>;
+  extractedData: {
+    vatNumber?: string;
+    registrationNumber?: string;
+    companyName?: string;
+    streetAddress?: string;
+    city?: string;
+    provinceState?: string;
+    postalCode?: string;
+    confidence?: string;
+  };
+  ocrFailed: boolean;
+  requiresManualReview: boolean;
+  allowedToProceed: boolean;
+  message?: string;
+}
+
 export interface CustomerLoginDto {
   email: string;
   password: string;
@@ -347,6 +373,45 @@ export const customerAuthApi = {
   logout: () => customerApiClient.logout(),
   refresh: () => customerApiClient.refreshAccessToken(),
   isAuthenticated: () => customerApiClient.isAuthenticated(),
+
+  /**
+   * Validate uploaded document against user input using OCR
+   */
+  validateDocument: async (
+    file: File,
+    documentType: 'vat' | 'registration',
+    expectedData: {
+      vatNumber?: string;
+      registrationNumber?: string;
+      companyName?: string;
+      streetAddress?: string;
+      city?: string;
+      provinceState?: string;
+      postalCode?: string;
+    }
+  ): Promise<DocumentValidationResult> => {
+    const formData = new FormData();
+    formData.append('document', file);
+    formData.append('documentType', documentType);
+    formData.append('expectedData', JSON.stringify(expectedData));
+
+    const response = await fetch(`${API_BASE_URL}/customer/validate-document`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.message || 'Document validation failed');
+      } catch {
+        throw new Error('Document validation failed');
+      }
+    }
+
+    return response.json();
+  },
 };
 
 export const customerPortalApi = {

@@ -26,6 +26,7 @@ import { CustomerAdminService } from './customer-admin.service';
 import { CustomerOnboardingService } from './customer-onboarding.service';
 import { CustomerDocumentService } from './customer-document.service';
 import { CustomerSupplierService } from './customer-supplier.service';
+import { DocumentOcrService } from './document-ocr.service';
 
 // Controllers
 import { CustomerAuthController } from './customer-auth.controller';
@@ -85,6 +86,7 @@ import { EmailModule } from '../email/email.module';
     CustomerOnboardingService,
     CustomerDocumentService,
     CustomerSupplierService,
+    DocumentOcrService,
   ],
   exports: [
     CustomerAuthService,

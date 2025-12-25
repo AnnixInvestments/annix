@@ -73,10 +73,10 @@ export class CustomerDocument {
   validationNotes: string | null;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'reviewed_by' })
+  @JoinColumn({ name: 'reviewed_by_id' })
   reviewedBy: User;
 
-  @Column({ name: 'reviewed_by', nullable: true })
+  @Column({ name: 'reviewed_by_id', nullable: true })
   reviewedById: number | null;
 
   @Column({ name: 'reviewed_at', type: 'timestamp', nullable: true })
@@ -87,6 +87,25 @@ export class CustomerDocument {
 
   @Column({ name: 'is_required', default: true })
   isRequired: boolean;
+
+  @Column({ name: 'ocr_extracted_data', type: 'jsonb', nullable: true })
+  ocrExtractedData: {
+    vatNumber?: string;
+    registrationNumber?: string;
+    companyName?: string;
+    streetAddress?: string;
+    city?: string;
+    provinceState?: string;
+    postalCode?: string;
+    rawText?: string;
+    confidence?: string;
+  } | null;
+
+  @Column({ name: 'ocr_processed_at', type: 'timestamp', nullable: true })
+  ocrProcessedAt: Date | null;
+
+  @Column({ name: 'ocr_failed', default: false })
+  ocrFailed: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

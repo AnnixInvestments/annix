@@ -70,6 +70,47 @@ export class CustomerAuthController {
     return this.customerAuthService.register(dto, clientIp, vatDocument, companyRegDocument);
   }
 
+  @Post('validate-document')
+  @ApiOperation({ summary: 'Validate uploaded document against user input using OCR' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        document: { type: 'string', format: 'binary', description: 'Document to validate' },
+        documentType: { type: 'string', enum: ['vat', 'registration'], description: 'Type of document' },
+        expectedData: { type: 'string', description: 'JSON string of expected data to validate against' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Document validation result' })
+  @ApiResponse({ status: 400, description: 'Invalid input or unsupported file type' })
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'document', maxCount: 1 },
+  ]))
+  async validateDocument(
+    @Body() body: { documentType: string; expectedData: string },
+    @UploadedFiles() files: { document?: Express.Multer.File[] },
+  ) {
+    const document = files.document?.[0];
+
+    if (!document) {
+      return {
+        success: false,
+        message: 'No document provided',
+      };
+    }
+
+    const documentType = body.documentType as 'vat' | 'registration';
+    const expectedData = JSON.parse(body.expectedData);
+
+    return this.customerAuthService.validateUploadedDocument(
+      document,
+      documentType,
+      expectedData,
+    );
+  }
+
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Customer login with device verification' })
