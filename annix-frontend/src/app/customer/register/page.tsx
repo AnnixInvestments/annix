@@ -11,7 +11,7 @@ import {
   CustomerRegistrationDto,
 } from '@/app/lib/api/customerApi';
 
-type Step = 'company' | 'profile' | 'security' | 'complete';
+type Step = 'company' | 'documents' | 'profile' | 'security' | 'complete';
 
 const COMPANY_SIZE_OPTIONS = [
   { value: 'micro', label: 'Micro (1-9 employees)' },
@@ -31,6 +31,18 @@ const INDUSTRY_OPTIONS = [
   'Construction',
   'Agriculture',
   'Other',
+];
+
+const SOUTH_AFRICAN_PROVINCES = [
+  'Eastern Cape',
+  'Free State',
+  'Gauteng',
+  'KwaZulu-Natal',
+  'Limpopo',
+  'Mpumalanga',
+  'Northern Cape',
+  'North West',
+  'Western Cape',
 ];
 
 export default function CustomerRegistrationPage() {
@@ -60,13 +72,22 @@ export default function CustomerRegistrationPage() {
     securityPolicyAccepted: false,
   });
 
+  // Document upload state
+  const [documents, setDocuments] = useState<{
+    vatDocument: File | null;
+    companyRegDocument: File | null;
+  }>({
+    vatDocument: null,
+    companyRegDocument: null,
+  });
+
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
 
   // Validate password requirements
   const validatePassword = (password: string): string[] => {
     const errors: string[] = [];
-    if (password.length < 12) {
-      errors.push('Password must be at least 12 characters');
+    if (password.length < 10) {
+      errors.push('Password must be at least 10 characters');
     }
     if (!/[A-Z]/.test(password)) {
       errors.push('Password must contain at least one uppercase letter');
@@ -116,6 +137,10 @@ export default function CustomerRegistrationPage() {
     );
   };
 
+  const isDocumentsValid = (): boolean => {
+    return !!(documents.vatDocument && documents.companyRegDocument);
+  };
+
   const isUserValid = (): boolean => {
     return !!(user.firstName && user.lastName);
   };
@@ -142,26 +167,50 @@ export default function CustomerRegistrationPage() {
     setError(null);
 
     try {
-      const registrationData: CustomerRegistrationDto = {
-        company: company as CustomerCompanyDto,
-        user: {
-          firstName: user.firstName!,
-          lastName: user.lastName!,
-          email: user.email!,
-          password: user.password!,
-          jobTitle: user.jobTitle,
-          directPhone: user.directPhone,
-          mobilePhone: user.mobilePhone,
-        },
-        security: {
-          deviceFingerprint: fingerprint,
-          browserInfo,
-          termsAccepted: security.termsAccepted,
-          securityPolicyAccepted: security.securityPolicyAccepted,
-        },
-      };
+      // Create FormData for file uploads
+      const formData = new FormData();
 
-      await customerAuthApi.register(registrationData);
+      // Add company data
+      formData.append('company', JSON.stringify(company));
+
+      // Add user data
+      formData.append('user', JSON.stringify({
+        firstName: user.firstName!,
+        lastName: user.lastName!,
+        email: user.email!,
+        password: user.password!,
+        jobTitle: user.jobTitle,
+        directPhone: user.directPhone,
+        mobilePhone: user.mobilePhone,
+      }));
+
+      // Add security data
+      formData.append('security', JSON.stringify({
+        deviceFingerprint: fingerprint,
+        browserInfo,
+        termsAccepted: security.termsAccepted,
+        securityPolicyAccepted: security.securityPolicyAccepted,
+      }));
+
+      // Add document files
+      if (documents.vatDocument) {
+        formData.append('vatDocument', documents.vatDocument);
+      }
+      if (documents.companyRegDocument) {
+        formData.append('companyRegDocument', documents.companyRegDocument);
+      }
+
+      // Call API with FormData
+      const response = await fetch('http://localhost:4001/customer/register', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Registration failed');
+      }
+
       setCurrentStep('complete');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed. Please try again.');
@@ -170,40 +219,61 @@ export default function CustomerRegistrationPage() {
     }
   };
 
-  const renderStepIndicator = () => (
-    <div className="flex items-center justify-center mb-8">
-      {['company', 'profile', 'security'].map((step, index) => (
-        <React.Fragment key={step}>
-          <div
-            className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-              currentStep === step
-                ? 'border-blue-600 bg-blue-600 text-white'
-                : ['company', 'profile', 'security'].indexOf(currentStep) > index
-                ? 'border-green-500 bg-green-500 text-white'
-                : 'border-gray-300 text-gray-500'
-            }`}
-          >
-            {['company', 'profile', 'security'].indexOf(currentStep) > index ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              index + 1
-            )}
-          </div>
-          {index < 2 && (
-            <div
-              className={`w-20 h-1 ${
-                ['company', 'profile', 'security'].indexOf(currentStep) > index
-                  ? 'bg-green-500'
-                  : 'bg-gray-300'
-              }`}
-            />
-          )}
-        </React.Fragment>
-      ))}
-    </div>
-  );
+  const renderStepIndicator = () => {
+    const steps = ['company', 'documents', 'profile', 'security'];
+    const stepLabels = ['Company', 'Documents', 'Profile', 'Security'];
+
+    return (
+      <div className="mb-8">
+        <div className="flex items-center justify-center mb-2">
+          {steps.map((step, index) => (
+            <React.Fragment key={step}>
+              <div
+                className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                  currentStep === step
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : steps.indexOf(currentStep) > index
+                    ? 'border-green-500 bg-green-500 text-white'
+                    : 'border-gray-300 text-gray-500'
+                }`}
+              >
+                {steps.indexOf(currentStep) > index ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  index + 1
+                )}
+              </div>
+              {index < steps.length - 1 && (
+                <div
+                  className={`w-16 h-1 ${
+                    steps.indexOf(currentStep) > index
+                      ? 'bg-green-500'
+                      : 'bg-gray-300'
+                  }`}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+        <div className="flex items-center justify-center">
+          {steps.map((step, index) => (
+            <React.Fragment key={`label-${step}`}>
+              <div
+                className={`text-xs font-medium ${
+                  currentStep === step ? 'text-blue-600' : 'text-gray-500'
+                } ${index === 0 ? 'text-left' : index === steps.length - 1 ? 'text-right' : 'text-center'}`}
+                style={{ width: index < steps.length - 1 ? '104px' : '40px' }}
+              >
+                {stepLabels[index]}
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const renderCompanyStep = () => (
     <div className="space-y-6">
@@ -320,14 +390,20 @@ export default function CustomerRegistrationPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Province/State <span className="text-red-500">*</span>
+            Province <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
+          <select
             value={company.provinceState || ''}
             onChange={(e) => handleCompanyChange('provinceState', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
+          >
+            <option value="">Select a province...</option>
+            {SOUTH_AFRICAN_PROVINCES.map((province) => (
+              <option key={province} value={province}>
+                {province}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
@@ -406,8 +482,94 @@ export default function CustomerRegistrationPage() {
 
       <div className="flex justify-end mt-8">
         <button
-          onClick={() => setCurrentStep('profile')}
+          onClick={() => setCurrentStep('documents')}
           disabled={!isCompanyValid()}
+          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderDocumentsStep = () => (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold text-gray-900">Upload Company Documents</h2>
+      <p className="text-sm text-gray-600">
+        Please upload the required documents. We will verify that the information matches your company details.
+      </p>
+
+      <div className="space-y-6">
+        {/* VAT Registration Document */}
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            VAT Registration Document <span className="text-red-500">*</span>
+          </label>
+          <p className="text-xs text-gray-500 mb-3">
+            Upload your official VAT registration certificate. We will verify the VAT number matches: {company.vatNumber || 'Not provided'}
+          </p>
+          <input
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null;
+              setDocuments((prev) => ({ ...prev, vatDocument: file }));
+            }}
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          />
+          {documents.vatDocument && (
+            <p className="mt-2 text-sm text-green-600">✓ {documents.vatDocument.name} selected</p>
+          )}
+        </div>
+
+        {/* Company Registration Document */}
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Company Registration Document <span className="text-red-500">*</span>
+          </label>
+          <p className="text-xs text-gray-500 mb-3">
+            Upload your official company registration certificate (CIPC). We will verify:
+          </p>
+          <ul className="text-xs text-gray-500 list-disc list-inside mb-3">
+            <li>Registration number: {company.registrationNumber}</li>
+            <li>Company name: {company.legalName}</li>
+            <li>Registered address matches: {company.streetAddress}, {company.city}, {company.provinceState}</li>
+          </ul>
+          <input
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null;
+              setDocuments((prev) => ({ ...prev, companyRegDocument: file }));
+            }}
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          />
+          {documents.companyRegDocument && (
+            <p className="mt-2 text-sm text-green-600">✓ {documents.companyRegDocument.name} selected</p>
+          )}
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+          <h3 className="text-sm font-medium text-blue-900 mb-2">Document Requirements</h3>
+          <ul className="text-xs text-blue-800 space-y-1">
+            <li>• Accepted formats: PDF, JPG, PNG</li>
+            <li>• Maximum file size: 10MB per document</li>
+            <li>• Documents must be clear and readable</li>
+            <li>• Information must match the company details you provided</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="flex justify-between mt-8">
+        <button
+          onClick={() => setCurrentStep('company')}
+          className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+        >
+          Back
+        </button>
+        <button
+          onClick={() => setCurrentStep('profile')}
+          disabled={!isDocumentsValid()}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           Continue
@@ -708,6 +870,7 @@ export default function CustomerRegistrationPage() {
 
         <div className="bg-white shadow rounded-lg p-8">
           {currentStep === 'company' && renderCompanyStep()}
+          {currentStep === 'documents' && renderDocumentsStep()}
           {currentStep === 'profile' && renderProfileStep()}
           {currentStep === 'security' && renderSecurityStep()}
           {currentStep === 'complete' && renderCompleteStep()}

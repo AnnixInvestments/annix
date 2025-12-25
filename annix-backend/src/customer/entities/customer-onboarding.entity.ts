@@ -52,10 +52,10 @@ export class CustomerOnboarding {
   reviewedAt: Date | null;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'reviewed_by' })
+  @JoinColumn({ name: 'reviewed_by_id' })
   reviewedBy: User;
 
-  @Column({ name: 'reviewed_by', nullable: true })
+  @Column({ name: 'reviewed_by_id', nullable: true })
   reviewedById: number | null;
 
   @Column({ name: 'rejection_reason', type: 'text', nullable: true, default: null })

@@ -7,8 +7,11 @@ import {
   HttpCode,
   HttpStatus,
   Get,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiConsumes } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { CustomerAuthService } from './customer-auth.service';
@@ -25,17 +28,46 @@ export class CustomerAuthController {
   constructor(private readonly customerAuthService: CustomerAuthService) {}
 
   @Post('register')
-  @ApiOperation({ summary: 'Register a new customer account' })
-  @ApiBody({ type: CreateCustomerRegistrationDto })
+  @ApiOperation({ summary: 'Register a new customer account with documents' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        company: { type: 'string', description: 'JSON string of company data' },
+        user: { type: 'string', description: 'JSON string of user data' },
+        security: { type: 'string', description: 'JSON string of security data' },
+        vatDocument: { type: 'string', format: 'binary', description: 'VAT registration document' },
+        companyRegDocument: { type: 'string', format: 'binary', description: 'Company registration document' },
+      },
+    },
+  })
   @ApiResponse({ status: 201, description: 'Registration successful' })
   @ApiResponse({ status: 400, description: 'Invalid input or terms not accepted' })
   @ApiResponse({ status: 409, description: 'Email or company already exists' })
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'vatDocument', maxCount: 1 },
+    { name: 'companyRegDocument', maxCount: 1 },
+  ]))
   async register(
-    @Body() dto: CreateCustomerRegistrationDto,
+    @Body() body: any,
+    @UploadedFiles() files: { vatDocument?: Express.Multer.File[], companyRegDocument?: Express.Multer.File[] },
     @Req() req: Request,
   ) {
     const clientIp = this.getClientIp(req);
-    return this.customerAuthService.register(dto, clientIp);
+
+    // Parse JSON strings from form data
+    const dto: CreateCustomerRegistrationDto = {
+      company: JSON.parse(body.company),
+      user: JSON.parse(body.user),
+      security: JSON.parse(body.security),
+    };
+
+    // Extract files
+    const vatDocument = files.vatDocument?.[0];
+    const companyRegDocument = files.companyRegDocument?.[0];
+
+    return this.customerAuthService.register(dto, clientIp, vatDocument, companyRegDocument);
   }
 
   @Post('auth/login')

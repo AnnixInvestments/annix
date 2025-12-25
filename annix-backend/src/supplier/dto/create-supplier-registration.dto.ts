@@ -14,16 +14,16 @@ export class CreateSupplierRegistrationDto {
   email: string;
 
   @ApiProperty({
-    description: 'Password (min 12 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char)',
-    example: 'SecureP@ssw0rd!',
+    description: 'Password (min 10 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char)',
+    example: 'SecureP@ss!',
   })
   @IsString()
-  @MinLength(12)
+  @MinLength(10)
   @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$/,
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,}$/,
     {
       message:
-        'Password must be at least 12 characters with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
+        'Password must be at least 10 characters with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
     },
   )
   password: string;

@@ -17,7 +17,7 @@ export default function SupplierRegisterPage() {
 
   const validatePassword = (pwd: string): string[] => {
     const errors: string[] = [];
-    if (pwd.length < 12) errors.push('At least 12 characters');
+    if (pwd.length < 10) errors.push('At least 10 characters');
     if (!/[A-Z]/.test(pwd)) errors.push('At least one uppercase letter');
     if (!/[a-z]/.test(pwd)) errors.push('At least one lowercase letter');
     if (!/\d/.test(pwd)) errors.push('At least one number');

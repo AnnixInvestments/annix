@@ -24,10 +24,14 @@ import {
   CustomerAccountStatus,
   CustomerOnboarding,
   CustomerRole,
+  CustomerDocument,
 } from './entities';
 import { CustomerOnboardingStatus } from './entities/customer-onboarding.entity';
 import { LoginFailureReason } from './entities/customer-login-attempt.entity';
 import { SessionInvalidationReason } from './entities/customer-session.entity';
+import { CustomerDocumentType, CustomerDocumentValidationStatus } from './entities/customer-document.entity';
+import * as path from 'path';
+import * as fs from 'fs';
 import {
   CreateCustomerRegistrationDto,
   CustomerLoginDto,
@@ -47,6 +51,8 @@ const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
 
 @Injectable()
 export class CustomerAuthService {
+  private readonly uploadDir: string;
+
   constructor(
     @InjectRepository(CustomerCompany)
     private readonly companyRepo: Repository<CustomerCompany>,
@@ -60,6 +66,8 @@ export class CustomerAuthService {
     private readonly sessionRepo: Repository<CustomerSession>,
     @InjectRepository(CustomerOnboarding)
     private readonly onboardingRepo: Repository<CustomerOnboarding>,
+    @InjectRepository(CustomerDocument)
+    private readonly documentRepo: Repository<CustomerDocument>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserRole)
@@ -69,12 +77,19 @@ export class CustomerAuthService {
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
-  ) {}
+  ) {
+    this.uploadDir = this.configService.get<string>('UPLOAD_DIR') || './uploads';
+  }
 
   /**
-   * Register a new customer (company + user + device binding)
+   * Register a new customer (company + user + device binding + documents)
    */
-  async register(dto: CreateCustomerRegistrationDto, clientIp: string): Promise<{ success: boolean; message: string }> {
+  async register(
+    dto: CreateCustomerRegistrationDto,
+    clientIp: string,
+    vatDocument?: Express.Multer.File,
+    companyRegDocument?: Express.Multer.File,
+  ): Promise<{ success: boolean; message: string }> {
     // Validate acceptance of terms and security policy
     if (!dto.security.termsAccepted) {
       throw new BadRequestException('Terms and conditions must be accepted');
@@ -155,13 +170,24 @@ export class CustomerAuthService {
       const savedProfile = await queryRunner.manager.save(profile);
 
       // 5. Create onboarding record
+      const documentsComplete = !!(vatDocument && companyRegDocument);
       const onboarding = this.onboardingRepo.create({
         customerId: savedProfile.id,
         status: CustomerOnboardingStatus.DRAFT,
         companyDetailsComplete: true, // Company details captured at registration
-        documentsComplete: false,
+        documentsComplete,
       });
       await queryRunner.manager.save(onboarding);
+
+      // 5a. Save uploaded documents
+      if (vatDocument || companyRegDocument) {
+        await this.saveRegistrationDocuments(
+          queryRunner.manager,
+          savedProfile.id,
+          vatDocument,
+          companyRegDocument,
+        );
+      }
 
       // 6. Create the device binding
       const deviceBinding = this.deviceBindingRepo.create({
@@ -205,6 +231,65 @@ export class CustomerAuthService {
       throw error;
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  /**
+   * Save registration documents (VAT and Company Registration)
+   */
+  private async saveRegistrationDocuments(
+    manager: any,
+    customerId: number,
+    vatDocument?: Express.Multer.File,
+    companyRegDocument?: Express.Multer.File,
+  ): Promise<void> {
+    const customerDir = path.join(this.uploadDir, 'customers', customerId.toString());
+
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(customerDir)) {
+      fs.mkdirSync(customerDir, { recursive: true });
+    }
+
+    // Save VAT document
+    if (vatDocument) {
+      const fileName = `vat_${Date.now()}_${vatDocument.originalname}`;
+      const filePath = path.join(customerDir, fileName);
+
+      fs.writeFileSync(filePath, vatDocument.buffer);
+
+      const vatDocEntity = this.documentRepo.create({
+        customerId,
+        documentType: CustomerDocumentType.TAX_CLEARANCE, // Using tax clearance as closest match
+        fileName: vatDocument.originalname,
+        filePath,
+        fileSize: vatDocument.size,
+        mimeType: vatDocument.mimetype,
+        validationStatus: CustomerDocumentValidationStatus.PENDING,
+        isRequired: true,
+      });
+
+      await manager.save(vatDocEntity);
+    }
+
+    // Save company registration document
+    if (companyRegDocument) {
+      const fileName = `company_reg_${Date.now()}_${companyRegDocument.originalname}`;
+      const filePath = path.join(customerDir, fileName);
+
+      fs.writeFileSync(filePath, companyRegDocument.buffer);
+
+      const companyRegEntity = this.documentRepo.create({
+        customerId,
+        documentType: CustomerDocumentType.REGISTRATION_CERT,
+        fileName: companyRegDocument.originalname,
+        filePath,
+        fileSize: companyRegDocument.size,
+        mimeType: companyRegDocument.mimetype,
+        validationStatus: CustomerDocumentValidationStatus.PENDING,
+        isRequired: true,
+      });
+
+      await manager.save(companyRegEntity);
     }
   }
 
