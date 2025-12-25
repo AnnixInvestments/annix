@@ -47,6 +47,7 @@ import { MinesModule } from './mines/mines.module';
 import { CoatingSpecificationModule } from './coating-specification/coating-specification.module';
 import { PipeSizingModule } from './pipe-sizing/pipe-sizing.module';
 import { StructuralSteelModule } from './structural-steel/structural-steel.module';
+import { HdpeModule } from './hdpe/hdpe.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -95,6 +96,7 @@ import typeormConfig from './config/typeorm';
     CoatingSpecificationModule,
     PipeSizingModule,
     StructuralSteelModule,
+    HdpeModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],
