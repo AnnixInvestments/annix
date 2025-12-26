@@ -5,9 +5,12 @@ export class CreateDefaultAdminUser1766731000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create default admin user
     // Email: admin@annix.co.za
-    // Password: REDACTED_SECRET
+    // Password: Set via ADMIN_INITIAL_PASSWORD environment variable
 
-    const password = 'REDACTED_SECRET';
+    const password = process.env.ADMIN_INITIAL_PASSWORD;
+    if (!password) {
+      throw new Error('ADMIN_INITIAL_PASSWORD environment variable must be set to run this migration');
+    }
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);
 
