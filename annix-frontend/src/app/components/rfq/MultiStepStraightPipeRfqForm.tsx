@@ -3733,9 +3733,9 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                <label className="block text-xs font-semibold text-gray-900 mb-1">
                   External Coating Type
                 </label>
                 <select
@@ -3756,17 +3756,14 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                     externalRubberColour: undefined,
                     externalRubberHardness: undefined
                   })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                 >
-                  <option value="">Select external coating...</option>
+                  <option value="">Select coating...</option>
                   <option value="Raw Steel">Raw Steel (No Coating)</option>
                   <option value="Paint">Paint</option>
                   <option value="Galvanized">Galvanized</option>
                   <option value="Rubber Lined">Rubber Lined</option>
                 </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  Select the required external coating for the piping
-                </p>
               </div>
             </div>
           </>
@@ -3818,166 +3815,112 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           {/* Rubber Lined Options - Only show when selected AND not confirmed AND (assistant closed OR rejected) */}
           {(!globalSpecs?.showExternalCoatingProfile || globalSpecs?.externalCoatingRecommendationRejected) &&
            globalSpecs?.externalCoatingType === 'Rubber Lined' && !globalSpecs?.externalCoatingConfirmed && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h4 className="text-md font-semibold text-gray-800 mb-4">External Rubber Lining Specifications</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <h4 className="text-xs font-semibold text-gray-800 mb-2">External Rubber Lining Specifications</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Rubber Type
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Rubber Type</label>
                   <select
                     value={globalSpecs?.externalRubberType || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       externalRubberType: e.target.value || undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select rubber type...</option>
-                    <option value="Natural Rubber">Natural Rubber</option>
-                    <option value="Bromobutyl Rubber">Bromobutyl Rubber</option>
-                    <option value="Nitrile Rubber (NBR)">Nitrile Rubber (NBR)</option>
+                    <option value="">Select...</option>
+                    <option value="Natural Rubber">Natural</option>
+                    <option value="Bromobutyl Rubber">Bromobutyl</option>
+                    <option value="Nitrile Rubber (NBR)">Nitrile (NBR)</option>
                     <option value="Neoprene (CR)">Neoprene (CR)</option>
                     <option value="EPDM">EPDM</option>
                     <option value="Chlorobutyl">Chlorobutyl</option>
                     <option value="Hypalon (CSM)">Hypalon (CSM)</option>
                     <option value="Viton (FKM)">Viton (FKM)</option>
-                    <option value="Silicone Rubber">Silicone Rubber</option>
+                    <option value="Silicone Rubber">Silicone</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Select the rubber type for external lining
-                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Rubber Thickness (mm)
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Thickness (mm)</label>
                   <select
                     value={globalSpecs?.externalRubberThickness || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       externalRubberThickness: e.target.value ? Number(e.target.value) : undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select thickness...</option>
-                    <option value="3">3 mm</option>
-                    <option value="4">4 mm</option>
-                    <option value="5">5 mm</option>
-                    <option value="6">6 mm</option>
-                    <option value="7">7 mm</option>
-                    <option value="8">8 mm</option>
-                    <option value="9">9 mm</option>
-                    <option value="10">10 mm</option>
-                    <option value="11">11 mm</option>
-                    <option value="12">12 mm</option>
-                    <option value="13">13 mm</option>
-                    <option value="14">14 mm</option>
-                    <option value="15">15 mm</option>
-                    <option value="16">16 mm</option>
-                    <option value="17">17 mm</option>
-                    <option value="18">18 mm</option>
-                    <option value="19">19 mm</option>
-                    <option value="20">20 mm</option>
+                    <option value="">Select...</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="8">8</option>
+                    <option value="10">10</option>
+                    <option value="12">12</option>
+                    <option value="15">15</option>
+                    <option value="20">20</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Rubber lining thickness in millimeters
-                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Rubber Colour
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Colour</label>
                   <select
                     value={globalSpecs?.externalRubberColour || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       externalRubberColour: e.target.value || undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select colour...</option>
+                    <option value="">Select...</option>
                     <option value="Black">Black</option>
                     <option value="Red">Red</option>
-                    <option value="Natural (Tan)">Natural (Tan)</option>
+                    <option value="Natural (Tan)">Natural</option>
                     <option value="Grey">Grey</option>
                     <option value="Green">Green</option>
                     <option value="Blue">Blue</option>
                     <option value="White">White</option>
-                    <option value="Yellow">Yellow</option>
-                    <option value="Orange">Orange</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Select the rubber lining colour
-                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Shore Hardness
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Shore Hardness</label>
                   <select
                     value={globalSpecs?.externalRubberHardness || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       externalRubberHardness: e.target.value ? Number(e.target.value) : undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select hardness...</option>
-                    <option value="38">38 Shore A</option>
+                    <option value="">Select...</option>
                     <option value="40">40 Shore A</option>
-                    <option value="45">45 Shore A</option>
                     <option value="50">50 Shore A</option>
-                    <option value="55">55 Shore A</option>
                     <option value="60">60 Shore A</option>
-                    <option value="65">65 Shore A</option>
                     <option value="70">70 Shore A</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Select the rubber shore hardness
-                  </p>
                 </div>
               </div>
 
               {/* Rubber Lining Summary */}
               {globalSpecs?.externalRubberType && globalSpecs?.externalRubberThickness && globalSpecs?.externalRubberColour && globalSpecs?.externalRubberHardness && (
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                    <h4 className="text-md font-semibold text-amber-800 mb-3 flex items-center gap-2">
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                      </svg>
-                      External Rubber Lining (Review)
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-amber-700">
-                          <span className="font-medium">Rubber Type:</span> {globalSpecs.externalRubberType}
-                        </span>
-                        <span className="font-semibold text-amber-800">{globalSpecs.externalRubberThickness} mm</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-amber-700">
-                          <span className="font-medium">Colour:</span> {globalSpecs.externalRubberColour}
-                        </span>
-                        <span className="font-semibold text-amber-800">{globalSpecs.externalRubberHardness} Shore A</span>
-                      </div>
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
+                    <div className="text-xs text-amber-800">
+                      <span className="font-medium">{globalSpecs.externalRubberType}</span> • {globalSpecs.externalRubberThickness}mm • {globalSpecs.externalRubberColour} • {globalSpecs.externalRubberHardness} Shore A
                     </div>
-                    <div className="mt-4">
-                      <button
-                        type="button"
-                        onClick={() => onUpdateGlobalSpecs({
-                          ...globalSpecs,
-                          externalCoatingConfirmed: true
-                        })}
-                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
-                      >
-                        Confirm Rubber Lining
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        externalCoatingConfirmed: true
+                      })}
+                      className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
+                    >
+                      Confirm
+                    </button>
                   </div>
                 </div>
               )}
@@ -3986,40 +3929,24 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 
           {/* Confirmed External Rubber Lining */}
           {globalSpecs?.externalCoatingConfirmed && globalSpecs?.externalCoatingType === 'Rubber Lined' && globalSpecs?.externalRubberType && (
-            <div className="bg-green-100 border-2 border-green-400 rounded-lg p-4">
-              <h4 className="text-md font-semibold text-green-800 mb-2 flex items-center gap-2">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <div className="bg-green-100 border border-green-400 rounded-md p-2 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-green-800">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                External Rubber Lining (Confirmed)
-              </h4>
-              <div className="space-y-1">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-green-700">
-                    <span className="font-medium">Rubber Type:</span> {globalSpecs.externalRubberType}
-                  </span>
-                  <span className="font-semibold text-green-800">{globalSpecs.externalRubberThickness} mm</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-green-700">
-                    <span className="font-medium">Colour:</span> {globalSpecs.externalRubberColour}
-                  </span>
-                  <span className="font-semibold text-green-800">{globalSpecs.externalRubberHardness} Shore A</span>
-                </div>
+                <span className="font-medium">{globalSpecs.externalRubberType}</span> • {globalSpecs.externalRubberThickness}mm • {globalSpecs.externalRubberColour} • {globalSpecs.externalRubberHardness} Shore A
               </div>
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={() => onUpdateGlobalSpecs({
-                    ...globalSpecs,
-                    externalCoatingConfirmed: false,
-                    externalCoatingType: 'Rubber Lined'
-                  })}
-                  className="px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm"
-                >
-                  Edit Specification
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => onUpdateGlobalSpecs({
+                  ...globalSpecs,
+                  externalCoatingConfirmed: false,
+                  externalCoatingType: 'Rubber Lined'
+                })}
+                className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
+              >
+                Edit
+              </button>
             </div>
           )}
 
@@ -5263,9 +5190,9 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 
           {/* Show dropdown only if no lining confirmed AND external is not galvanized */}
           {!globalSpecs?.internalLiningConfirmed && globalSpecs?.externalCoatingType !== 'Galvanized' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                <label className="block text-xs font-semibold text-gray-900 mb-1">
                   Internal Lining Type
                 </label>
                 <select
@@ -5295,9 +5222,9 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                     internalPuThickness: undefined,
                     internalPuHardness: undefined
                   })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                 >
-                  <option value="">Select internal lining...</option>
+                  <option value="">Select lining...</option>
                   <option value="Raw Steel">Raw Steel (No Lining)</option>
                   <option value="Paint">Paint</option>
                   <option value="Rubber Lined">Rubber Lined</option>
@@ -5305,217 +5232,157 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   <option value="HDPE Lined">HDPE Lined</option>
                   <option value="PU Lined">PU Lined</option>
                 </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  Select the required internal lining for the piping
-                </p>
               </div>
             </div>
           )}
 
           {/* Confirmed Non-Paint Internal Lining */}
           {globalSpecs?.internalLiningConfirmed && globalSpecs?.internalLiningType && globalSpecs?.internalLiningType !== 'Paint' && (
-            <div className="bg-green-100 border-2 border-green-400 rounded-lg p-4">
-              <h4 className="text-md font-semibold text-green-800 mb-2 flex items-center gap-2">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <div className="bg-green-100 border border-green-400 rounded-md p-2 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-green-800">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                Internal Lining (Confirmed)
-              </h4>
-              <p className="text-green-700 font-medium">{globalSpecs.internalLiningType}</p>
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={() => onUpdateGlobalSpecs({
-                    ...globalSpecs,
-                    internalLiningConfirmed: false
-                  })}
-                  className="px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm"
-                >
-                  Edit Selection
-                </button>
+                <span className="font-medium">{globalSpecs.internalLiningType}</span>
               </div>
+              <button
+                type="button"
+                onClick={() => onUpdateGlobalSpecs({
+                  ...globalSpecs,
+                  internalLiningConfirmed: false
+                })}
+                className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
+              >
+                Edit
+              </button>
             </div>
           )}
 
           {/* Confirm button for simple selections (not Paint or Rubber Lined) */}
           {!globalSpecs?.internalLiningConfirmed && globalSpecs?.internalLiningType &&
            globalSpecs?.internalLiningType !== 'Paint' && globalSpecs?.internalLiningType !== 'Rubber Lined' && (
-            <div className="mt-4">
+            <div className="mt-2">
               <button
                 type="button"
                 onClick={() => onUpdateGlobalSpecs({
                   ...globalSpecs,
                   internalLiningConfirmed: true
                 })}
-                className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
               >
-                Confirm Internal Lining
+                Confirm Lining
               </button>
             </div>
           )}
 
           {/* Rubber Lined Options - Only show when selected AND not confirmed */}
           {globalSpecs?.internalLiningType === 'Rubber Lined' && !globalSpecs?.internalLiningConfirmed && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h4 className="text-md font-semibold text-gray-800 mb-4">Internal Rubber Lining Specifications</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <h4 className="text-xs font-semibold text-gray-800 mb-2">Internal Rubber Lining Specifications</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Rubber Type
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Rubber Type</label>
                   <select
                     value={globalSpecs?.internalRubberType || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       internalRubberType: e.target.value || undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select rubber type...</option>
-                    <option value="Natural Rubber">Natural Rubber</option>
-                    <option value="Bromobutyl Rubber">Bromobutyl Rubber</option>
-                    <option value="Nitrile Rubber (NBR)">Nitrile Rubber (NBR)</option>
+                    <option value="">Select...</option>
+                    <option value="Natural Rubber">Natural</option>
+                    <option value="Bromobutyl Rubber">Bromobutyl</option>
+                    <option value="Nitrile Rubber (NBR)">Nitrile (NBR)</option>
                     <option value="Neoprene (CR)">Neoprene (CR)</option>
                     <option value="EPDM">EPDM</option>
                     <option value="Chlorobutyl">Chlorobutyl</option>
                     <option value="Hypalon (CSM)">Hypalon (CSM)</option>
                     <option value="Viton (FKM)">Viton (FKM)</option>
-                    <option value="Silicone Rubber">Silicone Rubber</option>
+                    <option value="Silicone Rubber">Silicone</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Select the rubber type for internal lining
-                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Rubber Thickness (mm)
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Thickness (mm)</label>
                   <select
                     value={globalSpecs?.internalRubberThickness || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       internalRubberThickness: e.target.value ? Number(e.target.value) : undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select thickness...</option>
-                    <option value="3">3 mm</option>
-                    <option value="4">4 mm</option>
-                    <option value="5">5 mm</option>
-                    <option value="6">6 mm</option>
-                    <option value="7">7 mm</option>
-                    <option value="8">8 mm</option>
-                    <option value="9">9 mm</option>
-                    <option value="10">10 mm</option>
-                    <option value="11">11 mm</option>
-                    <option value="12">12 mm</option>
-                    <option value="13">13 mm</option>
-                    <option value="14">14 mm</option>
-                    <option value="15">15 mm</option>
-                    <option value="16">16 mm</option>
-                    <option value="17">17 mm</option>
-                    <option value="18">18 mm</option>
-                    <option value="19">19 mm</option>
-                    <option value="20">20 mm</option>
+                    <option value="">Select...</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="8">8</option>
+                    <option value="10">10</option>
+                    <option value="12">12</option>
+                    <option value="15">15</option>
+                    <option value="20">20</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Rubber lining thickness in millimeters
-                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Rubber Colour
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Colour</label>
                   <select
                     value={globalSpecs?.internalRubberColour || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       internalRubberColour: e.target.value || undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select colour...</option>
+                    <option value="">Select...</option>
                     <option value="Black">Black</option>
                     <option value="Red">Red</option>
-                    <option value="Natural (Tan)">Natural (Tan)</option>
+                    <option value="Natural (Tan)">Natural</option>
                     <option value="Grey">Grey</option>
                     <option value="Green">Green</option>
                     <option value="Blue">Blue</option>
                     <option value="White">White</option>
-                    <option value="Yellow">Yellow</option>
-                    <option value="Orange">Orange</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Select the rubber lining colour
-                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Shore Hardness
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Shore Hardness</label>
                   <select
                     value={globalSpecs?.internalRubberHardness || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       internalRubberHardness: e.target.value ? Number(e.target.value) : undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select hardness...</option>
-                    <option value="38">38 Shore A</option>
+                    <option value="">Select...</option>
                     <option value="40">40 Shore A</option>
-                    <option value="45">45 Shore A</option>
                     <option value="50">50 Shore A</option>
-                    <option value="55">55 Shore A</option>
                     <option value="60">60 Shore A</option>
-                    <option value="65">65 Shore A</option>
                     <option value="70">70 Shore A</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Select the rubber shore hardness
-                  </p>
                 </div>
               </div>
 
               {/* Rubber Lining Summary */}
               {globalSpecs?.internalRubberType && globalSpecs?.internalRubberThickness && globalSpecs?.internalRubberColour && globalSpecs?.internalRubberHardness && (
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                    <h4 className="text-md font-semibold text-amber-800 mb-3 flex items-center gap-2">
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                      </svg>
-                      Internal Rubber Lining (Review)
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-amber-700">
-                          <span className="font-medium">Rubber Type:</span> {globalSpecs.internalRubberType}
-                        </span>
-                        <span className="font-semibold text-amber-800">{globalSpecs.internalRubberThickness} mm</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-amber-700">
-                          <span className="font-medium">Colour:</span> {globalSpecs.internalRubberColour}
-                        </span>
-                        <span className="font-semibold text-amber-800">{globalSpecs.internalRubberHardness} Shore A</span>
-                      </div>
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
+                    <div className="text-xs text-amber-800">
+                      <span className="font-medium">{globalSpecs.internalRubberType}</span> • {globalSpecs.internalRubberThickness}mm • {globalSpecs.internalRubberColour} • {globalSpecs.internalRubberHardness} Shore A
                     </div>
-                    <div className="mt-4">
-                      <button
-                        type="button"
-                        onClick={() => onUpdateGlobalSpecs({
-                          ...globalSpecs,
-                          internalLiningConfirmed: true
-                        })}
-                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
-                      >
-                        Confirm Rubber Lining
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        internalLiningConfirmed: true
+                      })}
+                      className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
+                    >
+                      Confirm
+                    </button>
                   </div>
                 </div>
               )}
@@ -5524,134 +5391,94 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 
           {/* Confirmed Internal Rubber Lining */}
           {globalSpecs?.internalLiningConfirmed && globalSpecs?.internalLiningType === 'Rubber Lined' && globalSpecs?.internalRubberType && (
-            <div className="bg-green-100 border-2 border-green-400 rounded-lg p-4">
-              <h4 className="text-md font-semibold text-green-800 mb-2 flex items-center gap-2">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <div className="bg-green-100 border border-green-400 rounded-md p-2 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-green-800">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                Internal Rubber Lining (Confirmed)
-              </h4>
-              <div className="space-y-1">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-green-700">
-                    <span className="font-medium">Rubber Type:</span> {globalSpecs.internalRubberType}
-                  </span>
-                  <span className="font-semibold text-green-800">{globalSpecs.internalRubberThickness} mm</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-green-700">
-                    <span className="font-medium">Colour:</span> {globalSpecs.internalRubberColour}
-                  </span>
-                  <span className="font-semibold text-green-800">{globalSpecs.internalRubberHardness} Shore A</span>
-                </div>
+                <span className="font-medium">{globalSpecs.internalRubberType}</span> • {globalSpecs.internalRubberThickness}mm • {globalSpecs.internalRubberColour} • {globalSpecs.internalRubberHardness} Shore A
               </div>
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={() => onUpdateGlobalSpecs({
-                    ...globalSpecs,
-                    internalLiningConfirmed: false,
-                    internalLiningType: 'Rubber Lined'
-                  })}
-                  className="px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm"
-                >
-                  Edit Specification
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => onUpdateGlobalSpecs({
+                  ...globalSpecs,
+                  internalLiningConfirmed: false,
+                  internalLiningType: 'Rubber Lined'
+                })}
+                className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
+              >
+                Edit
+              </button>
             </div>
           )}
 
           {/* Ceramic Lining Options - Only show when selected AND not confirmed */}
           {globalSpecs?.internalLiningType === 'Ceramic Lined' && !globalSpecs?.internalLiningConfirmed && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h4 className="text-md font-semibold text-gray-800 mb-4">Internal Ceramic Lining Specifications</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <h4 className="text-xs font-semibold text-gray-800 mb-2">Internal Ceramic Lining Specifications</h4>
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Ceramic Type
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Ceramic Type</label>
                   <select
                     value={globalSpecs?.internalCeramicType || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       internalCeramicType: e.target.value || undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select ceramic type...</option>
-                    <option value="92% Alumina Ceramic Tiles">92% Alumina Ceramic Tiles</option>
-                    <option value="95% Alumina Ceramic Tiles">95% Alumina Ceramic Tiles</option>
-                    <option value="96% Alumina Ceramic Tiles">96% Alumina Ceramic Tiles</option>
-                    <option value="99% Alumina Ceramic Tiles">99% Alumina Ceramic Tiles</option>
-                    <option value="Silicon Carbide Tiles">Silicon Carbide Tiles</option>
-                    <option value="Zirconia Tiles">Zirconia Tiles</option>
-                    <option value="Silicon Nitride Tiles">Silicon Nitride Tiles</option>
-                    <option value="Rubber Embedded Ceramic Tiles">Rubber Embedded Ceramic Tiles</option>
+                    <option value="">Select...</option>
+                    <option value="92% Alumina Ceramic Tiles">92% Alumina</option>
+                    <option value="95% Alumina Ceramic Tiles">95% Alumina</option>
+                    <option value="96% Alumina Ceramic Tiles">96% Alumina</option>
+                    <option value="99% Alumina Ceramic Tiles">99% Alumina</option>
+                    <option value="Silicon Carbide Tiles">Silicon Carbide</option>
+                    <option value="Zirconia Tiles">Zirconia</option>
+                    <option value="Silicon Nitride Tiles">Silicon Nitride</option>
+                    <option value="Rubber Embedded Ceramic Tiles">Rubber Embedded</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Select the ceramic tile type
-                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Tile Shape
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Tile Shape</label>
                   <select
                     value={globalSpecs?.internalCeramicShape || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       internalCeramicShape: e.target.value || undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select tile shape...</option>
-                    <option value="Square Tile">Square Tile</option>
-                    <option value="Hexagon Tiles">Hexagon Tiles</option>
-                    <option value="Triangular Tiles">Triangular Tiles</option>
+                    <option value="">Select...</option>
+                    <option value="Square Tile">Square</option>
+                    <option value="Hexagon Tiles">Hexagon</option>
+                    <option value="Triangular Tiles">Triangular</option>
                     <option value="Flat Liners">Flat Liners</option>
                     <option value="Pipe Sleeves">Pipe Sleeves</option>
-                    <option value="Special Moulded Tiles">Special Moulded Tiles</option>
+                    <option value="Special Moulded Tiles">Special Moulded</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Select the tile shape
-                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Tile Thickness (mm)
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Thickness (mm)</label>
                   <select
                     value={globalSpecs?.internalCeramicThickness || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       internalCeramicThickness: e.target.value ? Number(e.target.value) : undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select thickness...</option>
-                    <option value="3">3 mm</option>
-                    <option value="4">4 mm</option>
-                    <option value="5">5 mm</option>
-                    <option value="6">6 mm</option>
-                    <option value="7">7 mm</option>
-                    <option value="8">8 mm</option>
-                    <option value="9">9 mm</option>
-                    <option value="10">10 mm</option>
-                    <option value="12">12 mm</option>
-                    <option value="15">15 mm</option>
-                    <option value="20">20 mm</option>
-                    <option value="25">25 mm</option>
-                    <option value="30">30 mm</option>
-                    <option value="35">35 mm</option>
-                    <option value="40">40 mm</option>
-                    <option value="45">45 mm</option>
-                    <option value="50">50 mm</option>
+                    <option value="">Select...</option>
+                    <option value="6">6</option>
+                    <option value="10">10</option>
+                    <option value="15">15</option>
+                    <option value="20">20</option>
+                    <option value="25">25</option>
+                    <option value="30">30</option>
+                    <option value="40">40</option>
+                    <option value="50">50</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Ceramic tile thickness in millimeters
-                  </p>
                 </div>
               </div>
 
