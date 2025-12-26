@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useDeviceFingerprint } from '@/app/hooks/useDeviceFingerprint';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
+import { customerEmailApi } from '@/app/lib/api/customerApi';
 
 export default function CustomerLoginPage() {
   const router = useRouter();
@@ -15,6 +16,9 @@ export default function CustomerLoginPage() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEmailNotVerified, setIsEmailNotVerified] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -22,6 +26,29 @@ export default function CustomerLoginPage() {
       router.push('/customer/portal/dashboard');
     }
   }, [isAuthenticated, authLoading, router]);
+
+  const handleResendVerification = async () => {
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    setIsResendingEmail(true);
+    setResendSuccess(false);
+    setError(null);
+
+    try {
+      const result = await customerEmailApi.resendVerification(email);
+      setResendSuccess(true);
+      setIsEmailNotVerified(false);
+      setError(null);
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to resend verification email';
+      setError(errorMessage);
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +60,8 @@ export default function CustomerLoginPage() {
 
     setIsSubmitting(true);
     setError(null);
+    setIsEmailNotVerified(false);
+    setResendSuccess(false);
 
     try {
       await login(email, password, fingerprint, browserInfo || undefined);
@@ -40,8 +69,11 @@ export default function CustomerLoginPage() {
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Login failed. Please try again.';
 
-      // Provide more specific error messages
-      if (errorMessage.includes('Device fingerprint mismatch')) {
+      // Check if error is about email not verified
+      if (errorMessage.includes('Email not verified') || errorMessage.includes('not verified')) {
+        setIsEmailNotVerified(true);
+        setError('Your email address has not been verified. Please check your inbox for the verification email.');
+      } else if (errorMessage.includes('Device fingerprint mismatch')) {
         setError(
           'This device is not registered for this account. ' +
           'Please contact support if you need to register a new device.'
@@ -139,13 +171,50 @@ export default function CustomerLoginPage() {
               </div>
             </div>
 
+            {resendSuccess && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex">
+                  <svg className="w-5 h-5 text-green-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm text-green-700">
+                    Verification email sent! Please check your inbox and verify your email address.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <div className="flex">
                   <svg className="w-5 h-5 text-red-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-sm text-red-700">{error}</p>
+                  <div className="flex-1">
+                    <p className="text-sm text-red-700">{error}</p>
+                    {isEmailNotVerified && (
+                      <button
+                        type="button"
+                        onClick={handleResendVerification}
+                        disabled={isResendingEmail}
+                        className="mt-2 inline-flex items-center text-sm font-medium text-red-800 hover:text-red-900 disabled:opacity-50"
+                      >
+                        {isResendingEmail ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-800 mr-2"></div>
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Resend Verification Email
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
