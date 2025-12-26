@@ -140,15 +140,15 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+      <div className="text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Annix RFQ Platform
             </h1>
-            <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+            <p className="text-xl text-blue-200 max-w-2xl mx-auto">
               Your trusted partner for pipeline quotation management.
               Connect with suppliers, manage RFQs, and streamline your procurement process.
             </p>
@@ -160,7 +160,7 @@ export default function HomePage() {
         {/* Stats Counter Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 -mt-16">
           {/* Total RFQs Counter */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+          <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
@@ -181,7 +181,7 @@ export default function HomePage() {
           </div>
 
           {/* Total Suppliers Counter */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+          <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
@@ -202,7 +202,7 @@ export default function HomePage() {
           </div>
 
           {/* Total Customers Counter */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+          <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
@@ -227,7 +227,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           {/* Customer Login/Register Card */}
           <Link href="/customer/login" className="group">
-            <div className="bg-white rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-blue-500 hover:shadow-xl transition-all duration-300 h-full">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-blue-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-2xl text-blue-600 mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                   <CustomerIcon />
@@ -250,7 +250,7 @@ export default function HomePage() {
 
           {/* Supplier Login/Register Card */}
           <Link href="/supplier/login" className="group">
-            <div className="bg-white rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-indigo-500 hover:shadow-xl transition-all duration-300 h-full">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-indigo-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-indigo-100 rounded-2xl text-indigo-600 mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                   <SupplierIcon />
@@ -273,7 +273,7 @@ export default function HomePage() {
 
           {/* Admin Portal Card */}
           <Link href="/admin/login" className="group">
-            <div className="bg-white rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-purple-500 hover:shadow-xl transition-all duration-300 h-full">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-purple-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-purple-100 rounded-2xl text-purple-600 mb-6 group-hover:bg-purple-600 group-hover:text-white transition-colors">
                   <AdminIcon />
@@ -296,7 +296,7 @@ export default function HomePage() {
 
           {/* Tier Pricing Card */}
           <Link href="/pricing" className="group">
-            <div className="bg-white rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-green-500 hover:shadow-xl transition-all duration-300 h-full">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-green-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-2xl text-green-600 mb-6 group-hover:bg-green-600 group-hover:text-white transition-colors">
                   <PricingIcon />
@@ -319,7 +319,7 @@ export default function HomePage() {
         </div>
 
         {/* RFQ Closing Date Reminders Section */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+        <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100">
           <div className="px-6 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -408,7 +408,7 @@ export default function HomePage() {
 
         {/* Quick Actions Footer */}
         <div className="mt-12 text-center">
-          <p className="text-gray-600 mb-4">Ready to get started?</p>
+          <p className="text-blue-100 text-lg mb-4">Ready to get started?</p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               href="/rfq"
@@ -421,7 +421,7 @@ export default function HomePage() {
             </Link>
             <Link
               href="/rfq/list"
-              className="inline-flex items-center px-6 py-3 bg-white text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 shadow-lg hover:shadow-xl"
+              className="inline-flex items-center px-6 py-3 bg-white bg-opacity-95 text-gray-700 font-semibold rounded-lg hover:bg-opacity-100 transition-colors border border-gray-300 shadow-lg hover:shadow-xl"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />

@@ -23,22 +23,12 @@ export class AdminLoginResponseDto {
   };
 }
 
-export class AdminRefreshTokenDto {
+export class RefreshTokenDto {
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
 }
 
-export class AdminRefreshTokenResponseDto {
+export class TokenResponseDto {
   accessToken: string;
-}
-
-export class AdminUserProfileDto {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  roles: string[];
-  createdAt: Date;
-  lastActiveAt?: Date;
 }

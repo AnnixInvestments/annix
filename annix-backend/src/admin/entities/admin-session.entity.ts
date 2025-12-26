@@ -1,10 +1,10 @@
 import {
   Entity,
-  Column,
   PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
   JoinColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
@@ -14,34 +14,34 @@ export class AdminSession {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'user_id' })
-  userId: number;
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => User, { eager: true })
+  @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ unique: true, name: 'session_token' })
+  @Column({ name: 'userId' })
+  userId: number;
+
+  @Column({ unique: true })
   sessionToken: string; // UUID
 
-  @Column({ name: 'client_ip' })
+  @Column()
   clientIp: string;
 
-  @Column({ name: 'user_agent', type: 'text' })
+  @Column({ type: 'text' })
   userAgent: string;
 
-  @Column({ name: 'expires_at', type: 'timestamp' })
-  expiresAt: Date; // 7 days
+  @Column({ type: 'timestamp' })
+  expiresAt: Date;
 
-  @Column({ default: false, name: 'is_revoked' })
+  @Column({ default: false })
   isRevoked: boolean;
 
-  @Column({ nullable: true, name: 'revoked_at', type: 'timestamp' })
-  revokedAt: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  revokedAt: Date | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn()
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'last_active_at' })
+  @UpdateDateColumn()
   lastActiveAt: Date;
 }
