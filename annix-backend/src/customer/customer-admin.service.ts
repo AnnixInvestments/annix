@@ -506,6 +506,33 @@ export class CustomerAdminService {
       throw new BadRequestException('Onboarding is not in a reviewable state');
     }
 
+    // Validate all required documents are in acceptable state
+    const documents = await this.documentRepo.find({
+      where: { customerId: onboarding.customerId, isRequired: true },
+    });
+
+    const invalidDocuments = documents.filter(doc => {
+      // Documents must be either VALID or MANUAL_REVIEW (with admin review completed)
+      if (doc.validationStatus === CustomerDocumentValidationStatus.VALID) {
+        return false; // Valid documents are OK
+      }
+      if (doc.validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW && doc.reviewedById && doc.reviewedAt) {
+        return false; // Manual review completed by admin is OK
+      }
+      return true; // All other states (PENDING, INVALID, FAILED, unreviewed MANUAL_REVIEW) are not OK
+    });
+
+    if (invalidDocuments.length > 0) {
+      const docList = invalidDocuments
+        .map(doc => `${doc.documentType} (${doc.validationStatus})`)
+        .join(', ');
+      throw new BadRequestException(
+        `Cannot approve onboarding. The following documents require review: ${docList}. ` +
+        `Please review each document individually using the document review endpoint.`
+      );
+    }
+
+
     // Update onboarding
     onboarding.status = CustomerOnboardingStatus.APPROVED;
     onboarding.reviewedAt = new Date();

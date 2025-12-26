@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -19,6 +19,7 @@ import { CustomerOnboardingStatus } from './entities/customer-onboarding.entity'
 import { CustomerDocumentType, CustomerDocumentValidationStatus } from './entities/customer-document.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
+import { EmailService } from '../email/email.service';
 
 // File constraints
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -42,6 +43,7 @@ export class CustomerDocumentService {
     private readonly onboardingRepo: Repository<CustomerOnboarding>,
     private readonly configService: ConfigService,
     private readonly auditService: AuditService,
+        private readonly emailService: EmailService,
   ) {
     this.uploadDir = this.configService.get<string>('UPLOAD_DIR') || './uploads';
   }
@@ -254,6 +256,95 @@ export class CustomerDocumentService {
       filePath: document.filePath,
       fileName: document.fileName,
       mimeType: document.mimeType,
+    };
+  }
+
+  /**
+   * Update document validation status after OCR processing
+   */
+  async updateDocumentValidationStatus(
+    documentId: number,
+    ocrResult: {
+      isValid: boolean;
+      ocrFailed: boolean;
+      requiresManualReview: boolean;
+      extractedData: any;
+      mismatches?: Array<{ field: string; expected: string; extracted: string; similarity?: number }>;
+    },
+    customerId: number,
+  ) {
+    const document = await this.documentRepo.findOne({
+      where: { id: documentId, customerId },
+      relations: ['customer', 'customer.company', 'customer.user'],
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    // Determine validation status based on OCR result
+    let validationStatus: CustomerDocumentValidationStatus;
+    let validationNotes: string | null = null;
+
+    if (ocrResult.ocrFailed) {
+      validationStatus = CustomerDocumentValidationStatus.MANUAL_REVIEW;
+      validationNotes = 'OCR processing failed - requires manual review';
+    } else if (ocrResult.requiresManualReview) {
+      validationStatus = CustomerDocumentValidationStatus.MANUAL_REVIEW;
+      if (ocrResult.mismatches && ocrResult.mismatches.length > 0) {
+        const mismatchDetails = ocrResult.mismatches
+          .map(m => `${m.field}: expected "${m.expected}", found "${m.extracted}" (${m.similarity ? Math.round(m.similarity * 100) : 0}% match)`)
+          .join('; ');
+        validationNotes = `Validation mismatches detected: ${mismatchDetails}`;
+      } else {
+        validationNotes = 'Validation mismatches detected - requires manual review';
+      }
+    } else if (ocrResult.isValid) {
+      validationStatus = CustomerDocumentValidationStatus.VALID;
+      validationNotes = 'Automatic validation passed';
+    } else {
+      validationStatus = CustomerDocumentValidationStatus.INVALID;
+      validationNotes = 'Validation failed';
+    }
+
+    // Update document
+    document.validationStatus = validationStatus;
+    document.validationNotes = validationNotes;
+    document.ocrExtractedData = ocrResult.extractedData;
+    document.ocrProcessedAt = new Date();
+    document.ocrFailed = ocrResult.ocrFailed;
+
+    await this.documentRepo.save(document);
+
+    // Send admin notification if manual review is required
+    if (validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW) {
+      await this.emailService.sendManualReviewNotification(
+        document.customer.company.tradingName || document.customer.company.legalName,
+        document.customer.user.email,
+        document.customer.id,
+        document.documentType,
+        validationNotes,
+      );
+    }
+
+    await this.auditService.log({
+      entityType: 'customer_document',
+      entityId: documentId,
+      action: AuditAction.UPDATE,
+      newValues: {
+        validationStatus,
+        validationNotes,
+        ocrFailed: ocrResult.ocrFailed,
+        requiresManualReview: ocrResult.requiresManualReview,
+      },
+      ipAddress: 'system',
+    });
+
+    return {
+      success: true,
+      validationStatus,
+      validationNotes,
+      requiresManualReview: validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW,
     };
   }
 }

@@ -334,7 +334,7 @@ export class CustomerAuthService {
 
     // Check email verification
 
-    if (\!profile.emailVerified) {
+    if (!profile.emailVerified) {
       await this.logLoginAttempt(profile.id, dto.email, false, LoginFailureReason.EMAIL_NOT_VERIFIED, dto.deviceFingerprint, clientIp, userAgent);
       throw new ForbiddenException('Email not verified. Please check your email for the verification link.');
     }
