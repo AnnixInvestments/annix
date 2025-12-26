@@ -6037,28 +6037,6 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           </div>
         )}
 
-        {/* Surface Protection Requirements Section */}
-        {showSurfaceProtection && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
-              <span className="text-2xl">🛡️</span>
-              <h3 className="text-xl font-bold text-gray-900">Surface Protection Requirements</h3>
-            </div>
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h4 className="text-lg font-semibold text-orange-800">Coming Soon</h4>
-              </div>
-              <p className="text-orange-700 text-sm">
-                Surface protection specifications will be available in a future update.
-                This will include coating systems, cathodic protection, insulation requirements, and more.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Transportation & Installation Section */}
         {showTransportInstall && (
           <div className="space-y-3">
