@@ -69,10 +69,10 @@ export default function CustomerLoginPage() {
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Login failed. Please try again.';
 
-      // Check if error is about email not verified
-      if (errorMessage.includes('Email not verified') || errorMessage.includes('not verified')) {
+      // Check if error is about email not verified or account pending activation
+      if (errorMessage.includes('Email not verified') || errorMessage.includes('not verified') || errorMessage.includes('pending activation') || errorMessage.includes('Account is pending')) {
         setIsEmailNotVerified(true);
-        setError('Your email address has not been verified. Please check your inbox for the verification email.');
+        setError(errorMessage); // Use the actual error message from backend
       } else if (errorMessage.includes('Device fingerprint mismatch')) {
         setError(
           'This device is not registered for this account. ' +
