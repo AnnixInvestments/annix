@@ -4045,66 +4045,54 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           {/* Paint Options - Only show when selected AND not confirmed AND (assistant closed OR rejected) */}
           {(!globalSpecs?.showExternalCoatingProfile || globalSpecs?.externalCoatingRecommendationRejected) &&
            globalSpecs?.externalCoatingType === 'Paint' && !globalSpecs?.externalCoatingConfirmed && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h4 className="text-md font-semibold text-gray-800 mb-4">External Paint Specifications</h4>
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <h4 className="text-xs font-semibold text-gray-800 mb-2">External Paint Specifications</h4>
 
-              {/* Surface Preparation / Blasting Specification */}
-              <div className="mb-4">
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  Surface Preparation (Blasting Grade)
-                </label>
-                <select
-                  value={globalSpecs?.externalBlastingGrade || ''}
-                  onChange={(e) => onUpdateGlobalSpecs({
-                    ...globalSpecs,
-                    externalBlastingGrade: e.target.value || undefined
-                  })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                >
-                  <option value="">Select blasting grade...</option>
-                  <option value="SA 1 (ISO 8501-1)">SA 1 - Light Blast Cleaning (ISO 8501-1)</option>
-                  <option value="SA 2 (ISO 8501-1)">SA 2 - Thorough Blast Cleaning (ISO 8501-1)</option>
-                  <option value="SA 2.5 (ISO 8501-1)">SA 2.5 - Very Thorough Blast Cleaning (ISO 8501-1) - Recommended</option>
-                  <option value="SA 3 (ISO 8501-1)">SA 3 - Blast Cleaning to Visually Clean Steel (ISO 8501-1)</option>
-                </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  ISO 8501-1 surface preparation grade. SA 2.5 is the most common specification for high-performance coatings.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Surface Preparation + Primer in one row */}
+              <div className="grid grid-cols-3 gap-3 mb-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Primer Type
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Blasting Grade</label>
+                  <select
+                    value={globalSpecs?.externalBlastingGrade || ''}
+                    onChange={(e) => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      externalBlastingGrade: e.target.value || undefined
+                    })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                  >
+                    <option value="">Select...</option>
+                    <option value="SA 1 (ISO 8501-1)">SA 1 - Light</option>
+                    <option value="SA 2 (ISO 8501-1)">SA 2 - Thorough</option>
+                    <option value="SA 2.5 (ISO 8501-1)">SA 2.5 - Very Thorough</option>
+                    <option value="SA 3 (ISO 8501-1)">SA 3 - Visually Clean</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Primer Type</label>
                   <select
                     value={globalSpecs?.externalPrimerType || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       externalPrimerType: e.target.value || undefined
                     })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select primer type...</option>
-                    <option value="Inorganic Zinc Silicate">Inorganic Zinc Silicate</option>
+                    <option value="">Select...</option>
+                    <option value="Inorganic Zinc Silicate">Inorganic Zinc</option>
                     <option value="Organic Zinc Epoxy">Organic Zinc Epoxy</option>
-                    <option value="Zinc Phosphate Epoxy">Zinc Phosphate Epoxy</option>
-                    <option value="Epoxy Primer">Epoxy Primer</option>
-                    <option value="Polyurethane Primer">Polyurethane Primer</option>
-                    <option value="Red Oxide Primer">Red Oxide Primer</option>
-                    <option value="Alkyd Primer">Alkyd Primer</option>
+                    <option value="Zinc Phosphate Epoxy">Zinc Phosphate</option>
+                    <option value="Epoxy Primer">Epoxy</option>
+                    <option value="Polyurethane Primer">Polyurethane</option>
+                    <option value="Red Oxide Primer">Red Oxide</option>
+                    <option value="Alkyd Primer">Alkyd</option>
                     <option value="Shop Primer">Shop Primer</option>
                     <option value="Etch Primer">Etch Primer</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Select the primer type for external coating
-                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Primer Thickness (microns)
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Primer (μm)</label>
                   <input
                     type="number"
                     value={globalSpecs?.externalPrimerMicrons || ''}
@@ -4112,86 +4100,66 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                       ...globalSpecs,
                       externalPrimerMicrons: e.target.value ? Number(e.target.value) : undefined
                     })}
-                    placeholder="e.g., 50-75"
+                    placeholder="50-75"
                     min="0"
                     max="500"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Dry film thickness in microns (typical: 50-75μm for zinc primers)
-                  </p>
                 </div>
               </div>
 
               {/* Optional Intermediate Coat */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h4 className="text-md font-semibold text-gray-800 mb-4">Intermediate Coat (Optional)</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Intermediate Coat</label>
+                  <select
+                    value={globalSpecs?.externalIntermediateType || ''}
+                    onChange={(e) => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      externalIntermediateType: e.target.value || undefined
+                    })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                  >
+                    <option value="">None</option>
+                    <option value="MIO Epoxy (Micaceous Iron Oxide)">MIO Epoxy</option>
+                    <option value="Glass Flake Epoxy">Glass Flake Epoxy</option>
+                    <option value="High Build Epoxy">High Build Epoxy</option>
+                    <option value="Epoxy Polyamide">Epoxy Polyamide</option>
+                    <option value="Epoxy Phenalkamine">Epoxy Phenalkamine</option>
+                  </select>
+                </div>
+
+                {globalSpecs?.externalIntermediateType && (
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Intermediate Coat Type
-                    </label>
-                    <select
-                      value={globalSpecs?.externalIntermediateType || ''}
+                    <label className="block text-xs font-semibold text-gray-900 mb-1">Intermediate (μm)</label>
+                    <input
+                      type="number"
+                      value={globalSpecs?.externalIntermediateMicrons || ''}
                       onChange={(e) => onUpdateGlobalSpecs({
                         ...globalSpecs,
-                        externalIntermediateType: e.target.value || undefined
+                        externalIntermediateMicrons: e.target.value ? Number(e.target.value) : undefined
                       })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    >
-                      <option value="">None (No intermediate coat)</option>
-                      <option value="MIO Epoxy (Micaceous Iron Oxide)">MIO Epoxy (Micaceous Iron Oxide)</option>
-                      <option value="Glass Flake Epoxy">Glass Flake Epoxy</option>
-                      <option value="High Build Epoxy">High Build Epoxy</option>
-                      <option value="Epoxy Polyamide">Epoxy Polyamide</option>
-                      <option value="Epoxy Phenalkamine">Epoxy Phenalkamine</option>
-                    </select>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Optional barrier coat between primer and topcoat
-                    </p>
+                      placeholder="125-200"
+                      min="0"
+                      max="500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                    />
                   </div>
-
-                  {globalSpecs?.externalIntermediateType && (
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">
-                        Intermediate Coat Thickness (microns)
-                      </label>
-                      <input
-                        type="number"
-                        value={globalSpecs?.externalIntermediateMicrons || ''}
-                        onChange={(e) => onUpdateGlobalSpecs({
-                          ...globalSpecs,
-                          externalIntermediateMicrons: e.target.value ? Number(e.target.value) : undefined
-                        })}
-                        placeholder="e.g., 125-200"
-                        min="0"
-                        max="500"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Dry film thickness in microns (typical: 125-200μm for MIO epoxy)
-                      </p>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* Topcoat / Finish Coat */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h4 className="text-md font-semibold text-gray-800 mb-4">Topcoat / Finish Coat (Optional)</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Topcoat Type
-                    </label>
-                    <select
-                      value={globalSpecs?.externalTopcoatType || ''}
-                      onChange={(e) => onUpdateGlobalSpecs({
-                        ...globalSpecs,
-                        externalTopcoatType: e.target.value || undefined
-                      })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    >
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Topcoat Type</label>
+                  <select
+                    value={globalSpecs?.externalTopcoatType || ''}
+                    onChange={(e) => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      externalTopcoatType: e.target.value || undefined
+                    })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                  >
                       <option value="">None (No topcoat)</option>
                       <option value="Aliphatic Polyurethane">Aliphatic Polyurethane</option>
                       <option value="Acrylic Polyurethane">Acrylic Polyurethane</option>
@@ -4200,17 +4168,12 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                       <option value="Alkyd Topcoat">Alkyd Topcoat</option>
                       <option value="Acrylic Topcoat">Acrylic Topcoat</option>
                     </select>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Final protective coat for UV and weather resistance
-                    </p>
                   </div>
 
                   {globalSpecs?.externalTopcoatType && (
                     <>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">
-                        Topcoat Thickness (microns)
-                      </label>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">Topcoat (μm)</label>
                       <input
                         type="number"
                         value={globalSpecs?.externalTopcoatMicrons || ''}
@@ -4218,20 +4181,15 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                           ...globalSpecs,
                           externalTopcoatMicrons: e.target.value ? Number(e.target.value) : undefined
                         })}
-                        placeholder="e.g., 50-75"
+                        placeholder="50-75"
                         min="0"
                         max="500"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                       />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Dry film thickness in microns (typical: 50-75μm for polyurethane)
-                      </p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">
-                        Final Coat Colour
-                      </label>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">Final Coat Colour</label>
                       {!globalSpecs?.showCustomColourInput ? (
                         <select
                           value={globalSpecs?.externalTopcoatColour || ''}
@@ -4248,7 +4206,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                               });
                             }
                           }}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select colour...</option>
                           <optgroup label="SA Mining Standard Colours">
@@ -4312,8 +4270,8 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                               ...globalSpecs,
                               customColourInput: e.target.value
                             })}
-                            placeholder="Enter colour name (e.g., Mine Blue RAL 5010)"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                            placeholder="Enter colour (e.g., Mine Blue RAL 5010)"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                           />
                           <div className="flex gap-2">
                             <button
@@ -4358,16 +4316,17 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                           </div>
                         </div>
                       )}
-                      <p className="mt-1 text-xs text-gray-500">
-                        Standard SA mining and pipeline colours per SABS 0140
-                      </p>
                     </div>
+                    </>
+                  )}
+                </div>
 
-                    {/* Band 1 Colour - Optional */}
+                {/* Band Colours Row */}
+                {globalSpecs?.externalTopcoatType && (
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    {/* Band 1 Colour */}
                     <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">
-                        Band 1 Colour <span className="text-gray-400 font-normal">(Optional)</span>
-                      </label>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">Band 1 <span className="text-gray-400 font-normal">(Optional)</span></label>
                       {!globalSpecs?.showCustomBand1Input ? (
                         <select
                           value={globalSpecs?.externalBand1Colour || ''}
@@ -4381,12 +4340,11 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                               onUpdateGlobalSpecs({
                                 ...globalSpecs,
                                 externalBand1Colour: e.target.value || undefined,
-                                // Clear Band 2 if Band 1 is cleared
                                 ...(e.target.value ? {} : { externalBand2Colour: undefined })
                               });
                             }
                           }}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">No band required</option>
                           <optgroup label="Add Your Own">
@@ -4433,7 +4391,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                           </optgroup>
                         </select>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                           <input
                             type="text"
                             value={globalSpecs?.customBand1Input || ''}
@@ -4441,10 +4399,10 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                               ...globalSpecs,
                               customBand1Input: e.target.value
                             })}
-                            placeholder="Enter band colour (e.g., Mine Identification Blue)"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                            placeholder="Enter band colour"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                           />
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
                             <button
                               type="button"
                               onClick={() => {
@@ -4466,9 +4424,9 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                 }
                               }}
                               disabled={!globalSpecs?.customBand1Input?.trim()}
-                              className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="flex-1 px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
                             >
-                              Save Band Colour
+                              Save
                             </button>
                             <button
                               type="button"
@@ -4477,42 +4435,37 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                 showCustomBand1Input: false,
                                 customBand1Input: undefined
                               })}
-                              className="px-3 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600"
+                              className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
                             >
                               Cancel
                             </button>
                           </div>
                         </div>
                       )}
-                      <p className="mt-1 text-xs text-gray-500">
-                        Identification or safety band colour if required
-                      </p>
                     </div>
 
-                    {/* Band 2 Colour - Only appears if Band 1 is selected */}
-                    {globalSpecs?.externalBand1Colour && (
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-900 mb-2">
-                          Band 2 Colour <span className="text-gray-400 font-normal">(Optional)</span>
-                        </label>
-                        {!globalSpecs?.showCustomBand2Input ? (
-                          <select
-                            value={globalSpecs?.externalBand2Colour || ''}
-                            onChange={(e) => {
-                              if (e.target.value === '__ADD_CUSTOM__') {
-                                onUpdateGlobalSpecs({
-                                  ...globalSpecs,
-                                  showCustomBand2Input: true
-                                });
-                              } else {
-                                onUpdateGlobalSpecs({
-                                  ...globalSpecs,
-                                  externalBand2Colour: e.target.value || undefined
-                                });
-                              }
-                            }}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                          >
+                    {/* Band 2 Colour */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">Band 2 <span className="text-gray-400 font-normal">(Optional)</span></label>
+                      {!globalSpecs?.showCustomBand2Input ? (
+                        <select
+                          value={globalSpecs?.externalBand2Colour || ''}
+                          onChange={(e) => {
+                            if (e.target.value === '__ADD_CUSTOM__') {
+                              onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                showCustomBand2Input: true
+                              });
+                            } else {
+                              onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                externalBand2Colour: e.target.value || undefined
+                              });
+                            }
+                          }}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                          disabled={!globalSpecs?.externalBand1Colour}
+                        >
                             <option value="">No second band required</option>
                             <optgroup label="Add Your Own">
                               <option value="__ADD_CUSTOM__">+ Add Custom Band Colour...</option>
@@ -4558,7 +4511,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                             </optgroup>
                           </select>
                         ) : (
-                          <div className="space-y-2">
+                          <div className="space-y-1">
                             <input
                               type="text"
                               value={globalSpecs?.customBand2Input || ''}
@@ -4566,10 +4519,10 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                 ...globalSpecs,
                                 customBand2Input: e.target.value
                               })}
-                              placeholder="Enter band colour (e.g., Mine Identification Blue)"
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                              placeholder="Enter band colour"
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                             />
-                            <div className="flex gap-2">
+                            <div className="flex gap-1">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -4591,9 +4544,9 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                   }
                                 }}
                                 disabled={!globalSpecs?.customBand2Input?.trim()}
-                                className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
                               >
-                                Save Band Colour
+                                Save
                               </button>
                               <button
                                 type="button"
@@ -4602,91 +4555,69 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                   showCustomBand2Input: false,
                                   customBand2Input: undefined
                                 })}
-                                className="px-3 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600"
+                                className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
                               >
                                 Cancel
                               </button>
                             </div>
                           </div>
                         )}
-                        <p className="mt-1 text-xs text-gray-500">
-                          Secondary identification band if required
-                        </p>
-                      </div>
-                    )}
-                    </>
-                  )}
-                </div>
-              </div>
+                    </div>
+                  </div>
+                )}
 
               {/* Paint Specification Summary - shows when primer is selected */}
               {globalSpecs?.externalPrimerType && globalSpecs?.externalPrimerMicrons && !globalSpecs?.externalPaintSpecConfirmed && (
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                    <h4 className="text-md font-semibold text-amber-800 mb-3 flex items-center gap-2">
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                    <h4 className="text-sm font-semibold text-amber-800 mb-2 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                       </svg>
                       External Paint Specification (Review)
                     </h4>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1 text-xs">
                       {/* Surface Preparation / Blasting - Always show */}
-                      <div className="flex justify-between items-center text-sm">
+                      <div className="flex justify-between items-center">
                         <span className="text-amber-700">
-                          <span className="font-medium">Surface Prep:</span> {globalSpecs?.externalBlastingGrade || <span className="text-gray-400 italic">Not specified - please select above</span>}
+                          <span className="font-medium">Surface Prep:</span> {globalSpecs?.externalBlastingGrade || <span className="text-gray-400 italic">Not specified</span>}
                         </span>
                       </div>
 
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-amber-700">
-                          <span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}
-                        </span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-amber-700"><span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}</span>
                         <span className="font-semibold text-amber-800">{globalSpecs.externalPrimerMicrons} μm</span>
                       </div>
 
                       {globalSpecs?.externalIntermediateType && globalSpecs?.externalIntermediateMicrons && (
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-amber-700">
-                            <span className="font-medium">Intermediate:</span> {globalSpecs.externalIntermediateType}
-                          </span>
+                        <div className="flex justify-between items-center">
+                          <span className="text-amber-700"><span className="font-medium">Intermediate:</span> {globalSpecs.externalIntermediateType}</span>
                           <span className="font-semibold text-amber-800">{globalSpecs.externalIntermediateMicrons} μm</span>
                         </div>
                       )}
 
                       {globalSpecs?.externalTopcoatType && globalSpecs?.externalTopcoatMicrons && (
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-amber-700">
-                            <span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType}
-                          </span>
+                        <div className="flex justify-between items-center">
+                          <span className="text-amber-700"><span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType}</span>
                           <span className="font-semibold text-amber-800">{globalSpecs.externalTopcoatMicrons} μm</span>
                         </div>
                       )}
 
-                      {/* Topcoat Colour - Always show if topcoat selected */}
                       {globalSpecs?.externalTopcoatType && (
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-amber-700">
-                            <span className="font-medium">Topcoat Colour:</span> {globalSpecs?.externalTopcoatColour || <span className="text-gray-400 italic">Not specified</span>}
-                          </span>
+                        <div className="flex justify-between items-center">
+                          <span className="text-amber-700"><span className="font-medium">Colour:</span> {globalSpecs?.externalTopcoatColour || <span className="text-gray-400 italic">Not specified</span>}</span>
                         </div>
                       )}
 
-                      {/* Band Colours - Always show both */}
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-amber-700">
-                          <span className="font-medium">Band 1:</span> {globalSpecs?.externalBand1Colour || <span className="text-gray-400 italic">None</span>}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-amber-700">
-                          <span className="font-medium">Band 2:</span> {globalSpecs?.externalBand2Colour || <span className="text-gray-400 italic">None</span>}
-                        </span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-amber-700"><span className="font-medium">Band 1:</span> {globalSpecs?.externalBand1Colour || <span className="text-gray-400 italic">None</span>}</span>
+                        <span className="text-amber-700"><span className="font-medium">Band 2:</span> {globalSpecs?.externalBand2Colour || <span className="text-gray-400 italic">None</span>}</span>
                       </div>
 
-                      <div className="flex justify-between items-center text-sm pt-2 mt-2 border-t border-amber-300">
-                        <span className="font-semibold text-amber-800">Total Dry Film Thickness (DFT)</span>
-                        <span className="font-bold text-base text-amber-900">
+                      <div className="flex justify-between items-center pt-1 mt-1 border-t border-amber-300">
+                        <span className="font-semibold text-amber-800">Total DFT</span>
+                        <span className="font-bold text-amber-900">
                           {(globalSpecs.externalPrimerMicrons || 0) +
                            (globalSpecs.externalIntermediateMicrons || 0) +
                            (globalSpecs.externalTopcoatMicrons || 0)} μm
@@ -4694,7 +4625,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                       </div>
                     </div>
 
-                    <div className="mt-4">
+                    <div className="mt-2">
                       <button
                         type="button"
                         onClick={() => onUpdateGlobalSpecs({
@@ -4702,12 +4633,12 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                           externalPaintSpecConfirmed: true,
                           externalCoatingConfirmed: true
                         })}
-                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm flex items-center gap-2"
+                        className="px-3 py-1.5 bg-green-600 text-white font-semibold rounded hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 text-xs flex items-center gap-1"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        Confirm & Lock Specification
+                        Confirm & Lock
                       </button>
                     </div>
                   </div>
@@ -4716,83 +4647,15 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 
               {/* LOCKED Paint Specification - Green box when confirmed */}
               {globalSpecs?.externalPaintSpecConfirmed && globalSpecs?.externalPrimerType && (
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                      </svg>
-                      <h4 className="text-md font-bold text-green-800">External Paint Specification (Locked)</h4>
-                    </div>
-
-                    <div className="space-y-2">
-                      {/* Surface Preparation / Blasting - Always show */}
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-green-700">
-                          <span className="font-medium">Surface Prep:</span> {globalSpecs?.externalBlastingGrade || <span className="text-gray-400 italic">Not specified</span>}
-                        </span>
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="bg-green-50 border border-green-500 rounded-md p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1">
+                        <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                        </svg>
+                        <h4 className="text-sm font-bold text-green-800">External Paint (Locked)</h4>
                       </div>
-
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-green-700">
-                          <span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}
-                        </span>
-                        <span className="font-semibold text-green-800">{globalSpecs.externalPrimerMicrons} μm</span>
-                      </div>
-
-                      {globalSpecs?.externalIntermediateType && globalSpecs?.externalIntermediateMicrons && (
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-green-700">
-                            <span className="font-medium">Intermediate:</span> {globalSpecs.externalIntermediateType}
-                          </span>
-                          <span className="font-semibold text-green-800">{globalSpecs.externalIntermediateMicrons} μm</span>
-                        </div>
-                      )}
-
-                      {globalSpecs?.externalTopcoatType && globalSpecs?.externalTopcoatMicrons && (
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-green-700">
-                            <span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType}
-                            {globalSpecs?.externalTopcoatColour && (
-                              <span className="ml-2 text-green-600">({globalSpecs.externalTopcoatColour})</span>
-                            )}
-                          </span>
-                          <span className="font-semibold text-green-800">{globalSpecs.externalTopcoatMicrons} μm</span>
-                        </div>
-                      )}
-
-                      {/* Topcoat Colour - Always show if topcoat selected */}
-                      {globalSpecs?.externalTopcoatType && (
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-green-700">
-                            <span className="font-medium">Topcoat Colour:</span> {globalSpecs?.externalTopcoatColour || <span className="text-gray-400 italic">Not specified</span>}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Band Colours - Always show both */}
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-green-700">
-                          <span className="font-medium">Band 1:</span> {globalSpecs?.externalBand1Colour || <span className="text-gray-400 italic">None</span>}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-green-700">
-                          <span className="font-medium">Band 2:</span> {globalSpecs?.externalBand2Colour || <span className="text-gray-400 italic">None</span>}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-center text-sm pt-2 mt-2 border-t border-green-300">
-                        <span className="font-semibold text-green-800">Total Dry Film Thickness (DFT)</span>
-                        <span className="font-bold text-base text-green-900">
-                          {(globalSpecs.externalPrimerMicrons || 0) +
-                           (globalSpecs.externalIntermediateMicrons || 0) +
-                           (globalSpecs.externalTopcoatMicrons || 0)} μm
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
                       <button
                         type="button"
                         onClick={() => onUpdateGlobalSpecs({
@@ -4800,13 +4663,44 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                           externalPaintSpecConfirmed: false,
                           externalCoatingConfirmed: false
                         })}
-                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm flex items-center gap-2"
+                        className="px-2 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Unlock & Edit Specification
+                        Edit
                       </button>
+                    </div>
+
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-green-700"><span className="font-medium">Surface Prep:</span> {globalSpecs?.externalBlastingGrade || <span className="text-gray-400 italic">Not specified</span>}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-green-700"><span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}</span>
+                        <span className="font-semibold text-green-800">{globalSpecs.externalPrimerMicrons} μm</span>
+                      </div>
+                      {globalSpecs?.externalIntermediateType && globalSpecs?.externalIntermediateMicrons && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-green-700"><span className="font-medium">Intermediate:</span> {globalSpecs.externalIntermediateType}</span>
+                          <span className="font-semibold text-green-800">{globalSpecs.externalIntermediateMicrons} μm</span>
+                        </div>
+                      )}
+                      {globalSpecs?.externalTopcoatType && globalSpecs?.externalTopcoatMicrons && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-green-700"><span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType} {globalSpecs?.externalTopcoatColour && `(${globalSpecs.externalTopcoatColour})`}</span>
+                          <span className="font-semibold text-green-800">{globalSpecs.externalTopcoatMicrons} μm</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="text-green-700"><span className="font-medium">Band 1:</span> {globalSpecs?.externalBand1Colour || <span className="text-gray-400 italic">None</span>}</span>
+                        <span className="text-green-700"><span className="font-medium">Band 2:</span> {globalSpecs?.externalBand2Colour || <span className="text-gray-400 italic">None</span>}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-1 mt-1 border-t border-green-300">
+                        <span className="font-semibold text-green-800">Total DFT</span>
+                        <span className="font-bold text-green-900">
+                          {(globalSpecs.externalPrimerMicrons || 0) +
+                           (globalSpecs.externalIntermediateMicrons || 0) +
+                           (globalSpecs.externalTopcoatMicrons || 0)} μm
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
