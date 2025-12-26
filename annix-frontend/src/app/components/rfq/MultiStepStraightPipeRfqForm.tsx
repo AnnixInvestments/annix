@@ -4648,51 +4648,49 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
               {/* LOCKED Paint Specification - Green box when confirmed */}
               {globalSpecs?.externalPaintSpecConfirmed && globalSpecs?.externalPrimerType && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
-                  <div className="bg-green-50 border border-green-500 rounded-md p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1">
-                        <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                        </svg>
-                        <h4 className="text-sm font-bold text-green-800">External Paint (Locked)</h4>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => onUpdateGlobalSpecs({
-                          ...globalSpecs,
-                          externalPaintSpecConfirmed: false,
-                          externalCoatingConfirmed: false
-                        })}
-                        className="px-2 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
-                      >
-                        Edit
-                      </button>
-                    </div>
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                    <h4 className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                      </svg>
+                      External Paint Specification (Confirmed)
+                    </h4>
 
                     <div className="space-y-1 text-xs">
                       <div className="flex justify-between items-center">
                         <span className="text-green-700"><span className="font-medium">Surface Prep:</span> {globalSpecs?.externalBlastingGrade || <span className="text-gray-400 italic">Not specified</span>}</span>
                       </div>
+
                       <div className="flex justify-between items-center">
                         <span className="text-green-700"><span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}</span>
                         <span className="font-semibold text-green-800">{globalSpecs.externalPrimerMicrons} μm</span>
                       </div>
+
                       {globalSpecs?.externalIntermediateType && globalSpecs?.externalIntermediateMicrons && (
                         <div className="flex justify-between items-center">
                           <span className="text-green-700"><span className="font-medium">Intermediate:</span> {globalSpecs.externalIntermediateType}</span>
                           <span className="font-semibold text-green-800">{globalSpecs.externalIntermediateMicrons} μm</span>
                         </div>
                       )}
+
                       {globalSpecs?.externalTopcoatType && globalSpecs?.externalTopcoatMicrons && (
                         <div className="flex justify-between items-center">
-                          <span className="text-green-700"><span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType} {globalSpecs?.externalTopcoatColour && `(${globalSpecs.externalTopcoatColour})`}</span>
+                          <span className="text-green-700"><span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType}</span>
                           <span className="font-semibold text-green-800">{globalSpecs.externalTopcoatMicrons} μm</span>
                         </div>
                       )}
+
+                      {globalSpecs?.externalTopcoatType && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-green-700"><span className="font-medium">Colour:</span> {globalSpecs?.externalTopcoatColour || <span className="text-gray-400 italic">Not specified</span>}</span>
+                        </div>
+                      )}
+
                       <div className="flex justify-between items-center">
                         <span className="text-green-700"><span className="font-medium">Band 1:</span> {globalSpecs?.externalBand1Colour || <span className="text-gray-400 italic">None</span>}</span>
                         <span className="text-green-700"><span className="font-medium">Band 2:</span> {globalSpecs?.externalBand2Colour || <span className="text-gray-400 italic">None</span>}</span>
                       </div>
+
                       <div className="flex justify-between items-center pt-1 mt-1 border-t border-green-300">
                         <span className="font-semibold text-green-800">Total DFT</span>
                         <span className="font-bold text-green-900">
@@ -4701,6 +4699,23 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                            (globalSpecs.externalTopcoatMicrons || 0)} μm
                         </span>
                       </div>
+                    </div>
+
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => onUpdateGlobalSpecs({
+                          ...globalSpecs,
+                          externalPaintSpecConfirmed: false,
+                          externalCoatingConfirmed: false
+                        })}
+                        className="px-3 py-1.5 bg-gray-500 text-white font-semibold rounded hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-400 text-xs flex items-center gap-1"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit Specification
+                      </button>
                     </div>
                   </div>
                 </div>
