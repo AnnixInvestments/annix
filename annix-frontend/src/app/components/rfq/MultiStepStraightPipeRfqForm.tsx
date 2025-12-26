@@ -3952,72 +3952,53 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 
           {/* Confirmed External Paint Specification - Always visible when confirmed */}
           {globalSpecs?.externalCoatingConfirmed && globalSpecs?.externalCoatingType === 'Paint' && globalSpecs?.externalPrimerType && (
-            <div className="mt-6">
-              <div className="bg-green-100 border-2 border-green-400 rounded-lg p-4">
-                <h4 className="text-md font-semibold text-green-800 mb-3 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                <h4 className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   External Paint Specification (Confirmed)
                 </h4>
 
-                <div className="space-y-2">
-                  {/* Surface Preparation / Blasting - Always show */}
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-700">
-                      <span className="font-medium">Surface Prep:</span> {globalSpecs?.externalBlastingGrade || <span className="text-gray-400 italic">Not specified</span>}
-                    </span>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700"><span className="font-medium">Surface Prep:</span> {globalSpecs?.externalBlastingGrade || <span className="text-gray-400 italic">Not specified</span>}</span>
                   </div>
 
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-700">
-                      <span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}
-                    </span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700"><span className="font-medium">Primer:</span> {globalSpecs.externalPrimerType}</span>
                     <span className="font-semibold text-green-800">{globalSpecs.externalPrimerMicrons} μm</span>
                   </div>
 
                   {globalSpecs?.externalIntermediateType && globalSpecs?.externalIntermediateMicrons && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-green-700">
-                        <span className="font-medium">Intermediate:</span> {globalSpecs.externalIntermediateType}
-                      </span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-green-700"><span className="font-medium">Intermediate:</span> {globalSpecs.externalIntermediateType}</span>
                       <span className="font-semibold text-green-800">{globalSpecs.externalIntermediateMicrons} μm</span>
                     </div>
                   )}
 
                   {globalSpecs?.externalTopcoatType && globalSpecs?.externalTopcoatMicrons && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-green-700">
-                        <span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType}
-                      </span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-green-700"><span className="font-medium">Topcoat:</span> {globalSpecs.externalTopcoatType}</span>
                       <span className="font-semibold text-green-800">{globalSpecs.externalTopcoatMicrons} μm</span>
                     </div>
                   )}
 
-                  {/* Topcoat Colour - Always show */}
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-700">
-                      <span className="font-medium">Topcoat Colour:</span> {globalSpecs?.externalTopcoatColour || <span className="text-gray-400 italic">Not specified</span>}
-                    </span>
+                  {globalSpecs?.externalTopcoatType && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-green-700"><span className="font-medium">Colour:</span> {globalSpecs?.externalTopcoatColour || <span className="text-gray-400 italic">Not specified</span>}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700"><span className="font-medium">Band 1:</span> {globalSpecs?.externalBand1Colour || <span className="text-gray-400 italic">None</span>}</span>
+                    <span className="text-green-700"><span className="font-medium">Band 2:</span> {globalSpecs?.externalBand2Colour || <span className="text-gray-400 italic">None</span>}</span>
                   </div>
 
-                  {/* Band 1 - Always show */}
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-700">
-                      <span className="font-medium">Band 1:</span> {globalSpecs?.externalBand1Colour || <span className="text-gray-400 italic">None</span>}
-                    </span>
-                  </div>
-
-                  {/* Band 2 - Always show */}
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-700">
-                      <span className="font-medium">Band 2:</span> {globalSpecs?.externalBand2Colour || <span className="text-gray-400 italic">None</span>}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center text-sm pt-2 mt-2 border-t border-green-300">
-                    <span className="font-semibold text-green-800">Total Dry Film Thickness (DFT)</span>
-                    <span className="font-bold text-base text-green-900">
+                  <div className="flex justify-between items-center pt-1 mt-1 border-t border-green-300">
+                    <span className="font-semibold text-green-800">Total DFT</span>
+                    <span className="font-bold text-green-900">
                       {(globalSpecs.externalPrimerMicrons || 0) +
                        (globalSpecs.externalIntermediateMicrons || 0) +
                        (globalSpecs.externalTopcoatMicrons || 0)} μm
@@ -4025,16 +4006,20 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   </div>
                 </div>
 
-                <div className="mt-4">
+                <div className="mt-2">
                   <button
                     type="button"
                     onClick={() => onUpdateGlobalSpecs({
                       ...globalSpecs,
                       externalCoatingConfirmed: false,
+                      externalPaintSpecConfirmed: false,
                       externalCoatingType: 'Paint'
                     })}
-                    className="px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm"
+                    className="px-3 py-1.5 bg-gray-500 text-white font-semibold rounded hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-400 text-xs flex items-center gap-1"
                   >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
                     Edit Specification
                   </button>
                 </div>
