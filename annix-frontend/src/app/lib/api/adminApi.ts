@@ -416,6 +416,72 @@ class AdminApiClient {
       body: JSON.stringify({ validationStatus, validationNotes }),
     });
   }
+
+  // Supplier Management endpoints
+
+  async listSuppliers(query?: { page?: number; limit?: number; status?: string }): Promise<any> {
+    const params = new URLSearchParams();
+    if (query?.page) params.append('page', query.page.toString());
+    if (query?.limit) params.append('limit', query.limit.toString());
+    if (query?.status) params.append('status', query.status);
+
+    const queryString = params.toString();
+    return this.request<any>(
+      `/admin/suppliers${queryString ? `?${queryString}` : ''}`
+    );
+  }
+
+  async getSupplierDetail(id: number): Promise<any> {
+    return this.request<any>(`/admin/suppliers/${id}`);
+  }
+
+  async getPendingReviewSuppliers(): Promise<any[]> {
+    return this.request<any[]>('/admin/suppliers/pending-review');
+  }
+
+  async reviewSupplierDocument(
+    supplierId: number,
+    documentId: number,
+    validationStatus: string,
+    validationNotes?: string
+  ): Promise<void> {
+    return this.request<void>(`/admin/suppliers/${supplierId}/documents/${documentId}/review`, {
+      method: 'PATCH',
+      body: JSON.stringify({ validationStatus, validationNotes }),
+    });
+  }
+
+  async startSupplierReview(id: number): Promise<void> {
+    return this.request<void>(`/admin/suppliers/${id}/start-review`, {
+      method: 'POST',
+    });
+  }
+
+  async approveSupplierOnboarding(id: number): Promise<void> {
+    return this.request<void>(`/admin/suppliers/${id}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectSupplierOnboarding(id: number, reason: string, remediationSteps: string): Promise<void> {
+    return this.request<void>(`/admin/suppliers/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason, remediationSteps }),
+    });
+  }
+
+  async suspendSupplier(id: number, reason: string): Promise<void> {
+    return this.request<void>(`/admin/suppliers/${id}/suspend`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async reactivateSupplier(id: number): Promise<void> {
+    return this.request<void>(`/admin/suppliers/${id}/reactivate`, {
+      method: 'POST',
+    });
+  }
 }
 
 export const adminApiClient = new AdminApiClient();
