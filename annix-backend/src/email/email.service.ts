@@ -497,4 +497,88 @@ export class EmailService {
       html,
     });
   }
+
+  // Admin Portal Email Methods
+
+  async sendAdminWelcomeEmail(
+    email: string,
+    name: string,
+    temporaryPassword: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const adminLoginLink = `${frontendUrl}/admin/login`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Welcome to Annix Admin Portal</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb;">Welcome to Annix Admin Portal</h1>
+          <p>Hello ${name},</p>
+          <p>Your administrator account has been created for the Annix Admin Portal.</p>
+
+          <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
+            <strong>Your Login Credentials:</strong>
+            <p style="margin: 10px 0 0 0;">
+              <strong>Email:</strong> ${email}<br/>
+              <strong>Temporary Password:</strong> <code style="background-color: #e0e7ff; padding: 2px 6px; border-radius: 3px;">${temporaryPassword}</code>
+            </p>
+          </div>
+
+          <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
+            <strong>Important Security Notice:</strong>
+            <p style="margin: 5px 0 0 0;">
+              You will be required to change this temporary password upon your first login.
+              Please keep this password secure and do not share it with anyone.
+            </p>
+          </div>
+
+          <p style="margin: 30px 0;">
+            <a href="${adminLoginLink}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Login to Admin Portal
+            </a>
+          </p>
+
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${adminLoginLink}</p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you did not expect this email or believe you received it in error, please contact your system administrator immediately.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      Welcome to Annix Admin Portal
+
+      Hello ${name},
+
+      Your administrator account has been created for the Annix Admin Portal.
+
+      Your Login Credentials:
+      Email: ${email}
+      Temporary Password: ${temporaryPassword}
+
+      IMPORTANT: You will be required to change this temporary password upon your first login.
+
+      Login here: ${adminLoginLink}
+
+      If you did not expect this email or believe you received it in error, please contact your system administrator immediately.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: 'Welcome to Annix Admin Portal - Your Account Details',
+      html,
+      text,
+    });
+  }
 }
