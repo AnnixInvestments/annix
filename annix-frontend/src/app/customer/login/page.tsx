@@ -122,7 +122,7 @@ export default function CustomerLoginPage() {
                 id="email"
                 name="email"
                 type="email"
-                autoComplete="email"
+                autoComplete="username email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
