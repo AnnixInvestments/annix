@@ -111,7 +111,7 @@ export class AdminAuthService {
 
     // Log audit
     await this.auditService.log({
-      userId: user.id,
+      performedBy: user,
       entityType: 'admin_session',
       entityId: session.id,
       action: AuditAction.CREATE,
@@ -144,6 +144,7 @@ export class AdminAuthService {
   async logout(userId: number, sessionToken: string, clientIp: string): Promise<void> {
     const session = await this.sessionRepo.findOne({
       where: { userId, sessionToken, isRevoked: false },
+      relations: ['user'],
     });
 
     if (session) {
@@ -153,7 +154,7 @@ export class AdminAuthService {
 
       // Log audit
       await this.auditService.log({
-        userId,
+        performedBy: session.user,
         entityType: 'admin_session',
         entityId: session.id,
         action: AuditAction.DELETE,
@@ -284,8 +285,10 @@ export class AdminAuthService {
       { isRevoked: true, revokedAt: new Date() },
     );
 
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+
     await this.auditService.log({
-      userId,
+      performedBy: user,
       entityType: 'admin_session',
       action: AuditAction.DELETE,
       newValues: {
