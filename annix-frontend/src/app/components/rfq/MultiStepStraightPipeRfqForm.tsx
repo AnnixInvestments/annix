@@ -2934,64 +2934,64 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   </div>
 
                   {/* Atmospheric Environment */}
-                  <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-                    <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <span className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                  <div className="bg-white rounded-md p-2 mb-2 border border-gray-200">
+                    <h5 className="text-xs font-semibold text-gray-800 mb-1.5 flex items-center gap-1.5">
+                      <span className="w-4 h-4 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-[10px] font-bold">2</span>
                       Atmospheric Environment
                       {(isIso12944AutoFilled || isMarineInfluenceAutoFilled || isIndustrialPollutionAutoFilled) && (
-                        <span className="ml-2 text-xs font-medium text-emerald-600">✓ Auto-filled from Environmental Intelligence</span>
+                        <span className="ml-1 text-[10px] font-medium text-emerald-600">✓ Auto</span>
                       )}
                     </h5>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          ISO 12944 Category *
+                        <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                          ISO 12944 *
                           {isIso12944AutoFilled && <span className="ml-1 text-emerald-600">(Auto)</span>}
                         </label>
                         <select
                           value={effectiveIso12944 || ""}
                           onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpIso12944Category: e.target.value || undefined })}
-                          className={`w-full px-3 py-2 text-sm rounded-lg focus:ring-2 focus:ring-orange-500 ${autoFilledClass(isIso12944AutoFilled)}`}
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isIso12944AutoFilled)}`}
                         >
                           <option value="">Select...</option>
-                          <option value="C1">C1 - Very Low (Heated interiors)</option>
-                          <option value="C2">C2 - Low (Rural, low pollution)</option>
-                          <option value="C3">C3 - Medium (Urban, mild industrial)</option>
-                          <option value="C4">C4 - High (Industrial, coastal)</option>
-                          <option value="C5">C5 - Very High (Heavy industrial, marine)</option>
-                          <option value="CX">CX - Extreme (Offshore, severe industrial)</option>
+                          <option value="C1">C1 - Very Low</option>
+                          <option value="C2">C2 - Low</option>
+                          <option value="C3">C3 - Medium</option>
+                          <option value="C4">C4 - High</option>
+                          <option value="C5">C5 - Very High</option>
+                          <option value="CX">CX - Extreme</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Marine Influence
+                        <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                          Marine
                           {isMarineInfluenceAutoFilled && <span className="ml-1 text-emerald-600">(Auto)</span>}
                         </label>
                         <select
                           value={effectiveMarineInfluence || ""}
                           onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpMarineInfluence: e.target.value || undefined })}
-                          className={`w-full px-3 py-2 text-sm rounded-lg focus:ring-2 focus:ring-orange-500 ${autoFilledClass(isMarineInfluenceAutoFilled)}`}
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isMarineInfluenceAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="None">None (Inland)</option>
-                          <option value="Coastal">Coastal (&lt;5km from sea)</option>
-                          <option value="Offshore">Offshore / Marine</option>
+                          <option value="Coastal">Coastal</option>
+                          <option value="Offshore">Offshore</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Industrial Pollution
+                        <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                          Industrial
                           {isIndustrialPollutionAutoFilled && <span className="ml-1 text-emerald-600">(Auto)</span>}
                         </label>
                         <select
                           value={effectiveIndustrialPollution || ""}
                           onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpIndustrialPollution: e.target.value || undefined })}
-                          className={`w-full px-3 py-2 text-sm rounded-lg focus:ring-2 focus:ring-orange-500 ${autoFilledClass(isIndustrialPollutionAutoFilled)}`}
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isIndustrialPollutionAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="None">None / Rural</option>
-                          <option value="Moderate">Moderate (Urban/Light industrial)</option>
-                          <option value="Heavy">Heavy (Chemical/Petrochemical)</option>
+                          <option value="Moderate">Moderate</option>
+                          <option value="Heavy">Heavy</option>
                         </select>
                       </div>
                     </div>
@@ -2999,52 +2999,52 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 
                   {/* Soil Conditions (for buried) */}
                   {effectiveInstallationType === "Buried" && (
-                    <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-                      <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                        <span className="w-6 h-6 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                        Soil Conditions (Buried Pipeline)
+                    <div className="bg-white rounded-md p-2 mb-2 border border-gray-200">
+                      <h5 className="text-xs font-semibold text-gray-800 mb-1.5 flex items-center gap-1.5">
+                        <span className="w-4 h-4 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-[10px] font-bold">3</span>
+                        Soil Conditions
                       </h5>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Soil Type</label>
+                          <label className="block text-[10px] font-medium text-gray-700 mb-0.5">Soil Type</label>
                           <select
                             value={globalSpecs?.ecpSoilType || ""}
                             onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpSoilType: e.target.value || undefined })}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                           >
                             <option value="">Select...</option>
-                            <option value="Sandy">Sandy (Well-drained)</option>
-                            <option value="Clay">Clay (Poor drainage)</option>
-                            <option value="Rocky">Rocky / Stony</option>
-                            <option value="Marshy">Marshy / Wetland</option>
+                            <option value="Sandy">Sandy</option>
+                            <option value="Clay">Clay</option>
+                            <option value="Rocky">Rocky</option>
+                            <option value="Marshy">Marshy</option>
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Soil Resistivity</label>
+                          <label className="block text-[10px] font-medium text-gray-700 mb-0.5">Resistivity</label>
                           <select
                             value={globalSpecs?.ecpSoilResistivity || ""}
                             onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpSoilResistivity: e.target.value || undefined })}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                           >
                             <option value="">Select...</option>
-                            <option value="VeryLow">&lt;500 Ω·cm (Very Corrosive)</option>
-                            <option value="Low">500–2,000 Ω·cm (Corrosive)</option>
-                            <option value="Medium">2,000–10,000 Ω·cm (Moderate)</option>
-                            <option value="High">&gt;10,000 Ω·cm (Low Corrosivity)</option>
+                            <option value="VeryLow">&lt;500 Ω·cm</option>
+                            <option value="Low">500–2k Ω·cm</option>
+                            <option value="Medium">2k–10k Ω·cm</option>
+                            <option value="High">&gt;10k Ω·cm</option>
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Soil Moisture</label>
+                          <label className="block text-[10px] font-medium text-gray-700 mb-0.5">Moisture</label>
                           <select
                             value={globalSpecs?.ecpSoilMoisture || ""}
                             onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpSoilMoisture: e.target.value || undefined })}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                           >
                             <option value="">Select...</option>
-                            <option value="Dry">Dry (Well-drained)</option>
+                            <option value="Dry">Dry</option>
                             <option value="Normal">Normal</option>
-                            <option value="Wet">Wet (Poor drainage)</option>
-                            <option value="Saturated">Saturated / Water table</option>
+                            <option value="Wet">Wet</option>
+                            <option value="Saturated">Saturated</option>
                           </select>
                         </div>
                       </div>
@@ -3052,58 +3052,56 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   )}
 
                   {/* Operating Conditions */}
-                  <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-                    <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <span className="w-6 h-6 bg-red-100 text-red-700 rounded-full flex items-center justify-center text-xs font-bold">{effectiveInstallationType === "Buried" ? "4" : "3"}</span>
+                  <div className="bg-white rounded-md p-2 mb-2 border border-gray-200">
+                    <h5 className="text-xs font-semibold text-gray-800 mb-1.5 flex items-center gap-1.5">
+                      <span className="w-4 h-4 bg-red-100 text-red-700 rounded-full flex items-center justify-center text-[10px] font-bold">{effectiveInstallationType === "Buried" ? "4" : "3"}</span>
                       Operating Conditions
+                      {isEcpTemperatureAutoFilled && <span className="ml-1 text-[10px] font-medium text-emerald-600">✓ Temp Auto</span>}
                     </h5>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Operating Temperature
-                          {isEcpTemperatureAutoFilled && (
-                            <span className="ml-2 text-xs font-medium text-emerald-600">✓ Auto-filled from Working Temp</span>
-                          )}
+                        <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                          Temperature
                         </label>
                         <select
                           value={effectiveEcpTemperature || ""}
                           onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpTemperature: e.target.value || undefined })}
-                          className={`w-full px-3 py-2 text-sm rounded-lg focus:ring-2 focus:ring-orange-500 ${
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${
                             isEcpTemperatureAutoFilled
                               ? 'border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold'
                               : 'border border-gray-300 text-gray-900'
                           }`}
                         >
                           <option value="">Select...</option>
-                          <option value="Ambient">Ambient (-20 to 60°C)</option>
+                          <option value="Ambient">Ambient</option>
                           <option value="Elevated">Elevated (60–120°C)</option>
                           <option value="High">High (120–200°C)</option>
-                          <option value="Cyclic">Cyclic (Thermal cycling)</option>
+                          <option value="Cyclic">Cyclic</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Service Life Required *</label>
+                        <label className="block text-[10px] font-medium text-gray-700 mb-0.5">Service Life *</label>
                         <select
                           value={globalSpecs?.ecpServiceLife || ""}
                           onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpServiceLife: e.target.value || undefined })}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                         >
                           <option value="">Select...</option>
-                          <option value="Short">Short (&lt;7 years)</option>
-                          <option value="Medium">Medium (7–15 years)</option>
-                          <option value="Long">Long (15–25 years)</option>
-                          <option value="Extended">Extended (&gt;25 years)</option>
+                          <option value="Short">&lt;7 years</option>
+                          <option value="Medium">7–15 years</option>
+                          <option value="Long">15–25 years</option>
+                          <option value="Extended">&gt;25 years</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Cathodic Protection?</label>
+                        <label className="block text-[10px] font-medium text-gray-700 mb-0.5">Cathodic Prot?</label>
                         <select
                           value={globalSpecs?.ecpCathodicProtection === true ? "true" : globalSpecs?.ecpCathodicProtection === false ? "false" : ""}
                           onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, ecpCathodicProtection: e.target.value === "true" ? true : e.target.value === "false" ? false : undefined })}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                         >
                           <option value="">Select...</option>
-                          <option value="true">Yes (CP system installed)</option>
+                          <option value="true">Yes</option>
                           <option value="false">No</option>
                         </select>
                       </div>
@@ -3149,90 +3147,91 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                     const recommendation = recommendExternalCoating(profile, damage);
 
                     return (
-                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border-2 border-emerald-300">
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <div className="flex items-center gap-2">
-                            <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-md p-2 border-2 border-emerald-300">
+                        <div className="flex items-center justify-between gap-1 mb-2">
+                          <div className="flex items-center gap-1.5">
+                            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <h5 className="text-md font-bold text-emerald-900">Recommended Coating System</h5>
+                            <h5 className="text-xs font-bold text-emerald-900">Recommended Coating</h5>
                           </div>
                           {isEcpTemperatureAutoFilled && (
-                            <span className="text-xs bg-emerald-200 text-emerald-800 px-2 py-1 rounded-full font-medium">
-                              Temperature auto-derived from Working Temp ({globalSpecs?.workingTemperatureC}°C)
+                            <span className="text-[10px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded-full font-medium">
+                              Temp: {globalSpecs?.workingTemperatureC}°C
                             </span>
                           )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div className="bg-white rounded-lg p-3 border border-emerald-200">
-                            <div className="text-xs font-medium text-gray-500 mb-1">Coating System</div>
-                            <div className="text-lg font-bold text-emerald-800">{recommendation.coating}</div>
-                            <div className="text-xs text-gray-600 mt-1">{recommendation.system}</div>
+                        {/* Compact 4-column grid for main info */}
+                        <div className="grid grid-cols-4 gap-2 mb-2">
+                          <div className="bg-white rounded p-1.5 border border-emerald-200">
+                            <div className="text-[10px] font-medium text-gray-500">Coating</div>
+                            <div className="text-xs font-bold text-emerald-800">{recommendation.coating}</div>
                           </div>
-                          <div className="bg-white rounded-lg p-3 border border-emerald-200">
-                            <div className="text-xs font-medium text-gray-500 mb-1">Dominant Exposure</div>
-                            <div className="text-md font-semibold text-gray-800">{damage.dominantMechanism}</div>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              <span className={`text-xs px-2 py-0.5 rounded ${damage.atmosphericCorrosion === 'Severe' || damage.atmosphericCorrosion === 'High' ? 'bg-red-100 text-red-700' : damage.atmosphericCorrosion === 'Moderate' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                                Atm: {damage.atmosphericCorrosion}
+                          <div className="bg-white rounded p-1.5 border border-emerald-200">
+                            <div className="text-[10px] font-medium text-gray-500">System</div>
+                            <div className="text-[10px] text-gray-700">{recommendation.system}</div>
+                          </div>
+                          <div className="bg-white rounded p-1.5 border border-emerald-200">
+                            <div className="text-[10px] font-medium text-gray-500">Thickness</div>
+                            <div className="text-xs font-semibold text-gray-800">{recommendation.thicknessRange}</div>
+                          </div>
+                          <div className="bg-white rounded p-1.5 border border-emerald-200">
+                            <div className="text-[10px] font-medium text-gray-500">Exposure</div>
+                            <div className="flex flex-wrap gap-0.5">
+                              <span className={`text-[9px] px-1 py-0.5 rounded ${damage.atmosphericCorrosion === 'Severe' || damage.atmosphericCorrosion === 'High' ? 'bg-red-100 text-red-700' : damage.atmosphericCorrosion === 'Moderate' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                {damage.atmosphericCorrosion}
                               </span>
                               {effectiveInstallationType === "Buried" && (
-                                <span className={`text-xs px-2 py-0.5 rounded ${damage.soilCorrosion === 'Severe' || damage.soilCorrosion === 'High' ? 'bg-red-100 text-red-700' : damage.soilCorrosion === 'Moderate' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                                  Soil: {damage.soilCorrosion}
+                                <span className={`text-[9px] px-1 py-0.5 rounded ${damage.soilCorrosion === 'Severe' || damage.soilCorrosion === 'High' ? 'bg-red-100 text-red-700' : damage.soilCorrosion === 'Moderate' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                  Soil
                                 </span>
                               )}
-                              <span className={`text-xs px-2 py-0.5 rounded ${damage.mechanicalDamage === 'High' ? 'bg-red-100 text-red-700' : damage.mechanicalDamage === 'Moderate' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                                Mech: {damage.mechanicalDamage}
-                              </span>
                             </div>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div className="bg-white rounded-lg p-3 border border-emerald-200">
-                            <div className="text-xs font-medium text-gray-500 mb-1">Thickness Range</div>
-                            <div className="text-md font-semibold text-gray-800">{recommendation.thicknessRange}</div>
+                        {/* Standards and Notes in compact 2-column layout */}
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                          <div className="bg-white rounded p-1.5 border border-emerald-200">
+                            <div className="text-[10px] font-medium text-gray-500 mb-1">Standards</div>
+                            <div className="flex flex-wrap gap-1">
+                              {recommendation.standardsBasis.slice(0, 3).map((std, i) => (
+                                <span key={i} className="text-[9px] bg-orange-100 text-orange-800 px-1 py-0.5 rounded font-medium">
+                                  {std}
+                                </span>
+                              ))}
+                              {recommendation.standardsBasis.length > 3 && (
+                                <span className="text-[9px] text-gray-500">+{recommendation.standardsBasis.length - 3}</span>
+                              )}
+                            </div>
                           </div>
-                          <div className="bg-white rounded-lg p-3 border border-emerald-200">
-                            <div className="text-xs font-medium text-gray-500 mb-1">Rationale</div>
-                            <p className="text-sm text-gray-700">{recommendation.rationale}</p>
+                          <div className="bg-white rounded p-1.5 border border-emerald-200">
+                            <div className="text-[10px] font-medium text-gray-500 mb-1">Rationale</div>
+                            <p className="text-[10px] text-gray-700 line-clamp-2">{recommendation.rationale}</p>
                           </div>
                         </div>
 
-                        <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
-                          <div className="text-xs font-medium text-gray-500 mb-2">Applicable Standards</div>
-                          <div className="flex flex-wrap gap-2">
-                            {recommendation.standardsBasis.map((std, i) => (
-                              <span key={i} className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded font-medium">
-                                {std}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
-                          <div className="text-xs font-medium text-gray-500 mb-2">Engineering Notes</div>
-                          <ul className="text-xs text-gray-700 space-y-1">
+                        {/* Engineering Notes - collapsible */}
+                        <details className="bg-white rounded p-1.5 border border-emerald-200 mb-2">
+                          <summary className="text-[10px] font-medium text-gray-500 cursor-pointer">Engineering Notes ({recommendation.engineeringNotes.length})</summary>
+                          <ul className="text-[10px] text-gray-700 mt-1 space-y-0.5 pl-2">
                             {recommendation.engineeringNotes.map((note, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <span className="text-emerald-500 mt-0.5">•</span>
-                                {note}
-                              </li>
+                              <li key={i}>• {note}</li>
                             ))}
                           </ul>
-                        </div>
+                        </details>
 
-                        {/* Step 4: Colour Selection */}
-                        <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
-                          <div className="text-xs font-medium text-emerald-700 mb-3 flex items-center gap-2">
-                            <span className="bg-emerald-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">4</span>
-                            Select Colours (Optional)
+                        {/* Colour Selection - more compact */}
+                        <div className="bg-white rounded p-1.5 border border-emerald-200 mb-2">
+                          <div className="text-[10px] font-medium text-emerald-700 mb-1.5 flex items-center gap-1">
+                            <span className="bg-emerald-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold">4</span>
+                            Colours (Optional)
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-3 gap-2">
                             {/* Topcoat Colour */}
                             <div>
-                              <label className="block text-xs font-semibold text-gray-700 mb-1">Topcoat Colour</label>
+                              <label className="block text-[10px] font-medium text-gray-700 mb-0.5">Topcoat</label>
                               {!globalSpecs?.showRecCustomColourInput ? (
                                 <select
                                   value={globalSpecs?.recExternalTopcoatColour || ''}
@@ -3243,53 +3242,47 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                       onUpdateGlobalSpecs({ ...globalSpecs, recExternalTopcoatColour: e.target.value || undefined });
                                     }
                                   }}
-                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-emerald-500 text-gray-900"
                                 >
-                                  <option value="">Select colour...</option>
-                                  <optgroup label="Add Your Own">
-                                    <option value="__ADD_CUSTOM__">+ Add Custom Colour...</option>
-                                  </optgroup>
+                                  <option value="">Select...</option>
+                                  <option value="__ADD_CUSTOM__">+ Custom...</option>
                                   {(() => {
                                     try {
                                       const customColours = JSON.parse(localStorage.getItem('customTopcoatColours') || '[]');
                                       if (customColours.length > 0) {
-                                        return (
-                                          <optgroup label="Saved Custom Colours">
-                                            {customColours.map((colour: string, idx: number) => (
-                                              <option key={idx} value={colour}>{colour}</option>
-                                            ))}
-                                          </optgroup>
-                                        );
+                                        return customColours.map((colour: string, idx: number) => (
+                                          <option key={idx} value={colour}>{colour}</option>
+                                        ));
                                       }
                                     } catch (e) {}
                                     return null;
                                   })()}
-                                  <optgroup label="SA Mining Colours">
-                                    <option value="Safety Yellow (RAL 1003)">Safety Yellow (RAL 1003)</option>
-                                    <option value="Safety Orange (RAL 2009)">Safety Orange (RAL 2009)</option>
-                                    <option value="Safety Red (RAL 3001)">Safety Red (RAL 3001)</option>
-                                    <option value="Safety Green (RAL 6024)">Safety Green (RAL 6024)</option>
-                                    <option value="Signal Blue (RAL 5005)">Signal Blue (RAL 5005)</option>
-                                    <option value="White (RAL 9003)">White (RAL 9003)</option>
-                                    <option value="Black (RAL 9005)">Black (RAL 9005)</option>
-                                    <option value="Grey (RAL 7035)">Grey (RAL 7035)</option>
+                                  <optgroup label="Mining">
+                                    <option value="Safety Yellow (RAL 1003)">Yellow RAL 1003</option>
+                                    <option value="Safety Orange (RAL 2009)">Orange RAL 2009</option>
+                                    <option value="Safety Red (RAL 3001)">Red RAL 3001</option>
+                                    <option value="Safety Green (RAL 6024)">Green RAL 6024</option>
+                                    <option value="Signal Blue (RAL 5005)">Blue RAL 5005</option>
+                                    <option value="White (RAL 9003)">White RAL 9003</option>
+                                    <option value="Black (RAL 9005)">Black RAL 9005</option>
+                                    <option value="Grey (RAL 7035)">Grey RAL 7035</option>
                                   </optgroup>
-                                  <optgroup label="Pipeline (SABS 0140)">
-                                    <option value="Water - Blue (RAL 5015)">Water - Blue (RAL 5015)</option>
-                                    <option value="Steam - Silver Grey (RAL 7001)">Steam - Silver Grey</option>
-                                    <option value="Air - Light Blue (RAL 5012)">Air - Light Blue</option>
-                                    <option value="Gas - Yellow Ochre (RAL 1024)">Gas - Yellow Ochre</option>
-                                    <option value="Fire Services - Red (RAL 3000)">Fire Services - Red</option>
+                                  <optgroup label="Pipeline">
+                                    <option value="Water - Blue (RAL 5015)">Water Blue</option>
+                                    <option value="Steam - Silver Grey (RAL 7001)">Steam Grey</option>
+                                    <option value="Air - Light Blue (RAL 5012)">Air Blue</option>
+                                    <option value="Gas - Yellow Ochre (RAL 1024)">Gas Yellow</option>
+                                    <option value="Fire Services - Red (RAL 3000)">Fire Red</option>
                                   </optgroup>
                                 </select>
                               ) : (
-                                <div className="space-y-2">
+                                <div className="space-y-1">
                                   <input
                                     type="text"
                                     value={globalSpecs?.recCustomColourInput || ''}
                                     onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, recCustomColourInput: e.target.value })}
-                                    placeholder="Enter colour name"
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                    placeholder="Colour name"
+                                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-emerald-500 text-gray-900"
                                   />
                                   <div className="flex gap-1">
                                     <button
@@ -3308,16 +3301,16 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                         }
                                       }}
                                       disabled={!globalSpecs?.recCustomColourInput?.trim()}
-                                      className="flex-1 px-2 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 disabled:opacity-50"
+                                      className="flex-1 px-1.5 py-0.5 bg-emerald-600 text-white text-[10px] rounded hover:bg-emerald-700 disabled:opacity-50"
                                     >
                                       Save
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => onUpdateGlobalSpecs({ ...globalSpecs, showRecCustomColourInput: false, recCustomColourInput: undefined })}
-                                      className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                                      className="px-1.5 py-0.5 bg-gray-500 text-white text-[10px] rounded hover:bg-gray-600"
                                     >
-                                      Cancel
+                                      ✕
                                     </button>
                                   </div>
                                 </div>
@@ -3326,7 +3319,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 
                             {/* Band 1 Colour */}
                             <div>
-                              <label className="block text-xs font-semibold text-gray-700 mb-1">Band 1 Colour</label>
+                              <label className="block text-[10px] font-medium text-gray-700 mb-0.5">Band 1</label>
                               {!globalSpecs?.showRecBand1Input ? (
                                 <select
                                   value={globalSpecs?.recExternalBand1Colour || ''}
@@ -3341,45 +3334,37 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                       });
                                     }
                                   }}
-                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-emerald-500 text-gray-900"
                                 >
-                                  <option value="">No band required</option>
-                                  <optgroup label="Add Your Own">
-                                    <option value="__ADD_CUSTOM__">+ Add Custom Colour...</option>
-                                  </optgroup>
+                                  <option value="">None</option>
+                                  <option value="__ADD_CUSTOM__">+ Custom...</option>
                                   {(() => {
                                     try {
                                       const customColours = JSON.parse(localStorage.getItem('customBandColours') || '[]');
                                       if (customColours.length > 0) {
-                                        return (
-                                          <optgroup label="Saved Custom Colours">
-                                            {customColours.map((colour: string, idx: number) => (
-                                              <option key={idx} value={colour}>{colour}</option>
-                                            ))}
-                                          </optgroup>
-                                        );
+                                        return customColours.map((colour: string, idx: number) => (
+                                          <option key={idx} value={colour}>{colour}</option>
+                                        ));
                                       }
                                     } catch (e) {}
                                     return null;
                                   })()}
-                                  <optgroup label="Common Band Colours">
-                                    <option value="White (RAL 9003)">White (RAL 9003)</option>
-                                    <option value="Yellow (RAL 1023)">Yellow (RAL 1023)</option>
-                                    <option value="Orange (RAL 2004)">Orange (RAL 2004)</option>
-                                    <option value="Red (RAL 3020)">Red (RAL 3020)</option>
-                                    <option value="Blue (RAL 5015)">Blue (RAL 5015)</option>
-                                    <option value="Green (RAL 6032)">Green (RAL 6032)</option>
-                                    <option value="Black (RAL 9005)">Black (RAL 9005)</option>
-                                  </optgroup>
+                                  <option value="White (RAL 9003)">White</option>
+                                  <option value="Yellow (RAL 1023)">Yellow</option>
+                                  <option value="Orange (RAL 2004)">Orange</option>
+                                  <option value="Red (RAL 3020)">Red</option>
+                                  <option value="Blue (RAL 5015)">Blue</option>
+                                  <option value="Green (RAL 6032)">Green</option>
+                                  <option value="Black (RAL 9005)">Black</option>
                                 </select>
                               ) : (
-                                <div className="space-y-2">
+                                <div className="space-y-1">
                                   <input
                                     type="text"
                                     value={globalSpecs?.recBand1Input || ''}
                                     onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, recBand1Input: e.target.value })}
-                                    placeholder="Enter band colour"
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                    placeholder="Band colour"
+                                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-emerald-500 text-gray-900"
                                   />
                                   <div className="flex gap-1">
                                     <button
@@ -3398,16 +3383,16 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                         }
                                       }}
                                       disabled={!globalSpecs?.recBand1Input?.trim()}
-                                      className="flex-1 px-2 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 disabled:opacity-50"
+                                      className="flex-1 px-1.5 py-0.5 bg-emerald-600 text-white text-[10px] rounded hover:bg-emerald-700 disabled:opacity-50"
                                     >
                                       Save
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => onUpdateGlobalSpecs({ ...globalSpecs, showRecBand1Input: false, recBand1Input: undefined })}
-                                      className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                                      className="px-1.5 py-0.5 bg-gray-500 text-white text-[10px] rounded hover:bg-gray-600"
                                     >
-                                      Cancel
+                                      ✕
                                     </button>
                                   </div>
                                 </div>
@@ -3417,7 +3402,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                             {/* Band 2 Colour - Only if Band 1 selected */}
                             {globalSpecs?.recExternalBand1Colour && (
                               <div>
-                                <label className="block text-xs font-semibold text-gray-700 mb-1">Band 2 Colour</label>
+                                <label className="block text-[10px] font-medium text-gray-700 mb-0.5">Band 2</label>
                                 {!globalSpecs?.showRecBand2Input ? (
                                   <select
                                     value={globalSpecs?.recExternalBand2Colour || ''}
@@ -3428,45 +3413,37 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                         onUpdateGlobalSpecs({ ...globalSpecs, recExternalBand2Colour: e.target.value || undefined });
                                       }
                                     }}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-emerald-500 text-gray-900"
                                   >
-                                    <option value="">No band required</option>
-                                    <optgroup label="Add Your Own">
-                                      <option value="__ADD_CUSTOM__">+ Add Custom Colour...</option>
-                                    </optgroup>
+                                    <option value="">None</option>
+                                    <option value="__ADD_CUSTOM__">+ Custom...</option>
                                     {(() => {
                                       try {
                                         const customColours = JSON.parse(localStorage.getItem('customBandColours') || '[]');
                                         if (customColours.length > 0) {
-                                          return (
-                                            <optgroup label="Saved Custom Colours">
-                                              {customColours.map((colour: string, idx: number) => (
-                                                <option key={idx} value={colour}>{colour}</option>
-                                              ))}
-                                            </optgroup>
-                                          );
+                                          return customColours.map((colour: string, idx: number) => (
+                                            <option key={idx} value={colour}>{colour}</option>
+                                          ));
                                         }
                                       } catch (e) {}
                                       return null;
                                     })()}
-                                    <optgroup label="Common Band Colours">
-                                      <option value="White (RAL 9003)">White (RAL 9003)</option>
-                                      <option value="Yellow (RAL 1023)">Yellow (RAL 1023)</option>
-                                      <option value="Orange (RAL 2004)">Orange (RAL 2004)</option>
-                                      <option value="Red (RAL 3020)">Red (RAL 3020)</option>
-                                      <option value="Blue (RAL 5015)">Blue (RAL 5015)</option>
-                                      <option value="Green (RAL 6032)">Green (RAL 6032)</option>
-                                      <option value="Black (RAL 9005)">Black (RAL 9005)</option>
-                                    </optgroup>
+                                    <option value="White (RAL 9003)">White</option>
+                                    <option value="Yellow (RAL 1023)">Yellow</option>
+                                    <option value="Orange (RAL 2004)">Orange</option>
+                                    <option value="Red (RAL 3020)">Red</option>
+                                    <option value="Blue (RAL 5015)">Blue</option>
+                                    <option value="Green (RAL 6032)">Green</option>
+                                    <option value="Black (RAL 9005)">Black</option>
                                   </select>
                                 ) : (
-                                  <div className="space-y-2">
+                                  <div className="space-y-1">
                                     <input
                                       type="text"
                                       value={globalSpecs?.recBand2Input || ''}
                                       onChange={(e) => onUpdateGlobalSpecs({ ...globalSpecs, recBand2Input: e.target.value })}
-                                      placeholder="Enter band colour"
-                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
+                                      placeholder="Band colour"
+                                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-emerald-500 text-gray-900"
                                     />
                                     <div className="flex gap-1">
                                       <button
@@ -3485,16 +3462,16 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                           }
                                         }}
                                         disabled={!globalSpecs?.recBand2Input?.trim()}
-                                        className="flex-1 px-2 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 disabled:opacity-50"
+                                        className="flex-1 px-1.5 py-0.5 bg-emerald-600 text-white text-[10px] rounded hover:bg-emerald-700 disabled:opacity-50"
                                       >
                                         Save
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => onUpdateGlobalSpecs({ ...globalSpecs, showRecBand2Input: false, recBand2Input: undefined })}
-                                        className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                                        className="px-1.5 py-0.5 bg-gray-500 text-white text-[10px] rounded hover:bg-gray-600"
                                       >
-                                        Cancel
+                                        ✕
                                       </button>
                                     </div>
                                   </div>
@@ -3504,7 +3481,8 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                           </div>
                         </div>
 
-                        <div className="flex gap-3">
+                        {/* Compact action buttons */}
+                        <div className="flex gap-2 mt-2">
                           <button
                             type="button"
                             onClick={() => onUpdateGlobalSpecs({
@@ -3512,7 +3490,6 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                               externalCoatingType: recommendation.coatingType,
                               externalCoatingConfirmed: true,
                               externalCoatingRecommendationRejected: false,
-                              // Save blasting grade - SA 2.5 is standard for all paint recommendations
                               externalBlastingGrade: recommendation.coatingType === 'Galvanized' ? undefined : 'SA 2.5 (ISO 8501-1)',
                               externalTopcoatColour: globalSpecs?.recExternalTopcoatColour,
                               externalBand1Colour: globalSpecs?.recExternalBand1Colour,
@@ -3546,9 +3523,9 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                 { action: 'ACCEPTED', timestamp: new Date().toISOString(), recommendation: recommendation.coating }
                               ]
                             })}
-                            className="flex-1 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 text-sm flex items-center justify-center gap-2"
+                            className="flex-1 px-2 py-1.5 bg-emerald-600 text-white font-medium rounded text-xs flex items-center justify-center gap-1 hover:bg-emerald-700"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                             Accept & Lock
@@ -3563,20 +3540,22 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                                 { action: 'REJECTED', timestamp: new Date().toISOString(), recommendation: recommendation.coating }
                               ]
                             })}
-                            className="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 text-sm flex items-center justify-center gap-2"
+                            className="px-2 py-1.5 bg-red-600 text-white font-medium rounded text-xs flex items-center justify-center gap-1 hover:bg-red-700"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                             Reject
                           </button>
                         </div>
 
-                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                          <p className="text-xs text-amber-800">
-                            <strong>Engineering Disclaimer:</strong> Coating recommendations are indicative and based on ISO 12944, ISO 21809, and related standards. They do not replace project-specific corrosion assessments, manufacturer data sheets, or qualified coating inspector verification. Surface preparation and application conditions are critical to coating performance.
+                        {/* Compact disclaimer */}
+                        <details className="mt-2 text-[10px] text-amber-700">
+                          <summary className="cursor-pointer font-medium">Engineering Disclaimer</summary>
+                          <p className="mt-1 p-1.5 bg-amber-50 border border-amber-200 rounded">
+                            Recommendations based on ISO 12944/21809. Does not replace project-specific assessments or qualified inspector verification.
                           </p>
-                        </div>
+                        </details>
                       </div>
                     );
                   })()}
