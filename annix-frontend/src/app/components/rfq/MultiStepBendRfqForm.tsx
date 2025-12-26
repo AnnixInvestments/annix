@@ -67,6 +67,8 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
     pressureClasses: [],
   });
   const [bendOptionsCache, setBendOptionsCache] = useState<Record<string, { nominalBores: number[]; degrees: number[] }>>({});
+  // Ref for scrollable content container
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<BendRfqFormData>({
     projectName: 'Bend Pipeline Project',
@@ -324,12 +326,20 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
   const nextStep = () => {
     if (validateCurrentStep()) {
       setCurrentStep(prev => Math.min(prev + 1, 4));
+      // Scroll to top of content container when navigating to next step
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 
   const prevStep = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
     setErrors({});
+    // Scroll to top of content container when navigating to previous step
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleSubmit = async () => {
@@ -393,7 +403,7 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       <div className="flex h-screen">
         {/* Vertical Side Navigation */}
         <div className="w-72 bg-white border-r border-gray-200 flex flex-col">
@@ -506,7 +516,7 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
         </div>
 
         {/* Main Content Area - FULL WIDTH */}
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
           <div className="p-4">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="px-6 py-5">

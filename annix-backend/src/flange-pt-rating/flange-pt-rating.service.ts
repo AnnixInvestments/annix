@@ -161,15 +161,34 @@ export class FlangePtRatingService {
       ratingsByClass.get(classId)!.push(rating);
     }
 
-    // Find the lowest pressure class that can handle the working pressure at the given temperature
+    // Get all class IDs and their max pressures at the given temperature
+    const classCapacities: Array<{ classId: number; maxPressure: number; designation: string }> = [];
     for (const [classId, classRatings] of ratingsByClass) {
       const maxPressure = await this.getMaxPressureAtTemperature(classId, temperatureCelsius, materialGroup);
-      if (maxPressure !== null && maxPressure >= workingPressureBar) {
+      if (maxPressure !== null) {
+        const designation = classRatings[0]?.pressureClass?.designation || '';
+        classCapacities.push({ classId, maxPressure, designation });
+      }
+    }
+
+    // Sort by max pressure ascending (lowest first)
+    classCapacities.sort((a, b) => a.maxPressure - b.maxPressure);
+
+    // Find the lowest pressure class that can handle the working pressure
+    for (const { classId, maxPressure, designation } of classCapacities) {
+      if (maxPressure >= workingPressureBar) {
+        console.log(`P/T Rating: Selected ${designation} (${maxPressure.toFixed(1)} bar at ${temperatureCelsius}°C) for ${workingPressureBar} bar`);
         return classId;
       }
     }
 
     // Return the highest class if none can handle it
-    return Array.from(ratingsByClass.keys()).pop() || null;
+    const highest = classCapacities[classCapacities.length - 1];
+    if (highest) {
+      console.log(`P/T Rating: Using highest class ${highest.designation} (${highest.maxPressure.toFixed(1)} bar) for ${workingPressureBar} bar`);
+      return highest.classId;
+    }
+
+    return null;
   }
 }

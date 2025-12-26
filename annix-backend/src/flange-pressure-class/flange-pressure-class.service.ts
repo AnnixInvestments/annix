@@ -47,7 +47,18 @@ export class FlangePressureClassService {
 
   async getAllByStandard(standardId: number): Promise<FlangePressureClass[]> {
     const standard = await this.standardRepo.findOne({ where: { id: standardId } });
-    if (!standard) throw new NotFoundException(`Flange standard ${standardId} not found`); 
-    return this.pressureRepo.find({ where: { standard: { id: standardId } } });
+    if (!standard) throw new NotFoundException(`Flange standard ${standardId} not found`);
+    const classes = await this.pressureRepo.find({ where: { standard: { id: standardId } } });
+
+    // Sort by numeric value extracted from designation
+    // Handles formats like: "600/3", "1000/3", "PN10", "150", "Class 150", etc.
+    return classes.sort((a, b) => {
+      const getNumericValue = (designation: string): number => {
+        // Extract first number from designation
+        const match = designation?.match(/(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      };
+      return getNumericValue(a.designation) - getNumericValue(b.designation);
+    });
   }
 }

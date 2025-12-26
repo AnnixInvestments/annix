@@ -2777,19 +2777,32 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                 value={globalSpecs?.flangeStandardId || ''}
                 onChange={async (e) => {
                   const standardId = e.target.value ? Number(e.target.value) : undefined;
-                  let recommendedPressureClassId = undefined;
+                  let recommendedPressureClassId: number | undefined = undefined;
+
+                  // Clear pressure class when switching standards (must pick new one for the new standard)
+                  const standardChanged = standardId !== globalSpecs?.flangeStandardId;
+
                   // Get material group from selected steel spec
                   const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
                   const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
+
                   if (standardId && globalSpecs?.workingPressureBar) {
-                    recommendedPressureClassId = await fetchAndSelectPressureClass(standardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup);
+                    recommendedPressureClassId = await fetchAndSelectPressureClass(standardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup) || undefined;
                   } else if (standardId) {
                     await fetchAndSelectPressureClass(standardId);
                   }
+
+                  // If standard changed, only use new recommendation (don't keep old class from different standard)
+                  const newPressureClassId = standardChanged
+                    ? recommendedPressureClassId  // Only use new recommendation when switching standards
+                    : (recommendedPressureClassId || globalSpecs?.flangePressureClassId);
+
+                  console.log(`Flange standard changed to ${standardId}, recommended class: ${recommendedPressureClassId}, final: ${newPressureClassId}`);
+
                   onUpdateGlobalSpecs({
                     ...globalSpecs,
                     flangeStandardId: standardId,
-                    flangePressureClassId: recommendedPressureClassId || globalSpecs?.flangePressureClassId
+                    flangePressureClassId: newPressureClassId
                   });
                 }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -9191,6 +9204,8 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   const [bendOptionsCache, setBendOptionsCache] = useState<Record<string, { nominalBores: number[]; degrees: number[] }>>({});
   // Store pending documents to upload
   const [pendingDocuments, setPendingDocuments] = useState<PendingDocument[]>([]);
+  // Ref for scrollable content container
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Document upload handlers
   const handleAddDocument = (file: File) => {
@@ -9279,26 +9294,29 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           { id: 36, steelSpecName: 'ASTM A312 TP321' },
           { id: 37, steelSpecName: 'ASTM A312 TP347' },
         ];
-        // Fallback flange standards
+        // Fallback flange standards - IDs must match database
         const fallbackFlangeStandards = [
-          // South African Standards
-          { id: 1, code: 'SABS 1123' },
           // British Standards
-          { id: 2, code: 'BS 4504' },
+          { id: 1, code: 'BS 4504' },
+          // South African Standards
+          { id: 2, code: 'SABS 1123' },
           { id: 3, code: 'BS 10' },
-          { id: 4, code: 'BS 1560' },
-          // European Standards
-          { id: 5, code: 'EN 1092-1' },
-          { id: 6, code: 'DIN 2501' },
           // American Standards (ASME/ANSI)
-          { id: 7, code: 'ASME B16.5' },
-          { id: 8, code: 'ASME B16.47 Series A' },
-          { id: 9, code: 'ASME B16.47 Series B' },
-          { id: 10, code: 'ANSI B16.5' },
-          // API Standards
-          { id: 11, code: 'API 6A' },
+          { id: 4, code: 'ASME B16.5' },
+          { id: 5, code: 'ASME B16.47' },
+          // European Standards
+          { id: 6, code: 'EN 1092-1' },
+          { id: 7, code: 'DIN' },
           // Japanese Standards
-          { id: 12, code: 'JIS B2220' },
+          { id: 8, code: 'JIS B2220' },
+          // API Standards
+          { id: 9, code: 'API 6A' },
+          { id: 10, code: 'AWWA C207' },
+          // Australian Standards
+          { id: 11, code: 'AS 2129' },
+          { id: 12, code: 'AS 4087' },
+          // Russian Standards
+          { id: 13, code: 'GOST' },
         ];
         // Fallback nominal bores
         const fallbackNominalBores = [
@@ -9340,32 +9358,27 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     loadMasterData();
   }, []);
 
-  // Temperature derating factors based on ASME B16.5 Carbon Steel A105
-  // Returns the percentage of ambient rating available at given temperature
+  // Temperature derating factors for flange pressure classes
+  // SABS 1123 / EN 1092-1 / PN standards: No significant derating below 200°C for carbon steel
+  // ASME B16.5: More aggressive derating curve
+  // For simplicity, we use a conservative approach: no derating below 200°C (where most applications operate)
   const getTemperatureDerating = (temperatureCelsius: number): number => {
-    // Derating points from ASME B16.5 (approximate)
-    const deratingCurve = [
-      { temp: -29, factor: 1.00 },
-      { temp: 38, factor: 1.00 },   // Ambient - 100%
-      { temp: 93, factor: 0.91 },
-      { temp: 149, factor: 0.81 },
-      { temp: 204, factor: 0.70 },
-      { temp: 260, factor: 0.60 },
-      { temp: 316, factor: 0.49 },
-      { temp: 343, factor: 0.43 },
-      { temp: 371, factor: 0.39 },
-      { temp: 399, factor: 0.33 },
-      { temp: 427, factor: 0.28 },
-      { temp: 454, factor: 0.23 },
-      { temp: 482, factor: 0.18 },
-      { temp: 510, factor: 0.12 },
-      { temp: 538, factor: 0.07 },
-    ];
-
-    // Below minimum temp - use 100%
-    if (temperatureCelsius <= deratingCurve[0].temp) {
+    // For temperatures below 200°C, no derating applied
+    // This matches SABS 1123, EN 1092-1, and PN standards for carbon steel
+    // These standards allow full rated pressure up to 200°C for P235GH / A105 materials
+    if (temperatureCelsius <= 200) {
       return 1.0;
     }
+
+    // Derating curve for temperatures above 200°C (based on EN 1092-1 for P235GH)
+    const deratingCurve = [
+      { temp: 200, factor: 1.00 },  // Full rating up to 200°C
+      { temp: 250, factor: 0.94 },
+      { temp: 300, factor: 0.87 },
+      { temp: 350, factor: 0.80 },
+      { temp: 400, factor: 0.70 },
+      { temp: 450, factor: 0.57 },
+    ];
 
     // Above maximum temp - use minimum factor
     if (temperatureCelsius >= deratingCurve[deratingCurve.length - 1].temp) {
@@ -9451,12 +9464,20 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             if (jisMatch) {
               ambientRating = parseInt(jisMatch[1]);
             }
-            // SABS 1123 format (600/3, 1000/3, etc.)
+            // Handle "/X" format designations (both SABS 1123 and BS 4504)
+            // SABS 1123: 600/3=6bar, 1000/3=10bar, 1600/3=16bar (divide by 100)
+            // BS 4504: 6/3=6bar, 10/3=10bar, 16/3=16bar (use directly)
             else {
-              const sabsMatch = designation?.match(/^(\d+)\/\d+$/);
-              if (sabsMatch) {
-                const numericValue = parseInt(sabsMatch[1]);
-                ambientRating = numericValue >= 500 ? numericValue / 100 : numericValue;
+              const slashMatch = designation?.match(/^(\d+)\s*\/\s*\d+$/);
+              if (slashMatch) {
+                const numericValue = parseInt(slashMatch[1]);
+                // SABS 1123 uses large numbers (600, 1000, 1600, etc.) - divide by 100
+                // BS 4504 uses small numbers (6, 10, 16, 25, 40, etc.) - use directly
+                if (numericValue >= 500) {
+                  ambientRating = numericValue / 100; // SABS: 1000 → 10 bar
+                } else {
+                  ambientRating = numericValue; // BS 4504: 10 → 10 bar
+                }
               }
               // Fallback: try to extract any leading number
               else {
@@ -9478,116 +9499,174 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
     if (classesWithRating.length === 0) return null;
 
-    // Sort by bar rating ascending
-    classesWithRating.sort((a, b) => a.barRating - b.barRating);
+    // Sort by bar rating ascending (ensure consistent ordering)
+    classesWithRating.sort((a, b) => {
+      // Primary sort by bar rating
+      const ratingDiff = a.barRating - b.barRating;
+      if (Math.abs(ratingDiff) > 0.01) return ratingDiff;
+      // Secondary sort by designation for consistency
+      return (a.designation || '').localeCompare(b.designation || '');
+    });
+
+    // Log all available classes for debugging
+    console.log(`Available pressure classes for ${workingPressureBar} bar at ${temperatureCelsius ?? 'ambient'}°C (derating: ${deratingFactor.toFixed(2)}):`,
+      classesWithRating.map(pc => `${pc.designation}=${pc.barRating.toFixed(1)}bar`).join(', '));
 
     // Find the lowest rating that meets or exceeds the working pressure at operating temperature
-    const recommended = classesWithRating.find(pc => pc.barRating >= workingPressureBar);
+    // Using small tolerance for floating point comparison
+    const recommended = classesWithRating.find(pc => pc.barRating >= workingPressureBar - 0.01);
 
     if (recommended) {
-      console.log(`Fallback P/T: Selected ${recommended.designation} (${recommended.barRating.toFixed(1)} bar at ${temperatureCelsius ?? 'ambient'}°C) for ${workingPressureBar} bar`);
+      console.log(`Selected: ${recommended.designation} (${recommended.barRating.toFixed(1)} bar capacity) for ${workingPressureBar} bar working pressure`);
+    } else {
+      console.log(`No suitable class found for ${workingPressureBar} bar, using highest available`);
     }
 
     return recommended || classesWithRating[classesWithRating.length - 1]; // Return highest if none match
   };
 
-  // Fallback pressure classes by flange standard
+  // Fallback pressure classes by flange standard - IDs must match database
   const getFallbackPressureClasses = (standardId: number) => {
     const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
     const code = standard?.code || '';
 
-    // SABS 1123 pressure classes
-    if (code.includes('SABS 1123')) {
-      return [
-        { id: 101, designation: '600/3', standardId },
-        { id: 102, designation: '1000/3', standardId },
-        { id: 103, designation: '1600/3', standardId },
-        { id: 104, designation: '2500/3', standardId },
-        { id: 105, designation: '4000/3', standardId },
-      ];
-    }
-    // BS 4504 pressure classes
+    // BS 4504 pressure classes (database IDs 1-8)
     if (code.includes('BS 4504')) {
       return [
-        { id: 201, designation: '6/3', standardId },
-        { id: 202, designation: '10/3', standardId },
-        { id: 203, designation: '16/3', standardId },
-        { id: 204, designation: '25/3', standardId },
-        { id: 205, designation: '40/3', standardId },
-        { id: 206, designation: '64/3', standardId },
-        { id: 207, designation: '100/3', standardId },
-        { id: 208, designation: '160/3', standardId },
+        { id: 1, designation: '6/3', standardId },
+        { id: 2, designation: '10/3', standardId },
+        { id: 3, designation: '16/3', standardId },
+        { id: 4, designation: '25/3', standardId },
+        { id: 5, designation: '40/3', standardId },
+        { id: 6, designation: '64/3', standardId },
+        { id: 7, designation: '100/3', standardId },
+        { id: 8, designation: '160/3', standardId },
       ];
     }
-    // BS 10 pressure classes
+    // SABS 1123 pressure classes (database IDs 9-13)
+    if (code.includes('SABS 1123')) {
+      return [
+        { id: 9, designation: '600/3', standardId },
+        { id: 10, designation: '1000/3', standardId },
+        { id: 11, designation: '1600/3', standardId },
+        { id: 12, designation: '2500/3', standardId },
+        { id: 13, designation: '4000/3', standardId },
+      ];
+    }
+    // BS 10 pressure classes (database IDs 14-16)
     if (code.includes('BS 10')) {
       return [
-        { id: 301, designation: 'T/D', standardId },
-        { id: 302, designation: 'T/E', standardId },
-        { id: 303, designation: 'T/F', standardId },
-        { id: 304, designation: 'T/H', standardId },
+        { id: 14, designation: 'T/D', standardId },
+        { id: 15, designation: 'T/E', standardId },
+        { id: 16, designation: 'T/F', standardId },
       ];
     }
-    // EN 1092-1 / DIN 2501 pressure classes (PN ratings)
-    if (code.includes('EN 1092') || code.includes('DIN 2501')) {
-      return [
-        { id: 401, designation: 'PN 6', standardId },
-        { id: 402, designation: 'PN 10', standardId },
-        { id: 403, designation: 'PN 16', standardId },
-        { id: 404, designation: 'PN 25', standardId },
-        { id: 405, designation: 'PN 40', standardId },
-        { id: 406, designation: 'PN 63', standardId },
-        { id: 407, designation: 'PN 100', standardId },
-        { id: 408, designation: 'PN 160', standardId },
-        { id: 409, designation: 'PN 250', standardId },
-        { id: 410, designation: 'PN 320', standardId },
-        { id: 411, designation: 'PN 400', standardId },
-      ];
-    }
-    // ASME B16.5 / ANSI B16.5 pressure classes
+    // ASME B16.5 / ANSI B16.5 pressure classes (database IDs 17-23)
     if (code.includes('ASME B16.5') || code.includes('ANSI B16.5')) {
       return [
-        { id: 501, designation: '150', standardId },
-        { id: 502, designation: '300', standardId },
-        { id: 503, designation: '400', standardId },
-        { id: 504, designation: '600', standardId },
-        { id: 505, designation: '900', standardId },
-        { id: 506, designation: '1500', standardId },
-        { id: 507, designation: '2500', standardId },
+        { id: 17, designation: '150', standardId },
+        { id: 18, designation: '300', standardId },
+        { id: 19, designation: '400', standardId },
+        { id: 20, designation: '600', standardId },
+        { id: 21, designation: '900', standardId },
+        { id: 22, designation: '1500', standardId },
+        { id: 23, designation: '2500', standardId },
       ];
     }
-    // ASME B16.47 Series A & B pressure classes
-    if (code.includes('ASME B16.47')) {
+    // EN 1092-1 pressure classes (database IDs 24-31)
+    if (code.includes('EN 1092')) {
       return [
-        { id: 601, designation: '75', standardId },
-        { id: 602, designation: '150', standardId },
-        { id: 603, designation: '300', standardId },
-        { id: 604, designation: '400', standardId },
-        { id: 605, designation: '600', standardId },
-        { id: 606, designation: '900', standardId },
+        { id: 24, designation: 'PN 6', standardId },
+        { id: 25, designation: 'PN 10', standardId },
+        { id: 26, designation: 'PN 16', standardId },
+        { id: 27, designation: 'PN 25', standardId },
+        { id: 28, designation: 'PN 40', standardId },
+        { id: 29, designation: 'PN 63', standardId },
+        { id: 30, designation: 'PN 100', standardId },
+        { id: 31, designation: 'PN 160', standardId },
       ];
     }
-    // API 6A pressure classes (psi ratings)
-    if (code.includes('API 6A')) {
+    // DIN pressure classes (database IDs 32-36)
+    if (code.includes('DIN')) {
       return [
-        { id: 701, designation: '2000 psi', standardId },
-        { id: 702, designation: '3000 psi', standardId },
-        { id: 703, designation: '5000 psi', standardId },
-        { id: 704, designation: '10000 psi', standardId },
-        { id: 705, designation: '15000 psi', standardId },
-        { id: 706, designation: '20000 psi', standardId },
+        { id: 32, designation: 'PN 6', standardId },
+        { id: 33, designation: 'PN 10', standardId },
+        { id: 34, designation: 'PN 16', standardId },
+        { id: 35, designation: 'PN 25', standardId },
+        { id: 36, designation: 'PN 40', standardId },
       ];
     }
-    // JIS B2220 pressure classes (K ratings)
+    // JIS B2220 pressure classes (database IDs 37-43)
     if (code.includes('JIS')) {
       return [
-        { id: 801, designation: '5K', standardId },
-        { id: 802, designation: '10K', standardId },
-        { id: 803, designation: '16K', standardId },
-        { id: 804, designation: '20K', standardId },
-        { id: 805, designation: '30K', standardId },
-        { id: 806, designation: '40K', standardId },
-        { id: 807, designation: '63K', standardId },
+        { id: 37, designation: '5K', standardId },
+        { id: 38, designation: '10K', standardId },
+        { id: 39, designation: '16K', standardId },
+        { id: 40, designation: '20K', standardId },
+        { id: 41, designation: '30K', standardId },
+        { id: 42, designation: '40K', standardId },
+        { id: 43, designation: '63K', standardId },
+      ];
+    }
+    // AS 2129 pressure classes (database IDs 44-47)
+    if (code.includes('AS 2129')) {
+      return [
+        { id: 44, designation: 'T/D', standardId },
+        { id: 45, designation: 'T/E', standardId },
+        { id: 46, designation: 'T/F', standardId },
+        { id: 47, designation: 'T/H', standardId },
+      ];
+    }
+    // AS 4087 pressure classes (database IDs 48-52)
+    if (code.includes('AS 4087')) {
+      return [
+        { id: 48, designation: 'PN 14', standardId },
+        { id: 49, designation: 'PN 16', standardId },
+        { id: 50, designation: 'PN 21', standardId },
+        { id: 51, designation: 'PN 25', standardId },
+        { id: 52, designation: 'PN 35', standardId },
+      ];
+    }
+    // GOST pressure classes (database IDs 53-58)
+    if (code.includes('GOST')) {
+      return [
+        { id: 53, designation: 'PN 6', standardId },
+        { id: 54, designation: 'PN 10', standardId },
+        { id: 55, designation: 'PN 16', standardId },
+        { id: 56, designation: 'PN 25', standardId },
+        { id: 57, designation: 'PN 40', standardId },
+        { id: 58, designation: 'PN 63', standardId },
+      ];
+    }
+    // ASME B16.47 pressure classes (database IDs 59-64)
+    if (code.includes('ASME B16.47')) {
+      return [
+        { id: 59, designation: '75', standardId },
+        { id: 60, designation: '150', standardId },
+        { id: 61, designation: '300', standardId },
+        { id: 62, designation: '400', standardId },
+        { id: 63, designation: '600', standardId },
+        { id: 64, designation: '900', standardId },
+      ];
+    }
+    // API 6A pressure classes (database IDs 65-70)
+    if (code.includes('API 6A')) {
+      return [
+        { id: 65, designation: '2000 psi', standardId },
+        { id: 66, designation: '3000 psi', standardId },
+        { id: 67, designation: '5000 psi', standardId },
+        { id: 68, designation: '10000 psi', standardId },
+        { id: 69, designation: '15000 psi', standardId },
+        { id: 70, designation: '20000 psi', standardId },
+      ];
+    }
+    // AWWA C207 pressure classes (database IDs 71-74)
+    if (code.includes('AWWA')) {
+      return [
+        { id: 71, designation: 'Class B', standardId },
+        { id: 72, designation: 'Class D', standardId },
+        { id: 73, designation: 'Class E', standardId },
+        { id: 74, designation: 'Class F', standardId },
       ];
     }
     // BS 1560 pressure classes (same as ASME)
@@ -9610,6 +9689,11 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     try {
       const { masterDataApi } = await import('@/app/lib/api/client');
       const classes = await masterDataApi.getFlangePressureClassesByStandard(standardId);
+
+      // Log what we got from the API
+      const standardName = masterData.flangeStandards?.find((s: any) => s.id === standardId)?.code || standardId;
+      console.log(`Fetched ${classes.length} pressure classes for ${standardName}:`, classes.map((c: any) => `${c.designation}(id=${c.id})`).join(', '));
+
       setAvailablePressureClasses(classes);
 
       // Auto-select recommended pressure class if working pressure is available
@@ -9843,11 +9927,44 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     })))
   ]);
 
+  // Initialize pressure classes when flange standard is set (e.g., from saved state or initial load)
+  useEffect(() => {
+    const initializePressureClasses = async () => {
+      const standardId = rfqData.globalSpecs?.flangeStandardId;
+      if (standardId && availablePressureClasses.length === 0) {
+        console.log(`Initializing pressure classes for standard ${standardId}`);
+        const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === rfqData.globalSpecs?.steelSpecificationId);
+        const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
+        const recommendedId = await fetchAndSelectPressureClass(
+          standardId,
+          rfqData.globalSpecs?.workingPressureBar,
+          rfqData.globalSpecs?.workingTemperatureC,
+          materialGroup
+        );
+        // Auto-select if not already set
+        if (recommendedId && !rfqData.globalSpecs?.flangePressureClassId) {
+          onUpdateGlobalSpecs({
+            ...rfqData.globalSpecs,
+            flangePressureClassId: recommendedId
+          });
+        }
+      }
+    };
+    initializePressureClasses();
+  }, [rfqData.globalSpecs?.flangeStandardId, masterData.steelSpecs]);
+
+  // Scroll to top helper function - scrolls the content container, not the window
+  const scrollToTop = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   // Enhanced next step function with validation
   const nextStep = () => {
     // Validate current step before proceeding
     let errors: Record<string, string> = {};
-    
+
     switch (currentStep) {
       case 1:
         errors = validatePage1RequiredFields(rfqData);
@@ -9865,7 +9982,20 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     // Only proceed if no validation errors
     if (Object.keys(errors).length === 0) {
       originalNextStep();
+      scrollToTop();
     }
+  };
+
+  // Previous step function with scroll to top
+  const handlePrevStep = () => {
+    prevStep();
+    scrollToTop();
+  };
+
+  // Step click handler with scroll to top
+  const handleStepClick = (stepNumber: number) => {
+    setCurrentStep(stepNumber);
+    scrollToTop();
   };
 
   // Add initial entry if none exist
@@ -10354,7 +10484,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             entries={rfqData.straightPipeEntries}
             rfqData={rfqData}
             onSubmit={handleSubmit}
-            onPrevStep={prevStep}
+            onPrevStep={handlePrevStep}
             errors={validationErrors}
             loading={isSubmitting}
           />
@@ -10365,7 +10495,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   };
 
   return (
-    <div className="h-screen bg-gray-100 overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 overflow-hidden">
       {/* Save Progress Confirmation Toast */}
       {showSaveConfirmation && (
         <div className="fixed top-4 right-4 z-50 animate-pulse">
@@ -10406,7 +10536,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           </div>
 
           {/* Scrollable Content - fills available space between header and toolbar */}
-          <div className="flex-1 overflow-y-auto">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
             <div className="p-4">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="px-4 py-4">
@@ -10431,7 +10561,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
               {/* Left side - Previous button */}
               <div className="w-32">
                 <button
-                  onClick={prevStep}
+                  onClick={handlePrevStep}
                   disabled={currentStep === 1}
                   className="px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
@@ -10449,7 +10579,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
                 {steps.map((step, idx) => (
                   <div key={step.number} className="flex items-center">
                     <button
-                      onClick={() => setCurrentStep(step.number)}
+                      onClick={() => handleStepClick(step.number)}
                       className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all"
                       style={{
                         backgroundColor: step.number === currentStep
