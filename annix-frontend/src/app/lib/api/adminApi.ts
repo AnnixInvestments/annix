@@ -74,6 +74,100 @@ export interface SupplierStats {
   pendingReview: number;
 }
 
+// Customer Management Types
+
+export type CustomerAccountStatus = 'pending' | 'active' | 'suspended' | 'deactivated';
+
+export interface CustomerQueryDto {
+  search?: string;
+  status?: CustomerAccountStatus;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
+}
+
+export interface CustomerListItem {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  companyName: string;
+  accountStatus: CustomerAccountStatus;
+  createdAt: string;
+  lastLoginAt?: string | null;
+  deviceBound: boolean;
+}
+
+export interface CustomerListResponse {
+  items: CustomerListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface CustomerDetail {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  jobTitle?: string;
+  directPhone?: string;
+  mobilePhone?: string;
+  accountStatus: CustomerAccountStatus;
+  suspensionReason?: string | null;
+  suspendedAt?: string | null;
+  createdAt: string;
+  lastLoginAt?: string | null;
+  deviceBound: boolean;
+  company?: {
+    name: string;
+    vatNumber?: string;
+    registrationNumber?: string;
+    address?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+  };
+  onboarding?: {
+    status: string;
+    submittedAt?: string;
+    reviewedAt?: string;
+  };
+}
+
+export interface SuspendCustomerDto {
+  reason: string;
+}
+
+export interface ReactivateCustomerDto {
+  note?: string;
+}
+
+export interface ResetDeviceBindingDto {
+  reason: string;
+}
+
+export interface LoginHistoryItem {
+  id: number;
+  timestamp: string;
+  ipAddress: string;
+  userAgent: string;
+  success: boolean;
+  failureReason?: string;
+}
+
+export interface CustomerDocument {
+  id: number;
+  documentType: string;
+  fileName: string;
+  filePath: string;
+  uploadedAt: string;
+  validationStatus?: string;
+  validationNotes?: string;
+}
+
 class AdminApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
@@ -241,6 +335,86 @@ class AdminApiClient {
 
   async getSupplierStats(): Promise<SupplierStats> {
     return this.request<SupplierStats>('/admin/dashboard/suppliers/stats');
+  }
+
+  // Customer Management endpoints
+
+  async listCustomers(query?: CustomerQueryDto): Promise<CustomerListResponse> {
+    const params = new URLSearchParams();
+    if (query?.search) params.append('search', query.search);
+    if (query?.status) params.append('status', query.status);
+    if (query?.page) params.append('page', query.page.toString());
+    if (query?.limit) params.append('limit', query.limit.toString());
+    if (query?.sortBy) params.append('sortBy', query.sortBy);
+    if (query?.sortOrder) params.append('sortOrder', query.sortOrder);
+
+    const queryString = params.toString();
+    return this.request<CustomerListResponse>(
+      `/admin/customers${queryString ? `?${queryString}` : ''}`
+    );
+  }
+
+  async getCustomerDetail(id: number): Promise<CustomerDetail> {
+    return this.request<CustomerDetail>(`/admin/customers/${id}`);
+  }
+
+  async suspendCustomer(id: number, dto: SuspendCustomerDto): Promise<void> {
+    return this.request<void>(`/admin/customers/${id}/suspend`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async reactivateCustomer(id: number, dto: ReactivateCustomerDto): Promise<void> {
+    return this.request<void>(`/admin/customers/${id}/reactivate`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async resetDeviceBinding(id: number, dto: ResetDeviceBindingDto): Promise<void> {
+    return this.request<void>(`/admin/customers/${id}/reset-device`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async getCustomerLoginHistory(id: number, limit?: number): Promise<LoginHistoryItem[]> {
+    return this.request<LoginHistoryItem[]>(
+      `/admin/customers/${id}/login-history${limit ? `?limit=${limit}` : ''}`
+    );
+  }
+
+  async getCustomerDocuments(id: number): Promise<CustomerDocument[]> {
+    return this.request<CustomerDocument[]>(`/admin/customers/${id}/documents`);
+  }
+
+  async getPendingReviewCustomers(): Promise<any[]> {
+    return this.request<any[]>('/admin/customers/onboarding/pending-review');
+  }
+
+  async getCustomerOnboardingForReview(id: number): Promise<any> {
+    return this.request<any>(`/admin/customers/onboarding/${id}`);
+  }
+
+  async approveCustomerOnboarding(id: number): Promise<void> {
+    return this.request<void>(`/admin/customers/onboarding/${id}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectCustomerOnboarding(id: number, reason: string, remediationSteps: string): Promise<void> {
+    return this.request<void>(`/admin/customers/onboarding/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason, remediationSteps }),
+    });
+  }
+
+  async reviewCustomerDocument(id: number, validationStatus: string, validationNotes?: string): Promise<void> {
+    return this.request<void>(`/admin/customers/documents/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ validationStatus, validationNotes }),
+    });
   }
 }
 
