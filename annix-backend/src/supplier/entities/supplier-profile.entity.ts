@@ -16,6 +16,7 @@ import { SupplierSession } from './supplier-session.entity';
 import { SupplierLoginAttempt } from './supplier-login-attempt.entity';
 import { SupplierOnboarding } from './supplier-onboarding.entity';
 import { SupplierDocument } from './supplier-document.entity';
+import { SupplierCapability } from './supplier-capability.entity';
 
 export enum SupplierAccountStatus {
   PENDING = 'pending',
@@ -109,6 +110,10 @@ export class SupplierProfile {
   // Documents
   @OneToMany(() => SupplierDocument, (document) => document.supplier)
   documents: SupplierDocument[];
+
+  // Capabilities (FR-P7: Product/Service Mapping)
+  @OneToMany(() => SupplierCapability, (capability) => capability.supplierProfile)
+  capabilities: SupplierCapability[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
