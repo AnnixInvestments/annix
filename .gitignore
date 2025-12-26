@@ -32,3 +32,6 @@ yarn-error.log*
 # Build outputs
 dist/
 build/
+
+# User uploads
+annix-backend/uploads/
