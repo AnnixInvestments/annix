@@ -60,3 +60,10 @@ export class RefreshTokenDto {
   @IsNotEmpty()
   deviceFingerprint: string;
 }
+
+export class ResendVerificationEmailDto {
+  @ApiProperty({ description: 'Email address', example: 'john.smith@acme.co.za' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+}

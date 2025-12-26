@@ -1,0 +1,55 @@
+### Test Customer Registration
+POST http://localhost:4001/customer-auth/register
+Content-Type: application/json
+
+{
+  "company": {
+    "companyName": "Test Company Ltd",
+    "registrationNumber": "2024/123456/07",
+    "vatNumber": "4123456789",
+    "streetAddress": "123 Test Street",
+    "city": "Johannesburg",
+    "provinceState": "Gauteng",
+    "postalCode": "2000",
+    "companyPhone": "0112345678",
+    "companyEmail": "test@testcompany.co.za"
+  },
+  "user": {
+    "firstName": "Test",
+    "lastName": "User",
+    "email": "testuser@testcompany.co.za",
+    "password": "TestPassword123!",
+    "jobTitle": "Manager",
+    "directPhone": "0112345679",
+    "mobilePhone": "0821234567"
+  }
+}
+
+### Check if email was sent (look at Mailtrap inbox)
+### Then copy the verification token from the email URL and use it below
+
+### Verify Email
+POST http://localhost:4001/customer-auth/verify-email
+Content-Type: application/json
+
+{
+  "token": "PASTE_TOKEN_FROM_EMAIL_HERE"
+}
+
+### Try to Login (should fail before verification)
+POST http://localhost:4001/customer-auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser@testcompany.co.za",
+  "password": "TestPassword123!"
+}
+
+### Try to Login (should succeed after verification)
+POST http://localhost:4001/customer-auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser@testcompany.co.za",
+  "password": "TestPassword123!"
+}

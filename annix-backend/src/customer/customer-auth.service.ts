@@ -332,12 +332,12 @@ export class CustomerAuthService {
       throw new UnauthorizedException('Customer profile not found');
     }
 
-    // Check email verification (temporarily disabled for development)
-    // TODO: Re-enable when email service is configured
-    // if (!profile.emailVerified) {
-    //   await this.logLoginAttempt(profile.id, dto.email, false, LoginFailureReason.EMAIL_NOT_VERIFIED, dto.deviceFingerprint, clientIp, userAgent);
-    //   throw new ForbiddenException('Email not verified. Please check your email for the verification link.');
-    // }
+    // Check email verification
+
+    if (\!profile.emailVerified) {
+      await this.logLoginAttempt(profile.id, dto.email, false, LoginFailureReason.EMAIL_NOT_VERIFIED, dto.deviceFingerprint, clientIp, userAgent);
+      throw new ForbiddenException('Email not verified. Please check your email for the verification link.');
+    }
 
     // Check account status
     if (profile.accountStatus === CustomerAccountStatus.PENDING) {
