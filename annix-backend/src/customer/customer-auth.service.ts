@@ -87,13 +87,14 @@ export class CustomerAuthService {
 
   /**
    * Register a new customer (company + user + device binding + documents)
+   * Returns auth tokens for immediate login (email verification disabled for development)
    */
   async register(
     dto: CreateCustomerRegistrationDto,
     clientIp: string,
     vatDocument?: Express.Multer.File,
     companyRegDocument?: Express.Multer.File,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<CustomerLoginResponseDto> {
     // Validate acceptance of terms and security policy
     if (!dto.security.termsAccepted) {
       throw new BadRequestException('Terms and conditions must be accepted');
@@ -220,15 +221,53 @@ export class CustomerAuthService {
         userAgent: dto.security.browserInfo?.userAgent,
       });
 
-      // Send verification email
-      await this.emailService.sendCustomerVerificationEmail(
-        dto.user.email,
-        emailVerificationToken,
-      );
+      // DEVELOPMENT MODE: Skip email verification - auto-login the user
+      // TODO: Re-enable email verification for production
+      // await this.emailService.sendCustomerVerificationEmail(
+      //   dto.user.email,
+      //   emailVerificationToken,
+      // );
+
+      // Create session for immediate login
+      const sessionToken = uuidv4();
+      const refreshTokenValue = uuidv4();
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
+
+      const session = this.sessionRepo.create({
+        customerProfileId: savedProfile.id,
+        sessionToken,
+        refreshToken: refreshTokenValue,
+        deviceFingerprint: dto.security.deviceFingerprint,
+        ipAddress: clientIp,
+        userAgent: dto.security.browserInfo?.userAgent || 'unknown',
+        isActive: true,
+        expiresAt,
+        lastActivity: new Date(),
+      });
+      await this.sessionRepo.save(session);
+
+      // Generate JWT tokens
+      const payload = {
+        sub: savedUser.id,
+        customerId: savedProfile.id,
+        email: savedUser.email,
+        type: 'customer',
+        sessionToken,
+      };
+
+      const [accessToken, jwtRefreshToken] = await Promise.all([
+        this.jwtService.signAsync(payload, { expiresIn: '1h' }),
+        this.jwtService.signAsync(payload, { expiresIn: '7d' }),
+      ]);
 
       return {
-        success: true,
-        message: 'Registration successful. Please check your email to verify your account.',
+        accessToken,
+        refreshToken: jwtRefreshToken,
+        expiresIn: 3600,
+        customerId: savedProfile.id,
+        name: `${savedProfile.firstName} ${savedProfile.lastName}`,
+        companyName: savedCompany.tradingName || savedCompany.legalName,
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();

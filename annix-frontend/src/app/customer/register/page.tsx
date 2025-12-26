@@ -357,18 +357,11 @@ export default function CustomerRegistrationPage() {
         formData.append('companyRegDocument', documents.companyRegDocument);
       }
 
-      // Call API with FormData
-      const response = await fetch('http://localhost:4001/customer/register', {
-        method: 'POST',
-        body: formData,
-      });
+      // Call API with FormData - this will auto-login and store tokens
+      await customerAuthApi.registerWithFormData(formData);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Registration failed');
-      }
-
-      setCurrentStep('complete');
+      // Redirect directly to dashboard (email verification disabled for development)
+      router.push('/customer/dashboard');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed. Please try again.');
     } finally {
@@ -1072,11 +1065,16 @@ export default function CustomerRegistrationPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen py-12">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Customer Registration</h1>
-          <p className="mt-2 text-gray-600">Create your Annix customer portal account</p>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-white">Customer Registration</h1>
+          <p className="mt-2 text-blue-200">Create your Annix customer portal account</p>
         </div>
 
         {currentStep !== 'complete' && renderStepIndicator()}
@@ -1090,9 +1088,9 @@ export default function CustomerRegistrationPage() {
         </div>
 
         {currentStep !== 'complete' && (
-          <p className="text-center mt-6 text-gray-600">
+          <p className="text-center mt-6 text-blue-200">
             Already have an account?{' '}
-            <Link href="/customer/login" className="text-blue-600 hover:underline">
+            <Link href="/customer/login" className="text-white hover:underline font-medium">
               Sign in
             </Link>
           </p>

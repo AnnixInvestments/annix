@@ -48,6 +48,7 @@ import { CoatingSpecificationModule } from './coating-specification/coating-spec
 import { PipeSizingModule } from './pipe-sizing/pipe-sizing.module';
 import { StructuralSteelModule } from './structural-steel/structural-steel.module';
 import { HdpeModule } from './hdpe/hdpe.module';
+import { PvcModule } from './pvc/pvc.module';
 import { AdminModule } from './admin/admin.module';
 import typeormConfig from './config/typeorm';
 
@@ -98,6 +99,7 @@ import typeormConfig from './config/typeorm';
     PipeSizingModule,
     StructuralSteelModule,
     HdpeModule,
+    PvcModule,
     AdminModule,
   ],
   controllers: [AppController, BendDimensionController],

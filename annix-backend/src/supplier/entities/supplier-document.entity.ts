@@ -12,6 +12,7 @@ import { User } from '../../user/entities/user.entity';
 
 export enum SupplierDocumentType {
   REGISTRATION_CERT = 'registration_cert',
+  VAT_CERT = 'vat_cert',
   TAX_CLEARANCE = 'tax_clearance',
   BEE_CERT = 'bee_cert',
   ISO_CERT = 'iso_cert',

@@ -17,6 +17,7 @@ export enum ProductCategory {
   VALVES = 'valves',
   STRUCTURAL_STEEL = 'structural_steel',
   HDPE = 'hdpe',
+  PVC = 'pvc',
   FABRICATION = 'fabrication',
   COATING = 'coating',
   INSPECTION = 'inspection',

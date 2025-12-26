@@ -80,6 +80,19 @@ export class SupplierCompany {
   @Column({ name: 'company_size', length: 50, nullable: true })
   companySize: string;
 
+  // BEE (Broad-Based Black Economic Empowerment) Rating
+  @Column({ name: 'bee_level', type: 'int', nullable: true })
+  beeLevel: number; // 1-8, or null if not applicable
+
+  @Column({ name: 'bee_certificate_expiry', type: 'date', nullable: true })
+  beeCertificateExpiry: Date;
+
+  @Column({ name: 'bee_verification_agency', length: 255, nullable: true })
+  beeVerificationAgency: string;
+
+  @Column({ name: 'is_exempt_micro_enterprise', type: 'boolean', default: false })
+  isExemptMicroEnterprise: boolean;
+
   @OneToMany(() => SupplierProfile, (profile) => profile.company)
   profiles: SupplierProfile[];
 

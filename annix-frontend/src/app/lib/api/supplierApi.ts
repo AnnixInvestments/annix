@@ -52,6 +52,20 @@ export interface SupplierCompanyDto {
   operationalRegions?: string[];
   industryType?: string;
   companySize?: 'micro' | 'small' | 'medium' | 'large' | 'enterprise';
+  // BEE fields
+  beeLevel?: number; // 1-8
+  beeCertificateExpiry?: string;
+  beeVerificationAgency?: string;
+  isExemptMicroEnterprise?: boolean;
+}
+
+export interface SupplierFullRegistrationDto {
+  email: string;
+  password: string;
+  company: SupplierCompanyDto;
+  profile: SupplierProfileDto;
+  deviceFingerprint: string;
+  browserInfo?: Record<string, any>;
 }
 
 export interface SupplierProfileDto {
@@ -221,6 +235,31 @@ class SupplierApiClient {
     });
   }
 
+  async registerFull(formData: FormData): Promise<SupplierAuthResponse> {
+    const response = await fetch(`${this.baseURL}/supplier/auth/register-full`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `Registration failed (${response.status})`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.message) {
+          errorMessage = errorJson.message;
+        }
+      } catch {
+        // Use raw error text
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    this.setTokens(result.accessToken, result.refreshToken);
+    return result;
+  }
+
   async verifyEmail(token: string): Promise<{ success: boolean; message: string }> {
     return this.request(`/supplier/auth/verify-email/${token}`);
   }
@@ -354,6 +393,7 @@ export const supplierApiClient = new SupplierApiClient();
 
 export const supplierAuthApi = {
   register: (data: SupplierRegistrationDto) => supplierApiClient.register(data),
+  registerFull: (formData: FormData) => supplierApiClient.registerFull(formData),
   verifyEmail: (token: string) => supplierApiClient.verifyEmail(token),
   resendVerification: (email: string) => supplierApiClient.resendVerification(email),
   login: (data: SupplierLoginDto) => supplierApiClient.login(data),

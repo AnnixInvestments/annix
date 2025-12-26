@@ -85,17 +85,14 @@ export interface CustomerLoginDto {
 }
 
 export interface CustomerAuthResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  customer: {
-    id: number;
-    email: string;
-    firstName: string;
-    lastName: string;
-    companyName: string;
-    accountStatus: string;
-  };
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  customerId: number;
+  name: string;
+  companyName: string;
+  ipMismatchWarning?: boolean;
+  registeredIp?: string;
 }
 
 export interface CustomerProfileResponse {
@@ -269,7 +266,32 @@ class CustomerApiClient {
       body: JSON.stringify(data),
     });
 
-    this.setTokens(result.access_token, result.refresh_token);
+    this.setTokens(result.accessToken, result.refreshToken);
+    return result;
+  }
+
+  async registerWithFormData(formData: FormData): Promise<CustomerAuthResponse> {
+    const response = await fetch(`${this.baseURL}/customer/register`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `Registration failed (${response.status})`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.message) {
+          errorMessage = errorJson.message;
+        }
+      } catch {
+        // Use raw error text
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    this.setTokens(result.accessToken, result.refreshToken);
     return result;
   }
 
@@ -279,7 +301,7 @@ class CustomerApiClient {
       body: JSON.stringify(data),
     });
 
-    this.setTokens(result.access_token, result.refresh_token);
+    this.setTokens(result.accessToken, result.refreshToken);
     return result;
   }
 
@@ -369,6 +391,7 @@ export const customerApiClient = new CustomerApiClient();
 
 export const customerAuthApi = {
   register: (data: CustomerRegistrationDto) => customerApiClient.register(data),
+  registerWithFormData: (formData: FormData) => customerApiClient.registerWithFormData(formData),
   login: (data: CustomerLoginDto) => customerApiClient.login(data),
   logout: () => customerApiClient.logout(),
   refresh: () => customerApiClient.refreshAccessToken(),

@@ -7,8 +7,11 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { SupplierAuthService } from './supplier-auth.service';
@@ -24,9 +27,9 @@ export class SupplierAuthController {
   constructor(private readonly supplierAuthService: SupplierAuthService) {}
 
   @Post('auth/register')
-  @ApiOperation({ summary: 'Register a new supplier account' })
+  @ApiOperation({ summary: 'Register a new supplier account (basic)' })
   @ApiBody({ type: CreateSupplierRegistrationDto })
-  @ApiResponse({ status: 201, description: 'Registration successful, verification email sent' })
+  @ApiResponse({ status: 201, description: 'Registration successful' })
   @ApiResponse({ status: 400, description: 'Invalid input' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
   async register(
@@ -35,6 +38,69 @@ export class SupplierAuthController {
   ) {
     const clientIp = this.getClientIp(req);
     return this.supplierAuthService.register(dto, clientIp);
+  }
+
+  @Post('auth/register-full')
+  @ApiOperation({ summary: 'Register a new supplier account with company details and documents' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        company: { type: 'string', description: 'JSON string of company data' },
+        profile: { type: 'string', description: 'JSON string of profile data' },
+        security: { type: 'string', description: 'JSON string of security data (email, password, deviceFingerprint)' },
+        vatDocument: { type: 'string', format: 'binary', description: 'VAT registration document' },
+        companyRegDocument: { type: 'string', format: 'binary', description: 'Company registration document' },
+        beeDocument: { type: 'string', format: 'binary', description: 'B-BBEE certificate' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Registration successful', type: SupplierLoginResponseDto })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 409, description: 'Email already exists' })
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'vatDocument', maxCount: 1 },
+    { name: 'companyRegDocument', maxCount: 1 },
+    { name: 'beeDocument', maxCount: 1 },
+  ]))
+  async registerFull(
+    @Body() body: any,
+    @UploadedFiles() files: {
+      vatDocument?: Express.Multer.File[],
+      companyRegDocument?: Express.Multer.File[],
+      beeDocument?: Express.Multer.File[],
+    },
+    @Req() req: Request,
+  ): Promise<SupplierLoginResponseDto> {
+    const clientIp = this.getClientIp(req);
+    const userAgent = req.headers['user-agent'] || '';
+
+    // Parse JSON strings from form data
+    const company = JSON.parse(body.company);
+    const profile = JSON.parse(body.profile);
+    const security = JSON.parse(body.security);
+
+    // Extract files
+    const vatDocument = files.vatDocument?.[0];
+    const companyRegDocument = files.companyRegDocument?.[0];
+    const beeDocument = files.beeDocument?.[0];
+
+    return this.supplierAuthService.registerFull(
+      {
+        email: security.email,
+        password: security.password,
+        deviceFingerprint: security.deviceFingerprint,
+        browserInfo: security.browserInfo,
+        company,
+        profile,
+      },
+      clientIp,
+      userAgent,
+      vatDocument,
+      companyRegDocument,
+      beeDocument,
+    );
   }
 
   @Get('auth/verify-email/:token')

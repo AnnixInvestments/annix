@@ -13,6 +13,8 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 
+import * as path from 'path';
+import * as fs from 'fs';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
 import {
@@ -24,6 +26,9 @@ import {
   SupplierSession,
   SupplierOnboarding,
   SupplierOnboardingStatus,
+  SupplierDocument,
+  SupplierDocumentType,
+  SupplierDocumentValidationStatus,
 } from './entities';
 import { SupplierLoginFailureReason } from './entities/supplier-login-attempt.entity';
 import { SupplierSessionInvalidationReason } from './entities/supplier-session.entity';
@@ -45,6 +50,7 @@ const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
 @Injectable()
 export class SupplierAuthService {
   private readonly logger = new Logger(SupplierAuthService.name);
+  private readonly uploadDir: string;
 
   constructor(
     @InjectRepository(SupplierCompany)
@@ -59,6 +65,8 @@ export class SupplierAuthService {
     private readonly sessionRepo: Repository<SupplierSession>,
     @InjectRepository(SupplierOnboarding)
     private readonly onboardingRepo: Repository<SupplierOnboarding>,
+    @InjectRepository(SupplierDocument)
+    private readonly documentRepo: Repository<SupplierDocument>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserRole)
@@ -68,13 +76,15 @@ export class SupplierAuthService {
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
-  ) {}
+  ) {
+    this.uploadDir = this.configService.get<string>('UPLOAD_DIR') || './uploads';
+  }
 
   /**
    * Register a new supplier with email + password only
-   * Email verification required before login
+   * Returns auth tokens for immediate login (email verification disabled for development)
    */
-  async register(dto: CreateSupplierRegistrationDto, clientIp: string): Promise<{ success: boolean; message: string }> {
+  async register(dto: CreateSupplierRegistrationDto, clientIp: string): Promise<SupplierLoginResponseDto> {
     // Check if email already exists
     const existingUser = await this.userRepo.findOne({ where: { email: dto.email } });
     if (existingUser) {
@@ -136,8 +146,9 @@ export class SupplierAuthService {
 
       await queryRunner.commitTransaction();
 
-      // Send verification email
-      await this.emailService.sendSupplierVerificationEmail(dto.email, verificationToken);
+      // DEVELOPMENT MODE: Skip email verification - auto-login the user
+      // TODO: Re-enable email verification for production
+      // await this.emailService.sendSupplierVerificationEmail(dto.email, verificationToken);
 
       // Log the registration
       await this.auditService.log({
@@ -151,15 +162,355 @@ export class SupplierAuthService {
         ipAddress: clientIp,
       });
 
+      // Create session for immediate login
+      const sessionToken = uuidv4();
+      const refreshTokenValue = uuidv4();
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
+
+      // Create a device binding for the user
+      const deviceBinding = this.deviceBindingRepo.create({
+        supplierProfileId: savedProfile.id,
+        deviceFingerprint: 'registration-device',
+        registeredIp: clientIp,
+        isPrimary: true,
+        isActive: true,
+      });
+      await this.deviceBindingRepo.save(deviceBinding);
+
+      const session = this.sessionRepo.create({
+        supplierProfileId: savedProfile.id,
+        sessionToken,
+        refreshToken: refreshTokenValue,
+        deviceFingerprint: 'registration-device',
+        ipAddress: clientIp,
+        userAgent: 'registration',
+        isActive: true,
+        expiresAt,
+        lastActivity: new Date(),
+      });
+      await this.sessionRepo.save(session);
+
+      // Generate JWT tokens
+      const payload = {
+        sub: savedUser.id,
+        supplierId: savedProfile.id,
+        email: savedUser.email,
+        type: 'supplier',
+        sessionToken,
+      };
+
+      const [accessToken, jwtRefreshToken] = await Promise.all([
+        this.jwtService.signAsync(payload, { expiresIn: '1h' }),
+        this.jwtService.signAsync(payload, { expiresIn: '7d' }),
+      ]);
+
       return {
-        success: true,
-        message: 'Registration successful. Please check your email to verify your account.',
+        accessToken,
+        refreshToken: jwtRefreshToken,
+        expiresIn: 3600,
+        supplier: {
+          id: savedProfile.id,
+          email: savedUser.email,
+          firstName: undefined,
+          lastName: undefined,
+          companyName: undefined,
+          accountStatus: savedProfile.accountStatus,
+          onboardingStatus: SupplierOnboardingStatus.DRAFT,
+        },
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  /**
+   * Register a new supplier with full company details, profile, and documents
+   * Returns auth tokens for immediate login (email verification disabled for development)
+   */
+  async registerFull(
+    dto: {
+      email: string;
+      password: string;
+      deviceFingerprint: string;
+      browserInfo?: Record<string, any>;
+      company: any;
+      profile: any;
+    },
+    clientIp: string,
+    userAgent: string,
+    vatDocument?: Express.Multer.File,
+    companyRegDocument?: Express.Multer.File,
+    beeDocument?: Express.Multer.File,
+  ): Promise<SupplierLoginResponseDto> {
+    // Check if email already exists
+    const existingUser = await this.userRepo.findOne({ where: { email: dto.email } });
+    if (existingUser) {
+      throw new ConflictException('An account with this email already exists');
+    }
+
+    // Check if company registration number already exists
+    if (dto.company?.registrationNumber) {
+      const existingCompany = await this.companyRepo.findOne({
+        where: { registrationNumber: dto.company.registrationNumber },
+      });
+      if (existingCompany) {
+        throw new ConflictException('A company with this registration number already exists');
+      }
+    }
+
+    // Use transaction to ensure atomicity
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Create the company
+      const company = this.companyRepo.create({
+        legalName: dto.company.legalName,
+        tradingName: dto.company.tradingName,
+        registrationNumber: dto.company.registrationNumber,
+        taxNumber: dto.company.taxNumber,
+        vatNumber: dto.company.vatNumber,
+        streetAddress: dto.company.streetAddress,
+        addressLine2: dto.company.addressLine2,
+        city: dto.company.city,
+        provinceState: dto.company.provinceState,
+        postalCode: dto.company.postalCode,
+        country: dto.company.country || 'South Africa',
+        primaryContactName: dto.company.primaryContactName,
+        primaryContactEmail: dto.company.primaryContactEmail,
+        primaryContactPhone: dto.company.primaryContactPhone,
+        primaryPhone: dto.company.primaryPhone,
+        faxNumber: dto.company.faxNumber,
+        generalEmail: dto.company.generalEmail,
+        website: dto.company.website,
+        industryType: dto.company.industryType,
+        companySize: dto.company.companySize,
+        beeLevel: dto.company.beeLevel,
+        beeCertificateExpiry: dto.company.beeCertificateExpiry,
+        beeVerificationAgency: dto.company.beeVerificationAgency,
+        isExemptMicroEnterprise: dto.company.isExemptMicroEnterprise || false,
+      });
+      const savedCompany = await queryRunner.manager.save(company);
+
+      // 2. Create the user with 'supplier' role
+      const salt = await bcrypt.genSalt();
+      const hashedPassword = await bcrypt.hash(dto.password, salt);
+
+      let supplierRole = await this.userRoleRepo.findOne({ where: { name: 'supplier' } });
+      if (!supplierRole) {
+        supplierRole = this.userRoleRepo.create({ name: 'supplier' });
+        supplierRole = await queryRunner.manager.save(supplierRole);
+      }
+
+      const user = this.userRepo.create({
+        username: dto.email,
+        email: dto.email,
+        password: hashedPassword,
+        salt: salt,
+        roles: [supplierRole],
+      });
+      const savedUser = await queryRunner.manager.save(user);
+
+      // 3. Create the supplier profile with company link
+      const profile = this.profileRepo.create({
+        userId: savedUser.id,
+        companyId: savedCompany.id,
+        firstName: dto.profile?.firstName,
+        lastName: dto.profile?.lastName,
+        jobTitle: dto.profile?.jobTitle,
+        directPhone: dto.profile?.directPhone,
+        mobilePhone: dto.profile?.mobilePhone,
+        accountStatus: SupplierAccountStatus.PENDING,
+        emailVerified: true, // Skip verification for development
+      });
+      const savedProfile = await queryRunner.manager.save(profile);
+
+      // 4. Create onboarding record
+      const documentsComplete = !!(vatDocument && companyRegDocument);
+      const onboarding = this.onboardingRepo.create({
+        supplierId: savedProfile.id,
+        status: SupplierOnboardingStatus.DRAFT,
+        companyDetailsComplete: true,
+        documentsComplete,
+      });
+      await queryRunner.manager.save(onboarding);
+
+      // 5. Save uploaded documents
+      if (vatDocument || companyRegDocument || beeDocument) {
+        await this.saveRegistrationDocuments(
+          queryRunner.manager,
+          savedProfile.id,
+          vatDocument,
+          companyRegDocument,
+          beeDocument,
+        );
+      }
+
+      // 6. Create device binding
+      const deviceBinding = this.deviceBindingRepo.create({
+        supplierProfileId: savedProfile.id,
+        deviceFingerprint: dto.deviceFingerprint,
+        registeredIp: clientIp,
+        browserInfo: dto.browserInfo,
+        isPrimary: true,
+        isActive: true,
+      });
+      await queryRunner.manager.save(deviceBinding);
+
+      await queryRunner.commitTransaction();
+
+      // Log the registration
+      await this.auditService.log({
+        entityType: 'supplier_profile',
+        entityId: savedProfile.id,
+        action: AuditAction.CREATE,
+        newValues: {
+          email: dto.email,
+          companyName: dto.company.legalName,
+          deviceFingerprint: dto.deviceFingerprint?.substring(0, 20) + '...',
+        },
+        ipAddress: clientIp,
+        userAgent,
+      });
+
+      // Create session for immediate login
+      const sessionToken = uuidv4();
+      const refreshTokenValue = uuidv4();
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
+
+      const session = this.sessionRepo.create({
+        supplierProfileId: savedProfile.id,
+        sessionToken,
+        refreshToken: refreshTokenValue,
+        deviceFingerprint: dto.deviceFingerprint,
+        ipAddress: clientIp,
+        userAgent,
+        isActive: true,
+        expiresAt,
+        lastActivity: new Date(),
+      });
+      await this.sessionRepo.save(session);
+
+      // Generate JWT tokens
+      const payload = {
+        sub: savedUser.id,
+        supplierId: savedProfile.id,
+        email: savedUser.email,
+        type: 'supplier',
+        sessionToken,
+      };
+
+      const [accessToken, jwtRefreshToken] = await Promise.all([
+        this.jwtService.signAsync(payload, { expiresIn: '1h' }),
+        this.jwtService.signAsync(payload, { expiresIn: '7d' }),
+      ]);
+
+      return {
+        accessToken,
+        refreshToken: jwtRefreshToken,
+        expiresIn: 3600,
+        supplier: {
+          id: savedProfile.id,
+          email: savedUser.email,
+          firstName: savedProfile.firstName,
+          lastName: savedProfile.lastName,
+          companyName: savedCompany.tradingName || savedCompany.legalName,
+          accountStatus: savedProfile.accountStatus,
+          onboardingStatus: SupplierOnboardingStatus.DRAFT,
+        },
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /**
+   * Save registration documents (VAT, Company Registration, BEE)
+   */
+  private async saveRegistrationDocuments(
+    manager: any,
+    supplierId: number,
+    vatDocument?: Express.Multer.File,
+    companyRegDocument?: Express.Multer.File,
+    beeDocument?: Express.Multer.File,
+  ): Promise<void> {
+    const supplierDir = path.join(this.uploadDir, 'suppliers', supplierId.toString());
+
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(supplierDir)) {
+      fs.mkdirSync(supplierDir, { recursive: true });
+    }
+
+    // Save VAT document
+    if (vatDocument) {
+      const fileName = `vat_${Date.now()}_${vatDocument.originalname}`;
+      const filePath = path.join(supplierDir, fileName);
+
+      fs.writeFileSync(filePath, vatDocument.buffer);
+
+      const vatDocEntity = this.documentRepo.create({
+        supplierId,
+        documentType: SupplierDocumentType.VAT_CERT,
+        fileName: vatDocument.originalname,
+        filePath,
+        fileSize: vatDocument.size,
+        mimeType: vatDocument.mimetype,
+        validationStatus: SupplierDocumentValidationStatus.PENDING,
+        isRequired: true,
+      });
+
+      await manager.save(vatDocEntity);
+    }
+
+    // Save company registration document
+    if (companyRegDocument) {
+      const fileName = `company_reg_${Date.now()}_${companyRegDocument.originalname}`;
+      const filePath = path.join(supplierDir, fileName);
+
+      fs.writeFileSync(filePath, companyRegDocument.buffer);
+
+      const companyRegEntity = this.documentRepo.create({
+        supplierId,
+        documentType: SupplierDocumentType.REGISTRATION_CERT,
+        fileName: companyRegDocument.originalname,
+        filePath,
+        fileSize: companyRegDocument.size,
+        mimeType: companyRegDocument.mimetype,
+        validationStatus: SupplierDocumentValidationStatus.PENDING,
+        isRequired: true,
+      });
+
+      await manager.save(companyRegEntity);
+    }
+
+    // Save BEE document
+    if (beeDocument) {
+      const fileName = `bee_${Date.now()}_${beeDocument.originalname}`;
+      const filePath = path.join(supplierDir, fileName);
+
+      fs.writeFileSync(filePath, beeDocument.buffer);
+
+      const beeDocEntity = this.documentRepo.create({
+        supplierId,
+        documentType: SupplierDocumentType.BEE_CERT,
+        fileName: beeDocument.originalname,
+        filePath,
+        fileSize: beeDocument.size,
+        mimeType: beeDocument.mimetype,
+        validationStatus: SupplierDocumentValidationStatus.PENDING,
+        isRequired: false, // BEE is not always required
+      });
+
+      await manager.save(beeDocEntity);
     }
   }
 
