@@ -5941,7 +5941,10 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                 </label>
                 <select
                   value={globalSpecs?.boltGrade || ''}
-                  onChange={(e) => onUpdateGlobalSpecs('boltGrade', e.target.value)}
+                  onChange={(e) => onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    boltGrade: e.target.value || undefined
+                  })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
                 >
                   <option value="">Select bolt grade...</option>
@@ -5980,7 +5983,10 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                 </label>
                 <select
                   value={globalSpecs?.gasketType || ''}
-                  onChange={(e) => onUpdateGlobalSpecs('gasketType', e.target.value)}
+                  onChange={(e) => onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    gasketType: e.target.value || undefined
+                  })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
                 >
                   <option value="">Select gasket type...</option>
