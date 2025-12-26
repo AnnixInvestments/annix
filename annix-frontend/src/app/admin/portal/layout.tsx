@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { AdminAuthProvider, useAdminAuth } from '@/app/context/AdminAuthContext';
+import { useAdminAuth } from '@/app/context/AdminAuthContext';
 
 function AdminNavigation() {
   const pathname = usePathname();
@@ -272,9 +272,5 @@ export default function AdminPortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <AdminAuthProvider>
-      <ProtectedLayout>{children}</ProtectedLayout>
-    </AdminAuthProvider>
-  );
+  return <ProtectedLayout>{children}</ProtectedLayout>;
 }
