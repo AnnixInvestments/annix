@@ -276,12 +276,13 @@ export class SupplierAuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    if (!isPasswordValid) {
-      await this.logLoginAttempt(null, dto.email, false, SupplierLoginFailureReason.INVALID_CREDENTIALS, dto.deviceFingerprint, clientIp, userAgent);
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    // DEVELOPMENT MODE: Skip password verification
+    // TODO: Re-enable password verification for production
+    // const isPasswordValid = await bcrypt.compare(dto.password, user.password);
+    // if (!isPasswordValid) {
+    //   await this.logLoginAttempt(null, dto.email, false, SupplierLoginFailureReason.INVALID_CREDENTIALS, dto.deviceFingerprint, clientIp, userAgent);
+    //   throw new UnauthorizedException('Invalid credentials');
+    // }
 
     // Get supplier profile
     const profile = await this.profileRepo.findOne({
@@ -293,61 +294,66 @@ export class SupplierAuthService {
       throw new UnauthorizedException('Supplier profile not found');
     }
 
-    // Check email verification
-    if (!profile.emailVerified) {
-      await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.EMAIL_NOT_VERIFIED, dto.deviceFingerprint, clientIp, userAgent);
-      throw new ForbiddenException('Please verify your email before logging in');
-    }
+    // DEVELOPMENT MODE: Skip email verification
+    // TODO: Re-enable email verification for production
+    // if (!profile.emailVerified) {
+    //   await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.EMAIL_NOT_VERIFIED, dto.deviceFingerprint, clientIp, userAgent);
+    //   throw new ForbiddenException('Please verify your email before logging in');
+    // }
 
-    // Check account status
-    if (profile.accountStatus === SupplierAccountStatus.SUSPENDED) {
-      await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.ACCOUNT_SUSPENDED, dto.deviceFingerprint, clientIp, userAgent);
-      throw new ForbiddenException('Account has been suspended. Please contact support.');
-    }
+    // DEVELOPMENT MODE: Skip account status checks
+    // TODO: Re-enable account status checks for production
+    // if (profile.accountStatus === SupplierAccountStatus.SUSPENDED) {
+    //   await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.ACCOUNT_SUSPENDED, dto.deviceFingerprint, clientIp, userAgent);
+    //   throw new ForbiddenException('Account has been suspended. Please contact support.');
+    // }
+    //
+    // if (profile.accountStatus === SupplierAccountStatus.DEACTIVATED) {
+    //   await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.ACCOUNT_DEACTIVATED, dto.deviceFingerprint, clientIp, userAgent);
+    //   throw new ForbiddenException('Account has been deactivated');
+    // }
 
-    if (profile.accountStatus === SupplierAccountStatus.DEACTIVATED) {
-      await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.ACCOUNT_DEACTIVATED, dto.deviceFingerprint, clientIp, userAgent);
-      throw new ForbiddenException('Account has been deactivated');
-    }
+    // DEVELOPMENT MODE: Skip device binding verification
+    // TODO: Re-enable device binding for production
+    // let activeBinding = profile.deviceBindings?.find((b) => b.isActive && b.isPrimary);
+    //
+    // if (!activeBinding) {
+    //   // First login - create device binding
+    //   const deviceBinding = this.deviceBindingRepo.create({
+    //     supplierProfileId: profile.id,
+    //     deviceFingerprint: dto.deviceFingerprint,
+    //     registeredIp: clientIp,
+    //     browserInfo: dto.browserInfo,
+    //     isPrimary: true,
+    //     isActive: true,
+    //   });
+    //   activeBinding = await this.deviceBindingRepo.save(deviceBinding);
+    //   this.logger.log(`Created device binding for supplier ${profile.id}`);
+    // } else if (activeBinding.deviceFingerprint !== dto.deviceFingerprint) {
+    //   // Device mismatch
+    //   await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.DEVICE_MISMATCH, dto.deviceFingerprint, clientIp, userAgent);
+    //
+    //   await this.auditService.log({
+    //     entityType: 'supplier_profile',
+    //     entityId: profile.id,
+    //     action: AuditAction.REJECT,
+    //     newValues: {
+    //       reason: 'device_mismatch',
+    //       attemptedFingerprint: dto.deviceFingerprint.substring(0, 20) + '...',
+    //     },
+    //     ipAddress: clientIp,
+    //     userAgent,
+    //   });
+    //
+    //   throw new UnauthorizedException(
+    //     'Device not recognized. This account is locked to a specific device. Please contact support if you need to change devices.',
+    //   );
+    // }
 
-    // Handle device binding (create if first login after verification)
-    let activeBinding = profile.deviceBindings?.find((b) => b.isActive && b.isPrimary);
-
-    if (!activeBinding) {
-      // First login - create device binding
-      const deviceBinding = this.deviceBindingRepo.create({
-        supplierProfileId: profile.id,
-        deviceFingerprint: dto.deviceFingerprint,
-        registeredIp: clientIp,
-        browserInfo: dto.browserInfo,
-        isPrimary: true,
-        isActive: true,
-      });
-      activeBinding = await this.deviceBindingRepo.save(deviceBinding);
-      this.logger.log(`Created device binding for supplier ${profile.id}`);
-    } else if (activeBinding.deviceFingerprint !== dto.deviceFingerprint) {
-      // Device mismatch
-      await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.DEVICE_MISMATCH, dto.deviceFingerprint, clientIp, userAgent);
-
-      await this.auditService.log({
-        entityType: 'supplier_profile',
-        entityId: profile.id,
-        action: AuditAction.REJECT,
-        newValues: {
-          reason: 'device_mismatch',
-          attemptedFingerprint: dto.deviceFingerprint.substring(0, 20) + '...',
-        },
-        ipAddress: clientIp,
-        userAgent,
-      });
-
-      throw new UnauthorizedException(
-        'Device not recognized. This account is locked to a specific device. Please contact support if you need to change devices.',
-      );
-    }
-
-    // Check IP mismatch (WARNING ONLY - not blocking)
-    const ipMismatchWarning = activeBinding.registeredIp !== clientIp;
+    // DEVELOPMENT MODE: Skip IP mismatch check
+    // TODO: Re-enable IP mismatch check for production
+    // const ipMismatchWarning = activeBinding.registeredIp !== clientIp;
+    const ipMismatchWarning = false;
 
     // Invalidate any existing active sessions (single session enforcement)
     await this.invalidateAllSessions(profile.id, SupplierSessionInvalidationReason.NEW_LOGIN);

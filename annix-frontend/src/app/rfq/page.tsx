@@ -26,7 +26,7 @@ export default function RfqPage() {
 
   if (!showForm && submissionResult) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
           <div className="mb-4">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -56,7 +56,7 @@ export default function RfqPage() {
 
   if (!showForm) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Form Cancelled</h2>
           <p className="text-gray-600 mb-6">Your RFQ form has been cancelled. No data was saved.</p>
