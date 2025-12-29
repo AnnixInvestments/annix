@@ -6307,6 +6307,8 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, fetchBendOptions, bendOptionsCache, autoSelectFlangeSpecs }: any) {
   const [isCalculating, setIsCalculating] = useState(false);
   const processedEntriesRef = useRef<Set<string>>(new Set());
+  // Track entries that have been manually updated by onChange - these should NOT be overwritten by useEffect
+  const manuallyUpdatedEntriesRef = useRef<Set<string>>(new Set());
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [isLoadingNominalBores, setIsLoadingNominalBores] = useState(false);
 
@@ -6600,6 +6602,13 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         // Skip if already processed with this NB
         if (processedEntriesRef.current.has(entryKey)) continue;
 
+        // Skip if this entry was manually updated by onChange handler
+        if (manuallyUpdatedEntriesRef.current.has(entry.id)) {
+          console.log(`[useEffect] Skipping entry ${entry.id} - manually updated by onChange`);
+          processedEntriesRef.current.add(entryKey);
+          continue;
+        }
+
         // Skip if schedule is already set (don't overwrite user/onChange selections)
         if (entry.specs?.scheduleNumber && entry.specs?.wallThicknessMm) {
           console.log(`[useEffect] Skipping entry ${entry.id} - schedule already set: ${entry.specs.scheduleNumber}`);
@@ -6616,11 +6625,10 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
             const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
             const schedules = await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
 
-            // IMPORTANT: Re-check if schedule was set while we were fetching
+            // IMPORTANT: Re-check if entry was manually updated while we were fetching
             // This prevents race condition with onChange handler
-            const currentEntry = entries.find((e: any) => e.id === entry.id);
-            if (currentEntry?.specs?.scheduleNumber && currentEntry?.specs?.wallThicknessMm) {
-              console.log(`[useEffect] Entry ${entry.id} was updated during fetch, skipping update`);
+            if (manuallyUpdatedEntriesRef.current.has(entry.id)) {
+              console.log(`[useEffect] Entry ${entry.id} was manually updated during fetch, skipping`);
               continue;
             }
 
@@ -8234,7 +8242,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         // Update description
                         updatedEntry.description = generateItemDescription(updatedEntry);
 
-                        console.log(`[NB onChange] Updating entry with schedule: ${matchedSchedule}, WT: ${matchedWT}mm`);
+                        // Mark this entry as manually updated - prevents useEffect from overwriting
+                        manuallyUpdatedEntriesRef.current.add(entry.id);
+                        console.log(`[NB onChange] Updating entry ${entry.id} with schedule: ${matchedSchedule}, WT: ${matchedWT}mm`);
                         onUpdateEntry(entry.id, updatedEntry);
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
