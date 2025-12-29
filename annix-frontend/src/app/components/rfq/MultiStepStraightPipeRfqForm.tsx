@@ -8925,19 +8925,54 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         {/* Total Summary */}
         <div className="border-2 border-blue-200 rounded-md p-3 bg-blue-50">
           <h3 className="text-base font-bold text-blue-900 mb-2">Project Summary</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="text-center">
               <p className="text-xs font-medium text-blue-700">Total Pipe Entries</p>
               <p className="text-lg font-bold text-blue-900">{entries.length}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-blue-700">Total Length</p>
+              <p className="text-xs font-medium text-blue-700">Length Per Pipe</p>
               <p className="text-lg font-bold text-blue-900">
-                {entries.reduce((total: number, entry: StraightPipeEntry) => total + entry.specs.quantityValue, 0).toFixed(1)} m
+                {entries.length > 0 && entries[0]?.specs?.individualPipeLength
+                  ? `${entries[0].specs.individualPipeLength}m`
+                  : '-'}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-blue-700">Total Weight</p>
+              <p className="text-xs font-medium text-blue-700">Weight Per Pipe</p>
+              <p className="text-lg font-bold text-blue-900">
+                {(() => {
+                  const firstEntry = entries[0];
+                  if (!firstEntry?.calculation?.totalPipeWeight || !firstEntry?.calculation?.calculatedPipeCount) return '-';
+                  const weightPerPipe = firstEntry.calculation.totalPipeWeight / firstEntry.calculation.calculatedPipeCount;
+                  return formatWeight(weightPerPipe);
+                })()}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-medium text-blue-700">Total Pipes</p>
+              <p className="text-lg font-bold text-blue-900">
+                {entries.reduce((total: number, entry: StraightPipeEntry) => {
+                  return total + (entry.calculation?.calculatedPipeCount || entry.specs.quantityValue || 0);
+                }, 0)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-medium text-blue-700">Total Pipeline Length</p>
+              <p className="text-lg font-bold text-blue-900">
+                {entries.reduce((total: number, entry: StraightPipeEntry) => {
+                  // Calculate total length based on quantity type
+                  if (entry.specs.quantityType === 'total_length') {
+                    return total + (entry.specs.quantityValue || 0);
+                  } else {
+                    // number_of_pipes: multiply quantity by individual pipe length
+                    return total + ((entry.specs.quantityValue || 0) * (entry.specs.individualPipeLength || 0));
+                  }
+                }, 0).toFixed(1)}m
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-medium text-blue-700">Total Pipeline Weight</p>
               <p className="text-lg font-bold text-blue-900">
                 {formatWeight(getTotalWeight())}
               </p>
