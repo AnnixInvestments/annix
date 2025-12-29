@@ -55,6 +55,17 @@ export default function CustomerCreateRfqPage() {
   };
 
   if (selectedType) {
+    // For straight-pipe, render the full-screen form directly without wrapper
+    if (selectedType === 'straight-pipe') {
+      return (
+        <MultiStepStraightPipeRfqForm
+          onSuccess={handleSuccess}
+          onCancel={() => setSelectedType(null)}
+        />
+      );
+    }
+
+    // For other types, use the normal layout
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -72,12 +83,6 @@ export default function CustomerCreateRfqPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow">
-          {selectedType === 'straight-pipe' && (
-            <MultiStepStraightPipeRfqForm
-              onSuccess={handleSuccess}
-              onCancel={() => setSelectedType(null)}
-            />
-          )}
           {selectedType === 'bend' && (
             <div className="p-6 text-center">
               <p className="text-gray-600">Bend RFQ form coming soon.</p>

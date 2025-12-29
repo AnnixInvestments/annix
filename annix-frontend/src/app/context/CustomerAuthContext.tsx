@@ -1,12 +1,21 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { customerApiClient, CustomerAuthResponse, CustomerProfileResponse } from '@/app/lib/api/customerApi';
+import { customerApiClient, CustomerProfileResponse } from '@/app/lib/api/customerApi';
+
+interface CustomerInfo {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  companyName: string;
+  accountStatus: string;
+}
 
 interface CustomerAuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
-  customer: CustomerAuthResponse['customer'] | null;
+  customer: CustomerInfo | null;
   profile: CustomerProfileResponse | null;
 }
 
@@ -88,7 +97,14 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       setState({
         isAuthenticated: true,
         isLoading: false,
-        customer: response.customer,
+        customer: {
+          id: profile.id,
+          email: profile.email,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          companyName: profile.company?.tradingName || profile.company?.legalName || response.companyName,
+          accountStatus: profile.accountStatus,
+        },
         profile,
       });
     } catch (error) {

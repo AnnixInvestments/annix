@@ -130,6 +130,81 @@ export interface GlobalSpecs {
   uvExposure?: 'Low' | 'Moderate' | 'High' | 'Very High';
   snowExposure?: 'None' | 'Low' | 'Moderate' | 'High';
   fogFrequency?: 'Low' | 'Moderate' | 'High';
+
+  // Fasteners & Gaskets
+  boltGrade?: string;
+  gasketType?: string;
+  fastenersConfirmed?: boolean;
+
+  // External Coating
+  externalCoatingType?: string;
+  externalCoatingConfirmed?: boolean;
+  externalCoatingRecommendation?: string;
+  externalCoatingRecommendationRejected?: boolean;
+  showExternalCoatingProfile?: boolean;
+  externalCoatingActionLog?: Array<{ action: string; timestamp: string; details?: string }>;
+  externalBlastingGrade?: string;
+  externalPrimerType?: string;
+  externalPrimerMicrons?: number;
+  externalIntermediateType?: string;
+  externalIntermediateMicrons?: number;
+  externalTopcoatType?: string;
+  externalTopcoatMicrons?: number;
+  externalTopcoatColour?: string;
+  externalBand1Colour?: string;
+  externalBand2Colour?: string;
+  externalRubberType?: string;
+  externalRubberThickness?: string;
+  externalRubberColour?: string;
+  externalRubberHardness?: string;
+
+  // Internal Lining
+  internalLiningType?: string;
+  internalLiningConfirmed?: boolean;
+  internalLiningRecommendation?: string;
+  internalLiningRecommendationRejected?: boolean;
+  showInternalLiningProfile?: boolean;
+  internalLiningActionLog?: Array<{ action: string; timestamp: string; details?: string }>;
+  internalBlastingGrade?: string;
+  internalPrimerType?: string;
+  internalPrimerMicrons?: number;
+  internalIntermediateType?: string;
+  internalIntermediateMicrons?: number;
+  internalTopcoatType?: string;
+  internalTopcoatMicrons?: number;
+  internalRubberType?: string;
+  internalRubberThickness?: string;
+  internalRubberColour?: string;
+  internalRubberHardness?: string;
+
+  // Steel Pipe Specs Confirmation
+  steelPipesSpecsConfirmed?: boolean;
+
+  // Environmental Coating Profile (ECP) Additional
+  ecpTemperature?: string;
+  iso12944Category?: string;
+  marineInfluence?: string;
+  industrialPollution?: string;
+  mineSelected?: boolean;
+  ecpInstallationType?: string;
+  ecpUvExposure?: string;
+  ecpMechanicalRisk?: string;
+  ecpSoilType?: string;
+  ecpSoilResistivity?: string;
+  ecpSoilMoisture?: string;
+  ecpServiceLife?: string;
+  ecpCathodicProtection?: boolean;
+
+  // Coating Recommendation UI State
+  showRecCustomColourInput?: boolean;
+  recExternalTopcoatColour?: string;
+  recCustomColourInput?: string;
+  showRecBand1Input?: boolean;
+  recExternalBand1Colour?: string;
+  recBand1Input?: string;
+  showRecBand2Input?: boolean;
+  recExternalBand2Colour?: string;
+  recBand2Input?: string;
 }
 
 export interface RfqFormData {

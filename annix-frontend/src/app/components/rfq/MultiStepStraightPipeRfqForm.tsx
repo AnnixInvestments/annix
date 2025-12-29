@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { StraightPipeEntry, useRfqForm } from '@/app/lib/hooks/useRfqForm';
 import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, SaMine, MineWithEnvironmentalData } from '@/app/lib/api/client';
 import {
@@ -50,7 +50,7 @@ interface MasterData {
   steelSpecs: Array<{ id: number; steelSpecName: string }>;
   flangeStandards: Array<{ id: number; code: string }>;
   pressureClasses: Array<{ id: number; designation: string }>;
-  nominalBores?: Array<{ id: number; nominal_diameter_mm: number; outside_diameter_mm: number }>;
+  nominalBores?: Array<{ id: number; nominal_diameter_mm?: number; outside_diameter_mm?: number; nominalDiameterMm?: number; outsideDiameterMm?: number }>;
 }
 
 // Pipe end configuration options with weld counts
@@ -138,6 +138,125 @@ interface LiningRecommendation {
   rationale: string;
   engineeringNotes: string[];
 }
+
+// Fallback pipe schedule data (ASTM A106 Gr B) for when backend is unavailable
+// Defined at module level so it can be used by both ItemUploadStep and main component
+const FALLBACK_PIPE_SCHEDULES: Record<number, Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }>> = {
+  100: [
+    { id: 1001, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 6.02 },
+    { id: 1002, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 8.56 },
+    { id: 1003, scheduleDesignation: 'Sch 120', wallThicknessMm: 11.13 },
+    { id: 1004, scheduleDesignation: 'Sch 160', wallThicknessMm: 13.49 },
+    { id: 1005, scheduleDesignation: 'XXS', wallThicknessMm: 17.12 },
+  ],
+  150: [
+    { id: 1501, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 7.11 },
+    { id: 1502, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 10.97 },
+    { id: 1503, scheduleDesignation: 'Sch 120', wallThicknessMm: 14.27 },
+    { id: 1504, scheduleDesignation: 'Sch 160', wallThicknessMm: 18.26 },
+    { id: 1505, scheduleDesignation: 'XXS', wallThicknessMm: 21.95 },
+  ],
+  200: [
+    { id: 2001, scheduleDesignation: 'Sch 20', wallThicknessMm: 6.35 },
+    { id: 2002, scheduleDesignation: 'Sch 30', wallThicknessMm: 7.04 },
+    { id: 2003, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 8.18 },
+    { id: 2004, scheduleDesignation: 'Sch 60', wallThicknessMm: 10.31 },
+    { id: 2005, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 12.70 },
+    { id: 2006, scheduleDesignation: 'Sch 100', wallThicknessMm: 15.09 },
+    { id: 2007, scheduleDesignation: 'Sch 120', wallThicknessMm: 18.26 },
+    { id: 2008, scheduleDesignation: 'Sch 140', wallThicknessMm: 20.62 },
+    { id: 2009, scheduleDesignation: 'XXS', wallThicknessMm: 22.23 },
+    { id: 2010, scheduleDesignation: 'Sch 160', wallThicknessMm: 23.01 },
+  ],
+  250: [
+    { id: 2501, scheduleDesignation: 'Sch 20', wallThicknessMm: 6.35 },
+    { id: 2502, scheduleDesignation: 'Sch 30', wallThicknessMm: 7.80 },
+    { id: 2503, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 9.27 },
+    { id: 2504, scheduleDesignation: 'Sch 60/XS', wallThicknessMm: 12.70 },
+    { id: 2505, scheduleDesignation: 'Sch 80', wallThicknessMm: 15.09 },
+    { id: 2506, scheduleDesignation: 'Sch 100', wallThicknessMm: 18.26 },
+    { id: 2507, scheduleDesignation: 'Sch 120', wallThicknessMm: 21.44 },
+    { id: 2508, scheduleDesignation: 'Sch 140/XXS', wallThicknessMm: 25.40 },
+    { id: 2509, scheduleDesignation: 'Sch 160', wallThicknessMm: 28.58 },
+  ],
+  300: [
+    { id: 3001, scheduleDesignation: 'Sch 20', wallThicknessMm: 6.35 },
+    { id: 3002, scheduleDesignation: 'Sch 30', wallThicknessMm: 8.38 },
+    { id: 3003, scheduleDesignation: 'STD', wallThicknessMm: 9.52 },
+    { id: 3004, scheduleDesignation: 'Sch 40', wallThicknessMm: 10.31 },
+    { id: 3005, scheduleDesignation: 'XS', wallThicknessMm: 12.70 },
+    { id: 3006, scheduleDesignation: 'Sch 60', wallThicknessMm: 14.27 },
+    { id: 3007, scheduleDesignation: 'Sch 80', wallThicknessMm: 17.48 },
+    { id: 3008, scheduleDesignation: 'Sch 100', wallThicknessMm: 21.44 },
+    { id: 3009, scheduleDesignation: 'Sch 120/XXS', wallThicknessMm: 25.40 },
+    { id: 3010, scheduleDesignation: 'Sch 140', wallThicknessMm: 28.58 },
+    { id: 3011, scheduleDesignation: 'Sch 160', wallThicknessMm: 33.32 },
+  ],
+  350: [
+    { id: 3501, scheduleDesignation: 'Sch 10', wallThicknessMm: 6.35 },
+    { id: 3502, scheduleDesignation: 'Sch 20', wallThicknessMm: 7.92 },
+    { id: 3503, scheduleDesignation: 'Sch 30/STD', wallThicknessMm: 9.52 },
+    { id: 3504, scheduleDesignation: 'Sch 40', wallThicknessMm: 11.13 },
+    { id: 3505, scheduleDesignation: 'XS', wallThicknessMm: 12.70 },
+    { id: 3506, scheduleDesignation: 'Sch 60', wallThicknessMm: 15.09 },
+    { id: 3507, scheduleDesignation: 'Sch 80', wallThicknessMm: 19.05 },
+    { id: 3508, scheduleDesignation: 'Sch 100', wallThicknessMm: 23.82 },
+    { id: 3509, scheduleDesignation: 'Sch 120', wallThicknessMm: 27.79 },
+    { id: 3510, scheduleDesignation: 'Sch 140', wallThicknessMm: 31.75 },
+    { id: 3511, scheduleDesignation: 'Sch 160', wallThicknessMm: 35.71 },
+  ],
+  400: [
+    { id: 4001, scheduleDesignation: 'Sch 10', wallThicknessMm: 6.35 },
+    { id: 4002, scheduleDesignation: 'Sch 20', wallThicknessMm: 7.92 },
+    { id: 4003, scheduleDesignation: 'Sch 30/STD', wallThicknessMm: 9.52 },
+    { id: 4004, scheduleDesignation: 'Sch 40/XS', wallThicknessMm: 12.70 },
+    { id: 4005, scheduleDesignation: 'Sch 60', wallThicknessMm: 16.66 },
+    { id: 4006, scheduleDesignation: 'Sch 80', wallThicknessMm: 21.44 },
+    { id: 4007, scheduleDesignation: 'Sch 100', wallThicknessMm: 26.19 },
+    { id: 4008, scheduleDesignation: 'Sch 120', wallThicknessMm: 30.96 },
+    { id: 4009, scheduleDesignation: 'Sch 140', wallThicknessMm: 36.52 },
+    { id: 4010, scheduleDesignation: 'Sch 160', wallThicknessMm: 40.49 },
+  ],
+  450: [
+    { id: 4501, scheduleDesignation: 'Sch 10', wallThicknessMm: 6.35 },
+    { id: 4502, scheduleDesignation: 'Sch 20', wallThicknessMm: 7.92 },
+    { id: 4503, scheduleDesignation: 'STD', wallThicknessMm: 9.52 },
+    { id: 4504, scheduleDesignation: 'Sch 30', wallThicknessMm: 11.13 },
+    { id: 4505, scheduleDesignation: 'XS', wallThicknessMm: 12.70 },
+    { id: 4506, scheduleDesignation: 'Sch 40', wallThicknessMm: 14.27 },
+    { id: 4507, scheduleDesignation: 'Sch 60', wallThicknessMm: 19.05 },
+    { id: 4508, scheduleDesignation: 'Sch 80', wallThicknessMm: 23.83 },
+    { id: 4509, scheduleDesignation: 'Sch 100', wallThicknessMm: 29.36 },
+    { id: 4510, scheduleDesignation: 'Sch 120', wallThicknessMm: 34.92 },
+    { id: 4511, scheduleDesignation: 'Sch 140', wallThicknessMm: 39.69 },
+    { id: 4512, scheduleDesignation: 'Sch 160', wallThicknessMm: 45.24 },
+  ],
+  500: [
+    { id: 5001, scheduleDesignation: 'Sch 10', wallThicknessMm: 6.35 },
+    { id: 5002, scheduleDesignation: 'Sch 20/STD', wallThicknessMm: 9.52 },
+    { id: 5003, scheduleDesignation: 'Sch 30/XS', wallThicknessMm: 12.70 },
+    { id: 5004, scheduleDesignation: 'Sch 40', wallThicknessMm: 15.09 },
+    { id: 5005, scheduleDesignation: 'Sch 60', wallThicknessMm: 20.63 },
+    { id: 5006, scheduleDesignation: 'Sch 80', wallThicknessMm: 26.19 },
+    { id: 5007, scheduleDesignation: 'Sch 100', wallThicknessMm: 32.54 },
+    { id: 5008, scheduleDesignation: 'Sch 120', wallThicknessMm: 38.10 },
+    { id: 5009, scheduleDesignation: 'Sch 140', wallThicknessMm: 44.45 },
+    { id: 5010, scheduleDesignation: 'Sch 160', wallThicknessMm: 50.01 },
+  ],
+  600: [
+    { id: 6001, scheduleDesignation: 'Sch 10', wallThicknessMm: 6.35 },
+    { id: 6002, scheduleDesignation: 'Sch 20/STD', wallThicknessMm: 9.52 },
+    { id: 6003, scheduleDesignation: 'XS', wallThicknessMm: 12.70 },
+    { id: 6004, scheduleDesignation: 'Sch 30', wallThicknessMm: 14.27 },
+    { id: 6005, scheduleDesignation: 'Sch 40', wallThicknessMm: 17.48 },
+    { id: 6006, scheduleDesignation: 'Sch 60', wallThicknessMm: 24.61 },
+    { id: 6007, scheduleDesignation: 'Sch 80', wallThicknessMm: 30.96 },
+    { id: 6008, scheduleDesignation: 'Sch 100', wallThicknessMm: 38.89 },
+    { id: 6009, scheduleDesignation: 'Sch 120', wallThicknessMm: 46.02 },
+    { id: 6010, scheduleDesignation: 'Sch 140', wallThicknessMm: 52.39 },
+    { id: 6011, scheduleDesignation: 'Sch 160', wallThicknessMm: 59.34 },
+  ],
+};
 
 function classifyDamageMechanisms(profile: MaterialTransferProfile): DamageMechanisms {
   const { material, chemistry, flow, equipment } = profile;
@@ -2481,7 +2600,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
   const workingPressures = [6, 10, 16, 25, 40, 63, 100, 160, 250, 320, 400, 630]; // Bar values
   const workingTemperatures = [-29, -20, 0, 20, 50, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500]; // Celsius values
 
-  const hasErrors = errors && (errors.workingPressure || errors.workingTemperature);
+  const hasErrors = errors && (errors.workingPressure || errors.workingTemperature || errors.steelPipesConfirmation || errors.fastenersConfirmation);
 
   // Derive temperature category from working temperature if not manually set
   const derivedTempCategory = deriveTemperatureCategory(globalSpecs?.workingTemperatureC);
@@ -2551,10 +2670,12 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
             <div>
-              <h3 className="text-xs font-semibold text-red-800">Required fields missing</h3>
+              <h3 className="text-xs font-semibold text-red-800">Action required before proceeding</h3>
               <ul className="mt-1 text-xs text-red-700 list-disc list-inside">
                 {errors.workingPressure && <li>{errors.workingPressure}</li>}
                 {errors.workingTemperature && <li>{errors.workingTemperature}</li>}
+                {errors.steelPipesConfirmation && <li>{errors.steelPipesConfirmation}</li>}
+                {errors.fastenersConfirmation && <li>{errors.fastenersConfirmation}</li>}
               </ul>
             </div>
           </div>
@@ -2570,6 +2691,47 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
               <h3 className="text-sm font-bold text-gray-900">Fabricated Steel Pipes & Fittings</h3>
             </div>
 
+            {/* Confirmed Summary - show when specs are confirmed */}
+            {globalSpecs?.steelPipesSpecsConfirmed && (
+              <div className="bg-green-100 border border-green-400 rounded-md p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs text-green-800">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium">Steel Pipe Specifications Confirmed</span>
+                    <span className="mx-2">•</span>
+                    <span>{globalSpecs?.workingPressureBar} bar @ {globalSpecs?.workingTemperatureC}°C</span>
+                    {globalSpecs?.steelSpecificationId && masterData?.steelSpecs && (
+                      <>
+                        <span className="mx-2">•</span>
+                        <span>{masterData.steelSpecs.find((s: any) => s.id === globalSpecs.steelSpecificationId)?.steelSpecName || 'Steel Spec'}</span>
+                      </>
+                    )}
+                    {globalSpecs?.flangeStandardId && masterData?.flangeStandards && (
+                      <>
+                        <span className="mx-2">•</span>
+                        <span>{masterData.flangeStandards.find((s: any) => s.id === globalSpecs.flangeStandardId)?.code || 'Flange'}</span>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      steelPipesSpecsConfirmed: false
+                    })}
+                    className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Detail Forms - show when not confirmed */}
+            {!globalSpecs?.steelPipesSpecsConfirmed && (
+            <>
             {/* Working Conditions */}
             <div className="bg-white border border-gray-200 rounded-lg p-3">
               <h3 className="text-xs font-semibold text-gray-800 mb-2">
@@ -5878,6 +6040,23 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
         </div>
         </>
         )}
+
+            {/* Confirm Button for Steel Pipe Specifications */}
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => onUpdateGlobalSpecs({
+                  ...globalSpecs,
+                  steelPipesSpecsConfirmed: true
+                })}
+                disabled={!globalSpecs?.workingPressureBar || !globalSpecs?.workingTemperatureC}
+                className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Confirm Steel Pipe Specifications
+              </button>
+            </div>
+            </>
+            )}
           </div>
         )}
 
@@ -6127,11 +6306,13 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 
 function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, fetchBendOptions, bendOptionsCache, autoSelectFlangeSpecs }: any) {
   const [isCalculating, setIsCalculating] = useState(false);
+  const processedEntriesRef = useRef<Set<string>>(new Set());
 
   // Use nominal bores from master data, fallback to hardcoded values
   // Remove duplicates using Set and sort
-  const nominalBores = (masterData.nominalBores?.length > 0 
-    ? Array.from(new Set(masterData.nominalBores.map((nb: any) => nb.nominal_diameter_mm as number))).sort((a, b) => (a as number) - (b as number))
+  // Handle both snake_case (from API) and camelCase (from fallback data) property names
+  const nominalBores = (masterData.nominalBores?.length > 0
+    ? Array.from(new Set(masterData.nominalBores.map((nb: any) => (nb.nominal_diameter_mm ?? nb.nominalDiameterMm) as number))).sort((a, b) => (a as number) - (b as number))
     : [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 1800, 2000]) as number[]; // fallback values
 
   // Check for potentially invalid schedules - these are now supported so removing this warning
@@ -6290,40 +6471,62 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
           scheduleWarnings: recommended.warnings
         };
       } catch (error) {
-        if (error instanceof Error && error.message !== 'Backend unavailable') {
-          console.error('❌ Error calling pipe-schedule API:', error);
+        // Silently handle API errors - fallback calculation will be used
+        // Only log for debugging (not as error)
+        console.log('ℹ️ Pipe schedule API unavailable, using Barlow formula fallback');
+
+        // Fallback to Barlow formula calculation for ASTM A106 Grade B carbon steel
+        // Barlow formula: t = (P × D) / (2 × S × E)
+        // Where: P = pressure (bar), D = OD (mm), S = allowable stress (MPa), E = joint efficiency
+        // For ASTM A106 Gr B: S ≈ 137.9 MPa (20,000 psi) at ambient, E = 1.0 for seamless
+        // Simplified: t_min = (P_bar × 0.1 × OD_mm) / (2 × 137.9 × 1.0)
+
+        // OD lookup based on NB (approximate values)
+        const odLookup: Record<number, number> = {
+          100: 114.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
+          350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6
+        };
+        const od = odLookup[nominalBore] || (nominalBore * 1.05); // Fallback estimate
+
+        // Calculate minimum wall thickness using Barlow formula with safety factor
+        const pressureMpa = pressure * 0.1; // Convert bar to MPa
+        const allowableStress = 137.9; // MPa for A106 Gr B
+        const jointEfficiency = 1.0;
+        const safetyFactor = 1.2; // Add 20% safety margin
+        const minWallThickness = (pressureMpa * od * safetyFactor) / (2 * allowableStress * jointEfficiency);
+
+        console.log(`🔧 Barlow calculation: ${minWallThickness.toFixed(2)}mm min WT for ${nominalBore}mm NB (OD=${od}mm) at ${pressure} bar`);
+
+        // Find the best matching schedule from fallback data
+        const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
+        let matchedSchedule = null;
+        let matchedWT = minWallThickness;
+
+        if (fallbackSchedules.length > 0) {
+          // Find the first schedule that meets or exceeds minimum wall thickness
+          const eligibleSchedules = fallbackSchedules
+            .filter(s => s.wallThicknessMm >= minWallThickness)
+            .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
+
+          if (eligibleSchedules.length > 0) {
+            matchedSchedule = eligibleSchedules[0].scheduleDesignation;
+            matchedWT = eligibleSchedules[0].wallThicknessMm;
+          } else {
+            // Use thickest available if none meet minimum
+            const sorted = [...fallbackSchedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
+            matchedSchedule = sorted[0].scheduleDesignation;
+            matchedWT = sorted[0].wallThicknessMm;
+          }
         }
 
-        // Fallback to simple calculation based on pressure and nominal bore
-        let fallbackSchedule = 'Sch40';
-        let fallbackWallThickness = 3.6;
-
-        // Simple pressure-based fallback logic
-        if (pressure <= 10) {
-          fallbackSchedule = 'Sch10';
-          fallbackWallThickness = Math.max(2.0, nominalBore * 0.03);
-        } else if (pressure <= 25) {
-          fallbackSchedule = 'Sch20';
-          fallbackWallThickness = Math.max(3.0, nominalBore * 0.04);
-        } else if (pressure <= 40) {
-          fallbackSchedule = 'Sch40';
-          fallbackWallThickness = Math.max(3.6, nominalBore * 0.05);
-        } else if (pressure <= 80) {
-          fallbackSchedule = 'Sch80';
-          fallbackWallThickness = Math.max(5.5, nominalBore * 0.07);
-        } else {
-          fallbackSchedule = 'Sch160';
-          fallbackWallThickness = Math.max(8.0, nominalBore * 0.10);
-        }
-
-        console.log(`🔧 Using fallback calculation: ${fallbackSchedule} (${fallbackWallThickness}mm) for ${nominalBore}mm NB at ${pressure} bar`);
+        console.log(`🔧 Fallback matched schedule: ${matchedSchedule} (${matchedWT}mm) for min ${minWallThickness.toFixed(2)}mm`);
 
         return {
-          scheduleNumber: fallbackSchedule,
-          wallThicknessMm: fallbackWallThickness,
+          scheduleNumber: matchedSchedule,
+          wallThicknessMm: matchedWT,
           workingPressureBar: pressure,
-          minimumSchedule: fallbackSchedule,
-          minimumWallThickness: fallbackWallThickness,
+          minimumSchedule: matchedSchedule,
+          minimumWallThickness: minWallThickness,
           availableUpgrades: [],
           isScheduleOverridden: false
         };
@@ -6333,6 +6536,106 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
     }
     return {};
   };
+
+  // Auto-calculate specs for new straight pipe entries when they are added
+  // Also re-fetch schedules when masterData loads
+  useEffect(() => {
+    const processEntries = async () => {
+      // Wait for masterData to be loaded
+      if (!masterData.nominalBores?.length) return;
+
+      for (const entry of entries) {
+        // Only process straight pipe entries
+        if (entry.itemType !== 'straight_pipe' && entry.itemType !== undefined) continue;
+
+        const nominalBore = entry.specs?.nominalBoreMm;
+        const pressure = globalSpecs?.workingPressureBar;
+        const entryKey = `${entry.id}-${nominalBore}`;
+
+        // Skip if already processed with this NB
+        if (processedEntriesRef.current.has(entryKey)) continue;
+
+        if (nominalBore && pressure) {
+          // Mark as processed with this NB
+          processedEntriesRef.current.add(entryKey);
+
+          try {
+            // Fetch available schedules
+            const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
+            const schedules = await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
+            console.log(`📋 Fetched ${schedules?.length || 0} schedules for entry ${entry.id} with ${nominalBore}mm NB`);
+
+            // Auto-calculate schedule if not already set
+            if (!entry.specs?.scheduleNumber || !entry.minimumSchedule) {
+              const autoSpecs = await autoCalculateSpecs({
+                specs: { ...entry.specs, nominalBoreMm: nominalBore }
+              });
+
+              if (autoSpecs.wallThicknessMm || autoSpecs.minimumWallThickness) {
+                const { minimumWallThickness } = autoSpecs;
+                const minWT = minimumWallThickness || autoSpecs.wallThicknessMm || 0;
+
+                // Find the best matching schedule from available schedules
+                // Handle both camelCase and snake_case property names
+                const availableSchedules = schedules || [];
+                const eligibleSchedules = availableSchedules
+                  .filter((dim: any) => {
+                    const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
+                    return wt >= minWT;
+                  })
+                  .sort((a: any, b: any) => {
+                    const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
+                    const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
+                    return wtA - wtB;
+                  });
+
+                let matchedSchedule = null;
+                let matchedWT = minWT;
+
+                if (eligibleSchedules.length > 0) {
+                  // Use the first eligible schedule (smallest wall thickness that meets minimum)
+                  matchedSchedule = eligibleSchedules[0].scheduleDesignation || eligibleSchedules[0].schedule_designation || eligibleSchedules[0].scheduleNumber?.toString() || eligibleSchedules[0].schedule_number?.toString();
+                  matchedWT = eligibleSchedules[0].wallThicknessMm || eligibleSchedules[0].wall_thickness_mm;
+                  console.log(`🎯 Matched schedule ${matchedSchedule} (${matchedWT}mm) for min WT ${minWT}mm`);
+                } else if (availableSchedules.length > 0) {
+                  // Fallback: use the thickest available schedule
+                  const sorted = [...availableSchedules].sort((a: any, b: any) => {
+                    const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
+                    const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
+                    return wtB - wtA;
+                  });
+                  matchedSchedule = sorted[0].scheduleDesignation || sorted[0].schedule_designation || sorted[0].scheduleNumber?.toString() || sorted[0].schedule_number?.toString();
+                  matchedWT = sorted[0].wallThicknessMm || sorted[0].wall_thickness_mm;
+                  console.log(`⚠️ No schedule meets minimum ${minWT}mm, using thickest: ${matchedSchedule} (${matchedWT}mm)`);
+                }
+
+                const updatedEntry = {
+                  ...entry,
+                  minimumSchedule: matchedSchedule,
+                  minimumWallThickness: minWT,
+                  availableUpgrades: eligibleSchedules.slice(1), // Upgrades are all except the first
+                  isScheduleOverridden: false,
+                  specs: {
+                    ...entry.specs,
+                    scheduleNumber: matchedSchedule,
+                    wallThicknessMm: matchedWT,
+                  }
+                };
+
+                updatedEntry.description = generateItemDescription(updatedEntry);
+                onUpdateEntry(entry.id, updatedEntry);
+                console.log(`✅ Auto-selected schedule ${matchedSchedule} (${matchedWT}mm) for entry ${entry.id}`);
+              }
+            }
+          } catch (error) {
+            console.error('Error auto-calculating specs for entry:', error);
+          }
+        }
+      }
+    };
+
+    processEntries();
+  }, [entries.length, globalSpecs?.workingPressureBar, masterData.nominalBores?.length]);
 
   const calculateQuantities = (entry: any, field: string, value: number) => {
     const pipeLength = entry.specs.individualPipeLength || 12.192;
@@ -6367,64 +6670,104 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-gray-900">Items</h2>
-        <div className="flex gap-3">
-          {/* Add Item Dropdown */}
-          <div className="relative inline-block">
+      {/* Show item type selection buttons when no items exist */}
+      {entries.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Add Your First Item</h2>
+          <p className="text-gray-600 mb-8">Select the type of steel item you want to add to this RFQ</p>
+          <div className="flex gap-6">
             <button
-              onClick={(e) => {
-                const menu = e.currentTarget.nextElementSibling;
-                menu?.classList.toggle('hidden');
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold inline-flex items-center gap-2"
+              onClick={() => onAddEntry()}
+              className="flex flex-col items-center justify-center w-48 h-40 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all shadow-lg hover:shadow-xl"
             >
-              + Add Item
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <svg className="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
+              <span className="text-lg font-semibold">Straight Pipe</span>
+              <span className="text-xs text-blue-200 mt-1">Standard pipeline sections</span>
             </button>
-            <div className="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-              <button
-                onClick={() => {
-                  onAddEntry();
-                  document.querySelector('.hidden')?.classList.add('hidden');
-                }}
-                className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100"
-              >
-                <div className="font-semibold text-blue-900">Straight Pipe</div>
-                <div className="text-xs text-gray-600 mt-0.5">Standard pipeline sections</div>
-              </button>
-              <button
-                onClick={() => {
-                  onAddBendEntry();
-                  document.querySelector('.hidden')?.classList.add('hidden');
-                }}
-                className="w-full text-left px-4 py-3 hover:bg-purple-50 transition-colors border-b border-gray-100"
-              >
-                <div className="font-semibold text-purple-900">Bend Section</div>
-                <div className="text-xs text-gray-600 mt-0.5">Elbows and custom bends</div>
-              </button>
-              <button
-                onClick={() => {
-                  onAddFittingEntry();
-                  document.querySelector('.hidden')?.classList.add('hidden');
-                }}
-                className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-b-lg transition-colors"
-              >
-                <div className="font-semibold text-green-900">Fittings</div>
-                <div className="text-xs text-gray-600 mt-0.5">Tees, laterals, and other fittings</div>
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-            <span className="text-green-700 font-semibold">Auto-calculating</span>
-            <span className="text-xs text-green-600">Results update automatically</span>
+            <button
+              onClick={() => onAddBendEntry()}
+              className="flex flex-col items-center justify-center w-48 h-40 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all shadow-lg hover:shadow-xl"
+            >
+              <svg className="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h4l3-7 4 14 3-7h4" />
+              </svg>
+              <span className="text-lg font-semibold">Bend Section</span>
+              <span className="text-xs text-blue-200 mt-1">Elbows and custom bends</span>
+            </button>
+            <button
+              onClick={() => onAddFittingEntry()}
+              className="flex flex-col items-center justify-center w-48 h-40 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all shadow-lg hover:shadow-xl"
+            >
+              <svg className="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span className="text-lg font-semibold">Fittings</span>
+              <span className="text-xs text-blue-200 mt-1">Tees, laterals, and other fittings</span>
+            </button>
           </div>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-900">Items</h2>
+            <div className="flex gap-3">
+              {/* Add Item Dropdown */}
+              <div className="relative inline-block">
+                <button
+                  onClick={(e) => {
+                    const menu = e.currentTarget.nextElementSibling;
+                    menu?.classList.toggle('hidden');
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold inline-flex items-center gap-2"
+                >
+                  + Add Item
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                  <button
+                    onClick={() => {
+                      onAddEntry();
+                      document.querySelector('.hidden')?.classList.add('hidden');
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100"
+                  >
+                    <div className="font-semibold text-blue-900">Straight Pipe</div>
+                    <div className="text-xs text-gray-600 mt-0.5">Standard pipeline sections</div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      onAddBendEntry();
+                      document.querySelector('.hidden')?.classList.add('hidden');
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-purple-50 transition-colors border-b border-gray-100"
+                  >
+                    <div className="font-semibold text-purple-900">Bend Section</div>
+                    <div className="text-xs text-gray-600 mt-0.5">Elbows and custom bends</div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      onAddFittingEntry();
+                      document.querySelector('.hidden')?.classList.add('hidden');
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-b-lg transition-colors"
+                  >
+                    <div className="font-semibold text-green-900">Fittings</div>
+                    <div className="text-xs text-gray-600 mt-0.5">Tees, laterals, and other fittings</div>
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+                <span className="text-green-700 font-semibold">Auto-calculating</span>
+                <span className="text-xs text-green-600">Results update automatically</span>
+              </div>
+            </div>
+          </div>
 
-      <div className="space-y-3">
+          <div className="space-y-3">
         {entries.map((entry: any, index: number) => (
           <div key={`${entry.id}-${index}`} className="border-2 border-gray-200 rounded-lg p-5 bg-white shadow-sm">
             <div className="flex justify-between items-center mb-3">
@@ -7724,12 +8067,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                 </div>
 
                 {/* 3D Pipe Preview */}
-                {entry.specs?.totalLength && entry.calculation?.outsideDiameterMm && (
+                {entry.specs?.nominalBoreMm && (
                   <Pipe3DPreview
-                    length={entry.specs.totalLength}
-                    outerDiameter={entry.calculation.outsideDiameterMm}
-                    wallThickness={entry.calculation.wallThicknessMm || 5}
-                    endConfiguration={entry.specs.pipeEndConfig || 'PE'}
+                    length={entry.specs.individualPipeLength || 12.192}
+                    outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
+                    wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
+                    endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
                     materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
                   />
                 )}
@@ -7750,36 +8093,75 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       value={entry.specs.nominalBoreMm}
                       onChange={async (e) => {
                         const nominalBore = Number(e.target.value);
-                        
+
                         // First update with the nominal bore
                         onUpdateEntry(entry.id, {
-                          specs: { 
-                            ...entry.specs, 
+                          specs: {
+                            ...entry.specs,
                             nominalBoreMm: nominalBore
                           }
                         });
-                        
+
                         // Fetch available schedules for this combination
                         const steelSpecId = entry.specs.steelSpecificationId || globalSpecs.steelSpecificationId || 2;
-                        await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
-                        
+                        const schedules = await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
+
                         // Then calculate auto specs asynchronously
                         try {
-                          const autoSpecs = await autoCalculateSpecs({ 
-                            specs: { ...entry.specs, nominalBoreMm: nominalBore } 
+                          const autoSpecs = await autoCalculateSpecs({
+                            specs: { ...entry.specs, nominalBoreMm: nominalBore }
                           });
-                          
-                          const updatedEntry = {
-                            ...entry,
-                            specs: { 
-                              ...entry.specs, 
-                              nominalBoreMm: nominalBore,
-                              ...autoSpecs
+
+                          if (autoSpecs.wallThicknessMm || autoSpecs.minimumWallThickness) {
+                            const minWT = autoSpecs.minimumWallThickness || autoSpecs.wallThicknessMm || 0;
+
+                            // Find the best matching schedule from available schedules
+                            // Handle both camelCase and snake_case property names
+                            const availableSchedules = schedules || [];
+                            const eligibleSchedules = availableSchedules
+                              .filter((dim: any) => {
+                                const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
+                                return wt >= minWT;
+                              })
+                              .sort((a: any, b: any) => {
+                                const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
+                                const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
+                                return wtA - wtB;
+                              });
+
+                            let matchedSchedule = null;
+                            let matchedWT = minWT;
+
+                            if (eligibleSchedules.length > 0) {
+                              matchedSchedule = eligibleSchedules[0].scheduleDesignation || eligibleSchedules[0].schedule_designation || eligibleSchedules[0].scheduleNumber?.toString() || eligibleSchedules[0].schedule_number?.toString();
+                              matchedWT = eligibleSchedules[0].wallThicknessMm || eligibleSchedules[0].wall_thickness_mm;
+                            } else if (availableSchedules.length > 0) {
+                              const sorted = [...availableSchedules].sort((a: any, b: any) => {
+                                const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
+                                const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
+                                return wtB - wtA;
+                              });
+                              matchedSchedule = sorted[0].scheduleDesignation || sorted[0].schedule_designation || sorted[0].scheduleNumber?.toString() || sorted[0].schedule_number?.toString();
+                              matchedWT = sorted[0].wallThicknessMm || sorted[0].wall_thickness_mm;
                             }
-                          };
-                          
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
+
+                            const updatedEntry = {
+                              ...entry,
+                              minimumSchedule: matchedSchedule,
+                              minimumWallThickness: minWT,
+                              availableUpgrades: eligibleSchedules.slice(1),
+                              isScheduleOverridden: false,
+                              specs: {
+                                ...entry.specs,
+                                nominalBoreMm: nominalBore,
+                                scheduleNumber: matchedSchedule,
+                                wallThicknessMm: matchedWT,
+                              }
+                            };
+
+                            updatedEntry.description = generateItemDescription(updatedEntry);
+                            onUpdateEntry(entry.id, updatedEntry);
+                          }
                         } catch (error) {
                           console.error('Error auto-calculating specs:', error);
                         }
@@ -7812,142 +8194,123 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <span className="text-blue-600 text-xs ml-2 font-bold">(User Override)</span>
                       )}
                     </label>
-                    
+
                     {globalSpecs?.workingPressureBar && entry.specs.nominalBoreMm ? (
                       <>
                         <div className="bg-green-50 p-2 rounded-md space-y-2">
                           <p className="text-green-800 font-medium text-xs mb-2">
                             Auto-calculated based on {globalSpecs.workingPressureBar} bar and {entry.specs.nominalBoreMm}mm NB
-                            {entry.minimumSchedule && (
-                              <span className="block text-green-700 mt-0.5">
-                                Minimum recommended: {entry.minimumSchedule} ({entry.minimumWallThickness}mm)
-                              </span>
-                            )}
                           </p>
 
-                          {/* Editable Schedule */}
+                          {/* Schedule Dropdown with Recommended + Upgrades */}
                           <div>
                             <label className="block text-xs font-medium text-black mb-1">
-                              Current Schedule *
+                              Schedule *
                             </label>
                             <select
                               value={entry.specs.scheduleNumber || ''}
                               onChange={async (e) => {
                                 const newSchedule = e.target.value;
-                                
+
                                 // Find the selected dimension to get wall thickness
+                                // Handle both camelCase and snake_case property names
                                 const availableSchedules = availableSchedulesMap[entry.id] || [];
-                                const selectedDimension = availableSchedules.find((dim: any) => 
-                                  (dim.schedule_designation || dim.schedule_number?.toString()) === newSchedule
-                                );
-                                
-                                // Check if it's a downgrade
-                                const isDowngrade = entry.minimumSchedule && newSchedule && 
-                                  entry.availableUpgrades && 
-                                  !entry.availableUpgrades.some((u: any) => 
-                                    (u.schedule_designation || u.schedule_number?.toString()) === newSchedule
-                                  ) && newSchedule !== entry.minimumSchedule;
-                                
-                                if (isDowngrade) {
-                                  alert(`Cannot downgrade below minimum recommended schedule (${entry.minimumSchedule})`);
-                                  return;
-                                }
-                                
-                                // Use wall thickness from API data
-                                const autoWallThickness = selectedDimension?.wall_thickness_mm || null;
-                                
+                                const selectedDimension = availableSchedules.find((dim: any) => {
+                                  const schedName = dim.scheduleDesignation || dim.schedule_designation || dim.scheduleNumber?.toString() || dim.schedule_number?.toString();
+                                  return schedName === newSchedule;
+                                });
+
+                                // Use wall thickness from API data (handle both naming conventions)
+                                const autoWallThickness = selectedDimension?.wallThicknessMm || selectedDimension?.wall_thickness_mm || null;
+
                                 const updatedEntry: any = {
-                                  specs: { 
-                                    ...entry.specs, 
+                                  specs: {
+                                    ...entry.specs,
                                     scheduleNumber: newSchedule,
                                     wallThicknessMm: autoWallThickness || entry.specs.wallThicknessMm
                                   },
                                   isScheduleOverridden: newSchedule !== entry.minimumSchedule
                                 };
-                                
+
                                 // Auto-update description
                                 updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
-                                
+
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
                               className="w-full px-2 py-1.5 text-black border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                             >
                               <option value="">Select schedule...</option>
-                              {(availableSchedulesMap[entry.id] || []).map((dim: any) => {
-                                const scheduleValue = dim.schedule_designation || dim.schedule_number?.toString();
-                                const label = `${scheduleValue} (${dim.wall_thickness_mm}mm)`;
-                                return (
-                                  <option key={dim.id} value={scheduleValue}>
-                                    {label}
-                                  </option>
-                                );
-                              })}
-                              {(!availableSchedulesMap[entry.id] || availableSchedulesMap[entry.id].length === 0) && (
-                                <option disabled>No schedules available - select nominal bore first</option>
-                              )}
+                              {(() => {
+                                const allSchedules = availableSchedulesMap[entry.id] || [];
+                                const minimumWT = entry.minimumWallThickness || 0;
+
+                                // Filter to only show schedules >= minimum wall thickness, sorted by wall thickness
+                                // Handle both camelCase and snake_case property names
+                                const eligibleSchedules = allSchedules
+                                  .filter((dim: any) => {
+                                    const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
+                                    return wt >= minimumWT;
+                                  })
+                                  .sort((a: any, b: any) => {
+                                    const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
+                                    const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
+                                    return wtA - wtB;
+                                  });
+
+                                // Find the recommended schedule (closest to minimum wall thickness)
+                                const recommendedSchedule = eligibleSchedules.length > 0 ? eligibleSchedules[0] : null;
+
+                                if (eligibleSchedules.length === 0) {
+                                  return null; // Will show "No schedules available" below
+                                }
+
+                                return eligibleSchedules.map((dim: any) => {
+                                  const scheduleValue = dim.scheduleDesignation || dim.schedule_designation || dim.scheduleNumber?.toString() || dim.schedule_number?.toString() || 'Unknown';
+                                  const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
+                                  const isRecommended = recommendedSchedule && dim.id === recommendedSchedule.id;
+                                  const label = isRecommended
+                                    ? `★ ${scheduleValue} (${wt}mm) - RECOMMENDED`
+                                    : `${scheduleValue} (${wt}mm)`;
+                                  return (
+                                    <option key={dim.id} value={scheduleValue}>
+                                      {label}
+                                    </option>
+                                  );
+                                });
+                              })()}
+                              {(() => {
+                                const allSchedules = availableSchedulesMap[entry.id] || [];
+                                const minimumWT = entry.minimumWallThickness || 0;
+                                const eligibleSchedules = allSchedules.filter((dim: any) => {
+                                  const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
+                                  return wt >= minimumWT;
+                                });
+                                if (eligibleSchedules.length === 0) {
+                                  return <option disabled>No schedules available - select nominal bore first</option>;
+                                }
+                                return null;
+                              })()}
                             </select>
+                            {entry.minimumSchedule && (
+                              <p className="text-xs text-green-700 mt-1">
+                                Minimum required: {entry.minimumWallThickness}mm wall thickness
+                              </p>
+                            )}
                           </div>
 
-                          {/* Editable Wall Thickness */}
+                          {/* Wall Thickness (Read-only, derived from schedule) */}
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Wall Thickness (mm) *
+                              Wall Thickness (mm)
                             </label>
                             <input
-                              type="number"
-                              step="0.001"
-                              value={entry.specs.wallThicknessMm || ''}
-                              onChange={(e) => {
-                                const newWT = Number(e.target.value);
-                                // Check if it's below minimum
-                                if (entry.minimumWallThickness && newWT < entry.minimumWallThickness) {
-                                  alert(`Wall thickness cannot be less than minimum recommended (${entry.minimumWallThickness}mm)`);
-                                  return;
-                                }
-                                onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, wallThicknessMm: newWT },
-                                  isScheduleOverridden: true
-                                });
-                              }}
-                              className="w-full px-2 py-1.5 text-black border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              placeholder="e.g., 12.7"
+                              type="text"
+                              value={entry.specs.wallThicknessMm ? `${entry.specs.wallThicknessMm}mm` : 'Select schedule above'}
+                              readOnly
+                              className="w-full px-2 py-1.5 text-black bg-gray-100 border border-gray-300 rounded-md text-xs"
                             />
                           </div>
-
-                          {/* Upgrade Suggestions */}
-                          {entry.availableUpgrades && entry.availableUpgrades.length > 0 && (
-                            <div className="border-t border-green-200 pt-2 mt-2">
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                💡 Available Upgrades
-                              </label>
-                              <div className="text-xs text-gray-600 space-y-1">
-                                {entry.availableUpgrades.slice(0, 3).map((upgrade: any) => (
-                                  <button
-                                    key={upgrade.id}
-                                    type="button"
-                                    onClick={() => {
-                                      onUpdateEntry(entry.id, {
-                                        ...entry,
-                                        specs: {
-                                          ...entry.specs,
-                                          scheduleNumber: upgrade.schedule_designation || upgrade.schedule_number?.toString(),
-                                          wallThicknessMm: upgrade.wall_thickness_mm,
-                                        },
-                                        isScheduleOverridden: true
-                                      });
-                                    }}
-                                    className="block w-full text-left px-2 py-1 hover:bg-green-100 rounded text-xs"
-                                  >
-                                    → {upgrade.schedule_designation || upgrade.schedule_number?.toString()} ({upgrade.wall_thickness_mm}mm)
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
-                        <p className="text-xs text-gray-700 mt-1">
-                          Values can be edited manually. Cannot go below minimum recommended.
-                        </p>
                       </>
                     ) : (
                       <>
@@ -7955,35 +8318,38 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           value={entry.specs.scheduleNumber || ''}
                           onChange={(e) => {
                             const newSchedule = e.target.value;
-                            
+
                             // Find the selected dimension to get wall thickness
+                            // Handle both camelCase and snake_case property names
                             const availableSchedules = availableSchedulesMap[entry.id] || [];
-                            const selectedDimension = availableSchedules.find((dim: any) => 
-                              (dim.schedule_designation || dim.schedule_number?.toString()) === newSchedule
-                            );
-                            
-                            // Use wall thickness from API data
-                            const autoWallThickness = selectedDimension?.wall_thickness_mm || null;
-                            
-                            const updatedEntry: any = { 
-                              specs: { 
-                                ...entry.specs, 
+                            const selectedDimension = availableSchedules.find((dim: any) => {
+                              const schedName = dim.scheduleDesignation || dim.schedule_designation || dim.scheduleNumber?.toString() || dim.schedule_number?.toString();
+                              return schedName === newSchedule;
+                            });
+
+                            // Use wall thickness from API data (handle both naming conventions)
+                            const autoWallThickness = selectedDimension?.wallThicknessMm || selectedDimension?.wall_thickness_mm || null;
+
+                            const updatedEntry: any = {
+                              specs: {
+                                ...entry.specs,
                                 scheduleNumber: newSchedule,
                                 wallThicknessMm: autoWallThickness || entry.specs.wallThicknessMm
                               }
                             };
-                            
+
                             // Auto-update description
                             updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
-                            
+
                             onUpdateEntry(entry.id, updatedEntry);
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         >
                           <option value="">Select schedule...</option>
                           {(availableSchedulesMap[entry.id] || []).map((dim: any) => {
-                            const scheduleValue = dim.schedule_designation || dim.schedule_number?.toString();
-                            const label = `${scheduleValue} (${dim.wall_thickness_mm}mm)`;
+                            const scheduleValue = dim.scheduleDesignation || dim.schedule_designation || dim.scheduleNumber?.toString() || dim.schedule_number?.toString() || 'Unknown';
+                            const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
+                            const label = `${scheduleValue} (${wt}mm)`;
                             return (
                               <option key={dim.id} value={scheduleValue}>
                                 {label}
@@ -8168,6 +8534,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </label>
                       {globalSpecs?.flangeStandardId && (
                         <label className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer">
+                          <span className="text-gray-500 italic">(click here to change flanges)</span>
                           <input
                             type="checkbox"
                             checked={entry.hasFlangeOverride || false}
@@ -8499,7 +8866,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
             </div>
           </div>
         </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -9279,33 +9648,68 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
   // Fetch available schedules for a specific entry
   const fetchAvailableSchedules = async (entryId: string, steelSpecId: number, nominalBoreMm: number) => {
+    // Check for fallback data first to provide immediate response
+    const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[nominalBoreMm] || [];
+
     try {
       const { masterDataApi } = await import('@/app/lib/api/client');
 
+      console.log(`[fetchAvailableSchedules] Entry: ${entryId}, Steel: ${steelSpecId}, NB: ${nominalBoreMm}mm`);
+      console.log(`[fetchAvailableSchedules] masterData.nominalBores count: ${masterData.nominalBores?.length || 0}`);
+
       // Find the nominal outside diameter ID from nominalBoreMm
-      const nominalBore = masterData.nominalBores?.find(nb => nb.nominal_diameter_mm === nominalBoreMm);
+      // Handle both snake_case (from API) and camelCase (from fallback data) property names
+      const nominalBore = masterData.nominalBores?.find((nb: any) => {
+        const nbValue = nb.nominal_diameter_mm ?? nb.nominalDiameterMm;
+        return nbValue === nominalBoreMm || nbValue === Number(nominalBoreMm);
+      });
+
       if (!nominalBore) {
-        console.warn(`No nominal bore found for ${nominalBoreMm}mm`);
-        return;
+        console.warn(`[fetchAvailableSchedules] No nominal bore found for ${nominalBoreMm}mm in masterData`);
+        // Use fallback data if available
+        if (fallbackSchedules.length > 0) {
+          console.log(`[fetchAvailableSchedules] Using ${fallbackSchedules.length} fallback schedules for ${nominalBoreMm}mm`);
+          setAvailableSchedulesMap(prev => ({
+            ...prev,
+            [entryId]: fallbackSchedules
+          }));
+          return fallbackSchedules;
+        }
+        return [];
       }
+
+      console.log(`[fetchAvailableSchedules] Found nominalBore ID: ${nominalBore.id}`);
 
       const dimensions = await masterDataApi.getPipeDimensionsAll(steelSpecId, nominalBore.id);
 
-      // Store in map
+      console.log(`[fetchAvailableSchedules] Got ${dimensions?.length || 0} dimensions for ${nominalBoreMm}mm NB`);
+      if (dimensions?.length > 0) {
+        console.log(`[fetchAvailableSchedules] First schedule:`, {
+          schedule: dimensions[0].scheduleDesignation || (dimensions[0] as any).schedule_designation,
+          wallThickness: dimensions[0].wallThicknessMm || (dimensions[0] as any).wall_thickness_mm
+        });
+      }
+
+      // Store in map - prefer API data, fallback to hardcoded schedules
+      const schedulesToUse = (dimensions && dimensions.length > 0) ? dimensions : fallbackSchedules;
       setAvailableSchedulesMap(prev => ({
         ...prev,
-        [entryId]: dimensions
+        [entryId]: schedulesToUse
       }));
 
-      return dimensions;
+      console.log(`[fetchAvailableSchedules] Using ${schedulesToUse.length} schedules (${(dimensions?.length > 0) ? 'API' : 'fallback'})`);
+      return schedulesToUse;
     } catch (error) {
       if (error instanceof Error && error.message !== 'Backend unavailable') {
-        console.error('Error fetching available schedules:', error);
+        console.error('[fetchAvailableSchedules] Error:', error);
       }
+      // Use fallback data when API is unavailable
+      console.log(`[fetchAvailableSchedules] API unavailable, using ${fallbackSchedules.length} fallback schedules for ${nominalBoreMm}mm`);
       setAvailableSchedulesMap(prev => ({
         ...prev,
-        [entryId]: []
+        [entryId]: fallbackSchedules
       }));
+      return fallbackSchedules;
     }
   };
 
@@ -9424,8 +9828,18 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         const result = await rfqApi.calculate(entry.specs);
         updateEntryCalculation(entry.id, result);
       } catch (error: any) {
-        // Silently handle when backend is unavailable
-        if (!(error instanceof Error && error.message === 'Backend unavailable')) {
+        // Silently handle expected errors:
+        // - Backend unavailable
+        // - 404 errors (invalid NB/schedule combinations)
+        // - Validation errors
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isExpectedError =
+          errorMessage === 'Backend unavailable' ||
+          errorMessage.includes('API Error (404)') ||
+          errorMessage.includes('not available in the database') ||
+          errorMessage.includes('API Error (400)');
+
+        if (!isExpectedError) {
           console.error(`Auto-calculation error for entry ${entry.id}:`, error);
         }
       }
@@ -9472,7 +9886,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         );
         // Auto-select if not already set
         if (recommendedId && !rfqData.globalSpecs?.flangePressureClassId) {
-          onUpdateGlobalSpecs({
+          updateGlobalSpecs({
             ...rfqData.globalSpecs,
             flangePressureClassId: recommendedId
           });
@@ -9500,6 +9914,14 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         break;
       case 2:
         errors = validatePage2Specifications(rfqData.globalSpecs);
+        // Check if steel pipes is selected but not confirmed
+        if (rfqData.requiredProducts?.includes('fabricated_steel') && !rfqData.globalSpecs?.steelPipesSpecsConfirmed) {
+          errors.steelPipesConfirmation = 'Please confirm the Steel Pipe Specifications before proceeding';
+        }
+        // Check if fasteners/gaskets is selected but not confirmed
+        if (rfqData.requiredProducts?.includes('fasteners_gaskets') && !rfqData.globalSpecs?.fastenersConfirmed) {
+          errors.fastenersConfirmation = 'Please confirm the Fasteners & Gaskets selection before proceeding';
+        }
         break;
       case 3:
         errors = validatePage3Items(rfqData.straightPipeEntries);
@@ -9526,13 +9948,6 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     setCurrentStep(stepNumber);
     scrollToTop();
   };
-
-  // Add initial entry if none exist
-  useEffect(() => {
-    if (rfqData.straightPipeEntries.length === 0) {
-      addStraightPipeEntry();
-    }
-  }, [rfqData.straightPipeEntries.length, addStraightPipeEntry]);
 
   // Auto-generate client item numbers based on customer name
   useEffect(() => {
@@ -10024,7 +10439,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex flex-col">
       {/* Save Progress Confirmation Toast */}
       {showSaveConfirmation && (
         <div className="fixed top-4 right-4 z-50 animate-pulse">
@@ -10037,163 +10452,161 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         </div>
       )}
 
-      <div className="flex h-full">
-        {/* Main Content Area - FULL WIDTH (No Sidebar) */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {/* Fixed Top Header Bar */}
-          <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <h1 className="text-lg font-bold text-gray-900">Create RFQ</h1>
-                <span className="text-sm text-gray-500">•</span>
-                <span className="text-sm font-medium text-blue-600">
-                  {steps.find(s => s.number === currentStep)?.title || 'RFQ'}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-sm text-gray-500">
-                  {rfqData?.projectName || 'New RFQ'}
-                </div>
-                <button
-                  onClick={onCancel}
-                  className="text-gray-400 hover:text-gray-600 text-xl px-2"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
+      {/* Fixed Top Header Bar */}
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-bold text-gray-900">Create RFQ</h1>
+            <span className="text-sm text-gray-500">•</span>
+            <span className="text-sm font-medium text-blue-600">
+              {steps.find(s => s.number === currentStep)?.title || 'RFQ'}
+            </span>
           </div>
-
-          {/* Scrollable Content - fills available space between header and toolbar */}
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
-            <div className="p-4">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="px-4 py-4">
-                  {isLoadingMasterData ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="flex items-center space-x-3">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        <span className="text-gray-600">Loading system data...</span>
-                      </div>
-                    </div>
-                  ) : (
-                    renderCurrentStep()
-                  )}
-                </div>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-500">
+              {rfqData?.projectName || 'New RFQ'}
             </div>
+            <button
+              onClick={onCancel}
+              className="text-gray-400 hover:text-gray-600 text-xl px-2"
+            >
+              ✕
+            </button>
           </div>
+        </div>
+      </div>
 
-          {/* Fixed Bottom Navigation Toolbar - matches top navbar */}
-          <div className="flex-shrink-0 px-4 py-3 shadow-lg" style={{ backgroundColor: '#001F3F' }}>
-            <div className="flex items-center justify-between">
-              {/* Left side - Previous button */}
-              <div className="w-32">
-                <button
-                  onClick={handlePrevStep}
-                  disabled={currentStep === 1}
-                  className="px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: currentStep === 1 ? 'transparent' : '#003366',
-                    color: '#FFA500',
-                    border: '1px solid #FFA500'
-                  }}
-                >
-                  ← Previous
-                </button>
-              </div>
-
-              {/* Center - Step Navigation Icons */}
-              <div className="flex items-center gap-3">
-                {steps.map((step, idx) => (
-                  <div key={step.number} className="flex items-center">
-                    <button
-                      onClick={() => handleStepClick(step.number)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all"
-                      style={{
-                        backgroundColor: step.number === currentStep
-                          ? '#FFA500'
-                          : step.number < currentStep
-                          ? '#003366'
-                          : 'transparent',
-                        border: step.number === currentStep
-                          ? '2px solid #FFA500'
-                          : step.number < currentStep
-                          ? '1px solid #4CAF50'
-                          : '1px solid rgba(255, 165, 0, 0.3)'
-                      }}
-                    >
-                      <div
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
-                        style={{
-                          backgroundColor: step.number === currentStep
-                            ? '#001F3F'
-                            : step.number < currentStep
-                            ? '#4CAF50'
-                            : 'rgba(255, 165, 0, 0.3)',
-                          color: '#FFFFFF'
-                        }}
-                      >
-                        {step.number < currentStep ? '✓' : step.number}
-                      </div>
-                      <span
-                        className="text-sm font-medium hidden md:inline"
-                        style={{
-                          color: step.number === currentStep
-                            ? '#001F3F'
-                            : step.number < currentStep
-                            ? '#4CAF50'
-                            : 'rgba(255, 165, 0, 0.6)'
-                        }}
-                      >
-                        {step.title}
-                      </span>
-                    </button>
-                    {idx < steps.length - 1 && (
-                      <div
-                        className="w-8 h-0.5 mx-1"
-                        style={{ backgroundColor: step.number < currentStep ? '#4CAF50' : 'rgba(255, 165, 0, 0.3)' }}
-                      />
-                    )}
+      {/* Scrollable Content - grows to fill space, with padding for fixed bottom bar */}
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-20">
+        <div className="p-4">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="px-4 py-4">
+              {isLoadingMasterData ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center space-x-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="text-gray-600">Loading system data...</span>
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : (
+                renderCurrentStep()
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
-              {/* Right side - Save Progress & Next/Submit buttons */}
-              <div className="flex items-center gap-3 justify-end">
+      {/* Fixed Bottom Navigation Toolbar - always visible at bottom */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-[9999] px-4 py-3 shadow-2xl border-t border-gray-700"
+        style={{ backgroundColor: '#001F3F' }}
+      >
+        <div className="flex items-center justify-between max-w-full">
+          {/* Left side - Previous button */}
+          <div className="w-32">
+            <button
+              onClick={handlePrevStep}
+              disabled={currentStep === 1}
+              className="px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: currentStep === 1 ? 'transparent' : '#003366',
+                color: '#FFA500',
+                border: '1px solid #FFA500'
+              }}
+            >
+              ← Previous
+            </button>
+          </div>
+
+          {/* Center - Step Navigation Icons */}
+          <div className="flex items-center gap-3">
+            {steps.map((step, idx) => (
+              <div key={step.number} className="flex items-center">
                 <button
-                  onClick={handleSaveProgress}
-                  className="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all"
+                  onClick={() => handleStepClick(step.number)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all"
                   style={{
-                    backgroundColor: '#003366',
-                    color: '#FFA500',
-                    border: '1px solid #FFA500'
+                    backgroundColor: step.number === currentStep
+                      ? '#FFA500'
+                      : step.number < currentStep
+                      ? '#003366'
+                      : 'transparent',
+                    border: step.number === currentStep
+                      ? '2px solid #FFA500'
+                      : step.number < currentStep
+                      ? '1px solid #4CAF50'
+                      : '1px solid rgba(255, 165, 0, 0.3)'
                   }}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                  </svg>
-                  Save Progress
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
+                    style={{
+                      backgroundColor: step.number === currentStep
+                        ? '#001F3F'
+                        : step.number < currentStep
+                        ? '#4CAF50'
+                        : 'rgba(255, 165, 0, 0.3)',
+                      color: '#FFFFFF'
+                    }}
+                  >
+                    {step.number < currentStep ? '✓' : step.number}
+                  </div>
+                  <span
+                    className="text-sm font-medium hidden md:inline"
+                    style={{
+                      color: step.number === currentStep
+                        ? '#001F3F'
+                        : step.number < currentStep
+                        ? '#4CAF50'
+                        : 'rgba(255, 165, 0, 0.6)'
+                    }}
+                  >
+                    {step.title}
+                  </span>
                 </button>
-                {currentStep < 4 ? (
-                  <button
-                    onClick={nextStep}
-                    className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
-                    style={{ backgroundColor: '#FFA500', color: '#001F3F' }}
-                  >
-                    Next →
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {/* Submit logic handled in step 4 */}}
-                    className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
-                    style={{ backgroundColor: '#4CAF50', color: '#FFFFFF' }}
-                  >
-                    Submit RFQ
-                  </button>
+                {idx < steps.length - 1 && (
+                  <div
+                    className="w-8 h-0.5 mx-1"
+                    style={{ backgroundColor: step.number < currentStep ? '#4CAF50' : 'rgba(255, 165, 0, 0.3)' }}
+                  />
                 )}
               </div>
-            </div>
+            ))}
+          </div>
+
+          {/* Right side - Save Progress & Next/Submit buttons */}
+          <div className="flex items-center gap-3 justify-end">
+            <button
+              onClick={handleSaveProgress}
+              className="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all"
+              style={{
+                backgroundColor: '#003366',
+                color: '#FFA500',
+                border: '1px solid #FFA500'
+              }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              Save Progress
+            </button>
+            {currentStep < 4 ? (
+              <button
+                onClick={nextStep}
+                className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
+                style={{ backgroundColor: '#FFA500', color: '#001F3F' }}
+              >
+                Next →
+              </button>
+            ) : (
+              <button
+                onClick={() => {/* Submit logic handled in step 4 */}}
+                className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
+                style={{ backgroundColor: '#4CAF50', color: '#FFFFFF' }}
+              >
+                Submit RFQ
+              </button>
+            )}
           </div>
         </div>
       </div>
