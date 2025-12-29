@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { StraightPipeEntry, useRfqForm } from '@/app/lib/hooks/useRfqForm';
-import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, SaMine, MineWithEnvironmentalData } from '@/app/lib/api/client';
+import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, SaMine, MineWithEnvironmentalData } from '@/app/lib/api/client';
 import {
   validatePage1RequiredFields,
   validatePage2Specifications,
@@ -97,6 +97,37 @@ const NB_TO_OD_LOOKUP: Record<number, number> = {
   750: 762.0, 800: 812.8, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2
 };
 
+// Flange weight lookup table (kg per flange) - Based on BS4504/SABS1123 standard PN16/1600 flanges
+// These are typical weld-neck flange weights including bolts and gaskets
+const NB_TO_FLANGE_WEIGHT_LOOKUP: Record<number, number> = {
+  15: 0.8,    // 15NB - approx 0.6kg flange + bolts/gasket
+  20: 1.0,    // 20NB
+  25: 1.2,    // 25NB
+  32: 1.6,    // 32NB
+  40: 2.0,    // 40NB
+  50: 2.5,    // 50NB
+  65: 3.5,    // 65NB
+  80: 4.5,    // 80NB
+  100: 6.0,   // 100NB - from migration: ~4-6kg for flange + ~2kg bolts/nuts
+  125: 8.5,   // 125NB
+  150: 11.0,  // 150NB
+  200: 16.0,  // 200NB - from migration: 12kg + bolts
+  250: 24.0,  // 250NB
+  300: 35.0,  // 300NB - from migration: ~30-42kg + bolts
+  350: 45.0,  // 350NB
+  400: 55.0,  // 400NB
+  450: 70.0,  // 450NB
+  500: 90.0,  // 500NB - from migration: ~80-100kg + bolts
+  600: 120.0, // 600NB
+  700: 150.0, // 700NB
+  750: 170.0, // 750NB
+  800: 190.0, // 800NB
+  900: 240.0, // 900NB
+  1000: 300.0, // 1000NB - from migration: ~86-200kg + bolts
+  1050: 350.0, // 1050NB
+  1200: 500.0  // 1200NB - from migration: ~470kg + bolts
+};
+
 /**
  * Local calculation for pipe weight when API is unavailable
  * Uses formula: ((OD - WT) * WT) * 0.02466 = Kg/m
@@ -145,8 +176,9 @@ const calculateLocalPipeResult = (
   const totalFlangeWeldLength = numberOfFlangeWelds * circumference;
   const totalButtWeldLength = numberOfButtWelds * circumference;
 
-  // Estimate flange weights (approximate values based on NB)
-  const flangeWeightPerUnit = nominalBoreMm < 100 ? 3 : nominalBoreMm < 200 ? 8 : nominalBoreMm < 400 ? 25 : nominalBoreMm < 600 ? 50 : 80;
+  // Get flange weight from lookup table (includes flange + bolts + gasket)
+  const flangeWeightPerUnit = NB_TO_FLANGE_WEIGHT_LOOKUP[nominalBoreMm] ||
+    (nominalBoreMm < 100 ? 5 : nominalBoreMm < 200 ? 12 : nominalBoreMm < 400 ? 40 : nominalBoreMm < 600 ? 80 : 150);
   const totalFlangeWeight = numberOfFlanges * flangeWeightPerUnit;
 
   // Total system weight
@@ -225,12 +257,67 @@ interface LiningRecommendation {
 // Fallback pipe schedule data (ASTM A106 Gr B) for when backend is unavailable
 // Defined at module level so it can be used by both ItemUploadStep and main component
 const FALLBACK_PIPE_SCHEDULES: Record<number, Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }>> = {
+  15: [
+    { id: 151, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 2.77 },
+    { id: 152, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 3.73 },
+    { id: 153, scheduleDesignation: 'Sch 160', wallThicknessMm: 4.78 },
+    { id: 154, scheduleDesignation: 'XXS', wallThicknessMm: 7.47 },
+  ],
+  20: [
+    { id: 201, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 2.87 },
+    { id: 202, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 3.91 },
+    { id: 203, scheduleDesignation: 'Sch 160', wallThicknessMm: 5.56 },
+    { id: 204, scheduleDesignation: 'XXS', wallThicknessMm: 7.82 },
+  ],
+  25: [
+    { id: 251, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 3.38 },
+    { id: 252, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 4.55 },
+    { id: 253, scheduleDesignation: 'Sch 160', wallThicknessMm: 6.35 },
+    { id: 254, scheduleDesignation: 'XXS', wallThicknessMm: 9.09 },
+  ],
+  32: [
+    { id: 321, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 3.56 },
+    { id: 322, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 4.85 },
+    { id: 323, scheduleDesignation: 'Sch 160', wallThicknessMm: 6.35 },
+    { id: 324, scheduleDesignation: 'XXS', wallThicknessMm: 9.70 },
+  ],
+  40: [
+    { id: 401, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 3.68 },
+    { id: 402, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 5.08 },
+    { id: 403, scheduleDesignation: 'Sch 160', wallThicknessMm: 7.14 },
+    { id: 404, scheduleDesignation: 'XXS', wallThicknessMm: 10.15 },
+  ],
+  50: [
+    { id: 501, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 3.91 },
+    { id: 502, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 5.54 },
+    { id: 503, scheduleDesignation: 'Sch 160', wallThicknessMm: 8.74 },
+    { id: 504, scheduleDesignation: 'XXS', wallThicknessMm: 11.07 },
+  ],
+  65: [
+    { id: 651, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 5.16 },
+    { id: 652, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 7.01 },
+    { id: 653, scheduleDesignation: 'Sch 160', wallThicknessMm: 9.53 },
+    { id: 654, scheduleDesignation: 'XXS', wallThicknessMm: 14.02 },
+  ],
+  80: [
+    { id: 801, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 5.49 },
+    { id: 802, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 7.62 },
+    { id: 803, scheduleDesignation: 'Sch 160', wallThicknessMm: 11.13 },
+    { id: 804, scheduleDesignation: 'XXS', wallThicknessMm: 15.24 },
+  ],
   100: [
     { id: 1001, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 6.02 },
     { id: 1002, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 8.56 },
     { id: 1003, scheduleDesignation: 'Sch 120', wallThicknessMm: 11.13 },
     { id: 1004, scheduleDesignation: 'Sch 160', wallThicknessMm: 13.49 },
     { id: 1005, scheduleDesignation: 'XXS', wallThicknessMm: 17.12 },
+  ],
+  125: [
+    { id: 1251, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 6.55 },
+    { id: 1252, scheduleDesignation: 'Sch 80/XS', wallThicknessMm: 9.52 },
+    { id: 1253, scheduleDesignation: 'Sch 120', wallThicknessMm: 12.70 },
+    { id: 1254, scheduleDesignation: 'Sch 160', wallThicknessMm: 15.88 },
+    { id: 1255, scheduleDesignation: 'XXS', wallThicknessMm: 19.05 },
   ],
   150: [
     { id: 1501, scheduleDesignation: 'Sch 40/STD', wallThicknessMm: 7.11 },
@@ -338,6 +425,67 @@ const FALLBACK_PIPE_SCHEDULES: Record<number, Array<{ id: number; scheduleDesign
     { id: 6009, scheduleDesignation: 'Sch 120', wallThicknessMm: 46.02 },
     { id: 6010, scheduleDesignation: 'Sch 140', wallThicknessMm: 52.39 },
     { id: 6011, scheduleDesignation: 'Sch 160', wallThicknessMm: 59.34 },
+  ],
+  700: [
+    { id: 7001, scheduleDesignation: 'Sch 10', wallThicknessMm: 7.92 },
+    { id: 7002, scheduleDesignation: 'STD', wallThicknessMm: 9.52 },
+    { id: 7003, scheduleDesignation: 'XS', wallThicknessMm: 12.70 },
+    { id: 7004, scheduleDesignation: 'Sch 20', wallThicknessMm: 12.70 },
+    { id: 7005, scheduleDesignation: 'Sch 30', wallThicknessMm: 15.88 },
+    { id: 7006, scheduleDesignation: 'Sch 40', wallThicknessMm: 19.05 },
+    { id: 7007, scheduleDesignation: 'Sch 60', wallThicknessMm: 28.58 },
+  ],
+  750: [
+    { id: 7501, scheduleDesignation: 'Sch 10', wallThicknessMm: 7.92 },
+    { id: 7502, scheduleDesignation: 'STD', wallThicknessMm: 9.52 },
+    { id: 7503, scheduleDesignation: 'XS', wallThicknessMm: 12.70 },
+    { id: 7504, scheduleDesignation: 'Sch 20', wallThicknessMm: 12.70 },
+    { id: 7505, scheduleDesignation: 'Sch 30', wallThicknessMm: 15.88 },
+    { id: 7506, scheduleDesignation: 'Sch 40', wallThicknessMm: 20.62 },
+    { id: 7507, scheduleDesignation: 'Sch 60', wallThicknessMm: 31.75 },
+  ],
+  800: [
+    { id: 8001, scheduleDesignation: 'Sch 10', wallThicknessMm: 7.92 },
+    { id: 8002, scheduleDesignation: 'STD', wallThicknessMm: 9.52 },
+    { id: 8003, scheduleDesignation: 'XS', wallThicknessMm: 12.70 },
+    { id: 8004, scheduleDesignation: 'Sch 20', wallThicknessMm: 12.70 },
+    { id: 8005, scheduleDesignation: 'Sch 30', wallThicknessMm: 15.88 },
+    { id: 8006, scheduleDesignation: 'Sch 40', wallThicknessMm: 22.22 },
+    { id: 8007, scheduleDesignation: 'Sch 60', wallThicknessMm: 34.92 },
+  ],
+  900: [
+    { id: 9001, scheduleDesignation: 'Sch 10', wallThicknessMm: 9.52 },
+    { id: 9002, scheduleDesignation: 'STD', wallThicknessMm: 9.52 },
+    { id: 9003, scheduleDesignation: 'XS', wallThicknessMm: 12.70 },
+    { id: 9004, scheduleDesignation: 'Sch 20', wallThicknessMm: 12.70 },
+    { id: 9005, scheduleDesignation: 'Sch 30', wallThicknessMm: 15.88 },
+    { id: 9006, scheduleDesignation: 'Sch 40', wallThicknessMm: 25.40 },
+    { id: 9007, scheduleDesignation: 'Sch 60', wallThicknessMm: 38.10 },
+  ],
+  1000: [
+    { id: 10001, scheduleDesignation: 'Sch 10', wallThicknessMm: 9.52 },
+    { id: 10002, scheduleDesignation: 'STD', wallThicknessMm: 9.52 },
+    { id: 10003, scheduleDesignation: 'XS', wallThicknessMm: 12.70 },
+    { id: 10004, scheduleDesignation: 'Sch 20', wallThicknessMm: 12.70 },
+    { id: 10005, scheduleDesignation: 'Sch 30', wallThicknessMm: 16.66 },
+    { id: 10006, scheduleDesignation: 'Sch 40', wallThicknessMm: 26.19 },
+    { id: 10007, scheduleDesignation: 'Sch 60', wallThicknessMm: 40.49 },
+  ],
+  1050: [
+    { id: 10501, scheduleDesignation: 'Sch 10', wallThicknessMm: 9.52 },
+    { id: 10502, scheduleDesignation: 'STD', wallThicknessMm: 9.52 },
+    { id: 10503, scheduleDesignation: 'XS', wallThicknessMm: 12.70 },
+    { id: 10504, scheduleDesignation: 'Sch 20', wallThicknessMm: 12.70 },
+    { id: 10505, scheduleDesignation: 'Sch 30', wallThicknessMm: 16.66 },
+    { id: 10506, scheduleDesignation: 'Sch 40', wallThicknessMm: 27.79 },
+  ],
+  1200: [
+    { id: 12001, scheduleDesignation: 'Sch 10', wallThicknessMm: 9.52 },
+    { id: 12002, scheduleDesignation: 'STD', wallThicknessMm: 9.52 },
+    { id: 12003, scheduleDesignation: 'XS', wallThicknessMm: 12.70 },
+    { id: 12004, scheduleDesignation: 'Sch 20', wallThicknessMm: 14.27 },
+    { id: 12005, scheduleDesignation: 'Sch 30', wallThicknessMm: 17.48 },
+    { id: 12006, scheduleDesignation: 'Sch 40', wallThicknessMm: 31.75 },
   ],
 };
 
@@ -6590,6 +6738,23 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
     return description;
   };
 
+  // Update item descriptions when globalSpecs.workingPressureBar changes
+  useEffect(() => {
+    if (globalSpecs?.workingPressureBar) {
+      entries.forEach((entry: any) => {
+        // Only update if the entry has required specs and a description
+        if (entry.specs?.nominalBoreMm && entry.description) {
+          const newDescription = generateItemDescription(entry);
+          // Only update if description actually changed
+          if (newDescription !== entry.description) {
+            console.log(`[Description Update] Updating description for entry ${entry.id} with new pressure: ${globalSpecs.workingPressureBar} bar`);
+            onUpdateEntry(entry.id, { description: newDescription });
+          }
+        }
+      });
+    }
+  }, [globalSpecs?.workingPressureBar]);
+
   // Auto-calculate schedule and wall thickness when pressure and NB are available
   // Uses the new ASME B31.3 pipe schedule API for accurate pressure/temperature-based recommendations
   const autoCalculateSpecs = async (entry: any) => {
@@ -8189,21 +8354,22 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     </label>
                     <select
                       value={entry.specs.nominalBoreMm}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const nominalBore = Number(e.target.value);
                         if (!nominalBore) return;
 
                         console.log(`[NB onChange] Selected NB: ${nominalBore}mm`);
 
-                        // Get steel spec ID
+                        // Get steel spec ID and temperature
                         const steelSpecId = entry.specs.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
+                        const pressure = globalSpecs?.workingPressureBar || 0;
+                        const temperature = globalSpecs?.workingTemperatureC || 20;
 
-                        // Get schedules from fallback data directly
+                        // Get schedules from fallback data directly for synchronous dropdown update
                         const schedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
                         console.log(`[NB onChange] Using ${schedules.length} fallback schedules for ${nominalBore}mm`);
 
                         // CRITICAL: Set the availableSchedulesMap SYNCHRONOUSLY before updating entry
-                        // This ensures the dropdown has options that match the selected schedule value
                         if (schedules.length > 0) {
                           setAvailableSchedulesMap((prev: Record<string, any[]>) => ({
                             ...prev,
@@ -8212,50 +8378,74 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           console.log(`[NB onChange] Set availableSchedulesMap for entry ${entry.id} with ${schedules.length} schedules`);
                         }
 
-                        // Calculate minimum wall thickness using Barlow formula
-                        const pressure = globalSpecs?.workingPressureBar;
-                        let minWT = 0;
+                        // Try backend API for ASME B31.3 compliant schedule recommendation
                         let matchedSchedule: string | null = null;
                         let matchedWT = 0;
+                        let minWT = 0;
+                        let apiSucceeded = false;
 
-                        if (pressure && schedules.length > 0) {
-                          // OD lookup based on NB
-                          const odLookup: Record<number, number> = {
-                            100: 114.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
-                            350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6
-                          };
-                          const od = odLookup[nominalBore] || (nominalBore * 1.05);
+                        if (pressure > 0) {
+                          try {
+                            console.log(`[NB onChange] Calling pipeScheduleApi.recommend with NB=${nominalBore}, P=${pressure}bar, T=${temperature}°C`);
+                            const recommendation = await pipeScheduleApi.recommend({
+                              nbMm: nominalBore,
+                              pressureBar: pressure,
+                              temperatureCelsius: temperature,
+                              materialCode: steelSpecId === 1 ? 'ASTM_A53_Grade_B' : 'ASTM_A106_Grade_B'
+                            });
 
-                          // Barlow formula for minimum wall thickness
-                          const pressureMpa = pressure * 0.1;
-                          const allowableStress = 137.9; // MPa for A106 Gr B
-                          const safetyFactor = 1.2;
-                          minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
+                            if (recommendation && recommendation.recommendedSchedule) {
+                              matchedSchedule = recommendation.recommendedSchedule;
+                              matchedWT = recommendation.recommendedWallMm;
+                              minWT = recommendation.minRequiredThicknessMm;
+                              apiSucceeded = true;
+                              console.log(`[NB onChange] API recommended: ${matchedSchedule} (${matchedWT}mm), minWT=${minWT}mm`);
 
-                          console.log(`[NB onChange] Calculated minWT: ${minWT.toFixed(2)}mm for ${pressure} bar, OD=${od}mm`);
-
-                          // Find eligible schedules that meet minimum wall thickness
-                          const eligibleSchedules = schedules
-                            .filter(dim => dim.wallThicknessMm >= minWT)
-                            .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
-
-                          if (eligibleSchedules.length > 0) {
-                            // Use the first eligible schedule (smallest that meets requirement)
-                            matchedSchedule = eligibleSchedules[0].scheduleDesignation;
-                            matchedWT = eligibleSchedules[0].wallThicknessMm;
-                            console.log(`[NB onChange] Auto-selected schedule: ${matchedSchedule} (${matchedWT}mm)`);
-                          } else {
-                            // Use thickest available if none meet minimum
-                            const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
-                            matchedSchedule = sorted[0].scheduleDesignation;
-                            matchedWT = sorted[0].wallThicknessMm;
-                            console.log(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm, using thickest: ${matchedSchedule} (${matchedWT}mm)`);
+                              if (recommendation.warnings?.length > 0) {
+                                console.warn('[NB onChange] API warnings:', recommendation.warnings);
+                              }
+                            }
+                          } catch (error) {
+                            console.warn('[NB onChange] API call failed, using local calculation:', error);
                           }
-                        } else if (schedules.length > 0) {
-                          // No pressure set - use first schedule
-                          matchedSchedule = schedules[0].scheduleDesignation;
-                          matchedWT = schedules[0].wallThicknessMm;
-                          console.log(`[NB onChange] No pressure set, using first schedule: ${matchedSchedule}`);
+                        }
+
+                        // Fallback to local Barlow formula calculation if API failed
+                        if (!apiSucceeded && schedules.length > 0) {
+                          if (pressure > 0) {
+                            // OD lookup based on NB
+                            const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
+
+                            // Barlow formula for minimum wall thickness
+                            const pressureMpa = pressure * 0.1;
+                            const allowableStress = 137.9; // MPa for A106 Gr B
+                            const safetyFactor = 1.2;
+                            minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
+
+                            console.log(`[NB onChange] Local calc minWT: ${minWT.toFixed(2)}mm for ${pressure} bar, OD=${od}mm`);
+
+                            // Find eligible schedules that meet minimum wall thickness
+                            const eligibleSchedules = schedules
+                              .filter(dim => dim.wallThicknessMm >= minWT)
+                              .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
+
+                            if (eligibleSchedules.length > 0) {
+                              matchedSchedule = eligibleSchedules[0].scheduleDesignation;
+                              matchedWT = eligibleSchedules[0].wallThicknessMm;
+                              console.log(`[NB onChange] Local auto-selected: ${matchedSchedule} (${matchedWT}mm)`);
+                            } else {
+                              // Use thickest available if none meet minimum
+                              const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
+                              matchedSchedule = sorted[0].scheduleDesignation;
+                              matchedWT = sorted[0].wallThicknessMm;
+                              console.log(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm, using thickest: ${matchedSchedule} (${matchedWT}mm)`);
+                            }
+                          } else {
+                            // No pressure set - use first schedule
+                            matchedSchedule = schedules[0].scheduleDesignation;
+                            matchedWT = schedules[0].wallThicknessMm;
+                            console.log(`[NB onChange] No pressure set, using first schedule: ${matchedSchedule}`);
+                          }
                         }
 
                         // Build the update object
@@ -8275,7 +8465,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         // Update description
                         updatedEntry.description = generateItemDescription(updatedEntry);
 
-                        console.log(`[NB onChange] Updating entry ${entry.id} with schedule: ${matchedSchedule}, WT: ${matchedWT}mm`);
+                        console.log(`[NB onChange] Updating entry ${entry.id} with schedule: ${matchedSchedule}, WT: ${matchedWT}mm (API: ${apiSucceeded})`);
                         onUpdateEntry(entry.id, updatedEntry);
 
                         // Also fetch from API to potentially get better data (runs async in background)
@@ -8703,7 +8893,13 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               const override = e.target.checked;
                               onUpdateEntry(entry.id, {
                                 hasFlangeOverride: override,
-                                specs: override ? entry.specs : {
+                                flangeOverrideConfirmed: false,
+                                specs: override ? {
+                                  ...entry.specs,
+                                  // Copy global values to entry specs when enabling override
+                                  flangeStandardId: entry.specs.flangeStandardId || globalSpecs?.flangeStandardId,
+                                  flangePressureClassId: entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId
+                                } : {
                                   ...entry.specs,
                                   flangeStandardId: undefined,
                                   flangePressureClassId: undefined
@@ -8753,7 +8949,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         {globalSpecs?.flangePressureClassId && (
                           <div className="bg-blue-50 p-2 rounded border-l-2 border-blue-300">
                             <p className="text-blue-800 text-xs font-semibold">
-                              Recommended Flange Spec: 
+                              Recommended Flange Spec:
                               <span className="ml-1">
                                 {(() => {
                                   // Find pressure class designation
@@ -8764,7 +8960,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                   const flangeStandard = masterData.flangeStandards.find(
                                     (fs: any) => fs.id === globalSpecs.flangeStandardId
                                   );
-                                  
+
                                   if (pressureClass && flangeStandard) {
                                     return `${flangeStandard.code}/${pressureClass.designation}`;
                                   }
@@ -8780,74 +8976,144 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <select
-                          value={entry.specs.flangeStandardId || globalSpecs?.flangeStandardId || ''}
-                          onChange={(e) => onUpdateEntry(entry.id, { 
-                            specs: { ...entry.specs, flangeStandardId: e.target.value ? Number(e.target.value) : undefined }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                        >
-                          <option value="">Select flange standard...</option>
-                          {masterData.flangeStandards.map((standard: any) => (
-                            <option key={standard.id} value={standard.id}>
-                              {standard.code}
-                            </option>
-                          ))}
-                        </select>
-                        
-                        <select
-                          value={entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
-                          onChange={(e) => onUpdateEntry(entry.id, { 
-                            specs: { ...entry.specs, flangePressureClassId: e.target.value ? Number(e.target.value) : undefined }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                        >
-                          <option value="">Select pressure class...</option>
-                          {masterData.pressureClasses.map((pc: any) => (
-                            <option key={pc.id} value={pc.id}>
-                              {pc.designation}
-                            </option>
-                          ))}
-                        </select>
-                        
-                        {/* Individual Item Flange Specification Display */}
-                        {entry.specs.flangeStandardId && entry.specs.flangePressureClassId && (
-                          <div className="bg-blue-50 border border-blue-200 p-3 rounded-md mt-2">
-                            <h5 className="text-sm font-semibold text-blue-800 mb-2">
-                              Item-Specific Flange Specification
-                            </h5>
+                        {/* Show confirmed override summary when confirmed */}
+                        {entry.flangeOverrideConfirmed ? (
+                          <div className="bg-blue-50 border-2 border-blue-400 p-3 rounded-md">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-blue-900 flex items-center gap-1">
+                                <span className="text-green-600">✓</span> Item-Specific Flange Confirmed
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: false })}
+                                className="px-3 py-1 text-xs font-medium text-blue-700 bg-white border border-blue-300 rounded hover:bg-blue-50 transition-colors"
+                              >
+                                Edit
+                              </button>
+                            </div>
                             <div className="bg-white p-2 rounded border border-blue-200">
-                              <p className="text-sm font-medium text-blue-900">
-                                Selected Specification: 
-                                <span className="ml-2 font-bold text-lg text-blue-800">
-                                  {(() => {
-                                    const flangeStandard = masterData.flangeStandards.find(
-                                      (fs: any) => fs.id === entry.specs.flangeStandardId
-                                    );
-                                    const pressureClass = masterData.pressureClasses.find(
-                                      (pc: any) => pc.id === entry.specs.flangePressureClassId
-                                    );
-                                    
-                                    if (flangeStandard && pressureClass) {
-                                      return `${flangeStandard.code}/${pressureClass.designation}`;
-                                    }
-                                    return 'N/A';
-                                  })()}
-                                </span>
+                              <p className="text-sm font-bold text-blue-800">
+                                {(() => {
+                                  const flangeStandard = masterData.flangeStandards.find(
+                                    (fs: any) => fs.id === entry.specs.flangeStandardId
+                                  );
+                                  const pressureClass = masterData.pressureClasses.find(
+                                    (pc: any) => pc.id === entry.specs.flangePressureClassId
+                                  );
+                                  if (flangeStandard && pressureClass) {
+                                    return `${flangeStandard.code} / ${pressureClass.designation}`;
+                                  }
+                                  return 'N/A';
+                                })()}
                               </p>
-                              <div className="text-xs text-blue-600 mt-1 grid grid-cols-2 gap-2">
-                                <div>
-                                  <span className="font-medium">Standard:</span> {masterData.flangeStandards.find((fs: any) => fs.id === entry.specs.flangeStandardId)?.code || 'N/A'}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Pressure Class:</span> {masterData.pressureClasses.find((pc: any) => pc.id === entry.specs.flangePressureClassId)?.designation || 'N/A'}
-                                </div>
-                              </div>
-                              <p className="text-blue-600 text-xs mt-2">
-                                💡 This item uses individual flange specification (overrides global settings)
+                              <p className="text-xs text-blue-600 mt-1">
+                                This flange specification is locked for this item only
                               </p>
                             </div>
                           </div>
+                        ) : (
+                          <>
+                            <select
+                              value={entry.specs.flangeStandardId || globalSpecs?.flangeStandardId || ''}
+                              onChange={(e) => onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, flangeStandardId: e.target.value ? Number(e.target.value) : undefined }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                            >
+                              <option value="">Select flange standard...</option>
+                              {masterData.flangeStandards.map((standard: any) => (
+                                <option key={standard.id} value={standard.id}>
+                                  {standard.code}
+                                </option>
+                              ))}
+                            </select>
+
+                            <select
+                              value={entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
+                              onChange={(e) => onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, flangePressureClassId: e.target.value ? Number(e.target.value) : undefined }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                            >
+                              <option value="">Select pressure class...</option>
+                              {masterData.pressureClasses.map((pc: any) => (
+                                <option key={pc.id} value={pc.id}>
+                                  {pc.designation}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Confirm/Edit Buttons for Override */}
+                            {entry.hasFlangeOverride && entry.specs.flangeStandardId && entry.specs.flangePressureClassId && (
+                              <div className="flex gap-2 mt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: true })}
+                                  className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-green-600 rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
+                                >
+                                  <span>✓</span> Confirm Override
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // Reset to global specs
+                                    onUpdateEntry(entry.id, {
+                                      hasFlangeOverride: false,
+                                      flangeOverrideConfirmed: false,
+                                      specs: {
+                                        ...entry.specs,
+                                        flangeStandardId: undefined,
+                                        flangePressureClassId: undefined
+                                      }
+                                    });
+                                  }}
+                                  className="flex-1 px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
+                                >
+                                  Use Global
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Individual Item Flange Specification Display */}
+                            {entry.specs.flangeStandardId && entry.specs.flangePressureClassId && !entry.hasFlangeOverride && (
+                              <div className="bg-blue-50 border border-blue-200 p-3 rounded-md mt-2">
+                                <h5 className="text-sm font-semibold text-blue-800 mb-2">
+                                  Item-Specific Flange Specification
+                                </h5>
+                                <div className="bg-white p-2 rounded border border-blue-200">
+                                  <p className="text-sm font-medium text-blue-900">
+                                    Selected Specification:
+                                    <span className="ml-2 font-bold text-lg text-blue-800">
+                                      {(() => {
+                                        const flangeStandard = masterData.flangeStandards.find(
+                                          (fs: any) => fs.id === entry.specs.flangeStandardId
+                                        );
+                                        const pressureClass = masterData.pressureClasses.find(
+                                          (pc: any) => pc.id === entry.specs.flangePressureClassId
+                                        );
+
+                                        if (flangeStandard && pressureClass) {
+                                          return `${flangeStandard.code}/${pressureClass.designation}`;
+                                        }
+                                        return 'N/A';
+                                      })()}
+                                    </span>
+                                  </p>
+                                  <div className="text-xs text-blue-600 mt-1 grid grid-cols-2 gap-2">
+                                    <div>
+                                      <span className="font-medium">Standard:</span> {masterData.flangeStandards.find((fs: any) => fs.id === entry.specs.flangeStandardId)?.code || 'N/A'}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">Pressure Class:</span> {masterData.pressureClasses.find((pc: any) => pc.id === entry.specs.flangePressureClassId)?.designation || 'N/A'}
+                                    </div>
+                                  </div>
+                                  <p className="text-blue-600 text-xs mt-2">
+                                    💡 This item uses individual flange specification (overrides global settings)
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -8855,162 +9121,110 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                 </div>
 
-                {/* Column 3 - Calculation Results & Weights */}
-                <div className="space-y-3">
-                  <h4 className="text-base font-bold text-gray-900 border-b-2 border-purple-500 pb-2 mb-4">
-                    📊 Calculation Results
-                  </h4>
+              </div>
 
-                  {/* Calculation Results */}
-                  {entry.calculation ? (
-                    <div className="bg-blue-50 border border-blue-200 p-3 rounded-md space-y-2">
-                      <h5 className="text-sm font-semibold text-blue-900 mb-2 border-b border-blue-200 pb-1">
-                        📊 Auto-Calculated Results
-                      </h5>
-                      
-                      {/* Pipe Quantities */}
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-white p-2 rounded">
-                          <p className="text-gray-700 font-medium">Quantity of Pipes</p>
-                          <p className="text-lg font-bold text-gray-900">{entry.calculation.calculatedPipeCount}</p>
-                          <p className="text-xs text-gray-700">pieces</p>
-                        </div>
-                        <div className="bg-white p-2 rounded">
-                          <p className="text-gray-700 font-medium">Total Length</p>
-                          <p className="text-lg font-bold text-gray-900">{entry.calculation.calculatedTotalLength?.toFixed(2)}</p>
-                          <p className="text-xs text-gray-700">meters</p>
-                        </div>
+              {/* Calculation Results - Full Width Compact Layout */}
+              <div className="mt-4">
+                <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
+                  📊 Calculation Results
+                </h4>
+
+                {entry.calculation ? (
+                  <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
+                    {/* Compact horizontal grid layout */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                      {/* Quantity of Pipes */}
+                      <div className="bg-white p-2 rounded text-center">
+                        <p className="text-xs text-gray-600 font-medium">Qty Pipes</p>
+                        <p className="text-lg font-bold text-gray-900">{entry.calculation.calculatedPipeCount}</p>
+                        <p className="text-xs text-gray-500">pieces</p>
                       </div>
 
-                      {/* Weight */}
-                      <div className="bg-white p-2 rounded">
-                        <p className="text-xs text-gray-700 font-medium mb-1">Total System Weight</p>
-                        <p className="text-xl font-bold text-blue-900">{formatWeight(entry.calculation.totalSystemWeight)}</p>
-                        <div className="text-xs text-gray-700 mt-0.5 space-y-0.5">
-                          <div className="flex justify-between">
-                            <span>Pipes:</span>
-                            <span>{formatWeight(entry.calculation.totalPipeWeight)}</span>
-                          </div>
-                          {entry.calculation.totalFlangeWeight > 0 && (
-                            <div className="flex justify-between">
-                              <span>Flanges:</span>
-                              <span>{formatWeight(entry.calculation.totalFlangeWeight)}</span>
-                            </div>
-                          )}
-                          {entry.calculation.totalBoltWeight > 0 && (
-                            <div className="flex justify-between">
-                              <span>Bolts:</span>
-                              <span>{formatWeight(entry.calculation.totalBoltWeight)}</span>
-                            </div>
-                          )}
-                          {entry.calculation.totalNutWeight > 0 && (
-                            <div className="flex justify-between">
-                              <span>Nuts:</span>
-                              <span>{formatWeight(entry.calculation.totalNutWeight)}</span>
-                            </div>
-                          )}
-                        </div>
+                      {/* Total Length */}
+                      <div className="bg-white p-2 rounded text-center">
+                        <p className="text-xs text-gray-600 font-medium">Total Length</p>
+                        <p className="text-lg font-bold text-gray-900">{entry.calculation.calculatedTotalLength?.toFixed(1)}m</p>
+                      </div>
+
+                      {/* Total System Weight */}
+                      <div className="bg-white p-2 rounded text-center">
+                        <p className="text-xs text-gray-600 font-medium">Total Weight</p>
+                        <p className="text-lg font-bold text-blue-900">{formatWeight(entry.calculation.totalSystemWeight)}</p>
+                        <p className="text-xs text-gray-500">
+                          (Pipe: {formatWeight(entry.calculation.totalPipeWeight)})
+                        </p>
                       </div>
 
                       {/* Flanges */}
-                      <div className="bg-white p-2 rounded">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="text-xs text-gray-700 font-medium">
-                              Flanges Required ({entry.specs.pipeEndConfiguration || 'PE'})
-                            </p>
-                            <p className="text-lg font-bold text-gray-900">
-                              {(() => {
-                                const flangesPerPipe = getFlangesPerPipe(entry.specs.pipeEndConfiguration || 'PE');
-                                const pipeCount = entry.calculation?.calculatedPipeCount || 0;
-                                return flangesPerPipe * pipeCount;
-                              })()}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {getFlangesPerPipe(entry.specs.pipeEndConfiguration || 'PE')} flange{getFlangesPerPipe(entry.specs.pipeEndConfiguration || 'PE') !== 1 ? 's' : ''} per pipe × {entry.calculation?.calculatedPipeCount || 0} pipes
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-700 font-medium">Flange Welds</p>
-                            <p className="text-sm font-semibold text-gray-900">
-                              {entry.calculation.numberOfFlangeWelds} ({entry.calculation.totalFlangeWeldLength?.toFixed(2)}m)
-                            </p>
-                          </div>
-                        </div>
+                      <div className="bg-white p-2 rounded text-center">
+                        <p className="text-xs text-gray-600 font-medium">Flanges</p>
+                        <p className="text-lg font-bold text-gray-900">
+                          {(() => {
+                            const flangesPerPipe = getFlangesPerPipe(entry.specs.pipeEndConfiguration || 'PE');
+                            return flangesPerPipe * (entry.calculation?.calculatedPipeCount || 0);
+                          })()}
+                        </p>
+                        <p className="text-xs text-gray-500">{formatWeight(entry.calculation.totalFlangeWeight)}</p>
+                      </div>
+
+                      {/* Flange Welds */}
+                      <div className="bg-white p-2 rounded text-center">
+                        <p className="text-xs text-gray-600 font-medium">Flange Welds</p>
+                        <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfFlangeWelds}</p>
+                        <p className="text-xs text-gray-500">{entry.calculation.totalFlangeWeldLength?.toFixed(2)}m</p>
                       </div>
 
                       {/* Butt Welds */}
-                      <div className="bg-white p-2 rounded">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="text-xs text-gray-700 font-medium">Butt Welds</p>
-                            <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfButtWelds}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-700 font-medium">Total Weld Length</p>
-                            <p className="text-sm font-semibold text-gray-900">
-                              {entry.calculation.totalButtWeldLength?.toFixed(2)}m
-                            </p>
-                          </div>
-                        </div>
+                      <div className="bg-white p-2 rounded text-center">
+                        <p className="text-xs text-gray-600 font-medium">Butt Welds</p>
+                        <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfButtWelds}</p>
+                        <p className="text-xs text-gray-500">{entry.calculation.totalButtWeldLength?.toFixed(2)}m</p>
                       </div>
 
-                      {/* Pipe End Configuration Welds */}
-                      {entry.specs.pipeEndConfiguration && (
-                        <div className="bg-green-50 p-2 rounded">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="text-xs text-green-700 font-medium">Pipe End Config Welds</p>
-                              <p className="text-lg font-bold text-green-900">
-                                {getWeldCountPerPipe(entry.specs.pipeEndConfiguration)} per pipe
-                              </p>
-                              <p className="text-xs text-green-600">
-                                Total: {getWeldCountPerPipe(entry.specs.pipeEndConfiguration) * (entry.calculation?.calculatedPipeCount || 0)} welds
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs text-green-700 font-medium">Configuration</p>
-                              <p className="text-sm font-semibold text-green-900">
-                                {entry.specs.pipeEndConfiguration || 'PE'}
-                              </p>
-                              <p className="text-xs text-green-600">
-                                {PIPE_END_OPTIONS.find(opt => opt.value === entry.specs.pipeEndConfiguration)?.label.split(' - ')[1] || ''}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Summary Note */}
-                      <p className="text-xs text-blue-900 font-medium bg-blue-100 p-2 rounded mt-2">
-                        💡 Based on {entry.specs.individualPipeLength}m pipe lengths with {entry.specs.pipeEndConfiguration || 'PE'} configuration
-                      </p>
+                      {/* Pipe End Config */}
+                      <div className="bg-green-50 p-2 rounded text-center">
+                        <p className="text-xs text-green-700 font-medium">Config Welds</p>
+                        <p className="text-lg font-bold text-green-900">
+                          {getWeldCountPerPipe(entry.specs.pipeEndConfiguration || 'PE') * (entry.calculation?.calculatedPipeCount || 0)}
+                        </p>
+                        <p className="text-xs text-green-600">{entry.specs.pipeEndConfiguration || 'PE'}</p>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="bg-gray-50 border border-gray-200 p-4 rounded-md text-center">
-                      <p className="text-sm text-gray-600">
-                        Fill in pipe specifications to see calculated results
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Results will appear automatically as you enter details
-                      </p>
-                      {/* Debug info - can be removed later */}
-                      <div className="mt-2 text-left text-xs text-gray-400 bg-gray-100 p-2 rounded">
-                        <p>Debug: NB={entry.specs.nominalBoreMm || 'not set'}, Sch={entry.specs.scheduleNumber || 'not set'}, Length={entry.specs.individualPipeLength || 'not set'}, Qty={entry.specs.quantityValue || 'not set'}, Pressure={globalSpecs?.workingPressureBar || 'not set'}</p>
+
+                    {/* Weight breakdown (compact) */}
+                    {(entry.calculation.totalBoltWeight > 0 || entry.calculation.totalNutWeight > 0) && (
+                      <div className="mt-2 flex gap-4 text-xs text-gray-600 justify-center">
+                        {entry.calculation.totalBoltWeight > 0 && (
+                          <span>Bolts: {formatWeight(entry.calculation.totalBoltWeight)}</span>
+                        )}
+                        {entry.calculation.totalNutWeight > 0 && (
+                          <span>Nuts: {formatWeight(entry.calculation.totalNutWeight)}</span>
+                        )}
                       </div>
-                      {/* Manual calculate button */}
-                      {entry.specs.nominalBoreMm && entry.specs.scheduleNumber && entry.specs.individualPipeLength && entry.specs.quantityValue && globalSpecs?.workingPressureBar && (
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 p-3 rounded-md">
+                    <p className="text-sm text-gray-600 text-center">
+                      Fill in pipe specifications to see calculated results
+                    </p>
+                    {/* Debug info */}
+                    <p className="text-xs text-gray-400 text-center mt-1">
+                      NB={entry.specs.nominalBoreMm || '-'}, Sch={entry.specs.scheduleNumber || '-'}, Length={entry.specs.individualPipeLength || '-'}, Qty={entry.specs.quantityValue || '-'}
+                    </p>
+                    {entry.specs.nominalBoreMm && entry.specs.scheduleNumber && entry.specs.individualPipeLength && entry.specs.quantityValue && globalSpecs?.workingPressureBar && (
+                      <div className="text-center mt-2">
                         <button
                           type="button"
                           onClick={() => onCalculate && onCalculate()}
-                          className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+                          className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                         >
                           Calculate Now
                         </button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
 
@@ -9036,12 +9250,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-blue-700">Weight Per Pipe</p>
+              <p className="text-xs font-medium text-blue-700">Weight Per Pipe (incl. flanges)</p>
               <p className="text-lg font-bold text-blue-900">
                 {(() => {
                   const firstEntry = entries[0];
-                  if (!firstEntry?.calculation?.totalPipeWeight || !firstEntry?.calculation?.calculatedPipeCount) return '-';
-                  const weightPerPipe = firstEntry.calculation.totalPipeWeight / firstEntry.calculation.calculatedPipeCount;
+                  if (!firstEntry?.calculation?.calculatedPipeCount) return '-';
+                  // Use totalSystemWeight which includes pipe + flanges + bolts
+                  const totalWeight = firstEntry.calculation.totalSystemWeight || firstEntry.calculation.totalPipeWeight || 0;
+                  if (!totalWeight) return '-';
+                  const weightPerPipe = totalWeight / firstEntry.calculation.calculatedPipeCount;
                   return formatWeight(weightPerPipe);
                 })()}
               </p>

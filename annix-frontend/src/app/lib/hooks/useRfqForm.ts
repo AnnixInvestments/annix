@@ -18,6 +18,9 @@ export interface StraightPipeEntry {
   minimumSchedule?: string;
   minimumWallThickness?: number;
   availableUpgrades?: any[];
+  // Flange override tracking
+  hasFlangeOverride?: boolean;
+  flangeOverrideConfirmed?: boolean;
 }
 
 export interface BendStub {
