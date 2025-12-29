@@ -9929,18 +9929,35 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   // Auto-calculate when entry specifications change (with debounce)
   useEffect(() => {
     const calculateEntry = async (entry: StraightPipeEntry) => {
+      // Get working pressure from entry specs or global specs
+      const workingPressureBar = entry.specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar;
+      const workingTemperatureC = entry.specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC;
+      const steelSpecificationId = entry.specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId;
+      const flangeStandardId = entry.specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId;
+      const flangePressureClassId = entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
+
       // Only auto-calculate if all required fields are present
-      const hasRequiredFields = 
+      const hasRequiredFields =
         entry.specs.nominalBoreMm &&
         (entry.specs.scheduleNumber || entry.specs.wallThicknessMm) &&
         entry.specs.individualPipeLength &&
-        entry.specs.quantityValue;
+        entry.specs.quantityValue &&
+        workingPressureBar;
 
       if (!hasRequiredFields) return;
 
       try {
         const { rfqApi } = await import('@/app/lib/api/client');
-        const result = await rfqApi.calculate(entry.specs);
+        // Merge entry specs with global specs
+        const calculationData = {
+          ...entry.specs,
+          workingPressureBar,
+          workingTemperatureC,
+          steelSpecificationId,
+          flangeStandardId,
+          flangePressureClassId,
+        };
+        const result = await rfqApi.calculate(calculationData);
         updateEntryCalculation(entry.id, result);
       } catch (error: any) {
         // Silently handle expected errors:
@@ -9982,7 +9999,13 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
       pipeEndConfiguration: e.specs.pipeEndConfiguration,
       flangeStandardId: e.specs.flangeStandardId,
       flangePressureClassId: e.specs.flangePressureClassId
-    })))
+    }))),
+    // Also watch global specs for calculation
+    rfqData.globalSpecs?.workingPressureBar,
+    rfqData.globalSpecs?.workingTemperatureC,
+    rfqData.globalSpecs?.steelSpecificationId,
+    rfqData.globalSpecs?.flangeStandardId,
+    rfqData.globalSpecs?.flangePressureClassId
   ]);
 
   // Initialize pressure classes when flange standard is set (e.g., from saved state or initial load)
