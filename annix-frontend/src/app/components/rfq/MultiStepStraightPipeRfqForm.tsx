@@ -6371,62 +6371,37 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
     ? Array.from(new Set(masterData.nominalBores.map((nb: any) => (nb.nominal_diameter_mm ?? nb.nominalDiameterMm) as number))).sort((a, b) => (a as number) - (b as number))
     : [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 1800, 2000]) as number[]; // fallback values
 
-  // Fetch available NB sizes for the selected steel specification
+  // Filter available NB sizes based on the selected steel specification
+  // Uses the STEEL_SPEC_NB_FALLBACK mapping to ensure correct NB ranges for each steel type
   useEffect(() => {
-    const fetchAvailableNBsForSteelSpec = async () => {
-      const steelSpecId = globalSpecs?.steelSpecificationId;
+    const steelSpecId = globalSpecs?.steelSpecificationId;
 
-      if (!steelSpecId) {
-        // No steel spec selected, show all NBs
-        setAvailableNominalBores(allNominalBores);
-        return;
-      }
+    if (!steelSpecId) {
+      // No steel spec selected, show all NBs
+      console.log('[ItemUploadStep] No steel spec selected, showing all NBs');
+      setAvailableNominalBores(allNominalBores);
+      return;
+    }
 
-      // Get the steel spec name for fallback lookup
-      const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
-      const steelSpecName = steelSpec?.steelSpecName || '';
+    // Get the steel spec name for lookup
+    const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
+    const steelSpecName = steelSpec?.steelSpecName || '';
 
-      setIsLoadingNominalBores(true);
-      try {
-        const { masterDataApi } = await import('@/app/lib/api/client');
-        const nominalBores = await masterDataApi.getNominalBores(steelSpecId);
+    console.log(`[ItemUploadStep] Steel spec selected: ${steelSpecId} - "${steelSpecName}"`);
 
-        if (nominalBores && nominalBores.length > 0) {
-          // Extract NB values and sort
-          const nbValues = Array.from(new Set(
-            nominalBores.map((nb: any) => (nb.nominal_diameter_mm ?? nb.nominalDiameterMm) as number)
-          )).filter((nb): nb is number => nb !== null && nb !== undefined).sort((a, b) => a - b);
+    // ALWAYS use the fallback mapping based on steel spec name
+    // This ensures proper filtering (e.g., SABS 719 only shows 200mm+)
+    const filteredNBs = getFallbackNBsForSteelSpec(steelSpecName);
 
-          console.log(`[ItemUploadStep] Loaded ${nbValues.length} available NBs for steel spec ${steelSpecId} (${steelSpecName}):`, nbValues);
-          setAvailableNominalBores(nbValues);
-        } else {
-          // API returned empty - use fallback based on steel spec type
-          const fallbackNBs = getFallbackNBsForSteelSpec(steelSpecName);
-          if (fallbackNBs) {
-            console.log(`[ItemUploadStep] Using fallback NBs for ${steelSpecName}:`, fallbackNBs);
-            setAvailableNominalBores(fallbackNBs);
-          } else {
-            console.log(`[ItemUploadStep] No fallback found for ${steelSpecName}, using all NBs`);
-            setAvailableNominalBores(allNominalBores);
-          }
-        }
-      } catch (error) {
-        // API error - use fallback based on steel spec type
-        const fallbackNBs = getFallbackNBsForSteelSpec(steelSpecName);
-        if (fallbackNBs) {
-          console.log(`[ItemUploadStep] API error, using fallback NBs for ${steelSpecName}:`, fallbackNBs);
-          setAvailableNominalBores(fallbackNBs);
-        } else {
-          console.log(`[ItemUploadStep] API error, no fallback for ${steelSpecName}, using all NBs:`, error);
-          setAvailableNominalBores(allNominalBores);
-        }
-      } finally {
-        setIsLoadingNominalBores(false);
-      }
-    };
-
-    fetchAvailableNBsForSteelSpec();
-  }, [globalSpecs?.steelSpecificationId, masterData.steelSpecs, allNominalBores.join(',')]);
+    if (filteredNBs && filteredNBs.length > 0) {
+      console.log(`[ItemUploadStep] Filtered NBs for "${steelSpecName}":`, filteredNBs);
+      setAvailableNominalBores(filteredNBs);
+    } else {
+      // No specific mapping found - show all NBs as fallback
+      console.log(`[ItemUploadStep] No NB mapping for "${steelSpecName}", showing all NBs`);
+      setAvailableNominalBores(allNominalBores);
+    }
+  }, [globalSpecs?.steelSpecificationId, masterData.steelSpecs]);
 
   // Use filtered NB list for the dropdown
   const nominalBores = availableNominalBores.length > 0 ? availableNominalBores : allNominalBores;
