@@ -8911,6 +8911,20 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       <p className="text-xs text-gray-500 mt-1">
                         Results will appear automatically as you enter details
                       </p>
+                      {/* Debug info - can be removed later */}
+                      <div className="mt-2 text-left text-xs text-gray-400 bg-gray-100 p-2 rounded">
+                        <p>Debug: NB={entry.specs.nominalBoreMm || 'not set'}, Sch={entry.specs.scheduleNumber || 'not set'}, Length={entry.specs.individualPipeLength || 'not set'}, Qty={entry.specs.quantityValue || 'not set'}, Pressure={globalSpecs?.workingPressureBar || 'not set'}</p>
+                      </div>
+                      {/* Manual calculate button */}
+                      {entry.specs.nominalBoreMm && entry.specs.scheduleNumber && entry.specs.individualPipeLength && entry.specs.quantityValue && globalSpecs?.workingPressureBar && (
+                        <button
+                          type="button"
+                          onClick={() => onCalculate && onCalculate()}
+                          className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+                        >
+                          Calculate Now
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -9944,7 +9958,22 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         entry.specs.quantityValue &&
         workingPressureBar;
 
-      if (!hasRequiredFields) return;
+      // Debug logging
+      console.log('📊 Auto-calculate check:', {
+        entryId: entry.id,
+        nominalBoreMm: entry.specs.nominalBoreMm,
+        scheduleNumber: entry.specs.scheduleNumber,
+        wallThicknessMm: entry.specs.wallThicknessMm,
+        individualPipeLength: entry.specs.individualPipeLength,
+        quantityValue: entry.specs.quantityValue,
+        workingPressureBar,
+        hasRequiredFields
+      });
+
+      if (!hasRequiredFields) {
+        console.log('❌ Missing required fields, skipping calculation');
+        return;
+      }
 
       try {
         const { rfqApi } = await import('@/app/lib/api/client');
@@ -9957,9 +9986,12 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           flangeStandardId,
           flangePressureClassId,
         };
+        console.log('🔄 Calling API with:', calculationData);
         const result = await rfqApi.calculate(calculationData);
+        console.log('✅ Calculation result:', result);
         updateEntryCalculation(entry.id, result);
       } catch (error: any) {
+        console.error('❌ Calculation API error:', error);
         // Silently handle expected errors:
         // - Backend unavailable
         // - 404 errors (invalid NB/schedule combinations)
@@ -10103,11 +10135,23 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     try {
       for (const entry of rfqData.straightPipeEntries) {
         try {
-          const result = await rfqApi.calculate(entry.specs);
+          // Merge entry specs with global specs (same as auto-calculate)
+          const calculationData = {
+            ...entry.specs,
+            workingPressureBar: entry.specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar,
+            workingTemperatureC: entry.specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+            steelSpecificationId: entry.specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId,
+            flangeStandardId: entry.specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
+            flangePressureClassId: entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+          };
+
+          console.log('🔄 Manual calculate for entry:', entry.id, calculationData);
+          const result = await rfqApi.calculate(calculationData);
+          console.log('✅ Manual calculation result:', result);
           updateEntryCalculation(entry.id, result);
         } catch (error: any) {
           console.error(`Calculation error for entry ${entry.id}:`, error);
-          
+
           // Show user-friendly error message
           const errorMessage = error.message || String(error);
           if (errorMessage.includes('404') || errorMessage.includes('not found')) {
