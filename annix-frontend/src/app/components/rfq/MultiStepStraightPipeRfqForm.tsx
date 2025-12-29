@@ -6312,6 +6312,58 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [isLoadingNominalBores, setIsLoadingNominalBores] = useState(false);
 
+  // Fallback NB ranges for each steel specification type
+  // Based on industry standards:
+  // - SABS/SANS 62: Small bore ERW pipes up to 150mm (South African standard)
+  // - SABS/SANS 719: Large bore ERW pipes from 200mm and above (South African standard)
+  // - ASTM A106: Seamless carbon steel, full range
+  // - ASTM A53: Welded and seamless, full range
+  // - API 5L: Line pipe, full range including large sizes
+  // - ASTM A333: Low temperature service, similar to A106
+  // - ASTM A179/A192: Heat exchanger tubes, smaller sizes
+  // - ASTM A500: Structural tubing
+  // - ASTM A335: Alloy steel for high temp
+  // - ASTM A312: Stainless steel pipe
+  const STEEL_SPEC_NB_FALLBACK: Record<string, number[]> = {
+    // South African Standards - SABS/SANS 62 (Small bore up to 150mm)
+    'SABS 62': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150],
+    'SANS 62': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150],
+    // South African Standards - SABS/SANS 719 (Large bore from 200mm)
+    'SABS 719': [200, 250, 300, 350, 400, 450, 500, 600, 700, 750, 800, 900, 1000, 1050, 1200],
+    'SANS 719': [200, 250, 300, 350, 400, 450, 500, 600, 700, 750, 800, 900, 1000, 1050, 1200],
+    // ASTM A106 - Seamless Carbon Steel (full standard range)
+    'ASTM A106': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600],
+    // ASTM A53 - Welded and Seamless (full standard range)
+    'ASTM A53': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600],
+    // API 5L - Line Pipe (wide range including large sizes)
+    'API 5L': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 750, 800, 900, 1000, 1050, 1200],
+    // ASTM A333 - Low Temperature Service
+    'ASTM A333': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600],
+    // ASTM A179 - Heat Exchanger Tubes (smaller sizes)
+    'ASTM A179': [15, 20, 25, 32, 40, 50, 65, 80, 100],
+    // ASTM A192 - Boiler Tubes (smaller sizes)
+    'ASTM A192': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125],
+    // ASTM A500 - Structural Tubing
+    'ASTM A500': [25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500],
+    // ASTM A335 - Alloy Steel for High Temperature
+    'ASTM A335': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600],
+    // ASTM A312 - Stainless Steel Pipe
+    'ASTM A312': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600],
+  };
+
+  // Get fallback NBs based on steel spec name
+  const getFallbackNBsForSteelSpec = (steelSpecName: string): number[] | null => {
+    if (!steelSpecName) return null;
+
+    // Check each key pattern
+    for (const [pattern, nbs] of Object.entries(STEEL_SPEC_NB_FALLBACK)) {
+      if (steelSpecName.includes(pattern)) {
+        return nbs;
+      }
+    }
+    return null;
+  };
+
   // Use nominal bores from master data, fallback to hardcoded values
   // Remove duplicates using Set and sort
   // Handle both snake_case (from API) and camelCase (from fallback data) property names
@@ -6330,6 +6382,10 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         return;
       }
 
+      // Get the steel spec name for fallback lookup
+      const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
+      const steelSpecName = steelSpec?.steelSpecName || '';
+
       setIsLoadingNominalBores(true);
       try {
         const { masterDataApi } = await import('@/app/lib/api/client');
@@ -6341,23 +6397,36 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
             nominalBores.map((nb: any) => (nb.nominal_diameter_mm ?? nb.nominalDiameterMm) as number)
           )).filter((nb): nb is number => nb !== null && nb !== undefined).sort((a, b) => a - b);
 
-          console.log(`[ItemUploadStep] Loaded ${nbValues.length} available NBs for steel spec ${steelSpecId}:`, nbValues);
+          console.log(`[ItemUploadStep] Loaded ${nbValues.length} available NBs for steel spec ${steelSpecId} (${steelSpecName}):`, nbValues);
           setAvailableNominalBores(nbValues);
         } else {
-          // Fallback to all NBs if API returns empty
-          console.log('[ItemUploadStep] No NBs returned from API, using all NBs');
-          setAvailableNominalBores(allNominalBores);
+          // API returned empty - use fallback based on steel spec type
+          const fallbackNBs = getFallbackNBsForSteelSpec(steelSpecName);
+          if (fallbackNBs) {
+            console.log(`[ItemUploadStep] Using fallback NBs for ${steelSpecName}:`, fallbackNBs);
+            setAvailableNominalBores(fallbackNBs);
+          } else {
+            console.log(`[ItemUploadStep] No fallback found for ${steelSpecName}, using all NBs`);
+            setAvailableNominalBores(allNominalBores);
+          }
         }
       } catch (error) {
-        console.log('[ItemUploadStep] Error fetching NBs for steel spec, using all NBs:', error);
-        setAvailableNominalBores(allNominalBores);
+        // API error - use fallback based on steel spec type
+        const fallbackNBs = getFallbackNBsForSteelSpec(steelSpecName);
+        if (fallbackNBs) {
+          console.log(`[ItemUploadStep] API error, using fallback NBs for ${steelSpecName}:`, fallbackNBs);
+          setAvailableNominalBores(fallbackNBs);
+        } else {
+          console.log(`[ItemUploadStep] API error, no fallback for ${steelSpecName}, using all NBs:`, error);
+          setAvailableNominalBores(allNominalBores);
+        }
       } finally {
         setIsLoadingNominalBores(false);
       }
     };
 
     fetchAvailableNBsForSteelSpec();
-  }, [globalSpecs?.steelSpecificationId, allNominalBores.join(',')]);
+  }, [globalSpecs?.steelSpecificationId, masterData.steelSpecs, allNominalBores.join(',')]);
 
   // Use filtered NB list for the dropdown
   const nominalBores = availableNominalBores.length > 0 ? availableNominalBores : allNominalBores;
