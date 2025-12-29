@@ -6307,13 +6307,58 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, fetchBendOptions, bendOptionsCache, autoSelectFlangeSpecs }: any) {
   const [isCalculating, setIsCalculating] = useState(false);
   const processedEntriesRef = useRef<Set<string>>(new Set());
+  const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
+  const [isLoadingNominalBores, setIsLoadingNominalBores] = useState(false);
 
   // Use nominal bores from master data, fallback to hardcoded values
   // Remove duplicates using Set and sort
   // Handle both snake_case (from API) and camelCase (from fallback data) property names
-  const nominalBores = (masterData.nominalBores?.length > 0
+  const allNominalBores = (masterData.nominalBores?.length > 0
     ? Array.from(new Set(masterData.nominalBores.map((nb: any) => (nb.nominal_diameter_mm ?? nb.nominalDiameterMm) as number))).sort((a, b) => (a as number) - (b as number))
     : [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 1800, 2000]) as number[]; // fallback values
+
+  // Fetch available NB sizes for the selected steel specification
+  useEffect(() => {
+    const fetchAvailableNBsForSteelSpec = async () => {
+      const steelSpecId = globalSpecs?.steelSpecificationId;
+
+      if (!steelSpecId) {
+        // No steel spec selected, show all NBs
+        setAvailableNominalBores(allNominalBores);
+        return;
+      }
+
+      setIsLoadingNominalBores(true);
+      try {
+        const { masterDataApi } = await import('@/app/lib/api/client');
+        const nominalBores = await masterDataApi.getNominalBores(steelSpecId);
+
+        if (nominalBores && nominalBores.length > 0) {
+          // Extract NB values and sort
+          const nbValues = Array.from(new Set(
+            nominalBores.map((nb: any) => (nb.nominal_diameter_mm ?? nb.nominalDiameterMm) as number)
+          )).filter((nb): nb is number => nb !== null && nb !== undefined).sort((a, b) => a - b);
+
+          console.log(`[ItemUploadStep] Loaded ${nbValues.length} available NBs for steel spec ${steelSpecId}:`, nbValues);
+          setAvailableNominalBores(nbValues);
+        } else {
+          // Fallback to all NBs if API returns empty
+          console.log('[ItemUploadStep] No NBs returned from API, using all NBs');
+          setAvailableNominalBores(allNominalBores);
+        }
+      } catch (error) {
+        console.log('[ItemUploadStep] Error fetching NBs for steel spec, using all NBs:', error);
+        setAvailableNominalBores(allNominalBores);
+      } finally {
+        setIsLoadingNominalBores(false);
+      }
+    };
+
+    fetchAvailableNBsForSteelSpec();
+  }, [globalSpecs?.steelSpecificationId, allNominalBores.join(',')]);
+
+  // Use filtered NB list for the dropdown
+  const nominalBores = availableNominalBores.length > 0 ? availableNominalBores : allNominalBores;
 
   // Check for potentially invalid schedules - these are now supported so removing this warning
   // const hasInvalidSchedules = entries.some((entry: StraightPipeEntry) => {
@@ -8168,14 +8213,20 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       required
+                      disabled={isLoadingNominalBores}
                     >
-                      <option value="">Select nominal bore...</option>
+                      <option value="">{isLoadingNominalBores ? 'Loading available sizes...' : 'Select nominal bore...'}</option>
                       {nominalBores.map((nb: number) => (
                         <option key={nb} value={nb}>
                           {nb}mm NB
                         </option>
                       ))}
                     </select>
+                    {globalSpecs?.steelSpecificationId && nominalBores.length > 0 && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        {nominalBores.length} sizes available for selected steel specification
+                      </p>
+                    )}
                     {errors[`pipe_${index}_nb`] && (
                       <p className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_nb`]}</p>
                     )}
