@@ -89,6 +89,89 @@ const getFlangesPerPipe = (pipeEndConfig: string): number => {
   }
 };
 
+// OD lookup table for nominal bore sizes (in mm)
+const NB_TO_OD_LOOKUP: Record<number, number> = {
+  15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9,
+  100: 114.3, 125: 139.7, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
+  350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6, 700: 711.2,
+  750: 762.0, 800: 812.8, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2
+};
+
+/**
+ * Local calculation for pipe weight when API is unavailable
+ * Uses formula: ((OD - WT) * WT) * 0.02466 = Kg/m
+ */
+const calculateLocalPipeResult = (
+  nominalBoreMm: number,
+  wallThicknessMm: number,
+  individualPipeLength: number,
+  quantityValue: number,
+  quantityType: string,
+  pipeEndConfiguration: string
+): any => {
+  const outsideDiameterMm = NB_TO_OD_LOOKUP[nominalBoreMm] || (nominalBoreMm * 1.05);
+
+  // Weight per meter formula: ((OD - WT) * WT) * 0.02466
+  const pipeWeightPerMeter = ((outsideDiameterMm - wallThicknessMm) * wallThicknessMm) * 0.02466;
+
+  // Calculate pipe count and total length
+  let calculatedPipeCount: number;
+  let calculatedTotalLength: number;
+
+  if (quantityType === 'total_length') {
+    calculatedTotalLength = quantityValue;
+    calculatedPipeCount = Math.ceil(quantityValue / individualPipeLength);
+  } else {
+    // number_of_pipes
+    calculatedPipeCount = quantityValue;
+    calculatedTotalLength = quantityValue * individualPipeLength;
+  }
+
+  // Calculate total pipe weight
+  const totalPipeWeight = pipeWeightPerMeter * calculatedTotalLength;
+
+  // Calculate flanges and welds
+  const flangesPerPipe = getFlangesPerPipe(pipeEndConfiguration);
+  const numberOfFlanges = flangesPerPipe * calculatedPipeCount;
+
+  const weldsPerPipe = getWeldCountPerPipe(pipeEndConfiguration);
+  const numberOfFlangeWelds = weldsPerPipe * calculatedPipeCount;
+
+  // Butt welds between pipes (for continuous pipeline)
+  const numberOfButtWelds = Math.max(0, calculatedPipeCount - 1);
+
+  // Weld length calculations (circumference-based)
+  const circumference = Math.PI * outsideDiameterMm / 1000; // in meters
+  const totalFlangeWeldLength = numberOfFlangeWelds * circumference;
+  const totalButtWeldLength = numberOfButtWelds * circumference;
+
+  // Estimate flange weights (approximate values based on NB)
+  const flangeWeightPerUnit = nominalBoreMm < 100 ? 3 : nominalBoreMm < 200 ? 8 : nominalBoreMm < 400 ? 25 : nominalBoreMm < 600 ? 50 : 80;
+  const totalFlangeWeight = numberOfFlanges * flangeWeightPerUnit;
+
+  // Total system weight
+  const totalSystemWeight = totalPipeWeight + totalFlangeWeight;
+
+  return {
+    pipeWeightPerMeter,
+    totalPipeWeight,
+    calculatedPipeCount,
+    calculatedTotalLength,
+    numberOfFlanges,
+    numberOfButtWelds,
+    totalButtWeldLength,
+    numberOfFlangeWelds,
+    totalFlangeWeldLength,
+    outsideDiameterMm,
+    wallThicknessMm,
+    totalFlangeWeight,
+    totalBoltWeight: 0,
+    totalNutWeight: 0,
+    totalSystemWeight,
+    isLocalCalculation: true // Flag to indicate this was calculated locally
+  };
+};
+
 interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
   particleShape: "Rounded" | "SubAngular" | "Angular";
@@ -9992,15 +10075,28 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         updateEntryCalculation(entry.id, result);
       } catch (error: any) {
         console.error('❌ Calculation API error:', error);
-        // Silently handle expected errors:
-        // - Backend unavailable
-        // - 404 errors (invalid NB/schedule combinations)
-        // - Validation errors
         const errorMessage = error instanceof Error ? error.message : String(error);
+
+        // If API returns 404 (NB/schedule combination not in database), use local calculation
+        if (errorMessage.includes('API Error (404)') || errorMessage.includes('not available in the database')) {
+          console.log('⚠️ API 404 - Using local calculation fallback');
+          const wallThickness = entry.specs.wallThicknessMm || 6.35; // Default wall thickness
+          const localResult = calculateLocalPipeResult(
+            entry.specs.nominalBoreMm!,
+            wallThickness,
+            entry.specs.individualPipeLength!,
+            entry.specs.quantityValue!,
+            entry.specs.quantityType || 'number_of_pipes',
+            entry.specs.pipeEndConfiguration || 'PE'
+          );
+          console.log('✅ Local calculation result:', localResult);
+          updateEntryCalculation(entry.id, localResult);
+          return;
+        }
+
+        // Silently handle other expected errors
         const isExpectedError =
           errorMessage === 'Backend unavailable' ||
-          errorMessage.includes('API Error (404)') ||
-          errorMessage.includes('not available in the database') ||
           errorMessage.includes('API Error (400)');
 
         if (!isExpectedError) {
@@ -10151,11 +10247,22 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           updateEntryCalculation(entry.id, result);
         } catch (error: any) {
           console.error(`Calculation error for entry ${entry.id}:`, error);
-
-          // Show user-friendly error message
           const errorMessage = error.message || String(error);
-          if (errorMessage.includes('404') || errorMessage.includes('not found')) {
-            alert(`Could not calculate for item: ${entry.description || 'Untitled'}\n\nThe combination of ${entry.specs.nominalBoreMm}NB with schedule ${entry.specs.scheduleNumber} is not available in the database.\n\nPlease select a different schedule (STD, XS, XXS, 40, 80, 120, 160, MEDIUM, or HEAVY) or use the automated calculation by setting working pressure.`);
+
+          // If API returns 404, use local calculation fallback
+          if (errorMessage.includes('404') || errorMessage.includes('not found') || errorMessage.includes('not available')) {
+            console.log('⚠️ API 404 - Using local calculation fallback for entry:', entry.id);
+            const wallThickness = entry.specs.wallThicknessMm || 6.35;
+            const localResult = calculateLocalPipeResult(
+              entry.specs.nominalBoreMm!,
+              wallThickness,
+              entry.specs.individualPipeLength!,
+              entry.specs.quantityValue!,
+              entry.specs.quantityType || 'number_of_pipes',
+              entry.specs.pipeEndConfiguration || 'PE'
+            );
+            console.log('✅ Local calculation result:', localResult);
+            updateEntryCalculation(entry.id, localResult);
           } else {
             alert(`Calculation error for item: ${entry.description || 'Untitled'}\n\n${errorMessage}`);
           }
