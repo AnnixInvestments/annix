@@ -8158,7 +8158,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       required
                       disabled={isLoadingNominalBores}
                     >
-                      <option value="">{isLoadingNominalBores ? 'Loading available sizes...' : 'Select nominal bore...'}</option>
+                      <option value="">{isLoadingNominalBores ? 'Loading available sizes...' : 'Please Select NB'}</option>
                       {nominalBores.map((nb: number) => (
                         <option key={nb} value={nb}>
                           {nb}mm NB
@@ -8398,12 +8398,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     <input
                       type="number"
                       step="0.001"
-                      value={entry.specs.individualPipeLength}
-                      onChange={(e) => onUpdateEntry(entry.id, { 
-                        specs: { ...entry.specs, individualPipeLength: Number(e.target.value) }
+                      value={entry.specs.individualPipeLength || ''}
+                      onChange={(e) => onUpdateEntry(entry.id, {
+                        specs: { ...entry.specs, individualPipeLength: e.target.value ? Number(e.target.value) : undefined }
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      placeholder="12.192"
+                      placeholder="Enter length or select above"
                       required
                     />
                     <p className="mt-0.5 text-xs text-gray-700">
