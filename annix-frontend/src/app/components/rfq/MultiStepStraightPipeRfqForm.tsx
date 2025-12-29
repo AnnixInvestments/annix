@@ -6583,7 +6583,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
   };
 
   // Auto-calculate specs for new straight pipe entries when they are added
-  // Also re-fetch schedules when masterData loads
+  // This effect only runs for initial setup - the NB onChange handler handles user selections
   useEffect(() => {
     const processEntries = async () => {
       // Wait for masterData to be loaded
@@ -6600,80 +6600,91 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         // Skip if already processed with this NB
         if (processedEntriesRef.current.has(entryKey)) continue;
 
+        // Skip if schedule is already set (don't overwrite user/onChange selections)
+        if (entry.specs?.scheduleNumber && entry.specs?.wallThicknessMm) {
+          console.log(`[useEffect] Skipping entry ${entry.id} - schedule already set: ${entry.specs.scheduleNumber}`);
+          processedEntriesRef.current.add(entryKey);
+          continue;
+        }
+
         if (nominalBore && pressure) {
-          // Mark as processed with this NB
+          // Mark as processed with this NB BEFORE async work
           processedEntriesRef.current.add(entryKey);
 
           try {
             // Fetch available schedules
             const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
             const schedules = await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
-            console.log(`📋 Fetched ${schedules?.length || 0} schedules for entry ${entry.id} with ${nominalBore}mm NB`);
 
-            // Auto-calculate schedule if not already set
-            if (!entry.specs?.scheduleNumber || !entry.minimumSchedule) {
-              const autoSpecs = await autoCalculateSpecs({
-                specs: { ...entry.specs, nominalBoreMm: nominalBore }
+            // IMPORTANT: Re-check if schedule was set while we were fetching
+            // This prevents race condition with onChange handler
+            const currentEntry = entries.find((e: any) => e.id === entry.id);
+            if (currentEntry?.specs?.scheduleNumber && currentEntry?.specs?.wallThicknessMm) {
+              console.log(`[useEffect] Entry ${entry.id} was updated during fetch, skipping update`);
+              continue;
+            }
+
+            console.log(`📋 [useEffect] Processing entry ${entry.id} with ${nominalBore}mm NB`);
+
+            // Calculate minimum wall thickness using Barlow formula
+            const odLookup: Record<number, number> = {
+              100: 114.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
+              350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6
+            };
+            const od = odLookup[nominalBore] || (nominalBore * 1.05);
+            const pressureMpa = pressure * 0.1;
+            const allowableStress = 137.9;
+            const safetyFactor = 1.2;
+            const minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
+
+            // Find eligible schedules
+            const availableSchedules = schedules || [];
+            const eligibleSchedules = availableSchedules
+              .filter((dim: any) => {
+                const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
+                return wt >= minWT;
+              })
+              .sort((a: any, b: any) => {
+                const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
+                const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
+                return wtA - wtB;
               });
 
-              if (autoSpecs.wallThicknessMm || autoSpecs.minimumWallThickness) {
-                const { minimumWallThickness } = autoSpecs;
-                const minWT = minimumWallThickness || autoSpecs.wallThicknessMm || 0;
+            let matchedSchedule = null;
+            let matchedWT = minWT;
 
-                // Find the best matching schedule from available schedules
-                // Handle both camelCase and snake_case property names
-                const availableSchedules = schedules || [];
-                const eligibleSchedules = availableSchedules
-                  .filter((dim: any) => {
-                    const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
-                    return wt >= minWT;
-                  })
-                  .sort((a: any, b: any) => {
-                    const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
-                    const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
-                    return wtA - wtB;
-                  });
+            if (eligibleSchedules.length > 0) {
+              matchedSchedule = eligibleSchedules[0].scheduleDesignation || eligibleSchedules[0].schedule_designation;
+              matchedWT = eligibleSchedules[0].wallThicknessMm || eligibleSchedules[0].wall_thickness_mm;
+            } else if (availableSchedules.length > 0) {
+              const sorted = [...availableSchedules].sort((a: any, b: any) => {
+                const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
+                const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
+                return wtB - wtA;
+              });
+              matchedSchedule = sorted[0].scheduleDesignation || sorted[0].schedule_designation;
+              matchedWT = sorted[0].wallThicknessMm || sorted[0].wall_thickness_mm;
+            }
 
-                let matchedSchedule = null;
-                let matchedWT = minWT;
-
-                if (eligibleSchedules.length > 0) {
-                  // Use the first eligible schedule (smallest wall thickness that meets minimum)
-                  matchedSchedule = eligibleSchedules[0].scheduleDesignation || eligibleSchedules[0].schedule_designation || eligibleSchedules[0].scheduleNumber?.toString() || eligibleSchedules[0].schedule_number?.toString();
-                  matchedWT = eligibleSchedules[0].wallThicknessMm || eligibleSchedules[0].wall_thickness_mm;
-                  console.log(`🎯 Matched schedule ${matchedSchedule} (${matchedWT}mm) for min WT ${minWT}mm`);
-                } else if (availableSchedules.length > 0) {
-                  // Fallback: use the thickest available schedule
-                  const sorted = [...availableSchedules].sort((a: any, b: any) => {
-                    const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
-                    const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
-                    return wtB - wtA;
-                  });
-                  matchedSchedule = sorted[0].scheduleDesignation || sorted[0].schedule_designation || sorted[0].scheduleNumber?.toString() || sorted[0].schedule_number?.toString();
-                  matchedWT = sorted[0].wallThicknessMm || sorted[0].wall_thickness_mm;
-                  console.log(`⚠️ No schedule meets minimum ${minWT}mm, using thickest: ${matchedSchedule} (${matchedWT}mm)`);
+            if (matchedSchedule) {
+              const updatedEntry = {
+                ...entry,
+                minimumSchedule: matchedSchedule,
+                minimumWallThickness: minWT,
+                isScheduleOverridden: false,
+                specs: {
+                  ...entry.specs,
+                  scheduleNumber: matchedSchedule,
+                  wallThicknessMm: matchedWT,
                 }
+              };
 
-                const updatedEntry = {
-                  ...entry,
-                  minimumSchedule: matchedSchedule,
-                  minimumWallThickness: minWT,
-                  availableUpgrades: eligibleSchedules.slice(1), // Upgrades are all except the first
-                  isScheduleOverridden: false,
-                  specs: {
-                    ...entry.specs,
-                    scheduleNumber: matchedSchedule,
-                    wallThicknessMm: matchedWT,
-                  }
-                };
-
-                updatedEntry.description = generateItemDescription(updatedEntry);
-                onUpdateEntry(entry.id, updatedEntry);
-                console.log(`✅ Auto-selected schedule ${matchedSchedule} (${matchedWT}mm) for entry ${entry.id}`);
-              }
+              updatedEntry.description = generateItemDescription(updatedEntry);
+              onUpdateEntry(entry.id, updatedEntry);
+              console.log(`✅ [useEffect] Auto-selected schedule ${matchedSchedule} (${matchedWT}mm) for entry ${entry.id}`);
             }
           } catch (error) {
-            console.error('Error auto-calculating specs for entry:', error);
+            console.error('[useEffect] Error processing entry:', error);
           }
         }
       }
