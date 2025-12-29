@@ -6586,7 +6586,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         const safetyFactor = 1.2; // Add 20% safety margin
         const minWallThickness = (pressureMpa * od * safetyFactor) / (2 * allowableStress * jointEfficiency);
 
-        console.log(`🔧 Barlow calculation: ${minWallThickness.toFixed(2)}mm min WT for ${nominalBore}mm NB (OD=${od}mm) at ${pressure} bar`);
+        console.log(`🔧 Barlow calculation: ${minWallThickness.toFixed(2)}mm min WT for ${nominalBore}NB (OD=${od}mm) at ${pressure} bar`);
 
         // Find the best matching schedule from fallback data
         const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
@@ -8205,7 +8205,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       <option value="">{isLoadingNominalBores ? 'Loading available sizes...' : 'Please Select NB'}</option>
                       {nominalBores.map((nb: number) => (
                         <option key={nb} value={nb}>
-                          {nb}mm NB
+                          {nb}NB
                         </option>
                       ))}
                     </select>
@@ -8237,7 +8237,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       <>
                         <div className="bg-green-50 p-2 rounded-md space-y-2">
                           <p className="text-green-800 font-medium text-xs mb-2">
-                            Auto-calculated based on {globalSpecs.workingPressureBar} bar and {entry.specs.nominalBoreMm}mm NB
+                            Auto-calculated based on {globalSpecs.workingPressureBar} bar and {entry.specs.nominalBoreMm}NB
                           </p>
 
                           {/* Schedule Dropdown with Recommended + Upgrades */}
@@ -8419,22 +8419,49 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     <div className="flex gap-2 mb-1">
                       <button
                         type="button"
-                        onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, individualPipeLength: 6.1 } })}
-                        className="px-2 py-1 text-black text-xs bg-gray-100 hover:bg-gray-200 rounded border border-gray-300"
+                        onClick={() => {
+                          const pipeLength = 6.1;
+                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
+                            ? (entry.specs.quantityValue || 1)
+                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, individualPipeLength: pipeLength },
+                            calculatedPipes: numPipes
+                          });
+                        }}
+                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 6.1 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
                       >
                         6.1m
                       </button>
                       <button
                         type="button"
-                        onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, individualPipeLength: 9.144 } })}
-                        className="px-2 py-1 text-black ext-xs bg-gray-100 hover:bg-gray-200 rounded border border-gray-300"
+                        onClick={() => {
+                          const pipeLength = 9.144;
+                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
+                            ? (entry.specs.quantityValue || 1)
+                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, individualPipeLength: pipeLength },
+                            calculatedPipes: numPipes
+                          });
+                        }}
+                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 9.144 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
                       >
                         9.144m
                       </button>
                       <button
                         type="button"
-                        onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, individualPipeLength: 12.192 } })}
-                        className="px-2 py-1 text-black text-xs bg-blue-100 hover:bg-blue-200 rounded border border-blue-300 font-medium"
+                        onClick={() => {
+                          const pipeLength = 12.192;
+                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
+                            ? (entry.specs.quantityValue || 1)
+                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, individualPipeLength: pipeLength },
+                            calculatedPipes: numPipes
+                          });
+                        }}
+                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 12.192 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
                       >
                         12.192m (Standard)
                       </button>
@@ -8443,9 +8470,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       type="number"
                       step="0.001"
                       value={entry.specs.individualPipeLength || ''}
-                      onChange={(e) => onUpdateEntry(entry.id, {
-                        specs: { ...entry.specs, individualPipeLength: e.target.value ? Number(e.target.value) : undefined }
-                      })}
+                      onChange={(e) => {
+                        const pipeLength = e.target.value ? Number(e.target.value) : undefined;
+                        const numPipes = pipeLength && entry.specs.quantityType === 'number_of_pipes'
+                          ? (entry.specs.quantityValue || 1)
+                          : pipeLength ? Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength) : undefined;
+                        onUpdateEntry(entry.id, {
+                          specs: { ...entry.specs, individualPipeLength: pipeLength },
+                          calculatedPipes: numPipes
+                        });
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       placeholder="Enter length or select above"
                       required
@@ -8518,9 +8552,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       type="number"
                       step="0.001"
                       value={
-                        entry.specs.quantityType === 'total_length' 
+                        entry.specs.quantityType === 'total_length'
                           ? entry.specs.quantityValue || 0
-                          : (entry.calculatedPipes || 0) * (entry.specs.individualPipeLength || 12.192)
+                          : (entry.specs.quantityValue || 1) * (entry.specs.individualPipeLength || 0)
                       }
                       onChange={(e) => {
                         const totalLength = Number(e.target.value);
@@ -8546,8 +8580,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       min="1"
                       value={
                         entry.specs.quantityType === 'number_of_pipes'
-                          ? entry.specs.quantityValue || 0
-                          : entry.calculatedPipes || Math.ceil((entry.specs.quantityValue || 0) / (entry.specs.individualPipeLength || 12.192))
+                          ? entry.specs.quantityValue || 1
+                          : entry.specs.individualPipeLength ? Math.ceil((entry.specs.quantityValue || 0) / entry.specs.individualPipeLength) : 0
                       }
                       onChange={(e) => {
                         const numberOfPipes = Number(e.target.value);

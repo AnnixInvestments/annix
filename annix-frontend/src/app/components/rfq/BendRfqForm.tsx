@@ -83,7 +83,7 @@ export default function BendItemsStep({
     const bendType = specs.bendType || 'TBD';
     const degrees = specs.bendDegrees || 'TBD';
     
-    let description = `${nb}mm NB ${schedule} ${bendType} ${degrees}° Pulled Bend`;
+    let description = `${nb}NB ${schedule} ${bendType} ${degrees}° Pulled Bend`;
     
     if (specs.numberOfTangents && specs.numberOfTangents > 0) {
       const tangentLengths = specs.tangentLengths || [];
@@ -161,7 +161,7 @@ export default function BendItemsStep({
           fallbackWallThickness = Math.max(8.0, nominalBore * 0.10);
         }
         
-        console.log(`🔧 Using fallback for bend: ${fallbackSchedule} (${fallbackWallThickness}mm) for ${nominalBore}mm NB at ${pressure} bar`);
+        console.log(`🔧 Using fallback for bend: ${fallbackSchedule} (${fallbackWallThickness}mm) for ${nominalBore}NB at ${pressure} bar`);
         
         return {
           scheduleNumber: fallbackSchedule,
@@ -379,7 +379,7 @@ export default function BendItemsStep({
                       <option value="">Select nominal bore...</option>
                       {nominalBores.map((nb: number) => (
                         <option key={nb} value={nb}>
-                          {nb}mm NB
+                          {nb}NB
                         </option>
                       ))}
                     </select>
