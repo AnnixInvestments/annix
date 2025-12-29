@@ -6584,122 +6584,29 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
     return {};
   };
 
-  // Auto-calculate specs for new straight pipe entries when they are added
-  // This effect only runs for initial setup - the NB onChange handler handles user selections
+  // Pre-fetch available schedules for entries that have NB set
+  // NOTE: This effect only fetches schedules - it does NOT update the entry's scheduleNumber
+  // The NB onChange handler is responsible for setting the schedule when user selects NB
   useEffect(() => {
-    const processEntries = async () => {
-      // Wait for masterData to be loaded
+    const prefetchSchedules = async () => {
       if (!masterData.nominalBores?.length) return;
 
       for (const entry of entries) {
-        // Only process straight pipe entries
         if (entry.itemType !== 'straight_pipe' && entry.itemType !== undefined) continue;
 
         const nominalBore = entry.specs?.nominalBoreMm;
-        const pressure = globalSpecs?.workingPressureBar;
-        const entryKey = `${entry.id}-${nominalBore}`;
+        if (!nominalBore) continue;
 
-        // Skip if already processed with this NB
-        if (processedEntriesRef.current.has(entryKey)) continue;
+        // Only fetch if we don't already have schedules for this entry
+        if (availableSchedulesMap[entry.id]?.length > 0) continue;
 
-        // Skip if this entry was manually updated by onChange handler
-        if (manuallyUpdatedEntriesRef.current.has(entry.id)) {
-          console.log(`[useEffect] Skipping entry ${entry.id} - manually updated by onChange`);
-          processedEntriesRef.current.add(entryKey);
-          continue;
-        }
-
-        // Skip if schedule is already set (don't overwrite user/onChange selections)
-        if (entry.specs?.scheduleNumber && entry.specs?.wallThicknessMm) {
-          console.log(`[useEffect] Skipping entry ${entry.id} - schedule already set: ${entry.specs.scheduleNumber}`);
-          processedEntriesRef.current.add(entryKey);
-          continue;
-        }
-
-        if (nominalBore && pressure) {
-          // Mark as processed with this NB BEFORE async work
-          processedEntriesRef.current.add(entryKey);
-
-          try {
-            // Fetch available schedules
-            const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
-            const schedules = await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
-
-            // IMPORTANT: Re-check if entry was manually updated while we were fetching
-            // This prevents race condition with onChange handler
-            if (manuallyUpdatedEntriesRef.current.has(entry.id)) {
-              console.log(`[useEffect] Entry ${entry.id} was manually updated during fetch, skipping`);
-              continue;
-            }
-
-            console.log(`📋 [useEffect] Processing entry ${entry.id} with ${nominalBore}mm NB`);
-
-            // Calculate minimum wall thickness using Barlow formula
-            const odLookup: Record<number, number> = {
-              100: 114.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
-              350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6
-            };
-            const od = odLookup[nominalBore] || (nominalBore * 1.05);
-            const pressureMpa = pressure * 0.1;
-            const allowableStress = 137.9;
-            const safetyFactor = 1.2;
-            const minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
-
-            // Find eligible schedules
-            const availableSchedules = schedules || [];
-            const eligibleSchedules = availableSchedules
-              .filter((dim: any) => {
-                const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
-                return wt >= minWT;
-              })
-              .sort((a: any, b: any) => {
-                const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
-                const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
-                return wtA - wtB;
-              });
-
-            let matchedSchedule = null;
-            let matchedWT = minWT;
-
-            if (eligibleSchedules.length > 0) {
-              matchedSchedule = eligibleSchedules[0].scheduleDesignation || eligibleSchedules[0].schedule_designation;
-              matchedWT = eligibleSchedules[0].wallThicknessMm || eligibleSchedules[0].wall_thickness_mm;
-            } else if (availableSchedules.length > 0) {
-              const sorted = [...availableSchedules].sort((a: any, b: any) => {
-                const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
-                const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
-                return wtB - wtA;
-              });
-              matchedSchedule = sorted[0].scheduleDesignation || sorted[0].schedule_designation;
-              matchedWT = sorted[0].wallThicknessMm || sorted[0].wall_thickness_mm;
-            }
-
-            if (matchedSchedule) {
-              const updatedEntry = {
-                ...entry,
-                minimumSchedule: matchedSchedule,
-                minimumWallThickness: minWT,
-                isScheduleOverridden: false,
-                specs: {
-                  ...entry.specs,
-                  scheduleNumber: matchedSchedule,
-                  wallThicknessMm: matchedWT,
-                }
-              };
-
-              updatedEntry.description = generateItemDescription(updatedEntry);
-              onUpdateEntry(entry.id, updatedEntry);
-              console.log(`✅ [useEffect] Auto-selected schedule ${matchedSchedule} (${matchedWT}mm) for entry ${entry.id}`);
-            }
-          } catch (error) {
-            console.error('[useEffect] Error processing entry:', error);
-          }
-        }
+        const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
+        await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
       }
     };
 
-    processEntries();
-  }, [entries.length, globalSpecs?.workingPressureBar, masterData.nominalBores?.length]);
+    prefetchSchedules();
+  }, [masterData.nominalBores?.length]);
 
   const calculateQuantities = (entry: any, field: string, value: number) => {
     const pipeLength = entry.specs.individualPipeLength || 12.192;
