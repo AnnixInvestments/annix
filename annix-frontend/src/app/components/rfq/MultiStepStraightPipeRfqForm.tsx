@@ -8138,78 +8138,93 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       value={entry.specs.nominalBoreMm}
                       onChange={async (e) => {
                         const nominalBore = Number(e.target.value);
+                        if (!nominalBore) return;
 
-                        // First update with the nominal bore
-                        onUpdateEntry(entry.id, {
+                        console.log(`[NB onChange] Selected NB: ${nominalBore}mm`);
+
+                        // Get steel spec ID
+                        const steelSpecId = entry.specs.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
+
+                        // Fetch available schedules first
+                        const schedules = await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
+                        console.log(`[NB onChange] Got ${schedules?.length || 0} schedules`);
+
+                        // Calculate minimum wall thickness using Barlow formula
+                        const pressure = globalSpecs?.workingPressureBar;
+                        let minWT = 0;
+                        let matchedSchedule: string | null = null;
+                        let matchedWT = 0;
+
+                        if (pressure && schedules && schedules.length > 0) {
+                          // OD lookup based on NB
+                          const odLookup: Record<number, number> = {
+                            100: 114.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
+                            350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6
+                          };
+                          const od = odLookup[nominalBore] || (nominalBore * 1.05);
+
+                          // Barlow formula for minimum wall thickness
+                          const pressureMpa = pressure * 0.1;
+                          const allowableStress = 137.9; // MPa for A106 Gr B
+                          const safetyFactor = 1.2;
+                          minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
+
+                          console.log(`[NB onChange] Calculated minWT: ${minWT.toFixed(2)}mm for ${pressure} bar, OD=${od}mm`);
+
+                          // Find eligible schedules that meet minimum wall thickness
+                          const eligibleSchedules = schedules
+                            .filter((dim: any) => {
+                              const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
+                              return wt >= minWT;
+                            })
+                            .sort((a: any, b: any) => {
+                              const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
+                              const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
+                              return wtA - wtB;
+                            });
+
+                          if (eligibleSchedules.length > 0) {
+                            // Use the first eligible schedule (smallest that meets requirement)
+                            matchedSchedule = eligibleSchedules[0].scheduleDesignation || eligibleSchedules[0].schedule_designation;
+                            matchedWT = eligibleSchedules[0].wallThicknessMm || eligibleSchedules[0].wall_thickness_mm;
+                            console.log(`[NB onChange] Auto-selected schedule: ${matchedSchedule} (${matchedWT}mm)`);
+                          } else {
+                            // Use thickest available if none meet minimum
+                            const sorted = [...schedules].sort((a: any, b: any) => {
+                              const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
+                              const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
+                              return wtB - wtA;
+                            });
+                            matchedSchedule = sorted[0].scheduleDesignation || sorted[0].schedule_designation;
+                            matchedWT = sorted[0].wallThicknessMm || sorted[0].wall_thickness_mm;
+                            console.log(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm, using thickest: ${matchedSchedule} (${matchedWT}mm)`);
+                          }
+                        } else if (schedules && schedules.length > 0) {
+                          // No pressure set - use first schedule
+                          matchedSchedule = schedules[0].scheduleDesignation || schedules[0].schedule_designation;
+                          matchedWT = schedules[0].wallThicknessMm || schedules[0].wall_thickness_mm;
+                          console.log(`[NB onChange] No pressure set, using first schedule: ${matchedSchedule}`);
+                        }
+
+                        // Build the update object
+                        const updatedEntry: any = {
+                          ...entry,
+                          minimumSchedule: matchedSchedule,
+                          minimumWallThickness: minWT,
+                          isScheduleOverridden: false,
                           specs: {
                             ...entry.specs,
-                            nominalBoreMm: nominalBore
+                            nominalBoreMm: nominalBore,
+                            scheduleNumber: matchedSchedule,
+                            wallThicknessMm: matchedWT,
                           }
-                        });
+                        };
 
-                        // Fetch available schedules for this combination
-                        const steelSpecId = entry.specs.steelSpecificationId || globalSpecs.steelSpecificationId || 2;
-                        const schedules = await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
+                        // Update description
+                        updatedEntry.description = generateItemDescription(updatedEntry);
 
-                        // Then calculate auto specs asynchronously
-                        try {
-                          const autoSpecs = await autoCalculateSpecs({
-                            specs: { ...entry.specs, nominalBoreMm: nominalBore }
-                          });
-
-                          if (autoSpecs.wallThicknessMm || autoSpecs.minimumWallThickness) {
-                            const minWT = autoSpecs.minimumWallThickness || autoSpecs.wallThicknessMm || 0;
-
-                            // Find the best matching schedule from available schedules
-                            // Handle both camelCase and snake_case property names
-                            const availableSchedules = schedules || [];
-                            const eligibleSchedules = availableSchedules
-                              .filter((dim: any) => {
-                                const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
-                                return wt >= minWT;
-                              })
-                              .sort((a: any, b: any) => {
-                                const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
-                                const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
-                                return wtA - wtB;
-                              });
-
-                            let matchedSchedule = null;
-                            let matchedWT = minWT;
-
-                            if (eligibleSchedules.length > 0) {
-                              matchedSchedule = eligibleSchedules[0].scheduleDesignation || eligibleSchedules[0].schedule_designation || eligibleSchedules[0].scheduleNumber?.toString() || eligibleSchedules[0].schedule_number?.toString();
-                              matchedWT = eligibleSchedules[0].wallThicknessMm || eligibleSchedules[0].wall_thickness_mm;
-                            } else if (availableSchedules.length > 0) {
-                              const sorted = [...availableSchedules].sort((a: any, b: any) => {
-                                const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
-                                const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
-                                return wtB - wtA;
-                              });
-                              matchedSchedule = sorted[0].scheduleDesignation || sorted[0].schedule_designation || sorted[0].scheduleNumber?.toString() || sorted[0].schedule_number?.toString();
-                              matchedWT = sorted[0].wallThicknessMm || sorted[0].wall_thickness_mm;
-                            }
-
-                            const updatedEntry = {
-                              ...entry,
-                              minimumSchedule: matchedSchedule,
-                              minimumWallThickness: minWT,
-                              availableUpgrades: eligibleSchedules.slice(1),
-                              isScheduleOverridden: false,
-                              specs: {
-                                ...entry.specs,
-                                nominalBoreMm: nominalBore,
-                                scheduleNumber: matchedSchedule,
-                                wallThicknessMm: matchedWT,
-                              }
-                            };
-
-                            updatedEntry.description = generateItemDescription(updatedEntry);
-                            onUpdateEntry(entry.id, updatedEntry);
-                          }
-                        } catch (error) {
-                          console.error('Error auto-calculating specs:', error);
-                        }
+                        console.log(`[NB onChange] Updating entry with schedule: ${matchedSchedule}, WT: ${matchedWT}mm`);
+                        onUpdateEntry(entry.id, updatedEntry);
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       required
