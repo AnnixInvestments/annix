@@ -6304,7 +6304,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
   );
 }
 
-function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, fetchBendOptions, bendOptionsCache, autoSelectFlangeSpecs }: any) {
+function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions, bendOptionsCache, autoSelectFlangeSpecs }: any) {
   const [isCalculating, setIsCalculating] = useState(false);
   const processedEntriesRef = useRef<Set<string>>(new Set());
   // Track entries that have been manually updated by onChange - these should NOT be overwritten by useEffect
@@ -8062,7 +8062,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     </label>
                     <select
                       value={entry.specs.nominalBoreMm}
-                      onChange={async (e) => {
+                      onChange={(e) => {
                         const nominalBore = Number(e.target.value);
                         if (!nominalBore) return;
 
@@ -8071,9 +8071,19 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         // Get steel spec ID
                         const steelSpecId = entry.specs.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
 
-                        // Fetch available schedules first
-                        const schedules = await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
-                        console.log(`[NB onChange] Got ${schedules?.length || 0} schedules`);
+                        // Get schedules from fallback data directly
+                        const schedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
+                        console.log(`[NB onChange] Using ${schedules.length} fallback schedules for ${nominalBore}mm`);
+
+                        // CRITICAL: Set the availableSchedulesMap SYNCHRONOUSLY before updating entry
+                        // This ensures the dropdown has options that match the selected schedule value
+                        if (schedules.length > 0) {
+                          setAvailableSchedulesMap((prev: Record<string, any[]>) => ({
+                            ...prev,
+                            [entry.id]: schedules
+                          }));
+                          console.log(`[NB onChange] Set availableSchedulesMap for entry ${entry.id} with ${schedules.length} schedules`);
+                        }
 
                         // Calculate minimum wall thickness using Barlow formula
                         const pressure = globalSpecs?.workingPressureBar;
@@ -8081,7 +8091,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         let matchedSchedule: string | null = null;
                         let matchedWT = 0;
 
-                        if (pressure && schedules && schedules.length > 0) {
+                        if (pressure && schedules.length > 0) {
                           // OD lookup based on NB
                           const odLookup: Record<number, number> = {
                             100: 114.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
@@ -8099,36 +8109,25 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                           // Find eligible schedules that meet minimum wall thickness
                           const eligibleSchedules = schedules
-                            .filter((dim: any) => {
-                              const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
-                              return wt >= minWT;
-                            })
-                            .sort((a: any, b: any) => {
-                              const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
-                              const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
-                              return wtA - wtB;
-                            });
+                            .filter(dim => dim.wallThicknessMm >= minWT)
+                            .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
 
                           if (eligibleSchedules.length > 0) {
                             // Use the first eligible schedule (smallest that meets requirement)
-                            matchedSchedule = eligibleSchedules[0].scheduleDesignation || eligibleSchedules[0].schedule_designation;
-                            matchedWT = eligibleSchedules[0].wallThicknessMm || eligibleSchedules[0].wall_thickness_mm;
+                            matchedSchedule = eligibleSchedules[0].scheduleDesignation;
+                            matchedWT = eligibleSchedules[0].wallThicknessMm;
                             console.log(`[NB onChange] Auto-selected schedule: ${matchedSchedule} (${matchedWT}mm)`);
                           } else {
                             // Use thickest available if none meet minimum
-                            const sorted = [...schedules].sort((a: any, b: any) => {
-                              const wtA = a.wallThicknessMm || a.wall_thickness_mm || 0;
-                              const wtB = b.wallThicknessMm || b.wall_thickness_mm || 0;
-                              return wtB - wtA;
-                            });
-                            matchedSchedule = sorted[0].scheduleDesignation || sorted[0].schedule_designation;
-                            matchedWT = sorted[0].wallThicknessMm || sorted[0].wall_thickness_mm;
+                            const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
+                            matchedSchedule = sorted[0].scheduleDesignation;
+                            matchedWT = sorted[0].wallThicknessMm;
                             console.log(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm, using thickest: ${matchedSchedule} (${matchedWT}mm)`);
                           }
-                        } else if (schedules && schedules.length > 0) {
+                        } else if (schedules.length > 0) {
                           // No pressure set - use first schedule
-                          matchedSchedule = schedules[0].scheduleDesignation || schedules[0].schedule_designation;
-                          matchedWT = schedules[0].wallThicknessMm || schedules[0].wall_thickness_mm;
+                          matchedSchedule = schedules[0].scheduleDesignation;
+                          matchedWT = schedules[0].wallThicknessMm;
                           console.log(`[NB onChange] No pressure set, using first schedule: ${matchedSchedule}`);
                         }
 
@@ -8149,10 +8148,11 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         // Update description
                         updatedEntry.description = generateItemDescription(updatedEntry);
 
-                        // Mark this entry as manually updated - prevents useEffect from overwriting
-                        manuallyUpdatedEntriesRef.current.add(entry.id);
                         console.log(`[NB onChange] Updating entry ${entry.id} with schedule: ${matchedSchedule}, WT: ${matchedWT}mm`);
                         onUpdateEntry(entry.id, updatedEntry);
+
+                        // Also fetch from API to potentially get better data (runs async in background)
+                        fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       required
@@ -8235,7 +8235,10 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             >
                               <option value="">Select schedule...</option>
                               {(() => {
-                                const allSchedules = availableSchedulesMap[entry.id] || [];
+                                // Use availableSchedulesMap if populated, otherwise fallback directly to FALLBACK_PIPE_SCHEDULES
+                                const mapSchedules = availableSchedulesMap[entry.id] || [];
+                                const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs.nominalBoreMm] || [];
+                                const allSchedules = mapSchedules.length > 0 ? mapSchedules : fallbackSchedules;
                                 const minimumWT = entry.minimumWallThickness || 0;
 
                                 // Filter to only show schedules >= minimum wall thickness, sorted by wall thickness
@@ -8273,7 +8276,10 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 });
                               })()}
                               {(() => {
-                                const allSchedules = availableSchedulesMap[entry.id] || [];
+                                // Use availableSchedulesMap if populated, otherwise fallback directly to FALLBACK_PIPE_SCHEDULES
+                                const mapSchedules = availableSchedulesMap[entry.id] || [];
+                                const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs.nominalBoreMm] || [];
+                                const allSchedules = mapSchedules.length > 0 ? mapSchedules : fallbackSchedules;
                                 const minimumWT = entry.minimumWallThickness || 0;
                                 const eligibleSchedules = allSchedules.filter((dim: any) => {
                                   const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
@@ -9641,18 +9647,37 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   };
 
   // Fetch available schedules for a specific entry
+  // IMPORTANT: This function should NOT replace working fallback data with API data
+  // because API schedule names may differ from fallback names, breaking the selected value
   const fetchAvailableSchedules = async (entryId: string, steelSpecId: number, nominalBoreMm: number) => {
     // Check for fallback data first to provide immediate response
     const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[nominalBoreMm] || [];
 
+    // If we already have schedules for this entry, don't fetch from API
+    // This prevents API data with different schedule names from breaking the selection
+    const existingSchedules = availableSchedulesMap[entryId];
+    if (existingSchedules && existingSchedules.length > 0) {
+      console.log(`[fetchAvailableSchedules] Entry ${entryId} already has ${existingSchedules.length} schedules, skipping API fetch`);
+      return existingSchedules;
+    }
+
+    // Use fallback data - it's reliable and consistent
+    if (fallbackSchedules.length > 0) {
+      console.log(`[fetchAvailableSchedules] Using ${fallbackSchedules.length} fallback schedules for ${nominalBoreMm}mm`);
+      setAvailableSchedulesMap(prev => ({
+        ...prev,
+        [entryId]: fallbackSchedules
+      }));
+      return fallbackSchedules;
+    }
+
+    // Only try API if we have no fallback data
     try {
       const { masterDataApi } = await import('@/app/lib/api/client');
 
       console.log(`[fetchAvailableSchedules] Entry: ${entryId}, Steel: ${steelSpecId}, NB: ${nominalBoreMm}mm`);
-      console.log(`[fetchAvailableSchedules] masterData.nominalBores count: ${masterData.nominalBores?.length || 0}`);
 
       // Find the nominal outside diameter ID from nominalBoreMm
-      // Handle both snake_case (from API) and camelCase (from fallback data) property names
       const nominalBore = masterData.nominalBores?.find((nb: any) => {
         const nbValue = nb.nominal_diameter_mm ?? nb.nominalDiameterMm;
         return nbValue === nominalBoreMm || nbValue === Number(nominalBoreMm);
@@ -9660,15 +9685,6 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
       if (!nominalBore) {
         console.warn(`[fetchAvailableSchedules] No nominal bore found for ${nominalBoreMm}mm in masterData`);
-        // Use fallback data if available
-        if (fallbackSchedules.length > 0) {
-          console.log(`[fetchAvailableSchedules] Using ${fallbackSchedules.length} fallback schedules for ${nominalBoreMm}mm`);
-          setAvailableSchedulesMap(prev => ({
-            ...prev,
-            [entryId]: fallbackSchedules
-          }));
-          return fallbackSchedules;
-        }
         return [];
       }
 
@@ -9676,34 +9692,22 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
       const dimensions = await masterDataApi.getPipeDimensionsAll(steelSpecId, nominalBore.id);
 
-      console.log(`[fetchAvailableSchedules] Got ${dimensions?.length || 0} dimensions for ${nominalBoreMm}mm NB`);
-      if (dimensions?.length > 0) {
-        console.log(`[fetchAvailableSchedules] First schedule:`, {
-          schedule: dimensions[0].scheduleDesignation || (dimensions[0] as any).schedule_designation,
-          wallThickness: dimensions[0].wallThicknessMm || (dimensions[0] as any).wall_thickness_mm
-        });
+      console.log(`[fetchAvailableSchedules] Got ${dimensions?.length || 0} dimensions from API`);
+
+      if (dimensions && dimensions.length > 0) {
+        setAvailableSchedulesMap(prev => ({
+          ...prev,
+          [entryId]: dimensions
+        }));
+        return dimensions;
       }
 
-      // Store in map - prefer API data, fallback to hardcoded schedules
-      const schedulesToUse = (dimensions && dimensions.length > 0) ? dimensions : fallbackSchedules;
-      setAvailableSchedulesMap(prev => ({
-        ...prev,
-        [entryId]: schedulesToUse
-      }));
-
-      console.log(`[fetchAvailableSchedules] Using ${schedulesToUse.length} schedules (${(dimensions?.length > 0) ? 'API' : 'fallback'})`);
-      return schedulesToUse;
+      return [];
     } catch (error) {
       if (error instanceof Error && error.message !== 'Backend unavailable') {
         console.error('[fetchAvailableSchedules] Error:', error);
       }
-      // Use fallback data when API is unavailable
-      console.log(`[fetchAvailableSchedules] API unavailable, using ${fallbackSchedules.length} fallback schedules for ${nominalBoreMm}mm`);
-      setAvailableSchedulesMap(prev => ({
-        ...prev,
-        [entryId]: fallbackSchedules
-      }));
-      return fallbackSchedules;
+      return [];
     }
   };
 
@@ -9793,17 +9797,21 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   };
 
   // Refetch available schedules when global steel specification changes
+  // NOTE: Removed rfqData.straightPipeEntries from dependencies to prevent re-fetching on every entry change
+  // The NB onChange handler handles setting schedules when user selects a new NB
   useEffect(() => {
     const steelSpecId = rfqData.globalSpecs?.steelSpecificationId;
     if (!steelSpecId || !masterData.nominalBores?.length) return;
 
-    // Refetch schedules for all entries that have a nominal bore selected
+    // Only prefetch schedules when steel spec changes - this is a background operation
+    // that won't overwrite existing schedule selections due to the check in fetchAvailableSchedules
     rfqData.straightPipeEntries.forEach((entry: StraightPipeEntry) => {
       if (entry.specs.nominalBoreMm) {
         fetchAvailableSchedules(entry.id, steelSpecId, entry.specs.nominalBoreMm);
       }
     });
-  }, [rfqData.globalSpecs?.steelSpecificationId, masterData.nominalBores, rfqData.straightPipeEntries]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rfqData.globalSpecs?.steelSpecificationId, masterData.nominalBores?.length]);
 
   // Auto-calculate when entry specifications change (with debounce)
   useEffect(() => {
@@ -10411,6 +10419,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             loading={false}
             fetchAvailableSchedules={fetchAvailableSchedules}
             availableSchedulesMap={availableSchedulesMap}
+            setAvailableSchedulesMap={setAvailableSchedulesMap}
             fetchBendOptions={fetchBendOptions}
             bendOptionsCache={bendOptionsCache}
             autoSelectFlangeSpecs={autoSelectFlangeSpecs}
