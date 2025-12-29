@@ -232,9 +232,9 @@ const DEFAULT_PIPE_SPECS: Partial<CreateStraightPipeRfqDto> = {
   lengthUnit: 'meters',
   quantityType: 'number_of_pipes',
   quantityValue: 1,  // Default to 1 pipe
-  workingPressureBar: 10,
-  workingTemperatureC: 20,  // Changed to room temperature default
-  steelSpecificationId: 2,  // ASTM A106 Grade B
+  // workingPressureBar: uses globalSpecs from page 2
+  // workingTemperatureC: uses globalSpecs from page 2
+  // steelSpecificationId: uses globalSpecs from page 2
 };
 
 export const useRfqForm = () => {
