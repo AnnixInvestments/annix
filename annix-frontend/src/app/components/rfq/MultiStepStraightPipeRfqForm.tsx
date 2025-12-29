@@ -8552,10 +8552,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             >
                               <option value="">Select schedule...</option>
                               {(() => {
-                                // Use availableSchedulesMap if populated, otherwise fallback directly to FALLBACK_PIPE_SCHEDULES
-                                const mapSchedules = availableSchedulesMap[entry.id] || [];
+                                // ALWAYS prefer FALLBACK_PIPE_SCHEDULES to ensure consistent schedule names
+                                // API data may have different designations (e.g. "5S" for stainless) that break calculations
                                 const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs.nominalBoreMm] || [];
-                                const allSchedules = mapSchedules.length > 0 ? mapSchedules : fallbackSchedules;
+                                const mapSchedules = availableSchedulesMap[entry.id] || [];
+                                // Only use API data if no fallback exists
+                                const allSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
                                 const minimumWT = entry.minimumWallThickness || 0;
 
                                 // Filter to only show schedules >= minimum wall thickness, sorted by wall thickness
@@ -8593,10 +8595,10 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 });
                               })()}
                               {(() => {
-                                // Use availableSchedulesMap if populated, otherwise fallback directly to FALLBACK_PIPE_SCHEDULES
-                                const mapSchedules = availableSchedulesMap[entry.id] || [];
+                                // ALWAYS prefer FALLBACK_PIPE_SCHEDULES for consistent schedule names
                                 const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs.nominalBoreMm] || [];
-                                const allSchedules = mapSchedules.length > 0 ? mapSchedules : fallbackSchedules;
+                                const mapSchedules = availableSchedulesMap[entry.id] || [];
+                                const allSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
                                 const minimumWT = entry.minimumWallThickness || 0;
                                 const eligibleSchedules = allSchedules.filter((dim: any) => {
                                   const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
@@ -8637,14 +8639,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             const newSchedule = e.target.value;
 
                             // Find the selected dimension to get wall thickness
-                            // Handle both camelCase and snake_case property names
-                            const availableSchedules = availableSchedulesMap[entry.id] || [];
+                            // ALWAYS prefer FALLBACK_PIPE_SCHEDULES for consistent schedule names
+                            const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs.nominalBoreMm] || [];
+                            const mapSchedules = availableSchedulesMap[entry.id] || [];
+                            const availableSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
                             const selectedDimension = availableSchedules.find((dim: any) => {
                               const schedName = dim.scheduleDesignation || dim.schedule_designation || dim.scheduleNumber?.toString() || dim.schedule_number?.toString();
                               return schedName === newSchedule;
                             });
 
-                            // Use wall thickness from API data (handle both naming conventions)
+                            // Use wall thickness from data (handle both naming conventions)
                             const autoWallThickness = selectedDimension?.wallThicknessMm || selectedDimension?.wall_thickness_mm || null;
 
                             const updatedEntry: any = {
@@ -8663,19 +8667,27 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         >
                           <option value="">Select schedule...</option>
-                          {(availableSchedulesMap[entry.id] || []).map((dim: any) => {
-                            const scheduleValue = dim.scheduleDesignation || dim.schedule_designation || dim.scheduleNumber?.toString() || dim.schedule_number?.toString() || 'Unknown';
-                            const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
-                            const label = `${scheduleValue} (${wt}mm)`;
-                            return (
-                              <option key={dim.id} value={scheduleValue}>
-                                {label}
-                              </option>
-                            );
-                          })}
-                          {(!availableSchedulesMap[entry.id] || availableSchedulesMap[entry.id].length === 0) && (
-                            <option disabled>No schedules available - select nominal bore first</option>
-                          )}
+                          {(() => {
+                            // ALWAYS prefer FALLBACK_PIPE_SCHEDULES for consistent schedule names
+                            const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs.nominalBoreMm] || [];
+                            const mapSchedules = availableSchedulesMap[entry.id] || [];
+                            const allSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
+
+                            if (allSchedules.length === 0) {
+                              return <option disabled>No schedules available - select nominal bore first</option>;
+                            }
+
+                            return allSchedules.map((dim: any) => {
+                              const scheduleValue = dim.scheduleDesignation || dim.schedule_designation || dim.scheduleNumber?.toString() || dim.schedule_number?.toString() || 'Unknown';
+                              const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
+                              const label = `${scheduleValue} (${wt}mm)`;
+                              return (
+                                <option key={dim.id} value={scheduleValue}>
+                                  {label}
+                                </option>
+                              );
+                            });
+                          })()}
                         </select>
                         <p className="mt-0.5 text-xs text-gray-700">
                           Select a schedule from available options for the selected nominal bore and steel specification.
