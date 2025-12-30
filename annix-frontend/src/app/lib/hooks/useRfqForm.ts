@@ -9,6 +9,7 @@ export interface StraightPipeEntry {
   itemType: 'straight_pipe';
   description: string;
   clientItemNumber?: string;
+  useSequentialNumbering?: boolean;
   specs: CreateStraightPipeRfqDto;
   calculation?: StraightPipeCalculationResult;
   calculatedPipes?: number;
@@ -34,6 +35,7 @@ export interface BendEntry {
   itemType: 'bend';
   description: string;
   clientItemNumber?: string;
+  useSequentialNumbering?: boolean;
   specs: {
     nominalBoreMm?: number;
     scheduleNumber?: string;
@@ -62,6 +64,7 @@ export interface FittingEntry {
   itemType: 'fitting';
   description: string;
   clientItemNumber?: string;
+  useSequentialNumbering?: boolean;
   specs: {
     fittingStandard?: 'SABS62' | 'SABS719'; // SABS62 (standard) or SABS719 (fabricated)
     fittingType?: string; // EQUAL_TEE, LATERAL, SWEEP_TEE, etc.

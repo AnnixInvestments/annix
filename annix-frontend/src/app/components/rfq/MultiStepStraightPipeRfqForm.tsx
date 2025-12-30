@@ -7437,16 +7437,38 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
           <div key={`${entry.id}-${index}`} className="border-2 border-gray-200 rounded-lg p-5 bg-white shadow-sm">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-3">
-                <h3 className="text-base font-semibold text-gray-800">Item #{index + 1}</h3>
+                {/* Editable Item Number */}
+                <div className="flex items-center gap-1">
+                  <span className="text-base font-semibold text-gray-800">Item</span>
+                  <input
+                    type="text"
+                    value={entry.clientItemNumber || `#${index + 1}`}
+                    onChange={(e) => onUpdateEntry(entry.id, { clientItemNumber: e.target.value })}
+                    className="w-20 px-2 py-0.5 text-base font-semibold text-gray-800 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder={`#${index + 1}`}
+                  />
+                </div>
                 <span className={`px-3 py-1 ${
-                  entry.itemType === 'bend' ? 'bg-purple-100 text-purple-800' : 
-                  entry.itemType === 'fitting' ? 'bg-green-100 text-green-800' : 
+                  entry.itemType === 'bend' ? 'bg-purple-100 text-purple-800' :
+                  entry.itemType === 'fitting' ? 'bg-green-100 text-green-800' :
                   'bg-blue-100 text-blue-800'
                 } text-xs font-semibold rounded-full`}>
-                  {entry.itemType === 'bend' ? 'Bend Section' : 
-                   entry.itemType === 'fitting' ? 'Fittings' : 
+                  {entry.itemType === 'bend' ? 'Bend Section' :
+                   entry.itemType === 'fitting' ? 'Fittings' :
                    'Straight Pipe'}
                 </span>
+                {/* Sequential numbering checkbox */}
+                {entry.specs?.quantityValue > 1 && (
+                  <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer ml-2">
+                    <input
+                      type="checkbox"
+                      checked={entry.useSequentialNumbering || false}
+                      onChange={(e) => onUpdateEntry(entry.id, { useSequentialNumbering: e.target.checked })}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Sequential (e.g., {entry.clientItemNumber || `#${index + 1}`}-01, -02)</span>
+                  </label>
+                )}
               </div>
               {entries.length > 1 && (
                 <button
