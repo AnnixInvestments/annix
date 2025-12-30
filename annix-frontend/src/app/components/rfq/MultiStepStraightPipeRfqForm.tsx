@@ -13,6 +13,13 @@ import {
   generateSystemReferenceNumber,
   getPipeEndConfigurationDetails
 } from '@/app/lib/utils/systemUtils';
+import {
+  calculateMaxAllowablePressure,
+  calculateMinWallThickness,
+  validateScheduleForPressure,
+  findRecommendedSchedule,
+  MATERIAL_ALLOWABLE_STRESS
+} from '@/app/lib/utils/pipeCalculations';
 import GoogleMapLocationPicker from '@/app/components/GoogleMapLocationPicker';
 import { useEnvironmentalIntelligence } from '@/app/lib/hooks/useEnvironmentalIntelligence';
 import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
@@ -97,40 +104,121 @@ const NB_TO_OD_LOOKUP: Record<number, number> = {
   750: 762.0, 800: 812.8, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2
 };
 
-// Flange weight lookup table (kg per flange) - Based on BS4504/SABS1123 standard PN16/1600 flanges
-// These are typical weld-neck flange weights including bolts and gaskets
-const NB_TO_FLANGE_WEIGHT_LOOKUP: Record<number, number> = {
-  15: 0.8,    // 15NB - approx 0.6kg flange + bolts/gasket
-  20: 1.0,    // 20NB
-  25: 1.2,    // 25NB
-  32: 1.6,    // 32NB
-  40: 2.0,    // 40NB
-  50: 2.5,    // 50NB
-  65: 3.5,    // 65NB
-  80: 4.5,    // 80NB
-  100: 6.0,   // 100NB - from migration: ~4-6kg for flange + ~2kg bolts/nuts
-  125: 8.5,   // 125NB
-  150: 11.0,  // 150NB
-  200: 16.0,  // 200NB - from migration: 12kg + bolts
-  250: 24.0,  // 250NB
-  300: 35.0,  // 300NB - from migration: ~30-42kg + bolts
-  350: 45.0,  // 350NB
-  400: 55.0,  // 400NB
-  450: 70.0,  // 450NB
-  500: 90.0,  // 500NB - from migration: ~80-100kg + bolts
-  600: 120.0, // 600NB
-  700: 150.0, // 700NB
-  750: 170.0, // 750NB
-  800: 190.0, // 800NB
-  900: 240.0, // 900NB
-  1000: 300.0, // 1000NB - from migration: ~86-200kg + bolts
-  1050: 350.0, // 1050NB
-  1200: 500.0  // 1200NB - from migration: ~470kg + bolts
+// Flange weight lookup table by pressure class (kg per flange including bolts and gaskets)
+// Based on BS4504/SABS1123/ASME B16.5 standards
+// Weights increase significantly with pressure class
+const FLANGE_WEIGHT_BY_PRESSURE_CLASS: Record<string, Record<number, number>> = {
+  // PN10 / Class 150 (lightest)
+  'PN10': {
+    15: 0.6, 20: 0.8, 25: 1.0, 32: 1.3, 40: 1.6, 50: 2.0, 65: 2.8, 80: 3.6,
+    100: 4.8, 125: 6.8, 150: 8.8, 200: 12.8, 250: 19.2, 300: 28.0, 350: 36.0,
+    400: 44.0, 450: 56.0, 500: 72.0, 600: 96.0, 700: 120.0, 750: 136.0,
+    800: 152.0, 900: 192.0, 1000: 240.0, 1050: 280.0, 1200: 400.0
+  },
+  // PN16 / 1600kPa (standard - default)
+  'PN16': {
+    15: 0.8, 20: 1.0, 25: 1.2, 32: 1.6, 40: 2.0, 50: 2.5, 65: 3.5, 80: 4.5,
+    100: 6.0, 125: 8.5, 150: 11.0, 200: 16.0, 250: 24.0, 300: 35.0, 350: 45.0,
+    400: 55.0, 450: 70.0, 500: 90.0, 600: 120.0, 700: 150.0, 750: 170.0,
+    800: 190.0, 900: 240.0, 1000: 300.0, 1050: 350.0, 1200: 500.0
+  },
+  // PN25 / 2500kPa
+  'PN25': {
+    15: 1.0, 20: 1.3, 25: 1.5, 32: 2.0, 40: 2.5, 50: 3.2, 65: 4.4, 80: 5.6,
+    100: 7.5, 125: 10.6, 150: 13.8, 200: 20.0, 250: 30.0, 300: 43.8, 350: 56.3,
+    400: 68.8, 450: 87.5, 500: 112.5, 600: 150.0, 700: 187.5, 750: 212.5,
+    800: 237.5, 900: 300.0, 1000: 375.0, 1050: 437.5, 1200: 625.0
+  },
+  // PN40 / 4000kPa / Class 300
+  'PN40': {
+    15: 1.2, 20: 1.5, 25: 1.8, 32: 2.4, 40: 3.0, 50: 3.8, 65: 5.3, 80: 6.8,
+    100: 9.0, 125: 12.8, 150: 16.5, 200: 24.0, 250: 36.0, 300: 52.5, 350: 67.5,
+    400: 82.5, 450: 105.0, 500: 135.0, 600: 180.0, 700: 225.0, 750: 255.0,
+    800: 285.0, 900: 360.0, 1000: 450.0, 1050: 525.0, 1200: 750.0
+  },
+  // PN64 / 6400kPa (heavy duty)
+  'PN64': {
+    15: 1.6, 20: 2.0, 25: 2.4, 32: 3.2, 40: 4.0, 50: 5.0, 65: 7.0, 80: 9.0,
+    100: 12.0, 125: 17.0, 150: 22.0, 200: 32.0, 250: 48.0, 300: 70.0, 350: 90.0,
+    400: 110.0, 450: 140.0, 500: 180.0, 600: 240.0, 700: 300.0, 750: 340.0,
+    800: 380.0, 900: 480.0, 1000: 600.0, 1050: 700.0, 1200: 1000.0
+  },
+  // Class 150 (ASME) - similar to PN16
+  'Class 150': {
+    15: 0.8, 20: 1.0, 25: 1.2, 32: 1.6, 40: 2.0, 50: 2.5, 65: 3.5, 80: 4.5,
+    100: 6.0, 125: 8.5, 150: 11.0, 200: 16.0, 250: 24.0, 300: 35.0, 350: 45.0,
+    400: 55.0, 450: 70.0, 500: 90.0, 600: 120.0, 700: 150.0, 750: 170.0,
+    800: 190.0, 900: 240.0, 1000: 300.0, 1050: 350.0, 1200: 500.0
+  },
+  // Class 300 (ASME) - similar to PN40
+  'Class 300': {
+    15: 1.2, 20: 1.5, 25: 1.8, 32: 2.4, 40: 3.0, 50: 3.8, 65: 5.3, 80: 6.8,
+    100: 9.0, 125: 12.8, 150: 16.5, 200: 24.0, 250: 36.0, 300: 52.5, 350: 67.5,
+    400: 82.5, 450: 105.0, 500: 135.0, 600: 180.0, 700: 225.0, 750: 255.0,
+    800: 285.0, 900: 360.0, 1000: 450.0, 1050: 525.0, 1200: 750.0
+  },
+  // Class 600 (ASME) - heavy
+  'Class 600': {
+    15: 2.0, 20: 2.5, 25: 3.0, 32: 4.0, 40: 5.0, 50: 6.3, 65: 8.8, 80: 11.3,
+    100: 15.0, 125: 21.3, 150: 27.5, 200: 40.0, 250: 60.0, 300: 87.5, 350: 112.5,
+    400: 137.5, 450: 175.0, 500: 225.0, 600: 300.0, 700: 375.0, 750: 425.0,
+    800: 475.0, 900: 600.0, 1000: 750.0, 1050: 875.0, 1200: 1250.0
+  },
+};
+
+// Default flange weight lookup (PN16) - for backward compatibility
+const NB_TO_FLANGE_WEIGHT_LOOKUP = FLANGE_WEIGHT_BY_PRESSURE_CLASS['PN16'];
+
+/**
+ * Get flange weight based on NB, pressure class, and flange standard
+ * @param nominalBoreMm - Nominal bore in mm
+ * @param pressureClassDesignation - Pressure class (e.g., 'PN16', 'Class 300')
+ * @returns Weight per flange in kg (including bolts and gasket)
+ */
+const getFlangeWeight = (
+  nominalBoreMm: number,
+  pressureClassDesignation?: string
+): number => {
+  // Default to PN16 if no pressure class specified
+  const pressureClass = pressureClassDesignation || 'PN16';
+
+  // Try to find exact match first
+  if (FLANGE_WEIGHT_BY_PRESSURE_CLASS[pressureClass]) {
+    const weight = FLANGE_WEIGHT_BY_PRESSURE_CLASS[pressureClass][nominalBoreMm];
+    if (weight) return weight;
+  }
+
+  // Try to map common designations
+  const classMapping: Record<string, string> = {
+    '1000': 'PN10', '1600': 'PN16', '2500': 'PN25', '4000': 'PN40', '6400': 'PN64',
+    '150': 'Class 150', '300': 'Class 300', '600': 'Class 600',
+  };
+
+  const mappedClass = classMapping[pressureClass] || pressureClass;
+  if (FLANGE_WEIGHT_BY_PRESSURE_CLASS[mappedClass]) {
+    const weight = FLANGE_WEIGHT_BY_PRESSURE_CLASS[mappedClass][nominalBoreMm];
+    if (weight) return weight;
+  }
+
+  // Fallback to PN16 default
+  const defaultWeight = NB_TO_FLANGE_WEIGHT_LOOKUP[nominalBoreMm];
+  if (defaultWeight) return defaultWeight;
+
+  // Last resort: estimate based on NB
+  return nominalBoreMm < 100 ? 5 : nominalBoreMm < 200 ? 12 : nominalBoreMm < 400 ? 40 : nominalBoreMm < 600 ? 80 : 150;
 };
 
 /**
  * Local calculation for pipe weight when API is unavailable
  * Uses formula: ((OD - WT) * WT) * 0.02466 = Kg/m
+ *
+ * @param nominalBoreMm - Nominal bore in mm
+ * @param wallThicknessMm - Wall thickness in mm
+ * @param individualPipeLength - Length of each pipe in meters
+ * @param quantityValue - Quantity value (pipes or total length)
+ * @param quantityType - 'number_of_pipes' or 'total_length'
+ * @param pipeEndConfiguration - Pipe end configuration (PE, FOE, FBE, etc.)
+ * @param pressureClassDesignation - Optional pressure class for accurate flange weights
  */
 const calculateLocalPipeResult = (
   nominalBoreMm: number,
@@ -138,7 +226,8 @@ const calculateLocalPipeResult = (
   individualPipeLength: number,
   quantityValue: number,
   quantityType: string,
-  pipeEndConfiguration: string
+  pipeEndConfiguration: string,
+  pressureClassDesignation?: string
 ): any => {
   const outsideDiameterMm = NB_TO_OD_LOOKUP[nominalBoreMm] || (nominalBoreMm * 1.05);
 
@@ -176,9 +265,8 @@ const calculateLocalPipeResult = (
   const totalFlangeWeldLength = numberOfFlangeWelds * circumference;
   const totalButtWeldLength = numberOfButtWelds * circumference;
 
-  // Get flange weight from lookup table (includes flange + bolts + gasket)
-  const flangeWeightPerUnit = NB_TO_FLANGE_WEIGHT_LOOKUP[nominalBoreMm] ||
-    (nominalBoreMm < 100 ? 5 : nominalBoreMm < 200 ? 12 : nominalBoreMm < 400 ? 40 : nominalBoreMm < 600 ? 80 : 150);
+  // Get flange weight based on pressure class (includes flange + bolts + gasket)
+  const flangeWeightPerUnit = getFlangeWeight(nominalBoreMm, pressureClassDesignation);
   const totalFlangeWeight = numberOfFlanges * flangeWeightPerUnit;
 
   // Total system weight
@@ -197,6 +285,8 @@ const calculateLocalPipeResult = (
     outsideDiameterMm,
     wallThicknessMm,
     totalFlangeWeight,
+    flangeWeightPerUnit, // Include per-unit weight for transparency
+    pressureClassUsed: pressureClassDesignation || 'PN16', // Track which pressure class was used
     totalBoltWeight: 0,
     totalNutWeight: 0,
     totalSystemWeight,
@@ -8410,41 +8500,49 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           }
                         }
 
-                        // Fallback to local Barlow formula calculation if API failed
+                        // Fallback to local ASME B31.3 calculation if API failed
                         if (!apiSucceeded && schedules.length > 0) {
                           if (pressure > 0) {
                             // OD lookup based on NB
                             const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
+                            const materialCode = steelSpecId === 1 ? 'ASTM_A53_Grade_B' : 'ASTM_A106_Grade_B';
 
-                            // Barlow formula for minimum wall thickness
-                            const pressureMpa = pressure * 0.1;
-                            const allowableStress = 137.9; // MPa for A106 Gr B
-                            const safetyFactor = 1.2;
-                            minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
+                            // Use ASME B31.3 formula: P = (2 × S × E × t) / OD
+                            // Calculate minimum required wall thickness with 1.2x safety factor
+                            minWT = calculateMinWallThickness(od, pressure, materialCode, temperature, 1.0, 0, 1.2);
 
-                            console.log(`[NB onChange] Local calc minWT: ${minWT.toFixed(2)}mm for ${pressure} bar, OD=${od}mm`);
+                            console.log(`[NB onChange] ASME B31.3 calc minWT: ${minWT.toFixed(2)}mm for ${pressure} bar @ ${temperature}°C, OD=${od}mm`);
 
-                            // Find eligible schedules that meet minimum wall thickness
-                            const eligibleSchedules = schedules
-                              .filter(dim => dim.wallThicknessMm >= minWT)
-                              .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
+                            // Find recommended schedule using ASME B31.3 validation
+                            const recommendation = findRecommendedSchedule(
+                              schedules,
+                              od,
+                              pressure,
+                              materialCode,
+                              temperature,
+                              1.2 // Minimum 1.2x safety factor
+                            );
 
-                            if (eligibleSchedules.length > 0) {
-                              matchedSchedule = eligibleSchedules[0].scheduleDesignation;
-                              matchedWT = eligibleSchedules[0].wallThicknessMm;
-                              console.log(`[NB onChange] Local auto-selected: ${matchedSchedule} (${matchedWT}mm)`);
+                            if (recommendation.schedule) {
+                              matchedSchedule = recommendation.schedule.scheduleDesignation;
+                              matchedWT = recommendation.schedule.wallThicknessMm;
+                              const maxPressure = recommendation.validation?.maxAllowablePressure || 0;
+                              const margin = recommendation.validation?.safetyMargin || 0;
+                              console.log(`[NB onChange] ASME B31.3 recommended: ${matchedSchedule} (${matchedWT}mm), max ${maxPressure.toFixed(1)} bar, ${margin.toFixed(1)}x margin`);
                             } else {
-                              // Use thickest available if none meet minimum
+                              // No schedule meets requirements - use thickest available with warning
                               const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
                               matchedSchedule = sorted[0].scheduleDesignation;
                               matchedWT = sorted[0].wallThicknessMm;
-                              console.log(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm, using thickest: ${matchedSchedule} (${matchedWT}mm)`);
+                              const validation = validateScheduleForPressure(od, matchedWT, pressure, materialCode, temperature);
+                              console.warn(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm minWT, using thickest: ${matchedSchedule} (${matchedWT}mm). ${validation.message}`);
                             }
                           } else {
-                            // No pressure set - use first schedule
-                            matchedSchedule = schedules[0].scheduleDesignation;
-                            matchedWT = schedules[0].wallThicknessMm;
-                            console.log(`[NB onChange] No pressure set, using first schedule: ${matchedSchedule}`);
+                            // No pressure set - use lightest schedule (Sch 10 or STD)
+                            const sorted = [...schedules].sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
+                            matchedSchedule = sorted[0].scheduleDesignation;
+                            matchedWT = sorted[0].wallThicknessMm;
+                            console.log(`[NB onChange] No pressure set, using lightest schedule: ${matchedSchedule}`);
                           }
                         }
 
@@ -10309,13 +10407,20 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         if (errorMessage.includes('API Error (404)') || errorMessage.includes('not available in the database')) {
           console.log('⚠️ API 404 - Using local calculation fallback for', entry.specs.nominalBoreMm, 'NB');
           const wallThickness = entry.specs.wallThicknessMm || 6.35; // Default wall thickness
+
+          // Get pressure class designation for accurate flange weights
+          const pressureClassDesignation = masterData.pressureClasses?.find(
+            (pc: { id: number; designation: string }) => pc.id === flangePressureClassId
+          )?.designation;
+
           const localResult = calculateLocalPipeResult(
             entry.specs.nominalBoreMm!,
             wallThickness,
             entry.specs.individualPipeLength!,
             entry.specs.quantityValue!,
             entry.specs.quantityType || 'number_of_pipes',
-            entry.specs.pipeEndConfiguration || 'PE'
+            entry.specs.pipeEndConfiguration || 'PE',
+            pressureClassDesignation
           );
           console.log('✅ Local calculation result:', localResult);
           updateEntryCalculation(entry.id, localResult);
@@ -10461,13 +10566,19 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
       for (const entry of rfqData.straightPipeEntries) {
         try {
           // Merge entry specs with global specs (same as auto-calculate)
+          const workingPressureBar = entry.specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10;
+          const workingTemperatureC = entry.specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC || 20;
+          const steelSpecificationId = entry.specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId || 2;
+          const flangeStandardId = entry.specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId || 1;
+          const flangePressureClassId = entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
+
           const calculationData = {
             ...entry.specs,
-            workingPressureBar: entry.specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar,
-            workingTemperatureC: entry.specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
-            steelSpecificationId: entry.specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId,
-            flangeStandardId: entry.specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
-            flangePressureClassId: entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+            workingPressureBar,
+            workingTemperatureC,
+            steelSpecificationId,
+            flangeStandardId,
+            flangePressureClassId,
           };
 
           console.log('🔄 Manual calculate for entry:', entry.id, calculationData);
@@ -10482,13 +10593,21 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           if (errorMessage.includes('404') || errorMessage.includes('not found') || errorMessage.includes('not available')) {
             console.log('⚠️ API 404 - Using local calculation fallback for entry:', entry.id);
             const wallThickness = entry.specs.wallThicknessMm || 6.35;
+
+            // Get pressure class designation for accurate flange weights
+            const entryPressureClassId = entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
+            const pressureClassDesignation = masterData.pressureClasses?.find(
+              (pc: { id: number; designation: string }) => pc.id === entryPressureClassId
+            )?.designation;
+
             const localResult = calculateLocalPipeResult(
               entry.specs.nominalBoreMm!,
               wallThickness,
               entry.specs.individualPipeLength!,
               entry.specs.quantityValue!,
               entry.specs.quantityType || 'number_of_pipes',
-              entry.specs.pipeEndConfiguration || 'PE'
+              entry.specs.pipeEndConfiguration || 'PE',
+              pressureClassDesignation
             );
             console.log('✅ Local calculation result:', localResult);
             updateEntryCalculation(entry.id, localResult);
