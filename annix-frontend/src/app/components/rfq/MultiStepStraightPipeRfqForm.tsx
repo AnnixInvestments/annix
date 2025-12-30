@@ -3345,88 +3345,84 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
               >
                 <option value="">Select steel specification...</option>
-                <optgroup label="South African Standards (SABS)">
-                  {masterData.steelSpecs
-                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('SABS'))
-                    .map((spec: any) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.steelSpecName}
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="Carbon Steel - ASTM A106 (High-Temp Seamless)">
-                  {masterData.steelSpecs
-                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A106'))
-                    .map((spec: any) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.steelSpecName}
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="Carbon Steel - ASTM A53 (General Purpose)">
-                  {masterData.steelSpecs
-                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A53'))
-                    .map((spec: any) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.steelSpecName}
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="Line Pipe - API 5L (Oil/Gas Pipelines)">
-                  {masterData.steelSpecs
-                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('API 5L'))
-                    .map((spec: any) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.steelSpecName}
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="Low Temperature - ASTM A333">
-                  {masterData.steelSpecs
-                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A333'))
-                    .map((spec: any) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.steelSpecName}
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="Heat Exchangers/Boilers - ASTM A179/A192">
-                  {masterData.steelSpecs
-                    .filter((spec: any) => (spec.steelSpecName || '').match(/^ASTM A1(79|92)/))
-                    .map((spec: any) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.steelSpecName}
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="Structural Tubing - ASTM A500">
-                  {masterData.steelSpecs
-                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A500'))
-                    .map((spec: any) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.steelSpecName}
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="Alloy Steel - ASTM A335 (Chrome-Moly)">
-                  {masterData.steelSpecs
-                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A335'))
-                    .map((spec: any) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.steelSpecName}
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="Stainless Steel - ASTM A312">
-                  {masterData.steelSpecs
-                    .filter((spec: any) => (spec.steelSpecName || '').startsWith('ASTM A312'))
-                    .map((spec: any) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.steelSpecName}
-                      </option>
-                    ))}
-                </optgroup>
+                {(() => {
+                  // Helper to check if a spec is suitable for current conditions
+                  const isSpecSuitable = (specName: string): boolean => {
+                    if (!globalSpecs?.workingPressureBar && !globalSpecs?.workingTemperatureC) return true;
+                    const suitability = checkMaterialSuitability(specName, globalSpecs?.workingTemperatureC, globalSpecs?.workingPressureBar);
+                    return suitability.isSuitable;
+                  };
+
+                  // Helper to get limits text for unsuitable specs
+                  const getLimitsText = (specName: string): string => {
+                    const limits = getMaterialLimits(specName);
+                    if (!limits) return '';
+                    return ` [Max ${limits.maxTempC}°C]`;
+                  };
+
+                  // Group definitions with their filters
+                  const groups = [
+                    { label: 'South African Standards (SABS)', filter: (name: string) => name.startsWith('SABS') },
+                    { label: 'Carbon Steel - ASTM A106 (High-Temp Seamless) - up to 427°C', filter: (name: string) => name.startsWith('ASTM A106') },
+                    { label: 'Carbon Steel - ASTM A53 (General Purpose) - up to 400°C', filter: (name: string) => name.startsWith('ASTM A53') },
+                    { label: 'Line Pipe - API 5L (Oil/Gas Pipelines) - up to 400°C', filter: (name: string) => name.startsWith('API 5L') },
+                    { label: 'Low Temperature - ASTM A333 - down to -100°C', filter: (name: string) => name.startsWith('ASTM A333') },
+                    { label: 'Heat Exchangers/Boilers - ASTM A179/A192', filter: (name: string) => /^ASTM A1(79|92)/.test(name) },
+                    { label: 'Structural Tubing - ASTM A500 - up to 200°C', filter: (name: string) => name.startsWith('ASTM A500') },
+                    { label: 'Alloy Steel - ASTM A335 (Chrome-Moly) - up to 593°C', filter: (name: string) => name.startsWith('ASTM A335') },
+                    { label: 'Stainless Steel - ASTM A312 - up to 816°C', filter: (name: string) => name.startsWith('ASTM A312') },
+                  ];
+
+                  return groups.map((group, groupIdx) => {
+                    const specs = masterData.steelSpecs.filter((spec: any) => group.filter(spec.steelSpecName || ''));
+                    const suitableSpecs = specs.filter((spec: any) => isSpecSuitable(spec.steelSpecName || ''));
+                    const unsuitableSpecs = specs.filter((spec: any) => !isSpecSuitable(spec.steelSpecName || ''));
+
+                    // Only show group if it has suitable specs, or show as disabled if all unsuitable
+                    if (specs.length === 0) return null;
+
+                    return (
+                      <optgroup key={groupIdx} label={suitableSpecs.length > 0 ? group.label : `⚠️ ${group.label} (Not Suitable)`}>
+                        {suitableSpecs.map((spec: any) => (
+                          <option key={spec.id} value={spec.id}>
+                            {spec.steelSpecName}
+                          </option>
+                        ))}
+                        {unsuitableSpecs.map((spec: any) => (
+                          <option key={spec.id} value={spec.id} disabled style={{ color: '#999' }}>
+                            ⚠️ {spec.steelSpecName}{getLimitsText(spec.steelSpecName)} - NOT SUITABLE
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  });
+                })()}
               </select>
+              {/* Show current suitability status */}
+              {globalSpecs?.steelSpecificationId && (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC) && (() => {
+                const currentSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs.steelSpecificationId);
+                if (!currentSpec) return null;
+                const suitability = checkMaterialSuitability(currentSpec.steelSpecName, globalSpecs?.workingTemperatureC, globalSpecs?.workingPressureBar);
+                if (suitability.isSuitable) {
+                  return (
+                    <p className="mt-1 text-xs text-green-600 flex items-center">
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Suitable for {globalSpecs.workingTemperatureC}°C / {globalSpecs.workingPressureBar} bar
+                    </p>
+                  );
+                } else {
+                  return (
+                    <p className="mt-1 text-xs text-red-600 flex items-center">
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      Not recommended for current conditions
+                    </p>
+                  );
+                }
+              })()}
             </div>
 
             {/* Flange Standard */}
