@@ -7180,6 +7180,8 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 }
 
 function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions, bendOptionsCache, autoSelectFlangeSpecs, requiredProducts = [] }: any) {
+  // State for hiding/showing 3D drawings per item
+  const [hiddenDrawings, setHiddenDrawings] = React.useState<Record<string, boolean>>({});
   const [isCalculating, setIsCalculating] = useState(false);
   const processedEntriesRef = useRef<Set<string>>(new Set());
   // Track entries that have been manually updated by onChange - these should NOT be overwritten by useEffect
@@ -7317,9 +7319,32 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
   };
 
   const getTotalWeight = () => {
+    // Check if BNW should be included
+    const showBnw = requiredProducts.includes('fasteners_gaskets');
+
     return entries.reduce((total: number, entry: StraightPipeEntry) => {
       const entryTotal = (entry.calculation?.totalSystemWeight || 0);
-      return total + entryTotal;
+
+      // Add BNW weight if applicable
+      let bnwWeight = 0;
+      if (showBnw) {
+        const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+        const flangesPerPipe = getFlangesPerPipe(pipeEndConfig);
+        const qty = entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0;
+
+        if (flangesPerPipe > 0 && qty > 0) {
+          const pressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+          const pressureClass = pressureClassId
+            ? masterData.pressureClasses?.find((p: any) => p.id === pressureClassId)?.designation
+            : 'PN16';
+          const nbMm = entry.specs?.nominalBoreMm || 100;
+          const bnwInfo = getBnwSetInfo(nbMm, pressureClass || 'PN16');
+          const bnwWeightPerSet = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
+          bnwWeight = bnwWeightPerSet * qty;
+        }
+      }
+
+      return total + entryTotal + bnwWeight;
     }, 0);
   };
 
@@ -9864,14 +9889,22 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
               {/* 3D Pipe Preview - below specifications, above calculations */}
               {entry.specs?.nominalBoreMm && (
-                <div className="mt-4">
-                  <Pipe3DPreview
-                    length={entry.specs.individualPipeLength || 12.192}
-                    outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
-                    wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
-                    endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
-                    materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
-                  />
+                <div className="mt-4 relative">
+                  {!hiddenDrawings[entry.id] && (
+                    <Pipe3DPreview
+                      length={entry.specs.individualPipeLength || 12.192}
+                      outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
+                      wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
+                      endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
+                      materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                    />
+                  )}
+                  <button
+                    onClick={() => setHiddenDrawings(prev => ({ ...prev, [entry.id]: !prev[entry.id] }))}
+                    className="absolute bottom-2 right-2 px-3 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-md transition-colors z-10"
+                  >
+                    {hiddenDrawings[entry.id] ? 'Show Drawing' : 'Hide Drawing'}
+                  </button>
                 </div>
               )}
 
