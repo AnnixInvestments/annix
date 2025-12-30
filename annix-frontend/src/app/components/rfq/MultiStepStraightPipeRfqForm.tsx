@@ -170,42 +170,109 @@ const FLANGE_WEIGHT_BY_PRESSURE_CLASS: Record<string, Record<number, number>> = 
 const NB_TO_FLANGE_WEIGHT_LOOKUP = FLANGE_WEIGHT_BY_PRESSURE_CLASS['PN16'];
 
 /**
+ * Normalize pressure class designation to a standard format for weight lookup
+ * Handles various formats: "PN 16", "PN16", "1600/3", "4000/3", "Class 150", etc.
+ */
+const normalizePressureClass = (designation: string): string => {
+  if (!designation) return 'PN16';
+
+  const trimmed = designation.trim().toUpperCase();
+
+  // Handle SABS format like "1600/3", "4000/3" - extract the kPa value
+  const sabsMatch = trimmed.match(/^(\d+)\/\d+$/);
+  if (sabsMatch) {
+    const kpa = parseInt(sabsMatch[1]);
+    // Map kPa to PN class
+    if (kpa <= 1000) return 'PN10';
+    if (kpa <= 1600) return 'PN16';
+    if (kpa <= 2500) return 'PN25';
+    if (kpa <= 4000) return 'PN40';
+    if (kpa <= 6400) return 'PN64';
+    return 'PN64'; // Highest available
+  }
+
+  // Handle "PN 16" -> "PN16" (remove space)
+  const pnMatch = trimmed.match(/^PN\s*(\d+)/i);
+  if (pnMatch) {
+    const pnValue = parseInt(pnMatch[1]);
+    // Normalize common PN values
+    if (pnValue <= 10) return 'PN10';
+    if (pnValue <= 16) return 'PN16';
+    if (pnValue <= 25) return 'PN25';
+    if (pnValue <= 40) return 'PN40';
+    if (pnValue <= 64 || pnValue === 63) return 'PN64'; // PN63 maps to PN64
+    return 'PN64'; // Highest available for PN100, PN160, etc.
+  }
+
+  // Handle "Class 150", "CLASS 150", etc.
+  const classMatch = trimmed.match(/^CLASS\s*(\d+)/i);
+  if (classMatch) {
+    const classValue = parseInt(classMatch[1]);
+    if (classValue <= 150) return 'Class 150';
+    if (classValue <= 300) return 'Class 300';
+    return 'Class 600';
+  }
+
+  // Handle numeric-only designations (kPa values)
+  const numericMatch = trimmed.match(/^(\d+)$/);
+  if (numericMatch) {
+    const value = parseInt(numericMatch[1]);
+    // Check if it's kPa or ASME class
+    if (value >= 1000) {
+      // Likely kPa
+      if (value <= 1000) return 'PN10';
+      if (value <= 1600) return 'PN16';
+      if (value <= 2500) return 'PN25';
+      if (value <= 4000) return 'PN40';
+      if (value <= 6400) return 'PN64';
+      return 'PN64';
+    } else {
+      // Likely ASME class
+      if (value <= 150) return 'Class 150';
+      if (value <= 300) return 'Class 300';
+      return 'Class 600';
+    }
+  }
+
+  // Return as-is if no pattern matched (might already be correct format)
+  return designation;
+};
+
+/**
  * Get flange weight based on NB, pressure class, and flange standard
  * @param nominalBoreMm - Nominal bore in mm
- * @param pressureClassDesignation - Pressure class (e.g., 'PN16', 'Class 300')
+ * @param pressureClassDesignation - Pressure class (e.g., 'PN16', 'Class 300', '4000/3')
  * @returns Weight per flange in kg (including bolts and gasket)
  */
 const getFlangeWeight = (
   nominalBoreMm: number,
   pressureClassDesignation?: string
 ): number => {
-  // Default to PN16 if no pressure class specified
-  const pressureClass = pressureClassDesignation || 'PN16';
+  // Normalize the pressure class designation
+  const pressureClass = normalizePressureClass(pressureClassDesignation || 'PN16');
 
-  // Try to find exact match first
+  console.log(`🔍 getFlangeWeight: input="${pressureClassDesignation}", normalized="${pressureClass}", NB=${nominalBoreMm}`);
+
+  // Try to find exact match
   if (FLANGE_WEIGHT_BY_PRESSURE_CLASS[pressureClass]) {
     const weight = FLANGE_WEIGHT_BY_PRESSURE_CLASS[pressureClass][nominalBoreMm];
-    if (weight) return weight;
-  }
-
-  // Try to map common designations
-  const classMapping: Record<string, string> = {
-    '1000': 'PN10', '1600': 'PN16', '2500': 'PN25', '4000': 'PN40', '6400': 'PN64',
-    '150': 'Class 150', '300': 'Class 300', '600': 'Class 600',
-  };
-
-  const mappedClass = classMapping[pressureClass] || pressureClass;
-  if (FLANGE_WEIGHT_BY_PRESSURE_CLASS[mappedClass]) {
-    const weight = FLANGE_WEIGHT_BY_PRESSURE_CLASS[mappedClass][nominalBoreMm];
-    if (weight) return weight;
+    if (weight) {
+      console.log(`✅ Flange weight found: ${weight}kg for ${pressureClass}/${nominalBoreMm}NB`);
+      return weight;
+    }
   }
 
   // Fallback to PN16 default
   const defaultWeight = NB_TO_FLANGE_WEIGHT_LOOKUP[nominalBoreMm];
-  if (defaultWeight) return defaultWeight;
+  if (defaultWeight) {
+    console.log(`⚠️ Using PN16 fallback: ${defaultWeight}kg for ${nominalBoreMm}NB`);
+    return defaultWeight;
+  }
 
   // Last resort: estimate based on NB
-  return nominalBoreMm < 100 ? 5 : nominalBoreMm < 200 ? 12 : nominalBoreMm < 400 ? 40 : nominalBoreMm < 600 ? 80 : 150;
+  const estimate = nominalBoreMm < 100 ? 5 : nominalBoreMm < 200 ? 12 : nominalBoreMm < 400 ? 40 : nominalBoreMm < 600 ? 80 : 150;
+  console.log(`⚠️ Using estimate: ${estimate}kg for ${nominalBoreMm}NB (no data found)`);
+  return estimate;
 };
 
 /**
@@ -8664,17 +8731,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   </div>
                 </div>
 
-                {/* 3D Pipe Preview */}
-                {entry.specs?.nominalBoreMm && (
-                  <Pipe3DPreview
-                    length={entry.specs.individualPipeLength || 12.192}
-                    outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
-                    wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
-                    endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
-                    materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
-                  />
-                )}
-
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Column 1 - Specifications */}
                 <div className="space-y-3">
@@ -9495,6 +9551,19 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
               </div>
 
+              {/* 3D Pipe Preview - below specifications, above calculations */}
+              {entry.specs?.nominalBoreMm && (
+                <div className="mt-4">
+                  <Pipe3DPreview
+                    length={entry.specs.individualPipeLength || 12.192}
+                    outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
+                    wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
+                    endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
+                    materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                  />
+                </div>
+              )}
+
               {/* Calculation Results - Full Width Compact Layout */}
               <div className="mt-4">
                 <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
@@ -9607,8 +9676,42 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
         {/* Total Summary */}
         <div className="border-2 border-blue-200 rounded-md p-3 bg-blue-50">
-          <h3 className="text-base font-bold text-blue-900 mb-2">Project Summary</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-3">
+          {/* Header row with title and add buttons */}
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-base font-bold text-blue-900">Project Summary</h3>
+            {/* Add Item Buttons - inline with title */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => onAddEntry()}
+                className="flex items-center gap-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 rounded-md border border-blue-300 transition-colors"
+              >
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="text-xs font-semibold text-blue-700">Pipe</span>
+              </button>
+              <button
+                onClick={() => onAddBendEntry()}
+                className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 rounded-md border border-purple-300 transition-colors"
+              >
+                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="text-xs font-semibold text-purple-700">Bend</span>
+              </button>
+              <button
+                onClick={() => onAddFittingEntry()}
+                className="flex items-center gap-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 rounded-md border border-green-300 transition-colors"
+              >
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="text-xs font-semibold text-green-700">Fitting</span>
+              </button>
+            </div>
+          </div>
+          {/* Stats grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="text-center">
               <p className="text-xs font-medium text-blue-700">Total Pipe Entries</p>
               <p className="text-lg font-bold text-blue-900">{entries.length}</p>
@@ -9643,34 +9746,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                 }, 0)}
               </p>
             </div>
-            {/* Add Item Buttons */}
-            <button
-              onClick={() => onAddEntry()}
-              className="flex flex-col items-center justify-center p-2 bg-blue-100 hover:bg-blue-200 rounded-lg border-2 border-blue-300 transition-colors"
-            >
-              <svg className="w-5 h-5 text-blue-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <p className="text-xs font-semibold text-blue-700">Straight Pipe</p>
-            </button>
-            <button
-              onClick={() => onAddBendEntry()}
-              className="flex flex-col items-center justify-center p-2 bg-purple-100 hover:bg-purple-200 rounded-lg border-2 border-purple-300 transition-colors"
-            >
-              <svg className="w-5 h-5 text-purple-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <p className="text-xs font-semibold text-purple-700">Bend</p>
-            </button>
-            <button
-              onClick={() => onAddFittingEntry()}
-              className="flex flex-col items-center justify-center p-2 bg-green-100 hover:bg-green-200 rounded-lg border-2 border-green-300 transition-colors"
-            >
-              <svg className="w-5 h-5 text-green-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <p className="text-xs font-semibold text-green-700">Fitting</p>
-            </button>
             <div className="text-center">
               <p className="text-xs font-medium text-blue-700">Total Pipeline Length</p>
               <p className="text-lg font-bold text-blue-900">
