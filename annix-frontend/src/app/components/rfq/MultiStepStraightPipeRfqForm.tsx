@@ -187,117 +187,125 @@ const NB_TO_FLANGE_WEIGHT_LOOKUP = FLANGE_WEIGHT_BY_PRESSURE_CLASS['PN16'];
 
 // Number of bolt holes per flange by NB and pressure class (SABS1123/BS4504)
 const BOLT_HOLES_BY_NB_AND_PRESSURE: Record<string, Record<number, number>> = {
+  'PN6': {
+    15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 4, 80: 8,
+    100: 8, 125: 8, 150: 8, 200: 12, 250: 12, 300: 12, 350: 16,
+    400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 800: 24,
+    900: 28, 1000: 28, 1200: 32
+  },
   'PN10': {
-    15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 4, 80: 4,
-    100: 4, 125: 8, 150: 8, 200: 8, 250: 12, 300: 12, 350: 12,
-    400: 16, 450: 16, 500: 20, 600: 20, 700: 24, 750: 24,
-    800: 24, 900: 28, 1000: 28, 1050: 28, 1200: 32
+    15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 4, 80: 8,
+    100: 8, 125: 8, 150: 8, 200: 8, 250: 12, 300: 12, 350: 16,
+    400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 800: 24,
+    900: 28, 1000: 28, 1200: 32
   },
   'PN16': {
     15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 4, 80: 8,
     100: 8, 125: 8, 150: 8, 200: 12, 250: 12, 300: 12, 350: 16,
-    400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 750: 24,
-    800: 24, 900: 28, 1000: 28, 1050: 32, 1200: 32
+    400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 800: 24,
+    900: 28, 1000: 28, 1200: 32
   },
   'PN25': {
     15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 8, 80: 8,
     100: 8, 125: 8, 150: 8, 200: 12, 250: 12, 300: 16, 350: 16,
-    400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 750: 24,
-    800: 24, 900: 28, 1000: 28, 1050: 32, 1200: 36
+    400: 16, 450: 20, 500: 20, 600: 20
   },
   'PN40': {
     15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 8, 80: 8,
-    100: 8, 125: 8, 150: 12, 200: 12, 250: 16, 300: 16, 350: 16,
-    400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 750: 28,
-    800: 28, 900: 32, 1000: 32, 1050: 36, 1200: 40
+    100: 8, 125: 8, 150: 8, 200: 12, 250: 12, 300: 16, 350: 16,
+    400: 16, 450: 20, 500: 20
   },
   'PN64': {
     15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 8, 65: 8, 80: 8,
     100: 8, 125: 8, 150: 12, 200: 12, 250: 16, 300: 20, 350: 20,
-    400: 20, 450: 24, 500: 24, 600: 24, 700: 28, 750: 28,
-    800: 32, 900: 36, 1000: 36, 1050: 40, 1200: 44
+    400: 20, 450: 24, 500: 24, 600: 24, 700: 28, 800: 32,
+    900: 36, 1000: 36, 1200: 44
   },
   'Class 150': {
     15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 4, 80: 4,
     100: 8, 125: 8, 150: 8, 200: 8, 250: 12, 300: 12, 350: 12,
-    400: 16, 450: 16, 500: 20, 600: 20, 700: 24, 750: 24,
-    800: 24, 900: 24, 1000: 28, 1050: 28, 1200: 32
+    400: 16, 450: 16, 500: 20, 600: 20, 700: 28, 800: 28,
+    900: 32, 1000: 36, 1200: 40
   },
   'Class 300': {
     15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 8, 65: 8, 80: 8,
-    100: 8, 125: 8, 150: 12, 200: 12, 250: 16, 300: 16, 350: 16,
-    400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 750: 24,
-    800: 24, 900: 28, 1000: 28, 1050: 32, 1200: 36
+    100: 8, 125: 8, 150: 12, 200: 12, 250: 16, 300: 16, 350: 20,
+    400: 20, 450: 24, 500: 24, 600: 24, 700: 28, 800: 28,
+    900: 32, 1000: 32, 1200: 32
   },
   'Class 600': {
     15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 8, 65: 8, 80: 8,
-    100: 8, 125: 8, 150: 12, 200: 12, 250: 16, 300: 20, 350: 20,
-    400: 20, 450: 24, 500: 24, 600: 24, 700: 28, 750: 28,
-    800: 32, 900: 36, 1000: 36, 1050: 40, 1200: 44
+    100: 8, 125: 8, 150: 12, 200: 16, 250: 16, 300: 20, 350: 20,
+    400: 20, 450: 20, 500: 24, 600: 24, 700: 28
   }
 };
 
-// Bolt/Nut/Washer set weight per hole (kg) - includes 1 bolt, 1 nut, 2 washers
+// Bolt/Nut/Washer set weight per hole (kg) - from Piping Calculations V2.xlsm
 const BNW_SET_WEIGHT_PER_HOLE: Record<string, Record<number, { boltSize: string; weight: number }>> = {
+  'PN6': {
+    15: { boltSize: 'M12x50', weight: 0.056 }, 20: { boltSize: 'M12x50', weight: 0.056 },
+    25: { boltSize: 'M12x50', weight: 0.056 }, 32: { boltSize: 'M16x55', weight: 0.113 },
+    40: { boltSize: 'M16x55', weight: 0.113 }, 50: { boltSize: 'M16x60', weight: 0.123 },
+    65: { boltSize: 'M16x60', weight: 0.123 }, 80: { boltSize: 'M16x65', weight: 0.131 },
+    100: { boltSize: 'M16x65', weight: 0.131 }, 125: { boltSize: 'M16x70', weight: 0.138 },
+    150: { boltSize: 'M20x80', weight: 0.256 }, 200: { boltSize: 'M20x85', weight: 0.268 },
+    250: { boltSize: 'M24x95', weight: 0.436 }, 300: { boltSize: 'M24x110', weight: 0.487 },
+    350: { boltSize: 'M24x110', weight: 0.487 }, 400: { boltSize: 'M24x120', weight: 0.522 },
+    450: { boltSize: 'M24x130', weight: 0.554 }, 500: { boltSize: 'M30x140', weight: 0.984 },
+    600: { boltSize: 'M30x160', weight: 1.092 }, 700: { boltSize: 'M30x170', weight: 1.146 },
+    800: { boltSize: 'M36x200', weight: 1.961 }, 900: { boltSize: 'M36x210', weight: 2.027 },
+    1000: { boltSize: 'M36x220', weight: 2.105 }, 1200: { boltSize: 'M42x250', weight: 2.55 }
+  },
   'PN10': {
-    15: { boltSize: 'M12x45', weight: 0.08 }, 20: { boltSize: 'M12x45', weight: 0.08 },
-    25: { boltSize: 'M12x50', weight: 0.09 }, 32: { boltSize: 'M12x50', weight: 0.09 },
-    40: { boltSize: 'M12x55', weight: 0.10 }, 50: { boltSize: 'M16x55', weight: 0.15 },
-    65: { boltSize: 'M16x55', weight: 0.15 }, 80: { boltSize: 'M16x60', weight: 0.17 },
-    100: { boltSize: 'M16x65', weight: 0.18 }, 125: { boltSize: 'M16x65', weight: 0.18 },
-    150: { boltSize: 'M16x70', weight: 0.20 }, 200: { boltSize: 'M16x70', weight: 0.20 },
-    250: { boltSize: 'M20x75', weight: 0.32 }, 300: { boltSize: 'M20x80', weight: 0.35 },
-    350: { boltSize: 'M20x85', weight: 0.38 }, 400: { boltSize: 'M20x90', weight: 0.40 },
-    450: { boltSize: 'M24x95', weight: 0.55 }, 500: { boltSize: 'M24x100', weight: 0.58 },
-    600: { boltSize: 'M27x110', weight: 0.80 }, 700: { boltSize: 'M27x120', weight: 0.88 },
-    750: { boltSize: 'M30x125', weight: 1.10 }, 800: { boltSize: 'M30x130', weight: 1.15 },
-    900: { boltSize: 'M33x140', weight: 1.45 }, 1000: { boltSize: 'M33x150', weight: 1.55 },
-    1050: { boltSize: 'M36x155', weight: 1.85 }, 1200: { boltSize: 'M36x170', weight: 2.05 }
+    15: { boltSize: 'M12x50', weight: 0.056 }, 20: { boltSize: 'M12x50', weight: 0.056 },
+    25: { boltSize: 'M12x50', weight: 0.056 }, 32: { boltSize: 'M16x55', weight: 0.113 },
+    40: { boltSize: 'M16x55', weight: 0.113 }, 50: { boltSize: 'M16x55', weight: 0.113 },
+    65: { boltSize: 'M16x60', weight: 0.123 }, 80: { boltSize: 'M16x60', weight: 0.123 },
+    100: { boltSize: 'M16x60', weight: 0.123 }, 125: { boltSize: 'M16x65', weight: 0.131 },
+    150: { boltSize: 'M20x75', weight: 0.244 }, 200: { boltSize: 'M20x80', weight: 0.256 },
+    250: { boltSize: 'M20x80', weight: 0.256 }, 300: { boltSize: 'M20x85', weight: 0.268 },
+    350: { boltSize: 'M20x90', weight: 0.28 }, 400: { boltSize: 'M24x95', weight: 0.436 },
+    450: { boltSize: 'M24x110', weight: 0.487 }, 500: { boltSize: 'M24x110', weight: 0.487 },
+    600: { boltSize: 'M24x130', weight: 0.554 }, 700: { boltSize: 'M24x140', weight: 0.588 },
+    800: { boltSize: 'M30x160', weight: 1.092 }, 900: { boltSize: 'M30x170', weight: 1.146 },
+    1000: { boltSize: 'M30x180', weight: 1.201 }, 1200: { boltSize: 'M36x210', weight: 2.027 }
   },
   'PN16': {
-    15: { boltSize: 'M12x50', weight: 0.09 }, 20: { boltSize: 'M12x50', weight: 0.09 },
-    25: { boltSize: 'M12x55', weight: 0.10 }, 32: { boltSize: 'M16x55', weight: 0.15 },
-    40: { boltSize: 'M16x60', weight: 0.17 }, 50: { boltSize: 'M16x60', weight: 0.17 },
-    65: { boltSize: 'M16x65', weight: 0.18 }, 80: { boltSize: 'M16x65', weight: 0.18 },
-    100: { boltSize: 'M16x70', weight: 0.20 }, 125: { boltSize: 'M20x75', weight: 0.32 },
-    150: { boltSize: 'M20x75', weight: 0.32 }, 200: { boltSize: 'M20x80', weight: 0.35 },
-    250: { boltSize: 'M24x90', weight: 0.52 }, 300: { boltSize: 'M24x95', weight: 0.55 },
-    350: { boltSize: 'M24x100', weight: 0.58 }, 400: { boltSize: 'M27x105', weight: 0.75 },
-    450: { boltSize: 'M27x110', weight: 0.80 }, 500: { boltSize: 'M30x115', weight: 1.00 },
-    600: { boltSize: 'M30x125', weight: 1.10 }, 700: { boltSize: 'M33x135', weight: 1.40 },
-    750: { boltSize: 'M33x140', weight: 1.45 }, 800: { boltSize: 'M36x150', weight: 1.80 },
-    900: { boltSize: 'M36x160', weight: 1.95 }, 1000: { boltSize: 'M39x175', weight: 2.40 },
-    1050: { boltSize: 'M39x185', weight: 2.55 }, 1200: { boltSize: 'M42x200', weight: 3.10 }
+    15: { boltSize: 'M12x60', weight: 0.067 }, 20: { boltSize: 'M12x65', weight: 0.071 },
+    25: { boltSize: 'M12x65', weight: 0.071 }, 32: { boltSize: 'M16x70', weight: 0.138 },
+    40: { boltSize: 'M16x70', weight: 0.138 }, 50: { boltSize: 'M16x75', weight: 0.146 },
+    65: { boltSize: 'M16x75', weight: 0.146 }, 80: { boltSize: 'M16x75', weight: 0.146 },
+    100: { boltSize: 'M16x75', weight: 0.146 }, 125: { boltSize: 'M16x80', weight: 0.153 },
+    150: { boltSize: 'M20x85', weight: 0.268 }, 200: { boltSize: 'M20x90', weight: 0.28 },
+    250: { boltSize: 'M24x100', weight: 0.453 }, 300: { boltSize: 'M24x110', weight: 0.487 },
+    350: { boltSize: 'M24x110', weight: 0.487 }, 400: { boltSize: 'M27x130', weight: 0.73 },
+    450: { boltSize: 'M27x130', weight: 0.73 }, 500: { boltSize: 'M30x150', weight: 1.038 },
+    600: { boltSize: 'M33x170', weight: 1.416 }, 700: { boltSize: 'M33x180', weight: 1.482 },
+    800: { boltSize: 'M36x200', weight: 1.961 }, 900: { boltSize: 'M36x210', weight: 2.027 },
+    1000: { boltSize: 'M39x230', weight: 2.624 }, 1200: { boltSize: 'M45x270', weight: 4.095 }
   },
   'PN25': {
-    15: { boltSize: 'M12x55', weight: 0.10 }, 20: { boltSize: 'M12x55', weight: 0.10 },
-    25: { boltSize: 'M12x60', weight: 0.11 }, 32: { boltSize: 'M16x60', weight: 0.17 },
-    40: { boltSize: 'M16x65', weight: 0.18 }, 50: { boltSize: 'M16x65', weight: 0.18 },
-    65: { boltSize: 'M16x70', weight: 0.20 }, 80: { boltSize: 'M20x75', weight: 0.32 },
-    100: { boltSize: 'M20x80', weight: 0.35 }, 125: { boltSize: 'M24x85', weight: 0.50 },
-    150: { boltSize: 'M24x90', weight: 0.52 }, 200: { boltSize: 'M27x100', weight: 0.72 },
-    250: { boltSize: 'M30x110', weight: 1.05 }, 300: { boltSize: 'M30x115', weight: 1.10 },
-    350: { boltSize: 'M33x125', weight: 1.35 }, 400: { boltSize: 'M33x130', weight: 1.40 },
-    450: { boltSize: 'M36x140', weight: 1.75 }, 500: { boltSize: 'M36x150', weight: 1.90 },
-    600: { boltSize: 'M39x160', weight: 2.30 }, 700: { boltSize: 'M42x175', weight: 2.90 },
-    750: { boltSize: 'M42x185', weight: 3.05 }, 800: { boltSize: 'M45x195', weight: 3.60 },
-    900: { boltSize: 'M48x210', weight: 4.30 }, 1000: { boltSize: 'M48x225', weight: 4.60 },
-    1050: { boltSize: 'M52x240', weight: 5.50 }, 1200: { boltSize: 'M56x265', weight: 6.80 }
+    15: { boltSize: 'M12x60', weight: 0.067 }, 20: { boltSize: 'M12x60', weight: 0.067 },
+    25: { boltSize: 'M12x65', weight: 0.071 }, 32: { boltSize: 'M16x75', weight: 0.146 },
+    40: { boltSize: 'M16x75', weight: 0.146 }, 50: { boltSize: 'M16x75', weight: 0.146 },
+    65: { boltSize: 'M16x80', weight: 0.153 }, 80: { boltSize: 'M16x80', weight: 0.153 },
+    100: { boltSize: 'M20x90', weight: 0.28 }, 125: { boltSize: 'M24x110', weight: 0.487 },
+    150: { boltSize: 'M24x110', weight: 0.487 }, 200: { boltSize: 'M24x110', weight: 0.487 },
+    250: { boltSize: 'M24x110', weight: 0.487 }, 300: { boltSize: 'M24x110', weight: 0.487 },
+    350: { boltSize: 'M30x130', weight: 0.929 }, 400: { boltSize: 'M30x140', weight: 0.984 },
+    450: { boltSize: 'M30x150', weight: 1.038 }, 500: { boltSize: 'M30x160', weight: 1.092 },
+    600: { boltSize: 'M36x190', weight: 1.882 }
   },
   'PN40': {
-    15: { boltSize: 'M12x60', weight: 0.11 }, 20: { boltSize: 'M16x60', weight: 0.17 },
-    25: { boltSize: 'M16x65', weight: 0.18 }, 32: { boltSize: 'M16x65', weight: 0.18 },
-    40: { boltSize: 'M16x70', weight: 0.20 }, 50: { boltSize: 'M20x75', weight: 0.32 },
-    65: { boltSize: 'M20x80', weight: 0.35 }, 80: { boltSize: 'M20x85', weight: 0.38 },
-    100: { boltSize: 'M24x90', weight: 0.52 }, 125: { boltSize: 'M27x100', weight: 0.72 },
-    150: { boltSize: 'M27x105', weight: 0.75 }, 200: { boltSize: 'M30x115', weight: 1.10 },
-    250: { boltSize: 'M33x130', weight: 1.40 }, 300: { boltSize: 'M36x145', weight: 1.80 },
-    350: { boltSize: 'M36x155', weight: 1.95 }, 400: { boltSize: 'M39x165', weight: 2.40 },
-    450: { boltSize: 'M42x180', weight: 3.00 }, 500: { boltSize: 'M45x195', weight: 3.60 },
-    600: { boltSize: 'M48x215', weight: 4.40 }, 700: { boltSize: 'M52x235', weight: 5.40 },
-    750: { boltSize: 'M52x250', weight: 5.75 }, 800: { boltSize: 'M56x265', weight: 6.80 },
-    900: { boltSize: 'M60x290', weight: 8.20 }, 1000: { boltSize: 'M64x315', weight: 9.80 },
-    1050: { boltSize: 'M64x335', weight: 10.40 }, 1200: { boltSize: 'M72x375', weight: 13.50 }
+    15: { boltSize: 'M12x60', weight: 0.067 }, 20: { boltSize: 'M12x60', weight: 0.067 },
+    25: { boltSize: 'M12x65', weight: 0.071 }, 32: { boltSize: 'M16x75', weight: 0.146 },
+    40: { boltSize: 'M16x75', weight: 0.146 }, 50: { boltSize: 'M16x75', weight: 0.146 },
+    65: { boltSize: 'M16x80', weight: 0.153 }, 80: { boltSize: 'M16x80', weight: 0.153 },
+    100: { boltSize: 'M20x90', weight: 0.28 }, 125: { boltSize: 'M24x110', weight: 0.487 },
+    150: { boltSize: 'M24x110', weight: 0.487 }, 200: { boltSize: 'M24x110', weight: 0.487 },
+    250: { boltSize: 'M30x140', weight: 0.984 }, 300: { boltSize: 'M30x140', weight: 0.984 },
+    350: { boltSize: 'M30x150', weight: 1.038 }, 400: { boltSize: 'M36x170', weight: 1.725 },
+    450: { boltSize: 'M36x190', weight: 1.882 }, 500: { boltSize: 'M36x210', weight: 2.027 }
   },
   'PN64': {
     15: { boltSize: 'M16x65', weight: 0.18 }, 20: { boltSize: 'M16x70', weight: 0.20 },
@@ -310,54 +318,48 @@ const BNW_SET_WEIGHT_PER_HOLE: Record<string, Record<number, { boltSize: string;
     350: { boltSize: 'M45x210', weight: 3.90 }, 400: { boltSize: 'M48x230', weight: 4.70 },
     450: { boltSize: 'M52x250', weight: 5.75 }, 500: { boltSize: 'M56x275', weight: 7.00 },
     600: { boltSize: 'M60x305', weight: 8.60 }, 700: { boltSize: 'M64x340', weight: 10.50 },
-    750: { boltSize: 'M68x360', weight: 12.00 }, 800: { boltSize: 'M72x385', weight: 14.00 },
-    900: { boltSize: 'M76x425', weight: 16.50 }, 1000: { boltSize: 'M80x470', weight: 19.50 },
-    1050: { boltSize: 'M85x500', weight: 22.00 }, 1200: { boltSize: 'M90x560', weight: 27.00 }
+    800: { boltSize: 'M72x385', weight: 14.00 }, 900: { boltSize: 'M76x425', weight: 16.50 },
+    1000: { boltSize: 'M80x470', weight: 19.50 }, 1200: { boltSize: 'M90x560', weight: 27.00 }
   },
   'Class 150': {
-    15: { boltSize: 'M12x45', weight: 0.08 }, 20: { boltSize: 'M12x45', weight: 0.08 },
-    25: { boltSize: 'M12x50', weight: 0.09 }, 32: { boltSize: 'M12x50', weight: 0.09 },
-    40: { boltSize: 'M12x55', weight: 0.10 }, 50: { boltSize: 'M16x55', weight: 0.15 },
-    65: { boltSize: 'M16x55', weight: 0.15 }, 80: { boltSize: 'M16x60', weight: 0.17 },
-    100: { boltSize: 'M16x65', weight: 0.18 }, 125: { boltSize: 'M16x65', weight: 0.18 },
-    150: { boltSize: 'M16x70', weight: 0.20 }, 200: { boltSize: 'M20x75', weight: 0.32 },
-    250: { boltSize: 'M20x80', weight: 0.35 }, 300: { boltSize: 'M24x90', weight: 0.52 },
-    350: { boltSize: 'M24x95', weight: 0.55 }, 400: { boltSize: 'M27x100', weight: 0.72 },
-    450: { boltSize: 'M27x110', weight: 0.80 }, 500: { boltSize: 'M30x115', weight: 1.00 },
-    600: { boltSize: 'M30x125', weight: 1.10 }, 700: { boltSize: 'M33x135', weight: 1.40 },
-    750: { boltSize: 'M33x145', weight: 1.50 }, 800: { boltSize: 'M36x155', weight: 1.85 },
-    900: { boltSize: 'M36x165', weight: 2.00 }, 1000: { boltSize: 'M39x180', weight: 2.50 },
-    1050: { boltSize: 'M39x190', weight: 2.65 }, 1200: { boltSize: 'M42x210', weight: 3.30 }
+    15: { boltSize: '1/2"x55', weight: 0.061 }, 20: { boltSize: '1/2"x60', weight: 0.067 },
+    25: { boltSize: '1/2"x60', weight: 0.067 }, 32: { boltSize: '1/2"x65', weight: 0.071 },
+    40: { boltSize: '1/2"x65', weight: 0.071 }, 50: { boltSize: '5/8"x75', weight: 0.146 },
+    65: { boltSize: '5/8"x80', weight: 0.153 }, 80: { boltSize: '5/8"x85', weight: 0.161 },
+    100: { boltSize: '5/8"x85', weight: 0.161 }, 125: { boltSize: '3/4"x90', weight: 0.28 },
+    150: { boltSize: '3/4"x95', weight: 0.292 }, 200: { boltSize: '3/4"x100', weight: 0.304 },
+    250: { boltSize: '7/8"x110', weight: 0.399 }, 300: { boltSize: '7/8"x110', weight: 0.399 },
+    350: { boltSize: '1"x120', weight: 0.522 }, 400: { boltSize: '1"x120', weight: 0.522 },
+    450: { boltSize: '1 1/8"x130', weight: 0.73 }, 500: { boltSize: '1 1/8"x140', weight: 0.774 },
+    600: { boltSize: '1 1/4"x160', weight: 1.092 }, 700: { boltSize: '1 1/4"x200', weight: 1.309 },
+    800: { boltSize: '1 1/2"x230', weight: 2.184 }, 900: { boltSize: '1 1/2"x250', weight: 2.34 },
+    1000: { boltSize: '1 1/2"x250', weight: 2.34 }, 1200: { boltSize: '1 1/2"x270', weight: 2.497 }
   },
   'Class 300': {
-    15: { boltSize: 'M12x55', weight: 0.10 }, 20: { boltSize: 'M16x60', weight: 0.17 },
-    25: { boltSize: 'M16x65', weight: 0.18 }, 32: { boltSize: 'M16x65', weight: 0.18 },
-    40: { boltSize: 'M16x70', weight: 0.20 }, 50: { boltSize: 'M20x75', weight: 0.32 },
-    65: { boltSize: 'M20x80', weight: 0.35 }, 80: { boltSize: 'M20x85', weight: 0.38 },
-    100: { boltSize: 'M24x90', weight: 0.52 }, 125: { boltSize: 'M27x100', weight: 0.72 },
-    150: { boltSize: 'M27x105', weight: 0.75 }, 200: { boltSize: 'M30x115', weight: 1.10 },
-    250: { boltSize: 'M33x130', weight: 1.40 }, 300: { boltSize: 'M36x145', weight: 1.80 },
-    350: { boltSize: 'M36x155', weight: 1.95 }, 400: { boltSize: 'M39x165', weight: 2.40 },
-    450: { boltSize: 'M42x180', weight: 3.00 }, 500: { boltSize: 'M45x195', weight: 3.60 },
-    600: { boltSize: 'M48x215', weight: 4.40 }, 700: { boltSize: 'M52x235', weight: 5.40 },
-    750: { boltSize: 'M52x250', weight: 5.75 }, 800: { boltSize: 'M56x265', weight: 6.80 },
-    900: { boltSize: 'M60x290', weight: 8.20 }, 1000: { boltSize: 'M64x315', weight: 9.80 },
-    1050: { boltSize: 'M64x335', weight: 10.40 }, 1200: { boltSize: 'M72x375', weight: 13.50 }
+    15: { boltSize: '1/2"x60', weight: 0.067 }, 20: { boltSize: '5/8"x70', weight: 0.138 },
+    25: { boltSize: '5/8"x70', weight: 0.138 }, 32: { boltSize: '5/8"x75', weight: 0.146 },
+    40: { boltSize: '3/4"x85', weight: 0.268 }, 50: { boltSize: '5/8"x80', weight: 0.153 },
+    65: { boltSize: '3/4"x95', weight: 0.292 }, 80: { boltSize: '3/4"x100', weight: 0.304 },
+    100: { boltSize: '3/4"x110', weight: 0.328 }, 125: { boltSize: '3/4"x110', weight: 0.328 },
+    150: { boltSize: '3/4"x120', weight: 0.352 }, 200: { boltSize: '7/8"x130', weight: 0.455 },
+    250: { boltSize: '1"x150', weight: 0.623 }, 300: { boltSize: '1 1/8"x160', weight: 0.862 },
+    350: { boltSize: '1 1/8"x160', weight: 0.862 }, 400: { boltSize: '1 1/4"x170', weight: 1.146 },
+    450: { boltSize: '1 1/4"x180', weight: 1.201 }, 500: { boltSize: '1 1/4"x190', weight: 1.255 },
+    600: { boltSize: '1 1/2"x210', weight: 2.027 }, 700: { boltSize: '1 5/8"x250', weight: 2.809 },
+    800: { boltSize: '1 7/8"x280', weight: 4.218 }, 900: { boltSize: '2"x300', weight: 5.149 },
+    1000: { boltSize: '1 5/8"x300', weight: 3.27 }, 1200: { boltSize: '1 3/4"x330', weight: 2.55 }
   },
   'Class 600': {
-    15: { boltSize: 'M16x65', weight: 0.18 }, 20: { boltSize: 'M16x70', weight: 0.20 },
-    25: { boltSize: 'M16x75', weight: 0.22 }, 32: { boltSize: 'M20x80', weight: 0.35 },
-    40: { boltSize: 'M20x85', weight: 0.38 }, 50: { boltSize: 'M20x90', weight: 0.40 },
-    65: { boltSize: 'M24x95', weight: 0.55 }, 80: { boltSize: 'M24x100', weight: 0.58 },
-    100: { boltSize: 'M27x110', weight: 0.80 }, 125: { boltSize: 'M30x120', weight: 1.08 },
-    150: { boltSize: 'M33x130', weight: 1.40 }, 200: { boltSize: 'M36x150', weight: 1.90 },
-    250: { boltSize: 'M39x170', weight: 2.50 }, 300: { boltSize: 'M42x190', weight: 3.20 },
-    350: { boltSize: 'M45x210', weight: 3.90 }, 400: { boltSize: 'M48x230', weight: 4.70 },
-    450: { boltSize: 'M52x250', weight: 5.75 }, 500: { boltSize: 'M56x275', weight: 7.00 },
-    600: { boltSize: 'M60x305', weight: 8.60 }, 700: { boltSize: 'M64x340', weight: 10.50 },
-    750: { boltSize: 'M68x360', weight: 12.00 }, 800: { boltSize: 'M72x385', weight: 14.00 },
-    900: { boltSize: 'M76x425', weight: 16.50 }, 1000: { boltSize: 'M80x470', weight: 19.50 },
-    1050: { boltSize: 'M85x500', weight: 22.00 }, 1200: { boltSize: 'M90x560', weight: 27.00 }
+    15: { boltSize: '1/2"x75', weight: 0.079 }, 20: { boltSize: '5/8"x80', weight: 0.153 },
+    25: { boltSize: '5/8"x85', weight: 0.161 }, 32: { boltSize: '5/8"x90', weight: 0.169 },
+    40: { boltSize: '3/4"x100', weight: 0.304 }, 50: { boltSize: '5/8"x100', weight: 0.184 },
+    65: { boltSize: '3/4"x110', weight: 0.328 }, 80: { boltSize: '3/4"x120', weight: 0.352 },
+    100: { boltSize: '7/8"x130', weight: 0.455 }, 125: { boltSize: '1"x150', weight: 0.623 },
+    150: { boltSize: '1"x160', weight: 0.657 }, 200: { boltSize: '1 1/8"x180', weight: 0.95 },
+    250: { boltSize: '1 1/4"x200', weight: 1.309 }, 300: { boltSize: '1 1/4"x210', weight: 1.355 },
+    400: { boltSize: '1 1/2"x230', weight: 2.184 }, 450: { boltSize: '1 5/8"x250', weight: 2.809 },
+    500: { boltSize: '1 5/8"x270', weight: 2.993 }, 600: { boltSize: '1 7/8"x300', weight: 4.464 },
+    700: { boltSize: '2"x330', weight: 5.569 }
   }
 };
 
