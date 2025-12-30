@@ -96,6 +96,22 @@ const getFlangesPerPipe = (pipeEndConfig: string): number => {
   }
 };
 
+// Helper function to check if pipe configuration has flanges on both ends
+// If both ends are flanged, pipes connect via flanges (no butt welds needed)
+const hasFlangesOnBothEnds = (pipeEndConfig: string): boolean => {
+  switch (pipeEndConfig) {
+    case 'FBE':     // Flanged both ends
+    case 'FOE_LF':  // Fixed flange + loose flange
+    case 'FOE_RF':  // Fixed flange + rotating flange
+    case '2X_RF':   // Two rotating flanges
+      return true;
+    case 'PE':      // Plain ended - no flanges
+    case 'FOE':     // Flanged one end only
+    default:
+      return false;
+  }
+};
+
 // OD lookup table for nominal bore sizes (in mm)
 const NB_TO_OD_LOOKUP: Record<number, number> = {
   15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9,
@@ -465,8 +481,11 @@ const calculateLocalPipeResult = (
   const weldsPerPipe = getWeldCountPerPipe(pipeEndConfiguration);
   const numberOfFlangeWelds = weldsPerPipe * calculatedPipeCount;
 
-  // Butt welds between pipes (for continuous pipeline)
-  const numberOfButtWelds = Math.max(0, calculatedPipeCount - 1);
+  // Butt welds between pipes (only needed if pipes don't have flanges on both ends)
+  // If both ends have flanges, pipes connect via flanges, not butt welds
+  const numberOfButtWelds = hasFlangesOnBothEnds(pipeEndConfiguration)
+    ? 0
+    : Math.max(0, calculatedPipeCount - 1);
 
   // Weld length calculations (circumference-based)
   const circumference = Math.PI * outsideDiameterMm / 1000; // in meters
