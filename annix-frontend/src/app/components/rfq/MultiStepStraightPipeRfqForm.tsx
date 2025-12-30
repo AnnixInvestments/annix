@@ -7509,14 +7509,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   </label>
                 )}
               </div>
-              {entries.length > 1 && (
-                <button
-                  onClick={() => onRemoveEntry(entry.id)}
-                  className="text-red-600 hover:text-red-800 text-sm font-medium"
-                >
-                  Remove Item
-                </button>
-              )}
             </div>
 
             {entry.itemType === 'bend' ? (
@@ -7550,6 +7542,18 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     schedule={entry.specs.scheduleNumber}
                     materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
                   />
+                )}
+
+                {/* Remove Item Button */}
+                {entries.length > 1 && (
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={() => onRemoveEntry(entry.id)}
+                      className="px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 text-sm font-medium border border-red-300 rounded-md transition-colors"
+                    >
+                      Remove Item
+                    </button>
+                  </div>
                 )}
 
                 {/* Bend Specifications Grid */}
@@ -9634,6 +9638,18 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
                     materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
                   />
+                </div>
+              )}
+
+              {/* Remove Item Button */}
+              {entries.length > 1 && (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => onRemoveEntry(entry.id)}
+                    className="px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 text-sm font-medium border border-red-300 rounded-md transition-colors"
+                  >
+                    Remove Item
+                  </button>
                 </div>
               )}
 
