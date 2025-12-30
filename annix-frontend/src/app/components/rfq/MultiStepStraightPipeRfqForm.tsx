@@ -3844,6 +3844,11 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           </div>
         </div>
 
+            </>
+            )}
+          </div>
+        )}
+
         {/* Confirm Button for Steel Pipe Specifications */}
         {showSteelPipes && !globalSpecs?.steelPipesSpecsConfirmed && (
           <div className="mt-4 flex justify-end">
@@ -6966,10 +6971,6 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           </div>
         )}
 
-</>
-            )}
-          </div>
-        )}
 
         {/* HDPE Pipes & Fittings Section */}
         {showHdpePipes && (
