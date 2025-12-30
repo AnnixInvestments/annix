@@ -6889,11 +6889,21 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
           console.log('Could not fetch upgrade schedules:', err);
         }
 
+        // Map API schedule name to fallback schedule name by matching wall thickness
+        // This ensures dropdown values match the available options
+        let finalScheduleName = recommended.recommendedSchedule;
+        const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
+        const fallbackMatch = fallbackSchedules.find(s => Math.abs(s.wallThicknessMm - recommended.recommendedWallMm) < 0.1);
+        if (fallbackMatch && fallbackMatch.scheduleDesignation !== recommended.recommendedSchedule) {
+          console.log(`🔄 Mapping API schedule "${recommended.recommendedSchedule}" to fallback "${fallbackMatch.scheduleDesignation}"`);
+          finalScheduleName = fallbackMatch.scheduleDesignation;
+        }
+
         return {
-          scheduleNumber: recommended.recommendedSchedule,
+          scheduleNumber: finalScheduleName,
           wallThicknessMm: recommended.recommendedWallMm,
           workingPressureBar: pressure,
-          minimumSchedule: recommended.recommendedSchedule,
+          minimumSchedule: finalScheduleName,
           minimumWallThickness: recommended.minRequiredThicknessMm,
           availableUpgrades: availableUpgrades,
           isScheduleOverridden: false,
@@ -8493,6 +8503,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                               if (recommendation.warnings?.length > 0) {
                                 console.warn('[NB onChange] API warnings:', recommendation.warnings);
+                              }
+
+                              // CRITICAL FIX: Map API schedule name to fallback schedule name by matching wall thickness
+                              // The API may return schedule names like "STD" that don't match fallback data like "Sch 40/STD"
+                              // This ensures the dropdown value matches the available options
+                              const fallbackMatch = schedules.find(s => Math.abs(s.wallThicknessMm - matchedWT) < 0.1);
+                              if (fallbackMatch && fallbackMatch.scheduleDesignation !== matchedSchedule) {
+                                console.log(`[NB onChange] Mapping API schedule "${matchedSchedule}" to fallback "${fallbackMatch.scheduleDesignation}" (same WT: ${matchedWT}mm)`);
+                                matchedSchedule = fallbackMatch.scheduleDesignation;
                               }
                             }
                           } catch (error) {
