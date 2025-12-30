@@ -10072,7 +10072,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   const bnwInfo = getBnwSetInfo(nbMm, pressureClass || 'PN16');
                   // Weight per set = weight for 1 flange (holesPerFlange × weightPerHole)
                   const bnwWeightPerSet = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
-                  const bnwTotalWeight = bnwWeightPerSet * totalFlanges;
+                  const bnwTotalWeight = bnwWeightPerSet * qty;
 
                   return (
                     <React.Fragment key={entry.id}>
@@ -10095,6 +10095,18 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <td className="py-2 px-2 text-center font-medium text-orange-800">{qty}</td>
                           <td className="py-2 px-2 text-right text-orange-700">{formatWeight(bnwWeightPerSet)}</td>
                           <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwTotalWeight)}</td>
+                        </tr>
+                      )}
+                      {/* Gasket Line Item - only show if fasteners selected and item has flanges */}
+                      {showBnw && totalFlanges > 0 && globalSpecs?.gasketType && (
+                        <tr className="border-b border-green-100 bg-green-50/50 hover:bg-green-100/50">
+                          <td className="py-2 px-2 font-medium text-green-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}</td>
+                          <td className="py-2 px-2 text-green-700 text-xs">
+                            {globalSpecs.gasketType} Gasket ({flangesPerPipe} per pipe)
+                          </td>
+                          <td className="py-2 px-2 text-center font-medium text-green-800">{qty}</td>
+                          <td className="py-2 px-2 text-right text-green-700">-</td>
+                          <td className="py-2 px-2 text-right font-semibold text-green-800">-</td>
                         </tr>
                       )}
                     </React.Fragment>
