@@ -9186,9 +9186,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           const numPipes = entry.specs.quantityType === 'number_of_pipes'
                             ? (entry.specs.quantityValue || 1)
                             : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
+                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
+                          const newDescription = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, {
                             specs: { ...entry.specs, individualPipeLength: pipeLength },
-                            calculatedPipes: numPipes
+                            calculatedPipes: numPipes,
+                            description: newDescription
                           });
                         }}
                         className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 6.1 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
@@ -9202,9 +9205,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           const numPipes = entry.specs.quantityType === 'number_of_pipes'
                             ? (entry.specs.quantityValue || 1)
                             : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
+                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
+                          const newDescription = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, {
                             specs: { ...entry.specs, individualPipeLength: pipeLength },
-                            calculatedPipes: numPipes
+                            calculatedPipes: numPipes,
+                            description: newDescription
                           });
                         }}
                         className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 9.144 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
@@ -9218,9 +9224,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           const numPipes = entry.specs.quantityType === 'number_of_pipes'
                             ? (entry.specs.quantityValue || 1)
                             : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
+                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
+                          const newDescription = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, {
                             specs: { ...entry.specs, individualPipeLength: pipeLength },
-                            calculatedPipes: numPipes
+                            calculatedPipes: numPipes,
+                            description: newDescription
                           });
                         }}
                         className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 12.192 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
@@ -9237,9 +9246,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         const numPipes = pipeLength && entry.specs.quantityType === 'number_of_pipes'
                           ? (entry.specs.quantityValue || 1)
                           : pipeLength ? Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength) : undefined;
+                        const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
+                        const newDescription = generateItemDescription(updatedEntry);
                         onUpdateEntry(entry.id, {
                           specs: { ...entry.specs, individualPipeLength: pipeLength },
-                          calculatedPipes: numPipes
+                          calculatedPipes: numPipes,
+                          description: newDescription
                         });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
