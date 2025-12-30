@@ -7359,58 +7359,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         <>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-900">Items</h2>
-            <div className="flex gap-3">
-              {/* Add Item Dropdown */}
-              <div className="relative inline-block">
-                <button
-                  onClick={(e) => {
-                    const menu = e.currentTarget.nextElementSibling;
-                    menu?.classList.toggle('hidden');
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold inline-flex items-center gap-2"
-                >
-                  + Add Item
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                <div className="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                  <button
-                    onClick={() => {
-                      onAddEntry();
-                      document.querySelector('.hidden')?.classList.add('hidden');
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100"
-                  >
-                    <div className="font-semibold text-blue-900">Straight Pipe</div>
-                    <div className="text-xs text-gray-600 mt-0.5">Standard pipeline sections</div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      onAddBendEntry();
-                      document.querySelector('.hidden')?.classList.add('hidden');
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-purple-50 transition-colors border-b border-gray-100"
-                  >
-                    <div className="font-semibold text-purple-900">Bend Section</div>
-                    <div className="text-xs text-gray-600 mt-0.5">Elbows and custom bends</div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      onAddFittingEntry();
-                      document.querySelector('.hidden')?.classList.add('hidden');
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-b-lg transition-colors"
-                  >
-                    <div className="font-semibold text-green-900">Fittings</div>
-                    <div className="text-xs text-gray-600 mt-0.5">Tees, laterals, and other fittings</div>
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-                <span className="text-green-700 font-semibold">Auto-calculating</span>
-                <span className="text-xs text-green-600">Results update automatically</span>
-              </div>
+            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+              <span className="text-green-700 font-semibold">Auto-calculating</span>
+              <span className="text-xs text-green-600">Results update automatically</span>
             </div>
           </div>
 
@@ -9714,6 +9665,59 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
             </div>
           </div>
         </div>
+
+        {/* Add Item Button - Fixed at bottom right */}
+        <div className="flex justify-end mt-4">
+          <div className="relative inline-block">
+            <button
+              onClick={(e) => {
+                const menu = e.currentTarget.nextElementSibling;
+                menu?.classList.toggle('hidden');
+              }}
+              className="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold inline-flex items-center gap-2 shadow-lg"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Item
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div className="hidden absolute right-0 bottom-full mb-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+              <button
+                onClick={() => {
+                  onAddEntry();
+                  document.querySelector('.hidden')?.classList.add('hidden');
+                }}
+                className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 rounded-t-lg"
+              >
+                <div className="font-semibold text-blue-900">Straight Pipe</div>
+                <div className="text-xs text-gray-600 mt-0.5">Standard pipeline sections</div>
+              </button>
+              <button
+                onClick={() => {
+                  onAddBendEntry();
+                  document.querySelector('.hidden')?.classList.add('hidden');
+                }}
+                className="w-full text-left px-4 py-3 hover:bg-purple-50 transition-colors border-b border-gray-100"
+              >
+                <div className="font-semibold text-purple-900">Bend Section</div>
+                <div className="text-xs text-gray-600 mt-0.5">Elbows and custom bends</div>
+              </button>
+              <button
+                onClick={() => {
+                  onAddFittingEntry();
+                  document.querySelector('.hidden')?.classList.add('hidden');
+                }}
+                className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-b-lg transition-colors"
+              >
+                <div className="font-semibold text-green-900">Fittings</div>
+                <div className="text-xs text-gray-600 mt-0.5">Tees, laterals, and other fittings</div>
+              </button>
+            </div>
+          </div>
+        </div>
           </div>
         </>
       )}
@@ -10710,7 +10714,29 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         console.log('🔄 Calling API with:', calculationData);
         const result = await rfqApi.calculate(calculationData);
         console.log('✅ Calculation result:', result);
-        updateEntryCalculation(entry.id, result);
+
+        // Recalculate flange weight based on actual pressure class used (may be overridden)
+        const pressureClassDesignation = masterData.pressureClasses?.find(
+          (pc: { id: number; designation: string }) => pc.id === flangePressureClassId
+        )?.designation;
+
+        if (result && result.numberOfFlanges > 0 && pressureClassDesignation) {
+          const flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation);
+          const totalFlangeWeight = result.numberOfFlanges * flangeWeightPerUnit;
+          const totalSystemWeight = (result.totalPipeWeight || 0) + totalFlangeWeight;
+
+          console.log(`🔧 Recalculating flange weight for ${pressureClassDesignation}: ${flangeWeightPerUnit}kg/flange × ${result.numberOfFlanges} = ${totalFlangeWeight}kg`);
+
+          updateEntryCalculation(entry.id, {
+            ...result,
+            flangeWeightPerUnit,
+            totalFlangeWeight,
+            totalSystemWeight,
+            pressureClassUsed: pressureClassDesignation
+          } as any);
+        } else {
+          updateEntryCalculation(entry.id, result);
+        }
       } catch (error: any) {
         const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -10760,7 +10786,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
     return () => clearTimeout(timeoutId);
   }, [
-    // Watch for changes in any entry's specs
+    // Watch for changes in any entry's specs (including flange overrides)
     JSON.stringify(rfqData.straightPipeEntries.map((e: StraightPipeEntry) => ({
       id: e.id,
       nominalBoreMm: e.specs.nominalBoreMm,
@@ -10771,7 +10797,9 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
       quantityType: e.specs.quantityType,
       pipeEndConfiguration: e.specs.pipeEndConfiguration,
       flangeStandardId: e.specs.flangeStandardId,
-      flangePressureClassId: e.specs.flangePressureClassId
+      flangePressureClassId: e.specs.flangePressureClassId,
+      hasFlangeOverride: e.hasFlangeOverride,
+      flangeOverrideConfirmed: e.flangeOverrideConfirmed
     }))),
     // Also watch global specs for calculation
     rfqData.globalSpecs?.workingPressureBar,
