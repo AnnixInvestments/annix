@@ -3853,7 +3853,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
             </div>
 
             {/* Confirmed Surface Protection Summary */}
-            {globalSpecs?.externalCoatingConfirmed && (globalSpecs?.externalCoatingRecommendation || globalSpecs?.externalCoatingType) && (
+            {(globalSpecs?.surfaceProtectionConfirmed || globalSpecs?.externalCoatingConfirmed) && (globalSpecs?.externalCoatingRecommendation || globalSpecs?.externalCoatingType) && (
               <div className="bg-green-100 border border-green-400 rounded-md p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs text-green-800">
@@ -6921,6 +6921,25 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
             </div>
           )}
         </div>
+
+            {/* Confirm Surface Protection Button - Only show when not all confirmed */}
+            {(!globalSpecs?.externalCoatingConfirmed || !globalSpecs?.internalLiningConfirmed) && (globalSpecs?.externalCoatingType || globalSpecs?.internalLiningType) && (
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    externalCoatingConfirmed: true,
+                    internalLiningConfirmed: true,
+                    surfaceProtectionConfirmed: true
+                  })}
+                  disabled={!globalSpecs?.externalCoatingType}
+                  className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Confirm Surface Protection
+                </button>
+              </div>
+            )}
           </div>
         )}
 
