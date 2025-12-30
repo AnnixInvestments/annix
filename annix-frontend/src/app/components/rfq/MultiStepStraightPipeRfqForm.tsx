@@ -10303,12 +10303,11 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         console.log('✅ Calculation result:', result);
         updateEntryCalculation(entry.id, result);
       } catch (error: any) {
-        console.error('❌ Calculation API error:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
 
-        // If API returns 404 (NB/schedule combination not in database), use local calculation
+        // If API returns 404 (NB/schedule combination not in database), use local calculation silently
         if (errorMessage.includes('API Error (404)') || errorMessage.includes('not available in the database')) {
-          console.log('⚠️ API 404 - Using local calculation fallback');
+          console.log('⚠️ API 404 - Using local calculation fallback for', entry.specs.nominalBoreMm, 'NB');
           const wallThickness = entry.specs.wallThicknessMm || 6.35; // Default wall thickness
           const localResult = calculateLocalPipeResult(
             entry.specs.nominalBoreMm!,
@@ -10323,13 +10322,14 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           return;
         }
 
-        // Silently handle other expected errors
+        // Silently handle other expected errors (backend unavailable, bad request)
         const isExpectedError =
           errorMessage === 'Backend unavailable' ||
-          errorMessage.includes('API Error (400)');
+          errorMessage.includes('API Error (400)') ||
+          errorMessage.includes('fetch failed');
 
         if (!isExpectedError) {
-          console.error(`Auto-calculation error for entry ${entry.id}:`, error);
+          console.error('❌ Calculation API error:', error);
         }
       }
     };
