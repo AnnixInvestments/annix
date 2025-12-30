@@ -9732,62 +9732,53 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
               </button>
             </div>
           </div>
-          {/* Stats grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="text-center">
-              <p className="text-xs font-medium text-blue-700">Total Pipe Entries</p>
-              <p className="text-lg font-bold text-blue-900">{entries.length}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs font-medium text-blue-700">Length Per Pipe</p>
-              <p className="text-lg font-bold text-blue-900">
-                {entries.length > 0 && entries[0]?.specs?.individualPipeLength
-                  ? `${entries[0].specs.individualPipeLength}m`
-                  : '-'}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs font-medium text-blue-700">Weight Per Pipe (incl. flanges)</p>
-              <p className="text-lg font-bold text-blue-900">
-                {(() => {
-                  const firstEntry = entries[0];
-                  if (!firstEntry?.calculation?.calculatedPipeCount) return '-';
-                  // Use totalSystemWeight which includes pipe + flanges + bolts
-                  const totalWeight = firstEntry.calculation.totalSystemWeight || firstEntry.calculation.totalPipeWeight || 0;
-                  if (!totalWeight) return '-';
-                  const weightPerPipe = totalWeight / firstEntry.calculation.calculatedPipeCount;
-                  return formatWeight(weightPerPipe);
-                })()}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs font-medium text-blue-700">Total Pipes</p>
-              <p className="text-lg font-bold text-blue-900">
-                {entries.reduce((total: number, entry: StraightPipeEntry) => {
-                  return total + (entry.calculation?.calculatedPipeCount || entry.specs.quantityValue || 0);
-                }, 0)}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs font-medium text-blue-700">Total Pipeline Length</p>
-              <p className="text-lg font-bold text-blue-900">
-                {entries.reduce((total: number, entry: StraightPipeEntry) => {
-                  // Calculate total length based on quantity type
-                  if (entry.specs.quantityType === 'total_length') {
-                    return total + (entry.specs.quantityValue || 0);
-                  } else {
-                    // number_of_pipes: multiply quantity by individual pipe length
-                    return total + ((entry.specs.quantityValue || 0) * (entry.specs.individualPipeLength || 0));
-                  }
-                }, 0).toFixed(1)}m
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs font-medium text-blue-700">Total Pipeline Weight</p>
-              <p className="text-lg font-bold text-blue-900">
-                {formatWeight(getTotalWeight())}
-              </p>
-            </div>
+          {/* Items table - each item on its own line */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-blue-300">
+                  <th className="text-left py-2 px-2 text-xs font-semibold text-blue-800">Item #</th>
+                  <th className="text-left py-2 px-2 text-xs font-semibold text-blue-800">Description</th>
+                  <th className="text-center py-2 px-2 text-xs font-semibold text-blue-800">Qty</th>
+                  <th className="text-right py-2 px-2 text-xs font-semibold text-blue-800">Weight/Item</th>
+                  <th className="text-right py-2 px-2 text-xs font-semibold text-blue-800">Line Weight</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((entry: any, index: number) => {
+                  const itemNumber = entry.clientItemNumber || `#${index + 1}`;
+                  const qty = entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0;
+                  const totalWeight = entry.itemType === 'bend' || entry.itemType === 'fitting'
+                    ? (entry.calculation?.totalWeight || 0)
+                    : (entry.calculation?.totalSystemWeight || 0);
+                  const weightPerItem = qty > 0 ? totalWeight / qty : 0;
+
+                  return (
+                    <tr key={entry.id} className="border-b border-blue-100 hover:bg-blue-100/50">
+                      <td className="py-2 px-2 font-medium text-blue-900">{itemNumber}</td>
+                      <td className="py-2 px-2 text-gray-800 max-w-xs truncate" title={entry.description}>
+                        {entry.description || 'No description'}
+                      </td>
+                      <td className="py-2 px-2 text-center font-medium text-gray-900">{qty}</td>
+                      <td className="py-2 px-2 text-right text-gray-700">{formatWeight(weightPerItem)}</td>
+                      <td className="py-2 px-2 text-right font-semibold text-blue-900">{formatWeight(totalWeight)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-blue-400 bg-blue-100">
+                  <td className="py-2 px-2 font-bold text-blue-900" colSpan={2}>TOTAL</td>
+                  <td className="py-2 px-2 text-center font-bold text-blue-900">
+                    {entries.reduce((total: number, entry: any) => {
+                      return total + (entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0);
+                    }, 0)}
+                  </td>
+                  <td className="py-2 px-2"></td>
+                  <td className="py-2 px-2 text-right font-bold text-blue-900">{formatWeight(getTotalWeight())}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
           </div>
