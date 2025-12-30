@@ -9520,9 +9520,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <>
                             <select
                               value={entry.specs.flangeStandardId || globalSpecs?.flangeStandardId || ''}
-                              onChange={(e) => onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, flangeStandardId: e.target.value ? Number(e.target.value) : undefined }
-                              })}
+                              onChange={(e) => {
+                                const newFlangeStandardId = e.target.value ? Number(e.target.value) : undefined;
+                                const updatedEntry = { ...entry, specs: { ...entry.specs, flangeStandardId: newFlangeStandardId } };
+                                const newDescription = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, flangeStandardId: newFlangeStandardId },
+                                  description: newDescription
+                                });
+                              }}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                             >
                               <option value="">Select flange standard...</option>
@@ -9535,9 +9541,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                             <select
                               value={entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
-                              onChange={(e) => onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, flangePressureClassId: e.target.value ? Number(e.target.value) : undefined }
-                              })}
+                              onChange={(e) => {
+                                const newFlangePressureClassId = e.target.value ? Number(e.target.value) : undefined;
+                                const updatedEntry = { ...entry, specs: { ...entry.specs, flangePressureClassId: newFlangePressureClassId } };
+                                const newDescription = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, flangePressureClassId: newFlangePressureClassId },
+                                  description: newDescription
+                                });
+                              }}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                             >
                               <option value="">Select pressure class...</option>
