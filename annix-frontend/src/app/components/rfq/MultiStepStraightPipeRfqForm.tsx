@@ -7139,24 +7139,63 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
     // Handle straight pipe items
     const nb = entry.specs.nominalBoreMm || 'XX';
     let schedule = entry.specs.scheduleNumber || (entry.specs.wallThicknessMm ? `${entry.specs.wallThicknessMm}WT` : 'XX');
-    const pressure = globalSpecs?.workingPressureBar || entry.specs.workingPressureBar || 'XX';
+    const wallThickness = entry.specs.wallThicknessMm;
+    const pipeLength = entry.specs.individualPipeLength;
     const pipeEndConfig = entry.specs.pipeEndConfiguration || 'PE';
+
     if(schedule.startsWith('Sch')){
       schedule = schedule.substring(3);
     }
-    // Get steel spec name if available
-    const steelSpec = entry.specs.steelSpecificationId 
-      ? masterData.steelSpecs.find((s: any) => s.id === entry.specs.steelSpecificationId)?.steelSpecName
-      : globalSpecs?.steelSpecificationId
-        ? masterData.steelSpecs.find((s: any) => s.id === globalSpecs.steelSpecificationId)?.steelSpecName
-        : undefined;
-    
-    let description = `${nb}NB Sch${schedule} Straight Pipe (${pipeEndConfig}) for ${pressure} Bar Pipeline`;
-    
-    if (steelSpec) {
-      description += ` - ${steelSpec}`;
+
+    // Convert pipe end config to flange display format
+    const getFlangeDisplay = (config: string): string => {
+      switch (config) {
+        case 'FOE': return '1X R/F';
+        case 'FBE': return '2X R/F';
+        case 'FOE_LF': return '1X R/F, 1X L/F';
+        case 'FOE_RF': return '2X R/F';
+        case '2X_RF': return '2X R/F';
+        case 'PE':
+        default: return '';
+      }
+    };
+
+    // Get flange standard and pressure class
+    const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+    const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+    const flangeStandard = flangeStandardId
+      ? masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code
+      : '';
+    const pressureClass = flangePressureClassId
+      ? masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId)?.designation
+      : '';
+
+    // Build description: 500NB Sch10 6.35mm Pipe, 12.192Lg, 2X R/F, SABS 1123 1000/3
+    let description = `${nb}NB Sch${schedule}`;
+
+    // Add wall thickness if available
+    if (wallThickness) {
+      description += ` ${wallThickness}mm`;
     }
-    
+
+    description += ' Pipe';
+
+    // Add pipe length if available
+    if (pipeLength) {
+      description += `, ${pipeLength}Lg`;
+    }
+
+    // Add flange configuration if not plain ended
+    const flangeDisplay = getFlangeDisplay(pipeEndConfig);
+    if (flangeDisplay) {
+      description += `, ${flangeDisplay}`;
+    }
+
+    // Add flange spec and class if available and has flanges
+    if (flangeDisplay && flangeStandard && pressureClass) {
+      description += `, ${flangeStandard} ${pressureClass}`;
+    }
+
     return description;
   };
 
