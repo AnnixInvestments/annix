@@ -185,6 +185,207 @@ const FLANGE_WEIGHT_BY_PRESSURE_CLASS: Record<string, Record<number, number>> = 
 // Default flange weight lookup (PN16) - for backward compatibility
 const NB_TO_FLANGE_WEIGHT_LOOKUP = FLANGE_WEIGHT_BY_PRESSURE_CLASS['PN16'];
 
+// Number of bolt holes per flange by NB and pressure class (SABS1123/BS4504)
+const BOLT_HOLES_BY_NB_AND_PRESSURE: Record<string, Record<number, number>> = {
+  'PN10': {
+    15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 4, 80: 4,
+    100: 4, 125: 8, 150: 8, 200: 8, 250: 12, 300: 12, 350: 12,
+    400: 16, 450: 16, 500: 20, 600: 20, 700: 24, 750: 24,
+    800: 24, 900: 28, 1000: 28, 1050: 28, 1200: 32
+  },
+  'PN16': {
+    15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 4, 80: 8,
+    100: 8, 125: 8, 150: 8, 200: 12, 250: 12, 300: 12, 350: 16,
+    400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 750: 24,
+    800: 24, 900: 28, 1000: 28, 1050: 32, 1200: 32
+  },
+  'PN25': {
+    15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 8, 80: 8,
+    100: 8, 125: 8, 150: 8, 200: 12, 250: 12, 300: 16, 350: 16,
+    400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 750: 24,
+    800: 24, 900: 28, 1000: 28, 1050: 32, 1200: 36
+  },
+  'PN40': {
+    15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 8, 80: 8,
+    100: 8, 125: 8, 150: 12, 200: 12, 250: 16, 300: 16, 350: 16,
+    400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 750: 28,
+    800: 28, 900: 32, 1000: 32, 1050: 36, 1200: 40
+  },
+  'PN64': {
+    15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 8, 65: 8, 80: 8,
+    100: 8, 125: 8, 150: 12, 200: 12, 250: 16, 300: 20, 350: 20,
+    400: 20, 450: 24, 500: 24, 600: 24, 700: 28, 750: 28,
+    800: 32, 900: 36, 1000: 36, 1050: 40, 1200: 44
+  },
+  'Class 150': {
+    15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 4, 80: 4,
+    100: 8, 125: 8, 150: 8, 200: 8, 250: 12, 300: 12, 350: 12,
+    400: 16, 450: 16, 500: 20, 600: 20, 700: 24, 750: 24,
+    800: 24, 900: 24, 1000: 28, 1050: 28, 1200: 32
+  },
+  'Class 300': {
+    15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 8, 65: 8, 80: 8,
+    100: 8, 125: 8, 150: 12, 200: 12, 250: 16, 300: 16, 350: 16,
+    400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 750: 24,
+    800: 24, 900: 28, 1000: 28, 1050: 32, 1200: 36
+  },
+  'Class 600': {
+    15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 8, 65: 8, 80: 8,
+    100: 8, 125: 8, 150: 12, 200: 12, 250: 16, 300: 20, 350: 20,
+    400: 20, 450: 24, 500: 24, 600: 24, 700: 28, 750: 28,
+    800: 32, 900: 36, 1000: 36, 1050: 40, 1200: 44
+  }
+};
+
+// Bolt/Nut/Washer set weight per hole (kg) - includes 1 bolt, 1 nut, 2 washers
+const BNW_SET_WEIGHT_PER_HOLE: Record<string, Record<number, { boltSize: string; weight: number }>> = {
+  'PN10': {
+    15: { boltSize: 'M12x45', weight: 0.08 }, 20: { boltSize: 'M12x45', weight: 0.08 },
+    25: { boltSize: 'M12x50', weight: 0.09 }, 32: { boltSize: 'M12x50', weight: 0.09 },
+    40: { boltSize: 'M12x55', weight: 0.10 }, 50: { boltSize: 'M16x55', weight: 0.15 },
+    65: { boltSize: 'M16x55', weight: 0.15 }, 80: { boltSize: 'M16x60', weight: 0.17 },
+    100: { boltSize: 'M16x65', weight: 0.18 }, 125: { boltSize: 'M16x65', weight: 0.18 },
+    150: { boltSize: 'M16x70', weight: 0.20 }, 200: { boltSize: 'M16x70', weight: 0.20 },
+    250: { boltSize: 'M20x75', weight: 0.32 }, 300: { boltSize: 'M20x80', weight: 0.35 },
+    350: { boltSize: 'M20x85', weight: 0.38 }, 400: { boltSize: 'M20x90', weight: 0.40 },
+    450: { boltSize: 'M24x95', weight: 0.55 }, 500: { boltSize: 'M24x100', weight: 0.58 },
+    600: { boltSize: 'M27x110', weight: 0.80 }, 700: { boltSize: 'M27x120', weight: 0.88 },
+    750: { boltSize: 'M30x125', weight: 1.10 }, 800: { boltSize: 'M30x130', weight: 1.15 },
+    900: { boltSize: 'M33x140', weight: 1.45 }, 1000: { boltSize: 'M33x150', weight: 1.55 },
+    1050: { boltSize: 'M36x155', weight: 1.85 }, 1200: { boltSize: 'M36x170', weight: 2.05 }
+  },
+  'PN16': {
+    15: { boltSize: 'M12x50', weight: 0.09 }, 20: { boltSize: 'M12x50', weight: 0.09 },
+    25: { boltSize: 'M12x55', weight: 0.10 }, 32: { boltSize: 'M16x55', weight: 0.15 },
+    40: { boltSize: 'M16x60', weight: 0.17 }, 50: { boltSize: 'M16x60', weight: 0.17 },
+    65: { boltSize: 'M16x65', weight: 0.18 }, 80: { boltSize: 'M16x65', weight: 0.18 },
+    100: { boltSize: 'M16x70', weight: 0.20 }, 125: { boltSize: 'M20x75', weight: 0.32 },
+    150: { boltSize: 'M20x75', weight: 0.32 }, 200: { boltSize: 'M20x80', weight: 0.35 },
+    250: { boltSize: 'M24x90', weight: 0.52 }, 300: { boltSize: 'M24x95', weight: 0.55 },
+    350: { boltSize: 'M24x100', weight: 0.58 }, 400: { boltSize: 'M27x105', weight: 0.75 },
+    450: { boltSize: 'M27x110', weight: 0.80 }, 500: { boltSize: 'M30x115', weight: 1.00 },
+    600: { boltSize: 'M30x125', weight: 1.10 }, 700: { boltSize: 'M33x135', weight: 1.40 },
+    750: { boltSize: 'M33x140', weight: 1.45 }, 800: { boltSize: 'M36x150', weight: 1.80 },
+    900: { boltSize: 'M36x160', weight: 1.95 }, 1000: { boltSize: 'M39x175', weight: 2.40 },
+    1050: { boltSize: 'M39x185', weight: 2.55 }, 1200: { boltSize: 'M42x200', weight: 3.10 }
+  },
+  'PN25': {
+    15: { boltSize: 'M12x55', weight: 0.10 }, 20: { boltSize: 'M12x55', weight: 0.10 },
+    25: { boltSize: 'M12x60', weight: 0.11 }, 32: { boltSize: 'M16x60', weight: 0.17 },
+    40: { boltSize: 'M16x65', weight: 0.18 }, 50: { boltSize: 'M16x65', weight: 0.18 },
+    65: { boltSize: 'M16x70', weight: 0.20 }, 80: { boltSize: 'M20x75', weight: 0.32 },
+    100: { boltSize: 'M20x80', weight: 0.35 }, 125: { boltSize: 'M24x85', weight: 0.50 },
+    150: { boltSize: 'M24x90', weight: 0.52 }, 200: { boltSize: 'M27x100', weight: 0.72 },
+    250: { boltSize: 'M30x110', weight: 1.05 }, 300: { boltSize: 'M30x115', weight: 1.10 },
+    350: { boltSize: 'M33x125', weight: 1.35 }, 400: { boltSize: 'M33x130', weight: 1.40 },
+    450: { boltSize: 'M36x140', weight: 1.75 }, 500: { boltSize: 'M36x150', weight: 1.90 },
+    600: { boltSize: 'M39x160', weight: 2.30 }, 700: { boltSize: 'M42x175', weight: 2.90 },
+    750: { boltSize: 'M42x185', weight: 3.05 }, 800: { boltSize: 'M45x195', weight: 3.60 },
+    900: { boltSize: 'M48x210', weight: 4.30 }, 1000: { boltSize: 'M48x225', weight: 4.60 },
+    1050: { boltSize: 'M52x240', weight: 5.50 }, 1200: { boltSize: 'M56x265', weight: 6.80 }
+  },
+  'PN40': {
+    15: { boltSize: 'M12x60', weight: 0.11 }, 20: { boltSize: 'M16x60', weight: 0.17 },
+    25: { boltSize: 'M16x65', weight: 0.18 }, 32: { boltSize: 'M16x65', weight: 0.18 },
+    40: { boltSize: 'M16x70', weight: 0.20 }, 50: { boltSize: 'M20x75', weight: 0.32 },
+    65: { boltSize: 'M20x80', weight: 0.35 }, 80: { boltSize: 'M20x85', weight: 0.38 },
+    100: { boltSize: 'M24x90', weight: 0.52 }, 125: { boltSize: 'M27x100', weight: 0.72 },
+    150: { boltSize: 'M27x105', weight: 0.75 }, 200: { boltSize: 'M30x115', weight: 1.10 },
+    250: { boltSize: 'M33x130', weight: 1.40 }, 300: { boltSize: 'M36x145', weight: 1.80 },
+    350: { boltSize: 'M36x155', weight: 1.95 }, 400: { boltSize: 'M39x165', weight: 2.40 },
+    450: { boltSize: 'M42x180', weight: 3.00 }, 500: { boltSize: 'M45x195', weight: 3.60 },
+    600: { boltSize: 'M48x215', weight: 4.40 }, 700: { boltSize: 'M52x235', weight: 5.40 },
+    750: { boltSize: 'M52x250', weight: 5.75 }, 800: { boltSize: 'M56x265', weight: 6.80 },
+    900: { boltSize: 'M60x290', weight: 8.20 }, 1000: { boltSize: 'M64x315', weight: 9.80 },
+    1050: { boltSize: 'M64x335', weight: 10.40 }, 1200: { boltSize: 'M72x375', weight: 13.50 }
+  },
+  'PN64': {
+    15: { boltSize: 'M16x65', weight: 0.18 }, 20: { boltSize: 'M16x70', weight: 0.20 },
+    25: { boltSize: 'M16x75', weight: 0.22 }, 32: { boltSize: 'M20x80', weight: 0.35 },
+    40: { boltSize: 'M20x85', weight: 0.38 }, 50: { boltSize: 'M20x90', weight: 0.40 },
+    65: { boltSize: 'M24x95', weight: 0.55 }, 80: { boltSize: 'M24x100', weight: 0.58 },
+    100: { boltSize: 'M27x110', weight: 0.80 }, 125: { boltSize: 'M30x120', weight: 1.08 },
+    150: { boltSize: 'M33x130', weight: 1.40 }, 200: { boltSize: 'M36x150', weight: 1.90 },
+    250: { boltSize: 'M39x170', weight: 2.50 }, 300: { boltSize: 'M42x190', weight: 3.20 },
+    350: { boltSize: 'M45x210', weight: 3.90 }, 400: { boltSize: 'M48x230', weight: 4.70 },
+    450: { boltSize: 'M52x250', weight: 5.75 }, 500: { boltSize: 'M56x275', weight: 7.00 },
+    600: { boltSize: 'M60x305', weight: 8.60 }, 700: { boltSize: 'M64x340', weight: 10.50 },
+    750: { boltSize: 'M68x360', weight: 12.00 }, 800: { boltSize: 'M72x385', weight: 14.00 },
+    900: { boltSize: 'M76x425', weight: 16.50 }, 1000: { boltSize: 'M80x470', weight: 19.50 },
+    1050: { boltSize: 'M85x500', weight: 22.00 }, 1200: { boltSize: 'M90x560', weight: 27.00 }
+  },
+  'Class 150': {
+    15: { boltSize: 'M12x45', weight: 0.08 }, 20: { boltSize: 'M12x45', weight: 0.08 },
+    25: { boltSize: 'M12x50', weight: 0.09 }, 32: { boltSize: 'M12x50', weight: 0.09 },
+    40: { boltSize: 'M12x55', weight: 0.10 }, 50: { boltSize: 'M16x55', weight: 0.15 },
+    65: { boltSize: 'M16x55', weight: 0.15 }, 80: { boltSize: 'M16x60', weight: 0.17 },
+    100: { boltSize: 'M16x65', weight: 0.18 }, 125: { boltSize: 'M16x65', weight: 0.18 },
+    150: { boltSize: 'M16x70', weight: 0.20 }, 200: { boltSize: 'M20x75', weight: 0.32 },
+    250: { boltSize: 'M20x80', weight: 0.35 }, 300: { boltSize: 'M24x90', weight: 0.52 },
+    350: { boltSize: 'M24x95', weight: 0.55 }, 400: { boltSize: 'M27x100', weight: 0.72 },
+    450: { boltSize: 'M27x110', weight: 0.80 }, 500: { boltSize: 'M30x115', weight: 1.00 },
+    600: { boltSize: 'M30x125', weight: 1.10 }, 700: { boltSize: 'M33x135', weight: 1.40 },
+    750: { boltSize: 'M33x145', weight: 1.50 }, 800: { boltSize: 'M36x155', weight: 1.85 },
+    900: { boltSize: 'M36x165', weight: 2.00 }, 1000: { boltSize: 'M39x180', weight: 2.50 },
+    1050: { boltSize: 'M39x190', weight: 2.65 }, 1200: { boltSize: 'M42x210', weight: 3.30 }
+  },
+  'Class 300': {
+    15: { boltSize: 'M12x55', weight: 0.10 }, 20: { boltSize: 'M16x60', weight: 0.17 },
+    25: { boltSize: 'M16x65', weight: 0.18 }, 32: { boltSize: 'M16x65', weight: 0.18 },
+    40: { boltSize: 'M16x70', weight: 0.20 }, 50: { boltSize: 'M20x75', weight: 0.32 },
+    65: { boltSize: 'M20x80', weight: 0.35 }, 80: { boltSize: 'M20x85', weight: 0.38 },
+    100: { boltSize: 'M24x90', weight: 0.52 }, 125: { boltSize: 'M27x100', weight: 0.72 },
+    150: { boltSize: 'M27x105', weight: 0.75 }, 200: { boltSize: 'M30x115', weight: 1.10 },
+    250: { boltSize: 'M33x130', weight: 1.40 }, 300: { boltSize: 'M36x145', weight: 1.80 },
+    350: { boltSize: 'M36x155', weight: 1.95 }, 400: { boltSize: 'M39x165', weight: 2.40 },
+    450: { boltSize: 'M42x180', weight: 3.00 }, 500: { boltSize: 'M45x195', weight: 3.60 },
+    600: { boltSize: 'M48x215', weight: 4.40 }, 700: { boltSize: 'M52x235', weight: 5.40 },
+    750: { boltSize: 'M52x250', weight: 5.75 }, 800: { boltSize: 'M56x265', weight: 6.80 },
+    900: { boltSize: 'M60x290', weight: 8.20 }, 1000: { boltSize: 'M64x315', weight: 9.80 },
+    1050: { boltSize: 'M64x335', weight: 10.40 }, 1200: { boltSize: 'M72x375', weight: 13.50 }
+  },
+  'Class 600': {
+    15: { boltSize: 'M16x65', weight: 0.18 }, 20: { boltSize: 'M16x70', weight: 0.20 },
+    25: { boltSize: 'M16x75', weight: 0.22 }, 32: { boltSize: 'M20x80', weight: 0.35 },
+    40: { boltSize: 'M20x85', weight: 0.38 }, 50: { boltSize: 'M20x90', weight: 0.40 },
+    65: { boltSize: 'M24x95', weight: 0.55 }, 80: { boltSize: 'M24x100', weight: 0.58 },
+    100: { boltSize: 'M27x110', weight: 0.80 }, 125: { boltSize: 'M30x120', weight: 1.08 },
+    150: { boltSize: 'M33x130', weight: 1.40 }, 200: { boltSize: 'M36x150', weight: 1.90 },
+    250: { boltSize: 'M39x170', weight: 2.50 }, 300: { boltSize: 'M42x190', weight: 3.20 },
+    350: { boltSize: 'M45x210', weight: 3.90 }, 400: { boltSize: 'M48x230', weight: 4.70 },
+    450: { boltSize: 'M52x250', weight: 5.75 }, 500: { boltSize: 'M56x275', weight: 7.00 },
+    600: { boltSize: 'M60x305', weight: 8.60 }, 700: { boltSize: 'M64x340', weight: 10.50 },
+    750: { boltSize: 'M68x360', weight: 12.00 }, 800: { boltSize: 'M72x385', weight: 14.00 },
+    900: { boltSize: 'M76x425', weight: 16.50 }, 1000: { boltSize: 'M80x470', weight: 19.50 },
+    1050: { boltSize: 'M85x500', weight: 22.00 }, 1200: { boltSize: 'M90x560', weight: 27.00 }
+  }
+};
+
+// Helper function to get bolt holes per flange
+const getBoltHolesPerFlange = (nbMm: number, pressureClass: string): number => {
+  const normalized = normalizePressureClass(pressureClass);
+  const classData = BOLT_HOLES_BY_NB_AND_PRESSURE[normalized];
+  if (!classData) return 8; // Default
+  return classData[nbMm] || 8;
+};
+
+// Helper function to get BNW set info (bolt size, weight per set)
+const getBnwSetInfo = (nbMm: number, pressureClass: string): { boltSize: string; weightPerHole: number; holesPerFlange: number } => {
+  const normalized = normalizePressureClass(pressureClass);
+  const classData = BNW_SET_WEIGHT_PER_HOLE[normalized];
+  const holesPerFlange = getBoltHolesPerFlange(nbMm, normalized);
+
+  if (!classData || !classData[nbMm]) {
+    return { boltSize: 'M16x65', weightPerHole: 0.18, holesPerFlange };
+  }
+
+  return {
+    boltSize: classData[nbMm].boltSize,
+    weightPerHole: classData[nbMm].weight,
+    holesPerFlange
+  };
+};
+
 /**
  * Normalize pressure class designation to a standard format for weight lookup
  * Handles various formats: "PN 16", "PN16", "1600/3", "4000/3", "Class 150", etc.
@@ -6976,7 +7177,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
   );
 }
 
-function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions, bendOptionsCache, autoSelectFlangeSpecs }: any) {
+function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions, bendOptionsCache, autoSelectFlangeSpecs, requiredProducts = [] }: any) {
   const [isCalculating, setIsCalculating] = useState(false);
   const processedEntriesRef = useRef<Set<string>>(new Set());
   // Track entries that have been manually updated by onChange - these should NOT be overwritten by useEffect
@@ -9851,16 +10052,50 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     : (entry.calculation?.totalSystemWeight || 0);
                   const weightPerItem = qty > 0 ? totalWeight / qty : 0;
 
+                  // Calculate BNW info if fasteners_gaskets is selected and item has flanges
+                  const showBnw = requiredProducts?.includes('fasteners_gaskets');
+                  const flangesPerPipe = entry.itemType === 'straight_pipe' || !entry.itemType
+                    ? getFlangesPerPipe(entry.specs?.pipeEndConfiguration || 'PE')
+                    : 0;
+                  const totalFlanges = flangesPerPipe * qty;
+
+                  // Get pressure class for BNW lookup
+                  const pressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                  const pressureClass = pressureClassId
+                    ? masterData.pressureClasses?.find((p: any) => p.id === pressureClassId)?.designation
+                    : 'PN16';
+                  const nbMm = entry.specs?.nominalBoreMm || 100;
+
+                  // Get BNW set info
+                  const bnwInfo = getBnwSetInfo(nbMm, pressureClass || 'PN16');
+                  const totalBolts = totalFlanges * bnwInfo.holesPerFlange;
+                  const bnwWeightPerSet = bnwInfo.weightPerHole;
+                  const bnwTotalWeight = totalBolts * bnwWeightPerSet;
+
                   return (
-                    <tr key={entry.id} className="border-b border-blue-100 hover:bg-blue-100/50">
-                      <td className="py-2 px-2 font-medium text-blue-900">{itemNumber}</td>
-                      <td className="py-2 px-2 text-gray-800 max-w-xs truncate" title={entry.description}>
-                        {entry.description || 'No description'}
-                      </td>
-                      <td className="py-2 px-2 text-center font-medium text-gray-900">{qty}</td>
-                      <td className="py-2 px-2 text-right text-gray-700">{formatWeight(weightPerItem)}</td>
-                      <td className="py-2 px-2 text-right font-semibold text-blue-900">{formatWeight(totalWeight)}</td>
-                    </tr>
+                    <React.Fragment key={entry.id}>
+                      <tr className="border-b border-blue-100 hover:bg-blue-100/50">
+                        <td className="py-2 px-2 font-medium text-blue-900">{itemNumber}</td>
+                        <td className="py-2 px-2 text-gray-800 max-w-xs truncate" title={entry.description}>
+                          {entry.description || 'No description'}
+                        </td>
+                        <td className="py-2 px-2 text-center font-medium text-gray-900">{qty}</td>
+                        <td className="py-2 px-2 text-right text-gray-700">{formatWeight(weightPerItem)}</td>
+                        <td className="py-2 px-2 text-right font-semibold text-blue-900">{formatWeight(totalWeight)}</td>
+                      </tr>
+                      {/* BNW Line Item - only show if fasteners selected and item has flanges */}
+                      {showBnw && totalFlanges > 0 && (
+                        <tr className="border-b border-orange-100 bg-orange-50/50 hover:bg-orange-100/50">
+                          <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace('#', '')}</td>
+                          <td className="py-2 px-2 text-orange-700 text-xs">
+                            {bnwInfo.boltSize} Bolt/Nut/Washer Sets for {totalFlanges} flange{totalFlanges !== 1 ? 's' : ''} ({bnwInfo.holesPerFlange} holes each)
+                          </td>
+                          <td className="py-2 px-2 text-center font-medium text-orange-800">{totalBolts}</td>
+                          <td className="py-2 px-2 text-right text-orange-700">{formatWeight(bnwWeightPerSet)}</td>
+                          <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwTotalWeight)}</td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -11558,6 +11793,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             fetchBendOptions={fetchBendOptions}
             bendOptionsCache={bendOptionsCache}
             autoSelectFlangeSpecs={autoSelectFlangeSpecs}
+            requiredProducts={rfqData.requiredProducts}
           />
         );
       case 4:
