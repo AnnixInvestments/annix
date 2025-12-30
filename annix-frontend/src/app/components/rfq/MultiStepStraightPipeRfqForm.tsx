@@ -9608,7 +9608,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         {/* Total Summary */}
         <div className="border-2 border-blue-200 rounded-md p-3 bg-blue-50">
           <h3 className="text-base font-bold text-blue-900 mb-2">Project Summary</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-3">
             <div className="text-center">
               <p className="text-xs font-medium text-blue-700">Total Pipe Entries</p>
               <p className="text-lg font-bold text-blue-900">{entries.length}</p>
@@ -9643,6 +9643,34 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                 }, 0)}
               </p>
             </div>
+            {/* Add Item Buttons */}
+            <button
+              onClick={() => onAddEntry()}
+              className="flex flex-col items-center justify-center p-2 bg-blue-100 hover:bg-blue-200 rounded-lg border-2 border-blue-300 transition-colors"
+            >
+              <svg className="w-5 h-5 text-blue-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <p className="text-xs font-semibold text-blue-700">Straight Pipe</p>
+            </button>
+            <button
+              onClick={() => onAddBendEntry()}
+              className="flex flex-col items-center justify-center p-2 bg-purple-100 hover:bg-purple-200 rounded-lg border-2 border-purple-300 transition-colors"
+            >
+              <svg className="w-5 h-5 text-purple-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <p className="text-xs font-semibold text-purple-700">Bend</p>
+            </button>
+            <button
+              onClick={() => onAddFittingEntry()}
+              className="flex flex-col items-center justify-center p-2 bg-green-100 hover:bg-green-200 rounded-lg border-2 border-green-300 transition-colors"
+            >
+              <svg className="w-5 h-5 text-green-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <p className="text-xs font-semibold text-green-700">Fitting</p>
+            </button>
             <div className="text-center">
               <p className="text-xs font-medium text-blue-700">Total Pipeline Length</p>
               <p className="text-lg font-bold text-blue-900">
@@ -9662,59 +9690,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
               <p className="text-lg font-bold text-blue-900">
                 {formatWeight(getTotalWeight())}
               </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Add Item Button - Fixed at bottom right */}
-        <div className="flex justify-end mt-4">
-          <div className="relative inline-block">
-            <button
-              onClick={(e) => {
-                const menu = e.currentTarget.nextElementSibling;
-                menu?.classList.toggle('hidden');
-              }}
-              className="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold inline-flex items-center gap-2 shadow-lg"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Item
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            <div className="hidden absolute right-0 bottom-full mb-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-              <button
-                onClick={() => {
-                  onAddEntry();
-                  document.querySelector('.hidden')?.classList.add('hidden');
-                }}
-                className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 rounded-t-lg"
-              >
-                <div className="font-semibold text-blue-900">Straight Pipe</div>
-                <div className="text-xs text-gray-600 mt-0.5">Standard pipeline sections</div>
-              </button>
-              <button
-                onClick={() => {
-                  onAddBendEntry();
-                  document.querySelector('.hidden')?.classList.add('hidden');
-                }}
-                className="w-full text-left px-4 py-3 hover:bg-purple-50 transition-colors border-b border-gray-100"
-              >
-                <div className="font-semibold text-purple-900">Bend Section</div>
-                <div className="text-xs text-gray-600 mt-0.5">Elbows and custom bends</div>
-              </button>
-              <button
-                onClick={() => {
-                  onAddFittingEntry();
-                  document.querySelector('.hidden')?.classList.add('hidden');
-                }}
-                className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-b-lg transition-colors"
-              >
-                <div className="font-semibold text-green-900">Fittings</div>
-                <div className="text-xs text-gray-600 mt-0.5">Tees, laterals, and other fittings</div>
-              </button>
             </div>
           </div>
         </div>
