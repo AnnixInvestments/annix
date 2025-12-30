@@ -10102,7 +10102,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <tr className="border-b border-green-100 bg-green-50/50 hover:bg-green-100/50">
                           <td className="py-2 px-2 font-medium text-green-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                           <td className="py-2 px-2 text-green-700 text-xs">
-                            {globalSpecs.gasketType} Gasket ({flangesPerPipe} per pipe)
+                            {globalSpecs.gasketType} Gasket (1 per pipe)
                           </td>
                           <td className="py-2 px-2 text-center font-medium text-green-800">{qty}</td>
                           <td className="py-2 px-2 text-right text-green-700">-</td>
