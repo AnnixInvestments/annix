@@ -3844,42 +3844,48 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           </div>
         </div>
 
-        {/* External Coating & Internal Lining - Only show if Surface Protection is selected */}
+        {/* Surface Protection - Only show if Surface Protection is selected */}
         {showSurfaceProtection && (
-        <>
-        {/* Confirmed Surface Protection Summary */}
-        {globalSpecs?.externalCoatingConfirmed && globalSpecs?.externalCoatingRecommendation && (
-          <div className="bg-green-100 border border-green-400 rounded-md p-3 mb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-green-800">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span className="font-semibold">Surface Protection Confirmed</span>
-                <span className="mx-2">•</span>
-                <span className="font-medium">External:</span> {globalSpecs.externalCoatingRecommendation.coating}
-                {globalSpecs?.internalLiningConfirmed && globalSpecs?.internalLiningType && (
-                  <>
-                    <span className="mx-2">•</span>
-                    <span className="font-medium">Internal:</span> {globalSpecs.internalLiningType}
-                    {globalSpecs?.internalRubberType && <span className="ml-1">({globalSpecs.internalRubberType})</span>}
-                  </>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => onUpdateGlobalSpecs({
-                  ...globalSpecs,
-                  externalCoatingConfirmed: false,
-                  internalLiningConfirmed: false
-                })}
-                className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
-              >
-                Edit
-              </button>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
+              <span className="text-2xl">🛡️</span>
+              <h3 className="text-xl font-bold text-gray-900">Surface Protection</h3>
             </div>
-          </div>
-        )}
+
+            {/* Confirmed Surface Protection Summary */}
+            {globalSpecs?.externalCoatingConfirmed && (globalSpecs?.externalCoatingRecommendation || globalSpecs?.externalCoatingType) && (
+              <div className="bg-green-100 border border-green-400 rounded-md p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs text-green-800">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-semibold">Surface Protection Confirmed</span>
+                    <span className="mx-2">•</span>
+                    <span className="font-medium">External:</span> {globalSpecs.externalCoatingRecommendation?.coating || globalSpecs.externalCoatingType || 'N/A'}
+                    {globalSpecs?.internalLiningConfirmed && globalSpecs?.internalLiningType && (
+                      <>
+                        <span className="mx-2">•</span>
+                        <span className="font-medium">Internal:</span> {globalSpecs.internalLiningType}
+                        {globalSpecs?.internalRubberType && <span className="ml-1">({globalSpecs.internalRubberType})</span>}
+                      </>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      externalCoatingConfirmed: false,
+                      internalLiningConfirmed: false
+                    })}
+                    className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            )}
+
         {/* External Coating */}
         <div className="bg-white border border-gray-200 rounded-lg p-3">
           <h3 className="text-xs font-semibold text-gray-800 mb-2">External Coating</h3>
@@ -6915,7 +6921,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
             </div>
           )}
         </div>
-        </>
+          </div>
         )}
 
             {/* Confirm Button for Steel Pipe Specifications */}
