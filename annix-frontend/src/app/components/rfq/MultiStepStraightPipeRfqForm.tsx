@@ -3844,6 +3844,23 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           </div>
         </div>
 
+        {/* Confirm Button for Steel Pipe Specifications */}
+        {showSteelPipes && !globalSpecs?.steelPipesSpecsConfirmed && (
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={() => onUpdateGlobalSpecs({
+                ...globalSpecs,
+                steelPipesSpecsConfirmed: true
+              })}
+              disabled={!globalSpecs?.workingPressureBar || !globalSpecs?.workingTemperatureC}
+              className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Confirm Steel Pipe Specifications
+            </button>
+          </div>
+        )}
+
         {/* Surface Protection - Only show if Surface Protection is selected */}
         {showSurfaceProtection && (
           <div className="space-y-4">
@@ -6943,21 +6960,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           </div>
         )}
 
-            {/* Confirm Button for Steel Pipe Specifications */}
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={() => onUpdateGlobalSpecs({
-                  ...globalSpecs,
-                  steelPipesSpecsConfirmed: true
-                })}
-                disabled={!globalSpecs?.workingPressureBar || !globalSpecs?.workingTemperatureC}
-                className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Confirm Steel Pipe Specifications
-              </button>
-            </div>
-            </>
+</>
             )}
           </div>
         )}
