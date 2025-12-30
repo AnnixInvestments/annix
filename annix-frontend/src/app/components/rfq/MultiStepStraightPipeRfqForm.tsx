@@ -10070,10 +10070,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                   // Get BNW set info
                   const bnwInfo = getBnwSetInfo(nbMm, pressureClass || 'PN16');
-                  // Bolts per set = holes per flange × flanges per pipe
-                  const boltsPerSet = bnwInfo.holesPerFlange * flangesPerPipe;
-                  const bnwWeightPerSet = bnwInfo.weightPerHole * boltsPerSet;
-                  const bnwTotalWeight = bnwWeightPerSet * qty;
+                  // Weight per set = weight for 1 flange (holesPerFlange × weightPerHole)
+                  const bnwWeightPerSet = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
+                  const bnwTotalWeight = bnwWeightPerSet * totalFlanges;
 
                   return (
                     <React.Fragment key={entry.id}>
@@ -10089,7 +10088,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       {/* BNW Line Item - only show if fasteners selected and item has flanges */}
                       {showBnw && totalFlanges > 0 && (
                         <tr className="border-b border-orange-100 bg-orange-50/50 hover:bg-orange-100/50">
-                          <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace('#', '')}</td>
+                          <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                           <td className="py-2 px-2 text-orange-700 text-xs">
                             {bnwInfo.boltSize} Bolt/Nut/Washer Sets ({bnwInfo.holesPerFlange} per set)
                           </td>
