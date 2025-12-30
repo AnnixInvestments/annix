@@ -10068,9 +10068,10 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                   // Get BNW set info
                   const bnwInfo = getBnwSetInfo(nbMm, pressureClass || 'PN16');
-                  const totalBolts = totalFlanges * bnwInfo.holesPerFlange;
-                  const bnwWeightPerSet = bnwInfo.weightPerHole;
-                  const bnwTotalWeight = totalBolts * bnwWeightPerSet;
+                  // Bolts per set = holes per flange × flanges per pipe
+                  const boltsPerSet = bnwInfo.holesPerFlange * flangesPerPipe;
+                  const bnwWeightPerSet = bnwInfo.weightPerHole * boltsPerSet;
+                  const bnwTotalWeight = bnwWeightPerSet * qty;
 
                   return (
                     <React.Fragment key={entry.id}>
@@ -10088,9 +10089,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <tr className="border-b border-orange-100 bg-orange-50/50 hover:bg-orange-100/50">
                           <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace('#', '')}</td>
                           <td className="py-2 px-2 text-orange-700 text-xs">
-                            {bnwInfo.boltSize} Bolt/Nut/Washer Sets for {totalFlanges} flange{totalFlanges !== 1 ? 's' : ''} ({bnwInfo.holesPerFlange} holes each)
+                            {bnwInfo.boltSize} Bolt/Nut/Washer Sets ({boltsPerSet} per set)
                           </td>
-                          <td className="py-2 px-2 text-center font-medium text-orange-800">{totalBolts}</td>
+                          <td className="py-2 px-2 text-center font-medium text-orange-800">{qty}</td>
                           <td className="py-2 px-2 text-right text-orange-700">{formatWeight(bnwWeightPerSet)}</td>
                           <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwTotalWeight)}</td>
                         </tr>
