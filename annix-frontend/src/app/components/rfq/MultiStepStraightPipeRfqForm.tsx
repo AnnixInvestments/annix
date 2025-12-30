@@ -6889,22 +6889,41 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
           console.log('Could not fetch upgrade schedules:', err);
         }
 
-        // Map API schedule name to fallback schedule name by matching wall thickness
-        // This ensures dropdown values match the available options
-        let finalScheduleName = recommended.recommendedSchedule;
+        // CRITICAL FIX: Always use fallback schedule data for the schedule name
+        // Find the lightest schedule that meets the minimum wall thickness requirement
         const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
-        const fallbackMatch = fallbackSchedules.find(s => Math.abs(s.wallThicknessMm - recommended.recommendedWallMm) < 0.1);
-        if (fallbackMatch && fallbackMatch.scheduleDesignation !== recommended.recommendedSchedule) {
-          console.log(`🔄 Mapping API schedule "${recommended.recommendedSchedule}" to fallback "${fallbackMatch.scheduleDesignation}"`);
-          finalScheduleName = fallbackMatch.scheduleDesignation;
+        const minWT = recommended.minRequiredThicknessMm;
+
+        const eligibleSchedules = fallbackSchedules
+          .filter(s => s.wallThicknessMm >= minWT)
+          .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
+
+        let finalScheduleName: string;
+        let finalWT: number;
+
+        if (eligibleSchedules.length > 0) {
+          finalScheduleName = eligibleSchedules[0].scheduleDesignation;
+          finalWT = eligibleSchedules[0].wallThicknessMm;
+          console.log(`🔄 Using fallback schedule: ${finalScheduleName} (${finalWT}mm) for minWT=${minWT.toFixed(2)}mm`);
+        } else if (fallbackSchedules.length > 0) {
+          // No schedule meets requirements - use thickest available
+          const sorted = [...fallbackSchedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
+          finalScheduleName = sorted[0].scheduleDesignation;
+          finalWT = sorted[0].wallThicknessMm;
+          console.warn(`⚠️ No schedule meets ${minWT.toFixed(2)}mm minWT, using thickest: ${finalScheduleName} (${finalWT}mm)`);
+        } else {
+          // No fallback data - use API values as last resort
+          finalScheduleName = recommended.recommendedSchedule;
+          finalWT = recommended.recommendedWallMm;
+          console.warn(`⚠️ No fallback data for ${nominalBore}mm, using API: ${finalScheduleName}`);
         }
 
         return {
           scheduleNumber: finalScheduleName,
-          wallThicknessMm: recommended.recommendedWallMm,
+          wallThicknessMm: finalWT,
           workingPressureBar: pressure,
           minimumSchedule: finalScheduleName,
-          minimumWallThickness: recommended.minRequiredThicknessMm,
+          minimumWallThickness: minWT,
           availableUpgrades: availableUpgrades,
           isScheduleOverridden: false,
           scheduleWarnings: recommended.warnings
@@ -8494,24 +8513,32 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               materialCode: steelSpecId === 1 ? 'ASTM_A53_Grade_B' : 'ASTM_A106_Grade_B'
                             });
 
-                            if (recommendation && recommendation.recommendedSchedule) {
-                              matchedSchedule = recommendation.recommendedSchedule;
-                              matchedWT = recommendation.recommendedWallMm;
+                            if (recommendation && recommendation.minRequiredThicknessMm) {
                               minWT = recommendation.minRequiredThicknessMm;
-                              apiSucceeded = true;
-                              console.log(`[NB onChange] API recommended: ${matchedSchedule} (${matchedWT}mm), minWT=${minWT}mm`);
+                              console.log(`[NB onChange] API returned minWT: ${minWT.toFixed(2)}mm`);
 
                               if (recommendation.warnings?.length > 0) {
                                 console.warn('[NB onChange] API warnings:', recommendation.warnings);
                               }
 
-                              // CRITICAL FIX: Map API schedule name to fallback schedule name by matching wall thickness
-                              // The API may return schedule names like "STD" that don't match fallback data like "Sch 40/STD"
-                              // This ensures the dropdown value matches the available options
-                              const fallbackMatch = schedules.find(s => Math.abs(s.wallThicknessMm - matchedWT) < 0.1);
-                              if (fallbackMatch && fallbackMatch.scheduleDesignation !== matchedSchedule) {
-                                console.log(`[NB onChange] Mapping API schedule "${matchedSchedule}" to fallback "${fallbackMatch.scheduleDesignation}" (same WT: ${matchedWT}mm)`);
-                                matchedSchedule = fallbackMatch.scheduleDesignation;
+                              // CRITICAL FIX: Always use fallback schedule data for the schedule name
+                              // Find the lightest schedule that meets the minimum wall thickness requirement
+                              const eligibleSchedules = schedules
+                                .filter(s => s.wallThicknessMm >= minWT)
+                                .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
+
+                              if (eligibleSchedules.length > 0) {
+                                matchedSchedule = eligibleSchedules[0].scheduleDesignation;
+                                matchedWT = eligibleSchedules[0].wallThicknessMm;
+                                apiSucceeded = true;
+                                console.log(`[NB onChange] Using fallback schedule: ${matchedSchedule} (${matchedWT}mm) for minWT=${minWT.toFixed(2)}mm`);
+                              } else {
+                                // No schedule meets requirements - use thickest available
+                                const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
+                                matchedSchedule = sorted[0].scheduleDesignation;
+                                matchedWT = sorted[0].wallThicknessMm;
+                                apiSucceeded = true;
+                                console.warn(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm minWT, using thickest: ${matchedSchedule} (${matchedWT}mm)`);
                               }
                             }
                           } catch (error) {
