@@ -9682,24 +9682,38 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         </span>
                       )}
                     </p>
-                    {/* Weld Thickness Display - calculated from pressure/temperature tables */}
+                    {/* Weld Thickness Display - from fitting wall thickness tables (ASME B31.1) */}
                     {(() => {
                       const weldCount = getWeldCountPerPipe(entry.specs.pipeEndConfiguration || 'PE');
                       if (weldCount === 0) return null;
 
                       const dn = entry.specs.nominalBoreMm;
-                      const pressure = globalSpecs?.workingPressureBar || 0;
-                      const temp = entry.specs.workingTemperatureC || globalSpecs?.workingTemperatureC || 20;
-                      const schedule = entry.specs.scheduleNumber;
+                      const schedule = entry.specs.scheduleNumber || '';
 
-                      if (!dn || !pressure) return null;
+                      if (!dn) return null;
 
-                      const recommendation = recommendWallThicknessCarbonPipe(dn, pressure, temp, schedule);
-                      if (!recommendation) return null;
+                      // Determine fitting class from schedule (STD, XH, or XXH)
+                      const scheduleUpper = schedule.toUpperCase();
+                      const fittingClass =
+                        scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
+                          ? 'XXH'
+                          : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
+                            ? 'XH'
+                            : 'STD';
+
+                      // Carbon Steel Weld Fittings wall thickness lookup (WPB Grade, ASME B31.1)
+                      const FITTING_WALL_THICKNESS: Record<string, Record<number, number>> = {
+                        'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
+                        'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
+                        'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
+                      };
+
+                      const weldThickness = FITTING_WALL_THICKNESS[fittingClass]?.[dn];
+                      if (!weldThickness) return null;
 
                       return (
                         <p className="mt-1 text-xs font-semibold text-green-700 bg-green-50 px-2 py-1 rounded">
-                          Weld Thickness: {recommendation.recommendedWallMm.toFixed(2)} mm (min for {pressure} bar @ {temp}°C)
+                          Weld Thickness: {weldThickness.toFixed(2)} mm ({fittingClass} fitting)
                         </p>
                       );
                     })()}
@@ -10108,13 +10122,28 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <p className="text-xs text-gray-500">{entry.calculation.totalFlangeWeldLength?.toFixed(2)}m</p>
                         {(() => {
                           const dn = entry.specs.nominalBoreMm;
-                          const pressure = globalSpecs?.workingPressureBar || 0;
-                          const temp = entry.specs.workingTemperatureC || globalSpecs?.workingTemperatureC || 20;
-                          const schedule = entry.specs.scheduleNumber;
-                          if (!dn || !pressure) return null;
-                          const rec = recommendWallThicknessCarbonPipe(dn, pressure, temp, schedule);
-                          if (!rec) return null;
-                          return <p className="text-xs font-semibold text-green-600 mt-1">WT: {rec.recommendedWallMm.toFixed(2)}mm</p>;
+                          const schedule = entry.specs.scheduleNumber || '';
+                          if (!dn) return null;
+
+                          // Determine fitting class from schedule
+                          const scheduleUpper = schedule.toUpperCase();
+                          const fittingClass =
+                            scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
+                              ? 'XXH'
+                              : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
+                                ? 'XH'
+                                : 'STD';
+
+                          // Carbon Steel Weld Fittings wall thickness (ASME B31.1)
+                          const FITTING_WT: Record<string, Record<number, number>> = {
+                            'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
+                            'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
+                            'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
+                          };
+
+                          const wt = FITTING_WT[fittingClass]?.[dn];
+                          if (!wt) return null;
+                          return <p className="text-xs font-semibold text-green-600 mt-1">WT: {wt.toFixed(2)}mm</p>;
                         })()}
                       </div>
 
