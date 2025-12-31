@@ -289,10 +289,10 @@ export const useRfqForm = () => {
     const newEntry: BendEntry = {
       id: Date.now().toString(),
       itemType: 'bend',
-      description: description || '40NB 90° 1.5D Bend',
+      description: description || 'New Bend Item',
       specs: {
-        nominalBoreMm: 40,
-        scheduleNumber: '40',
+        nominalBoreMm: undefined, // Default to "Select NB"
+        scheduleNumber: undefined, // Default to "Select Schedule"
         bendType: '1.5D',
         bendDegrees: 90,
         numberOfTangents: 0,
@@ -321,11 +321,11 @@ export const useRfqForm = () => {
     const newEntry: FittingEntry = {
       id: Date.now().toString(),
       itemType: 'fitting',
-      description: description || '100NB Equal Tee Fitting',
+      description: description || 'New Fitting Item',
       specs: {
         fittingStandard: 'SABS62',
-        fittingType: 'EQUAL_TEE',
-        nominalDiameterMm: 100,
+        fittingType: undefined, // Default to "Select Fitting Type"
+        nominalDiameterMm: undefined, // Default to "Select NB"
         pipeLengthAMm: 1000,
         pipeLengthBMm: 1000,
         quantityValue: 1,

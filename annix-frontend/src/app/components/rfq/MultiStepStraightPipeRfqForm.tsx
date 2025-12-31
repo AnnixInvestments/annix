@@ -7866,14 +7866,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
           <div key={`${entry.id}-${index}`} className="border-2 border-gray-200 rounded-lg p-5 bg-white shadow-sm">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-3">
-                {/* Editable Item Number */}
+                {/* Editable Item Number - dynamic width based on content */}
                 <div className="flex items-center gap-1">
                   <span className="text-base font-semibold text-gray-800">Item</span>
                   <input
                     type="text"
                     value={entry.clientItemNumber || `#${index + 1}`}
                     onChange={(e) => onUpdateEntry(entry.id, { clientItemNumber: e.target.value })}
-                    className="w-20 px-2 py-0.5 text-base font-semibold text-gray-800 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="min-w-32 px-2 py-0.5 text-base font-semibold text-gray-800 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    style={{ width: `${Math.max(10, (entry.clientItemNumber || `#${index + 1}`).length + 2)}ch` }}
                     placeholder={`#${index + 1}`}
                   />
                 </div>
