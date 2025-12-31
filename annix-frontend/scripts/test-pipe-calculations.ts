@@ -250,7 +250,7 @@ async function runTests() {
 
   // Output errors to JSON file
   if (errors.length > 0) {
-    const fs = require('fs');
+    import * as fs from 'fs';
     const errorReport = {
       timestamp: new Date().toISOString(),
       totalTests: testCount,

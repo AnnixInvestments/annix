@@ -547,7 +547,7 @@ options={{
               <div className="bg-white p-3 rounded-lg border">
                 <div className="text-xs font-medium text-gray-500 mb-1">Coordinates</div>
                 <div className="text-sm font-semibold text-gray-900">
-                  {selectedLocation.lat.toFixed(5)}, {selectedLocation.lng.toFixed(5)}
+                  {Number(selectedLocation.lat).toFixed(5)}, {Number(selectedLocation.lng).toFixed(5)}
                 </div>
               </div>
               <div className="bg-white p-3 rounded-lg border">

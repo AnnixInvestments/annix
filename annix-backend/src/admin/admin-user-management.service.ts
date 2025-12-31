@@ -156,6 +156,7 @@ export class AdminUserManagementService {
     const savedUser = await this.userRepo.save(user);
 
     // Log audit
+    const createdByUser = await this.userRepo.findOne({ where: { id: createdBy } });
     await this.auditService.log({
       entityType: 'user',
       entityId: savedUser.id,
@@ -229,6 +230,7 @@ export class AdminUserManagementService {
     );
 
     // Log audit
+    const updatedByUser = await this.userRepo.findOne({ where: { id: updatedBy } });
     await this.auditService.log({
       entityType: 'user',
       entityId: userId,
@@ -273,6 +275,7 @@ export class AdminUserManagementService {
     );
 
     // Log audit
+    const deactivatedByUser = await this.userRepo.findOne({ where: { id: deactivatedBy } });
     await this.auditService.log({
       entityType: 'user',
       entityId: userId,
@@ -306,6 +309,7 @@ export class AdminUserManagementService {
     }
 
     // Log audit
+    const reactivatedByUser = await this.userRepo.findOne({ where: { id: reactivatedBy } });
     await this.auditService.log({
       entityType: 'user',
       entityId: userId,
@@ -356,7 +360,7 @@ export class AdminUserManagementService {
       timestamp: log.timestamp,
       action: log.action,
       entityType: log.entityType,
-      entityId: log.entityId,
+      entityId: log.entityId || 0,
       details: log.newValues ? JSON.stringify(log.newValues) : '',
       clientIp: log.ipAddress || '',
     }));

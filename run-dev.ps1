@@ -268,6 +268,10 @@ function Install-Backend {
         yarn install | Out-Null
         Write-Info "Running backend migrations..."
         yarn migration:run
+        if ($LASTEXITCODE -ne 0) {
+            Throw-Error "Migration failed. Please check the error above and fix any issues before restarting."
+        }
+        Write-Info "Migrations completed successfully."
     }
     finally {
         Pop-Location

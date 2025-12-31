@@ -129,7 +129,7 @@ export class AdminDashboardService {
       userName: log.performedBy?.username || 'Unknown',
       action: log.action,
       entityType: log.entityType,
-      entityId: log.entityId,
+      entityId: log.entityId || 0,
       details: this.formatAuditDetails(log),
       clientIp: log.ipAddress || '',
     }));

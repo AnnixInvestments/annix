@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, OneToMany, JoinTable } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToMany,
+  OneToMany,
+  JoinTable,
+} from 'typeorm';
 import { UserRole } from '../../user-roles/entities/user-role.entity'
 import { Rfq } from '../../rfq/entities/rfq.entity';
 import { ApiProperty } from '@nestjs/swagger';
@@ -26,14 +33,6 @@ export class User {
   @Column({ nullable: true })
   lastName?: string;
 
-  @ApiProperty({ description: 'Account status', example: 'active' })
-  @Column({ default: 'active' })
-  status: string;
-
-  @ApiProperty({ description: 'Last login timestamp' })
-  @Column({ type: 'timestamp', nullable: true })
-  lastLoginAt?: Date;
-
   @ApiProperty({ description: 'Hashed password (never expose in responses)' })
   @Exclude()
   @Column({ nullable: true })
@@ -43,6 +42,14 @@ export class User {
   @Exclude()
   @Column({ nullable: true })
   salt: string;
+
+  @ApiProperty({ description: 'User account status', example: 'active' })
+  @Column({ default: 'active' })
+  status: string;
+
+  @ApiProperty({ description: 'Last login timestamp' })
+  @Column({ type: 'timestamp', nullable: true })
+  lastLoginAt?: Date;
 
   @ApiProperty({
     description: 'Roles assigned to the user',

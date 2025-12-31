@@ -5,11 +5,11 @@
  * - Pressure class designations (PN, SABS, ASME formats)
  * - NB sizes (15-1200mm)
  *
- * Run with: node scripts/test-flange-weights.js
+ * Run with: node scripts/test-flange-weights.ts
  */
 
 // Copy of the flange weight lookup table from the component
-const FLANGE_WEIGHT_BY_PRESSURE_CLASS = {
+const FLANGE_WEIGHT_BY_PRESSURE_CLASS: Record<string, Record<number, number>> = {
   // PN10 / Class 150 (lightest)
   'PN10': {
     15: 0.6, 20: 0.8, 25: 1.0, 32: 1.3, 40: 1.6, 50: 2.0, 65: 2.8, 80: 3.6,
@@ -71,7 +71,7 @@ const FLANGE_WEIGHT_BY_PRESSURE_CLASS = {
 const NB_TO_FLANGE_WEIGHT_LOOKUP = FLANGE_WEIGHT_BY_PRESSURE_CLASS['PN16'];
 
 // Copy of the normalize function
-const normalizePressureClass = (designation) => {
+const normalizePressureClass = (designation: string | null | undefined): string => {
   if (!designation) return 'PN16';
 
   const trimmed = designation.trim().toUpperCase();
@@ -130,8 +130,15 @@ const normalizePressureClass = (designation) => {
   return designation;
 };
 
+interface FlangeWeightResult {
+  weight: number;
+  normalized: string;
+  found: boolean;
+  fallback?: string;
+}
+
 // Copy of getFlangeWeight function
-const getFlangeWeight = (nominalBoreMm, pressureClassDesignation) => {
+const getFlangeWeight = (nominalBoreMm: number, pressureClassDesignation: string | null | undefined): FlangeWeightResult => {
   const pressureClass = normalizePressureClass(pressureClassDesignation || 'PN16');
 
   if (FLANGE_WEIGHT_BY_PRESSURE_CLASS[pressureClass]) {
@@ -146,8 +153,13 @@ const getFlangeWeight = (nominalBoreMm, pressureClassDesignation) => {
   return { weight: estimate, normalized: pressureClass, found: false, fallback: 'estimate' };
 };
 
+interface TestDesignation {
+  input: string | null | undefined;
+  expected: string;
+}
+
 // Test data
-const TEST_DESIGNATIONS = [
+const TEST_DESIGNATIONS: TestDesignation[] = [
   // Standard PN format (no space)
   { input: 'PN10', expected: 'PN10' },
   { input: 'PN16', expected: 'PN16' },
@@ -228,7 +240,7 @@ let lookupTotal = 0;
 
 for (const pc of PRESSURE_CLASSES) {
   console.log(`\n${pc}:`);
-  const weights = [];
+  const weights: string[] = [];
   for (const nb of NB_SIZES) {
     lookupTotal++;
     const result = getFlangeWeight(nb, pc);

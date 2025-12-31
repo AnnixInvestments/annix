@@ -45,9 +45,9 @@ export class AuditLog {
   @Column({ name: 'entity_type', length: 100 })
   entityType: string;
 
-  @ApiProperty({ description: 'Entity ID', example: 1 })
-  @Column({ name: 'entity_id' })
-  entityId: number;
+  @ApiProperty({ description: 'Entity ID', example: 1, required: false })
+  @Column({ name: 'entity_id', nullable: true })
+  entityId?: number;
 
   @ApiProperty({ description: 'Action performed', enum: AuditAction })
   @Column({ name: 'action', type: 'enum', enum: AuditAction })

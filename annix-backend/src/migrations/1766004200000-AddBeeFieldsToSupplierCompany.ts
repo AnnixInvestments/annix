@@ -45,11 +45,11 @@ export class AddBeeFieldsToSupplierCompany1766004200000 implements MigrationInte
     // Update supplier_documents enum to include VAT_CERT
     // Note: PostgreSQL requires special handling for enum alterations
     await queryRunner.query(`
-      ALTER TYPE supplier_documents_document_type_enum RENAME TO supplier_documents_document_type_enum_old;
+      ALTER TYPE supplier_document_type_enum RENAME TO supplier_document_type_enum_old;
     `);
 
     await queryRunner.query(`
-      CREATE TYPE supplier_documents_document_type_enum AS ENUM (
+      CREATE TYPE supplier_document_type_enum AS ENUM (
         'registration_cert',
         'vat_cert',
         'tax_clearance',
@@ -62,12 +62,12 @@ export class AddBeeFieldsToSupplierCompany1766004200000 implements MigrationInte
 
     await queryRunner.query(`
       ALTER TABLE supplier_documents
-      ALTER COLUMN document_type TYPE supplier_documents_document_type_enum
-      USING document_type::text::supplier_documents_document_type_enum;
+      ALTER COLUMN document_type TYPE supplier_document_type_enum
+      USING document_type::text::supplier_document_type_enum;
     `);
 
     await queryRunner.query(`
-      DROP TYPE supplier_documents_document_type_enum_old;
+      DROP TYPE supplier_document_type_enum_old;
     `);
   }
 
@@ -80,11 +80,11 @@ export class AddBeeFieldsToSupplierCompany1766004200000 implements MigrationInte
 
     // Revert enum
     await queryRunner.query(`
-      ALTER TYPE supplier_documents_document_type_enum RENAME TO supplier_documents_document_type_enum_old;
+      ALTER TYPE supplier_document_type_enum RENAME TO supplier_document_type_enum_old;
     `);
 
     await queryRunner.query(`
-      CREATE TYPE supplier_documents_document_type_enum AS ENUM (
+      CREATE TYPE supplier_document_type_enum AS ENUM (
         'registration_cert',
         'tax_clearance',
         'bee_cert',
@@ -96,12 +96,12 @@ export class AddBeeFieldsToSupplierCompany1766004200000 implements MigrationInte
 
     await queryRunner.query(`
       ALTER TABLE supplier_documents
-      ALTER COLUMN document_type TYPE supplier_documents_document_type_enum
-      USING document_type::text::supplier_documents_document_type_enum;
+      ALTER COLUMN document_type TYPE supplier_document_type_enum
+      USING document_type::text::supplier_document_type_enum;
     `);
 
     await queryRunner.query(`
-      DROP TYPE supplier_documents_document_type_enum_old;
+      DROP TYPE supplier_document_type_enum_old;
     `);
   }
 }

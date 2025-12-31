@@ -35,3 +35,6 @@ build/
 
 # User uploads
 annix-backend/uploads/
+
+# OCR training data (auto-downloaded by tesseract.js)
+*.traineddata

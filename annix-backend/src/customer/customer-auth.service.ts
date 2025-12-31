@@ -432,6 +432,10 @@ export class CustomerAuthService {
     // Check IP mismatch (WARNING ONLY - not blocking)
     const ipMismatchWarning = false; // Disabled in development mode
 
+    // DEVELOPMENT MODE: Set default values for commented-out checks
+    const activeBinding = profile.deviceBindings?.find((b) => b.isActive && b.isPrimary);
+    const ipMismatchWarning = activeBinding ? activeBinding.registeredIp !== clientIp : false;
+
     // Invalidate any existing active sessions (single session enforcement)
     await this.invalidateAllSessions(profile.id, SessionInvalidationReason.NEW_LOGIN);
 

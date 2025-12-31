@@ -7319,6 +7319,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
   // State for hiding/showing 3D drawings per item
   const [hiddenDrawings, setHiddenDrawings] = React.useState<Record<string, boolean>>({});
   const [isCalculating, setIsCalculating] = useState(false);
+  const showSurfaceProtection = requiredProducts.includes('surface_protection');
   const processedEntriesRef = useRef<Set<string>>(new Set());
   // Track entries that have been manually updated by onChange - these should NOT be overwritten by useEffect
   const manuallyUpdatedEntriesRef = useRef<Set<string>>(new Set());

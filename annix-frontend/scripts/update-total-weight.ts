@@ -1,7 +1,7 @@
-const fs = require('fs');
+import * as fs from 'fs';
 
 const filePath = 'src/app/components/rfq/MultiStepStraightPipeRfqForm.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+let content: string = fs.readFileSync(filePath, 'utf8');
 
 // 1. Update getTotalWeight to include BNW weights
 const oldGetTotalWeight = `const getTotalWeight = () => {

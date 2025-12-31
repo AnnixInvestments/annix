@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { AdminSession } from './entities/admin-session.entity';
 import { User } from '../user/entities/user.entity';
 import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/entities/audit-log.entity';
 import { AdminLoginDto, AdminLoginResponseDto, TokenResponseDto } from './dto/admin-auth.dto';
 
 @Injectable()
@@ -38,13 +39,12 @@ export class AdminAuthService {
 
     if (!user) {
       await this.auditService.log({
-        userId: null,
-        userType: 'admin',
-        action: 'admin_login_failed',
+        action: AuditAction.ADMIN_LOGIN_FAILED,
         entityType: 'auth',
-        entityId: null,
-        metadata: { email: loginDto.email, reason: 'user_not_found' },
+        entityId: undefined,
+        newValues: { email: loginDto.email, reason: 'user_not_found' },
         ipAddress: clientIp,
+        userAgent,
       });
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -71,13 +71,13 @@ export class AdminAuthService {
 
     if (!hasAdminAccess) {
       await this.auditService.log({
-        userId: user.id,
-        userType: 'admin',
-        action: 'admin_login_failed',
+        action: AuditAction.ADMIN_LOGIN_FAILED,
         entityType: 'auth',
         entityId: user.id,
-        metadata: { email: loginDto.email, reason: 'insufficient_permissions' },
+        performedBy: user,
+        newValues: { email: loginDto.email, reason: 'insufficient_permissions' },
         ipAddress: clientIp,
+        userAgent,
       });
       throw new ForbiddenException('You do not have permission to access the admin portal');
     }
@@ -130,13 +130,13 @@ export class AdminAuthService {
 
     // Log successful login
     await this.auditService.log({
-      userId: user.id,
-      userType: 'admin',
-      action: 'admin_login_success',
+      action: AuditAction.ADMIN_LOGIN_SUCCESS,
       entityType: 'auth',
       entityId: user.id,
-      metadata: { email: user.email, sessionToken },
+      performedBy: user,
+      newValues: { email: user.email, sessionToken },
       ipAddress: clientIp,
+      userAgent,
     });
 
     // Update last login
@@ -156,7 +156,7 @@ export class AdminAuthService {
     };
   }
 
-  async logout(userId: number, sessionToken: string, clientIp: string): Promise<void> {
+  async logout(userId: number, sessionToken: string, clientIp: string, userAgent?: string): Promise<void> {
     const session = await this.adminSessionRepository.findOne({
       where: { userId, sessionToken, isRevoked: false },
     });
@@ -166,14 +166,16 @@ export class AdminAuthService {
       session.revokedAt = new Date();
       await this.adminSessionRepository.save(session);
 
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+
       await this.auditService.log({
-        userId,
-        userType: 'admin',
-        action: 'admin_logout',
+        action: AuditAction.ADMIN_LOGOUT,
         entityType: 'auth',
         entityId: userId,
-        metadata: { sessionToken },
+        performedBy: user || undefined,
+        newValues: { sessionToken },
         ipAddress: clientIp,
+        userAgent,
       });
     }
   }

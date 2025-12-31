@@ -1,7 +1,7 @@
-const fs = require('fs');
+import * as fs from 'fs';
 
 const filePath = 'src/app/components/rfq/MultiStepStraightPipeRfqForm.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+let content: string = fs.readFileSync(filePath, 'utf8');
 
 // The Steel confirm button needs to be moved from after Surface Protection to before Surface Protection
 // And we need to close the Steel unconfirmed block before Surface Protection

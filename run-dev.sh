@@ -312,7 +312,10 @@ install_backend() {
   info "Installing backend dependencies..."
   yarn install >/dev/null
   info "Running backend migrations..."
-  yarn migration:run
+  if ! yarn migration:run; then
+    fail "Migration failed. Please check the error above and fix any issues before restarting."
+  fi
+  info "Migrations completed successfully."
   popd >/dev/null
 }
 
