@@ -3628,7 +3628,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
           <div className="grid grid-cols-3 gap-3">
             {/* Steel Specification - with grouped options and suitability validation */}
             <div>
-              <label className="block text-xs font-semibold text-gray-900 mb-1">Steel Specification</label>
+              <label className="block text-xs font-semibold text-gray-900 mb-1">Steel Specification <span className="text-red-500">*</span></label>
               <select
                 value={globalSpecs?.steelSpecificationId || ''}
                 onChange={async (e) => {
@@ -3676,6 +3676,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   });
                 }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                required
               >
                 <option value="">Select steel specification...</option>
                 {(() => {
@@ -3760,11 +3761,23 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 
             {/* Flange Standard */}
             <div>
-              <label className="block text-xs font-semibold text-gray-900 mb-1">Flange Standard</label>
+              <label className="block text-xs font-semibold text-gray-900 mb-1">Flange Standard <span className="text-red-500">*</span></label>
               <select
                 value={globalSpecs?.flangeStandardId || ''}
                 onChange={async (e) => {
-                  const standardId = e.target.value ? Number(e.target.value) : undefined;
+                  const rawValue = e.target.value;
+
+                  // Handle Plain Ended (PE) option - no flanges
+                  if (rawValue === 'PE') {
+                    onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      flangeStandardId: 'PE',
+                      flangePressureClassId: undefined // No pressure class needed for plain ended
+                    });
+                    return;
+                  }
+
+                  const standardId = rawValue ? Number(rawValue) : undefined;
                   let recommendedPressureClassId: number | undefined = undefined;
 
                   // Clear pressure class when switching standards (must pick new one for the new standard)
@@ -3794,8 +3807,10 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                   });
                 }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                required
               >
                 <option value="">Select flange standard...</option>
+                <option value="PE">Plain Ended (No Flanges)</option>
                 {masterData.flangeStandards.map((standard: any) => (
                   <option key={standard.id} value={standard.id}>{standard.code}</option>
                 ))}
@@ -3805,9 +3820,14 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
             {/* Flange Pressure Class */}
             <div>
               <label className="block text-xs font-semibold text-gray-900 mb-1">
-                Pressure Class
-                {globalSpecs?.workingPressureBar && <span className="ml-1 text-xs text-blue-600 font-normal">(auto)</span>}
+                Pressure Class <span className="text-red-500">*</span>
+                {globalSpecs?.workingPressureBar && globalSpecs?.flangeStandardId !== 'PE' && <span className="ml-1 text-xs text-blue-600 font-normal">(auto)</span>}
               </label>
+              {globalSpecs?.flangeStandardId === 'PE' ? (
+                <div className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-700">
+                  P/E (Plain Ended)
+                </div>
+              ) : (
               <select
                 value={globalSpecs?.flangePressureClassId || ''}
                 onChange={(e) => onUpdateGlobalSpecs({
@@ -3816,12 +3836,14 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                 })}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                 disabled={!globalSpecs?.flangeStandardId}
+                required
               >
                 <option value="">Select class...</option>
                 {availablePressureClasses.map((pc: any) => (
                   <option key={pc.id} value={pc.id}>{pc.designation}</option>
                 ))}
               </select>
+              )}
             </div>
           </div>
         </div>
@@ -4791,7 +4813,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-900 mb-1">
-                  External Coating Type
+                  External Coating Type <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={globalSpecs?.externalCoatingType || ''}
@@ -4812,6 +4834,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                     externalRubberHardness: undefined
                   })}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                  required
                 >
                   <option value="">Select coating...</option>
                   <option value="Raw Steel">Raw Steel (No Coating)</option>
@@ -6141,7 +6164,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-900 mb-1">
-                  Internal Lining Type
+                  Internal Lining Type <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={globalSpecs?.internalLiningType || ''}
@@ -6171,6 +6194,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
                     internalPuHardness: undefined
                   })}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                  required
                 >
                   <option value="">Select lining...</option>
                   <option value="Raw Steel">Raw Steel (No Lining)</option>
@@ -10117,8 +10141,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                 {entry.calculation ? (
                   <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
-                    {/* Compact horizontal grid layout - expands to fit surface protection boxes */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 xl:grid-cols-9 gap-3">
+                    {/* Compact horizontal grid layout - equal width columns that fill container */}
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
                       {/* Quantity of Pipes */}
                       <div className="bg-white p-2 rounded text-center">
                         <p className="text-xs text-gray-600 font-medium">Qty Pipes</p>
@@ -10141,16 +10165,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         </p>
                       </div>
 
-                      {/* Flanges */}
+                      {/* Total Flange Weight */}
                       <div className="bg-white p-2 rounded text-center">
-                        <p className="text-xs text-gray-600 font-medium">Flanges</p>
-                        <p className="text-lg font-bold text-gray-900">
+                        <p className="text-xs text-gray-600 font-medium">Total Flange Weight</p>
+                        <p className="text-lg font-bold text-gray-900">{formatWeight(entry.calculation.totalFlangeWeight)}</p>
+                        <p className="text-xs text-gray-500">
                           {(() => {
                             const flangesPerPipe = getFlangesPerPipe(entry.specs.pipeEndConfiguration || 'PE');
                             return flangesPerPipe * (entry.calculation?.calculatedPipeCount || 0);
-                          })()}
+                          })()} flanges
                         </p>
-                        <p className="text-xs text-gray-500">{formatWeight(entry.calculation.totalFlangeWeight)}</p>
                       </div>
 
                       {/* Flange Welds */}
@@ -10199,26 +10223,14 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         })()}
                       </div>
 
-                      {/* Pipe End Config */}
-                      <div className="bg-green-50 p-2 rounded text-center">
-                        <p className="text-xs text-green-700 font-medium">Config Welds</p>
-                        <p className="text-lg font-bold text-green-900">
-                          {getWeldCountPerPipe(entry.specs.pipeEndConfiguration || 'PE') * (entry.calculation?.calculatedPipeCount || 0)}
-                        </p>
-                        <p className="text-xs text-green-600">{entry.specs.pipeEndConfiguration || 'PE'}</p>
-                      </div>
-
                       {/* Surface Protection m² - External */}
-                      {requiredProducts.includes('surface_protection') &&
-                       entry.specs.outsideDiameterMm &&
-                       entry.specs.wallThicknessMm &&
-                       (globalSpecs?.externalCoatingConfirmed || globalSpecs?.externalCoatingType) && (
+                      {entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (
                         <div className="bg-indigo-50 p-2 rounded text-center border border-indigo-200">
                           <p className="text-xs text-indigo-700 font-medium">External m²</p>
                           <p className="text-lg font-bold text-indigo-900">
                             {calculateTotalSurfaceArea({
-                              outsideDiameterMm: entry.specs.outsideDiameterMm,
-                              insideDiameterMm: calculateInsideDiameter(entry.specs.outsideDiameterMm, entry.specs.wallThicknessMm),
+                              outsideDiameterMm: entry.calculation.outsideDiameterMm,
+                              insideDiameterMm: calculateInsideDiameter(entry.calculation.outsideDiameterMm, entry.specs.wallThicknessMm),
                               individualPipeLengthM: entry.specs.individualPipeLength || 0,
                               numberOfPipes: entry.calculation?.calculatedPipeCount || 0,
                               hasFlangeEnd1: (entry.specs.pipeEndConfiguration || 'PE') !== 'PE',
@@ -10231,16 +10243,13 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       )}
 
                       {/* Surface Protection m² - Internal */}
-                      {requiredProducts.includes('surface_protection') &&
-                       entry.specs.outsideDiameterMm &&
-                       entry.specs.wallThicknessMm &&
-                       (globalSpecs?.internalLiningConfirmed || globalSpecs?.internalLiningType) && (
+                      {entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (
                         <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
                           <p className="text-xs text-purple-700 font-medium">Internal m²</p>
                           <p className="text-lg font-bold text-purple-900">
                             {calculateTotalSurfaceArea({
-                              outsideDiameterMm: entry.specs.outsideDiameterMm,
-                              insideDiameterMm: calculateInsideDiameter(entry.specs.outsideDiameterMm, entry.specs.wallThicknessMm),
+                              outsideDiameterMm: entry.calculation.outsideDiameterMm,
+                              insideDiameterMm: calculateInsideDiameter(entry.calculation.outsideDiameterMm, entry.specs.wallThicknessMm),
                               individualPipeLengthM: entry.specs.individualPipeLength || 0,
                               numberOfPipes: entry.calculation?.calculatedPipeCount || 0,
                               hasFlangeEnd1: (entry.specs.pipeEndConfiguration || 'PE') !== 'PE',
@@ -10495,6 +10504,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                 <tr className="border-b border-blue-300">
                   <th className="text-left py-2 px-2 text-xs font-semibold text-blue-800">Item #</th>
                   <th className="text-left py-2 px-2 text-xs font-semibold text-blue-800">Description</th>
+                  <th className="text-center py-2 px-2 text-xs font-semibold text-blue-800">Weld WT</th>
+                  <th className="text-center py-2 px-2 text-xs font-semibold text-blue-800">Ext m²</th>
+                  <th className="text-center py-2 px-2 text-xs font-semibold text-blue-800">Int m²</th>
                   <th className="text-center py-2 px-2 text-xs font-semibold text-blue-800">Qty</th>
                   <th className="text-right py-2 px-2 text-xs font-semibold text-blue-800">Weight/Item</th>
                   <th className="text-right py-2 px-2 text-xs font-semibold text-blue-800">Line Weight</th>
@@ -10529,12 +10541,68 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   const bnwWeightPerSet = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
                   const bnwTotalWeight = bnwWeightPerSet * qty;
 
+                  // Calculate weld thickness for flange welds
+                  const getWeldThickness = () => {
+                    if (entry.itemType === 'bend' || entry.itemType === 'fitting') return null;
+                    const dn = entry.specs?.nominalBoreMm;
+                    const schedule = entry.specs?.scheduleNumber || '';
+                    const pipeWallThickness = entry.specs?.wallThicknessMm;
+                    if (!dn && !pipeWallThickness) return null;
+
+                    const scheduleUpper = schedule.toUpperCase();
+                    const fittingClass = scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
+                      ? 'XXH' : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
+                        ? 'XH' : 'STD';
+
+                    const FITTING_WT: Record<string, Record<number, number>> = {
+                      'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53 },
+                      'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70 },
+                      'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
+                    };
+
+                    const fittingWt = dn ? FITTING_WT[fittingClass]?.[dn] : null;
+                    return fittingWt || pipeWallThickness;
+                  };
+
+                  // Calculate per-unit surface areas
+                  const getPerUnitSurfaceAreas = () => {
+                    if (entry.itemType === 'bend' || entry.itemType === 'fitting') return { external: null, internal: null };
+                    if (!entry.calculation?.outsideDiameterMm || !entry.specs?.wallThicknessMm) return { external: null, internal: null };
+
+                    const surfaceArea = calculateTotalSurfaceArea({
+                      outsideDiameterMm: entry.calculation.outsideDiameterMm,
+                      insideDiameterMm: calculateInsideDiameter(entry.calculation.outsideDiameterMm, entry.specs.wallThicknessMm),
+                      individualPipeLengthM: entry.specs.individualPipeLength || 0,
+                      numberOfPipes: 1, // Per unit
+                      hasFlangeEnd1: (entry.specs.pipeEndConfiguration || 'PE') !== 'PE',
+                      hasFlangeEnd2: ['FBE', 'FOE_RF', '2X_RF'].includes(entry.specs.pipeEndConfiguration || 'PE'),
+                      dn: entry.specs.nominalBoreMm,
+                    });
+
+                    return {
+                      external: surfaceArea.perPipe.totalExternalAreaM2,
+                      internal: surfaceArea.perPipe.totalInternalAreaM2
+                    };
+                  };
+
+                  const weldThickness = getWeldThickness();
+                  const surfaceAreas = getPerUnitSurfaceAreas();
+
                   return (
                     <React.Fragment key={entry.id}>
                       <tr className="border-b border-blue-100 hover:bg-blue-100/50">
                         <td className="py-2 px-2 font-medium text-blue-900">{itemNumber}</td>
                         <td className="py-2 px-2 text-gray-800 max-w-xs truncate" title={entry.description}>
                           {entry.description || 'No description'}
+                        </td>
+                        <td className="py-2 px-2 text-center text-gray-700 text-xs">
+                          {weldThickness ? `${weldThickness.toFixed(2)}mm` : '-'}
+                        </td>
+                        <td className="py-2 px-2 text-center text-gray-700 text-xs">
+                          {surfaceAreas.external !== null ? surfaceAreas.external.toFixed(2) : '-'}
+                        </td>
+                        <td className="py-2 px-2 text-center text-gray-700 text-xs">
+                          {surfaceAreas.internal !== null ? surfaceAreas.internal.toFixed(2) : '-'}
                         </td>
                         <td className="py-2 px-2 text-center font-medium text-gray-900">{qty}</td>
                         <td className="py-2 px-2 text-right text-gray-700">{formatWeight(weightPerItem)}</td>
@@ -10547,6 +10615,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <td className="py-2 px-2 text-orange-700 text-xs">
                             {bnwInfo.boltSize} Bolt/Nut/Washer Sets ({bnwInfo.holesPerFlange} per set)
                           </td>
+                          <td className="py-2 px-2 text-center text-orange-600">-</td>
+                          <td className="py-2 px-2 text-center text-orange-600">-</td>
+                          <td className="py-2 px-2 text-center text-orange-600">-</td>
                           <td className="py-2 px-2 text-center font-medium text-orange-800">{qty}</td>
                           <td className="py-2 px-2 text-right text-orange-700">{formatWeight(bnwWeightPerSet)}</td>
                           <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwTotalWeight)}</td>
@@ -10562,6 +10633,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             <td className="py-2 px-2 text-green-700 text-xs">
                               {globalSpecs.gasketType} Gasket (1 per pipe)
                             </td>
+                            <td className="py-2 px-2 text-center text-green-600">-</td>
+                            <td className="py-2 px-2 text-center text-green-600">-</td>
+                            <td className="py-2 px-2 text-center text-green-600">-</td>
                             <td className="py-2 px-2 text-center font-medium text-green-800">{qty}</td>
                             <td className="py-2 px-2 text-right text-green-700">{gasketWeight.toFixed(2)} kg</td>
                             <td className="py-2 px-2 text-right font-semibold text-green-800">{gasketTotalWeight.toFixed(2)} kg</td>
@@ -10575,6 +10649,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
               <tfoot>
                 <tr className="border-t-2 border-blue-400 bg-blue-100">
                   <td className="py-2 px-2 font-bold text-blue-900" colSpan={2}>TOTAL</td>
+                  <td className="py-2 px-2"></td>
+                  <td className="py-2 px-2"></td>
+                  <td className="py-2 px-2"></td>
                   <td className="py-2 px-2 text-center font-bold text-blue-900">
                     {entries.reduce((total: number, entry: any) => {
                       return total + (entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0);
@@ -11797,6 +11874,16 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         // Check if fasteners/gaskets is selected but not confirmed
         if (rfqData.requiredProducts?.includes('fasteners_gaskets') && !rfqData.globalSpecs?.fastenersConfirmed) {
           errors.fastenersConfirmation = 'Please confirm the Fasteners & Gaskets selection before proceeding';
+        }
+        // Check if surface protection is selected but coating/lining types are not selected
+        if (rfqData.requiredProducts?.includes('surface_protection')) {
+          if (!rfqData.globalSpecs?.externalCoatingType) {
+            errors.externalCoatingType = 'Please select an External Coating Type';
+          }
+          // Internal lining is required unless external is Galvanized (which covers both)
+          if (rfqData.globalSpecs?.externalCoatingType !== 'Galvanized' && !rfqData.globalSpecs?.internalLiningType) {
+            errors.internalLiningType = 'Please select an Internal Lining Type';
+          }
         }
         break;
       case 3:
