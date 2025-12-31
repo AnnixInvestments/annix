@@ -13,7 +13,7 @@ import { SupplierAccountStatus } from '../supplier/entities/supplier-profile.ent
 import { SupplierSession } from '../supplier/entities/supplier-session.entity';
 import { Rfq } from '../rfq/entities/rfq.entity';
 import { AdminSession } from './entities/admin-session.entity';
-import { AuditLog } from '../audit/entities/audit-log.entity';
+import { AuditLog, AuditAction } from '../audit/entities/audit-log.entity';
 
 import {
   DashboardStatsDto,
@@ -116,22 +116,22 @@ export class AdminDashboardService {
    */
   async getRecentActivity(limit: number = 20): Promise<RecentActivityItemDto[]> {
     const auditLogs = await this.auditLogRepo.find({
-      order: { createdAt: 'DESC' },
+      order: { timestamp: 'DESC' },
       take: limit,
-      relations: ['user'],
+      relations: ['performedBy'],
     });
 
     return auditLogs.map((log) => ({
       id: log.id,
-      timestamp: log.createdAt,
-      userId: log.userId,
-      userEmail: log.user?.email || 'Unknown',
-      userName: log.user?.username || 'Unknown',
+      timestamp: log.timestamp,
+      userId: log.performedBy?.id ?? 0,
+      userEmail: log.performedBy?.email || 'Unknown',
+      userName: log.performedBy?.username || 'Unknown',
       action: log.action,
       entityType: log.entityType,
       entityId: log.entityId,
       details: this.formatAuditDetails(log),
-      clientIp: log.ipAddress,
+      clientIp: log.ipAddress || '',
     }));
   }
 
@@ -203,23 +203,23 @@ export class AdminDashboardService {
       return newValues.event;
     }
 
-    if (log.action === 'CREATE') {
+    if (log.action === AuditAction.CREATE) {
       return `Created ${log.entityType} #${log.entityId}`;
     }
 
-    if (log.action === 'UPDATE') {
+    if (log.action === AuditAction.UPDATE) {
       return `Updated ${log.entityType} #${log.entityId}`;
     }
 
-    if (log.action === 'DELETE') {
+    if (log.action === AuditAction.DELETE) {
       return `Deleted ${log.entityType} #${log.entityId}`;
     }
 
-    if (log.action === 'APPROVE') {
+    if (log.action === AuditAction.APPROVE) {
       return `Approved ${log.entityType} #${log.entityId}`;
     }
 
-    if (log.action === 'REJECT') {
+    if (log.action === AuditAction.REJECT) {
       return `Rejected ${log.entityType} #${log.entityId}`;
     }
 

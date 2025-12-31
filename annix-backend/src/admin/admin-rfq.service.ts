@@ -94,7 +94,7 @@ export class AdminRfqService {
     // Get item counts for each RFQ
     const itemCounts = await Promise.all(
       rfqs.map(async (rfq) => {
-        const count = await this.rfqItemRepo.count({ where: { rfqId: rfq.id } });
+        const count = await this.rfqItemRepo.count({ where: { rfq: { id: rfq.id } } });
         return { rfqId: rfq.id, count };
       }),
     );
@@ -103,8 +103,8 @@ export class AdminRfqService {
     const items: RfqListItemDto[] = rfqs.map((rfq) => ({
       id: rfq.id,
       projectName: rfq.projectName,
-      customerName: rfq.customerName,
-      customerEmail: rfq.customerEmail,
+      customerName: rfq.customerName || '',
+      customerEmail: rfq.customerEmail || '',
       status: rfq.status,
       createdAt: rfq.createdAt,
       updatedAt: rfq.updatedAt,
@@ -138,8 +138,8 @@ export class AdminRfqService {
       projectName: rfq.projectName,
       description: rfq.description,
       requiredDate: rfq.requiredDate,
-      customerName: rfq.customerName,
-      customerEmail: rfq.customerEmail,
+      customerName: rfq.customerName || '',
+      customerEmail: rfq.customerEmail || '',
       customerPhone: rfq.customerPhone,
       status: rfq.status,
       createdAt: rfq.createdAt,
@@ -159,20 +159,20 @@ export class AdminRfqService {
    */
   async getRfqItems(rfqId: number): Promise<RfqItemDetailDto[]> {
     const items = await this.rfqItemRepo.find({
-      where: { rfqId },
-      relations: ['straightPipeRfq', 'bendRfq'],
+      where: { rfq: { id: rfqId } },
+      relations: ['straightPipeDetails', 'bendDetails'],
       order: { id: 'ASC' },
     });
 
     return items.map((item) => ({
       id: item.id,
-      type: item.type,
+      type: item.itemType,
       quantity: item.quantity,
-      weightPerUnit: item.weightPerUnit,
-      totalWeight: item.totalWeight,
+      weightPerUnit: item.weightPerUnitKg,
+      totalWeight: item.totalWeightKg,
       unitPrice: item.unitPrice,
       totalPrice: item.totalPrice,
-      specifications: item.straightPipeRfq || item.bendRfq || null,
+      specifications: item.straightPipeDetails || item.bendDetails || null,
     }));
   }
 
@@ -181,17 +181,17 @@ export class AdminRfqService {
    */
   async getRfqDocuments(rfqId: number): Promise<RfqDocumentDto[]> {
     const documents = await this.rfqDocumentRepo.find({
-      where: { rfqId },
+      where: { rfq: { id: rfqId } },
       relations: ['uploadedBy'],
       order: { createdAt: 'DESC' },
     });
 
     return documents.map((doc) => ({
       id: doc.id,
-      fileName: doc.fileName,
+      fileName: doc.filename,
       filePath: doc.filePath,
       mimeType: doc.mimeType,
-      fileSize: doc.fileSize,
+      fileSize: doc.fileSizeBytes,
       uploadedAt: doc.createdAt,
       uploadedBy: doc.uploadedBy
         ? {
@@ -228,7 +228,7 @@ export class AdminRfqService {
 
     return {
       file: new StreamableFile(fileStream),
-      fileName: document.fileName,
+      fileName: document.filename,
       mimeType: document.mimeType,
     };
   }

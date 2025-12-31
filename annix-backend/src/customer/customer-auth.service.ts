@@ -430,7 +430,7 @@ export class CustomerAuthService {
 
     // DEVELOPMENT MODE: Skip IP mismatch check
     // Check IP mismatch (WARNING ONLY - not blocking)
-    // const ipMismatchWarning = activeBinding.registeredIp !== clientIp;
+    const ipMismatchWarning = false; // Disabled in development mode
 
     // Invalidate any existing active sessions (single session enforcement)
     await this.invalidateAllSessions(profile.id, SessionInvalidationReason.NEW_LOGIN);
@@ -480,7 +480,6 @@ export class CustomerAuthService {
         event: 'login',
         ipMismatchWarning,
         currentIp: clientIp,
-        registeredIp: activeBinding.registeredIp,
       },
       ipAddress: clientIp,
       userAgent,
@@ -494,7 +493,7 @@ export class CustomerAuthService {
       name: `${profile.firstName} ${profile.lastName}`,
       companyName: profile.company.tradingName || profile.company.legalName,
       ipMismatchWarning,
-      registeredIp: ipMismatchWarning ? activeBinding.registeredIp : undefined,
+      registeredIp: undefined, // Disabled in development mode
     };
   }
 

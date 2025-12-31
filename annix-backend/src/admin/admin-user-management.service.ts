@@ -157,10 +157,9 @@ export class AdminUserManagementService {
 
     // Log audit
     await this.auditService.log({
-      userId: createdBy,
       entityType: 'user',
       entityId: savedUser.id,
-      action: AuditAction.CREATE,
+      action: AuditAction.USER_CREATED,
       newValues: {
         email: dto.email,
         role: dto.role,
@@ -231,12 +230,11 @@ export class AdminUserManagementService {
 
     // Log audit
     await this.auditService.log({
-      userId: updatedBy,
       entityType: 'user',
       entityId: userId,
-      action: AuditAction.UPDATE,
+      action: AuditAction.USER_UPDATED,
       oldValues: { roles: oldRoles },
-      newValues: { roles: [dto.role] },
+      newValues: { roles: [dto.role], updatedByAdmin: updatedBy },
     });
 
     this.logger.log(
@@ -276,13 +274,13 @@ export class AdminUserManagementService {
 
     // Log audit
     await this.auditService.log({
-      userId: deactivatedBy,
       entityType: 'user',
       entityId: userId,
-      action: AuditAction.DELETE,
+      action: AuditAction.USER_DEACTIVATED,
       newValues: {
         event: 'admin_user_deactivated',
         reason: dto.reason,
+        deactivatedByAdmin: deactivatedBy,
       },
     });
 
@@ -309,12 +307,12 @@ export class AdminUserManagementService {
 
     // Log audit
     await this.auditService.log({
-      userId: reactivatedBy,
       entityType: 'user',
       entityId: userId,
-      action: AuditAction.UPDATE,
+      action: AuditAction.USER_REACTIVATED,
       newValues: {
         event: 'admin_user_reactivated',
+        reactivatedByAdmin: reactivatedBy,
       },
     });
 
@@ -360,7 +358,7 @@ export class AdminUserManagementService {
       entityType: log.entityType,
       entityId: log.entityId,
       details: log.newValues ? JSON.stringify(log.newValues) : '',
-      clientIp: log.ipAddress,
+      clientIp: log.ipAddress || '',
     }));
 
     return {

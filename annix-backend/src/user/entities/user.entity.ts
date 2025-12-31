@@ -18,6 +18,22 @@ export class User {
   @Column({ unique: true, nullable: true })
   email: string;
 
+  @ApiProperty({ description: 'First name', example: 'John' })
+  @Column({ nullable: true })
+  firstName?: string;
+
+  @ApiProperty({ description: 'Last name', example: 'Doe' })
+  @Column({ nullable: true })
+  lastName?: string;
+
+  @ApiProperty({ description: 'Account status', example: 'active' })
+  @Column({ default: 'active' })
+  status: string;
+
+  @ApiProperty({ description: 'Last login timestamp' })
+  @Column({ type: 'timestamp', nullable: true })
+  lastLoginAt?: Date;
+
   @ApiProperty({ description: 'Hashed password (never expose in responses)' })
   @Exclude()
   @Column({ nullable: true })
@@ -25,7 +41,7 @@ export class User {
 
   @ApiProperty({ description: 'Random salt used for password hashing' })
   @Exclude()
-  @Column()
+  @Column({ nullable: true })
   salt: string;
 
   @ApiProperty({

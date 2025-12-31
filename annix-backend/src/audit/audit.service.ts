@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, FindOptionsWhere } from 'typeorm';
 import { AuditLog, AuditAction } from './entities/audit-log.entity';
-import { CreateAuditLogDto } from './dto/create-audit-log.dto';
+import { CreateAuditLogDto, AdminAuditLogDto } from './dto/create-audit-log.dto';
+import { User } from '../user/entities/user.entity';
 
 export interface AuditLogQuery {
   entityType?: string;
@@ -20,18 +21,51 @@ export class AuditService {
   constructor(
     @InjectRepository(AuditLog)
     private auditLogRepository: Repository<AuditLog>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
   ) {}
 
-  async log(dto: CreateAuditLogDto): Promise<AuditLog> {
+  async log(dto: CreateAuditLogDto | AdminAuditLogDto): Promise<AuditLog> {
+    // Handle AdminAuditLogDto format
+    if ('userId' in dto || 'metadata' in dto) {
+      const adminDto = dto as AdminAuditLogDto;
+      let performedBy: User | undefined;
+
+      if (adminDto.userId) {
+        performedBy = await this.userRepository.findOne({ where: { id: adminDto.userId } }) || undefined;
+      }
+
+      // Map string action to AuditAction enum if needed
+      let action: AuditAction;
+      if (typeof adminDto.action === 'string') {
+        action = (AuditAction as any)[adminDto.action.toUpperCase().replace(/ /g, '_')] || AuditAction.UPDATE;
+      } else {
+        action = adminDto.action;
+      }
+
+      const auditLog = this.auditLogRepository.create({
+        entityType: adminDto.entityType,
+        entityId: adminDto.entityId ?? 0,
+        action,
+        newValues: adminDto.metadata,
+        performedBy,
+        ipAddress: adminDto.ipAddress,
+      });
+
+      return this.auditLogRepository.save(auditLog);
+    }
+
+    // Handle standard CreateAuditLogDto format
+    const standardDto = dto as CreateAuditLogDto;
     const auditLog = this.auditLogRepository.create({
-      entityType: dto.entityType,
-      entityId: dto.entityId,
-      action: dto.action,
-      oldValues: dto.oldValues,
-      newValues: dto.newValues,
-      performedBy: dto.performedBy,
-      ipAddress: dto.ipAddress,
-      userAgent: dto.userAgent,
+      entityType: standardDto.entityType,
+      entityId: standardDto.entityId ?? 0,
+      action: standardDto.action,
+      oldValues: standardDto.oldValues,
+      newValues: standardDto.newValues,
+      performedBy: standardDto.performedBy,
+      ipAddress: standardDto.ipAddress,
+      userAgent: standardDto.userAgent,
     });
 
     return this.auditLogRepository.save(auditLog);

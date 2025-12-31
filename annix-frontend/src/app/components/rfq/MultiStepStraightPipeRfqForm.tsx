@@ -737,8 +737,9 @@ const calculateLocalPipeResult = (
   const numberOfFlangeWelds = weldsPerPipe * calculatedPipeCount;
 
   // Weld length calculations (circumference-based)
+  // Each flange requires 2 full welds: 1 inside and 1 outside
   const circumference = Math.PI * outsideDiameterMm / 1000; // in meters
-  const totalFlangeWeldLength = numberOfFlangeWelds * circumference;
+  const totalFlangeWeldLength = numberOfFlangeWelds * circumference * 2; // x2 for inside + outside welds per flange
 
   // Get flange weight based on pressure class (includes flange + bolts + gasket)
   const flangeWeightPerUnit = getFlangeWeight(nominalBoreMm, pressureClassDesignation);
@@ -9723,23 +9724,33 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         );
                       }
 
-                      if (!weldThickness) {
+                      // Fallback to pipe wall thickness if no fitting data available
+                      const pipeWallThickness = entry.specs.wallThicknessMm;
+                      const effectiveWeldThickness = weldThickness || pipeWallThickness;
+                      const usingPipeThickness = !weldThickness && pipeWallThickness;
+
+                      if (!effectiveWeldThickness) {
                         return (
                           <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
                             <p className="text-xs text-amber-700">
-                              Weld thickness data not available for DN {dn}mm
+                              Weld thickness data not available for DN {dn}mm - set pipe wall thickness
                             </p>
                           </div>
                         );
                       }
 
                       return (
-                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
-                          <p className="text-xs font-bold text-green-800">
-                            Recommended Weld Thickness: {weldThickness.toFixed(2)} mm
+                        <div className={`mt-2 p-2 ${usingPipeThickness ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'} rounded-md`}>
+                          <p className={`text-xs font-bold ${usingPipeThickness ? 'text-blue-800' : 'text-green-800'}`}>
+                            Flange Weld Thickness: {effectiveWeldThickness.toFixed(2)} mm
                           </p>
-                          <p className="text-xs text-green-700">
-                            Based on {fittingClass} fitting class (ASME B31.1)
+                          <p className={`text-xs ${usingPipeThickness ? 'text-blue-700' : 'text-green-700'}`}>
+                            {usingPipeThickness
+                              ? 'Using pipe wall thickness (no fitting data for this DN)'
+                              : `Based on ${fittingClass} fitting class (ASME B31.1)`}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            2 welds per flange (inside + outside)
                           </p>
                         </div>
                       );
@@ -10106,8 +10117,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                 {entry.calculation ? (
                   <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
-                    {/* Compact horizontal grid layout */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                    {/* Compact horizontal grid layout - expands to fit surface protection boxes */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 xl:grid-cols-9 gap-3">
                       {/* Quantity of Pipes */}
                       <div className="bg-white p-2 rounded text-center">
                         <p className="text-xs text-gray-600 font-medium">Qty Pipes</p>
@@ -10147,10 +10158,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <p className="text-xs text-gray-600 font-medium">Flange Welds</p>
                         <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfFlangeWelds}</p>
                         <p className="text-xs text-gray-500">{entry.calculation.totalFlangeWeldLength?.toFixed(2)}m</p>
+                        <p className="text-[10px] text-gray-400">(2 per flange: in+out)</p>
                         {(() => {
                           const dn = entry.specs.nominalBoreMm;
                           const schedule = entry.specs.scheduleNumber || '';
-                          if (!dn) return null;
+                          const pipeWallThickness = entry.specs.wallThicknessMm;
+                          if (!dn && !pipeWallThickness) return null;
 
                           // Determine fitting class from schedule
                           const scheduleUpper = schedule.toUpperCase();
@@ -10168,12 +10181,19 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
                           };
 
-                          const wt = FITTING_WT[fittingClass]?.[dn];
-                          if (!wt) return null;
+                          const fittingWt = dn ? FITTING_WT[fittingClass]?.[dn] : null;
+                          const effectiveWt = fittingWt || pipeWallThickness;
+                          const usingPipeThickness = !fittingWt && pipeWallThickness;
+
+                          if (!effectiveWt) return null;
                           return (
-                            <div className="mt-1 p-1 bg-green-100 rounded">
-                              <p className="text-xs font-bold text-green-700">Weld: {wt.toFixed(2)}mm</p>
-                              <p className="text-[10px] text-green-600">{fittingClass}</p>
+                            <div className={`mt-1 p-1 ${usingPipeThickness ? 'bg-blue-100' : 'bg-green-100'} rounded`}>
+                              <p className={`text-xs font-bold ${usingPipeThickness ? 'text-blue-700' : 'text-green-700'}`}>
+                                Weld: {effectiveWt.toFixed(2)}mm
+                              </p>
+                              <p className={`text-[10px] ${usingPipeThickness ? 'text-blue-600' : 'text-green-600'}`}>
+                                {usingPipeThickness ? 'Pipe WT' : fittingClass}
+                              </p>
                             </div>
                           );
                         })()}
@@ -10187,6 +10207,50 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         </p>
                         <p className="text-xs text-green-600">{entry.specs.pipeEndConfiguration || 'PE'}</p>
                       </div>
+
+                      {/* Surface Protection m² - External */}
+                      {requiredProducts.includes('surface_protection') &&
+                       entry.specs.outsideDiameterMm &&
+                       entry.specs.wallThicknessMm &&
+                       (globalSpecs?.externalCoatingConfirmed || globalSpecs?.externalCoatingType) && (
+                        <div className="bg-indigo-50 p-2 rounded text-center border border-indigo-200">
+                          <p className="text-xs text-indigo-700 font-medium">External m²</p>
+                          <p className="text-lg font-bold text-indigo-900">
+                            {calculateTotalSurfaceArea({
+                              outsideDiameterMm: entry.specs.outsideDiameterMm,
+                              insideDiameterMm: calculateInsideDiameter(entry.specs.outsideDiameterMm, entry.specs.wallThicknessMm),
+                              individualPipeLengthM: entry.specs.individualPipeLength || 0,
+                              numberOfPipes: entry.calculation?.calculatedPipeCount || 0,
+                              hasFlangeEnd1: (entry.specs.pipeEndConfiguration || 'PE') !== 'PE',
+                              hasFlangeEnd2: ['FBE', 'FOE_RF', '2X_RF'].includes(entry.specs.pipeEndConfiguration || 'PE'),
+                              dn: entry.specs.nominalBoreMm,
+                            }).total.totalExternalAreaM2.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-indigo-600">coating area</p>
+                        </div>
+                      )}
+
+                      {/* Surface Protection m² - Internal */}
+                      {requiredProducts.includes('surface_protection') &&
+                       entry.specs.outsideDiameterMm &&
+                       entry.specs.wallThicknessMm &&
+                       (globalSpecs?.internalLiningConfirmed || globalSpecs?.internalLiningType) && (
+                        <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
+                          <p className="text-xs text-purple-700 font-medium">Internal m²</p>
+                          <p className="text-lg font-bold text-purple-900">
+                            {calculateTotalSurfaceArea({
+                              outsideDiameterMm: entry.specs.outsideDiameterMm,
+                              insideDiameterMm: calculateInsideDiameter(entry.specs.outsideDiameterMm, entry.specs.wallThicknessMm),
+                              individualPipeLengthM: entry.specs.individualPipeLength || 0,
+                              numberOfPipes: entry.calculation?.calculatedPipeCount || 0,
+                              hasFlangeEnd1: (entry.specs.pipeEndConfiguration || 'PE') !== 'PE',
+                              hasFlangeEnd2: ['FBE', 'FOE_RF', '2X_RF'].includes(entry.specs.pipeEndConfiguration || 'PE'),
+                              dn: entry.specs.nominalBoreMm,
+                            }).total.totalInternalAreaM2.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-purple-600">lining area</p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Weight breakdown (compact) */}

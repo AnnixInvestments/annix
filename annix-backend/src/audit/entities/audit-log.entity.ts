@@ -23,6 +23,14 @@ export enum AuditAction {
   ASSIGN_REVIEWER = 'assign_reviewer',
   ADD_COMMENT = 'add_comment',
   RESOLVE_COMMENT = 'resolve_comment',
+  // Admin-specific actions
+  ADMIN_LOGIN_SUCCESS = 'admin_login_success',
+  ADMIN_LOGIN_FAILED = 'admin_login_failed',
+  ADMIN_LOGOUT = 'admin_logout',
+  USER_CREATED = 'user_created',
+  USER_UPDATED = 'user_updated',
+  USER_DEACTIVATED = 'user_deactivated',
+  USER_REACTIVATED = 'user_reactivated',
 }
 
 @Entity('audit_logs')
