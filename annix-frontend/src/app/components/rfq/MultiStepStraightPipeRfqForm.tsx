@@ -9682,12 +9682,27 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         </span>
                       )}
                     </p>
-                    {/* Weld Thickness Display */}
-                    {entry.specs.wallThicknessMm && getWeldCountPerPipe(entry.specs.pipeEndConfiguration || 'PE') > 0 && (
-                      <p className="mt-1 text-xs font-semibold text-green-700 bg-green-50 px-2 py-1 rounded">
-                        Weld Thickness: {entry.specs.wallThicknessMm.toFixed(2)} mm
-                      </p>
-                    )}
+                    {/* Weld Thickness Display - calculated from pressure/temperature tables */}
+                    {(() => {
+                      const weldCount = getWeldCountPerPipe(entry.specs.pipeEndConfiguration || 'PE');
+                      if (weldCount === 0) return null;
+
+                      const dn = entry.specs.nominalBoreMm;
+                      const pressure = globalSpecs?.workingPressureBar || 0;
+                      const temp = entry.specs.workingTemperatureC || globalSpecs?.workingTemperatureC || 20;
+                      const schedule = entry.specs.scheduleNumber;
+
+                      if (!dn || !pressure) return null;
+
+                      const recommendation = recommendWallThicknessCarbonPipe(dn, pressure, temp, schedule);
+                      if (!recommendation) return null;
+
+                      return (
+                        <p className="mt-1 text-xs font-semibold text-green-700 bg-green-50 px-2 py-1 rounded">
+                          Weld Thickness: {recommendation.recommendedWallMm.toFixed(2)} mm (min for {pressure} bar @ {temp}°C)
+                        </p>
+                      );
+                    })()}
                   </div>
 
                   {/* Total Length - MOVED ABOVE QUANTITY */}
@@ -10091,9 +10106,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <p className="text-xs text-gray-600 font-medium">Flange Welds</p>
                         <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfFlangeWelds}</p>
                         <p className="text-xs text-gray-500">{entry.calculation.totalFlangeWeldLength?.toFixed(2)}m</p>
-                        {entry.specs.wallThicknessMm && (
-                          <p className="text-xs font-semibold text-green-600 mt-1">WT: {entry.specs.wallThicknessMm.toFixed(2)}mm</p>
-                        )}
+                        {(() => {
+                          const dn = entry.specs.nominalBoreMm;
+                          const pressure = globalSpecs?.workingPressureBar || 0;
+                          const temp = entry.specs.workingTemperatureC || globalSpecs?.workingTemperatureC || 20;
+                          const schedule = entry.specs.scheduleNumber;
+                          if (!dn || !pressure) return null;
+                          const rec = recommendWallThicknessCarbonPipe(dn, pressure, temp, schedule);
+                          if (!rec) return null;
+                          return <p className="text-xs font-semibold text-green-600 mt-1">WT: {rec.recommendedWallMm.toFixed(2)}mm</p>;
+                        })()}
                       </div>
 
                       {/* Pipe End Config */}
