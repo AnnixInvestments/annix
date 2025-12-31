@@ -11640,11 +11640,20 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     initializePressureClasses();
   }, [rfqData.globalSpecs?.flangeStandardId, masterData.steelSpecs]);
 
-  // Scroll to top helper function - scrolls the content container, not the window
+  // Scroll to top helper function - scrolls both the content container and the window
   const scrollToTop = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    // Use setTimeout to ensure content has rendered before scrolling
+    setTimeout(() => {
+      // Scroll the container if available
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      // Also scroll the window/document to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Scroll the document element as fallback
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 50);
   };
 
   // Scroll to first error field helper function
