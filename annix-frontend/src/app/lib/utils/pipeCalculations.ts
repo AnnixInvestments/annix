@@ -1542,11 +1542,82 @@ export const ANSI_B165_CLASS_150_FLANGES: FlangeDimensions[] = [
   { dn: 1200, flangeOdMm: 1422, boreIdMm: 1200.2, raisedFaceDiaMm: 1314.4, hubLengthMm: 203 },
 ];
 
+// ASME B16.5 Class 300 Flange Dimensions
+export const ANSI_B165_CLASS_300_FLANGES: FlangeDimensions[] = [
+  { dn: 15, flangeOdMm: 95, boreIdMm: 15.8, raisedFaceDiaMm: 34.9, hubLengthMm: 38 },
+  { dn: 20, flangeOdMm: 117, boreIdMm: 20.9, raisedFaceDiaMm: 42.9, hubLengthMm: 48 },
+  { dn: 25, flangeOdMm: 124, boreIdMm: 26.6, raisedFaceDiaMm: 50.8, hubLengthMm: 52 },
+  { dn: 32, flangeOdMm: 133, boreIdMm: 35.1, raisedFaceDiaMm: 63.5, hubLengthMm: 57 },
+  { dn: 40, flangeOdMm: 156, boreIdMm: 40.9, raisedFaceDiaMm: 73.0, hubLengthMm: 62 },
+  { dn: 50, flangeOdMm: 165, boreIdMm: 52.5, raisedFaceDiaMm: 92.1, hubLengthMm: 67 },
+  { dn: 65, flangeOdMm: 190, boreIdMm: 62.7, raisedFaceDiaMm: 104.8, hubLengthMm: 73 },
+  { dn: 80, flangeOdMm: 210, boreIdMm: 77.9, raisedFaceDiaMm: 127.0, hubLengthMm: 79 },
+  { dn: 100, flangeOdMm: 254, boreIdMm: 102.3, raisedFaceDiaMm: 157.2, hubLengthMm: 86 },
+  { dn: 125, flangeOdMm: 279, boreIdMm: 128.2, raisedFaceDiaMm: 185.7, hubLengthMm: 92 },
+  { dn: 150, flangeOdMm: 318, boreIdMm: 154.1, raisedFaceDiaMm: 215.9, hubLengthMm: 98 },
+  { dn: 200, flangeOdMm: 381, boreIdMm: 202.7, raisedFaceDiaMm: 269.9, hubLengthMm: 117 },
+  { dn: 250, flangeOdMm: 444, boreIdMm: 254.5, raisedFaceDiaMm: 323.8, hubLengthMm: 133 },
+  { dn: 300, flangeOdMm: 521, boreIdMm: 304.8, raisedFaceDiaMm: 381.0, hubLengthMm: 152 },
+  { dn: 350, flangeOdMm: 584, boreIdMm: 336.6, raisedFaceDiaMm: 412.8, hubLengthMm: 162 },
+  { dn: 400, flangeOdMm: 648, boreIdMm: 387.4, raisedFaceDiaMm: 469.9, hubLengthMm: 171 },
+  { dn: 450, flangeOdMm: 711, boreIdMm: 438.2, raisedFaceDiaMm: 533.4, hubLengthMm: 184 },
+  { dn: 500, flangeOdMm: 775, boreIdMm: 489.0, raisedFaceDiaMm: 584.2, hubLengthMm: 194 },
+  { dn: 600, flangeOdMm: 914, boreIdMm: 590.6, raisedFaceDiaMm: 692.2, hubLengthMm: 216 },
+];
+
+// ASME B16.5 Class 600 Flange Dimensions
+export const ANSI_B165_CLASS_600_FLANGES: FlangeDimensions[] = [
+  { dn: 15, flangeOdMm: 95, boreIdMm: 15.8, raisedFaceDiaMm: 34.9, hubLengthMm: 38 },
+  { dn: 20, flangeOdMm: 117, boreIdMm: 20.9, raisedFaceDiaMm: 42.9, hubLengthMm: 48 },
+  { dn: 25, flangeOdMm: 124, boreIdMm: 26.6, raisedFaceDiaMm: 50.8, hubLengthMm: 52 },
+  { dn: 32, flangeOdMm: 133, boreIdMm: 35.1, raisedFaceDiaMm: 63.5, hubLengthMm: 57 },
+  { dn: 40, flangeOdMm: 156, boreIdMm: 40.9, raisedFaceDiaMm: 73.0, hubLengthMm: 62 },
+  { dn: 50, flangeOdMm: 165, boreIdMm: 52.5, raisedFaceDiaMm: 92.1, hubLengthMm: 67 },
+  { dn: 65, flangeOdMm: 190, boreIdMm: 62.7, raisedFaceDiaMm: 104.8, hubLengthMm: 73 },
+  { dn: 80, flangeOdMm: 210, boreIdMm: 77.9, raisedFaceDiaMm: 127.0, hubLengthMm: 83 },
+  { dn: 100, flangeOdMm: 273, boreIdMm: 102.3, raisedFaceDiaMm: 157.2, hubLengthMm: 102 },
+  { dn: 125, flangeOdMm: 330, boreIdMm: 128.2, raisedFaceDiaMm: 185.7, hubLengthMm: 114 },
+  { dn: 150, flangeOdMm: 356, boreIdMm: 154.1, raisedFaceDiaMm: 215.9, hubLengthMm: 117 },
+  { dn: 200, flangeOdMm: 419, boreIdMm: 202.7, raisedFaceDiaMm: 269.9, hubLengthMm: 133 },
+  { dn: 250, flangeOdMm: 508, boreIdMm: 254.5, raisedFaceDiaMm: 323.8, hubLengthMm: 152 },
+  { dn: 300, flangeOdMm: 559, boreIdMm: 304.8, raisedFaceDiaMm: 381.0, hubLengthMm: 156 },
+  { dn: 350, flangeOdMm: 603, boreIdMm: 336.6, raisedFaceDiaMm: 412.8, hubLengthMm: 165 },
+  { dn: 400, flangeOdMm: 686, boreIdMm: 387.4, raisedFaceDiaMm: 469.9, hubLengthMm: 178 },
+  { dn: 450, flangeOdMm: 743, boreIdMm: 438.2, raisedFaceDiaMm: 533.4, hubLengthMm: 190 },
+  { dn: 500, flangeOdMm: 813, boreIdMm: 489.0, raisedFaceDiaMm: 584.2, hubLengthMm: 203 },
+  { dn: 600, flangeOdMm: 940, boreIdMm: 590.6, raisedFaceDiaMm: 692.2, hubLengthMm: 229 },
+];
+
+// Map of all flange dimension tables by pressure class
+const FLANGE_DIMENSIONS_BY_CLASS: Record<string, FlangeDimensions[]> = {
+  '150': ANSI_B165_CLASS_150_FLANGES,
+  'CLASS 150': ANSI_B165_CLASS_150_FLANGES,
+  'PN16': ANSI_B165_CLASS_150_FLANGES,
+  'PN20': ANSI_B165_CLASS_150_FLANGES,
+  '300': ANSI_B165_CLASS_300_FLANGES,
+  'CLASS 300': ANSI_B165_CLASS_300_FLANGES,
+  'PN50': ANSI_B165_CLASS_300_FLANGES,
+  '600': ANSI_B165_CLASS_600_FLANGES,
+  'CLASS 600': ANSI_B165_CLASS_600_FLANGES,
+  'PN100': ANSI_B165_CLASS_600_FLANGES,
+  '900': ANSI_B165_CLASS_600_FLANGES,  // Use Class 600 as approximation for higher classes
+  'CLASS 900': ANSI_B165_CLASS_600_FLANGES,
+  '1500': ANSI_B165_CLASS_600_FLANGES,
+  'CLASS 1500': ANSI_B165_CLASS_600_FLANGES,
+  '2500': ANSI_B165_CLASS_600_FLANGES,
+  'CLASS 2500': ANSI_B165_CLASS_600_FLANGES,
+};
+
 /**
- * Get flange dimensions by DN
+ * Get flange dimensions by DN and optional pressure class
+ * @param dn Nominal diameter in mm
+ * @param pressureClass Optional pressure class designation (e.g., '150', 'Class 300', 'PN50')
  */
-export function getFlangeDimensionsByDn(dn: number): FlangeDimensions | undefined {
-  return ANSI_B165_CLASS_150_FLANGES.find(f => f.dn === dn);
+export function getFlangeDimensionsByDn(dn: number, pressureClass?: string): FlangeDimensions | undefined {
+  // Normalize pressure class to find the right table
+  const normalizedClass = (pressureClass || '150').toUpperCase().trim();
+  const flangeTable = FLANGE_DIMENSIONS_BY_CLASS[normalizedClass] || ANSI_B165_CLASS_150_FLANGES;
+  return flangeTable.find(f => f.dn === dn);
 }
 
 /**
@@ -1576,6 +1647,7 @@ export interface SurfaceAreaParams {
   pipeLengthM: number;
   numberOfFlanges: number;
   dn?: number;  // Optional - for flange dimension lookup
+  pressureClass?: string;  // Optional - pressure class for flange dimension lookup
 }
 
 export interface SurfaceAreaResult {
@@ -1611,6 +1683,7 @@ export function calculateComprehensiveSurfaceArea(params: SurfaceAreaParams): Su
     pipeLengthM,
     numberOfFlanges,
     dn,
+    pressureClass,
   } = params;
 
   // External pipe surface area: π × OD × Length
@@ -1628,9 +1701,9 @@ export function calculateComprehensiveSurfaceArea(params: SurfaceAreaParams): Su
   let flangeOdMm: number | undefined;
   let raisedFaceDiaMm: number | undefined;
 
-  // Get flange dimensions if DN is provided
+  // Get flange dimensions if DN is provided (using pressure class if available)
   if (numberOfFlanges > 0 && dn) {
-    const flangeDims = getFlangeDimensionsByDn(dn);
+    const flangeDims = getFlangeDimensionsByDn(dn, pressureClass);
 
     if (flangeDims) {
       flangeDataAvailable = true;
@@ -1689,6 +1762,7 @@ export function calculateSurfaceAreaPerPipe(params: {
   hasFlangeEnd1: boolean;
   hasFlangeEnd2: boolean;
   dn?: number;
+  pressureClass?: string;
 }): SurfaceAreaResult {
   const numberOfFlanges = (params.hasFlangeEnd1 ? 1 : 0) + (params.hasFlangeEnd2 ? 1 : 0);
 
@@ -1698,6 +1772,7 @@ export function calculateSurfaceAreaPerPipe(params: {
     pipeLengthM: params.individualPipeLengthM,
     numberOfFlanges,
     dn: params.dn,
+    pressureClass: params.pressureClass,
   });
 }
 
@@ -1712,6 +1787,7 @@ export function calculateTotalSurfaceArea(params: {
   hasFlangeEnd1: boolean;
   hasFlangeEnd2: boolean;
   dn?: number;
+  pressureClass?: string;
 }): {
   perPipe: SurfaceAreaResult;
   total: {
@@ -1727,6 +1803,7 @@ export function calculateTotalSurfaceArea(params: {
     hasFlangeEnd1: params.hasFlangeEnd1,
     hasFlangeEnd2: params.hasFlangeEnd2,
     dn: params.dn,
+    pressureClass: params.pressureClass,
   });
 
   return {

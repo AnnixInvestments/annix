@@ -7919,21 +7919,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   />
                 </div>
 
-                {/* 3D Bend Preview */}
-                {entry.specs?.nominalBoreMm && entry.specs?.bendDegrees && (
-                  <Bend3DPreview
-                    nominalBore={entry.specs.nominalBoreMm}
-                    outerDiameter={entry.calculation?.outsideDiameterMm || entry.specs.nominalBoreMm * 1.1}
-                    wallThickness={entry.calculation?.wallThicknessMm || 5}
-                    bendAngle={entry.specs.bendDegrees}
-                    bendType={entry.specs.bendType || '1.5D'}
-                    tangent1={entry.specs.tangent1Length}
-                    tangent2={entry.specs.tangent2Length}
-                    schedule={entry.specs.scheduleNumber}
-                    materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
-                  />
-                )}
-
                 {/* Remove Item Button */}
                 {entries.length > 1 && (
                   <div className="mt-4 flex justify-end">
@@ -8790,6 +8775,21 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </div>
                     </div>
                   </div>
+                )}
+
+                {/* 3D Bend Preview - positioned after calculation results */}
+                {entry.specs?.nominalBoreMm && entry.specs?.bendDegrees && (
+                  <Bend3DPreview
+                    nominalBore={entry.specs.nominalBoreMm}
+                    outerDiameter={entry.calculation?.outsideDiameterMm || entry.specs.nominalBoreMm * 1.1}
+                    wallThickness={entry.calculation?.wallThicknessMm || 5}
+                    bendAngle={entry.specs.bendDegrees}
+                    bendType={entry.specs.bendType || '1.5D'}
+                    tangent1={entry.specs.tangent1Length}
+                    tangent2={entry.specs.tangent2Length}
+                    schedule={entry.specs.scheduleNumber}
+                    materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                  />
                 )}
               </div>
             ) : entry.itemType === 'fitting' ? (
@@ -10224,42 +10224,58 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </div>
 
                       {/* Surface Protection m² - External */}
-                      {entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (
-                        <div className="bg-indigo-50 p-2 rounded text-center border border-indigo-200">
-                          <p className="text-xs text-indigo-700 font-medium">External m²</p>
-                          <p className="text-lg font-bold text-indigo-900">
-                            {calculateTotalSurfaceArea({
-                              outsideDiameterMm: entry.calculation.outsideDiameterMm,
-                              insideDiameterMm: calculateInsideDiameter(entry.calculation.outsideDiameterMm, entry.specs.wallThicknessMm),
-                              individualPipeLengthM: entry.specs.individualPipeLength || 0,
-                              numberOfPipes: entry.calculation?.calculatedPipeCount || 0,
-                              hasFlangeEnd1: (entry.specs.pipeEndConfiguration || 'PE') !== 'PE',
-                              hasFlangeEnd2: ['FBE', 'FOE_RF', '2X_RF'].includes(entry.specs.pipeEndConfiguration || 'PE'),
-                              dn: entry.specs.nominalBoreMm,
-                            }).total.totalExternalAreaM2.toFixed(2)}
-                          </p>
-                          <p className="text-xs text-indigo-600">coating area</p>
-                        </div>
-                      )}
+                      {entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (() => {
+                        // Get pressure class - use entry override if available, otherwise global
+                        const pressureClassId = entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                        const pressureClassDesignation = pressureClassId
+                          ? masterData.pressureClasses?.find((p: any) => p.id === pressureClassId)?.designation
+                          : undefined;
+                        return (
+                          <div className="bg-indigo-50 p-2 rounded text-center border border-indigo-200">
+                            <p className="text-xs text-indigo-700 font-medium">External m²</p>
+                            <p className="text-lg font-bold text-indigo-900">
+                              {calculateTotalSurfaceArea({
+                                outsideDiameterMm: entry.calculation.outsideDiameterMm,
+                                insideDiameterMm: calculateInsideDiameter(entry.calculation.outsideDiameterMm, entry.specs.wallThicknessMm),
+                                individualPipeLengthM: entry.specs.individualPipeLength || 0,
+                                numberOfPipes: entry.calculation?.calculatedPipeCount || 0,
+                                hasFlangeEnd1: (entry.specs.pipeEndConfiguration || 'PE') !== 'PE',
+                                hasFlangeEnd2: ['FBE', 'FOE_RF', '2X_RF'].includes(entry.specs.pipeEndConfiguration || 'PE'),
+                                dn: entry.specs.nominalBoreMm,
+                                pressureClass: pressureClassDesignation,
+                              }).total.totalExternalAreaM2.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-indigo-600">coating area</p>
+                          </div>
+                        );
+                      })()}
 
                       {/* Surface Protection m² - Internal */}
-                      {entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (
-                        <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
-                          <p className="text-xs text-purple-700 font-medium">Internal m²</p>
-                          <p className="text-lg font-bold text-purple-900">
-                            {calculateTotalSurfaceArea({
-                              outsideDiameterMm: entry.calculation.outsideDiameterMm,
-                              insideDiameterMm: calculateInsideDiameter(entry.calculation.outsideDiameterMm, entry.specs.wallThicknessMm),
-                              individualPipeLengthM: entry.specs.individualPipeLength || 0,
-                              numberOfPipes: entry.calculation?.calculatedPipeCount || 0,
-                              hasFlangeEnd1: (entry.specs.pipeEndConfiguration || 'PE') !== 'PE',
-                              hasFlangeEnd2: ['FBE', 'FOE_RF', '2X_RF'].includes(entry.specs.pipeEndConfiguration || 'PE'),
-                              dn: entry.specs.nominalBoreMm,
-                            }).total.totalInternalAreaM2.toFixed(2)}
-                          </p>
-                          <p className="text-xs text-purple-600">lining area</p>
-                        </div>
-                      )}
+                      {entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (() => {
+                        // Get pressure class - use entry override if available, otherwise global
+                        const pressureClassId = entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                        const pressureClassDesignation = pressureClassId
+                          ? masterData.pressureClasses?.find((p: any) => p.id === pressureClassId)?.designation
+                          : undefined;
+                        return (
+                          <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
+                            <p className="text-xs text-purple-700 font-medium">Internal m²</p>
+                            <p className="text-lg font-bold text-purple-900">
+                              {calculateTotalSurfaceArea({
+                                outsideDiameterMm: entry.calculation.outsideDiameterMm,
+                                insideDiameterMm: calculateInsideDiameter(entry.calculation.outsideDiameterMm, entry.specs.wallThicknessMm),
+                                individualPipeLengthM: entry.specs.individualPipeLength || 0,
+                                numberOfPipes: entry.calculation?.calculatedPipeCount || 0,
+                                hasFlangeEnd1: (entry.specs.pipeEndConfiguration || 'PE') !== 'PE',
+                                hasFlangeEnd2: ['FBE', 'FOE_RF', '2X_RF'].includes(entry.specs.pipeEndConfiguration || 'PE'),
+                                dn: entry.specs.nominalBoreMm,
+                                pressureClass: pressureClassDesignation,
+                              }).total.totalInternalAreaM2.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-purple-600">lining area</p>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Weight breakdown (compact) */}
@@ -10569,6 +10585,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     if (entry.itemType === 'bend' || entry.itemType === 'fitting') return { external: null, internal: null };
                     if (!entry.calculation?.outsideDiameterMm || !entry.specs?.wallThicknessMm) return { external: null, internal: null };
 
+                    // Get pressure class - use entry override if available, otherwise global
+                    const pcId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                    const pcDesignation = pcId
+                      ? masterData.pressureClasses?.find((p: any) => p.id === pcId)?.designation
+                      : undefined;
+
                     const surfaceArea = calculateTotalSurfaceArea({
                       outsideDiameterMm: entry.calculation.outsideDiameterMm,
                       insideDiameterMm: calculateInsideDiameter(entry.calculation.outsideDiameterMm, entry.specs.wallThicknessMm),
@@ -10577,6 +10599,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       hasFlangeEnd1: (entry.specs.pipeEndConfiguration || 'PE') !== 'PE',
                       hasFlangeEnd2: ['FBE', 'FOE_RF', '2X_RF'].includes(entry.specs.pipeEndConfiguration || 'PE'),
                       dn: entry.specs.nominalBoreMm,
+                      pressureClass: pcDesignation,
                     });
 
                     return {
@@ -11916,17 +11939,18 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     scrollToTop();
   };
 
-  // Auto-generate client item numbers based on customer name
+  // Auto-generate client item numbers based on customer name for ALL item types
   useEffect(() => {
-    if (rfqData.customerName) {
-      rfqData.straightPipeEntries.forEach((entry, index) => {
+    if (rfqData.customerName && rfqData.items) {
+      rfqData.items.forEach((entry: any, index: number) => {
         if (!entry.clientItemNumber || entry.clientItemNumber.trim() === '') {
           const autoGenNumber = generateClientItemNumber(rfqData.customerName, index + 1);
-          updateStraightPipeEntry(entry.id, { clientItemNumber: autoGenNumber });
+          // Use updateItem for all item types to maintain unified numbering sequence
+          updateItem(entry.id, { clientItemNumber: autoGenNumber });
         }
       });
     }
-  }, [rfqData.straightPipeEntries, rfqData.customerName, updateStraightPipeEntry]);
+  }, [rfqData.items, rfqData.customerName, updateItem]);
 
   const handleCalculateAll = async () => {
     try {
