@@ -9682,6 +9682,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         </span>
                       )}
                     </p>
+                    {/* Weld Thickness Display */}
+                    {entry.specs.wallThicknessMm && getWeldCountPerPipe(entry.specs.pipeEndConfiguration || 'PE') > 0 && (
+                      <p className="mt-1 text-xs font-semibold text-green-700 bg-green-50 px-2 py-1 rounded">
+                        Weld Thickness: {entry.specs.wallThicknessMm.toFixed(2)} mm
+                      </p>
+                    )}
                   </div>
 
                   {/* Total Length - MOVED ABOVE QUANTITY */}
@@ -10085,6 +10091,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <p className="text-xs text-gray-600 font-medium">Flange Welds</p>
                         <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfFlangeWelds}</p>
                         <p className="text-xs text-gray-500">{entry.calculation.totalFlangeWeldLength?.toFixed(2)}m</p>
+                        {entry.specs.wallThicknessMm && (
+                          <p className="text-xs font-semibold text-green-600 mt-1">WT: {entry.specs.wallThicknessMm.toFixed(2)}mm</p>
+                        )}
                       </div>
 
                       {/* Pipe End Config */}
