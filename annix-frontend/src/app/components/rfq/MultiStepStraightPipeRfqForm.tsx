@@ -2241,7 +2241,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           </h4>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <div>
+            <div data-field="customerName">
               <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Customer Name <span className="text-red-600">*</span>
               </label>
@@ -2258,7 +2258,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               )}
             </div>
 
-            <div>
+            <div data-field="customerEmail">
               <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Customer Email <span className="text-red-600">*</span>
               </label>
@@ -2275,7 +2275,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               )}
             </div>
 
-            <div>
+            <div data-field="customerPhone">
               <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Customer Phone <span className="text-red-600">*</span>
               </label>
@@ -2292,7 +2292,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               )}
             </div>
 
-            <div>
+            <div data-field="requiredDate">
               <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Required Date <span className="text-red-600">*</span>
               </label>
@@ -2312,7 +2312,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
 
         {/* Project Name and Description - Side by Side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div>
+          <div data-field="projectName">
             <label className="block text-xs font-semibold text-gray-900 mb-1">
               Project/RFQ Name <span className="text-red-600">*</span>
             </label>
@@ -2327,7 +2327,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               <p className="mt-1 text-xs text-red-600">{errors.projectName}</p>
             )}
           </div>
-          <div>
+          <div data-field="description">
             <label className="block text-xs font-semibold text-gray-900 mb-1">
               RFQ Description <span className="text-red-600">*</span>
             </label>
@@ -2342,7 +2342,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
         </div>
 
         {/* Project Type Selection - Compact */}
-        <div>
+        <div data-field="projectType">
           <label className={`block text-xs font-semibold mb-1 ${hasProjectTypeError ? 'text-red-700' : 'text-gray-900'}`}>
             Project Type <span className="text-red-600">*</span>
           </label>
@@ -2384,7 +2384,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
         </div>
 
         {/* Required Products/Services Selection - Compact */}
-        <div>
+        <div data-field="requiredProducts">
           <label className="block text-xs font-semibold text-gray-900 mb-1">
             Required Products & Services <span className="text-red-600">*</span>
           </label>
@@ -3543,7 +3543,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
 
           <div className="grid grid-cols-2 gap-3">
             {/* Working Pressure */}
-            <div>
+            <div data-field="workingPressure">
               <label className={`block text-xs font-semibold mb-1 ${errors.workingPressure ? 'text-red-700' : 'text-gray-900'}`}>
                 Working Pressure (bar) <span className="text-red-600">*</span>
               </label>
@@ -3579,7 +3579,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
             </div>
 
             {/* Working Temperature */}
-            <div>
+            <div data-field="workingTemperature">
               <label className={`block text-xs font-semibold mb-1 ${errors.workingTemperature ? 'text-red-700' : 'text-gray-900'}`}>
                 Working Temperature (°C) <span className="text-red-600">*</span>
               </label>
@@ -9454,9 +9454,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 return null;
                               })()}
                             </select>
-                            {entry.minimumSchedule && (
+                            {entry.minimumSchedule && entry.minimumWallThickness && (
                               <p className="text-xs text-green-700 mt-1">
-                                Minimum required: {entry.minimumWallThickness}mm wall thickness
+                                ASME B31.3 min WT: {Number(entry.minimumWallThickness).toFixed(2)}mm (schedule {entry.minimumSchedule} selected: {entry.specs.wallThicknessMm?.toFixed(2)}mm)
                               </p>
                             )}
                           </div>
@@ -9685,12 +9685,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     {/* Weld Thickness Display - from fitting wall thickness tables (ASME B31.1) */}
                     {(() => {
                       const weldCount = getWeldCountPerPipe(entry.specs.pipeEndConfiguration || 'PE');
-                      if (weldCount === 0) return null;
-
                       const dn = entry.specs.nominalBoreMm;
                       const schedule = entry.specs.scheduleNumber || '';
 
-                      if (!dn) return null;
+                      // Carbon Steel Weld Fittings wall thickness lookup (WPB Grade, ASME B31.1)
+                      const FITTING_WALL_THICKNESS: Record<string, Record<number, number>> = {
+                        'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
+                        'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
+                        'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
+                      };
 
                       // Determine fitting class from schedule (STD, XH, or XXH)
                       const scheduleUpper = schedule.toUpperCase();
@@ -9701,20 +9704,42 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             ? 'XH'
                             : 'STD';
 
-                      // Carbon Steel Weld Fittings wall thickness lookup (WPB Grade, ASME B31.1)
-                      const FITTING_WALL_THICKNESS: Record<string, Record<number, number>> = {
-                        'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
-                        'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
-                        'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
-                      };
+                      const weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
 
-                      const weldThickness = FITTING_WALL_THICKNESS[fittingClass]?.[dn];
-                      if (!weldThickness) return null;
+                      // Show weld thickness if pipe has welds and DN is set
+                      if (weldCount === 0) {
+                        return null; // No welds for PE configuration
+                      }
+
+                      if (!dn) {
+                        return (
+                          <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                            <p className="text-xs text-amber-700">
+                              Select Nominal Bore to see recommended weld thickness
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      if (!weldThickness) {
+                        return (
+                          <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                            <p className="text-xs text-amber-700">
+                              Weld thickness data not available for DN {dn}mm
+                            </p>
+                          </div>
+                        );
+                      }
 
                       return (
-                        <p className="mt-1 text-xs font-semibold text-green-700 bg-green-50 px-2 py-1 rounded">
-                          Weld Thickness: {weldThickness.toFixed(2)} mm ({fittingClass} fitting)
-                        </p>
+                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                          <p className="text-xs font-bold text-green-800">
+                            Recommended Weld Thickness: {weldThickness.toFixed(2)} mm
+                          </p>
+                          <p className="text-xs text-green-700">
+                            Based on {fittingClass} fitting class (ASME B31.1)
+                          </p>
+                        </div>
                       );
                     })()}
                   </div>
@@ -9729,8 +9754,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       step="0.001"
                       value={
                         entry.specs.quantityType === 'total_length'
-                          ? entry.specs.quantityValue || 0
-                          : (entry.specs.quantityValue || 1) * (entry.specs.individualPipeLength || 0)
+                          ? Number(entry.specs.quantityValue || 0).toFixed(3)
+                          : Number((entry.specs.quantityValue || 1) * (entry.specs.individualPipeLength || 0)).toFixed(3)
                       }
                       onChange={(e) => {
                         const totalLength = Number(e.target.value);
@@ -10143,7 +10168,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                           const wt = FITTING_WT[fittingClass]?.[dn];
                           if (!wt) return null;
-                          return <p className="text-xs font-semibold text-green-600 mt-1">WT: {wt.toFixed(2)}mm</p>;
+                          return (
+                            <div className="mt-1 p-1 bg-green-100 rounded">
+                              <p className="text-xs font-bold text-green-700">Weld: {wt.toFixed(2)}mm</p>
+                              <p className="text-[10px] text-green-600">{fittingClass}</p>
+                            </div>
+                          );
                         })()}
                       </div>
 
@@ -10529,7 +10559,7 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                     <div>NB: {entry.specs.nominalBoreMm}mm</div>
                     <div>Pressure: {entry.specs.workingPressureBar} bar</div>
                     <div>Schedule: {entry.specs.scheduleNumber || `${entry.specs.wallThicknessMm}mm WT`}</div>
-                    <div>Length: {entry.specs.quantityValue}m</div>
+                    <div>Length: {Number(entry.specs.quantityValue || 0).toFixed(3)}m</div>
                   </div>
                 )}
               </div>
@@ -11518,6 +11548,65 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     }
   };
 
+  // Scroll to first error field helper function
+  const scrollToFirstError = (errorKey: string) => {
+    // Map error keys to field identifiers
+    const errorKeyToSelector: Record<string, string> = {
+      // Page 1 fields
+      projectName: '[data-field="projectName"]',
+      projectType: '[data-field="projectType"]',
+      customerName: '[data-field="customerName"]',
+      description: '[data-field="description"]',
+      customerEmail: '[data-field="customerEmail"]',
+      customerPhone: '[data-field="customerPhone"]',
+      requiredDate: '[data-field="requiredDate"]',
+      requiredProducts: '[data-field="requiredProducts"]',
+      // Page 2 fields
+      workingPressure: '[data-field="workingPressure"]',
+      workingTemperature: '[data-field="workingTemperature"]',
+      steelPipesConfirmation: '[data-field="steelPipesConfirmation"]',
+      fastenersConfirmation: '[data-field="fastenersConfirmation"]',
+    };
+
+    // Check if it's a pipe-specific error (pipe_0_nb, pipe_1_length, etc.)
+    let selector = errorKeyToSelector[errorKey];
+    if (!selector && errorKey.startsWith('pipe_')) {
+      // Extract index and field type from error key like "pipe_0_nb"
+      const match = errorKey.match(/pipe_(\d+)_(\w+)/);
+      if (match) {
+        const [, index, fieldType] = match;
+        selector = `[data-field="pipe_${index}_${fieldType}"]`;
+      }
+    }
+
+    if (selector) {
+      const element = document.querySelector(selector);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Add visual highlight effect
+        element.classList.add('ring-2', 'ring-red-500', 'ring-offset-2');
+        setTimeout(() => {
+          element.classList.remove('ring-2', 'ring-red-500', 'ring-offset-2');
+        }, 3000);
+        // Try to focus the input element if it exists
+        const input = element.querySelector('input, select, textarea') as HTMLElement;
+        if (input) {
+          setTimeout(() => input.focus(), 300);
+        }
+        return;
+      }
+    }
+
+    // Fallback: try to find by name attribute or scroll to top
+    const fallbackElement = document.querySelector(`[name="${errorKey}"]`) ||
+                           document.querySelector(`#${errorKey}`);
+    if (fallbackElement) {
+      fallbackElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      scrollToTop();
+    }
+  };
+
   // Enhanced next step function with validation
   const nextStep = () => {
     // Validate current step before proceeding
@@ -11549,6 +11638,10 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     if (Object.keys(errors).length === 0) {
       originalNextStep();
       scrollToTop();
+    } else {
+      // Scroll to the first field with an error
+      const firstErrorKey = Object.keys(errors)[0];
+      scrollToFirstError(firstErrorKey);
     }
   };
 
