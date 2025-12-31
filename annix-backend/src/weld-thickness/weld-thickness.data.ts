@@ -104,15 +104,33 @@ export const CARBON_STEEL_PIPES: CarbonSteelPipeData[] = [
   { dn: 200, schedule: '160', wallMm: 23.01, pressuresBar: [273, 273, 258, 232, 230, 178, 148, 119] },
   { dn: 250, schedule: 'STD', wallMm: 9.27, pressuresBar: [72, 72, 69, 62, 61, 47, 39, 32] },
   { dn: 250, schedule: 'XS', wallMm: 12.70, pressuresBar: [100, 100, 96, 87, 86, 66, 55, 44] },
-  { dn: 300, schedule: 'STD', wallMm: 9.53, pressuresBar: [62, 62, 60, 54, 53, 41, 34, 28] },
-  { dn: 300, schedule: 'XS', wallMm: 12.70, pressuresBar: [83, 83, 80, 72, 71, 55, 46, 37] },
+  // DN 300 (NPS 12)
+  { dn: 300, schedule: '10', wallMm: 6.35, pressuresBar: [71, 71, 67, 60, 59, 46, 38, 31] },
+  { dn: 300, schedule: '20', wallMm: 7.62, pressuresBar: [86, 86, 81, 73, 72, 56, 46, 37] },
+  { dn: 300, schedule: '30', wallMm: 8.38, pressuresBar: [95, 95, 90, 81, 80, 62, 51, 41] },
+  { dn: 300, schedule: 'STD', wallMm: 9.53, pressuresBar: [108, 108, 102, 92, 91, 70, 58, 47] },
+  { dn: 300, schedule: '40', wallMm: 9.53, pressuresBar: [108, 108, 102, 92, 91, 70, 58, 47] },
+  { dn: 300, schedule: '60', wallMm: 12.70, pressuresBar: [145, 145, 137, 123, 122, 94, 78, 63] },
+  { dn: 300, schedule: 'XS', wallMm: 12.70, pressuresBar: [145, 145, 137, 123, 122, 94, 78, 63] },
+  { dn: 300, schedule: '80', wallMm: 12.70, pressuresBar: [145, 145, 137, 123, 122, 94, 78, 63] },
+  { dn: 300, schedule: '100', wallMm: 15.88, pressuresBar: [184, 184, 174, 156, 154, 119, 99, 80] },
+  { dn: 300, schedule: '120', wallMm: 19.05, pressuresBar: [222, 222, 210, 189, 187, 144, 120, 97] },
+  { dn: 300, schedule: '140', wallMm: 22.23, pressuresBar: [261, 261, 247, 222, 219, 170, 141, 114] },
+  { dn: 300, schedule: '160', wallMm: 25.40, pressuresBar: [300, 300, 283, 255, 252, 195, 162, 130] },
+  { dn: 300, schedule: 'XXS', wallMm: 25.40, pressuresBar: [300, 300, 283, 255, 252, 195, 162, 130] },
   // DN 350 (NPS 14)
   { dn: 350, schedule: '10', wallMm: 6.35, pressuresBar: [62, 62, 59, 53, 52, 40, 33, 27] },
   { dn: 350, schedule: '20', wallMm: 7.92, pressuresBar: [78, 78, 74, 66, 65, 51, 42, 34] },
+  { dn: 350, schedule: '30', wallMm: 9.53, pressuresBar: [94, 94, 89, 80, 79, 61, 51, 41] },
   { dn: 350, schedule: 'STD', wallMm: 9.53, pressuresBar: [94, 94, 89, 80, 79, 61, 51, 41] },
+  { dn: 350, schedule: '40', wallMm: 9.53, pressuresBar: [94, 94, 89, 80, 79, 61, 51, 41] },
   { dn: 350, schedule: 'XS', wallMm: 12.70, pressuresBar: [126, 126, 119, 107, 106, 82, 68, 55] },
   { dn: 350, schedule: '60', wallMm: 14.27, pressuresBar: [142, 142, 134, 121, 119, 92, 77, 62] },
   { dn: 350, schedule: '80', wallMm: 15.88, pressuresBar: [158, 158, 149, 134, 133, 103, 85, 69] },
+  { dn: 350, schedule: '100', wallMm: 19.05, pressuresBar: [191, 191, 180, 162, 160, 124, 103, 83] },
+  { dn: 350, schedule: '120', wallMm: 22.22, pressuresBar: [223, 223, 211, 190, 187, 145, 120, 97] },
+  { dn: 350, schedule: '140', wallMm: 25.40, pressuresBar: [256, 256, 242, 218, 215, 166, 138, 111] },
+  { dn: 350, schedule: '160', wallMm: 28.58, pressuresBar: [289, 289, 273, 245, 242, 187, 156, 125] },
   // DN 400 (NPS 16)
   { dn: 400, schedule: '10', wallMm: 6.35, pressuresBar: [54, 54, 51, 46, 45, 35, 29, 23] },
   { dn: 400, schedule: '20', wallMm: 7.92, pressuresBar: [68, 68, 64, 58, 57, 44, 37, 30] },
@@ -162,6 +180,7 @@ export const CARBON_STEEL_PIPES: CarbonSteelPipeData[] = [
   { dn: 1200, schedule: '5', wallMm: 6.35, pressuresBar: [18, 18, 17, 15, 15, 12, 10, 8] },
   { dn: 1200, schedule: '10', wallMm: 9.53, pressuresBar: [27, 27, 26, 23, 23, 18, 15, 12] },
   { dn: 1200, schedule: '20', wallMm: 12.70, pressuresBar: [36, 36, 34, 31, 30, 23, 19, 15] },
+  { dn: 1200, schedule: '30', wallMm: 15.88, pressuresBar: [45, 45, 42, 38, 38, 29, 24, 19] },
   { dn: 1200, schedule: 'STD', wallMm: 9.53, pressuresBar: [27, 27, 26, 23, 23, 18, 15, 12] },
   { dn: 1200, schedule: 'XS', wallMm: 12.70, pressuresBar: [36, 36, 34, 31, 30, 23, 19, 15] },
 ];
@@ -332,4 +351,172 @@ export const DN_TO_OD_MM: Record<number, number> = {
   1000: 1016.0,
   1050: 1066.8,
   1200: 1219.2,
+};
+
+/**
+ * Fitting Wall Thickness Lookup Table
+ * Wall thickness (mm) by DN, Fitting Type, and Schedule
+ * Based on ASME B16.9 / MSS-SP-43 / ASME B31.3
+ *
+ * Fitting Types:
+ * - 45E: 45° Elbow
+ * - 90E: 90° Elbow
+ * - BW_RED: Butt Weld Reducer
+ * - TEE: Tee outlets
+ * - PIPE: Straight pipe reference
+ *
+ * Schedules: 10S, 40S, 80S, 160S, XXS
+ */
+export type FittingType = '45E' | '90E' | 'BW_RED' | 'TEE' | 'PIPE';
+export type WallSchedule = '10S' | '40S' | '80S' | '160S' | 'XXS';
+
+export interface FittingWallThicknessEntry {
+  dn: number;
+  thicknessBySchedule: Record<WallSchedule, number>;
+}
+
+export const FITTING_WALL_THICKNESS: Record<FittingType, FittingWallThicknessEntry[]> = {
+  '45E': [
+    { dn: 15, thicknessBySchedule: { '10S': 2.77, '40S': 2.77, '80S': 3.73, '160S': 4.78, 'XXS': 7.47 } },
+    { dn: 20, thicknessBySchedule: { '10S': 2.87, '40S': 2.87, '80S': 3.91, '160S': 5.56, 'XXS': 7.82 } },
+    { dn: 25, thicknessBySchedule: { '10S': 3.38, '40S': 3.38, '80S': 4.55, '160S': 6.35, 'XXS': 9.09 } },
+    { dn: 32, thicknessBySchedule: { '10S': 3.56, '40S': 3.56, '80S': 4.85, '160S': 6.35, 'XXS': 9.70 } },
+    { dn: 40, thicknessBySchedule: { '10S': 3.68, '40S': 3.68, '80S': 5.08, '160S': 7.14, 'XXS': 10.15 } },
+    { dn: 50, thicknessBySchedule: { '10S': 3.91, '40S': 3.91, '80S': 5.54, '160S': 8.74, 'XXS': 11.07 } },
+    { dn: 65, thicknessBySchedule: { '10S': 5.16, '40S': 5.16, '80S': 7.01, '160S': 9.53, 'XXS': 14.02 } },
+    { dn: 80, thicknessBySchedule: { '10S': 5.49, '40S': 5.49, '80S': 7.62, '160S': 11.13, 'XXS': 15.24 } },
+    { dn: 100, thicknessBySchedule: { '10S': 6.02, '40S': 6.02, '80S': 8.56, '160S': 13.49, 'XXS': 17.12 } },
+    { dn: 125, thicknessBySchedule: { '10S': 6.55, '40S': 6.55, '80S': 9.53, '160S': 15.88, 'XXS': 19.05 } },
+    { dn: 150, thicknessBySchedule: { '10S': 7.11, '40S': 7.11, '80S': 10.97, '160S': 18.26, 'XXS': 21.95 } },
+    { dn: 200, thicknessBySchedule: { '10S': 8.18, '40S': 8.18, '80S': 12.70, '160S': 23.01, 'XXS': 22.23 } },
+    { dn: 250, thicknessBySchedule: { '10S': 9.27, '40S': 9.27, '80S': 12.70, '160S': 28.58, 'XXS': 25.40 } },
+    { dn: 300, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 33.32, 'XXS': 25.40 } },
+    { dn: 350, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 35.71, 'XXS': 25.40 } },
+    { dn: 400, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 40.49, 'XXS': 25.40 } },
+    { dn: 450, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 45.24, 'XXS': 25.40 } },
+    { dn: 500, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 50.01, 'XXS': 25.40 } },
+    { dn: 600, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 59.54, 'XXS': 25.40 } },
+  ],
+  '90E': [
+    { dn: 15, thicknessBySchedule: { '10S': 2.77, '40S': 2.77, '80S': 3.73, '160S': 4.78, 'XXS': 7.47 } },
+    { dn: 20, thicknessBySchedule: { '10S': 2.87, '40S': 2.87, '80S': 3.91, '160S': 5.56, 'XXS': 7.82 } },
+    { dn: 25, thicknessBySchedule: { '10S': 3.38, '40S': 3.38, '80S': 4.55, '160S': 6.35, 'XXS': 9.09 } },
+    { dn: 32, thicknessBySchedule: { '10S': 3.56, '40S': 3.56, '80S': 4.85, '160S': 6.35, 'XXS': 9.70 } },
+    { dn: 40, thicknessBySchedule: { '10S': 3.68, '40S': 3.68, '80S': 5.08, '160S': 7.14, 'XXS': 10.15 } },
+    { dn: 50, thicknessBySchedule: { '10S': 3.91, '40S': 3.91, '80S': 5.54, '160S': 8.74, 'XXS': 11.07 } },
+    { dn: 65, thicknessBySchedule: { '10S': 5.16, '40S': 5.16, '80S': 7.01, '160S': 9.53, 'XXS': 14.02 } },
+    { dn: 80, thicknessBySchedule: { '10S': 5.49, '40S': 5.49, '80S': 7.62, '160S': 11.13, 'XXS': 15.24 } },
+    { dn: 100, thicknessBySchedule: { '10S': 6.02, '40S': 6.02, '80S': 8.56, '160S': 13.49, 'XXS': 17.12 } },
+    { dn: 125, thicknessBySchedule: { '10S': 6.55, '40S': 6.55, '80S': 9.53, '160S': 15.88, 'XXS': 19.05 } },
+    { dn: 150, thicknessBySchedule: { '10S': 7.11, '40S': 7.11, '80S': 10.97, '160S': 18.26, 'XXS': 21.95 } },
+    { dn: 200, thicknessBySchedule: { '10S': 8.18, '40S': 8.18, '80S': 12.70, '160S': 23.01, 'XXS': 22.23 } },
+    { dn: 250, thicknessBySchedule: { '10S': 9.27, '40S': 9.27, '80S': 12.70, '160S': 28.58, 'XXS': 25.40 } },
+    { dn: 300, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 33.32, 'XXS': 25.40 } },
+    { dn: 350, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 35.71, 'XXS': 25.40 } },
+    { dn: 400, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 40.49, 'XXS': 25.40 } },
+    { dn: 450, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 45.24, 'XXS': 25.40 } },
+    { dn: 500, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 50.01, 'XXS': 25.40 } },
+    { dn: 600, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 59.54, 'XXS': 25.40 } },
+  ],
+  'BW_RED': [
+    { dn: 15, thicknessBySchedule: { '10S': 2.77, '40S': 2.77, '80S': 3.73, '160S': 4.78, 'XXS': 7.47 } },
+    { dn: 20, thicknessBySchedule: { '10S': 2.87, '40S': 2.87, '80S': 3.91, '160S': 5.56, 'XXS': 7.82 } },
+    { dn: 25, thicknessBySchedule: { '10S': 3.38, '40S': 3.38, '80S': 4.55, '160S': 6.35, 'XXS': 9.09 } },
+    { dn: 32, thicknessBySchedule: { '10S': 3.56, '40S': 3.56, '80S': 4.85, '160S': 6.35, 'XXS': 9.70 } },
+    { dn: 40, thicknessBySchedule: { '10S': 3.68, '40S': 3.68, '80S': 5.08, '160S': 7.14, 'XXS': 10.15 } },
+    { dn: 50, thicknessBySchedule: { '10S': 3.91, '40S': 3.91, '80S': 5.54, '160S': 8.74, 'XXS': 11.07 } },
+    { dn: 65, thicknessBySchedule: { '10S': 5.16, '40S': 5.16, '80S': 7.01, '160S': 9.53, 'XXS': 14.02 } },
+    { dn: 80, thicknessBySchedule: { '10S': 5.49, '40S': 5.49, '80S': 7.62, '160S': 11.13, 'XXS': 15.24 } },
+    { dn: 100, thicknessBySchedule: { '10S': 6.02, '40S': 6.02, '80S': 8.56, '160S': 13.49, 'XXS': 17.12 } },
+    { dn: 125, thicknessBySchedule: { '10S': 6.55, '40S': 6.55, '80S': 9.53, '160S': 15.88, 'XXS': 19.05 } },
+    { dn: 150, thicknessBySchedule: { '10S': 7.11, '40S': 7.11, '80S': 10.97, '160S': 18.26, 'XXS': 21.95 } },
+    { dn: 200, thicknessBySchedule: { '10S': 8.18, '40S': 8.18, '80S': 12.70, '160S': 23.01, 'XXS': 22.23 } },
+    { dn: 250, thicknessBySchedule: { '10S': 9.27, '40S': 9.27, '80S': 12.70, '160S': 28.58, 'XXS': 25.40 } },
+    { dn: 300, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 33.32, 'XXS': 25.40 } },
+    { dn: 350, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 35.71, 'XXS': 25.40 } },
+    { dn: 400, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 40.49, 'XXS': 25.40 } },
+    { dn: 450, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 45.24, 'XXS': 25.40 } },
+    { dn: 500, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 50.01, 'XXS': 25.40 } },
+    { dn: 600, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 59.54, 'XXS': 25.40 } },
+  ],
+  'TEE': [
+    { dn: 15, thicknessBySchedule: { '10S': 2.77, '40S': 2.77, '80S': 3.73, '160S': 4.78, 'XXS': 7.47 } },
+    { dn: 20, thicknessBySchedule: { '10S': 2.87, '40S': 2.87, '80S': 3.91, '160S': 5.56, 'XXS': 7.82 } },
+    { dn: 25, thicknessBySchedule: { '10S': 3.38, '40S': 3.38, '80S': 4.55, '160S': 6.35, 'XXS': 9.09 } },
+    { dn: 32, thicknessBySchedule: { '10S': 3.56, '40S': 3.56, '80S': 4.85, '160S': 6.35, 'XXS': 9.70 } },
+    { dn: 40, thicknessBySchedule: { '10S': 3.68, '40S': 3.68, '80S': 5.08, '160S': 7.14, 'XXS': 10.15 } },
+    { dn: 50, thicknessBySchedule: { '10S': 3.91, '40S': 3.91, '80S': 5.54, '160S': 8.74, 'XXS': 11.07 } },
+    { dn: 65, thicknessBySchedule: { '10S': 5.16, '40S': 5.16, '80S': 7.01, '160S': 9.53, 'XXS': 14.02 } },
+    { dn: 80, thicknessBySchedule: { '10S': 5.49, '40S': 5.49, '80S': 7.62, '160S': 11.13, 'XXS': 15.24 } },
+    { dn: 100, thicknessBySchedule: { '10S': 6.02, '40S': 6.02, '80S': 8.56, '160S': 13.49, 'XXS': 17.12 } },
+    { dn: 125, thicknessBySchedule: { '10S': 6.55, '40S': 6.55, '80S': 9.53, '160S': 15.88, 'XXS': 19.05 } },
+    { dn: 150, thicknessBySchedule: { '10S': 7.11, '40S': 7.11, '80S': 10.97, '160S': 18.26, 'XXS': 21.95 } },
+    { dn: 200, thicknessBySchedule: { '10S': 8.18, '40S': 8.18, '80S': 12.70, '160S': 23.01, 'XXS': 22.23 } },
+    { dn: 250, thicknessBySchedule: { '10S': 9.27, '40S': 9.27, '80S': 12.70, '160S': 28.58, 'XXS': 25.40 } },
+    { dn: 300, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 33.32, 'XXS': 25.40 } },
+    { dn: 350, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 35.71, 'XXS': 25.40 } },
+    { dn: 400, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 40.49, 'XXS': 25.40 } },
+    { dn: 450, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 45.24, 'XXS': 25.40 } },
+    { dn: 500, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 50.01, 'XXS': 25.40 } },
+    { dn: 600, thicknessBySchedule: { '10S': 9.53, '40S': 9.53, '80S': 12.70, '160S': 59.54, 'XXS': 25.40 } },
+  ],
+  'PIPE': [
+    { dn: 15, thicknessBySchedule: { '10S': 2.11, '40S': 2.77, '80S': 3.73, '160S': 4.78, 'XXS': 7.47 } },
+    { dn: 20, thicknessBySchedule: { '10S': 2.11, '40S': 2.87, '80S': 3.91, '160S': 5.56, 'XXS': 7.82 } },
+    { dn: 25, thicknessBySchedule: { '10S': 2.77, '40S': 3.38, '80S': 4.55, '160S': 6.35, 'XXS': 9.09 } },
+    { dn: 32, thicknessBySchedule: { '10S': 2.77, '40S': 3.56, '80S': 4.85, '160S': 6.35, 'XXS': 9.70 } },
+    { dn: 40, thicknessBySchedule: { '10S': 2.77, '40S': 3.68, '80S': 5.08, '160S': 7.14, 'XXS': 10.15 } },
+    { dn: 50, thicknessBySchedule: { '10S': 2.77, '40S': 3.91, '80S': 5.54, '160S': 8.74, 'XXS': 11.07 } },
+    { dn: 65, thicknessBySchedule: { '10S': 3.40, '40S': 5.16, '80S': 7.01, '160S': 9.53, 'XXS': 14.02 } },
+    { dn: 80, thicknessBySchedule: { '10S': 3.05, '40S': 5.49, '80S': 7.62, '160S': 11.13, 'XXS': 15.24 } },
+    { dn: 100, thicknessBySchedule: { '10S': 3.05, '40S': 6.02, '80S': 8.56, '160S': 13.49, 'XXS': 17.12 } },
+    { dn: 125, thicknessBySchedule: { '10S': 3.40, '40S': 6.55, '80S': 9.53, '160S': 15.88, 'XXS': 19.05 } },
+    { dn: 150, thicknessBySchedule: { '10S': 3.40, '40S': 7.11, '80S': 10.97, '160S': 18.26, 'XXS': 21.95 } },
+    { dn: 200, thicknessBySchedule: { '10S': 3.76, '40S': 8.18, '80S': 12.70, '160S': 23.01, 'XXS': 22.23 } },
+    { dn: 250, thicknessBySchedule: { '10S': 4.19, '40S': 9.27, '80S': 12.70, '160S': 28.58, 'XXS': 25.40 } },
+    { dn: 300, thicknessBySchedule: { '10S': 4.57, '40S': 9.53, '80S': 12.70, '160S': 33.32, 'XXS': 25.40 } },
+    { dn: 350, thicknessBySchedule: { '10S': 4.78, '40S': 9.53, '80S': 12.70, '160S': 35.71, 'XXS': 25.40 } },
+    { dn: 400, thicknessBySchedule: { '10S': 4.78, '40S': 9.53, '80S': 12.70, '160S': 40.49, 'XXS': 25.40 } },
+    { dn: 450, thicknessBySchedule: { '10S': 4.78, '40S': 9.53, '80S': 12.70, '160S': 45.24, 'XXS': 25.40 } },
+    { dn: 500, thicknessBySchedule: { '10S': 5.54, '40S': 9.53, '80S': 12.70, '160S': 50.01, 'XXS': 25.40 } },
+    { dn: 600, thicknessBySchedule: { '10S': 5.54, '40S': 9.53, '80S': 12.70, '160S': 59.54, 'XXS': 25.40 } },
+  ],
+};
+
+/**
+ * Helper function to get wall thickness for a fitting
+ */
+export function getFittingWallThickness(
+  fittingType: FittingType,
+  dn: number,
+  schedule: WallSchedule,
+): number | undefined {
+  const entries = FITTING_WALL_THICKNESS[fittingType];
+  const entry = entries?.find((e) => e.dn === dn);
+  return entry?.thicknessBySchedule[schedule];
+}
+
+/**
+ * Schedule normalization for wall thickness lookup
+ */
+export const SCHEDULE_TO_WALL_SCHEDULE: Record<string, WallSchedule> = {
+  '10S': '10S',
+  'Sch 10S': '10S',
+  '10': '10S',
+  '40S': '40S',
+  'Sch 40S': '40S',
+  'STD': '40S',
+  'STD (40)': '40S',
+  '40': '40S',
+  '80S': '80S',
+  'Sch 80S': '80S',
+  'XS': '80S',
+  'XS (80)': '80S',
+  'XH': '80S',
+  '80': '80S',
+  '160S': '160S',
+  'Sch 160S': '160S',
+  '160': '160S',
+  'XXS': 'XXS',
+  'XXH': 'XXS',
 };
