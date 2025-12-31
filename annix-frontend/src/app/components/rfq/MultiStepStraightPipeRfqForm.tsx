@@ -10262,7 +10262,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     })()}
 
                     {/* Surface Area Calculations - Show when surface protection is selected */}
-                    {showSurfaceProtection && entry.specs.outsideDiameterMm && entry.specs.wallThicknessMm && entry.calculation && (
+                    {requiredProducts.includes('surface_protection') && entry.specs.outsideDiameterMm && entry.specs.wallThicknessMm && entry.calculation && (
                       (() => {
                         const odMm = entry.specs.outsideDiameterMm;
                         const wtMm = entry.specs.wallThicknessMm;
