@@ -30,6 +30,7 @@ import { BendDimensionService } from './bend-dimension/bend-dimension.service';
 import { BendDimensionController } from './bend-dimension/bend-dimension.controller';
 import { BendDimensionModule } from './bend-dimension/bend-dimension.module';
 import { WeldTypeModule } from './weld-type/weld-type.module';
+import { WeldJointEfficiencyModule } from './weld-joint-efficiency/weld-joint-efficiency.module';
 import { PipeEndConfigurationModule } from './pipe-end-configuration/pipe-end-configuration.module';
 import { BendCenterToFaceModule } from './bend-center-to-face/bend-center-to-face.module';
 import { RfqModule } from './rfq/rfq.module';
@@ -81,6 +82,7 @@ import typeormConfig from './config/typeorm';
     NbNpsLookupModule,
     BendDimensionModule,
     WeldTypeModule,
+    WeldJointEfficiencyModule,
     PipeEndConfigurationModule,
     BendCenterToFaceModule,
     RfqModule,

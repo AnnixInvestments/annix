@@ -20,6 +20,10 @@ import {
   findRecommendedSchedule,
   MATERIAL_ALLOWABLE_STRESS
 } from '@/app/lib/utils/pipeCalculations';
+import {
+  recommendWallThicknessCarbonPipe,
+  WeldThicknessRecommendation
+} from '@/app/lib/utils/weldThicknessLookup';
 import GoogleMapLocationPicker from '@/app/components/GoogleMapLocationPicker';
 import { useEnvironmentalIntelligence } from '@/app/lib/hooks/useEnvironmentalIntelligence';
 import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
@@ -93,22 +97,6 @@ const getFlangesPerPipe = (pipeEndConfig: string): number => {
       return 2;
     default:
       return 0;
-  }
-};
-
-// Helper function to check if pipe configuration has flanges on both ends
-// If both ends are flanged, pipes connect via flanges (no butt welds needed)
-const hasFlangesOnBothEnds = (pipeEndConfig: string): boolean => {
-  switch (pipeEndConfig) {
-    case 'FBE':     // Flanged both ends
-    case 'FOE_LF':  // Fixed flange + loose flange
-    case 'FOE_RF':  // Fixed flange + rotating flange
-    case '2X_RF':   // Two rotating flanges
-      return true;
-    case 'PE':      // Plain ended - no flanges
-    case 'FOE':     // Flanged one end only
-    default:
-      return false;
   }
 };
 
@@ -746,16 +734,9 @@ const calculateLocalPipeResult = (
   const weldsPerPipe = getWeldCountPerPipe(pipeEndConfiguration);
   const numberOfFlangeWelds = weldsPerPipe * calculatedPipeCount;
 
-  // Butt welds between pipes (only needed if pipes don't have flanges on both ends)
-  // If both ends have flanges, pipes connect via flanges, not butt welds
-  const numberOfButtWelds = hasFlangesOnBothEnds(pipeEndConfiguration)
-    ? 0
-    : Math.max(0, calculatedPipeCount - 1);
-
   // Weld length calculations (circumference-based)
   const circumference = Math.PI * outsideDiameterMm / 1000; // in meters
   const totalFlangeWeldLength = numberOfFlangeWelds * circumference;
-  const totalButtWeldLength = numberOfButtWelds * circumference;
 
   // Get flange weight based on pressure class (includes flange + bolts + gasket)
   const flangeWeightPerUnit = getFlangeWeight(nominalBoreMm, pressureClassDesignation);
@@ -770,8 +751,6 @@ const calculateLocalPipeResult = (
     calculatedPipeCount,
     calculatedTotalLength,
     numberOfFlanges,
-    numberOfButtWelds,
-    totalButtWeldLength,
     numberOfFlangeWelds,
     totalFlangeWeldLength,
     outsideDiameterMm,
@@ -8779,7 +8758,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         </div>
                         <div className="flex flex-col">
                           <span className="text-xs text-gray-500 uppercase tracking-wide">Weld Length</span>
-                          <span className="font-medium text-gray-900">{((entry.calculation.totalFlangeWeldLength || 0) + (entry.calculation.totalButtWeldLength || 0)).toFixed(2)} m</span>
+                          <span className="font-medium text-gray-900">{(entry.calculation.totalFlangeWeldLength || 0).toFixed(2)} m</span>
                         </div>
                       </div>
                     </div>
@@ -10108,13 +10087,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <p className="text-xs text-gray-500">{entry.calculation.totalFlangeWeldLength?.toFixed(2)}m</p>
                       </div>
 
-                      {/* Butt Welds */}
-                      <div className="bg-white p-2 rounded text-center">
-                        <p className="text-xs text-gray-600 font-medium">Butt Welds</p>
-                        <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfButtWelds}</p>
-                        <p className="text-xs text-gray-500">{entry.calculation.totalButtWeldLength?.toFixed(2)}m</p>
-                      </div>
-
                       {/* Pipe End Config */}
                       <div className="bg-green-50 p-2 rounded text-center">
                         <p className="text-xs text-green-700 font-medium">Config Welds</p>
@@ -10136,6 +10108,66 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         )}
                       </div>
                     )}
+
+                    {/* Weld Thickness Recommendation */}
+                    {(() => {
+                      const dn = entry.specs.nominalBoreMm;
+                      const pressure = globalSpecs?.workingPressureBar || 0;
+                      const temp = entry.specs.workingTemperatureC || globalSpecs?.workingTemperatureC || 20;
+                      const schedule = entry.specs.scheduleNumber;
+
+                      if (!dn || !pressure) return null;
+
+                      const recommendation = recommendWallThicknessCarbonPipe(dn, pressure, temp, schedule);
+                      if (!recommendation) return null;
+
+                      return (
+                        <div className={`mt-3 p-3 rounded-lg border-2 ${recommendation.isAdequate ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-300'}`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            {recommendation.isAdequate ? (
+                              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                            )}
+                            <span className={`text-sm font-semibold ${recommendation.isAdequate ? 'text-green-800' : 'text-amber-800'}`}>
+                              Weld Thickness Verification
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                            <div className="text-gray-600">Design Conditions:</div>
+                            <div className="font-medium text-gray-900">{pressure} bar @ {temp}°C</div>
+                            <div className="text-gray-600">Recommended Schedule:</div>
+                            <div className="font-medium text-gray-900">{recommendation.recommendedSchedule}</div>
+                            <div className="text-gray-600">Recommended Wall:</div>
+                            <div className="font-medium text-gray-900">{recommendation.recommendedWallMm.toFixed(2)} mm</div>
+                            <div className="text-gray-600">Max Allowable Pressure:</div>
+                            <div className="font-medium text-gray-900">{recommendation.maxPressureBar} bar</div>
+                            {schedule && (
+                              <>
+                                <div className="text-gray-600">Selected Schedule:</div>
+                                <div className={`font-medium ${recommendation.isAdequate ? 'text-green-700' : 'text-amber-700'}`}>
+                                  {schedule} {recommendation.currentWallMm ? `(${recommendation.currentWallMm.toFixed(2)} mm)` : ''}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          {recommendation.warning && (
+                            <div className="mt-2 text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                              {recommendation.warning}
+                            </div>
+                          )}
+                          {recommendation.isAdequate && (
+                            <div className="mt-2 text-xs text-green-700">
+                              Selected schedule meets ASME B31.3 / ASTM A106 requirements
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="bg-gray-50 border border-gray-200 p-3 rounded-md">
