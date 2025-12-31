@@ -154,6 +154,16 @@ export const CARBON_STEEL_FITTINGS: Record<string, FittingData[]> = {
     { dn: 200, od_mm: 219.1, wall_mm: 8.18, pressures_bar: [79, 76, 69, 57] },
     { dn: 250, od_mm: 273.0, wall_mm: 9.27, pressures_bar: [72, 69, 62, 52] },
     { dn: 300, od_mm: 323.9, wall_mm: 9.53, pressures_bar: [62, 60, 54, 45] },
+    { dn: 350, od_mm: 355.6, wall_mm: 9.53, pressures_bar: [57, 55, 49, 41] },
+    { dn: 400, od_mm: 406.4, wall_mm: 9.53, pressures_bar: [49, 47, 43, 36] },
+    { dn: 450, od_mm: 457.2, wall_mm: 9.53, pressures_bar: [44, 42, 38, 32] },
+    { dn: 500, od_mm: 508.0, wall_mm: 9.53, pressures_bar: [39, 38, 34, 28] },
+    { dn: 600, od_mm: 609.6, wall_mm: 9.53, pressures_bar: [33, 32, 29, 24] },
+    { dn: 750, od_mm: 762.0, wall_mm: 9.53, pressures_bar: [26, 25, 23, 19] },
+    { dn: 900, od_mm: 914.4, wall_mm: 9.53, pressures_bar: [22, 21, 19, 16] },
+    { dn: 1000, od_mm: 1016.0, wall_mm: 9.53, pressures_bar: [20, 19, 17, 14] },
+    { dn: 1050, od_mm: 1066.8, wall_mm: 9.53, pressures_bar: [19, 18, 16, 14] },
+    { dn: 1200, od_mm: 1219.2, wall_mm: 9.53, pressures_bar: [16, 16, 14, 12] },
   ],
   'XH': [
     { dn: 15, od_mm: 21.3, wall_mm: 3.73, pressures_bar: [420, 404, 364, 303] },
@@ -170,6 +180,16 @@ export const CARBON_STEEL_FITTINGS: Record<string, FittingData[]> = {
     { dn: 200, od_mm: 219.1, wall_mm: 12.70, pressures_bar: [125, 120, 109, 90] },
     { dn: 250, od_mm: 273.0, wall_mm: 12.70, pressures_bar: [100, 96, 87, 72] },
     { dn: 300, od_mm: 323.9, wall_mm: 12.70, pressures_bar: [83, 80, 72, 60] },
+    { dn: 350, od_mm: 355.6, wall_mm: 12.70, pressures_bar: [76, 73, 66, 55] },
+    { dn: 400, od_mm: 406.4, wall_mm: 12.70, pressures_bar: [66, 64, 57, 48] },
+    { dn: 450, od_mm: 457.2, wall_mm: 12.70, pressures_bar: [59, 57, 51, 42] },
+    { dn: 500, od_mm: 508.0, wall_mm: 12.70, pressures_bar: [53, 51, 46, 38] },
+    { dn: 600, od_mm: 609.6, wall_mm: 12.70, pressures_bar: [44, 42, 38, 32] },
+    { dn: 750, od_mm: 762.0, wall_mm: 12.70, pressures_bar: [35, 34, 30, 25] },
+    { dn: 900, od_mm: 914.4, wall_mm: 12.70, pressures_bar: [29, 28, 25, 21] },
+    { dn: 1000, od_mm: 1016.0, wall_mm: 12.70, pressures_bar: [26, 25, 23, 19] },
+    { dn: 1050, od_mm: 1066.8, wall_mm: 12.70, pressures_bar: [25, 24, 22, 18] },
+    { dn: 1200, od_mm: 1219.2, wall_mm: 12.70, pressures_bar: [22, 21, 19, 16] },
   ],
   'XXH': [
     { dn: 15, od_mm: 21.3, wall_mm: 7.47, pressures_bar: [1004, 964, 870, 724] },
@@ -186,6 +206,11 @@ export const CARBON_STEEL_FITTINGS: Record<string, FittingData[]> = {
     { dn: 200, od_mm: 219.1, wall_mm: 22.23, pressures_bar: [228, 219, 198, 164] },
     { dn: 250, od_mm: 273.0, wall_mm: 25.40, pressures_bar: [208, 199, 180, 150] },
     { dn: 300, od_mm: 323.9, wall_mm: 25.40, pressures_bar: [173, 166, 150, 124] },
+    { dn: 350, od_mm: 355.6, wall_mm: 25.40, pressures_bar: [157, 151, 136, 113] },
+    { dn: 400, od_mm: 406.4, wall_mm: 25.40, pressures_bar: [137, 132, 119, 99] },
+    { dn: 450, od_mm: 457.2, wall_mm: 25.40, pressures_bar: [122, 117, 106, 88] },
+    { dn: 500, od_mm: 508.0, wall_mm: 25.40, pressures_bar: [110, 105, 95, 79] },
+    { dn: 600, od_mm: 609.6, wall_mm: 25.40, pressures_bar: [91, 88, 79, 66] },
   ]
 };
 
@@ -398,12 +423,12 @@ export function getOuterDiameterMm(dn: number): number | null {
   const pipe = CARBON_STEEL_PIPES.find(p => p.dn === dn);
   if (pipe) {
     // Calculate OD from wall thickness (approximate)
-    // OD values from standard tables
+    // OD values from standard tables (ASME B36.10)
     const odLookup: Record<number, number> = {
       15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3,
       65: 73.0, 80: 88.9, 100: 114.3, 125: 141.3, 150: 168.3, 200: 219.1,
       250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0,
-      600: 609.6
+      600: 609.6, 750: 762.0, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2
     };
     return odLookup[dn] || null;
   }

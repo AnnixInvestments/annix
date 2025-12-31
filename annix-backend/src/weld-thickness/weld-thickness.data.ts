@@ -106,6 +106,64 @@ export const CARBON_STEEL_PIPES: CarbonSteelPipeData[] = [
   { dn: 250, schedule: 'XS', wallMm: 12.70, pressuresBar: [100, 100, 96, 87, 86, 66, 55, 44] },
   { dn: 300, schedule: 'STD', wallMm: 9.53, pressuresBar: [62, 62, 60, 54, 53, 41, 34, 28] },
   { dn: 300, schedule: 'XS', wallMm: 12.70, pressuresBar: [83, 83, 80, 72, 71, 55, 46, 37] },
+  // DN 350 (NPS 14)
+  { dn: 350, schedule: '10', wallMm: 6.35, pressuresBar: [62, 62, 59, 53, 52, 40, 33, 27] },
+  { dn: 350, schedule: '20', wallMm: 7.92, pressuresBar: [78, 78, 74, 66, 65, 51, 42, 34] },
+  { dn: 350, schedule: 'STD', wallMm: 9.53, pressuresBar: [94, 94, 89, 80, 79, 61, 51, 41] },
+  { dn: 350, schedule: 'XS', wallMm: 12.70, pressuresBar: [126, 126, 119, 107, 106, 82, 68, 55] },
+  { dn: 350, schedule: '60', wallMm: 14.27, pressuresBar: [142, 142, 134, 121, 119, 92, 77, 62] },
+  { dn: 350, schedule: '80', wallMm: 15.88, pressuresBar: [158, 158, 149, 134, 133, 103, 85, 69] },
+  // DN 400 (NPS 16)
+  { dn: 400, schedule: '10', wallMm: 6.35, pressuresBar: [54, 54, 51, 46, 45, 35, 29, 23] },
+  { dn: 400, schedule: '20', wallMm: 7.92, pressuresBar: [68, 68, 64, 58, 57, 44, 37, 30] },
+  { dn: 400, schedule: 'STD', wallMm: 9.53, pressuresBar: [82, 82, 78, 70, 69, 53, 44, 36] },
+  { dn: 400, schedule: 'XS', wallMm: 12.70, pressuresBar: [110, 110, 104, 93, 92, 71, 59, 48] },
+  { dn: 400, schedule: '60', wallMm: 16.66, pressuresBar: [145, 145, 137, 123, 122, 94, 78, 63] },
+  { dn: 400, schedule: '80', wallMm: 19.05, pressuresBar: [167, 167, 158, 142, 140, 108, 90, 72] },
+  // DN 450 (NPS 18)
+  { dn: 450, schedule: '10', wallMm: 6.35, pressuresBar: [48, 48, 45, 41, 40, 31, 26, 21] },
+  { dn: 450, schedule: '20', wallMm: 7.92, pressuresBar: [60, 60, 57, 51, 50, 39, 32, 26] },
+  { dn: 450, schedule: 'STD', wallMm: 9.53, pressuresBar: [73, 73, 69, 62, 61, 47, 39, 32] },
+  { dn: 450, schedule: 'XS', wallMm: 12.70, pressuresBar: [97, 97, 92, 83, 82, 63, 52, 42] },
+  { dn: 450, schedule: '60', wallMm: 17.48, pressuresBar: [135, 135, 127, 115, 113, 88, 73, 59] },
+  { dn: 450, schedule: '80', wallMm: 20.62, pressuresBar: [160, 160, 151, 136, 134, 104, 86, 69] },
+  // DN 500 (NPS 20)
+  { dn: 500, schedule: '10', wallMm: 6.35, pressuresBar: [43, 43, 41, 37, 36, 28, 23, 19] },
+  { dn: 500, schedule: '20', wallMm: 9.53, pressuresBar: [65, 65, 62, 56, 55, 42, 35, 28] },
+  { dn: 500, schedule: 'STD', wallMm: 9.53, pressuresBar: [65, 65, 62, 56, 55, 42, 35, 28] },
+  { dn: 500, schedule: 'XS', wallMm: 12.70, pressuresBar: [87, 87, 82, 74, 73, 57, 47, 38] },
+  { dn: 500, schedule: '60', wallMm: 18.26, pressuresBar: [127, 127, 120, 108, 106, 82, 68, 55] },
+  { dn: 500, schedule: '80', wallMm: 20.62, pressuresBar: [143, 143, 135, 122, 120, 93, 77, 62] },
+  // DN 600 (NPS 24)
+  { dn: 600, schedule: '10', wallMm: 6.35, pressuresBar: [36, 36, 34, 31, 30, 23, 19, 16] },
+  { dn: 600, schedule: '20', wallMm: 9.53, pressuresBar: [54, 54, 51, 46, 45, 35, 29, 23] },
+  { dn: 600, schedule: 'STD', wallMm: 9.53, pressuresBar: [54, 54, 51, 46, 45, 35, 29, 23] },
+  { dn: 600, schedule: 'XS', wallMm: 12.70, pressuresBar: [73, 73, 69, 62, 61, 47, 39, 32] },
+  { dn: 600, schedule: '60', wallMm: 24.61, pressuresBar: [142, 142, 134, 121, 119, 92, 77, 62] },
+  { dn: 600, schedule: '80', wallMm: 30.96, pressuresBar: [180, 180, 170, 153, 151, 117, 97, 78] },
+  // DN 750 (NPS 30)
+  { dn: 750, schedule: '10', wallMm: 7.92, pressuresBar: [36, 36, 34, 31, 30, 23, 19, 16] },
+  { dn: 750, schedule: '20', wallMm: 9.53, pressuresBar: [43, 43, 41, 37, 36, 28, 23, 19] },
+  { dn: 750, schedule: 'STD', wallMm: 9.53, pressuresBar: [43, 43, 41, 37, 36, 28, 23, 19] },
+  { dn: 750, schedule: 'XS', wallMm: 12.70, pressuresBar: [58, 58, 55, 49, 49, 38, 31, 25] },
+  // DN 900 (NPS 36)
+  { dn: 900, schedule: '10', wallMm: 9.53, pressuresBar: [36, 36, 34, 31, 30, 23, 19, 16] },
+  { dn: 900, schedule: 'STD', wallMm: 9.53, pressuresBar: [36, 36, 34, 31, 30, 23, 19, 16] },
+  { dn: 900, schedule: 'XS', wallMm: 12.70, pressuresBar: [48, 48, 45, 41, 40, 31, 26, 21] },
+  // DN 1000 (NPS 40)
+  { dn: 1000, schedule: '10', wallMm: 9.53, pressuresBar: [32, 32, 31, 28, 27, 21, 17, 14] },
+  { dn: 1000, schedule: 'STD', wallMm: 9.53, pressuresBar: [32, 32, 31, 28, 27, 21, 17, 14] },
+  { dn: 1000, schedule: 'XS', wallMm: 12.70, pressuresBar: [43, 43, 41, 37, 36, 28, 23, 19] },
+  // DN 1050 (NPS 42)
+  { dn: 1050, schedule: '10', wallMm: 9.53, pressuresBar: [31, 31, 29, 26, 26, 20, 17, 13] },
+  { dn: 1050, schedule: 'STD', wallMm: 9.53, pressuresBar: [31, 31, 29, 26, 26, 20, 17, 13] },
+  { dn: 1050, schedule: 'XS', wallMm: 12.70, pressuresBar: [41, 41, 39, 35, 35, 27, 22, 18] },
+  // DN 1200 (NPS 48)
+  { dn: 1200, schedule: '5', wallMm: 6.35, pressuresBar: [18, 18, 17, 15, 15, 12, 10, 8] },
+  { dn: 1200, schedule: '10', wallMm: 9.53, pressuresBar: [27, 27, 26, 23, 23, 18, 15, 12] },
+  { dn: 1200, schedule: '20', wallMm: 12.70, pressuresBar: [36, 36, 34, 31, 30, 23, 19, 15] },
+  { dn: 1200, schedule: 'STD', wallMm: 9.53, pressuresBar: [27, 27, 26, 23, 23, 18, 15, 12] },
+  { dn: 1200, schedule: 'XS', wallMm: 12.70, pressuresBar: [36, 36, 34, 31, 30, 23, 19, 15] },
 ];
 
 // 2. Stainless Steel Pipes (ASTM A312 / ASME SA312)
@@ -159,6 +217,16 @@ export const CARBON_STEEL_FITTINGS: Record<string, FittingData[]> = {
     { dn: 200, odMm: 219.1, wallMm: 8.18, pressuresBar: [79, 76, 69, 57] },
     { dn: 250, odMm: 273.0, wallMm: 9.27, pressuresBar: [72, 69, 62, 52] },
     { dn: 300, odMm: 323.9, wallMm: 9.53, pressuresBar: [62, 60, 54, 45] },
+    { dn: 350, odMm: 355.6, wallMm: 9.53, pressuresBar: [57, 55, 49, 41] },
+    { dn: 400, odMm: 406.4, wallMm: 9.53, pressuresBar: [49, 47, 43, 36] },
+    { dn: 450, odMm: 457.2, wallMm: 9.53, pressuresBar: [44, 42, 38, 32] },
+    { dn: 500, odMm: 508.0, wallMm: 9.53, pressuresBar: [39, 38, 34, 28] },
+    { dn: 600, odMm: 609.6, wallMm: 9.53, pressuresBar: [33, 32, 29, 24] },
+    { dn: 750, odMm: 762.0, wallMm: 9.53, pressuresBar: [26, 25, 23, 19] },
+    { dn: 900, odMm: 914.4, wallMm: 9.53, pressuresBar: [22, 21, 19, 16] },
+    { dn: 1000, odMm: 1016.0, wallMm: 9.53, pressuresBar: [20, 19, 17, 14] },
+    { dn: 1050, odMm: 1066.8, wallMm: 9.53, pressuresBar: [19, 18, 16, 14] },
+    { dn: 1200, odMm: 1219.2, wallMm: 9.53, pressuresBar: [16, 16, 14, 12] },
   ],
   'XH': [
     { dn: 15, odMm: 21.3, wallMm: 3.73, pressuresBar: [420, 404, 364, 303] },
@@ -175,6 +243,16 @@ export const CARBON_STEEL_FITTINGS: Record<string, FittingData[]> = {
     { dn: 200, odMm: 219.1, wallMm: 12.70, pressuresBar: [125, 120, 109, 90] },
     { dn: 250, odMm: 273.0, wallMm: 12.70, pressuresBar: [100, 96, 87, 72] },
     { dn: 300, odMm: 323.9, wallMm: 12.70, pressuresBar: [83, 80, 72, 60] },
+    { dn: 350, odMm: 355.6, wallMm: 12.70, pressuresBar: [76, 73, 66, 55] },
+    { dn: 400, odMm: 406.4, wallMm: 12.70, pressuresBar: [66, 64, 57, 48] },
+    { dn: 450, odMm: 457.2, wallMm: 12.70, pressuresBar: [59, 57, 51, 42] },
+    { dn: 500, odMm: 508.0, wallMm: 12.70, pressuresBar: [53, 51, 46, 38] },
+    { dn: 600, odMm: 609.6, wallMm: 12.70, pressuresBar: [44, 42, 38, 32] },
+    { dn: 750, odMm: 762.0, wallMm: 12.70, pressuresBar: [35, 34, 30, 25] },
+    { dn: 900, odMm: 914.4, wallMm: 12.70, pressuresBar: [29, 28, 25, 21] },
+    { dn: 1000, odMm: 1016.0, wallMm: 12.70, pressuresBar: [26, 25, 23, 19] },
+    { dn: 1050, odMm: 1066.8, wallMm: 12.70, pressuresBar: [25, 24, 22, 18] },
+    { dn: 1200, odMm: 1219.2, wallMm: 12.70, pressuresBar: [22, 21, 19, 16] },
   ],
   'XXH': [
     { dn: 15, odMm: 21.3, wallMm: 7.47, pressuresBar: [1004, 964, 870, 724] },
@@ -191,6 +269,11 @@ export const CARBON_STEEL_FITTINGS: Record<string, FittingData[]> = {
     { dn: 200, odMm: 219.1, wallMm: 22.23, pressuresBar: [228, 219, 198, 164] },
     { dn: 250, odMm: 273.0, wallMm: 25.40, pressuresBar: [208, 199, 180, 150] },
     { dn: 300, odMm: 323.9, wallMm: 25.40, pressuresBar: [173, 166, 150, 124] },
+    { dn: 350, odMm: 355.6, wallMm: 25.40, pressuresBar: [157, 151, 136, 113] },
+    { dn: 400, odMm: 406.4, wallMm: 25.40, pressuresBar: [137, 132, 119, 99] },
+    { dn: 450, odMm: 457.2, wallMm: 25.40, pressuresBar: [122, 117, 106, 88] },
+    { dn: 500, odMm: 508.0, wallMm: 25.40, pressuresBar: [110, 105, 95, 79] },
+    { dn: 600, odMm: 609.6, wallMm: 25.40, pressuresBar: [91, 88, 79, 66] },
   ],
 };
 
@@ -222,7 +305,7 @@ export const SCHEDULE_TO_FITTING_CLASS: Record<string, string> = {
   'SCH160': 'XXH',
 };
 
-// OD lookup by DN
+// OD lookup by DN (ASME B36.10)
 export const DN_TO_OD_MM: Record<number, number> = {
   15: 21.3,
   20: 26.7,
@@ -244,4 +327,9 @@ export const DN_TO_OD_MM: Record<number, number> = {
   450: 457.2,
   500: 508.0,
   600: 609.6,
+  750: 762.0,
+  900: 914.4,
+  1000: 1016.0,
+  1050: 1066.8,
+  1200: 1219.2,
 };

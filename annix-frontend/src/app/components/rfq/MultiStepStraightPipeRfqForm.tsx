@@ -18,7 +18,9 @@ import {
   calculateMinWallThickness,
   validateScheduleForPressure,
   findRecommendedSchedule,
-  MATERIAL_ALLOWABLE_STRESS
+  MATERIAL_ALLOWABLE_STRESS,
+  calculateTotalSurfaceArea,
+  calculateInsideDiameter
 } from '@/app/lib/utils/pipeCalculations';
 import {
   recommendWallThicknessCarbonPipe,
@@ -10161,9 +10163,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                           // Carbon Steel Weld Fittings wall thickness (ASME B31.1)
                           const FITTING_WT: Record<string, Record<number, number>> = {
-                            'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
-                            'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
-                            'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
+                            'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53, 750: 9.53, 900: 9.53, 1000: 9.53, 1050: 9.53, 1200: 9.53 },
+                            'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70, 750: 12.70, 900: 12.70, 1000: 12.70, 1050: 12.70, 1200: 12.70 },
+                            'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
                           };
 
                           const wt = FITTING_WT[fittingClass]?.[dn];
@@ -10258,6 +10260,103 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         </div>
                       );
                     })()}
+
+                    {/* Surface Area Calculations - Show when surface protection is selected */}
+                    {showSurfaceProtection && entry.specs.outsideDiameterMm && entry.specs.wallThicknessMm && entry.calculation && (
+                      (() => {
+                        const odMm = entry.specs.outsideDiameterMm;
+                        const wtMm = entry.specs.wallThicknessMm;
+                        const idMm = calculateInsideDiameter(odMm, wtMm);
+                        const pipeEndConfig = entry.specs.pipeEndConfiguration || 'PE';
+                        const hasFlangeEnd1 = pipeEndConfig !== 'PE';
+                        const hasFlangeEnd2 = ['FBE', 'FOE_RF', '2X_RF'].includes(pipeEndConfig);
+                        const individualPipeLengthM = entry.specs.individualPipeLength || 0;
+                        const numberOfPipes = entry.calculation.calculatedPipeCount || 0;
+                        const dn = entry.specs.nominalBoreMm;
+
+                        const surfaceArea = calculateTotalSurfaceArea({
+                          outsideDiameterMm: odMm,
+                          insideDiameterMm: idMm,
+                          individualPipeLengthM,
+                          numberOfPipes,
+                          hasFlangeEnd1,
+                          hasFlangeEnd2,
+                          dn,
+                        });
+
+                        const showExternal = globalSpecs?.externalCoatingConfirmed || globalSpecs?.externalCoatingType;
+                        const showInternal = globalSpecs?.internalLiningConfirmed || globalSpecs?.internalLiningType;
+
+                        if (!showExternal && !showInternal) return null;
+
+                        return (
+                          <div className="mt-3 p-3 rounded-lg border-2 bg-indigo-50 border-indigo-200">
+                            <div className="flex items-center gap-2 mb-2">
+                              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                              </svg>
+                              <span className="text-sm font-semibold text-indigo-800">
+                                Surface Area for Coating
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              {/* External Surface Area */}
+                              {showExternal && (
+                                <div className="bg-white p-2 rounded border border-indigo-200">
+                                  <p className="text-xs font-bold text-indigo-700 mb-1">External Coating Area</p>
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex justify-between text-xs">
+                                      <span className="text-gray-600">Per Pipe:</span>
+                                      <span className="font-medium text-gray-900">{surfaceArea.perPipe.totalExternalAreaM2.toFixed(3)} m²</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs">
+                                      <span className="text-gray-600">Total ({numberOfPipes} pipes):</span>
+                                      <span className="font-bold text-indigo-900">{surfaceArea.total.totalExternalAreaM2.toFixed(3)} m²</span>
+                                    </div>
+                                    {surfaceArea.perPipe.externalFlangeBackAreaM2 > 0 && (
+                                      <div className="text-[10px] text-gray-500 mt-1 border-t pt-1">
+                                        Includes flange back: {(surfaceArea.perPipe.externalFlangeBackAreaM2 * numberOfPipes).toFixed(3)} m²
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Internal Surface Area */}
+                              {showInternal && (
+                                <div className="bg-white p-2 rounded border border-indigo-200">
+                                  <p className="text-xs font-bold text-indigo-700 mb-1">Internal Lining Area</p>
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex justify-between text-xs">
+                                      <span className="text-gray-600">Per Pipe:</span>
+                                      <span className="font-medium text-gray-900">{surfaceArea.perPipe.totalInternalAreaM2.toFixed(3)} m²</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs">
+                                      <span className="text-gray-600">Total ({numberOfPipes} pipes):</span>
+                                      <span className="font-bold text-indigo-900">{surfaceArea.total.totalInternalAreaM2.toFixed(3)} m²</span>
+                                    </div>
+                                    {surfaceArea.perPipe.internalFlangeFaceAreaM2 > 0 && (
+                                      <div className="text-[10px] text-gray-500 mt-1 border-t pt-1">
+                                        Includes flange face: {(surfaceArea.perPipe.internalFlangeFaceAreaM2 * numberOfPipes).toFixed(3)} m²
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Combined total */}
+                            {showExternal && showInternal && (
+                              <div className="mt-2 pt-2 border-t border-indigo-200 flex justify-between text-xs">
+                                <span className="text-gray-600 font-medium">Combined Surface Area:</span>
+                                <span className="font-bold text-indigo-900">{surfaceArea.total.totalSurfaceAreaM2.toFixed(3)} m²</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()
+                    )}
                   </div>
                 ) : (
                   <div className="bg-gray-50 border border-gray-200 p-3 rounded-md">
