@@ -286,6 +286,8 @@ export const useRfqForm = () => {
   }, []);
 
   const addBendEntry = useCallback((description?: string) => {
+    // Inherit steel specification from global specs if available
+    const steelSpecId = rfqData.globalSpecs?.steelSpecificationId || 2;
     const newEntry: BendEntry = {
       id: Date.now().toString(),
       itemType: 'bend',
@@ -301,9 +303,9 @@ export const useRfqForm = () => {
         stubs: [],
         quantityValue: 1,
         quantityType: 'number_of_items',
-        workingPressureBar: 16,
-        workingTemperatureC: 120,
-        steelSpecificationId: 2,
+        workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
+        workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 120,
+        steelSpecificationId: steelSpecId,
         useGlobalFlangeSpecs: true,
       },
       notes: 'Custom bend fabrication required',
@@ -318,6 +320,8 @@ export const useRfqForm = () => {
   }, []);
 
   const addFittingEntry = useCallback((description?: string) => {
+    // Inherit steel specification from global specs if available
+    const steelSpecId = rfqData.globalSpecs?.steelSpecificationId || 2;
     const newEntry: FittingEntry = {
       id: Date.now().toString(),
       itemType: 'fitting',
@@ -330,9 +334,9 @@ export const useRfqForm = () => {
         pipeLengthBMm: 1000,
         quantityValue: 1,
         quantityType: 'number_of_items',
-        workingPressureBar: 16,
-        workingTemperatureC: 20,
-        steelSpecificationId: 2,
+        workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
+        workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
+        steelSpecificationId: steelSpecId,
       },
       notes: 'Fitting with pipe sections',
     };
