@@ -7542,7 +7542,38 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
       
       return description;
     }
-    
+
+    // Handle fitting items
+    if (entry.itemType === 'fitting') {
+      const fittingNb = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 'XX';
+      const fittingType = entry.specs?.fittingType || 'Fitting';
+      const fittingStandard = entry.specs?.fittingStandard || '';
+      const fittingSchedule = entry.specs?.scheduleNumber || '';
+
+      // Get steel spec name if available
+      const fittingSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+      const fittingSteelSpec = fittingSteelSpecId
+        ? masterData.steelSpecs.find((s: any) => s.id === fittingSteelSpecId)?.steelSpecName
+        : undefined;
+
+      let fittingDesc = `${fittingNb}NB ${fittingType}`;
+
+      if (fittingSchedule) {
+        const cleanSchedule = fittingSchedule.replace('Sch', '').replace('sch', '');
+        fittingDesc += ` Sch${cleanSchedule}`;
+      }
+
+      if (fittingStandard) {
+        fittingDesc += ` ${fittingStandard}`;
+      }
+
+      if (fittingSteelSpec) {
+        fittingDesc += ` - ${fittingSteelSpec}`;
+      }
+
+      return fittingDesc;
+    }
+
     // Handle straight pipe items
     const nb = entry.specs.nominalBoreMm || 'XX';
     let schedule = entry.specs.scheduleNumber || (entry.specs.wallThicknessMm ? `${entry.specs.wallThicknessMm}WT` : 'XX');
@@ -7601,6 +7632,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
     // Add flange spec and class if available and has flanges
     if (flangeDisplay && flangeStandard && pressureClass) {
       description += `, ${flangeStandard} ${pressureClass}`;
+    }
+
+    // Get steel spec name for pipes
+    const pipesteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+    const pipeSteelSpec = pipesteelSpecId
+      ? masterData.steelSpecs.find((s: any) => s.id === pipesteelSpecId)?.steelSpecName
+      : undefined;
+
+    if (pipeSteelSpec) {
+      description += ` - ${pipeSteelSpec}`;
     }
 
     return description;
