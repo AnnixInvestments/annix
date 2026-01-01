@@ -288,8 +288,7 @@ export const useRfqForm = () => {
   }, []);
 
   const addBendEntry = useCallback((description?: string) => {
-    // Inherit steel specification from global specs if available
-    const steelSpecId = rfqData.globalSpecs?.steelSpecificationId || 2;
+    // Steel spec will be inherited from globalSpecs - user can override in the item UI
     const newEntry: BendEntry = {
       id: Date.now().toString(),
       itemType: 'bend',
@@ -297,7 +296,7 @@ export const useRfqForm = () => {
       specs: {
         nominalBoreMm: undefined, // Default to "Select NB"
         scheduleNumber: undefined, // Default to "Select Schedule"
-        bendType: '1.5D',
+        bendType: undefined, // Default to "Select Bend Type"
         bendDegrees: 90,
         numberOfTangents: 0,
         tangentLengths: [],
@@ -307,7 +306,7 @@ export const useRfqForm = () => {
         quantityType: 'number_of_items',
         workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
         workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 120,
-        steelSpecificationId: steelSpecId,
+        steelSpecificationId: undefined, // Inherit from globalSpecs, can be overridden
         useGlobalFlangeSpecs: true,
       },
       notes: 'Custom bend fabrication required',
@@ -338,7 +337,7 @@ export const useRfqForm = () => {
         quantityType: 'number_of_items',
         workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
         workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
-        steelSpecificationId: steelSpecId,
+        steelSpecificationId: undefined, // Inherit from globalSpecs, can be overridden
       },
       notes: 'Fitting with pipe sections',
     };
