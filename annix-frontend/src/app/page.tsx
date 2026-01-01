@@ -140,15 +140,15 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100">
       {/* Hero Section */}
-      <div className="text-white">
+      <div className="text-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Annix RFQ Platform
             </h1>
-            <p className="text-xl text-blue-200 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Your trusted partner for pipeline quotation management.
               Connect with suppliers, manage RFQs, and streamline your procurement process.
             </p>
@@ -229,7 +229,7 @@ export default function HomePage() {
           <Link href="/customer/login" className="group">
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-blue-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-2xl text-blue-600 mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-2xl text-blue-600 mb-6 group-hover:bg-blue-600 group-hover:text-gray-900 transition-colors">
                   <CustomerIcon />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">
@@ -252,7 +252,7 @@ export default function HomePage() {
           <Link href="/supplier/login" className="group">
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-indigo-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-indigo-100 rounded-2xl text-indigo-600 mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-indigo-100 rounded-2xl text-indigo-600 mb-6 group-hover:bg-indigo-600 group-hover:text-gray-900 transition-colors">
                   <SupplierIcon />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">
@@ -275,7 +275,7 @@ export default function HomePage() {
           <Link href="/admin/login" className="group">
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-purple-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-purple-100 rounded-2xl text-purple-600 mb-6 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-purple-100 rounded-2xl text-purple-600 mb-6 group-hover:bg-purple-600 group-hover:text-gray-900 transition-colors">
                   <AdminIcon />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">
@@ -298,7 +298,7 @@ export default function HomePage() {
           <Link href="/pricing" className="group">
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-green-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-2xl text-green-600 mb-6 group-hover:bg-green-600 group-hover:text-white transition-colors">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-2xl text-green-600 mb-6 group-hover:bg-green-600 group-hover:text-gray-900 transition-colors">
                   <PricingIcon />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">
@@ -408,11 +408,11 @@ export default function HomePage() {
 
         {/* Quick Actions Footer */}
         <div className="mt-12 text-center">
-          <p className="text-blue-100 text-lg mb-4">Ready to get started?</p>
+          <p className="text-gray-600 text-lg mb-4">Ready to get started?</p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               href="/rfq"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 text-gray-900 font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
