@@ -12464,9 +12464,11 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         calculation: result,
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Bend calculation failed:', error);
-      alert('Bend calculation failed. Please check your specifications.');
+      const errorMessage = error?.message || error?.response?.data?.message || 'Unknown error';
+      console.error('Bend calculation error details:', { error, errorMessage });
+      alert('Bend calculation failed: ' + errorMessage);
     }
   };
 
