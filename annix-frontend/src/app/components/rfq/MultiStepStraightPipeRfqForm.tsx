@@ -145,6 +145,19 @@ const PIPE_END_OPTIONS = [
   { value: '2X_RF', label: '2 x R/F - Rotating flanges both ends (2 flange welds)', weldCount: 2 },
 ] as const;
 
+// Bend end configuration options
+const BEND_END_OPTIONS = [
+  { value: 'PE', label: 'PE - Plain ended (0 welds)', weldCount: 0 },
+  { value: 'FOE', label: 'FOE - Flanged one end (1 weld)', weldCount: 1 },
+  { value: 'FBE', label: 'FBE - Flanged both ends (2 flange welds)', weldCount: 2 },
+] as const;
+
+// Helper function to get weld count per bend based on bend end configuration
+const getWeldCountPerBend = (bendEndConfig: string): number => {
+  const config = BEND_END_OPTIONS.find(opt => opt.value === bendEndConfig);
+  return config?.weldCount ?? 0;
+};
+
 // Helper function to get weld count per pipe based on pipe end configuration
 const getWeldCountPerPipe = (pipeEndConfig: string): number => {
   const config = PIPE_END_OPTIONS.find(opt => opt.value === pipeEndConfig);
@@ -8047,6 +8060,122 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   />
                 </div>
 
+                {/* Green 3-Column Section: Steel Spec, NB, Schedule */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Steel Specification */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Steel Specification
+                        {(() => {
+                          const isUsingGlobal = !entry.specs?.steelSpecificationId && globalSpecs?.steelSpecificationId;
+                          const isOverride = entry.specs?.steelSpecificationId && entry.specs.steelSpecificationId !== globalSpecs?.steelSpecificationId;
+                          if (isUsingGlobal) return <span className="text-green-600 text-xs ml-2">(From Global)</span>;
+                          if (isOverride) return <span className="text-orange-600 text-xs ml-2">(Override)</span>;
+                          return null;
+                        })()}
+                      </label>
+                      <select
+                        value={entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || ''}
+                        onChange={(e) => {
+                          const newSpecId = e.target.value ? Number(e.target.value) : undefined;
+                          const updatedEntry: any = {
+                            ...entry,
+                            specs: {
+                              ...entry.specs,
+                              steelSpecificationId: newSpecId,
+                              nominalBoreMm: undefined,
+                              scheduleNumber: undefined,
+                              wallThicknessMm: undefined
+                            }
+                          };
+                          updatedEntry.description = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, updatedEntry);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                      >
+                        <option value="">Select Steel Spec</option>
+                        {masterData.steelSpecs?.map((spec: any) => (
+                          <option key={spec.id} value={spec.id}>{spec.steelSpecName}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Nominal Bore */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Nominal Bore (mm) *
+                      </label>
+                      <select
+                        value={entry.specs?.nominalBoreMm || ''}
+                        onChange={(e) => {
+                          const nominalBore = parseInt(e.target.value);
+                          const updatedEntry: any = {
+                            ...entry,
+                            specs: { ...entry.specs, nominalBoreMm: nominalBore, scheduleNumber: undefined, wallThicknessMm: undefined }
+                          };
+                          updatedEntry.description = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, updatedEntry);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                      >
+                        <option value="">Select NB</option>
+                        {(() => {
+                          const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                          const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === effectiveSteelSpecId);
+                          const steelSpecName = steelSpec?.steelSpecName || '';
+                          const fallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => steelSpecName.includes(pattern))?.[1];
+                          const nbs = fallbackNBs || [40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600];
+                          return nbs.map((nb: number) => (
+                            <option key={nb} value={nb}>{nb} NB</option>
+                          ));
+                        })()}
+                      </select>
+                    </div>
+
+                    {/* Schedule */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Schedule *
+                        {(() => {
+                          const hasAutoSchedule = entry.specs?.scheduleNumber && globalSpecs?.workingPressureBar;
+                          if (hasAutoSchedule) return <span className="text-green-600 text-xs ml-2">(Auto)</span>;
+                          return null;
+                        })()}
+                      </label>
+                      <select
+                        value={entry.specs?.scheduleNumber || ''}
+                        onChange={(e) => {
+                          const schedule = e.target.value;
+                          const schedules = FALLBACK_PIPE_SCHEDULES[entry.specs?.nominalBoreMm || 0] || [];
+                          const scheduleData = schedules.find((s: any) => s.scheduleDesignation === schedule);
+                          const updatedEntry: any = {
+                            ...entry,
+                            specs: { ...entry.specs, scheduleNumber: schedule, wallThicknessMm: scheduleData?.wallThicknessMm }
+                          };
+                          updatedEntry.description = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, updatedEntry);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                        disabled={!entry.specs?.nominalBoreMm}
+                      >
+                        <option value="">{entry.specs?.nominalBoreMm ? 'Select Schedule' : 'Select NB first'}</option>
+                        {(() => {
+                          const schedules = FALLBACK_PIPE_SCHEDULES[entry.specs?.nominalBoreMm || 0] || [];
+                          return schedules.map((s: any) => (
+                            <option key={s.scheduleDesignation} value={s.scheduleDesignation}>
+                              {s.scheduleDesignation} ({s.wallThicknessMm}mm)
+                            </option>
+                          ));
+                        })()}
+                      </select>
+                      {entry.specs?.wallThicknessMm && (
+                        <p className="text-xs text-green-700 mt-0.5">WT: {entry.specs.wallThicknessMm}mm</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Two-Column Layout Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* LEFT COLUMN - Bend Specifications */}
@@ -8796,6 +8925,98 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* Bend End Configuration */}
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3">
+                  <h5 className="text-xs font-bold text-purple-900 mb-2">Bend End Configuration</h5>
+                  <select
+                    value={entry.specs?.bendEndConfiguration || 'PE'}
+                    onChange={(e) => {
+                      const newConfig = e.target.value;
+                      const updatedEntry: any = {
+                        ...entry,
+                        specs: { ...entry.specs, bendEndConfiguration: newConfig }
+                      };
+                      updatedEntry.description = generateItemDescription(updatedEntry);
+                      onUpdateEntry(entry.id, updatedEntry);
+                      if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                        setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                  >
+                    {BEND_END_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-700">
+                    Select how the bend ends should be configured
+                    {entry.specs?.bendEndConfiguration && (
+                      <span className="ml-2 text-purple-600 font-medium">
+                        ({getWeldCountPerBend(entry.specs.bendEndConfiguration)} weld{getWeldCountPerBend(entry.specs.bendEndConfiguration) !== 1 ? 's' : ''} per bend)
+                      </span>
+                    )}
+                  </p>
+
+                  {/* Flange Weld Thickness Display */}
+                  {(() => {
+                    const weldCount = getWeldCountPerBend(entry.specs?.bendEndConfiguration || 'PE');
+                    const dn = entry.specs?.nominalBoreMm;
+                    const schedule = entry.specs?.scheduleNumber || '';
+
+                    const FITTING_WALL_THICKNESS: Record<string, Record<number, number>> = {
+                      'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
+                      'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
+                      'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
+                    };
+
+                    const scheduleUpper = schedule.toUpperCase();
+                    const fittingClass =
+                      scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
+                        ? 'XXH'
+                        : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
+                          ? 'XH'
+                          : 'STD';
+
+                    const weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
+
+                    if (weldCount === 0) return null;
+
+                    if (!dn) {
+                      return (
+                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                          <p className="text-xs text-amber-700">Select Nominal Bore to see recommended weld thickness</p>
+                        </div>
+                      );
+                    }
+
+                    const pipeWallThickness = entry.specs?.wallThicknessMm;
+                    const effectiveWeldThickness = weldThickness || pipeWallThickness;
+                    const usingPipeThickness = !weldThickness && pipeWallThickness;
+
+                    if (!effectiveWeldThickness) {
+                      return (
+                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                          <p className="text-xs text-amber-700">Weld thickness data not available for DN {dn}mm</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className={`mt-2 p-2 ${usingPipeThickness ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'} rounded-md`}>
+                        <p className={`text-xs font-bold ${usingPipeThickness ? 'text-blue-800' : 'text-green-800'}`}>
+                          Flange Weld Thickness: {effectiveWeldThickness.toFixed(2)} mm
+                        </p>
+                        <p className={`text-xs ${usingPipeThickness ? 'text-blue-700' : 'text-green-700'}`}>
+                          {usingPipeThickness ? 'Using pipe wall thickness' : `Based on ${fittingClass} fitting class (ASME B31.1)`}
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {weldCount} weld{weldCount !== 1 ? 's' : ''} x 2 passes (inside + outside)
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Flange Specifications - Full Width Below Grid */}
