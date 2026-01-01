@@ -55,8 +55,11 @@ export interface CreateStraightPipeRfqWithItemDto {
 export interface CreateBendRfqDto {
   nominalBoreMm: number;
   scheduleNumber: string;
+  wallThicknessMm?: number;
   bendType: string;
   bendDegrees: number;
+  centerToFaceMm?: number;
+  bendRadiusMm?: number;
   numberOfTangents: number;
   tangentLengths: number[];
   quantityValue: number;

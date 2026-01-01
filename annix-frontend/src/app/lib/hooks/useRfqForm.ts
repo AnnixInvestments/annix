@@ -42,6 +42,8 @@ export interface BendEntry {
     wallThicknessMm?: number;
     bendType?: string; // '1.5D', '2D', '3D', '5D'
     bendDegrees?: number; // 11.25, 22.5, 30, 45, 60, 90
+    centerToFaceMm?: number; // Auto-populated from bend tables
+    bendRadiusMm?: number; // Auto-populated from bend tables
     numberOfTangents?: number; // 0, 1, 2
     tangentLengths?: number[]; // Array for tangent lengths
     numberOfStubs?: number; // 0, 1, 2

@@ -7315,7 +7315,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
   );
 }
 
-function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions, bendOptionsCache, autoSelectFlangeSpecs, requiredProducts = [] }: any) {
+function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions, fetchCenterToFace, bendOptionsCache, autoSelectFlangeSpecs, requiredProducts = [] }: any) {
   // State for hiding/showing 3D drawings per item
   const [hiddenDrawings, setHiddenDrawings] = React.useState<Record<string, boolean>>({});
   const [isCalculating, setIsCalculating] = useState(false);
@@ -7994,6 +7994,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           // Auto-update description
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
+
+                          // Fetch center-to-face if all required fields are available
+                          if (nominalBore && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                            fetchCenterToFace(entry.id, entry.specs.bendType, nominalBore, entry.specs.bendDegrees);
+                          }
+
                           // Auto-calculate if all required fields are filled
                           if (nominalBore && matchedSchedule && entry.specs?.bendType && entry.specs?.bendDegrees) {
                             setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
@@ -8143,12 +8149,17 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         // Auto-update description
                         updatedEntry.description = generateItemDescription(updatedEntry);
                         onUpdateEntry(entry.id, updatedEntry);
-                        
+
                         // Fetch available options for this bend type
                         if (bendType) {
                           await fetchBendOptions(bendType);
                         }
-                        
+
+                        // Fetch center-to-face if all required fields are available
+                        if (bendType && entry.specs?.nominalBoreMm && entry.specs?.bendDegrees) {
+                          fetchCenterToFace(entry.id, bendType, entry.specs.nominalBoreMm, entry.specs.bendDegrees);
+                        }
+
                         // Auto-calculate if all required fields are filled
                         if (bendType && entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendDegrees) {
                           setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
@@ -8171,7 +8182,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     </label>
                     <select
                       value={entry.specs?.bendDegrees || ''}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const bendDegrees = parseFloat(e.target.value);
                         const updatedEntry = {
                           ...entry,
@@ -8180,6 +8191,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         // Auto-update description
                         updatedEntry.description = generateItemDescription(updatedEntry);
                         onUpdateEntry(entry.id, updatedEntry);
+
+                        // Fetch center-to-face if all required fields are available
+                        if (bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
+                          fetchCenterToFace(entry.id, entry.specs.bendType, entry.specs.nominalBoreMm, bendDegrees);
+                        }
+
                         // Auto-calculate if all required fields are filled
                         if (bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType) {
                           setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
@@ -8275,18 +8292,38 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   <div>
                     <label className="block text-xs font-semibold text-gray-900 mb-1">
                       Center-to-Face (mm)
+                      {entry.specs?.centerToFaceMm && (
+                        <span className="text-green-600 text-xs ml-2">(Auto-populated)</span>
+                      )}
                     </label>
                     <input
                       type="text"
-                      value={entry.calculation?.centerToFaceDimension?.toFixed(1) || 'Calculate to see'}
+                      value={
+                        entry.specs?.centerToFaceMm
+                          ? `${Number(entry.specs.centerToFaceMm).toFixed(1)} mm`
+                          : entry.calculation?.centerToFaceDimension
+                            ? `${entry.calculation.centerToFaceDimension.toFixed(1)} mm`
+                            : 'Select Bend Type, NB & Angle'
+                      }
                       disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-600 cursor-not-allowed"
+                      className={`w-full px-3 py-2 border rounded-md text-sm cursor-not-allowed ${
+                        entry.specs?.centerToFaceMm
+                          ? 'bg-green-50 border-green-300 text-green-900 font-medium'
+                          : 'bg-gray-100 border-gray-300 text-gray-600'
+                      }`}
                       placeholder="Auto-calculated"
                     />
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        Auto-populated based on NB and angle
+                    {entry.specs?.bendRadiusMm && (
+                      <p className="mt-0.5 text-xs text-green-600">
+                        Bend radius: {Number(entry.specs.bendRadiusMm).toFixed(1)} mm
                       </p>
-                    </div>
+                    )}
+                    {!entry.specs?.centerToFaceMm && (
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        Auto-populated from database based on Bend Type, NB & Angle
+                      </p>
+                    )}
+                  </div>
                   </div>
 
                   {/* RIGHT COLUMN - Quantity & Options */}
@@ -11905,6 +11942,44 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     }
   };
 
+  // Fetch center-to-face dimension from API based on bend type, NB, and angle
+  const fetchCenterToFace = async (entryId: string, bendType: string, nominalBoreMm: number, degrees: number) => {
+    if (!bendType || !nominalBoreMm || !degrees) {
+      console.log('[CenterToFace] Missing required parameters:', { bendType, nominalBoreMm, degrees });
+      return null;
+    }
+
+    try {
+      const { masterDataApi } = await import('@/app/lib/api/client');
+      const result = await masterDataApi.getBendCenterToFace(bendType, nominalBoreMm, degrees);
+
+      if (result && result.centerToFaceMm) {
+        console.log(`[CenterToFace] Found: ${result.centerToFaceMm}mm for ${bendType} ${nominalBoreMm}NB @ ${degrees}°`);
+
+        // Find the current entry to merge specs
+        const currentEntry = rfqData.items.find((item: any) => item.id === entryId);
+        if (currentEntry && currentEntry.specs) {
+          // Update the entry with the center-to-face value, merging with existing specs
+          updateItem(entryId, {
+            specs: {
+              ...currentEntry.specs,
+              centerToFaceMm: Number(result.centerToFaceMm),
+              bendRadiusMm: Number(result.radiusMm)
+            } as any
+          });
+        }
+
+        return result;
+      }
+      return null;
+    } catch (error) {
+      if (error instanceof Error && error.message !== 'Backend unavailable') {
+        console.error(`[CenterToFace] Error fetching for ${bendType} ${nominalBoreMm}NB @ ${degrees}°:`, error);
+      }
+      return null;
+    }
+  };
+
   // Auto-select flange specifications based on item-level operating conditions
   const autoSelectFlangeSpecs = async (
     entryId: string,
@@ -12794,6 +12869,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             availableSchedulesMap={availableSchedulesMap}
             setAvailableSchedulesMap={setAvailableSchedulesMap}
             fetchBendOptions={fetchBendOptions}
+            fetchCenterToFace={fetchCenterToFace}
             bendOptionsCache={bendOptionsCache}
             autoSelectFlangeSpecs={autoSelectFlangeSpecs}
             requiredProducts={rfqData.requiredProducts}
