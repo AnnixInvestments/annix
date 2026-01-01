@@ -17,7 +17,7 @@ import { DrawingQueryDto } from './dto/drawing-query.dto';
 import { User } from '../user/entities/user.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
-import { LocalStorageService } from '../storage/local-storage.service';
+import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -50,7 +50,8 @@ export class DrawingsService {
     private versionRepository: Repository<DrawingVersion>,
     @InjectRepository(DrawingComment)
     private commentRepository: Repository<DrawingComment>,
-    private storageService: LocalStorageService,
+    @Inject(STORAGE_SERVICE)
+    private storageService: IStorageService,
     private auditService: AuditService,
   ) {}
 

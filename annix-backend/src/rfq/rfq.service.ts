@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Rfq, RfqStatus } from './entities/rfq.entity';
@@ -13,7 +13,7 @@ import { NbNpsLookup } from '../nb-nps-lookup/entities/nb-nps-lookup.entity';
 import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.entity';
 import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
 import { NutMass } from '../nut-mass/entities/nut-mass.entity';
-import { LocalStorageService } from '../storage/local-storage.service';
+import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
 import { CreateStraightPipeRfqWithItemDto } from './dto/create-rfq-item.dto';
 import { CreateBendRfqWithItemDto } from './dto/create-bend-rfq-with-item.dto';
 import { CreateBendRfqDto } from './dto/create-bend-rfq.dto';
@@ -53,7 +53,8 @@ export class RfqService {
     private boltMassRepository: Repository<BoltMass>,
     @InjectRepository(NutMass)
     private nutMassRepository: Repository<NutMass>,
-    private storageService: LocalStorageService,
+    @Inject(STORAGE_SERVICE)
+    private storageService: IStorageService,
   ) {}
 
   async calculateStraightPipeRequirements(

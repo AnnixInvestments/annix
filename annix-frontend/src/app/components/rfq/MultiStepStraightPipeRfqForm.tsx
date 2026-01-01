@@ -7326,6 +7326,22 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [isLoadingNominalBores, setIsLoadingNominalBores] = useState(false);
 
+  // Helper function to calculate minimum wall thickness using Barlow formula
+  const getMinimumWallThickness = (nominalBore: number, pressure: number): number => {
+    const odLookup: Record<number, number> = {
+      15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9,
+      100: 114.3, 125: 141.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
+      350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6, 700: 711.2,
+      800: 812.8, 900: 914.4, 1000: 1016.0, 1200: 1219.2
+    };
+    const od = odLookup[nominalBore] || (nominalBore * 1.05);
+    const pressureMpa = pressure * 0.1;
+    const allowableStress = 137.9; // MPa for A106 Gr B
+    const jointEfficiency = 1.0;
+    const safetyFactor = 1.2;
+    return (pressureMpa * od * safetyFactor) / (2 * allowableStress * jointEfficiency);
+  };
+
   // Fallback NB ranges for each steel specification type
   // Based on industry standards:
   // - SABS/SANS 62: Small bore ERW pipes up to 150mm (South African standard)
@@ -7921,111 +7937,196 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   />
                 </div>
 
-                {/* Remove Item Button */}
-                {entries.length > 1 && (
-                  <div className="mt-4 flex justify-end">
-                    <button
-                      onClick={() => onRemoveEntry(entry.id)}
-                      className="px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 text-sm font-medium border border-red-300 rounded-md transition-colors"
-                    >
-                      Remove Item
-                    </button>
-                  </div>
-                )}
+                {/* Two-Column Layout Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* LEFT COLUMN - Bend Specifications */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-gray-900 border-b border-purple-500 pb-1.5">
+                      Bend Specifications
+                    </h4>
 
-                {/* Bend Specifications Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 mb-1">
-                      Nominal Bore (mm) *
-                    </label>
-                    <select
-                      value={entry.specs?.nominalBoreMm || ''}
-                      onChange={async (e) => {
-                        const nominalBore = parseInt(e.target.value);
-                        const updatedEntry = {
-                          ...entry,
-                          specs: { ...entry.specs, nominalBoreMm: nominalBore }
-                        };
-                        // Auto-update description
-                        updatedEntry.description = generateItemDescription(updatedEntry);
-                        onUpdateEntry(entry.id, updatedEntry);
-                        // Auto-calculate if all required fields are filled
-                        if (nominalBore && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                          setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                    >
-                      <option value="">Select NB</option>
-                      {entry.specs?.bendType && bendOptionsCache[entry.specs.bendType]?.nominalBores?.length > 0 ? (
-                        // Use dynamic options from API if available
-                        bendOptionsCache[entry.specs.bendType].nominalBores.map((nb: number) => (
+                    {/* Nominal Bore - Linked to Steel Specification */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Nominal Bore (mm) *
+                        {globalSpecs?.steelSpecificationId && (
+                          <span className="text-green-600 text-xs ml-2">(From Steel Spec)</span>
+                        )}
+                      </label>
+                      <select
+                        value={entry.specs?.nominalBoreMm || ''}
+                        onChange={async (e) => {
+                          const nominalBore = parseInt(e.target.value);
+                          const steelSpecId = globalSpecs?.steelSpecificationId;
+
+                          // Get available schedules for this NB from FALLBACK_PIPE_SCHEDULES
+                          const availableSchedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
+                          let matchedSchedule = entry.specs?.scheduleNumber;
+                          let matchedWT = entry.specs?.wallThicknessMm;
+
+                          // Auto-select schedule based on working pressure if set
+                          if (globalSpecs?.workingPressureBar && availableSchedules.length > 0) {
+                            const minWT = getMinimumWallThickness(nominalBore, globalSpecs.workingPressureBar);
+                            const sorted = [...availableSchedules].sort((a: any, b: any) =>
+                              (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0)
+                            );
+                            const suitable = sorted.find((s: any) => (s.wallThicknessMm || 0) >= minWT);
+                            if (suitable) {
+                              matchedSchedule = suitable.scheduleDesignation;
+                              matchedWT = suitable.wallThicknessMm;
+                            } else if (sorted.length > 0) {
+                              // Use thickest available
+                              const thickest = sorted[sorted.length - 1];
+                              matchedSchedule = thickest.scheduleDesignation;
+                              matchedWT = thickest.wallThicknessMm;
+                            }
+                          }
+
+                          const updatedEntry: any = {
+                            ...entry,
+                            specs: {
+                              ...entry.specs,
+                              nominalBoreMm: nominalBore,
+                              scheduleNumber: matchedSchedule,
+                              wallThicknessMm: matchedWT
+                            }
+                          };
+                          // Auto-update description
+                          updatedEntry.description = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, updatedEntry);
+                          // Auto-calculate if all required fields are filled
+                          if (nominalBore && matchedSchedule && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                      >
+                        <option value="">Select NB</option>
+                        {nominalBores.map((nb: number) => (
                           <option key={nb} value={nb}>{nb} NB</option>
-                        ))
-                      ) : (
-                        // Fallback to static options
-                        <>
-                          <option value="40">40 NB</option>
-                          <option value="50">50 NB</option>
-                          <option value="65">65 NB</option>
-                          <option value="80">80 NB</option>
-                          <option value="100">100 NB</option>
-                          <option value="125">125 NB</option>
-                          <option value="150">150 NB</option>
-                          <option value="200">200 NB</option>
-                          <option value="250">250 NB</option>
-                          <option value="300">300 NB</option>
-                          <option value="350">350 NB</option>
-                          <option value="400">400 NB</option>
-                          <option value="450">450 NB</option>
-                          <option value="500">500 NB</option>
-                          <option value="550">550 NB</option>
-                          <option value="600">600 NB</option>
-                          <option value="650">650 NB</option>
-                          <option value="700">700 NB</option>
-                          <option value="750">750 NB</option>
-                          <option value="800">800 NB</option>
-                          <option value="900">900 NB</option>
-                          <option value="1000">1000 NB</option>
-                          <option value="1050">1050 NB</option>
-                          <option value="1100">1100 NB</option>
-                          <option value="1150">1150 NB</option>
-                          <option value="1200">1200 NB</option>
-                        </>
+                        ))}
+                      </select>
+                      {globalSpecs?.steelSpecificationId && nominalBores.length > 0 && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          {nominalBores.length} sizes available for selected steel specification
+                        </p>
                       )}
-                    </select>
-                  </div>
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 mb-1">
-                      Schedule *
-                    </label>
-                    <select
-                      value={entry.specs?.scheduleNumber || ''}
-                      onChange={(e) => {
-                        const schedule = e.target.value;
-                        const updatedEntry = {
-                          ...entry,
-                          specs: { ...entry.specs, scheduleNumber: schedule }
-                        };
-                        // Auto-update description
-                        updatedEntry.description = generateItemDescription(updatedEntry);
-                        onUpdateEntry(entry.id, updatedEntry);
-                        // Auto-calculate if all required fields are filled
-                        if (schedule && entry.specs?.nominalBoreMm && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                          setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                    >
-                      <option value="">Select Schedule</option>
-                      <option value="10">Sch 10</option>
-                      <option value="40">Sch 40</option>
-                      <option value="80">Sch 80</option>
-                      <option value="160">Sch 160</option>
-                    </select>
-                  </div>
+                    {/* Schedule - Automated based on working pressure */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Schedule *
+                        {globalSpecs?.workingPressureBar ? (
+                          <span className="text-green-600 text-xs ml-2">(Automated)</span>
+                        ) : (
+                          <span className="text-orange-600 text-xs ml-2">(Manual)</span>
+                        )}
+                      </label>
+                      {globalSpecs?.workingPressureBar && entry.specs?.nominalBoreMm ? (
+                        <div className="bg-green-50 p-2 rounded-md">
+                          <p className="text-green-800 font-medium text-xs mb-2">
+                            Auto-calculated for {globalSpecs.workingPressureBar} bar @ {entry.specs.nominalBoreMm}NB
+                          </p>
+                          <select
+                            value={entry.specs?.scheduleNumber || ''}
+                            onChange={(e) => {
+                              const schedule = e.target.value;
+                              const availableSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs?.nominalBoreMm || 0] || [];
+                              const selectedDim = availableSchedules.find((dim: any) =>
+                                (dim.scheduleDesignation || dim.scheduleNumber?.toString()) === schedule
+                              );
+                              const updatedEntry: any = {
+                                ...entry,
+                                specs: {
+                                  ...entry.specs,
+                                  scheduleNumber: schedule,
+                                  wallThicknessMm: selectedDim?.wallThicknessMm || entry.specs?.wallThicknessMm
+                                }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                              if (schedule && entry.specs?.nominalBoreMm && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              }
+                            }}
+                            className="w-full px-2 py-1.5 text-black border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          >
+                            <option value="">Select schedule...</option>
+                            {(() => {
+                              const nbValue = entry.specs?.nominalBoreMm || 0;
+                              const allSchedules = FALLBACK_PIPE_SCHEDULES[nbValue] || [];
+                              const minWT = getMinimumWallThickness(nbValue, globalSpecs?.workingPressureBar || 0);
+                              const eligibleSchedules = allSchedules
+                                .filter((dim: any) => (dim.wallThicknessMm || 0) >= minWT)
+                                .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+                              const recommendedSchedule = eligibleSchedules.length > 0 ? eligibleSchedules[0] : null;
+
+                              return eligibleSchedules.map((dim: any, idx: number) => {
+                                const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString() || 'Unknown';
+                                const wt = dim.wallThicknessMm || 0;
+                                const isRecommended = idx === 0;
+                                const label = isRecommended
+                                  ? `★ ${scheduleValue} (${wt}mm) - RECOMMENDED`
+                                  : `${scheduleValue} (${wt}mm)`;
+                                return (
+                                  <option key={dim.id || scheduleValue} value={scheduleValue}>
+                                    {label}
+                                  </option>
+                                );
+                              });
+                            })()}
+                          </select>
+                          {entry.specs?.wallThicknessMm && (
+                            <p className="text-xs text-green-700 mt-1">
+                              Wall thickness: {entry.specs.wallThicknessMm}mm
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <select
+                          value={entry.specs?.scheduleNumber || ''}
+                          onChange={(e) => {
+                            const schedule = e.target.value;
+                            const updatedEntry: any = {
+                              ...entry,
+                              specs: { ...entry.specs, scheduleNumber: schedule }
+                            };
+                            updatedEntry.description = generateItemDescription(updatedEntry);
+                            onUpdateEntry(entry.id, updatedEntry);
+                            if (schedule && entry.specs?.nominalBoreMm && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                              setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                        >
+                          <option value="">Select Schedule</option>
+                          {(() => {
+                            const nbValue = entry.specs?.nominalBoreMm || 0;
+                            const allSchedules = FALLBACK_PIPE_SCHEDULES[nbValue] || [];
+                            if (allSchedules.length > 0) {
+                              return allSchedules.map((dim: any) => {
+                                const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString();
+                                return (
+                                  <option key={dim.id || scheduleValue} value={scheduleValue}>
+                                    {scheduleValue} ({dim.wallThicknessMm}mm)
+                                  </option>
+                                );
+                              });
+                            }
+                            // Fallback if no NB selected
+                            return (
+                              <>
+                                <option value="10">Sch 10</option>
+                                <option value="40">Sch 40</option>
+                                <option value="80">Sch 80</option>
+                                <option value="160">Sch 160</option>
+                              </>
+                            );
+                          })()}
+                        </select>
+                      )}
+                    </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-900 mb-1">
@@ -8182,60 +8283,64 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-600 cursor-not-allowed"
                       placeholder="Auto-calculated"
                     />
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      Auto-populated based on NB and angle
-                    </p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        Auto-populated based on NB and angle
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 mb-1">
-                      Quantity *
-                    </label>
-                    <input
-                      type="number"
-                      value={entry.specs?.quantityValue || ''}
-                      onChange={(e) => {
-                        const quantity = parseInt(e.target.value) || 1;
-                        onUpdateEntry(entry.id, {
-                          specs: { ...entry.specs, quantityValue: quantity }
-                        });
-                        // Auto-calculate if all required fields are filled
-                        if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                          setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                      min="1"
-                      placeholder="1"
-                    />
-                  </div>
-                </div>
+                  {/* RIGHT COLUMN - Quantity & Options */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
+                      Quantity & Options
+                    </h4>
 
-                {/* Operating Conditions - Hidden: Uses global specs for working pressure/temp */}
-
-                {/* Tangents Section */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Quantity */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Number of Tangents
+                        Quantity *
                       </label>
-                      <select
-                        value={entry.specs?.numberOfTangents || 0}
+                      <input
+                        type="number"
+                        value={entry.specs?.quantityValue || ''}
                         onChange={(e) => {
-                          const count = parseInt(e.target.value) || 0;
-                          const currentLengths = entry.specs?.tangentLengths || [];
-                          const newLengths = count === 0 ? [] : 
-                                           count === 1 ? [currentLengths[0] || 150] :
-                                           [currentLengths[0] || 150, currentLengths[1] || 150];
-                          const updatedEntry = {
-                            ...entry,
-                            specs: { 
-                              ...entry.specs, 
-                              numberOfTangents: count,
-                              tangentLengths: newLengths
-                            }
-                          };
+                          const quantity = parseInt(e.target.value) || 1;
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, quantityValue: quantity }
+                          });
+                          if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                        min="1"
+                        placeholder="1"
+                      />
+                    </div>
+
+                    {/* Tangents Section - Compact */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <h5 className="text-xs font-bold text-blue-900 mb-2">Tangent Extensions</h5>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Number of Tangents
+                        </label>
+                        <select
+                          value={entry.specs?.numberOfTangents || 0}
+                          onChange={(e) => {
+                            const count = parseInt(e.target.value) || 0;
+                            const currentLengths = entry.specs?.tangentLengths || [];
+                            const newLengths = count === 0 ? [] :
+                                             count === 1 ? [currentLengths[0] || 150] :
+                                             [currentLengths[0] || 150, currentLengths[1] || 150];
+                            const updatedEntry = {
+                              ...entry,
+                              specs: {
+                                ...entry.specs,
+                                numberOfTangents: count,
+                                tangentLengths: newLengths
+                              }
+                            };
                           // Auto-update description
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
@@ -8304,160 +8409,132 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </div>
                     )}
                   </div>
-                </div>
 
-                {/* Stubs Section */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="mb-3">
-                    <label className="block text-xs font-semibold text-gray-900 mb-1">
-                      Number of Stubs
-                    </label>
-                    <select
-                      value={entry.specs?.numberOfStubs || 0}
-                      onChange={(e) => {
-                        const count = parseInt(e.target.value) || 0;
-                        const currentStubs = entry.specs?.stubs || [];
-                        const newStubs = count === 0 ? [] :
-                                        count === 1 ? [currentStubs[0] || { nominalBoreMm: 40, length: 150, flangeSpec: '' }] :
-                                        [
-                                          currentStubs[0] || { nominalBoreMm: 40, length: 150, flangeSpec: '' },
-                                          currentStubs[1] || { nominalBoreMm: 40, length: 150, flangeSpec: '' }
-                                        ];
-                        const updatedEntry = {
-                          ...entry,
-                          specs: { 
-                            ...entry.specs, 
-                            numberOfStubs: count,
-                            stubs: newStubs
-                          }
-                        };
-                        // Auto-update description
-                        updatedEntry.description = generateItemDescription(updatedEntry);
-                        onUpdateEntry(entry.id, updatedEntry);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                    >
-                      <option value="0">0 - No Stubs</option>
-                      <option value="1">1 - Single Stub</option>
-                      <option value="2">2 - Both Stubs</option>
-                    </select>
+                    {/* Stubs Section - Compact */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <h5 className="text-xs font-bold text-green-900 mb-2">Stub Connections</h5>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Number of Stubs
+                        </label>
+                        <select
+                          value={entry.specs?.numberOfStubs || 0}
+                          onChange={(e) => {
+                            const count = parseInt(e.target.value) || 0;
+                            const currentStubs = entry.specs?.stubs || [];
+                            const newStubs = count === 0 ? [] :
+                                            count === 1 ? [currentStubs[0] || { nominalBoreMm: 40, length: 150, flangeSpec: '' }] :
+                                            [
+                                              currentStubs[0] || { nominalBoreMm: 40, length: 150, flangeSpec: '' },
+                                              currentStubs[1] || { nominalBoreMm: 40, length: 150, flangeSpec: '' }
+                                            ];
+                            const updatedEntry = {
+                              ...entry,
+                              specs: {
+                                ...entry.specs,
+                                numberOfStubs: count,
+                                stubs: newStubs
+                              }
+                            };
+                            // Auto-update description
+                            updatedEntry.description = generateItemDescription(updatedEntry);
+                            onUpdateEntry(entry.id, updatedEntry);
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                        >
+                          <option value="0">0 - No Stubs</option>
+                          <option value="1">1 - Single Stub</option>
+                          <option value="2">2 - Both Stubs</option>
+                        </select>
+                      </div>
+
+                      {(entry.specs?.numberOfStubs || 0) >= 1 && (
+                        <div className="mt-2 p-2 bg-white rounded border border-green-300">
+                          <p className="text-xs font-medium text-green-900 mb-1">Stub 1</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            <input
+                              type="number"
+                              value={entry.specs?.stubs?.[0]?.nominalBoreMm || ''}
+                              onChange={(e) => {
+                                const stubs = [...(entry.specs?.stubs || [])];
+                                stubs[0] = { ...stubs[0], nominalBoreMm: parseInt(e.target.value) || 0 };
+                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                              placeholder="NB"
+                            />
+                            <input
+                              type="number"
+                              value={entry.specs?.stubs?.[0]?.length || ''}
+                              onChange={(e) => {
+                                const stubs = [...(entry.specs?.stubs || [])];
+                                stubs[0] = { ...stubs[0], length: parseInt(e.target.value) || 0 };
+                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                              placeholder="Length"
+                            />
+                            <input
+                              type="text"
+                              value={entry.specs?.stubs?.[0]?.flangeSpec || ''}
+                              onChange={(e) => {
+                                const stubs = [...(entry.specs?.stubs || [])];
+                                stubs[0] = { ...stubs[0], flangeSpec: e.target.value };
+                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                              placeholder="Flange"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {(entry.specs?.numberOfStubs || 0) >= 2 && (
+                        <div className="mt-2 p-2 bg-white rounded border border-green-300">
+                          <p className="text-xs font-medium text-green-900 mb-1">Stub 2</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            <input
+                              type="number"
+                              value={entry.specs?.stubs?.[1]?.nominalBoreMm || ''}
+                              onChange={(e) => {
+                                const stubs = [...(entry.specs?.stubs || [])];
+                                stubs[1] = { ...stubs[1], nominalBoreMm: parseInt(e.target.value) || 0 };
+                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                              placeholder="NB"
+                            />
+                            <input
+                              type="number"
+                              value={entry.specs?.stubs?.[1]?.length || ''}
+                              onChange={(e) => {
+                                const stubs = [...(entry.specs?.stubs || [])];
+                                stubs[1] = { ...stubs[1], length: parseInt(e.target.value) || 0 };
+                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                              placeholder="Length"
+                            />
+                            <input
+                              type="text"
+                              value={entry.specs?.stubs?.[1]?.flangeSpec || ''}
+                              onChange={(e) => {
+                                const stubs = [...(entry.specs?.stubs || [])];
+                                stubs[1] = { ...stubs[1], flangeSpec: e.target.value };
+                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                              placeholder="Flange"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  {(entry.specs?.numberOfStubs || 0) >= 1 && (
-                    <div className="mb-3 p-3 bg-white rounded-lg border border-green-300">
-                      <h5 className="text-xs font-bold text-green-900 mb-2">Stub 1 Specifications</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">NB (mm)</label>
-                          <input
-                            type="number"
-                            value={entry.specs?.stubs?.[0]?.nominalBoreMm || ''}
-                            onChange={(e) => {
-                              const stubs = [...(entry.specs?.stubs || [])];
-                              stubs[0] = { ...stubs[0], nominalBoreMm: parseInt(e.target.value) || 0 };
-                              onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, stubs }
-                              });
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                            placeholder="40"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Length (mm)</label>
-                          <input
-                            type="number"
-                            value={entry.specs?.stubs?.[0]?.length || ''}
-                            onChange={(e) => {
-                              const stubs = [...(entry.specs?.stubs || [])];
-                              stubs[0] = { ...stubs[0], length: parseInt(e.target.value) || 0 };
-                              onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, stubs }
-                              });
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                            placeholder="150"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Flange Spec</label>
-                          <input
-                            type="text"
-                            value={entry.specs?.stubs?.[0]?.flangeSpec || ''}
-                            onChange={(e) => {
-                              const stubs = [...(entry.specs?.stubs || [])];
-                              stubs[0] = { ...stubs[0], flangeSpec: e.target.value };
-                              onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, stubs }
-                              });
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                            placeholder="e.g., ASME 150#"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {(entry.specs?.numberOfStubs || 0) >= 2 && (
-                    <div className="p-3 bg-white rounded-lg border border-green-300">
-                      <h5 className="text-xs font-bold text-green-900 mb-2">Stub 2 Specifications</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">NB (mm)</label>
-                          <input
-                            type="number"
-                            value={entry.specs?.stubs?.[1]?.nominalBoreMm || ''}
-                            onChange={(e) => {
-                              const stubs = [...(entry.specs?.stubs || [])];
-                              stubs[1] = { ...stubs[1], nominalBoreMm: parseInt(e.target.value) || 0 };
-                              onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, stubs }
-                              });
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                            placeholder="40"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Length (mm)</label>
-                          <input
-                            type="number"
-                            value={entry.specs?.stubs?.[1]?.length || ''}
-                            onChange={(e) => {
-                              const stubs = [...(entry.specs?.stubs || [])];
-                              stubs[1] = { ...stubs[1], length: parseInt(e.target.value) || 0 };
-                              onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, stubs }
-                              });
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                            placeholder="150"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Flange Spec</label>
-                          <input
-                            type="text"
-                            value={entry.specs?.stubs?.[1]?.flangeSpec || ''}
-                            onChange={(e) => {
-                              const stubs = [...(entry.specs?.stubs || [])];
-                              stubs[1] = { ...stubs[1], flangeSpec: e.target.value };
-                              onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, stubs }
-                              });
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                            placeholder="e.g., ASME 150#"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
-                {/* Flange Specifications - Uses Global Specs with Override Option */}
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                {/* Flange Specifications - Full Width Below Grid */}
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                   <div className="flex justify-between items-start mb-3">
                     <h5 className="text-sm font-bold text-orange-900">
                       Flanges
@@ -8845,16 +8922,49 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </select>
                     </div>
 
-                    {/* Nominal Diameter */}
+                    {/* Nominal Diameter - Linked to Steel Specification */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Nominal Diameter (mm) *
+                        {globalSpecs?.steelSpecificationId && (
+                          <span className="text-green-600 text-xs ml-2">(From Steel Spec)</span>
+                        )}
                       </label>
                       <select
                         value={entry.specs?.nominalDiameterMm || ''}
                         onChange={(e) => {
+                          const nominalDiameter = Number(e.target.value);
+
+                          // Auto-populate schedule for SABS719 fittings
+                          let matchedSchedule = entry.specs?.scheduleNumber;
+                          let matchedWT = entry.specs?.wallThicknessMm;
+
+                          if (entry.specs?.fittingStandard === 'SABS719' && globalSpecs?.workingPressureBar) {
+                            const availableSchedules = FALLBACK_PIPE_SCHEDULES[nominalDiameter] || [];
+                            if (availableSchedules.length > 0) {
+                              const minWT = getMinimumWallThickness(nominalDiameter, globalSpecs.workingPressureBar);
+                              const sorted = [...availableSchedules].sort((a: any, b: any) =>
+                                (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0)
+                              );
+                              const suitable = sorted.find((s: any) => (s.wallThicknessMm || 0) >= minWT);
+                              if (suitable) {
+                                matchedSchedule = suitable.scheduleDesignation;
+                                matchedWT = suitable.wallThicknessMm;
+                              } else if (sorted.length > 0) {
+                                const thickest = sorted[sorted.length - 1];
+                                matchedSchedule = thickest.scheduleDesignation;
+                                matchedWT = thickest.wallThicknessMm;
+                              }
+                            }
+                          }
+
                           onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, nominalDiameterMm: Number(e.target.value) }
+                            specs: {
+                              ...entry.specs,
+                              nominalDiameterMm: nominalDiameter,
+                              scheduleNumber: matchedSchedule,
+                              wallThicknessMm: matchedWT
+                            }
                           });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
@@ -8864,7 +8974,112 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <option key={nb} value={nb}>{nb}mm</option>
                         ))}
                       </select>
+                      {globalSpecs?.steelSpecificationId && nominalBores.length > 0 && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          {nominalBores.length} sizes available for selected steel specification
+                        </p>
+                      )}
                     </div>
+
+                    {/* Schedule - Required for SABS719 fabricated fittings */}
+                    {entry.specs?.fittingStandard === 'SABS719' && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          Schedule *
+                          {globalSpecs?.workingPressureBar ? (
+                            <span className="text-green-600 text-xs ml-2">(Automated)</span>
+                          ) : (
+                            <span className="text-orange-600 text-xs ml-2">(Manual)</span>
+                          )}
+                        </label>
+                        {globalSpecs?.workingPressureBar && entry.specs?.nominalDiameterMm ? (
+                          <div className="bg-green-50 p-2 rounded-md">
+                            <p className="text-green-800 font-medium text-xs mb-2">
+                              Auto-calculated for {globalSpecs.workingPressureBar} bar @ {entry.specs.nominalDiameterMm}NB
+                            </p>
+                            <select
+                              value={entry.specs?.scheduleNumber || ''}
+                              onChange={(e) => {
+                                const schedule = e.target.value;
+                                const availableSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs?.nominalDiameterMm || 0] || [];
+                                const selectedDim = availableSchedules.find((dim: any) =>
+                                  (dim.scheduleDesignation || dim.scheduleNumber?.toString()) === schedule
+                                );
+                                onUpdateEntry(entry.id, {
+                                  specs: {
+                                    ...entry.specs,
+                                    scheduleNumber: schedule,
+                                    wallThicknessMm: selectedDim?.wallThicknessMm || entry.specs?.wallThicknessMm
+                                  }
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 text-black border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+                            >
+                              <option value="">Select schedule...</option>
+                              {(() => {
+                                const nbValue = entry.specs?.nominalDiameterMm || 0;
+                                const allSchedules = FALLBACK_PIPE_SCHEDULES[nbValue] || [];
+                                const minWT = getMinimumWallThickness(nbValue, globalSpecs?.workingPressureBar || 0);
+                                const eligibleSchedules = allSchedules
+                                  .filter((dim: any) => (dim.wallThicknessMm || 0) >= minWT)
+                                  .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+
+                                return eligibleSchedules.map((dim: any, idx: number) => {
+                                  const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString() || 'Unknown';
+                                  const wt = dim.wallThicknessMm || 0;
+                                  const isRecommended = idx === 0;
+                                  const label = isRecommended
+                                    ? `★ ${scheduleValue} (${wt}mm) - RECOMMENDED`
+                                    : `${scheduleValue} (${wt}mm)`;
+                                  return (
+                                    <option key={dim.id || scheduleValue} value={scheduleValue}>
+                                      {label}
+                                    </option>
+                                  );
+                                });
+                              })()}
+                            </select>
+                          </div>
+                        ) : (
+                          <select
+                            value={entry.specs?.scheduleNumber || ''}
+                            onChange={(e) => {
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, scheduleNumber: e.target.value }
+                              });
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                          >
+                            <option value="">Select Schedule</option>
+                            {(() => {
+                              const nbValue = entry.specs?.nominalDiameterMm || 0;
+                              const allSchedules = FALLBACK_PIPE_SCHEDULES[nbValue] || [];
+                              if (allSchedules.length > 0) {
+                                return allSchedules.map((dim: any) => {
+                                  const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString();
+                                  return (
+                                    <option key={dim.id || scheduleValue} value={scheduleValue}>
+                                      {scheduleValue} ({dim.wallThicknessMm}mm)
+                                    </option>
+                                  );
+                                });
+                              }
+                              return (
+                                <>
+                                  <option value="10">Sch 10</option>
+                                  <option value="40">Sch 40</option>
+                                  <option value="80">Sch 80</option>
+                                  <option value="160">Sch 160</option>
+                                </>
+                              );
+                            })()}
+                          </select>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          Required for fabricated SABS719 fittings
+                        </p>
+                      </div>
+                    )}
 
                     {/* Angle Range (for Laterals and Y-Pieces) */}
                     {(entry.specs?.fittingType === 'LATERAL' || entry.specs?.fittingType === 'Y_PIECE') && (

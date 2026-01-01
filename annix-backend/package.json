@@ -23,9 +23,14 @@
     "migration:generate": "yarn typeorm -d ./src/config/data-source.ts migration:generate ./src/migrations/InitialSchema",
     "migration:create": "yarn typeorm migration:create ./src/migrations/",
     "migration:create:named": "yarn typeorm migration:create ./src/migrations/",
-    "migration:revert": "yarn typeorm -d ./src/config/data-source.ts migration:revert"
+    "migration:revert": "yarn typeorm -d ./src/config/data-source.ts migration:revert",
+    "migrate:s3": "ts-node -r tsconfig-paths/register scripts/migrate-to-s3.ts",
+    "migrate:s3:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-to-s3.ts --dry-run"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.958.0",
+    "@aws-sdk/lib-storage": "^3.958.0",
+    "@aws-sdk/s3-request-presigner": "^3.958.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
