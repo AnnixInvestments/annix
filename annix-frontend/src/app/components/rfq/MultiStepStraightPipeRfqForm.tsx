@@ -7402,7 +7402,7 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
   );
 }
 
-function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions, fetchCenterToFace, bendOptionsCache, autoSelectFlangeSpecs, requiredProducts = [] }: any) {
+function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions, fetchCenterToFace, bendOptionsCache, autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses }: any) {
   // State for hiding/showing 3D drawings per item
   const [hiddenDrawings, setHiddenDrawings] = React.useState<Record<string, boolean>>({});
   const [isCalculating, setIsCalculating] = useState(false);
@@ -7412,6 +7412,36 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
   const manuallyUpdatedEntriesRef = useRef<Set<string>>(new Set());
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [isLoadingNominalBores, setIsLoadingNominalBores] = useState(false);
+
+  // Pre-fetch pressure classes for any standards that are already selected
+  useEffect(() => {
+    const standardsToFetch = new Set<number>();
+
+    // Check global flange standard
+    if (globalSpecs?.flangeStandardId && typeof globalSpecs.flangeStandardId === 'number') {
+      standardsToFetch.add(globalSpecs.flangeStandardId);
+    }
+
+    // Check each entry for flange standards
+    entries.forEach((entry: any) => {
+      if (entry.specs?.flangeStandardId) {
+        standardsToFetch.add(entry.specs.flangeStandardId);
+      }
+      // Check stub flange standards
+      entry.specs?.stubs?.forEach((stub: any) => {
+        if (stub?.flangeStandardId) {
+          standardsToFetch.add(stub.flangeStandardId);
+        }
+      });
+    });
+
+    // Fetch any standards not yet in cache
+    standardsToFetch.forEach(standardId => {
+      if (!pressureClassesByStandard[standardId] && getFilteredPressureClasses) {
+        getFilteredPressureClasses(standardId);
+      }
+    });
+  }, [entries, globalSpecs?.flangeStandardId, pressureClassesByStandard, getFilteredPressureClasses]);
 
   // Helper function to calculate minimum wall thickness using Barlow formula
   const getMinimumWallThickness = (nominalBore: number, pressure: number): number => {
@@ -7562,23 +7592,48 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
     // Check if BNW should be included
     const showBnw = requiredProducts.includes('fasteners_gaskets');
 
-    return entries.reduce((total: number, entry: StraightPipeEntry) => {
-      const entryTotal = (entry.calculation?.totalSystemWeight || 0);
+    return entries.reduce((total: number, entry: any) => {
+      const qty = entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0;
+
+      // Calculate item weight based on type
+      let entryTotal = 0;
+      if (entry.itemType === 'bend') {
+        // For bends, use component weights (per-unit) * qty
+        const bendWeightPerUnit = entry.calculation?.bendWeight || 0;
+        const tangentWeightPerUnit = entry.calculation?.tangentWeight || 0;
+        const flangeWeightPerUnit = entry.calculation?.flangeWeight || 0;
+        entryTotal = (bendWeightPerUnit + tangentWeightPerUnit + flangeWeightPerUnit) * qty;
+      } else if (entry.itemType === 'fitting') {
+        entryTotal = entry.calculation?.totalWeight || 0;
+      } else {
+        // Straight pipes - totalSystemWeight is already total
+        entryTotal = entry.calculation?.totalSystemWeight || 0;
+      }
 
       // Add BNW and gasket weights if applicable
       let bnwWeight = 0;
       let gasketWeight = 0;
-      if (showBnw) {
-        const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-        const flangesPerPipe = getFlangesPerPipe(pipeEndConfig);
-        const qty = entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0;
+      let stubBnwWeight = 0;
+      let stubGasketWeight = 0;
 
-        if (flangesPerPipe > 0 && qty > 0) {
-          const pressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
-          const pressureClass = pressureClassId
-            ? masterData.pressureClasses?.find((p: any) => p.id === pressureClassId)?.designation
-            : 'PN16';
-          const nbMm = entry.specs?.nominalBoreMm || 100;
+      if (showBnw) {
+        const pressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+        const pressureClass = pressureClassId
+          ? masterData.pressureClasses?.find((p: any) => p.id === pressureClassId)?.designation
+          : 'PN16';
+        const nbMm = entry.specs?.nominalBoreMm || 100;
+
+        // Determine if item has flanges based on type
+        let hasFlanges = false;
+        if (entry.itemType === 'bend') {
+          const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+          hasFlanges = bendEndConfig !== 'PE';
+        } else if (entry.itemType === 'straight_pipe' || !entry.itemType) {
+          const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+          hasFlanges = pipeEndConfig !== 'PE';
+        }
+
+        if (hasFlanges && qty > 0) {
           const bnwInfo = getBnwSetInfo(nbMm, pressureClass || 'PN16');
           const bnwWeightPerSet = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
           bnwWeight = bnwWeightPerSet * qty;
@@ -7589,9 +7644,26 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
             gasketWeight = singleGasketWeight * qty;
           }
         }
+
+        // Add stub BNW and gasket weights for bends
+        if (entry.itemType === 'bend' && entry.specs?.stubs?.length > 0) {
+          entry.specs.stubs.forEach((stub: any) => {
+            if (stub?.nominalBoreMm) {
+              const stubNb = stub.nominalBoreMm;
+              const stubBnwInfo = getBnwSetInfo(stubNb, pressureClass || 'PN16');
+              const stubBnwWeightPerSet = stubBnwInfo.weightPerHole * stubBnwInfo.holesPerFlange;
+              stubBnwWeight += stubBnwWeightPerSet * qty;
+
+              if (globalSpecs?.gasketType) {
+                const stubSingleGasketWeight = getGasketWeight(globalSpecs.gasketType, stubNb);
+                stubGasketWeight += stubSingleGasketWeight * qty;
+              }
+            }
+          });
+        }
       }
 
-      return total + entryTotal + bnwWeight + gasketWeight;
+      return total + entryTotal + bnwWeight + gasketWeight + stubBnwWeight + stubGasketWeight;
     }, 0);
   };
 
@@ -7635,8 +7707,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         ? masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId)?.designation
         : '';
 
-      // Build description: "80NB Sch40 45° 3D Bend C/F 150mm"
-      let description = `${nb}NB Sch${schedule} ${bendAngle}° ${bendType} Bend`;
+      // Build description: "80NB Sch40 SABS 719 ERW 45° 3D Bend C/F 150mm"
+      let description = `${nb}NB Sch${schedule}${steelSpec ? ` ${steelSpec}` : ''} ${bendAngle}° ${bendType} Bend`;
 
       // Add C/F - if tangents are present, show C/F + tangent for each end
       const tangentLengths = entry.specs?.tangentLengths || [];
@@ -7713,10 +7785,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         }
       }
 
-      if (steelSpec) {
-        description += ` - ${steelSpec}`;
-      }
-
       return description;
     }
 
@@ -7785,8 +7853,14 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
       ? masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId)?.designation
       : '';
 
-    // Build description: 500NB Sch10 6.35mm Pipe, 12.192Lg, 2X R/F, SABS 1123 1000/3
-    let description = `${nb}NB Sch${schedule}`;
+    // Get steel spec name for pipes (moved up to include in description early)
+    const pipesteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+    const pipeSteelSpec = pipesteelSpecId
+      ? masterData.steelSpecs.find((s: any) => s.id === pipesteelSpecId)?.steelSpecName
+      : undefined;
+
+    // Build description: 500NB Sch10 SABS 719 ERW 6.35mm Pipe, 12.192Lg, 2X R/F, SABS 1123 1000/3
+    let description = `${nb}NB Sch${schedule}${pipeSteelSpec ? ` ${pipeSteelSpec}` : ''}`;
 
     // Add wall thickness if available
     if (wallThickness) {
@@ -7809,16 +7883,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
     // Add flange spec and class if available and has flanges
     if (flangeDisplay && flangeStandard && pressureClass) {
       description += `, ${flangeStandard} ${pressureClass}`;
-    }
-
-    // Get steel spec name for pipes
-    const pipesteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-    const pipeSteelSpec = pipesteelSpecId
-      ? masterData.steelSpecs.find((s: any) => s.id === pipesteelSpecId)?.steelSpecName
-      : undefined;
-
-    if (pipeSteelSpec) {
-      description += ` - ${pipeSteelSpec}`;
     }
 
     return description;
@@ -8806,6 +8870,118 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       )}
                     </div>
 
+                    {/* Flange Weld Data - Bend flanges and Stub flanges */}
+                    {(() => {
+                      const weldCount = getWeldCountPerBend(entry.specs?.bendEndConfiguration || 'PE');
+                      const dn = entry.specs?.nominalBoreMm;
+                      const schedule = entry.specs?.scheduleNumber || '';
+                      const pipeWallThickness = entry.specs?.wallThicknessMm;
+                      const numStubs = entry.specs?.numberOfStubs || 0;
+                      const stubs = entry.specs?.stubs || [];
+
+                      // Weld thickness lookup table
+                      const FITTING_WALL_THICKNESS: Record<string, Record<number, number>> = {
+                        'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
+                        'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
+                        'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
+                      };
+
+                      const scheduleUpper = schedule.toUpperCase();
+                      const fittingClass =
+                        scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
+                          ? 'XXH'
+                          : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
+                            ? 'XH'
+                            : 'STD';
+
+                      const weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
+                      const effectiveWeldThickness = weldThickness || pipeWallThickness;
+                      const usingScheduleThickness = !weldThickness && pipeWallThickness;
+
+                      // Calculate circumference for bend flanges
+                      const od = dn ? (NB_TO_OD_LOOKUP[dn] || (dn * 1.05)) : 0;
+                      const circumference = Math.PI * od;
+
+                      // Stub flange info
+                      const stub1NB = stubs[0]?.nominalBoreMm;
+                      const stub2NB = stubs[1]?.nominalBoreMm;
+                      const stub1HasFlange = stubs[0]?.hasFlangeOverride || (stubs[0]?.flangeStandardId && stubs[0]?.flangePressureClassId);
+                      const stub2HasFlange = stubs[1]?.hasFlangeOverride || (stubs[1]?.flangeStandardId && stubs[1]?.flangePressureClassId);
+                      const stub1OD = stub1NB ? (NB_TO_OD_LOOKUP[stub1NB] || (stub1NB * 1.05)) : 0;
+                      const stub2OD = stub2NB ? (NB_TO_OD_LOOKUP[stub2NB] || (stub2NB * 1.05)) : 0;
+                      const stub1Circumference = Math.PI * stub1OD;
+                      const stub2Circumference = Math.PI * stub2OD;
+                      const stub1Thickness = stub1NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub1NB] || pipeWallThickness) : 0;
+                      const stub2Thickness = stub2NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub2NB] || pipeWallThickness) : 0;
+
+                      // Only show if there are bend flanges or stubs
+                      if (weldCount === 0 && numStubs === 0) return null;
+
+                      return (
+                        <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
+                          <h6 className="text-xs font-bold text-green-900 mb-2">Flange Weld Data</h6>
+
+                          {/* Bend Flange Welds */}
+                          {weldCount > 0 && dn && effectiveWeldThickness && (
+                            <div className="mb-2">
+                              <p className="text-xs font-medium text-green-800">Bend Flanges ({weldCount}):</p>
+                              <p className="text-xs text-green-700">
+                                {dn}NB - {effectiveWeldThickness?.toFixed(2)}mm weld{usingScheduleThickness ? ' (sch)' : ` (${fittingClass})`}
+                              </p>
+                              <p className="text-xs text-green-600">
+                                Weld length: {(circumference * 2 * weldCount).toFixed(0)}mm ({weldCount}x2x{circumference.toFixed(0)}mm circ)
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Stub Flange Welds */}
+                          {numStubs > 0 && (
+                            <div className={weldCount > 0 ? 'pt-2 border-t border-green-200' : ''}>
+                              <p className="text-xs font-medium text-green-800">Stub Flanges:</p>
+                              {numStubs >= 1 && stub1NB && (
+                                <div className="ml-2">
+                                  {stub1HasFlange ? (
+                                    <>
+                                      <p className="text-xs text-green-700">
+                                        Stub 1: {stub1NB}NB - {stub1Thickness?.toFixed(2)}mm weld
+                                      </p>
+                                      <p className="text-xs text-green-600">
+                                        Weld length: {(stub1Circumference * 2).toFixed(0)}mm (2x{stub1Circumference.toFixed(0)}mm circ)
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <p className="text-xs text-gray-500">Stub 1: {stub1NB}NB - OE (no weld data)</p>
+                                  )}
+                                </div>
+                              )}
+                              {numStubs >= 2 && stub2NB && (
+                                <div className="ml-2 mt-1">
+                                  {stub2HasFlange ? (
+                                    <>
+                                      <p className="text-xs text-green-700">
+                                        Stub 2: {stub2NB}NB - {stub2Thickness?.toFixed(2)}mm weld
+                                      </p>
+                                      <p className="text-xs text-green-600">
+                                        Weld length: {(stub2Circumference * 2).toFixed(0)}mm (2x{stub2Circumference.toFixed(0)}mm circ)
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <p className="text-xs text-gray-500">Stub 2: {stub2NB}NB - OE (no weld data)</p>
+                                  )}
+                                </div>
+                              )}
+                              {numStubs >= 1 && !stub1NB && (
+                                <p className="text-xs text-amber-600 ml-2">Stub 1: Select NB</p>
+                              )}
+                              {numStubs >= 2 && !stub2NB && (
+                                <p className="text-xs text-amber-600 ml-2">Stub 2: Select NB</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Total Bend Length - Auto-calculated */}
                     {entry.specs?.centerToFaceMm && (
                       <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
@@ -8899,81 +9075,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         </p>
                       )}
                     </div>
-
-                    {/* Flange Weld Thickness - with fallback to schedule thickness */}
-                    {(() => {
-                      const weldCount = getWeldCountPerBend(entry.specs?.bendEndConfiguration || 'PE');
-                      const dn = entry.specs?.nominalBoreMm;
-                      const schedule = entry.specs?.scheduleNumber || '';
-
-                      const FITTING_WALL_THICKNESS: Record<string, Record<number, number>> = {
-                        'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
-                        'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
-                        'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
-                      };
-
-                      const scheduleUpper = schedule.toUpperCase();
-                      const fittingClass =
-                        scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
-                          ? 'XXH'
-                          : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
-                            ? 'XH'
-                            : 'STD';
-
-                      const weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
-
-                      // Fallback to pipe wall thickness (schedule thickness) if no fitting data
-                      const pipeWallThickness = entry.specs?.wallThicknessMm;
-                      const effectiveWeldThickness = weldThickness || pipeWallThickness;
-                      const usingScheduleThickness = !weldThickness && pipeWallThickness;
-
-                      // Calculate circumference for weld length
-                      const od = dn ? (NB_TO_OD_LOOKUP[dn] || (dn * 1.05)) : 0;
-                      const circumference = Math.PI * od;
-
-                      if (weldCount === 0) return null;
-
-                      if (!dn) {
-                        return (
-                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2">
-                            <p className="text-xs text-amber-700">
-                              Select NB for weld thickness
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      if (!effectiveWeldThickness) {
-                        return (
-                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2">
-                            <p className="text-xs text-amber-700">
-                              Set schedule/wall thickness for weld data
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div className={`${usingScheduleThickness ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'} rounded-lg p-3`}>
-                          <h5 className={`text-xs font-bold ${usingScheduleThickness ? 'text-blue-900' : 'text-green-900'} mb-1`}>Flange Weld Info</h5>
-                          <p className={`text-xs ${usingScheduleThickness ? 'text-blue-800' : 'text-green-800'}`}>
-                            <span className="font-medium">Thickness:</span> {effectiveWeldThickness?.toFixed(2)} mm
-                            {usingScheduleThickness ? ' (from schedule)' : ` (${fittingClass})`}
-                          </p>
-                          {weldCount > 0 && (
-                            <>
-                              <p className={`text-xs ${usingScheduleThickness ? 'text-blue-700' : 'text-green-700'}`}>
-                                {weldCount} flange weld{weldCount !== 1 ? 's' : ''} x 2 passes
-                              </p>
-                              <p className={`text-xs ${usingScheduleThickness ? 'text-blue-600' : 'text-green-600'}`}>
-                                Weld length: {(circumference * 2 * weldCount).toFixed(0)}mm ({weldCount}x2x{circumference.toFixed(0)}mm circ)
-                              </p>
-                            </>
-                          )}
-
-                        </div>
-                      );
-                    })()}
 
                     {/* Flange Specifications - Uses Global Specs with Override Option */}
                     <div>
@@ -9118,9 +9219,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                   </label>
                                   <select
                                     value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
-                                    onChange={(e) => onUpdateEntry(entry.id, {
-                                      specs: { ...entry.specs, flangeStandardId: parseInt(e.target.value) || undefined }
-                                    })}
+                                    onChange={async (e) => {
+                                      const standardId = parseInt(e.target.value) || undefined;
+                                      onUpdateEntry(entry.id, {
+                                        specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined }
+                                      });
+                                      // Fetch pressure classes for this standard
+                                      if (standardId) {
+                                        getFilteredPressureClasses(standardId);
+                                      }
+                                    }}
                                     className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                                   >
                                     <option value="">Select Standard</option>
@@ -9146,11 +9254,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                     className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                                   >
                                     <option value="">Select Class</option>
-                                    {masterData.pressureClasses?.map((pressureClass: any) => (
-                                      <option key={pressureClass.id} value={pressureClass.id}>
-                                        {pressureClass.designation}
-                                      </option>
-                                    ))}
+                                    {(() => {
+                                      const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                                      const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
+                                      return filtered.map((pressureClass: any) => (
+                                        <option key={pressureClass.id} value={pressureClass.id}>
+                                          {pressureClass.designation}
+                                        </option>
+                                      ));
+                                    })()}
                                   </select>
                                 </div>
                               </div>
@@ -9229,8 +9341,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                       {(entry.specs?.numberOfStubs || 0) >= 1 && (
                         <div className="mt-2 p-2 bg-white rounded border border-green-300">
-                          <p className="text-xs font-medium text-green-900 mb-1">Stub 1</p>
-                          <div className="grid grid-cols-2 gap-2 mb-2">
+                          <p className="text-xs font-medium text-green-900 mb-1">Stub 1 <span className="text-gray-500 font-normal">(on horizontal tangent - vertical stub)</span></p>
+                          <div className="grid grid-cols-3 gap-2 mb-2">
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">NB</label>
                               <select
@@ -9238,7 +9350,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 onChange={(e) => {
                                   const stubs = [...(entry.specs?.stubs || [])];
                                   stubs[0] = { ...stubs[0], nominalBoreMm: parseInt(e.target.value) || 0 };
-                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                  const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                  updatedEntry.description = generateItemDescription(updatedEntry);
+                                  onUpdateEntry(entry.id, updatedEntry);
                                 }}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
                               >
@@ -9263,10 +9377,28 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 onChange={(e) => {
                                   const stubs = [...(entry.specs?.stubs || [])];
                                   stubs[0] = { ...stubs[0], length: parseInt(e.target.value) || 0 };
-                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                  const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                  updatedEntry.description = generateItemDescription(updatedEntry);
+                                  onUpdateEntry(entry.id, updatedEntry);
                                 }}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
                                 placeholder="150"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">Location (mm)</label>
+                              <input
+                                type="number"
+                                value={entry.specs?.stubs?.[0]?.locationFromFlange || ''}
+                                onChange={(e) => {
+                                  const stubs = [...(entry.specs?.stubs || [])];
+                                  stubs[0] = { ...stubs[0], locationFromFlange: parseInt(e.target.value) || 0 };
+                                  const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                  updatedEntry.description = generateItemDescription(updatedEntry);
+                                  onUpdateEntry(entry.id, updatedEntry);
+                                }}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                                placeholder="From flange"
                               />
                             </div>
                           </div>
@@ -9314,10 +9446,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               <div className="grid grid-cols-2 gap-1">
                                 <select
                                   value={entry.specs?.stubs?.[0]?.flangeStandardId || ''}
-                                  onChange={(e) => {
+                                  onChange={async (e) => {
+                                    const standardId = parseInt(e.target.value) || undefined;
                                     const stubs = [...(entry.specs?.stubs || [])];
-                                    stubs[0] = { ...stubs[0], flangeStandardId: parseInt(e.target.value) || undefined };
+                                    stubs[0] = { ...stubs[0], flangeStandardId: standardId, flangePressureClassId: undefined };
                                     onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                    // Fetch pressure classes for this standard
+                                    if (standardId) {
+                                      getFilteredPressureClasses(standardId);
+                                    }
                                   }}
                                   className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
                                 >
@@ -9336,9 +9473,13 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                   className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
                                 >
                                   <option value="">Class</option>
-                                  {masterData.pressureClasses?.map((p: any) => (
-                                    <option key={p.id} value={p.id}>{p.designation}</option>
-                                  ))}
+                                  {(() => {
+                                    const stdId = entry.specs?.stubs?.[0]?.flangeStandardId;
+                                    const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
+                                    return filtered.map((p: any) => (
+                                      <option key={p.id} value={p.id}>{p.designation}</option>
+                                    ));
+                                  })()}
                                 </select>
                               </div>
                             ) : (
@@ -9350,8 +9491,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                       {(entry.specs?.numberOfStubs || 0) >= 2 && (
                         <div className="mt-2 p-2 bg-white rounded border border-green-300">
-                          <p className="text-xs font-medium text-green-900 mb-1">Stub 2</p>
-                          <div className="grid grid-cols-2 gap-2 mb-2">
+                          <p className="text-xs font-medium text-green-900 mb-1">Stub 2 <span className="text-gray-500 font-normal">(on vertical tangent - horizontal stub)</span></p>
+                          <div className="grid grid-cols-3 gap-2 mb-2">
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">NB</label>
                               <select
@@ -9359,7 +9500,9 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 onChange={(e) => {
                                   const stubs = [...(entry.specs?.stubs || [])];
                                   stubs[1] = { ...stubs[1], nominalBoreMm: parseInt(e.target.value) || 0 };
-                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                  const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                  updatedEntry.description = generateItemDescription(updatedEntry);
+                                  onUpdateEntry(entry.id, updatedEntry);
                                 }}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
                               >
@@ -9384,10 +9527,28 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 onChange={(e) => {
                                   const stubs = [...(entry.specs?.stubs || [])];
                                   stubs[1] = { ...stubs[1], length: parseInt(e.target.value) || 0 };
-                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                  const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                  updatedEntry.description = generateItemDescription(updatedEntry);
+                                  onUpdateEntry(entry.id, updatedEntry);
                                 }}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
                                 placeholder="150"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">Location (mm)</label>
+                              <input
+                                type="number"
+                                value={entry.specs?.stubs?.[1]?.locationFromFlange || ''}
+                                onChange={(e) => {
+                                  const stubs = [...(entry.specs?.stubs || [])];
+                                  stubs[1] = { ...stubs[1], locationFromFlange: parseInt(e.target.value) || 0 };
+                                  const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                  updatedEntry.description = generateItemDescription(updatedEntry);
+                                  onUpdateEntry(entry.id, updatedEntry);
+                                }}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                                placeholder="From flange"
                               />
                             </div>
                           </div>
@@ -9435,10 +9596,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               <div className="grid grid-cols-2 gap-1">
                                 <select
                                   value={entry.specs?.stubs?.[1]?.flangeStandardId || ''}
-                                  onChange={(e) => {
+                                  onChange={async (e) => {
+                                    const standardId = parseInt(e.target.value) || undefined;
                                     const stubs = [...(entry.specs?.stubs || [])];
-                                    stubs[1] = { ...stubs[1], flangeStandardId: parseInt(e.target.value) || undefined };
+                                    stubs[1] = { ...stubs[1], flangeStandardId: standardId, flangePressureClassId: undefined };
                                     onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                    // Fetch pressure classes for this standard
+                                    if (standardId) {
+                                      getFilteredPressureClasses(standardId);
+                                    }
                                   }}
                                   className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
                                 >
@@ -9457,9 +9623,13 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                   className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
                                 >
                                   <option value="">Class</option>
-                                  {masterData.pressureClasses?.map((p: any) => (
-                                    <option key={p.id} value={p.id}>{p.designation}</option>
-                                  ))}
+                                  {(() => {
+                                    const stdId = entry.specs?.stubs?.[1]?.flangeStandardId;
+                                    const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
+                                    return filtered.map((p: any) => (
+                                      <option key={p.id} value={p.id}>{p.designation}</option>
+                                    ));
+                                  })()}
                                 </select>
                               </div>
                             ) : (
@@ -9553,69 +9723,254 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   </div>
                 )}
 
-                {/* Auto-Calculating Indicator */}
-                <div className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg">
-                  <span className="text-purple-700 font-semibold">Auto-calculating</span>
-                  <span className="text-xs text-purple-600">Results update automatically</span>
-                </div>
-
-                {/* Calculation Results */}
+                {/* Calculation Results - Compact Layout matching Pipe style */}
                 {entry.calculation && (
-                  <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                    <h4 className="font-medium text-purple-900 mb-3">Calculation Results:</h4>
-                    
-                    {/* Main metrics */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-purple-500">
-                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Total Weight</div>
-                        <div className="text-2xl font-bold text-gray-900 mt-1">{entry.calculation.totalWeight?.toFixed(1)} kg</div>
-                      </div>
-                      <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-green-500">
-                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Center-to-Face</div>
-                        <div className="text-2xl font-bold text-gray-900 mt-1">{entry.calculation.centerToFaceDimension?.toFixed(1)} mm</div>
-                      </div>
-                    </div>
+                  <div className="mt-4">
+                    <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
+                      Calculation Results
+                    </h4>
+                    <div className="bg-purple-50 border border-purple-200 p-3 rounded-md">
+                      {(() => {
+                        // Calculate all values needed for display
+                        const cf = Number(entry.specs?.centerToFaceMm) || 0;
+                        const tangent1 = entry.specs?.tangentLengths?.[0] || 0;
+                        const tangent2 = entry.specs?.tangentLengths?.[1] || 0;
+                        const numTangents = entry.specs?.numberOfTangents || 0;
+                        const numStubs = entry.specs?.numberOfStubs || 0;
+                        const stubs = entry.specs?.stubs || [];
+                        const stub1NB = stubs[0]?.nominalBoreMm;
+                        const stub2NB = stubs[1]?.nominalBoreMm;
+                        // Stubs always have flanges by default when they exist (have NB set)
+                        const stub1HasFlange = stub1NB ? true : false;
+                        const stub2HasFlange = stub2NB ? true : false;
+                        const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
 
-                    {/* Weight breakdown */}
-                    <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
-                      <h5 className="text-sm font-medium text-gray-700 mb-3">Weight Breakdown:</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                          <span className="text-sm text-gray-600">Bend:</span>
-                          <span className="font-medium text-gray-900">{entry.calculation.bendWeight?.toFixed(1) || '0'} kg</span>
-                        </div>
-                        <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                          <span className="text-sm text-gray-600">Tangent:</span>
-                          <span className="font-medium text-gray-900">{entry.calculation.tangentWeight?.toFixed(1) || '0'} kg</span>
-                        </div>
-                        <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                          <span className="text-sm text-gray-600">Flange:</span>
-                          <span className="font-medium text-gray-900">{entry.calculation.flangeWeight?.toFixed(1) || '0'} kg</span>
-                        </div>
-                      </div>
-                    </div>
+                        // C/F display with tangents
+                        const end1 = cf + tangent1;
+                        const end2 = cf + tangent2;
+                        let cfDisplay = '';
+                        if (numTangents > 0 && (tangent1 > 0 || tangent2 > 0)) {
+                          if (numTangents === 2 && tangent1 > 0 && tangent2 > 0) {
+                            cfDisplay = `${end1.toFixed(0)}x${end2.toFixed(0)}`;
+                          } else if (tangent1 > 0) {
+                            cfDisplay = `${end1.toFixed(0)}x${cf.toFixed(0)}`;
+                          } else if (tangent2 > 0) {
+                            cfDisplay = `${cf.toFixed(0)}x${end2.toFixed(0)}`;
+                          }
+                        } else {
+                          cfDisplay = `${cf.toFixed(0)}`;
+                        }
 
-                    {/* Technical details */}
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                      <h5 className="text-sm font-medium text-gray-700 mb-3">Technical Details:</h5>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="flex flex-col">
-                          <span className="text-xs text-gray-500 uppercase tracking-wide">Outside Diameter</span>
-                          <span className="font-medium text-gray-900">{entry.calculation.outsideDiameterMm?.toFixed(1) || '0'} mm</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xs text-gray-500 uppercase tracking-wide">Wall Thickness</span>
-                          <span className="font-medium text-gray-900">{entry.calculation.wallThicknessMm?.toFixed(2) || '0'} mm</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xs text-gray-500 uppercase tracking-wide">Flanges</span>
-                          <span className="font-medium text-gray-900">{entry.calculation.numberOfFlanges || 0}</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xs text-gray-500 uppercase tracking-wide">Weld Length</span>
-                          <span className="font-medium text-gray-900">{(entry.calculation.totalFlangeWeldLength || 0).toFixed(2)} m</span>
-                        </div>
-                      </div>
+                        // Count total flanges from all sources
+                        const bendFlangeCount = bendEndConfig === 'FBE' ? 2 : bendEndConfig === 'FOE' || bendEndConfig === 'FOE_LF' || bendEndConfig === 'FOE_RF' ? 1 : bendEndConfig === '2X_RF' ? 2 : 0;
+                        const stub1FlangeCount = stub1HasFlange ? 1 : 0;
+                        const stub2FlangeCount = stub2HasFlange ? 1 : 0;
+                        const numSegments = entry.specs?.numberOfSegments || 0;
+                        const totalFlanges = bendFlangeCount + stub1FlangeCount + stub2FlangeCount;
+
+                        // Weld thickness lookup
+                        const dn = entry.specs?.nominalBoreMm;
+                        const schedule = entry.specs?.scheduleNumber || '';
+                        const pipeWallThickness = entry.calculation?.wallThicknessMm;
+                        const scheduleUpper = schedule.toUpperCase();
+                        const fittingClass = scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH') ? 'XXH' : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH') ? 'XH' : 'STD';
+                        const FITTING_WT: Record<string, Record<number, number>> = {
+                          'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53, 750: 9.53, 900: 9.53, 1000: 9.53, 1050: 9.53, 1200: 9.53 },
+                          'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70, 750: 12.70, 900: 12.70, 1000: 12.70, 1050: 12.70, 1200: 12.70 },
+                          'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
+                        };
+                        const NB_TO_OD: Record<number, number> = { 15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9, 100: 114.3, 125: 141.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6, 700: 711.2, 750: 762.0, 800: 812.8, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2 };
+                        const fittingWt = dn ? FITTING_WT[fittingClass]?.[dn] : null;
+                        const effectiveWt = fittingWt || pipeWallThickness;
+
+                        // Calculate stub weights (estimate based on pipe weight)
+                        const stub1Weight = stub1NB ? (stubs[0]?.length || 0) * 0.01 * (NB_TO_OD[stub1NB] || stub1NB) : 0;
+                        const stub2Weight = stub2NB ? (stubs[1]?.length || 0) * 0.01 * (NB_TO_OD[stub2NB] || stub2NB) : 0;
+                        const stubsWeight = stub1Weight + stub2Weight;
+
+                        // Stub weld thicknesses (for flange and tee welds)
+                        const stub1Wt = stub1NB ? (FITTING_WT[fittingClass]?.[stub1NB] || pipeWallThickness || 5) : 0;
+                        const stub2Wt = stub2NB ? (FITTING_WT[fittingClass]?.[stub2NB] || pipeWallThickness || 5) : 0;
+
+                        // Calculate flange weights dynamically based on NB and pressure class
+                        // Bend flanges - use bend's NB and pressure class
+                        const bendPressureClass = masterData.pressureClasses?.find((p: any) => p.id === (entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId))?.designation;
+                        const bendFlangeWeight = bendFlangeCount > 0 ? getFlangeWeight(dn || 100, bendPressureClass) * bendFlangeCount : 0;
+
+                        // Stub 1 flange - use stub's own NB and pressure class
+                        const stub1PressureClass = stubs[0]?.flangePressureClassId
+                          ? masterData.pressureClasses?.find((p: any) => p.id === stubs[0].flangePressureClassId)?.designation
+                          : bendPressureClass;
+                        const stub1FlangeWeight = stub1FlangeCount > 0 ? getFlangeWeight(stub1NB || dn || 100, stub1PressureClass) : 0;
+
+                        // Stub 2 flange - use stub's own NB and pressure class
+                        const stub2PressureClass = stubs[1]?.flangePressureClassId
+                          ? masterData.pressureClasses?.find((p: any) => p.id === stubs[1].flangePressureClassId)?.designation
+                          : bendPressureClass;
+                        const stub2FlangeWeight = stub2FlangeCount > 0 ? getFlangeWeight(stub2NB || dn || 100, stub2PressureClass) : 0;
+
+                        // Total calculated flange weight
+                        const totalCalcFlangeWeight = bendFlangeWeight + stub1FlangeWeight + stub2FlangeWeight;
+
+                        return (
+                          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
+                            {/* Quantity */}
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-xs text-gray-600 font-medium">Qty Bends</p>
+                              <p className="text-lg font-bold text-gray-900">{entry.specs?.quantityValue || 1}</p>
+                              <p className="text-xs text-gray-500">pieces</p>
+                            </div>
+
+                            {/* Combined Dimensions - C/F and Stubs */}
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-xs text-gray-600 font-medium">Dimensions</p>
+                              <p className="text-sm font-bold text-purple-900">C/F: {cfDisplay} mm</p>
+                              {numTangents > 0 && <p className="text-[10px] text-gray-500">incl. tangents</p>}
+                              {numStubs > 0 && (
+                                <div className="mt-1 pt-1 border-t border-gray-200">
+                                  {stub1NB && (
+                                    <p className="text-[10px] text-gray-700">Stub 1: {stub1NB}NB x {stubs[0]?.length || 0}mm</p>
+                                  )}
+                                  {stub2NB && (
+                                    <p className="text-[10px] text-gray-700">Stub 2: {stub2NB}NB x {stubs[1]?.length || 0}mm</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Surface Area - for coating calculations */}
+                            {(() => {
+                              const odMm = entry.calculation?.outsideDiameterMm || entry.specs?.outsideDiameterMm;
+                              const wtMm = entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm;
+                              if (!odMm || !wtMm) return null;
+
+                              const idMm = odMm - (2 * wtMm);
+                              const odM = odMm / 1000;
+                              const idM = idMm / 1000;
+
+                              // Get bend radius and angle
+                              const bendRadiusMm = entry.specs?.bendRadiusMm || entry.calculation?.bendRadiusMm ||
+                                (entry.specs?.centerToFaceMm ? entry.specs.centerToFaceMm : (entry.specs?.nominalBoreMm || 100) * 1.5);
+                              const bendAngleDeg = entry.specs?.bendDegrees || 90;
+                              const bendAngleRad = (bendAngleDeg * Math.PI) / 180;
+                              const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
+
+                              let extArea = odM * Math.PI * arcLengthM;
+                              let intArea = idM * Math.PI * arcLengthM;
+
+                              // Add tangents
+                              const tangentLengths = entry.specs?.tangentLengths || [];
+                              if (tangentLengths[0] > 0) {
+                                extArea += odM * Math.PI * (tangentLengths[0] / 1000);
+                                intArea += idM * Math.PI * (tangentLengths[0] / 1000);
+                              }
+                              if (tangentLengths[1] > 0) {
+                                extArea += odM * Math.PI * (tangentLengths[1] / 1000);
+                                intArea += idM * Math.PI * (tangentLengths[1] / 1000);
+                              }
+
+                              // Add stubs
+                              if (entry.specs?.stubs?.length > 0) {
+                                entry.specs.stubs.forEach((stub: any) => {
+                                  if (stub?.nominalBoreMm && stub?.length) {
+                                    const stubOdMm = stub.outsideDiameterMm || (stub.nominalBoreMm * 1.1);
+                                    const stubWtMm = stub.wallThicknessMm || (stubOdMm * 0.08);
+                                    const stubIdMm = stubOdMm - (2 * stubWtMm);
+                                    extArea += (stubOdMm / 1000) * Math.PI * (stub.length / 1000);
+                                    intArea += (stubIdMm / 1000) * Math.PI * (stub.length / 1000);
+                                  }
+                                });
+                              }
+
+                              return (
+                                <div className="bg-indigo-50 p-2 rounded text-center border border-indigo-200">
+                                  <p className="text-xs text-indigo-700 font-medium">Surface Area</p>
+                                  <div className="mt-1 space-y-0.5">
+                                    <p className="text-xs text-indigo-900">
+                                      <span className="font-medium">Ext:</span> {extArea.toFixed(3)} m²
+                                    </p>
+                                    <p className="text-xs text-indigo-900">
+                                      <span className="font-medium">Int:</span> {intArea.toFixed(3)} m²
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Total Weight - calculated from all components */}
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-xs text-gray-600 font-medium">Total Weight</p>
+                              <p className="text-lg font-bold text-purple-900">
+                                {((entry.calculation.bendWeight || 0) + (entry.calculation.tangentWeight || 0) + totalCalcFlangeWeight + stubsWeight).toFixed(1)} kg
+                              </p>
+                            </div>
+
+                            {/* Weight Breakdown - Bend first, then Tangent, Flange, Stubs */}
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-xs text-gray-600 font-medium">Weight Breakdown</p>
+                              <p className="text-xs text-gray-700 mt-1">Bend: {entry.calculation.bendWeight?.toFixed(1) || '0'}kg</p>
+                              <p className="text-xs text-gray-700">Tangent: {entry.calculation.tangentWeight?.toFixed(1) || '0'}kg</p>
+                              <p className="text-xs text-gray-700">Flange: {totalCalcFlangeWeight.toFixed(1)}kg</p>
+                              {bendFlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">({bendFlangeCount}x bend @ {bendFlangeWeight.toFixed(1)}kg)</p>}
+                              {stub1FlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">(stub1 @ {stub1FlangeWeight.toFixed(1)}kg)</p>}
+                              {stub2FlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">(stub2 @ {stub2FlangeWeight.toFixed(1)}kg)</p>}
+                              {numStubs > 0 && <p className="text-xs text-gray-700">Stubs: {stubsWeight.toFixed(1)}kg</p>}
+                            </div>
+
+                            {/* Flanges - Total count from all sources */}
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-xs text-gray-600 font-medium">Total Flanges</p>
+                              <p className="text-lg font-bold text-gray-900">{totalFlanges}</p>
+                              <div className="text-left mt-1 space-y-0.5">
+                                {bendFlangeCount > 0 && (
+                                  <p className="text-[10px] text-gray-700">{bendFlangeCount} x {dn}NB Flange</p>
+                                )}
+                                {/* Stub flanges - combine if same NB, separate if different */}
+                                {stub1FlangeCount > 0 && stub2FlangeCount > 0 && stub1NB === stub2NB ? (
+                                  <p className="text-[10px] text-purple-700">2 x {stub1NB}NB Stub Flange</p>
+                                ) : (
+                                  <>
+                                    {stub1FlangeCount > 0 && stub1NB && (
+                                      <p className="text-[10px] text-purple-700">1 x {stub1NB}NB Stub Flange</p>
+                                    )}
+                                    {stub2FlangeCount > 0 && stub2NB && (
+                                      <p className="text-[10px] text-purple-700">1 x {stub2NB}NB Stub Flange</p>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Weld Summary */}
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-xs text-gray-600 font-medium">Weld Summary</p>
+                              <div className="text-left mt-1 space-y-0.5">
+                                {bendFlangeCount > 0 && (
+                                  <p className="text-[10px] text-green-700">Bend Flange: {bendFlangeCount * 2} welds @ {effectiveWt?.toFixed(1) || '?'}mm</p>
+                                )}
+                                {numTangents > 0 && (
+                                  <p className="text-[10px] text-blue-700">Tangent Buttweld: {numTangents} @ {effectiveWt?.toFixed(1) || '?'}mm</p>
+                                )}
+                                {numSegments > 1 && (
+                                  <p className="text-[10px] text-red-700">Mitre Weld: {numSegments - 1} @ {effectiveWt?.toFixed(1) || '?'}mm</p>
+                                )}
+                                {stub1NB && (
+                                  <p className="text-[10px] text-purple-700">Stub 1 Tee: 1 weld @ {stub1Wt?.toFixed(1) || '?'}mm</p>
+                                )}
+                                {stub2NB && (
+                                  <p className="text-[10px] text-purple-700">Stub 2 Tee: 1 weld @ {stub2Wt?.toFixed(1) || '?'}mm</p>
+                                )}
+                                {stub1FlangeCount > 0 && (
+                                  <p className="text-[10px] text-orange-700">Stub 1 Flange: 2 welds @ {stub1Wt?.toFixed(1) || '?'}mm</p>
+                                )}
+                                {stub2FlangeCount > 0 && (
+                                  <p className="text-[10px] text-orange-700">Stub 2 Flange: 2 welds @ {stub2Wt?.toFixed(1) || '?'}mm</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
@@ -9628,10 +9983,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     wallThickness={entry.calculation?.wallThicknessMm || 5}
                     bendAngle={entry.specs.bendDegrees}
                     bendType={entry.specs.bendType || '1.5D'}
-                    tangent1={entry.specs.tangent1Length}
-                    tangent2={entry.specs.tangent2Length}
+                    tangent1={entry.specs?.tangentLengths?.[0] || 0}
+                    tangent2={entry.specs?.tangentLengths?.[1] || 0}
                     schedule={entry.specs.scheduleNumber}
                     materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                    numberOfSegments={entry.specs?.numberOfSegments}
+                    isSegmented={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName?.toLowerCase().includes('sabs 719')}
+                    stubs={entry.specs?.stubs}
+                    numberOfStubs={entry.specs?.numberOfStubs || 0}
+                    flangeConfig={entry.specs?.bendEndConfiguration || 'PE'}
                   />
                 )}
               </div>
@@ -10156,9 +10516,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               </label>
                               <select
                                 value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
-                                onChange={(e) => onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, flangeStandardId: parseInt(e.target.value) || undefined }
-                                })}
+                                onChange={async (e) => {
+                                  const standardId = parseInt(e.target.value) || undefined;
+                                  onUpdateEntry(entry.id, {
+                                    specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined }
+                                  });
+                                  if (standardId) {
+                                    getFilteredPressureClasses(standardId);
+                                  }
+                                }}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
                               >
                                 <option value="">Select Standard</option>
@@ -10184,11 +10550,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
                               >
                                 <option value="">Select Class</option>
-                                {masterData.pressureClasses?.map((pressureClass: any) => (
-                                  <option key={pressureClass.id} value={pressureClass.id}>
-                                    {pressureClass.designation}
-                                  </option>
-                                ))}
+                                {(() => {
+                                  const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                                  const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
+                                  return filtered.map((pressureClass: any) => (
+                                    <option key={pressureClass.id} value={pressureClass.id}>
+                                      {pressureClass.designation}
+                                    </option>
+                                  ));
+                                })()}
                               </select>
                             </div>
                           </div>
@@ -10303,6 +10673,18 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <span className="ml-2 font-semibold text-gray-900">{entry.calculation.wallThicknessMm?.toFixed(2)} mm</span>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Remove Item Button */}
+                {entries.length > 1 && (
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={() => onRemoveEntry(entry.id)}
+                      className="px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 text-sm font-medium border border-red-300 rounded-md transition-colors"
+                    >
+                      Remove Item
+                    </button>
                   </div>
                 )}
               </div>
@@ -11375,8 +11757,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         })()}
                       </div>
 
-                      {/* Surface Protection m² - External */}
-                      {entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (() => {
+                      {/* Surface Protection m² - External (only show if surface protection selected) */}
+                      {showSurfaceProtection && entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (() => {
                         // Get pressure class - use entry override if available, otherwise global
                         const pressureClassId = entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                         const pressureClassDesignation = pressureClassId
@@ -11402,8 +11784,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         );
                       })()}
 
-                      {/* Surface Protection m² - Internal */}
-                      {entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (() => {
+                      {/* Surface Protection m² - Internal (only show if surface protection selected) */}
+                      {showSurfaceProtection && entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (() => {
                         // Get pressure class - use entry override if available, otherwise global
                         const pressureClassId = entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                         const pressureClassDesignation = pressureClassId
@@ -11688,17 +12070,52 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                 {entries.map((entry: any, index: number) => {
                   const itemNumber = entry.clientItemNumber || `#${index + 1}`;
                   const qty = entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0;
-                  const totalWeight = entry.itemType === 'bend' || entry.itemType === 'fitting'
-                    ? (entry.calculation?.totalWeight || 0)
-                    : (entry.calculation?.totalSystemWeight || 0);
-                  const weightPerItem = qty > 0 ? totalWeight / qty : 0;
+
+                  // Calculate weights differently for bends vs straight pipes
+                  let totalWeight = 0;
+                  let weightPerItem = 0;
+
+                  if (entry.itemType === 'bend') {
+                    // For bends, use component weights (bendWeight + tangentWeight are per-unit)
+                    const bendWeightPerUnit = entry.calculation?.bendWeight || 0;
+                    const tangentWeightPerUnit = entry.calculation?.tangentWeight || 0;
+                    // Flange weight from calculation (already per-unit in API response)
+                    const flangeWeightPerUnit = entry.calculation?.flangeWeight || 0;
+                    weightPerItem = bendWeightPerUnit + tangentWeightPerUnit + flangeWeightPerUnit;
+                    totalWeight = weightPerItem * qty;
+                  } else if (entry.itemType === 'fitting') {
+                    // For fittings, totalWeight is already total
+                    totalWeight = entry.calculation?.totalWeight || 0;
+                    weightPerItem = qty > 0 ? totalWeight / qty : 0;
+                  } else {
+                    // For straight pipes, totalSystemWeight is already total
+                    totalWeight = entry.calculation?.totalSystemWeight || 0;
+                    weightPerItem = qty > 0 ? totalWeight / qty : 0;
+                  }
 
                   // Calculate BNW info if fasteners_gaskets is selected and item has flanges
                   const showBnw = requiredProducts?.includes('fasteners_gaskets');
-                  const flangesPerPipe = entry.itemType === 'straight_pipe' || !entry.itemType
-                    ? getFlangesPerPipe(entry.specs?.pipeEndConfiguration || 'PE')
-                    : 0;
+
+                  // Calculate flanges per item based on item type
+                  let flangesPerPipe = 0;
+                  let stubFlangesPerItem = 0;
+
+                  if (entry.itemType === 'straight_pipe' || !entry.itemType) {
+                    flangesPerPipe = getFlangesPerPipe(entry.specs?.pipeEndConfiguration || 'PE');
+                  } else if (entry.itemType === 'bend') {
+                    // Calculate main bend flanges based on bendEndConfiguration
+                    const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                    if (bendEndConfig === 'FBE' || bendEndConfig === 'FOE_RF' || bendEndConfig === '2X_RF') {
+                      flangesPerPipe = 2;
+                    } else if (bendEndConfig === 'FOE' || bendEndConfig === 'FOE_LF') {
+                      flangesPerPipe = 1;
+                    }
+                    // Add stub flanges (each stub has 1 flange)
+                    stubFlangesPerItem = entry.specs?.numberOfStubs || 0;
+                  }
+
                   const totalFlanges = flangesPerPipe * qty;
+                  const totalStubFlanges = stubFlangesPerItem * qty;
 
                   // Get pressure class for BNW lookup
                   const pressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
@@ -11715,10 +12132,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                   // Calculate weld thickness for flange welds
                   const getWeldThickness = () => {
-                    if (entry.itemType === 'bend' || entry.itemType === 'fitting') return null;
+                    // Skip fittings but allow bends
+                    if (entry.itemType === 'fitting') return null;
+
                     const dn = entry.specs?.nominalBoreMm;
                     const schedule = entry.specs?.scheduleNumber || '';
-                    const pipeWallThickness = entry.specs?.wallThicknessMm;
+                    const pipeWallThickness = entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm;
                     if (!dn && !pipeWallThickness) return null;
 
                     const scheduleUpper = schedule.toUpperCase();
@@ -11727,8 +12146,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         ? 'XH' : 'STD';
 
                     const FITTING_WT: Record<string, Record<number, number>> = {
-                      'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53 },
-                      'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70 },
+                      'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53, 700: 9.53, 750: 9.53, 800: 9.53, 900: 9.53, 1000: 9.53, 1050: 9.53, 1200: 9.53 },
+                      'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70, 700: 12.70, 750: 12.70, 800: 12.70, 900: 12.70, 1000: 12.70, 1050: 12.70, 1200: 12.70 },
                       'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
                     };
 
@@ -11738,7 +12157,68 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                   // Calculate per-unit surface areas
                   const getPerUnitSurfaceAreas = () => {
-                    if (entry.itemType === 'bend' || entry.itemType === 'fitting') return { external: null, internal: null };
+                    // Handle bends - calculate surface area for arc + tangents + stubs
+                    if (entry.itemType === 'bend') {
+                      const odMm = entry.calculation?.outsideDiameterMm || entry.specs?.outsideDiameterMm;
+                      const wtMm = entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm;
+                      if (!odMm || !wtMm) return { external: null, internal: null };
+
+                      const idMm = odMm - (2 * wtMm);
+                      const odM = odMm / 1000;
+                      const idM = idMm / 1000;
+
+                      // Get bend radius and angle
+                      const bendRadiusMm = entry.specs?.bendRadiusMm || entry.calculation?.bendRadiusMm ||
+                        (entry.specs?.centerToFaceMm ? entry.specs.centerToFaceMm : (entry.specs?.nominalBoreMm || 100) * 1.5);
+                      const bendAngleDeg = entry.specs?.bendDegrees || 90;
+                      const bendAngleRad = (bendAngleDeg * Math.PI) / 180;
+
+                      // Arc length in meters
+                      const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
+
+                      // Bend arc surface areas
+                      let externalArea = odM * Math.PI * arcLengthM;
+                      let internalArea = idM * Math.PI * arcLengthM;
+
+                      // Add tangent surface areas
+                      const tangentLengths = entry.specs?.tangentLengths || [];
+                      const tangent1Mm = tangentLengths[0] || 0;
+                      const tangent2Mm = tangentLengths[1] || 0;
+
+                      if (tangent1Mm > 0) {
+                        const t1LengthM = tangent1Mm / 1000;
+                        externalArea += odM * Math.PI * t1LengthM;
+                        internalArea += idM * Math.PI * t1LengthM;
+                      }
+                      if (tangent2Mm > 0) {
+                        const t2LengthM = tangent2Mm / 1000;
+                        externalArea += odM * Math.PI * t2LengthM;
+                        internalArea += idM * Math.PI * t2LengthM;
+                      }
+
+                      // Add stub surface areas
+                      if (entry.specs?.stubs?.length > 0) {
+                        entry.specs.stubs.forEach((stub: any) => {
+                          if (stub?.nominalBoreMm && stub?.length) {
+                            // Get stub OD from nominal bore (approximate)
+                            const stubOdMm = stub.outsideDiameterMm || (stub.nominalBoreMm * 1.1);
+                            const stubWtMm = stub.wallThicknessMm || (stubOdMm * 0.08);
+                            const stubIdMm = stubOdMm - (2 * stubWtMm);
+                            const stubLengthM = stub.length / 1000;
+
+                            externalArea += (stubOdMm / 1000) * Math.PI * stubLengthM;
+                            internalArea += (stubIdMm / 1000) * Math.PI * stubLengthM;
+                          }
+                        });
+                      }
+
+                      return { external: externalArea, internal: internalArea };
+                    }
+
+                    // Handle fittings - skip for now
+                    if (entry.itemType === 'fitting') return { external: null, internal: null };
+
+                    // Handle straight pipes
                     if (!entry.calculation?.outsideDiameterMm || !entry.specs?.wallThicknessMm) return { external: null, internal: null };
 
                     // Get pressure class - use entry override if available, otherwise global
@@ -11796,7 +12276,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <tr className="border-b border-orange-100 bg-orange-50/50 hover:bg-orange-100/50">
                           <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                           <td className="py-2 px-2 text-orange-700 text-xs">
-                            {bnwInfo.boltSize} Bolt/Nut/Washer Sets ({bnwInfo.holesPerFlange} per set)
+                            {entry.itemType === 'bend' ? `Main Flange: ` : ''}{bnwInfo.boltSize} BNW Set x{bnwInfo.holesPerFlange} (1 each){entry.itemType === 'bend' ? ` - ${nbMm}NB` : ''}
                           </td>
                           <td className="py-2 px-2 text-center text-orange-600">-</td>
                           {requiredProducts.includes('surface_protection') && (
@@ -11807,7 +12287,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           )}
                           <td className="py-2 px-2 text-center font-medium text-orange-800">{qty}</td>
                           <td className="py-2 px-2 text-right text-orange-700">{formatWeight(bnwWeightPerSet)}</td>
-                          <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwTotalWeight)}</td>
+                          <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwWeightPerSet * qty)}</td>
                         </tr>
                       )}
                       {/* Gasket Line Item - only show if fasteners selected and item has flanges */}
@@ -11818,7 +12298,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <tr className="border-b border-green-100 bg-green-50/50 hover:bg-green-100/50">
                             <td className="py-2 px-2 font-medium text-green-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                             <td className="py-2 px-2 text-green-700 text-xs">
-                              {globalSpecs.gasketType} Gasket (1 per pipe)
+                              {globalSpecs.gasketType} Gasket (1 each){entry.itemType === 'bend' ? ` - ${entry.specs?.nominalBoreMm || 100}NB` : ''}
                             </td>
                             <td className="py-2 px-2 text-center text-green-600">-</td>
                             {requiredProducts.includes('surface_protection') && (
@@ -11833,6 +12313,57 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           </tr>
                         );
                       })()}
+                      {/* Stub BNW Line Items - only for bends with stubs */}
+                      {showBnw && totalStubFlanges > 0 && entry.itemType === 'bend' && entry.specs?.stubs?.map((stub: any, stubIndex: number) => {
+                        if (!stub?.nominalBoreMm) return null;
+                        const stubNb = stub.nominalBoreMm;
+                        const stubBnwInfo = getBnwSetInfo(stubNb, pressureClass || 'PN16');
+                        const stubBnwWeightPerSet = stubBnwInfo.weightPerHole * stubBnwInfo.holesPerFlange;
+                        const stubBnwTotalWeight = stubBnwWeightPerSet * qty;
+                        return (
+                          <tr key={`stub-bnw-${stubIndex}`} className="border-b border-purple-100 bg-purple-50/50 hover:bg-purple-100/50">
+                            <td className="py-2 px-2 font-medium text-purple-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}-S{stubIndex + 1}</td>
+                            <td className="py-2 px-2 text-purple-700 text-xs">
+                              Stub {stubIndex + 1}: {stubBnwInfo.boltSize} BNW Set x{stubBnwInfo.holesPerFlange} (1 each) - {stubNb}NB
+                            </td>
+                            <td className="py-2 px-2 text-center text-purple-600">-</td>
+                            {requiredProducts.includes('surface_protection') && (
+                              <td className="py-2 px-2 text-center text-purple-600">-</td>
+                            )}
+                            {requiredProducts.includes('surface_protection') && (
+                              <td className="py-2 px-2 text-center text-purple-600">-</td>
+                            )}
+                            <td className="py-2 px-2 text-center font-medium text-purple-800">{qty}</td>
+                            <td className="py-2 px-2 text-right text-purple-700">{formatWeight(stubBnwWeightPerSet)}</td>
+                            <td className="py-2 px-2 text-right font-semibold text-purple-800">{formatWeight(stubBnwTotalWeight)}</td>
+                          </tr>
+                        );
+                      })}
+                      {/* Stub Gasket Line Items - only for bends with stubs */}
+                      {showBnw && totalStubFlanges > 0 && globalSpecs?.gasketType && entry.itemType === 'bend' && entry.specs?.stubs?.map((stub: any, stubIndex: number) => {
+                        if (!stub?.nominalBoreMm) return null;
+                        const stubNb = stub.nominalBoreMm;
+                        const stubGasketWeight = getGasketWeight(globalSpecs.gasketType, stubNb);
+                        const stubGasketTotalWeight = stubGasketWeight * qty;
+                        return (
+                          <tr key={`stub-gas-${stubIndex}`} className="border-b border-teal-100 bg-teal-50/50 hover:bg-teal-100/50">
+                            <td className="py-2 px-2 font-medium text-teal-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}-S{stubIndex + 1}</td>
+                            <td className="py-2 px-2 text-teal-700 text-xs">
+                              Stub {stubIndex + 1}: {globalSpecs.gasketType} Gasket (1 each) - {stubNb}NB
+                            </td>
+                            <td className="py-2 px-2 text-center text-teal-600">-</td>
+                            {requiredProducts.includes('surface_protection') && (
+                              <td className="py-2 px-2 text-center text-teal-600">-</td>
+                            )}
+                            {requiredProducts.includes('surface_protection') && (
+                              <td className="py-2 px-2 text-center text-teal-600">-</td>
+                            )}
+                            <td className="py-2 px-2 text-center font-medium text-teal-800">{qty}</td>
+                            <td className="py-2 px-2 text-right text-teal-700">{stubGasketWeight.toFixed(2)} kg</td>
+                            <td className="py-2 px-2 text-right font-semibold text-teal-800">{stubGasketTotalWeight.toFixed(2)} kg</td>
+                          </tr>
+                        );
+                      })}
                     </React.Fragment>
                   );
                 })}
@@ -11844,9 +12375,47 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   {requiredProducts.includes('surface_protection') && <td className="py-2 px-2"></td>}
                   {requiredProducts.includes('surface_protection') && <td className="py-2 px-2"></td>}
                   <td className="py-2 px-2 text-center font-bold text-blue-900">
-                    {entries.reduce((total: number, entry: any) => {
-                      return total + (entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0);
-                    }, 0)}
+                    {(() => {
+                      const showBnw = requiredProducts?.includes('fasteners_gaskets');
+                      let totalQty = 0;
+
+                      entries.forEach((entry: any) => {
+                        const qty = entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0;
+                        // Add base item quantity
+                        totalQty += qty;
+
+                        // Check if item has flanges
+                        let hasFlanges = false;
+                        if (entry.itemType === 'straight_pipe' || !entry.itemType) {
+                          const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                          hasFlanges = pipeEndConfig !== 'PE';
+                        } else if (entry.itemType === 'bend') {
+                          const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                          hasFlanges = bendEndConfig !== 'PE';
+                        }
+
+                        // Add BNW set (1 per item with flanges)
+                        if (showBnw && hasFlanges) {
+                          totalQty += qty; // 1 BNW set per item
+                        }
+
+                        // Add Gasket (1 per item with flanges, if gasket type selected)
+                        if (showBnw && hasFlanges && globalSpecs?.gasketType) {
+                          totalQty += qty; // 1 gasket per item
+                        }
+
+                        // Add stub BNW and gaskets for bends
+                        if (showBnw && entry.itemType === 'bend' && entry.specs?.stubs?.length > 0) {
+                          const stubCount = entry.specs.stubs.filter((s: any) => s?.nominalBoreMm).length;
+                          totalQty += stubCount * qty; // Stub BNW sets
+                          if (globalSpecs?.gasketType) {
+                            totalQty += stubCount * qty; // Stub gaskets
+                          }
+                        }
+                      });
+
+                      return totalQty;
+                    })()}
                   </td>
                   <td className="py-2 px-2"></td>
                   <td className="py-2 px-2 text-right font-bold text-blue-900">{formatWeight(getTotalWeight())}</td>
@@ -12087,6 +12656,8 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   const [availableSchedulesMap, setAvailableSchedulesMap] = useState<Record<string, any[]>>({});
   // Store available pressure classes for selected standard
   const [availablePressureClasses, setAvailablePressureClasses] = useState<any[]>([]);
+  // Cache pressure classes by standard ID for override sections
+  const [pressureClassesByStandard, setPressureClassesByStandard] = useState<Record<number, any[]>>({});
   // Store dynamic bend options per bend type
   const [bendOptionsCache, setBendOptionsCache] = useState<Record<string, { nominalBores: number[]; degrees: number[] }>>({});
   // Store pending documents to upload
@@ -12105,6 +12676,25 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
   const handleRemoveDocument = (id: string) => {
     setPendingDocuments(prev => prev.filter(doc => doc.id !== id));
+  };
+
+  // Get filtered pressure classes for a specific standard (with caching)
+  const getFilteredPressureClasses = async (standardId: number): Promise<any[]> => {
+    if (!standardId) return [];
+
+    // Return cached if available
+    if (pressureClassesByStandard[standardId]) {
+      return pressureClassesByStandard[standardId];
+    }
+
+    try {
+      const classes = await masterDataApi.getFlangePressureClassesByStandard(standardId);
+      setPressureClassesByStandard(prev => ({ ...prev, [standardId]: classes }));
+      return classes;
+    } catch (error) {
+      console.error('Error fetching pressure classes for standard', standardId, error);
+      return [];
+    }
   };
 
   // Load master data from API
@@ -13703,6 +14293,8 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             bendOptionsCache={bendOptionsCache}
             autoSelectFlangeSpecs={autoSelectFlangeSpecs}
             requiredProducts={rfqData.requiredProducts}
+            pressureClassesByStandard={pressureClassesByStandard}
+            getFilteredPressureClasses={getFilteredPressureClasses}
           />
         );
       case 4:

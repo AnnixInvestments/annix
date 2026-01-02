@@ -197,6 +197,8 @@ const CameraRig = ({ viewMode, targets }: { viewMode: string, targets: any }) =>
 
 export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   const [viewMode, setViewMode] = useState('iso'); //'iso', 'inlet', 'outlet', 'free'
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
 
   const isInputMeters = props.length < 50;
   const lengthSceneUnits = isInputMeters ? props.length : props.length / 1000;
@@ -216,6 +218,27 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
       lookAt: [halfLen, 0, 0]
     }
   };
+
+  // Hidden state - show compact bar with show button
+  if (isHidden) {
+    return (
+      <div className="w-full bg-slate-100 rounded-md border border-slate-200 px-3 py-2 mb-4 flex items-center justify-between">
+        <span className="text-sm text-gray-600">
+          3D Preview - Straight Pipe ({isInputMeters ? props.length : (props.length/1000).toFixed(2)}m)
+        </span>
+        <button
+          onClick={() => setIsHidden(false)}
+          className="text-[10px] text-blue-600 bg-white px-2 py-1 rounded shadow-sm hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-1"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          Show Drawing
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full mb-4">
@@ -264,10 +287,76 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           <CameraRig viewMode={viewMode} targets={cameraTargets} />
         </Canvas>
 
-        <div className="absolute bottom-2 right-2 text-[10px] text-slate-400 bg-white/90 px-2 py-1 rounded shadow-sm">
-          Drag to Rotate
+        {/* Expand button, Drag hint, and Hide button - bottom right */}
+        <div className="absolute bottom-2 right-2 flex flex-col items-end gap-1">
+          <button
+            onClick={() => setIsExpanded(true)}
+            className="text-[10px] text-blue-600 bg-white/90 px-2 py-1 rounded shadow-sm hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+            Expand
+          </button>
+          <div className="text-[10px] text-slate-400 bg-white/90 px-2 py-1 rounded shadow-sm">
+            Drag to Rotate
+          </div>
+          <button
+            onClick={() => setIsHidden(true)}
+            className="text-[10px] text-gray-500 bg-white/90 px-2 py-1 rounded shadow-sm hover:bg-gray-100 hover:text-gray-700 transition-colors flex items-center gap-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+            Hide Drawing
+          </button>
         </div>
       </div>
+
+      {/* Expanded Modal */}
+      {isExpanded && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="relative w-full h-full max-w-6xl max-h-[90vh] bg-slate-100 rounded-lg overflow-hidden">
+            {/* Close button */}
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="absolute top-4 right-4 z-10 bg-white/90 hover:bg-white text-gray-700 p-2 rounded-full shadow-lg transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Expanded Canvas */}
+            <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 1.5, 5], fov: 45 }}>
+              <ambientLight intensity={0.8} />
+              <spotLight position={[10, 10, 5]} angle={0.5} penumbra={1} intensity={1} />
+              <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />
+              <pointLight position={[halfLen + 5, 0, 0]} intensity={0.5} />
+              <Environment preset="city" />
+              <HollowPipeScene {...props} />
+              <ContactShadows position={[0, -0.6, 0]} opacity={0.4} scale={10} blur={2} far={4} color="#000000" />
+              <OrbitControls makeDefault enablePan={true} minDistance={0.3} maxDistance={30} />
+            </Canvas>
+
+            {/* Info overlay in expanded view */}
+            <div className="absolute top-4 left-4 text-sm bg-white/95 px-3 py-2 rounded-lg shadow-lg">
+              <div className="font-semibold text-gray-800 mb-1">Straight Pipe</div>
+              <div className="text-gray-600">
+                Length: {isInputMeters ? props.length : (props.length/1000).toFixed(2)}m | OD: {props.outerDiameter}mm | WT: {props.wallThickness}mm
+              </div>
+              <div className="text-gray-600 mt-1">
+                Config: {props.endConfiguration || 'PE'}
+              </div>
+            </div>
+
+            {/* Controls hint */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-sm text-white/80 bg-black/50 px-4 py-2 rounded-full">
+              Drag to rotate • Scroll to zoom • Right-click to pan
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,16 @@
-'use client';
+"use client";
 
-import React, { useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, Environment, Text, Line, ContactShadows } from '@react-three/drei';
-import * as THREE from 'three';
+import React, { useMemo, useState } from "react";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls, Center, Environment, Line, ContactShadows, Text } from "@react-three/drei";
+import * as THREE from "three";
+
+interface StubData {
+  nominalBoreMm?: number;
+  length?: number;
+  locationFromFlange?: number;
+  hasFlangeOverride?: boolean;
+}
 
 interface Bend3DPreviewProps {
   nominalBore: number;
@@ -15,39 +22,71 @@ interface Bend3DPreviewProps {
   tangent2?: number;
   materialName?: string;
   schedule?: string;
+  numberOfSegments?: number;
+  isSegmented?: boolean;
+  stubs?: StubData[];
+  numberOfStubs?: number;
+  flangeConfig?: string; // PE, FOE, FBE, FOE_LF, FOE_RF, 2X_RF
 }
 
-//1. Helper: Estimate WT if exact mm is missing
-const estimateWallThickness = (nb: number, schedule: string = '40', currentWt: number) => {
-  //If we have a real value > 1mm, trust it.
+const estimateWallThickness = (nb: number, schedule: string = "40", currentWt: number) => {
   if (currentWt && currentWt > 1) return currentWt;
-
-  //Otherwise estimate based on Schedule (simplified standards)
   const s = schedule.toUpperCase();
-  const isSch80 = s.includes('80') || s.includes('XS');
-  const isSch160 = s.includes('160') || s.includes('XXS');
-
-  //Base thickness approx factor (NB * 0.05 is roughly Sch40)
+  const isSch80 = s.includes("80") || s.includes("XS");
+  const isSch160 = s.includes("160") || s.includes("XXS");
   let factor = 0.055;
   if (isSch80) factor = 0.085;
   if (isSch160) factor = 0.12;
-
   return Math.max(2, nb * factor);
 };
 
-const getMaterialProps = (name: string = '') => {
+const getMaterialProps = (name: string = "", isSegmented: boolean = false) => {
   const n = name.toLowerCase();
-  if (n.includes('sabs 62')) return { color: '#C0C0C0', metalness: 0.4, roughness: 0.5, name: 'Galvanized' };
-  if (n.includes('stainless')) return { color: '#E0E0E0', metalness: 0.9, roughness: 0.15, name: 'Stainless' };
-  if (n.includes('pvc')) return { color: '#E6F2FF', metalness: 0.1, roughness: 0.9, name: 'PVC' };
-  return { color: '#4A4A4A', metalness: 0.6, roughness: 0.7, name: 'Carbon Steel' };
+  if (n.includes("sabs 62") || n.includes("galv")) return { color: "#C0C0C0", metalness: 0.4, roughness: 0.5 };
+  if (n.includes("stainless")) return { color: "#E0E0E0", metalness: 0.9, roughness: 0.15 };
+  if (isSegmented || n.includes("sabs 719") || n.includes("erw")) return { color: "#228B22", metalness: 0.4, roughness: 0.6 };
+  return { color: "#4A4A4A", metalness: 0.6, roughness: 0.7 };
 };
 
-//CURVE & SHAPE LOGIC
+// Standard flange dimensions based on SABS 1123 Table 1000/3 (PN10)
+const getFlangeSpecs = (nominalBore: number) => {
+  const flangeData: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; thickness: number } } = {
+    15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, thickness: 14 },
+    20: { flangeOD: 105, pcd: 75, boltHoles: 4, holeID: 14, thickness: 16 },
+    25: { flangeOD: 115, pcd: 85, boltHoles: 4, holeID: 14, thickness: 16 },
+    32: { flangeOD: 140, pcd: 100, boltHoles: 4, holeID: 18, thickness: 18 },
+    40: { flangeOD: 150, pcd: 110, boltHoles: 4, holeID: 18, thickness: 18 },
+    50: { flangeOD: 165, pcd: 125, boltHoles: 4, holeID: 18, thickness: 20 },
+    65: { flangeOD: 185, pcd: 145, boltHoles: 4, holeID: 18, thickness: 20 },
+    80: { flangeOD: 200, pcd: 160, boltHoles: 8, holeID: 18, thickness: 22 },
+    100: { flangeOD: 220, pcd: 180, boltHoles: 8, holeID: 18, thickness: 24 },
+    125: { flangeOD: 250, pcd: 210, boltHoles: 8, holeID: 18, thickness: 26 },
+    150: { flangeOD: 285, pcd: 240, boltHoles: 8, holeID: 22, thickness: 26 },
+    200: { flangeOD: 340, pcd: 295, boltHoles: 8, holeID: 22, thickness: 28 },
+    250: { flangeOD: 395, pcd: 350, boltHoles: 12, holeID: 22, thickness: 30 },
+    300: { flangeOD: 445, pcd: 400, boltHoles: 12, holeID: 22, thickness: 30 },
+    350: { flangeOD: 505, pcd: 460, boltHoles: 12, holeID: 22, thickness: 32 },
+    400: { flangeOD: 565, pcd: 515, boltHoles: 16, holeID: 26, thickness: 34 },
+    450: { flangeOD: 615, pcd: 565, boltHoles: 16, holeID: 26, thickness: 36 },
+    500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, thickness: 38 },
+    600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, thickness: 42 },
+  };
+
+  // Find closest match
+  const sizes = Object.keys(flangeData).map(Number).sort((a, b) => a - b);
+  let closestSize = sizes[0];
+  for (const size of sizes) {
+    if (size <= nominalBore) closestSize = size;
+    else break;
+  }
+
+  return flangeData[closestSize] || flangeData[50];
+};
+
 class ArcCurve3 extends THREE.Curve<THREE.Vector3> {
   radius: number; startAngle: number; endAngle: number;
   constructor(radius: number, startAngle: number, endAngle: number) {
-    super(); this.radius = radius || 1; this.startAngle = startAngle; this.endAngle = endAngle;
+    super(); this.radius = radius; this.startAngle = startAngle; this.endAngle = endAngle;
   }
   getPoint(t: number, optionalTarget = new THREE.Vector3()) {
     const angle = this.startAngle + t * (this.endAngle - this.startAngle);
@@ -56,183 +95,938 @@ class ArcCurve3 extends THREE.Curve<THREE.Vector3> {
 }
 
 const createRingShape = (outerRadius: number, innerRadius: number) => {
-  const safeOuter = Math.max(0.002, outerRadius);
-  const safeInner = Math.min(Math.max(0, innerRadius), safeOuter - 0.001);
   const shape = new THREE.Shape();
-  shape.absarc(0, 0, safeOuter, 0, Math.PI * 2, false);
+  shape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
   const hole = new THREE.Path();
-  hole.absarc(0, 0, Math.max(0.0001, safeInner), 0, Math.PI * 2, true);
+  hole.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
   shape.holes.push(hole);
   return shape;
 };
 
-//GEOMETRY COMPONENTS
+// Flange component with bolt holes
+const Flange = ({ position, rotation, outerRadius, pipeRadius, nominalBore, material }: any) => {
+  // Flange dimensions based on pipe size
+  const flangeRadius = outerRadius * 2.2;
+  const flangeThickness = outerRadius * 0.4;
+  const boltCircleRadius = outerRadius * 1.6;
+  const boltHoleRadius = outerRadius * 0.15;
+
+  // Number of bolt holes based on nominal bore
+  const getBoltCount = (nb: number) => {
+    if (nb <= 25) return 4;
+    if (nb <= 50) return 4;
+    if (nb <= 80) return 4;
+    if (nb <= 100) return 8;
+    if (nb <= 150) return 8;
+    if (nb <= 200) return 8;
+    if (nb <= 250) return 12;
+    if (nb <= 300) return 12;
+    if (nb <= 350) return 12;
+    if (nb <= 400) return 16;
+    if (nb <= 450) return 16;
+    if (nb <= 500) return 20;
+    if (nb <= 600) return 20;
+    return 24;
+  };
+
+  const boltCount = getBoltCount(nominalBore);
+  const boltHoles = [];
+
+  for (let i = 0; i < boltCount; i++) {
+    const angle = (i / boltCount) * Math.PI * 2;
+    const x = Math.cos(angle) * boltCircleRadius;
+    const y = Math.sin(angle) * boltCircleRadius;
+    boltHoles.push({ x, y, angle });
+  }
+
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Flange face - solid cylinder */}
+      <mesh>
+        <cylinderGeometry args={[flangeRadius, flangeRadius, flangeThickness, 32]} />
+        <meshStandardMaterial {...material} />
+      </mesh>
+
+      {/* Raised face ring on outer face */}
+      <mesh position={[0, flangeThickness / 2 + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[pipeRadius * 1.1, outerRadius * 1.4, 32]} />
+        <meshStandardMaterial color="#888" metalness={0.6} roughness={0.4} />
+      </mesh>
+
+      {/* Solid cap on pipe connection side to block view into bore */}
+      <mesh position={[0, -flangeThickness / 2 - 0.01, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[outerRadius * 1.05, 32]} />
+        <meshStandardMaterial {...material} />
+      </mesh>
+
+      {/* Bolt holes - visible circles on flange face */}
+      {boltHoles.map((hole, i) => (
+        <group key={i} position={[hole.x, 0, hole.y]}>
+          {/* Hole through flange - dark cylinder */}
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[boltHoleRadius, boltHoleRadius, flangeThickness * 1.5, 16]} />
+            <meshStandardMaterial color="#111" />
+          </mesh>
+          {/* Visible hole circle on top face */}
+          <mesh position={[0, flangeThickness / 2 + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[boltHoleRadius * 1.2, 16]} />
+            <meshStandardMaterial color="#000" />
+          </mesh>
+          {/* Visible hole circle on bottom face */}
+          <mesh position={[0, -flangeThickness / 2 - 0.02, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[boltHoleRadius * 1.2, 16]} />
+            <meshStandardMaterial color="#000" />
+          </mesh>
+        </group>
+      ))}
+
+    </group>
+  );
+};
+
+// Stub pipe component - a small pipe coming out perpendicular to the main pipe
+const StubPipe = ({
+  position,
+  rotation,
+  length,
+  outerRadius,
+  innerRadius,
+  material,
+  stubNB,
+  hasFlange = false
+}: any) => {
+  if (!length || length <= 0) return null;
+
+  const scaleFactor = 100;
+
+  // Stub dimensions based on NB
+  const stubNBValue = stubNB || 25;
+  const stubOD = (stubNBValue * 1.1) / scaleFactor;
+  const stubOuterR = stubOD / 2;
+  const stubInnerR = stubOuterR * 0.85;
+  const stubLength = length / scaleFactor;
+
+  // Get proper flange specs for stub
+  const stubFlangeSpecs = getFlangeSpecs(stubNBValue);
+  const stubFlangeRadius = (stubFlangeSpecs.flangeOD / 2) / scaleFactor;
+  const stubPcdRadius = (stubFlangeSpecs.pcd / 2) / scaleFactor;
+  const stubBoltHoleRadius = (stubFlangeSpecs.holeID / 2) / scaleFactor;
+  const stubFlangeThickness = stubFlangeSpecs.thickness / scaleFactor;
+
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Stub pipe body */}
+      <mesh>
+        <cylinderGeometry args={[stubOuterR, stubOuterR, stubLength, 24, 1, false]} />
+        <meshStandardMaterial {...material} />
+      </mesh>
+      {/* Inner bore */}
+      <mesh>
+        <cylinderGeometry args={[stubInnerR, stubInnerR, stubLength - 0.02, 24, 1, false]} />
+        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+      </mesh>
+      {/* Weld ring at base (connection to main pipe) */}
+      <mesh position={[0, -stubLength / 2 + 0.01, 0]}>
+        <torusGeometry args={[stubOuterR * 1.05, stubOuterR * 0.1, 8, 24]} />
+        <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.8} />
+      </mesh>
+      {/* Stub flange at end - using proper SABS 1123 specs */}
+      {hasFlange && (
+        <group position={[0, stubLength / 2 + stubFlangeThickness / 2, 0]}>
+          {/* Flange body */}
+          <mesh>
+            <cylinderGeometry args={[stubFlangeRadius, stubFlangeRadius, stubFlangeThickness, 32]} />
+            <meshStandardMaterial {...material} />
+          </mesh>
+          {/* Raised face */}
+          <mesh position={[0, stubFlangeThickness / 2 + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[stubInnerR * 1.1, stubOuterR * 1.3, 32]} />
+            <meshStandardMaterial color="#888" metalness={0.6} roughness={0.4} />
+          </mesh>
+          {/* Bolt holes - correct number based on NB */}
+          {Array.from({ length: stubFlangeSpecs.boltHoles }).map((_, i) => {
+            const angle = (i / stubFlangeSpecs.boltHoles) * Math.PI * 2;
+            const boltX = Math.cos(angle) * stubPcdRadius;
+            const boltZ = Math.sin(angle) * stubPcdRadius;
+            return (
+              <group key={i}>
+                {/* Hole through flange */}
+                <mesh position={[boltX, 0, boltZ]} rotation={[Math.PI / 2, 0, 0]}>
+                  <cylinderGeometry args={[stubBoltHoleRadius, stubBoltHoleRadius, stubFlangeThickness * 1.2, 12]} />
+                  <meshStandardMaterial color="#111" />
+                </mesh>
+                {/* Hole circle on face */}
+                <mesh position={[boltX, stubFlangeThickness / 2 + 0.01, boltZ]} rotation={[-Math.PI / 2, 0, 0]}>
+                  <circleGeometry args={[stubBoltHoleRadius * 1.1, 12]} />
+                  <meshStandardMaterial color="#000" />
+                </mesh>
+              </group>
+            );
+          })}
+        </group>
+      )}
+    </group>
+  );
+};
+
+// Pulled Bend Arc (SABS 62)
 const HollowBendArc = ({ bendRadius, outerRadius, innerRadius, angleRad, material }: any) => {
   const geometry = useMemo(() => {
     if (!bendRadius || bendRadius <= 0) return null;
     const path = new ArcCurve3(bendRadius, 0, angleRad);
     const shape = createRingShape(outerRadius, innerRadius);
-    const extrudeSettings = { steps: 24, curveSegments: 24, extrudePath: path, bevelEnabled: false };
-    return new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    return new THREE.ExtrudeGeometry(shape, { steps: 32, curveSegments: 32, extrudePath: path, bevelEnabled: false });
   }, [bendRadius, outerRadius, innerRadius, angleRad]);
-
   if (!geometry) return null;
   return <mesh geometry={geometry}><meshStandardMaterial {...material} /></mesh>;
 };
 
-const HollowTangentPipe = ({ length, outerRadius, innerRadius, material }: any) => {
-  const geometry = useMemo(() => {
-    if (!length || length < 0.01 || isNaN(length)) return null;
-    const shape = createRingShape(outerRadius, innerRadius);
-    const extrudeSettings = { depth: length, bevelEnabled: false, curveSegments: 24 };
-    return new THREE.ExtrudeGeometry(shape, extrudeSettings);
-  }, [length, outerRadius, innerRadius]);
+// Straight vertical tangent pipe (for inlet - goes DOWN)
+const VerticalTangentPipe = ({ length, outerRadius, innerRadius, material, startX, startY }: any) => {
+  if (!length || length < 0.01) return null;
 
-  if (!geometry) return null;
-  return <mesh geometry={geometry}><meshStandardMaterial {...material} /></mesh>;
-};
+  // Pipe center is at startY - length/2 (going down from startY)
+  const centerY = startY - length / 2;
 
-//--- DIMENSION LINES ---
-const DimensionLine = ({ start, end, label, color = "black" }: any) => {
-  const p1 = new THREE.Vector3(...start);
-  const p2 = new THREE.Vector3(...end);
-  const midX = (p1.x + p2.x) / 2;
-  const midY = (p1.y + p2.y) / 2;
   return (
-    <group>
-      <Line points={[p1, p2]} color={color} lineWidth={1} />
-      <Text position={[midX, midY, 0]} fontSize={0.2} color={color} anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="white">
-        {label}
-      </Text>
+    <group position={[startX, centerY, 0]}>
+      {/* Outer cylinder - solid closed ends */}
+      <mesh>
+        <cylinderGeometry args={[outerRadius, outerRadius, length, 32, 1, false]} />
+        <meshStandardMaterial {...material} />
+      </mesh>
+      {/* Inner bore - slightly shorter to not poke through */}
+      <mesh>
+        <cylinderGeometry args={[innerRadius, innerRadius, length - 0.02, 32, 1, false]} />
+        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+      </mesh>
+      {/* End cap rings to show pipe wall thickness */}
+      <mesh position={[0, length / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[innerRadius, outerRadius, 32]} />
+        <meshStandardMaterial {...material} />
+      </mesh>
+      <mesh position={[0, -length / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[innerRadius, outerRadius, 32]} />
+        <meshStandardMaterial {...material} />
+      </mesh>
     </group>
   );
 };
 
-//main scene
-const BendScene = ({ nominalBore, outerDiameter, wallThickness, bendAngle, bendType, tangent1 = 0, tangent2 = 0, materialName, schedule = '40' }: Bend3DPreviewProps) => {
+// Straight horizontal tangent pipe (for outlet - goes in tangent direction)
+const HorizontalTangentPipe = ({ length, outerRadius, innerRadius, material, startX, startY, angleRad }: any) => {
+  if (!length || length < 0.01) return null;
+
+  // For outlet tangent: perpendicular to radius at angleRad
+  // Direction: (-sin(angleRad), cos(angleRad))
+  const dirX = -Math.sin(angleRad);
+  const dirY = Math.cos(angleRad);
+
+  // Pipe center is at start + direction * length/2
+  const centerX = startX + dirX * length / 2;
+  const centerY = startY + dirY * length / 2;
+
+  // Rotation: cylinder default is Y-axis (0,1,0)
+  // To rotate to direction (-sin(angleRad), cos(angleRad), 0), rotate Z by angleRad
+  const rotZ = angleRad;
+
+  return (
+    <group position={[centerX, centerY, 0]} rotation={[0, 0, rotZ]}>
+      {/* Outer cylinder - solid closed ends */}
+      <mesh>
+        <cylinderGeometry args={[outerRadius, outerRadius, length, 32, 1, false]} />
+        <meshStandardMaterial {...material} />
+      </mesh>
+      {/* Inner bore - slightly shorter to not poke through */}
+      <mesh>
+        <cylinderGeometry args={[innerRadius, innerRadius, length - 0.02, 32, 1, false]} />
+        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+      </mesh>
+      {/* End cap rings to show pipe wall thickness */}
+      <mesh position={[0, length / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[innerRadius, outerRadius, 32]} />
+        <meshStandardMaterial {...material} />
+      </mesh>
+      <mesh position={[0, -length / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[innerRadius, outerRadius, 32]} />
+        <meshStandardMaterial {...material} />
+      </mesh>
+    </group>
+  );
+};
+
+// Mitered pipe segment for segmented bends
+const MiteredSegment = ({ position, tangentAngle, length, outerRadius, innerRadius, miterAngle, material }: any) => {
+  const tangentDir = new THREE.Vector3(-Math.sin(tangentAngle), Math.cos(tangentAngle), 0);
+  const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangentDir);
+
+  return (
+    <group position={position} quaternion={quaternion}>
+      <mesh>
+        <cylinderGeometry args={[outerRadius, outerRadius, length, 24, 1, true]} />
+        <meshStandardMaterial {...material} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh>
+        <cylinderGeometry args={[innerRadius, innerRadius, length, 24, 1, true]} />
+        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+      </mesh>
+      <group position={[0, length/2, 0]} rotation={[miterAngle, 0, 0]}>
+        <mesh rotation={[-Math.PI/2, 0, 0]}>
+          <ringGeometry args={[innerRadius, outerRadius, 24]} />
+          <meshStandardMaterial {...material} />
+        </mesh>
+      </group>
+      <group position={[0, -length/2, 0]} rotation={[-miterAngle, 0, 0]}>
+        <mesh rotation={[Math.PI/2, 0, 0]}>
+          <ringGeometry args={[innerRadius, outerRadius, 24]} />
+          <meshStandardMaterial {...material} />
+        </mesh>
+      </group>
+    </group>
+  );
+};
+
+// Weld ring at miter joints
+const WeldRing = ({ position, tangentAngle, outerRadius }: any) => {
+  const tangentDir = new THREE.Vector3(-Math.sin(tangentAngle), Math.cos(tangentAngle), 0);
+  const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangentDir);
+
+  return (
+    <group position={position} quaternion={quaternion}>
+      <mesh>
+        <torusGeometry args={[outerRadius * 1.01, outerRadius * 0.07, 8, 32]} />
+        <meshStandardMaterial color="#1a1a1a" metalness={0.2} roughness={0.9} />
+      </mesh>
+    </group>
+  );
+};
+
+// SABS 719 Segmented Bend
+const SegmentedBend = ({
+  bendRadius,
+  outerRadius,
+  innerRadius,
+  angleRad,
+  numberOfSegments,
+  material
+}: any) => {
+  const { segments, welds, miterAngle } = useMemo(() => {
+    const numSegs = Math.max(2, numberOfSegments || 2);
+    const numJoints = numSegs - 1;
+    const jointAngle = angleRad / numJoints;
+    const miter = jointAngle / 2;
+
+    const segs: Array<{ position: THREE.Vector3; tangentAngle: number; length: number }> = [];
+    const weldList: Array<{ position: THREE.Vector3; tangentAngle: number }> = [];
+
+    for (let i = 0; i < numSegs; i++) {
+      const startAngle = i * jointAngle;
+      const endAngle = (i + 1) * jointAngle;
+      const midAngle = (startAngle + endAngle) / 2;
+
+      const posX = bendRadius * Math.cos(midAngle);
+      const posY = bendRadius * Math.sin(midAngle);
+      const halfLen = bendRadius * Math.tan(jointAngle / 2);
+
+      segs.push({
+        position: new THREE.Vector3(posX, posY, 0),
+        tangentAngle: midAngle,
+        length: halfLen * 2
+      });
+
+      if (i < numSegs - 1) {
+        const weldAngle = (i + 1) * jointAngle;
+        weldList.push({
+          position: new THREE.Vector3(bendRadius * Math.cos(weldAngle), bendRadius * Math.sin(weldAngle), 0),
+          tangentAngle: weldAngle
+        });
+      }
+    }
+
+    return { segments: segs, welds: weldList, miterAngle: miter };
+  }, [bendRadius, angleRad, numberOfSegments]);
+
+  return (
+    <group>
+      {segments.map((seg, i) => (
+        <MiteredSegment
+          key={i}
+          position={seg.position}
+          tangentAngle={seg.tangentAngle}
+          length={seg.length}
+          outerRadius={outerRadius}
+          innerRadius={innerRadius}
+          miterAngle={miterAngle}
+          material={material}
+        />
+      ))}
+      {welds.map((weld, i) => (
+        <WeldRing
+          key={`weld-${i}`}
+          position={weld.position}
+          tangentAngle={weld.tangentAngle}
+          outerRadius={outerRadius}
+        />
+      ))}
+    </group>
+  );
+};
+
+const BendScene = ({
+  nominalBore, outerDiameter, wallThickness, bendAngle, bendType,
+  tangent1 = 0, tangent2 = 0, materialName, schedule = "40",
+  numberOfSegments = 0, isSegmented = false, stubs, numberOfStubs = 0,
+  flangeConfig = 'PE'
+}: Bend3DPreviewProps) => {
   const scaleFactor = 100;
 
-  //1. Calculate Dimensions
-  const nb = (nominalBore || 50) / scaleFactor;
-  //Estimate WT instantly based on schedule if exact mm is missing
-  const estimatedWt = estimateWallThickness(nominalBore, schedule, wallThickness);
+  // Safe stubs array
+  const safeStubs = stubs || [];
+  const stub1 = safeStubs[0] || null;
+  const stub2 = safeStubs[1] || null;
 
+  // Determine which flanges to show based on config
+  // FOE = Flanged One End (outlet flange only)
+  // FBE = Flanged Both Ends
+  // PE = Plain End (no flanges)
+  const configUpper = (flangeConfig || 'PE').toUpperCase();
+  const showOutletFlange = configUpper !== 'PE'; // First flange (outlet/horizontal end)
+  const showInletFlange = ['FBE', 'FOE_RF', '2X_RF'].includes(configUpper); // Second flange (inlet/vertical end)
+
+  // Debug logging
+  console.log('BendScene:', { flangeConfig, showOutletFlange, showInletFlange, numberOfStubs, stubs: safeStubs });
+
+  const isSABS719 = isSegmented ||
+    materialName?.toLowerCase().includes("sabs 719") ||
+    materialName?.toLowerCase().includes("erw") ||
+    (numberOfSegments && numberOfSegments >= 2);
+
+  const nb = (nominalBore || 50) / scaleFactor;
+  const estimatedWt = estimateWallThickness(nominalBore, schedule, wallThickness);
   const odRaw = outerDiameter || (nominalBore * 1.1) || 60;
   const od = odRaw / scaleFactor;
   const wt = estimatedWt / scaleFactor;
-  const idRaw = odRaw - (2 * estimatedWt);
+  const idRaw = odRaw - 2 * estimatedWt;
 
   const outerRadius = od / 2;
-  const innerRadius = (od - (2 * wt)) / 2;
+  const innerRadius = Math.max(0.01, (od - 2 * wt) / 2);
   const angleRad = ((bendAngle || 90) * Math.PI) / 180;
 
-  //Bend Radius (R)
   let multiplier = 1.5;
-  if (bendType?.includes('2D')) multiplier = 2;
-  if (bendType?.includes('3D')) multiplier = 3;
-  if (bendType?.includes('5D')) multiplier = 5;
-  const bendRadius = Math.max(nb * multiplier, outerRadius + 0.01);
+  const bt = (bendType || "").toLowerCase();
+  if (bt.includes("short") || bt.includes("elbow")) multiplier = 1;
+  else if (bt.includes("medium") || bt.includes("1.5")) multiplier = 1.5;
+  else if (bt.includes("long") || bt.includes("2d")) multiplier = 2;
+  else if (bt.includes("3d")) multiplier = 3;
+  else if (bt.includes("5d")) multiplier = 5;
 
-  const matProps = getMaterialProps(materialName);
-  const t1 = (tangent1 || 0) / scaleFactor;
-  const t2 = (tangent2 || 0) / scaleFactor;
+  const bendRadius = Math.max(nb * multiplier, outerRadius + 0.05);
+  const matProps = getMaterialProps(materialName, isSABS719);
 
-  //Coordinates for endpoints
-  //Start Point (P1) -> Bend Start (P2) -> Bend End (P3) -> End Point (P4)
-  //We assume Bend Start is at (bendRadius, 0, 0) relative to pivot
+  // Scale tangent lengths (mm to scene units)
+  // Swap so longer tangent is always horizontal (outlet/top), shorter is vertical (inlet/bottom)
+  const rawT1 = (tangent1 || 0) / scaleFactor;
+  const rawT2 = (tangent2 || 0) / scaleFactor;
+  const verticalTangent = Math.min(rawT1, rawT2); // Shorter one goes vertical (down)
+  const horizontalTangent = Math.max(rawT1, rawT2); // Longer one goes horizontal (top)
+  const verticalLabel = rawT1 <= rawT2 ? tangent1 : tangent2;
+  const horizontalLabel = rawT1 > rawT2 ? tangent1 : tangent2;
 
-  //Tangent 1 Length vector (downwards/backwards from start)
-  const tan1Start = new THREE.Vector3(bendRadius, -t1, 0);
-  const bendStart = new THREE.Vector3(bendRadius, 0, 0);
+  // Inlet position (start of bend)
+  const inletX = bendRadius;
+  const inletY = 0;
 
-  const bendEnd = new THREE.Vector3(bendRadius * Math.cos(angleRad), bendRadius * Math.sin(angleRad), 0);
-  const t2Vec = new THREE.Vector3(-Math.sin(angleRad), Math.cos(angleRad), 0).multiplyScalar(t2);
-  const finalEnd = bendEnd.clone().add(t2Vec);
-
-  const halfAngle = angleRad / 2;
-  const labelDistance = Math.max(0, bendRadius - outerRadius - 0.5);
-
-  const labelPos = new THREE.Vector3(
-    labelDistance * Math.cos(halfAngle),
-    labelDistance * Math.sin(halfAngle),
-    0
-  );
+  // Outlet position (end of bend)
+  const outletX = bendRadius * Math.cos(angleRad);
+  const outletY = bendRadius * Math.sin(angleRad);
 
   return (
     <Center>
       <group>
-        <HollowBendArc bendRadius={bendRadius} outerRadius={outerRadius} innerRadius={innerRadius} angleRad={angleRad} material={matProps} />
-
-        {t1 > 0 && (
-          <group position={[bendRadius, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-             <HollowTangentPipe length={t1} outerRadius={outerRadius} innerRadius={innerRadius} material={matProps} />
-          </group>
+        {/* The bend itself */}
+        {isSABS719 && numberOfSegments >= 2 ? (
+          <SegmentedBend
+            bendRadius={bendRadius}
+            outerRadius={outerRadius}
+            innerRadius={innerRadius}
+            angleRad={angleRad}
+            numberOfSegments={numberOfSegments}
+            material={matProps}
+          />
+        ) : (
+          <HollowBendArc
+            bendRadius={bendRadius}
+            outerRadius={outerRadius}
+            innerRadius={innerRadius}
+            angleRad={angleRad}
+            material={matProps}
+          />
         )}
 
-        {t2 > 0 && (
-          <group position={[bendEnd.x, bendEnd.y, 0]} rotation={[0, 0, angleRad]}>
-             <group rotation={[-Math.PI / 2, 0, 0]}>
-                 <HollowTangentPipe length={t2} outerRadius={outerRadius} innerRadius={innerRadius} material={matProps} />
-             </group>
-          </group>
+        {/* Vertical tangent (shorter): Straight DOWN from inlet */}
+        {verticalTangent > 0 && (
+          <>
+            <VerticalTangentPipe
+              length={verticalTangent}
+              outerRadius={outerRadius}
+              innerRadius={innerRadius}
+              material={matProps}
+              startX={inletX}
+              startY={inletY}
+            />
+            {/* Buttweld ring at tangent-to-bend connection - horizontal ring */}
+            <mesh position={[inletX, inletY, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[outerRadius * 1.02, outerRadius * 0.08, 8, 32]} />
+              <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.8} />
+            </mesh>
+          </>
         )}
 
-        <Text
-          position={labelPos}
-          fontSize={0.25}
-          color="#0066cc"
-          anchorX="center"
-          anchorY="middle"
-        >
-             {`R = ${multiplier}D`}
-        </Text>
-
-        <group position={[bendRadius - outerRadius - 0.8, -0.2, 0]}>
-           <Text position={[0, 0, 0]} fontSize={0.18} color="#333" anchorX="right" anchorY="bottom">{`OD: ${odRaw.toFixed(1)}`}</Text>
-           <Text position={[0, -0.25, 0]} fontSize={0.18} color="#333" anchorX="right" anchorY="bottom">{`ID: ${idRaw.toFixed(1)}`}</Text>
-           <Text position={[0, -0.5, 0]} fontSize={0.18} color={schedule !== '40' ? "#d97706" : "#666"} anchorX="right" anchorY="bottom">{`${schedule} (${estimatedWt.toFixed(1)}mm)`}</Text>
-        </group>
-
-        {/* Centerlines */}
-        <Line points={[[0,0,0], [bendRadius, 0, 0]]} color="#ccc" lineWidth={0.5} dashed dashScale={5} />
-        <Line points={[[0,0,0], [bendEnd.x, bendEnd.y, 0]]} color="#ccc" lineWidth={0.5} dashed dashScale={5} />
-
-        {/* Tangent Labels */}
-        {t1 > 0 && (
-           <Text position={[bendRadius + outerRadius + 0.5, -t1/2, 0]} fontSize={0.2} color="#666" rotation={[0,0,Math.PI/2]}>
-             {`${(tangent1||0).toFixed(0)}mm`}
-           </Text>
-        )}
-        {t2 > 0 && (
-           <Text position={[finalEnd.x, finalEnd.y + 0.5, 0]} fontSize={0.2} color="#666">
-             {`${(tangent2||0).toFixed(0)}mm`}
-           </Text>
+        {/* Horizontal tangent (longer): Straight out from outlet */}
+        {horizontalTangent > 0 && (
+          <>
+            <HorizontalTangentPipe
+              length={horizontalTangent}
+              outerRadius={outerRadius}
+              innerRadius={innerRadius}
+              material={matProps}
+              startX={outletX}
+              startY={outletY}
+              angleRad={angleRad}
+            />
+            {/* Buttweld ring at tangent-to-bend connection - perpendicular to pipe direction */}
+            <mesh position={[outletX, outletY, 0]} rotation={[Math.PI / 2, 0, angleRad]}>
+              <torusGeometry args={[outerRadius * 1.02, outerRadius * 0.08, 8, 32]} />
+              <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.8} />
+            </mesh>
+          </>
         )}
 
+        {/* Outlet flange - at end of horizontal tangent, or at bend outlet if no tangent */}
+        {showOutletFlange && (
+          <Flange
+            position={
+              horizontalTangent > 0
+                ? [
+                    outletX + (-Math.sin(angleRad)) * horizontalTangent,
+                    outletY + Math.cos(angleRad) * horizontalTangent,
+                    0
+                  ]
+                : [outletX, outletY, 0]
+            }
+            rotation={[0, 0, angleRad]}
+            outerRadius={outerRadius}
+            pipeRadius={innerRadius}
+            nominalBore={nominalBore}
+            material={matProps}
+          />
+        )}
+
+        {/* Inlet flange - at end of vertical tangent, or at bend inlet if no tangent */}
+        {showInletFlange && (
+          <Flange
+            position={
+              verticalTangent > 0
+                ? [inletX, inletY - verticalTangent, 0]
+                : [inletX, inletY, 0]
+            }
+            rotation={[0, 0, 0]}
+            outerRadius={outerRadius}
+            pipeRadius={innerRadius}
+            nominalBore={nominalBore}
+            material={matProps}
+          />
+        )}
+
+        {/* Stub 1: On horizontal tangent (longer), comes out vertically upward (+Y direction) */}
+        {numberOfStubs >= 1 && stub1 && stub1.length && stub1.length > 0 && horizontalTangent > 0 && (() => {
+          // Location from flange face along the tangent
+          const stubLocation = stub1.locationFromFlange ? (stub1.locationFromFlange / scaleFactor) : (horizontalTangent / 2);
+          const flangeX = outletX + (-Math.sin(angleRad)) * horizontalTangent;
+          const flangeY = outletY + Math.cos(angleRad) * horizontalTangent;
+          // Position stub along tangent, measuring from flange
+          const stubX = flangeX - (-Math.sin(angleRad)) * stubLocation;
+          const stubY = flangeY - Math.cos(angleRad) * stubLocation;
+          // Stub length in scene units
+          const stubLen = (stub1.length || 100) / scaleFactor;
+
+          console.log('Rendering Stub 1:', { stubX, stubY, stubLocation, stubLen, outerRadius });
+
+          return (
+            <StubPipe
+              position={[stubX, stubY + outerRadius + stubLen / 2, 0]}
+              rotation={[0, 0, 0]}
+              length={stub1.length}
+              outerRadius={outerRadius}
+              innerRadius={innerRadius}
+              material={matProps}
+              stubNB={stub1.nominalBoreMm}
+              hasFlange={true}
+            />
+          );
+        })()}
+
+        {/* Stub 2: On vertical tangent (shorter), comes out horizontally (+X direction) */}
+        {numberOfStubs >= 2 && stub2 && stub2.length && stub2.length > 0 && verticalTangent > 0 && (() => {
+          // Location from flange face along the tangent
+          const stubLocation = stub2.locationFromFlange ? (stub2.locationFromFlange / scaleFactor) : (verticalTangent / 2);
+          const flangeY = inletY - verticalTangent;
+          const stubY = flangeY + stubLocation;
+          // Stub length in scene units
+          const stubLen = (stub2.length || 100) / scaleFactor;
+
+          console.log('Rendering Stub 2:', { stubY, stubLocation, stubLen, outerRadius });
+
+          return (
+            <StubPipe
+              position={[inletX + outerRadius + stubLen / 2, stubY, 0]}
+              rotation={[0, 0, -Math.PI / 2]}
+              length={stub2.length}
+              outerRadius={outerRadius}
+              innerRadius={innerRadius}
+              material={matProps}
+              stubNB={stub2.nominalBoreMm}
+              hasFlange={true}
+            />
+          );
+        })()}
+
+        {/* Dimension lines for tangents - just the lines, labels are HTML overlays */}
+        {horizontalTangent > 0 && (() => {
+          const dimOffset = outerRadius + 0.3;
+          const endX = outletX + (-Math.sin(angleRad)) * horizontalTangent;
+          const endY = outletY + Math.cos(angleRad) * horizontalTangent;
+          return (
+            <Line
+              points={[[outletX, outletY - dimOffset, 0], [endX, endY - dimOffset, 0]]}
+              color="#dc2626"
+              lineWidth={1}
+            />
+          );
+        })()}
+
+        {verticalTangent > 0 && (() => {
+          const dimOffset = outerRadius + 0.3;
+          return (
+            <Line
+              points={[[inletX + dimOffset, inletY, 0], [inletX + dimOffset, inletY - verticalTangent, 0]]}
+              color="#dc2626"
+              lineWidth={1}
+            />
+          );
+        })()}
+
+        {/* Stub 1 location dimension - horizontal line above stub with vertical leaders */}
+        {numberOfStubs >= 1 && stub1 && stub1.length && stub1.locationFromFlange && horizontalTangent > 0 && (() => {
+          const stubLocation = (stub1.locationFromFlange || 0) / scaleFactor;
+          const stubLen = (stub1.length || 100) / scaleFactor;
+          const flangeX = outletX + (-Math.sin(angleRad)) * horizontalTangent;
+          const flangeY = outletY + Math.cos(angleRad) * horizontalTangent;
+          const stubX = flangeX - (-Math.sin(angleRad)) * stubLocation;
+          const stubY = flangeY - Math.cos(angleRad) * stubLocation;
+
+          // Dimension line height - above the stub
+          const dimLineY = stubY + outerRadius + stubLen + 0.4;
+          // Flange face Y position (top of tangent pipe)
+          const flangeFaceY = flangeY;
+          // Stub center Y position
+          const stubCenterY = stubY + outerRadius + stubLen / 2;
+
+          // Center point for the dimension text
+          const textX = (flangeX + stubX) / 2;
+          const textY = dimLineY + 0.15;
+
+          return (
+            <group>
+              {/* Horizontal dimension line at top */}
+              <Line
+                points={[[flangeX, dimLineY, 0], [stubX, dimLineY, 0]]}
+                color="#0066cc"
+                lineWidth={1.5}
+              />
+              {/* Vertical leader from flange face up to dimension line */}
+              <Line
+                points={[[flangeX, flangeFaceY, 0], [flangeX, dimLineY, 0]]}
+                color="#0066cc"
+                lineWidth={1}
+              />
+              {/* Vertical leader from stub center up to dimension line */}
+              <Line
+                points={[[stubX, stubCenterY, 0], [stubX, dimLineY, 0]]}
+                color="#0066cc"
+                lineWidth={1}
+              />
+              {/* Small tick marks at ends of horizontal line */}
+              <Line
+                points={[[flangeX - 0.05, dimLineY - 0.08, 0], [flangeX + 0.05, dimLineY + 0.08, 0]]}
+                color="#0066cc"
+                lineWidth={1.5}
+              />
+              <Line
+                points={[[stubX - 0.05, dimLineY - 0.08, 0], [stubX + 0.05, dimLineY + 0.08, 0]]}
+                color="#0066cc"
+                lineWidth={1.5}
+              />
+              {/* Dimension text above the line */}
+              <Text
+                position={[textX, textY, 0]}
+                fontSize={0.18}
+                color="#0066cc"
+                anchorX="center"
+                anchorY="bottom"
+                outlineWidth={0.015}
+                outlineColor="white"
+              >
+                {`${stub1.locationFromFlange}mm`}
+              </Text>
+            </group>
+          );
+        })()}
+
+        {/* Stub 2 location dimension - similar treatment */}
+        {numberOfStubs >= 2 && stub2 && stub2.length && stub2.locationFromFlange && verticalTangent > 0 && (() => {
+          const stubLocation = (stub2.locationFromFlange || 0) / scaleFactor;
+          const stubLen = (stub2.length || 100) / scaleFactor;
+          const flangeY = inletY - verticalTangent;
+          const stubY = flangeY + stubLocation;
+
+          // Dimension line X position - to the left of stub
+          const dimLineX = inletX + outerRadius + stubLen + 0.4;
+
+          // Center point for the dimension text
+          const textX = dimLineX + 0.15;
+          const textY = (flangeY + stubY) / 2;
+
+          return (
+            <group>
+              {/* Vertical dimension line */}
+              <Line
+                points={[[dimLineX, flangeY, 0], [dimLineX, stubY, 0]]}
+                color="#0066cc"
+                lineWidth={1.5}
+              />
+              {/* Horizontal leader from flange face to dimension line */}
+              <Line
+                points={[[inletX, flangeY, 0], [dimLineX, flangeY, 0]]}
+                color="#0066cc"
+                lineWidth={1}
+              />
+              {/* Horizontal leader from stub center to dimension line */}
+              <Line
+                points={[[inletX + outerRadius + stubLen / 2, stubY, 0], [dimLineX, stubY, 0]]}
+                color="#0066cc"
+                lineWidth={1}
+              />
+              {/* Dimension text next to the line */}
+              <Text
+                position={[textX, textY, 0]}
+                fontSize={0.18}
+                color="#0066cc"
+                anchorX="left"
+                anchorY="middle"
+                outlineWidth={0.015}
+                outlineColor="white"
+              >
+                {`${stub2.locationFromFlange}mm`}
+              </Text>
+            </group>
+          );
+        })()}
+
+        {/* Info labels and angle are now HTML overlays in the main component */}
       </group>
     </Center>
   );
 };
 
 export default function Bend3DPreview(props: Bend3DPreviewProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+
+  const isSegmentedBend = props.isSegmented ||
+    props.materialName?.toLowerCase().includes("sabs 719") ||
+    props.materialName?.toLowerCase().includes("erw") ||
+    (props.numberOfSegments && props.numberOfSegments >= 2);
+
+  // Calculate camera distance to fit entire model with dimension lines
+  const scaleFactor = 100;
+  const t1 = (props.tangent1 || 0) / scaleFactor;
+  const t2 = (props.tangent2 || 0) / scaleFactor;
+  const bendSize = (props.nominalBore || 50) / scaleFactor * 2;
+  const maxExtent = Math.max(t1, t2, bendSize, 1);
+  const cameraZ = Math.max(12, maxExtent * 3 + 8);
+
+  // Calculate pipe dimensions for info display
+  const odRaw = props.outerDiameter || (props.nominalBore * 1.1) || 60;
+  const estimatedWt = props.wallThickness && props.wallThickness > 1 ? props.wallThickness : Math.max(2, props.nominalBore * 0.055);
+  const idRaw = odRaw - 2 * estimatedWt;
+  const flangeSpecs = getFlangeSpecs(props.nominalBore);
+
+  // Tangent labels (longer one horizontal, shorter vertical)
+  const longerTangent = Math.max(props.tangent1 || 0, props.tangent2 || 0);
+  const shorterTangent = Math.min(props.tangent1 || 0, props.tangent2 || 0);
+
+  // Hidden state - show compact bar with show button
+  if (isHidden) {
+    return (
+      <div className="w-full bg-slate-100 rounded-md border border-slate-200 px-3 py-2 mb-4 flex items-center justify-between">
+        <span className="text-sm text-gray-600">
+          3D Preview - {isSegmentedBend ? "SABS 719 Segmented" : "SABS 62 Pulled"} Bend ({props.bendAngle}°)
+        </span>
+        <button
+          onClick={() => setIsHidden(false)}
+          className="text-[10px] text-blue-600 bg-white px-2 py-1 rounded shadow-sm hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-1"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          Show Drawing
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="h-64 w-full bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative mb-4">
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 0, 15], fov: 45 }}>
-        <ambientLight intensity={0.8} />
+      <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 0, cameraZ], fov: 50 }}>
+        <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
         <Environment preset="city" />
-        <BendScene {...props} />
-        <ContactShadows position={[0, -6, 0]} opacity={0.3} scale={30} blur={2.5} far={10} />
-        <OrbitControls
-          makeDefault
-          enablePan={false}
-          minDistance={2}
-          maxDistance={40}
-        />
+        <group scale={0.75}>
+          <BendScene {...props} />
+        </group>
+        <ContactShadows position={[0, -5, 0]} opacity={0.3} scale={20} blur={2} />
+        <OrbitControls makeDefault enablePan={false} minDistance={2} maxDistance={30} />
       </Canvas>
-      <div className="absolute bottom-2 right-2 text-[10px] text-slate-400 bg-white/90 px-2 py-1 rounded shadow-sm">
-        Drag to Rotate
+
+      {/* Badge - top left */}
+      <div className="absolute top-2 left-2 text-[10px] bg-white/90 px-2 py-1 rounded shadow-sm">
+        <span className={isSegmentedBend ? "text-purple-700" : "text-blue-700"} style={{fontWeight: 500}}>
+          {isSegmentedBend ? "SABS 719 Segmented" : "SABS 62 Pulled"}
+        </span>
       </div>
+
+      {/* Pipe & Flange Info - top right */}
+      <div className="absolute top-2 right-2 text-[9px] bg-white/95 px-2 py-1.5 rounded shadow-sm leading-tight">
+        <div className="font-semibold text-blue-700 mb-0.5">PIPE</div>
+        <div className="text-gray-700">OD: {odRaw.toFixed(0)}mm | ID: {idRaw.toFixed(0)}mm</div>
+        <div className="font-semibold text-blue-700 mt-1 mb-0.5">FLANGE</div>
+        <div className="text-gray-700">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
+        <div className="text-gray-700">{flangeSpecs.boltHoles} x {flangeSpecs.holeID}mm holes</div>
+      </div>
+
+      {/* Angle display - center top */}
+      <div className="absolute top-2 left-1/2 transform -translate-x-1/2 text-sm font-bold text-red-600 bg-white/90 px-2 py-0.5 rounded shadow-sm">
+        {props.bendAngle}°
+      </div>
+
+      {/* Tangent lengths - bottom left */}
+      {(longerTangent > 0 || shorterTangent > 0) && (
+        <div className="absolute bottom-2 left-2 text-[9px] bg-white/95 px-2 py-1 rounded shadow-sm">
+          {longerTangent > 0 && <div className="text-red-600">Horiz: {longerTangent}mm</div>}
+          {shorterTangent > 0 && <div className="text-red-600">Vert: {shorterTangent}mm</div>}
+        </div>
+      )}
+
+      {/* Stub info with flange details */}
+      {props.numberOfStubs && props.numberOfStubs > 0 && props.stubs && (
+        <div className="absolute bottom-10 left-2 text-[9px] bg-blue-50/95 px-2 py-1 rounded shadow-sm border border-blue-200">
+          <div className="font-semibold text-blue-700">STUBS</div>
+          {props.stubs[0] && props.stubs[0].nominalBoreMm && (() => {
+            const stub1Flange = getFlangeSpecs(props.stubs[0].nominalBoreMm);
+            return (
+              <div className="text-gray-700">
+                <div>S1: {props.stubs[0].nominalBoreMm}NB x {props.stubs[0].length || 0}mm @ {props.stubs[0].locationFromFlange || 0}mm</div>
+                <div className="text-gray-500 pl-2">Flange: {stub1Flange.flangeOD}mm OD, {stub1Flange.boltHoles}x{stub1Flange.holeID}mm</div>
+              </div>
+            );
+          })()}
+          {props.stubs[1] && props.stubs[1].nominalBoreMm && (() => {
+            const stub2Flange = getFlangeSpecs(props.stubs[1].nominalBoreMm);
+            return (
+              <div className="text-gray-700">
+                <div>S2: {props.stubs[1].nominalBoreMm}NB x {props.stubs[1].length || 0}mm @ {props.stubs[1].locationFromFlange || 0}mm</div>
+                <div className="text-gray-500 pl-2">Flange: {stub2Flange.flangeOD}mm OD, {stub2Flange.boltHoles}x{stub2Flange.holeID}mm</div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Expand button, Drag hint, and Hide button - bottom right */}
+      <div className="absolute bottom-2 right-2 flex flex-col items-end gap-1">
+        <button
+          onClick={() => setIsExpanded(true)}
+          className="text-[10px] text-blue-600 bg-white/90 px-2 py-1 rounded shadow-sm hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-1"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+          Expand
+        </button>
+        <div className="text-[10px] text-slate-400 bg-white/90 px-2 py-1 rounded shadow-sm">
+          Drag to Rotate
+        </div>
+        <button
+          onClick={() => setIsHidden(true)}
+          className="text-[10px] text-gray-500 bg-white/90 px-2 py-1 rounded shadow-sm hover:bg-gray-100 hover:text-gray-700 transition-colors flex items-center gap-1"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+          </svg>
+          Hide Drawing
+        </button>
+      </div>
+
+      {/* Expanded Modal */}
+      {isExpanded && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="relative w-full h-full max-w-6xl max-h-[90vh] bg-slate-100 rounded-lg overflow-hidden">
+            {/* Close button */}
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="absolute top-4 right-4 z-10 bg-white/90 hover:bg-white text-gray-700 p-2 rounded-full shadow-lg transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Expanded Canvas */}
+            <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 0, cameraZ * 1.2], fov: 45 }}>
+              <ambientLight intensity={0.7} />
+              <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
+              <Environment preset="city" />
+              <group scale={0.75}>
+                <BendScene {...props} />
+              </group>
+              <ContactShadows position={[0, -5, 0]} opacity={0.3} scale={20} blur={2} />
+              <OrbitControls makeDefault enablePan={true} minDistance={1} maxDistance={50} />
+            </Canvas>
+
+            {/* Info overlay in expanded view */}
+            <div className="absolute top-4 left-4 text-sm bg-white/95 px-3 py-2 rounded-lg shadow-lg">
+              <div className="font-semibold text-gray-800 mb-1">
+                {isSegmentedBend ? "SABS 719 Segmented Bend" : "SABS 62 Pulled Bend"}
+              </div>
+              <div className="text-gray-600">
+                {props.bendAngle}° | {props.nominalBore}NB | OD: {odRaw.toFixed(0)}mm
+              </div>
+              {(longerTangent > 0 || shorterTangent > 0) && (
+                <div className="text-gray-600 mt-1">
+                  Tangents: {longerTangent > 0 ? `${longerTangent}mm` : ''}{longerTangent > 0 && shorterTangent > 0 ? ' / ' : ''}{shorterTangent > 0 ? `${shorterTangent}mm` : ''}
+                </div>
+              )}
+            </div>
+
+            {/* Controls hint */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-sm text-white/80 bg-black/50 px-4 py-2 rounded-full">
+              Drag to rotate • Scroll to zoom • Right-click to pan
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
