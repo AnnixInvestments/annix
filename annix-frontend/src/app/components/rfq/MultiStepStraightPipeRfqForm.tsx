@@ -8688,6 +8688,29 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       Flanges & Options
                     </h4>
 
+                    {/* Quantity */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Quantity *
+                      </label>
+                      <input
+                        type="number"
+                        value={entry.specs?.quantityValue || ''}
+                        onChange={(e) => {
+                          const quantity = parseInt(e.target.value) || 1;
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, quantityValue: quantity }
+                          });
+                          if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                        min="1"
+                        placeholder="1"
+                      />
+                    </div>
+
                     {/* Bend End Configuration - White background */}
                     <div className="border border-gray-200 rounded-lg p-3">
                       <h5 className="text-xs font-bold text-gray-900 mb-2">Bend End Configuration</h5>
@@ -8824,29 +8847,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       ) : !globalSpecs?.flangeStandardId ? (
                         <p className="text-xs text-amber-700">Set flange specs in Global Specifications</p>
                       ) : null}
-                    </div>
-
-                    {/* Quantity */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Quantity *
-                      </label>
-                      <input
-                        type="number"
-                        value={entry.specs?.quantityValue || ''}
-                        onChange={(e) => {
-                          const quantity = parseInt(e.target.value) || 1;
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, quantityValue: quantity }
-                          });
-                          if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                        min="1"
-                        placeholder="1"
-                      />
                     </div>
 
                     {/* Tangents Section - Compact */}
