@@ -7597,20 +7597,54 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
     // Handle bend items
     if (entry.itemType === 'bend') {
       const nb = entry.specs?.nominalBoreMm || 'XX';
-      const schedule = entry.specs?.scheduleNumber || 'XX';
-      const bendType = entry.specs?.bendType || 'X.XD';
+      // Clean schedule to avoid "SchSch" - remove any existing "Sch" prefix
+      let schedule = entry.specs?.scheduleNumber || 'XX';
+      if (schedule.toString().toLowerCase().startsWith('sch')) {
+        schedule = schedule.substring(3);
+      }
+      const bendType = entry.specs?.bendRadiusType || entry.specs?.bendType || 'X.XD';
       const bendAngle = entry.specs?.bendDegrees || 'XX';
-      const pressure = globalSpecs?.workingPressureBar || entry.specs?.workingPressureBar || 'XX';
-      
+      const centerToFace = entry.specs?.centerToFaceMm;
+      const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+
       // Get steel spec name if available
-      const steelSpec = entry.specs?.steelSpecificationId 
+      const steelSpec = entry.specs?.steelSpecificationId
         ? masterData.steelSpecs.find((s: any) => s.id === entry.specs.steelSpecificationId)?.steelSpecName
         : globalSpecs?.steelSpecificationId
           ? masterData.steelSpecs.find((s: any) => s.id === globalSpecs.steelSpecificationId)?.steelSpecName
           : undefined;
-      
-      let description = `${nb}NB Sch${schedule} ${bendAngle}° ${bendType} Bend for ${pressure} Bar Pipeline`;
-      
+
+      // Get flange specs
+      const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+      const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+      const flangeStandard = flangeStandardId
+        ? masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code
+        : '';
+      const pressureClass = flangePressureClassId
+        ? masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId)?.designation
+        : '';
+
+      // Build description: "80NB Sch40 45° 3D Bend C/F 150mm"
+      let description = `${nb}NB Sch${schedule} ${bendAngle}° ${bendType} Bend`;
+
+      // Add C/F if available
+      if (centerToFace) {
+        description += ` C/F ${Number(centerToFace).toFixed(0)}mm`;
+      }
+
+      // Add flange config and specs if not plain ended
+      if (bendEndConfig && bendEndConfig !== 'PE') {
+        const configLabel = bendEndConfig === 'FBE' ? 'FBE' :
+                           bendEndConfig === 'FOE' ? 'FOE' :
+                           bendEndConfig === 'FOE_LF' ? 'FOE+L/F' :
+                           bendEndConfig === 'FOE_RF' ? 'FOE+R/F' :
+                           bendEndConfig === '2X_RF' ? '2xR/F' : bendEndConfig;
+        description += ` ${configLabel}`;
+        if (flangeStandard && pressureClass) {
+          description += ` ${flangeStandard} ${pressureClass}`;
+        }
+      }
+
       // Add tangent/stub info if present
       const numTangents = entry.specs?.numberOfTangents || 0;
       const numStubs = entry.specs?.numberOfStubs || 0;
@@ -7620,11 +7654,11 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         if (numStubs > 0) parts.push(`${numStubs} Stub${numStubs > 1 ? 's' : ''}`);
         description += ` with ${parts.join(' & ')}`;
       }
-      
+
       if (steelSpec) {
         description += ` - ${steelSpec}`;
       }
-      
+
       return description;
     }
 
