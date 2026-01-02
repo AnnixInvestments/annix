@@ -8600,6 +8600,27 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         </div>
                       )}
                     </div>
+
+                    {/* Total Bend Length - Auto-calculated */}
+                    {entry.specs?.centerToFaceMm && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <h5 className="text-xs font-bold text-purple-900 mb-1">Total Bend Length</h5>
+                        {(() => {
+                          const cf = Number(entry.specs.centerToFaceMm) || 0;
+                          const tangent1 = entry.specs?.tangentLengths?.[0] || 0;
+                          const tangent2 = entry.specs?.tangentLengths?.[1] || 0;
+                          const totalLength = (cf * 2) + tangent1 + tangent2;
+                          return (
+                            <>
+                              <p className="text-sm font-bold text-purple-800">{totalLength.toFixed(0)} mm</p>
+                              <p className="text-xs text-purple-700 mt-0.5">
+                                C/F {cf.toFixed(0)}mm × 2{tangent1 > 0 || tangent2 > 0 ? ` + ${tangent1 + tangent2}mm tangents` : ''}
+                              </p>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
 
                   {/* RIGHT COLUMN - Flanges & Options */}
