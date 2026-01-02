@@ -8727,7 +8727,13 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           const tangent1 = entry.specs?.tangentLengths?.[0] || 0;
                           const tangent2 = entry.specs?.tangentLengths?.[1] || 0;
                           const numTangents = entry.specs?.numberOfTangents || 0;
-                          const totalLength = (cf * 2) + tangent1 + tangent2;
+                          const numStubs = entry.specs?.numberOfStubs || 0;
+                          const stubs = entry.specs?.stubs || [];
+                          const stub1Length = stubs[0]?.length || 0;
+                          const stub2Length = stubs[1]?.length || 0;
+                          const stubsTotal = stub1Length + stub2Length;
+
+                          const totalLength = (cf * 2) + tangent1 + tangent2 + stubsTotal;
                           const end1 = cf + tangent1;
                           const end2 = cf + tangent2;
 
@@ -8745,10 +8751,22 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             cfDisplay = `C/F ${cf.toFixed(0)}mm`;
                           }
 
+                          // Format stub display
+                          let stubDisplay = '';
+                          if (numStubs === 1 && stub1Length > 0) {
+                            stubDisplay = ` + ${stub1Length}mm Stub`;
+                          } else if (numStubs === 2 && stub1Length > 0 && stub2Length > 0) {
+                            if (stub1Length === stub2Length) {
+                              stubDisplay = ` + 2xStubs ${stub1Length}mm`;
+                            } else {
+                              stubDisplay = ` + 1xStub ${stub1Length}mm and 1xStub ${stub2Length}mm`;
+                            }
+                          }
+
                           return (
                             <>
                               <p className="text-sm font-bold text-purple-800">{totalLength.toFixed(0)} mm</p>
-                              <p className="text-xs text-purple-700 mt-0.5">{cfDisplay}</p>
+                              <p className="text-xs text-purple-700 mt-0.5">{cfDisplay}{stubDisplay}</p>
                             </>
                           );
                         })()}
