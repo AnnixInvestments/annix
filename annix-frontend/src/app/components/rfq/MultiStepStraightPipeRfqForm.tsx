@@ -8720,9 +8720,11 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       Flanges & Options
                     </h4>
 
-                    {/* Bend End Configuration - White background */}
-                    <div className="border border-gray-200 rounded-lg p-3">
-                      <h5 className="text-xs font-bold text-gray-900 mb-2">Bend End Configuration</h5>
+                    {/* Bend End Configuration */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Bend End Configuration
+                      </label>
                       <select
                         value={entry.specs?.bendEndConfiguration || 'PE'}
                         onChange={(e) => {
@@ -8743,13 +8745,11 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
-                      <p className="mt-1 text-xs text-gray-600">
-                        {entry.specs?.bendEndConfiguration && (
-                          <span className="text-purple-600 font-medium">
-                            {getWeldCountPerBend(entry.specs.bendEndConfiguration)} weld{getWeldCountPerBend(entry.specs.bendEndConfiguration) !== 1 ? 's' : ''} per bend
-                          </span>
-                        )}
-                      </p>
+                      {entry.specs?.bendEndConfiguration && entry.specs.bendEndConfiguration !== 'PE' && (
+                        <p className="mt-1 text-xs text-purple-600 font-medium">
+                          {getWeldCountPerBend(entry.specs.bendEndConfiguration)} weld{getWeldCountPerBend(entry.specs.bendEndConfiguration) !== 1 ? 's' : ''} per bend
+                        </p>
+                      )}
                     </div>
 
                     {/* Flange Weld Thickness - Green background */}
