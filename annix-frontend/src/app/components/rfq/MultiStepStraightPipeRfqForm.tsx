@@ -11079,8 +11079,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   <th className="text-left py-2 px-2 text-xs font-semibold text-blue-800">Item #</th>
                   <th className="text-left py-2 px-2 text-xs font-semibold text-blue-800">Description</th>
                   <th className="text-center py-2 px-2 text-xs font-semibold text-blue-800">Weld WT</th>
-                  <th className="text-center py-2 px-2 text-xs font-semibold text-blue-800">Ext m²</th>
-                  <th className="text-center py-2 px-2 text-xs font-semibold text-blue-800">Int m²</th>
+                  {requiredProducts.includes('surface_protection') && (
+                    <th className="text-center py-2 px-2 text-xs font-semibold text-blue-800">Ext m²</th>
+                  )}
+                  {requiredProducts.includes('surface_protection') && (
+                    <th className="text-center py-2 px-2 text-xs font-semibold text-blue-800">Int m²</th>
+                  )}
                   <th className="text-center py-2 px-2 text-xs font-semibold text-blue-800">Qty</th>
                   <th className="text-right py-2 px-2 text-xs font-semibold text-blue-800">Weight/Item</th>
                   <th className="text-right py-2 px-2 text-xs font-semibold text-blue-800">Line Weight</th>
@@ -11179,12 +11183,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <td className="py-2 px-2 text-center text-gray-700 text-xs">
                           {weldThickness ? `${weldThickness.toFixed(2)}mm` : '-'}
                         </td>
-                        <td className="py-2 px-2 text-center text-gray-700 text-xs">
-                          {surfaceAreas.external !== null ? surfaceAreas.external.toFixed(2) : '-'}
-                        </td>
-                        <td className="py-2 px-2 text-center text-gray-700 text-xs">
-                          {surfaceAreas.internal !== null ? surfaceAreas.internal.toFixed(2) : '-'}
-                        </td>
+                        {requiredProducts.includes('surface_protection') && (
+                          <td className="py-2 px-2 text-center text-gray-700 text-xs">
+                            {surfaceAreas.external !== null ? surfaceAreas.external.toFixed(2) : '-'}
+                          </td>
+                        )}
+                        {requiredProducts.includes('surface_protection') && (
+                          <td className="py-2 px-2 text-center text-gray-700 text-xs">
+                            {surfaceAreas.internal !== null ? surfaceAreas.internal.toFixed(2) : '-'}
+                          </td>
+                        )}
                         <td className="py-2 px-2 text-center font-medium text-gray-900">{qty}</td>
                         <td className="py-2 px-2 text-right text-gray-700">{formatWeight(weightPerItem)}</td>
                         <td className="py-2 px-2 text-right font-semibold text-blue-900">{formatWeight(totalWeight)}</td>
@@ -11197,8 +11205,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             {bnwInfo.boltSize} Bolt/Nut/Washer Sets ({bnwInfo.holesPerFlange} per set)
                           </td>
                           <td className="py-2 px-2 text-center text-orange-600">-</td>
-                          <td className="py-2 px-2 text-center text-orange-600">-</td>
-                          <td className="py-2 px-2 text-center text-orange-600">-</td>
+                          {requiredProducts.includes('surface_protection') && (
+                            <td className="py-2 px-2 text-center text-orange-600">-</td>
+                          )}
+                          {requiredProducts.includes('surface_protection') && (
+                            <td className="py-2 px-2 text-center text-orange-600">-</td>
+                          )}
                           <td className="py-2 px-2 text-center font-medium text-orange-800">{qty}</td>
                           <td className="py-2 px-2 text-right text-orange-700">{formatWeight(bnwWeightPerSet)}</td>
                           <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwTotalWeight)}</td>
@@ -11215,8 +11227,12 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               {globalSpecs.gasketType} Gasket (1 per pipe)
                             </td>
                             <td className="py-2 px-2 text-center text-green-600">-</td>
-                            <td className="py-2 px-2 text-center text-green-600">-</td>
-                            <td className="py-2 px-2 text-center text-green-600">-</td>
+                            {requiredProducts.includes('surface_protection') && (
+                              <td className="py-2 px-2 text-center text-green-600">-</td>
+                            )}
+                            {requiredProducts.includes('surface_protection') && (
+                              <td className="py-2 px-2 text-center text-green-600">-</td>
+                            )}
                             <td className="py-2 px-2 text-center font-medium text-green-800">{qty}</td>
                             <td className="py-2 px-2 text-right text-green-700">{gasketWeight.toFixed(2)} kg</td>
                             <td className="py-2 px-2 text-right font-semibold text-green-800">{gasketTotalWeight.toFixed(2)} kg</td>
@@ -11231,8 +11247,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                 <tr className="border-t-2 border-blue-400 bg-blue-100">
                   <td className="py-2 px-2 font-bold text-blue-900" colSpan={2}>TOTAL</td>
                   <td className="py-2 px-2"></td>
-                  <td className="py-2 px-2"></td>
-                  <td className="py-2 px-2"></td>
+                  {requiredProducts.includes('surface_protection') && <td className="py-2 px-2"></td>}
+                  {requiredProducts.includes('surface_protection') && <td className="py-2 px-2"></td>}
                   <td className="py-2 px-2 text-center font-bold text-blue-900">
                     {entries.reduce((total: number, entry: any) => {
                       return total + (entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0);
