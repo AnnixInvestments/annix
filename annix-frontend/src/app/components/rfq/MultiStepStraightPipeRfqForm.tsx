@@ -8197,17 +8197,53 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             console.log(`[Bend NB] No pressure set, using default: ${matchedSchedule}`);
                           }
 
+                          // Check if SABS 719 for local C/F lookup
+                          const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                          const isSABS719 = effectiveSteelSpecId === 8;
+
+                          let newCenterToFace: number | undefined = undefined;
+                          let newBendRadius: number | undefined = undefined;
+
+                          // For SABS 719, recalculate C/F with new NB if segments are set
+                          if (isSABS719 && entry.specs?.bendRadiusType && entry.specs?.numberOfSegments) {
+                            const cfResult = getSABS719CenterToFaceBySegments(
+                              entry.specs.bendRadiusType,
+                              nominalBore,
+                              entry.specs.numberOfSegments
+                            );
+                            if (cfResult) {
+                              newCenterToFace = cfResult.centerToFace;
+                              newBendRadius = cfResult.radius;
+                              console.log(`[Bend NB] SABS 719 C/F recalculated: ${newCenterToFace}mm for ${nominalBore}NB, ${entry.specs.numberOfSegments} segments`);
+                            }
+                          }
+
                           const updatedEntry: any = {
                             ...entry,
                             specs: {
                               ...entry.specs,
                               nominalBoreMm: nominalBore,
                               scheduleNumber: matchedSchedule,
-                              wallThicknessMm: matchedWT
+                              wallThicknessMm: matchedWT,
+                              centerToFaceMm: newCenterToFace, // Use recalculated C/F for SABS 719
+                              bendRadiusMm: newBendRadius
                             }
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
+
+                          // For SABS 62, fetch C/F from API if bend type and angle are already set
+                          if (!isSABS719 && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                            fetchCenterToFace(entry.id, entry.specs.bendType, nominalBore, entry.specs.bendDegrees);
+                          }
+
+                          // Trigger calculation if all required fields are filled
+                          const hasBendSpecs = isSABS719
+                            ? (entry.specs?.bendRadiusType && entry.specs?.bendDegrees)
+                            : (entry.specs?.bendType && entry.specs?.bendDegrees);
+                          if (matchedSchedule && hasBendSpecs) {
+                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                          }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                       >
@@ -12627,16 +12663,60 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
   const handleCalculateBend = async (entryId: string) => {
     try {
-      const { bendRfqApi } = await import('@/app/lib/api/client');
-      
       const entry = rfqData.items.find(e => e.id === entryId && e.itemType === 'bend');
       if (!entry || entry.itemType !== 'bend') return;
 
       const bendEntry = entry;
+      const bendDegrees = bendEntry.specs?.bendDegrees || 90;
+
+      // API requires minimum 15° - for smaller angles, use local calculation
+      if (bendDegrees < 15) {
+        console.log(`Bend angle ${bendDegrees}° is below API minimum (15°), using local calculation`);
+
+        // Local calculation for small angle bends
+        const nominalBoreMm = bendEntry.specs?.nominalBoreMm || 40;
+        const scheduleNumber = bendEntry.specs?.scheduleNumber || '40';
+        const quantity = bendEntry.specs?.quantityValue || 1;
+        const centerToFace = bendEntry.specs?.centerToFaceMm || 100;
+
+        // Get wall thickness from fallback schedules
+        const schedules = FALLBACK_PIPE_SCHEDULES[nominalBoreMm] || [];
+        const scheduleData = schedules.find((s: any) => s.scheduleDesignation === scheduleNumber);
+        const wallThickness = scheduleData?.wallThicknessMm || 6.35;
+
+        // Calculate OD from NB
+        const od = NB_TO_OD_LOOKUP[nominalBoreMm] || (nominalBoreMm * 1.05);
+        const id = od - (2 * wallThickness);
+
+        // Estimate bend arc length based on angle and C/F
+        const arcLength = (bendDegrees / 90) * (centerToFace * 2);
+
+        // Weight calculation: π/4 × (OD² - ID²) × length × density (7850 kg/m³ for steel)
+        const crossSectionArea = (Math.PI / 4) * ((od * od) - (id * id)); // mm²
+        const bendWeight = (crossSectionArea / 1000000) * (arcLength / 1000) * 7850; // kg
+
+        const totalWeight = bendWeight * quantity;
+
+        updateItem(entryId, {
+          calculation: {
+            bendWeight: bendWeight,
+            totalWeight: totalWeight,
+            centerToFaceDimension: centerToFace,
+            outsideDiameterMm: od,
+            wallThicknessMm: wallThickness,
+            calculatedLocally: true,
+            note: `Local calculation for ${bendDegrees}° bend (API minimum is 15°)`
+          },
+        });
+        return;
+      }
+
+      const { bendRfqApi } = await import('@/app/lib/api/client');
+
       const calculationData = {
         nominalBoreMm: bendEntry.specs?.nominalBoreMm || 40,
         scheduleNumber: bendEntry.specs?.scheduleNumber || '40',
-        bendDegrees: bendEntry.specs?.bendDegrees || 90,
+        bendDegrees: bendDegrees,
         bendType: bendEntry.specs?.bendType || '1.5D',
         quantityValue: bendEntry.specs?.quantityValue || 1,
         quantityType: 'number_of_items' as const,
