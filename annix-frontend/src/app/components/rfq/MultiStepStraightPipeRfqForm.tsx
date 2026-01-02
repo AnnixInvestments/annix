@@ -8726,13 +8726,29 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           const cf = Number(entry.specs.centerToFaceMm) || 0;
                           const tangent1 = entry.specs?.tangentLengths?.[0] || 0;
                           const tangent2 = entry.specs?.tangentLengths?.[1] || 0;
+                          const numTangents = entry.specs?.numberOfTangents || 0;
                           const totalLength = (cf * 2) + tangent1 + tangent2;
+                          const end1 = cf + tangent1;
+                          const end2 = cf + tangent2;
+
+                          // Format like description: "455x555 C/F" or "C/F 305mm"
+                          let cfDisplay = '';
+                          if (numTangents > 0 && (tangent1 > 0 || tangent2 > 0)) {
+                            if (numTangents === 2 && tangent1 > 0 && tangent2 > 0) {
+                              cfDisplay = `${end1.toFixed(0)}x${end2.toFixed(0)} C/F`;
+                            } else if (tangent1 > 0) {
+                              cfDisplay = `${end1.toFixed(0)}x${cf.toFixed(0)} C/F`;
+                            } else if (tangent2 > 0) {
+                              cfDisplay = `${cf.toFixed(0)}x${end2.toFixed(0)} C/F`;
+                            }
+                          } else {
+                            cfDisplay = `C/F ${cf.toFixed(0)}mm`;
+                          }
+
                           return (
                             <>
                               <p className="text-sm font-bold text-purple-800">{totalLength.toFixed(0)} mm</p>
-                              <p className="text-xs text-purple-700 mt-0.5">
-                                C/F {cf.toFixed(0)}mm × 2{tangent1 > 0 || tangent2 > 0 ? ` + ${tangent1 + tangent2}mm tangents` : ''}
-                              </p>
+                              <p className="text-xs text-purple-700 mt-0.5">{cfDisplay}</p>
                             </>
                           );
                         })()}
