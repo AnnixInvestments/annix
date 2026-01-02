@@ -113,9 +113,11 @@ const getSABS719ValidSegments = (bendRadiusType: string, bendDegrees: number): n
 };
 
 const getSABS719ColumnBySegments = (bendRadiusType: string, segments: number): 'A' | 'B' | 'C' => {
+  // Updated mapping to handle all segment numbers based on angle-driven segment rules
+  // Segments 5-7 → Column A (largest C/F), 3-4 → Column B, 2 → Column C (smallest C/F)
   const map: Record<string, Record<number, 'A' | 'B' | 'C'>> = {
-    elbow: { 4: 'A', 3: 'B', 2: 'C' },
-    medium: { 5: 'A', 4: 'B', 3: 'B', 2: 'C' },
+    elbow: { 7: 'A', 6: 'A', 5: 'A', 4: 'A', 3: 'B', 2: 'C' },
+    medium: { 7: 'A', 6: 'A', 5: 'A', 4: 'B', 3: 'B', 2: 'C' },
     long: { 7: 'A', 6: 'A', 5: 'A', 4: 'B', 3: 'B', 2: 'C' }
   };
   return map[bendRadiusType]?.[segments] || 'A';
@@ -8699,29 +8701,29 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       const effectiveWeldThickness = weldThickness || pipeWallThickness;
 
                       return (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                          <h5 className="text-xs font-bold text-green-900 mb-1">Flange Weld Info</h5>
-                          <p className="text-xs text-green-800">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <h5 className="text-xs font-bold text-blue-900 mb-1">Flange Weld Info</h5>
+                          <p className="text-xs text-blue-800">
                             <span className="font-medium">Thickness:</span> {effectiveWeldThickness?.toFixed(2)} mm ({fittingClass})
                           </p>
-                          <p className="text-xs text-green-700">
+                          <p className="text-xs text-blue-700">
                             {weldCount} weld{weldCount !== 1 ? 's' : ''} × 2 passes
                           </p>
                         </div>
                       );
                     })()}
 
-                    {/* Flanges from Global Specs - Amber background */}
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    {/* Flanges from Global Specs - Orange background (matches pipes) */}
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                       <div className="flex justify-between items-start mb-2">
-                        <h5 className="text-xs font-bold text-amber-900">
+                        <h5 className="text-xs font-bold text-orange-900">
                           Flanges
                           {entry.hasFlangeOverride ? (
                             <span className="text-blue-600 text-xs ml-1">(Override)</span>
                           ) : globalSpecs?.flangeStandardId ? (
                             <span className="text-green-600 text-xs ml-1">(Global)</span>
                           ) : (
-                            <span className="text-amber-600 text-xs ml-1">(Not Set)</span>
+                            <span className="text-orange-600 text-xs ml-1">(Not Set)</span>
                           )}
                         </h5>
                         {globalSpecs?.flangeStandardId && (
@@ -8752,7 +8754,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         )}
                       </div>
                       {globalSpecs?.flangeStandardId && !entry.hasFlangeOverride ? (
-                        <p className="text-xs text-amber-800">
+                        <p className="text-xs text-orange-800">
                           {(() => {
                             const flangeStandard = masterData.flangeStandards?.find((fs: any) => fs.id === globalSpecs.flangeStandardId);
                             const pressureClass = masterData.pressureClasses?.find((pc: any) => pc.id === globalSpecs.flangePressureClassId);
@@ -8763,7 +8765,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           })()}
                         </p>
                       ) : !globalSpecs?.flangeStandardId ? (
-                        <p className="text-xs text-amber-700">Set flange specs in Global Specifications</p>
+                        <p className="text-xs text-orange-700">Set flange specs in Global Specifications</p>
                       ) : null}
                     </div>
 
@@ -8891,6 +8893,18 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                 </div>
 
                 {/* Operating Conditions - Hidden: Uses global specs for working pressure/temp */}
+
+                {/* Remove Item Button */}
+                {entries.length > 1 && (
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={() => onRemoveEntry(entry.id)}
+                      className="px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 text-sm font-medium border border-red-300 rounded-md transition-colors"
+                    >
+                      Remove Item
+                    </button>
+                  </div>
+                )}
 
                 {/* Auto-Calculating Indicator */}
                 <div className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg">
