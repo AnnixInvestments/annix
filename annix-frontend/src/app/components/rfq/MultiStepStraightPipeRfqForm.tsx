@@ -7604,10 +7604,19 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
       if (schedule.toString().toLowerCase().startsWith('sch')) {
         schedule = schedule.substring(3);
       }
-      const bendType = entry.specs?.bendRadiusType || entry.specs?.bendType || 'X.XD';
+      const bendTypeRaw = entry.specs?.bendRadiusType || entry.specs?.bendType || 'X.XD';
       const bendAngle = entry.specs?.bendDegrees || 'XX';
       const centerToFace = entry.specs?.centerToFaceMm;
       const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+
+      // Format bend type for description - add "Radius" where needed
+      const bendType = bendTypeRaw === 'elbow' ? 'Short Radius' :
+                       bendTypeRaw === 'medium' ? 'Medium Radius' :
+                       bendTypeRaw === 'long' ? 'Long Radius' :
+                       bendTypeRaw === '1.5D' ? '1.5D (Short Radius)' :
+                       bendTypeRaw === '3D' ? '3D (Long Radius)' :
+                       bendTypeRaw === '5D' ? '5D (Extra Long Radius)' :
+                       bendTypeRaw;
 
       // Get steel spec name if available
       const steelSpec = entry.specs?.steelSpecificationId
