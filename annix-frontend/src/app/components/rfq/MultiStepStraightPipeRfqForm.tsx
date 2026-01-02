@@ -7638,9 +7638,30 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
       // Build description: "80NB Sch40 45° 3D Bend C/F 150mm"
       let description = `${nb}NB Sch${schedule} ${bendAngle}° ${bendType} Bend`;
 
-      // Add C/F if available
+      // Add C/F - if tangents are present, show C/F + tangent for each end
+      const tangentLengths = entry.specs?.tangentLengths || [];
+      const tangent1 = tangentLengths[0] || 0;
+      const tangent2 = tangentLengths[1] || 0;
+      const numTangents = entry.specs?.numberOfTangents || 0;
+
       if (centerToFace) {
-        description += ` C/F ${Number(centerToFace).toFixed(0)}mm`;
+        const cf = Number(centerToFace);
+        if (numTangents > 0 && (tangent1 > 0 || tangent2 > 0)) {
+          // Show C/F + tangent lengths: "455x555 C/F" or "455 C/F" for single tangent
+          const end1 = cf + tangent1;
+          const end2 = cf + tangent2;
+          if (numTangents === 2 && tangent1 > 0 && tangent2 > 0) {
+            description += ` ${end1.toFixed(0)}x${end2.toFixed(0)} C/F`;
+          } else if (tangent1 > 0) {
+            description += ` ${end1.toFixed(0)}x${cf.toFixed(0)} C/F`;
+          } else if (tangent2 > 0) {
+            description += ` ${cf.toFixed(0)}x${end2.toFixed(0)} C/F`;
+          } else {
+            description += ` C/F ${cf.toFixed(0)}mm`;
+          }
+        } else {
+          description += ` C/F ${cf.toFixed(0)}mm`;
+        }
       }
 
       // Add flange config and specs if not plain ended
@@ -7656,14 +7677,10 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         }
       }
 
-      // Add tangent/stub info if present
-      const numTangents = entry.specs?.numberOfTangents || 0;
+      // Add stub info if present
       const numStubs = entry.specs?.numberOfStubs || 0;
-      if (numTangents > 0 || numStubs > 0) {
-        const parts = [];
-        if (numTangents > 0) parts.push(`${numTangents} Tangent${numTangents > 1 ? 's' : ''}`);
-        if (numStubs > 0) parts.push(`${numStubs} Stub${numStubs > 1 ? 's' : ''}`);
-        description += ` with ${parts.join(' & ')}`;
+      if (numStubs > 0) {
+        description += ` with ${numStubs} Stub${numStubs > 1 ? 's' : ''}`;
       }
 
       if (steelSpec) {
