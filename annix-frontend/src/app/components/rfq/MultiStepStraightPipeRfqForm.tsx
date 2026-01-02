@@ -7664,23 +7664,53 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         }
       }
 
+      // Add stub info if present (before flange config so config label can account for stubs)
+      const numStubs = entry.specs?.numberOfStubs || 0;
+      const stubs = entry.specs?.stubs || [];
+      const stub1NB = stubs[0]?.nominalBoreMm;
+      const stub1Length = stubs[0]?.length;
+      const stub2NB = stubs[1]?.nominalBoreMm;
+      const stub2Length = stubs[1]?.length;
+      const stub1HasFlange = stubs[0]?.hasFlangeOverride || (stubs[0]?.flangeStandardId && stubs[0]?.flangePressureClassId);
+      const stub2HasFlange = stubs[1]?.hasFlangeOverride || (stubs[1]?.flangeStandardId && stubs[1]?.flangePressureClassId);
+
+      if (numStubs > 0) {
+        if (numStubs === 1 && stub1NB && stub1Length) {
+          description += ` + ${stub1NB}NB x ${stub1Length}mm Stub`;
+        } else if (numStubs === 2 && stub1NB && stub1Length && stub2NB && stub2Length) {
+          if (stub1NB === stub2NB && stub1Length === stub2Length) {
+            description += ` + 2x${stub1NB}NB x ${stub1Length}mm Stubs`;
+          } else {
+            description += ` + ${stub1NB}NB x ${stub1Length}mm Stub + ${stub2NB}NB x ${stub2Length}mm Stub`;
+          }
+        }
+      }
+
       // Add flange config and specs if not plain ended
+      // Modify config label if stubs have flanges: FBE becomes FAE, or F2E+OE if no stub flange
       if (bendEndConfig && bendEndConfig !== 'PE') {
-        const configLabel = bendEndConfig === 'FBE' ? 'FBE' :
+        let configLabel = bendEndConfig === 'FBE' ? 'FBE' :
                            bendEndConfig === 'FOE' ? 'FOE' :
                            bendEndConfig === 'FOE_LF' ? 'FOE+L/F' :
                            bendEndConfig === 'FOE_RF' ? 'FOE+R/F' :
                            bendEndConfig === '2X_RF' ? '2xR/F' : bendEndConfig;
+
+        // If stubs are present, modify the end config label
+        if (numStubs > 0) {
+          const anyStubHasFlange = stub1HasFlange || stub2HasFlange;
+          if (anyStubHasFlange) {
+            // FAE = Flanged All Ends (bend ends + stub flanges)
+            configLabel = 'FAE';
+          } else {
+            // F2E+OE = Flanged 2 Ends + Open Ended stubs
+            configLabel = bendEndConfig === 'FBE' ? 'F2E+OE' : configLabel;
+          }
+        }
+
         description += ` ${configLabel}`;
         if (flangeStandard && pressureClass) {
           description += ` ${flangeStandard} ${pressureClass}`;
         }
-      }
-
-      // Add stub info if present
-      const numStubs = entry.specs?.numberOfStubs || 0;
-      if (numStubs > 0) {
-        description += ` with ${numStubs} Stub${numStubs > 1 ? 's' : ''}`;
       }
 
       if (steelSpec) {
@@ -8716,6 +8746,64 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           />
                         </div>
                       )}
+
+                      {/* Tangent Buttweld Data - shows when tangents are added */}
+                      {(entry.specs?.numberOfTangents || 0) > 0 && (
+                        <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg p-3">
+                          <h6 className="text-xs font-bold text-orange-900 mb-1">Tangent Buttweld Data</h6>
+                          {(() => {
+                            const dn = entry.specs?.nominalBoreMm;
+                            const schedule = entry.specs?.scheduleNumber || '';
+                            const pipeWallThickness = entry.specs?.wallThicknessMm;
+                            const numTangents = entry.specs?.numberOfTangents || 0;
+
+                            // Weld thickness lookup
+                            const FITTING_WALL_THICKNESS: Record<string, Record<number, number>> = {
+                              'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
+                              'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
+                              'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
+                            };
+
+                            const scheduleUpper = schedule.toUpperCase();
+                            const fittingClass =
+                              scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
+                                ? 'XXH'
+                                : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
+                                  ? 'XH'
+                                  : 'STD';
+
+                            const weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
+                            const effectiveThickness = weldThickness || pipeWallThickness;
+
+                            // Calculate circumference
+                            const od = dn ? (NB_TO_OD_LOOKUP[dn] || (dn * 1.05)) : 0;
+                            const circumference = Math.PI * od;
+                            const totalWeldLength = circumference * numTangents;
+
+                            if (!dn || !effectiveThickness) {
+                              return (
+                                <p className="text-xs text-orange-700">
+                                  Select NB and schedule for weld data
+                                </p>
+                              );
+                            }
+
+                            return (
+                              <>
+                                <p className="text-xs text-orange-800">
+                                  <span className="font-medium">{numTangents} full penetration weld{numTangents > 1 ? 's' : ''}</span>
+                                </p>
+                                <p className="text-xs text-orange-700">
+                                  Weld thickness: {effectiveThickness.toFixed(2)}mm ({weldThickness ? fittingClass : 'from schedule'})
+                                </p>
+                                <p className="text-xs text-orange-700">
+                                  Linear meterage: {totalWeldLength.toFixed(0)}mm ({numTangents} x {circumference.toFixed(0)}mm circ)
+                                </p>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
 
                     {/* Total Bend Length - Auto-calculated */}
@@ -8812,7 +8900,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       )}
                     </div>
 
-                    {/* Flange Weld Thickness - Green background */}
+                    {/* Flange Weld Thickness - with fallback to schedule thickness */}
                     {(() => {
                       const weldCount = getWeldCountPerBend(entry.specs?.bendEndConfiguration || 'PE');
                       const dn = entry.specs?.nominalBoreMm;
@@ -8834,30 +8922,55 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                       const weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
 
+                      // Fallback to pipe wall thickness (schedule thickness) if no fitting data
+                      const pipeWallThickness = entry.specs?.wallThicknessMm;
+                      const effectiveWeldThickness = weldThickness || pipeWallThickness;
+                      const usingScheduleThickness = !weldThickness && pipeWallThickness;
+
+                      // Calculate circumference for weld length
+                      const od = dn ? (NB_TO_OD_LOOKUP[dn] || (dn * 1.05)) : 0;
+                      const circumference = Math.PI * od;
+
                       if (weldCount === 0) return null;
 
-                      if (!dn || !weldThickness) {
+                      if (!dn) {
                         return (
                           <div className="bg-amber-50 border border-amber-200 rounded-lg p-2">
                             <p className="text-xs text-amber-700">
-                              {!dn ? 'Select NB for weld thickness' : 'Weld data not available'}
+                              Select NB for weld thickness
                             </p>
                           </div>
                         );
                       }
 
-                      const pipeWallThickness = entry.specs?.wallThicknessMm;
-                      const effectiveWeldThickness = weldThickness || pipeWallThickness;
+                      if (!effectiveWeldThickness) {
+                        return (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2">
+                            <p className="text-xs text-amber-700">
+                              Set schedule/wall thickness for weld data
+                            </p>
+                          </div>
+                        );
+                      }
 
                       return (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                          <h5 className="text-xs font-bold text-blue-900 mb-1">Flange Weld Info</h5>
-                          <p className="text-xs text-blue-800">
-                            <span className="font-medium">Thickness:</span> {effectiveWeldThickness?.toFixed(2)} mm ({fittingClass})
+                        <div className={`${usingScheduleThickness ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'} rounded-lg p-3`}>
+                          <h5 className={`text-xs font-bold ${usingScheduleThickness ? 'text-blue-900' : 'text-green-900'} mb-1`}>Flange Weld Info</h5>
+                          <p className={`text-xs ${usingScheduleThickness ? 'text-blue-800' : 'text-green-800'}`}>
+                            <span className="font-medium">Thickness:</span> {effectiveWeldThickness?.toFixed(2)} mm
+                            {usingScheduleThickness ? ' (from schedule)' : ` (${fittingClass})`}
                           </p>
-                          <p className="text-xs text-blue-700">
-                            {weldCount} weld{weldCount !== 1 ? 's' : ''} × 2 passes
-                          </p>
+                          {weldCount > 0 && (
+                            <>
+                              <p className={`text-xs ${usingScheduleThickness ? 'text-blue-700' : 'text-green-700'}`}>
+                                {weldCount} flange weld{weldCount !== 1 ? 's' : ''} x 2 passes
+                              </p>
+                              <p className={`text-xs ${usingScheduleThickness ? 'text-blue-600' : 'text-green-600'}`}>
+                                Weld length: {(circumference * 2 * weldCount).toFixed(0)}mm ({weldCount}x2x{circumference.toFixed(0)}mm circ)
+                              </p>
+                            </>
+                          )}
+
                         </div>
                       );
                     })()}
@@ -9353,6 +9466,73 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               <p className="text-xs text-orange-700">Set in Global Specs</p>
                             )}
                           </div>
+                        </div>
+                      )}
+
+                      {/* Tee Welds - for stub connections */}
+                      {(entry.specs?.numberOfStubs || 0) > 0 && (
+                        <div className="mt-3 bg-teal-50 border border-teal-200 rounded-lg p-3">
+                          <h6 className="text-xs font-bold text-teal-900 mb-1">Tee Welds</h6>
+                          {(() => {
+                            const dn = entry.specs?.nominalBoreMm;
+                            const schedule = entry.specs?.scheduleNumber || '';
+                            const pipeWallThickness = entry.specs?.wallThicknessMm;
+                            const numStubs = entry.specs?.numberOfStubs || 0;
+                            const stubs = entry.specs?.stubs || [];
+
+                            // Weld thickness lookup
+                            const FITTING_WALL_THICKNESS: Record<string, Record<number, number>> = {
+                              'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
+                              'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
+                              'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
+                            };
+
+                            const scheduleUpper = schedule.toUpperCase();
+                            const fittingClass =
+                              scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
+                                ? 'XXH'
+                                : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
+                                  ? 'XH'
+                                  : 'STD';
+
+                            const stub1NB = stubs[0]?.nominalBoreMm;
+                            const stub2NB = stubs[1]?.nominalBoreMm;
+                            const stub1OD = stub1NB ? (NB_TO_OD_LOOKUP[stub1NB] || (stub1NB * 1.05)) : 0;
+                            const stub2OD = stub2NB ? (NB_TO_OD_LOOKUP[stub2NB] || (stub2NB * 1.05)) : 0;
+                            const stub1Circumference = Math.PI * stub1OD;
+                            const stub2Circumference = Math.PI * stub2OD;
+                            const stub1Thickness = stub1NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub1NB] || pipeWallThickness) : 0;
+                            const stub2Thickness = stub2NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub2NB] || pipeWallThickness) : 0;
+
+                            if (!stub1NB && !stub2NB) {
+                              return (
+                                <p className="text-xs text-teal-700">
+                                  Select stub NB to see tee weld data
+                                </p>
+                              );
+                            }
+
+                            return (
+                              <>
+                                <p className="text-xs text-teal-800 mb-1">
+                                  <span className="font-medium">{numStubs} Tee weld{numStubs > 1 ? 's' : ''}</span> (full penetration)
+                                </p>
+                                {numStubs >= 1 && stub1NB && (
+                                  <p className="text-xs text-teal-700">
+                                    Stub 1: {stub1NB}NB - {stub1Thickness?.toFixed(2)}mm weld x {stub1Circumference.toFixed(0)}mm circ
+                                  </p>
+                                )}
+                                {numStubs >= 2 && stub2NB && (
+                                  <p className="text-xs text-teal-700">
+                                    Stub 2: {stub2NB}NB - {stub2Thickness?.toFixed(2)}mm weld x {stub2Circumference.toFixed(0)}mm circ
+                                  </p>
+                                )}
+                                <p className="text-xs text-teal-600 mt-1">
+                                  Total linear meterage: {((numStubs >= 1 && stub1NB ? stub1Circumference : 0) + (numStubs >= 2 && stub2NB ? stub2Circumference : 0)).toFixed(0)}mm
+                                </p>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
