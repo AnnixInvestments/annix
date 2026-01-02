@@ -8147,11 +8147,64 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </label>
                       <select
                         value={entry.specs?.nominalBoreMm || ''}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const nominalBore = parseInt(e.target.value);
+                          if (!nominalBore) return;
+
+                          // Get pressure and temperature from global specs
+                          const pressure = globalSpecs?.workingPressureBar || 0;
+                          const temperature = globalSpecs?.workingTemperatureC || 20;
+
+                          // Get schedules from fallback data
+                          const schedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
+
+                          let matchedSchedule: string | null = null;
+                          let matchedWT = 0;
+
+                          if (pressure > 0 && schedules.length > 0) {
+                            // Calculate minimum wall thickness using Barlow formula
+                            const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
+                            const pressureMpa = pressure * 0.1;
+                            const allowableStress = 137.9; // MPa for A106 Gr B
+                            const safetyFactor = 1.2;
+                            const minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
+
+                            // Find the lightest schedule that meets minimum wall thickness
+                            const eligibleSchedules = schedules
+                              .filter(s => s.wallThicknessMm >= minWT)
+                              .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
+
+                            if (eligibleSchedules.length > 0) {
+                              matchedSchedule = eligibleSchedules[0].scheduleDesignation;
+                              matchedWT = eligibleSchedules[0].wallThicknessMm;
+                            } else {
+                              // Use thickest available if none meet requirements
+                              const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
+                              matchedSchedule = sorted[0].scheduleDesignation;
+                              matchedWT = sorted[0].wallThicknessMm;
+                            }
+                            console.log(`[Bend NB] Auto-selected schedule: ${matchedSchedule} (${matchedWT}mm) for ${nominalBore}NB @ ${pressure}bar`);
+                          } else if (schedules.length > 0) {
+                            // No pressure - use Sch 40 as default or first available
+                            const sch40 = schedules.find(s => s.scheduleDesignation === '40' || s.scheduleDesignation === 'Sch 40');
+                            if (sch40) {
+                              matchedSchedule = sch40.scheduleDesignation;
+                              matchedWT = sch40.wallThicknessMm;
+                            } else {
+                              matchedSchedule = schedules[0].scheduleDesignation;
+                              matchedWT = schedules[0].wallThicknessMm;
+                            }
+                            console.log(`[Bend NB] No pressure set, using default: ${matchedSchedule}`);
+                          }
+
                           const updatedEntry: any = {
                             ...entry,
-                            specs: { ...entry.specs, nominalBoreMm: nominalBore, scheduleNumber: undefined, wallThicknessMm: undefined }
+                            specs: {
+                              ...entry.specs,
+                              nominalBoreMm: nominalBore,
+                              scheduleNumber: matchedSchedule,
+                              wallThicknessMm: matchedWT
+                            }
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
