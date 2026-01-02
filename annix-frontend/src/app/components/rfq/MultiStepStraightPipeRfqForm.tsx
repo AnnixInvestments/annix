@@ -145,11 +145,14 @@ const PIPE_END_OPTIONS = [
   { value: '2X_RF', label: '2 x R/F - Rotating flanges both ends (2 flange welds)', weldCount: 2 },
 ] as const;
 
-// Bend end configuration options
+// Bend end configuration options (same as pipe options)
 const BEND_END_OPTIONS = [
   { value: 'PE', label: 'PE - Plain ended (0 welds)', weldCount: 0 },
   { value: 'FOE', label: 'FOE - Flanged one end (1 weld)', weldCount: 1 },
   { value: 'FBE', label: 'FBE - Flanged both ends (2 flange welds)', weldCount: 2 },
+  { value: 'FOE_LF', label: 'FOE + L/F - Flanged one end + loose flange (1 flange weld)', weldCount: 1 },
+  { value: 'FOE_RF', label: 'FOE + R/F - Flanged one end + rotating flange (2 flange welds)', weldCount: 2 },
+  { value: '2X_RF', label: '2 x R/F - Rotating flanges both ends (2 flange welds)', weldCount: 2 },
 ] as const;
 
 // Helper function to get weld count per bend based on bend end configuration
@@ -8436,66 +8439,10 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                 {/* Two-Column Layout Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-                  {/* LEFT COLUMN - Additional Options */}
+                  {/* LEFT COLUMN - Quantity & Options */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-bold text-gray-900 border-b border-purple-500 pb-1.5">
-                      Additional Options
-                    </h4>
-
-                    {/* Center-to-Face Display */}
-                    {entry.specs?.centerToFaceMm && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                        <h5 className="text-xs font-bold text-green-900 mb-1">Center-to-Face</h5>
-                        <p className="text-sm font-bold text-green-800">{Number(entry.specs.centerToFaceMm).toFixed(1)} mm</p>
-                        {entry.specs?.bendRadiusMm && (
-                          <p className="text-xs text-green-700 mt-0.5">Radius: {Number(entry.specs.bendRadiusMm).toFixed(1)} mm</p>
-                        )}
-                      </div>
-                    )}
-
-
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 mb-1">
-                      Center-to-Face (mm)
-                      {entry.specs?.centerToFaceMm && (
-                        <span className="text-green-600 text-xs ml-2">(Auto-populated)</span>
-                      )}
-                    </label>
-                    <input
-                      type="text"
-                      value={
-                        entry.specs?.centerToFaceMm
-                          ? `${Number(entry.specs.centerToFaceMm).toFixed(1)} mm`
-                          : entry.calculation?.centerToFaceDimension
-                            ? `${entry.calculation.centerToFaceDimension.toFixed(1)} mm`
-                            : 'Select Bend Type, NB & Angle'
-                      }
-                      disabled
-                      className={`w-full px-3 py-2 border rounded-md text-sm cursor-not-allowed ${
-                        entry.specs?.centerToFaceMm
-                          ? 'bg-green-50 border-green-300 text-green-900 font-medium'
-                          : 'bg-gray-100 border-gray-300 text-gray-600'
-                      }`}
-                      placeholder="Auto-calculated"
-                    />
-                    {entry.specs?.bendRadiusMm && (
-                      <p className="mt-0.5 text-xs text-green-600">
-                        Bend radius: {Number(entry.specs.bendRadiusMm).toFixed(1)} mm
-                      </p>
-                    )}
-                    {!entry.specs?.centerToFaceMm && (
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        Auto-populated from database based on Bend Type, NB & Angle
-                      </p>
-                    )}
-                  </div>
-                  </div>
-
-                  {/* RIGHT COLUMN - Flanges & Options */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
-                      Flanges & Options
+                      Quantity & Options
                     </h4>
 
                     {/* Quantity */}
@@ -8520,6 +8467,112 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         placeholder="1"
                       />
                     </div>
+
+                    {/* Center-to-Face Display */}
+                    {entry.specs?.centerToFaceMm && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <h5 className="text-xs font-bold text-green-900 mb-1">Center-to-Face</h5>
+                        <p className="text-sm font-bold text-green-800">{Number(entry.specs.centerToFaceMm).toFixed(1)} mm</p>
+                        {entry.specs?.bendRadiusMm && (
+                          <p className="text-xs text-green-700 mt-0.5">Radius: {Number(entry.specs.bendRadiusMm).toFixed(1)} mm</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Tangents Section */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <h5 className="text-xs font-bold text-blue-900 mb-2">Tangent Extensions</h5>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Number of Tangents
+                        </label>
+                        <select
+                          value={entry.specs?.numberOfTangents || 0}
+                          onChange={(e) => {
+                            const count = parseInt(e.target.value) || 0;
+                            const currentLengths = entry.specs?.tangentLengths || [];
+                            const newLengths = count === 0 ? [] :
+                                             count === 1 ? [currentLengths[0] || 150] :
+                                             [currentLengths[0] || 150, currentLengths[1] || 150];
+                            const updatedEntry = {
+                              ...entry,
+                              specs: {
+                                ...entry.specs,
+                                numberOfTangents: count,
+                                tangentLengths: newLengths
+                              }
+                            };
+                            updatedEntry.description = generateItemDescription(updatedEntry);
+                            onUpdateEntry(entry.id, updatedEntry);
+                            if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                              setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                        >
+                          <option value="0">0 - No Tangents</option>
+                          <option value="1">1 - Single Tangent</option>
+                          <option value="2">2 - Both Tangents</option>
+                        </select>
+                      </div>
+
+                      {(entry.specs?.numberOfTangents || 0) >= 1 && (
+                        <div className="mt-2">
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            Tangent 1 Length (mm)
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.tangentLengths?.[0] || ''}
+                            onChange={(e) => {
+                              const lengths = [...(entry.specs?.tangentLengths || [])];
+                              lengths[0] = parseInt(e.target.value) || 0;
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, tangentLengths: lengths }
+                              });
+                              if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                            min="0"
+                            placeholder="150"
+                          />
+                        </div>
+                      )}
+
+                      {(entry.specs?.numberOfTangents || 0) >= 2 && (
+                        <div className="mt-2">
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            Tangent 2 Length (mm)
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.tangentLengths?.[1] || ''}
+                            onChange={(e) => {
+                              const lengths = [...(entry.specs?.tangentLengths || [])];
+                              lengths[1] = parseInt(e.target.value) || 0;
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, tangentLengths: lengths }
+                              });
+                              if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                            min="0"
+                            placeholder="150"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* RIGHT COLUMN - Flanges & Options */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
+                      Flanges & Options
+                    </h4>
 
                     {/* Bend End Configuration - White background */}
                     <div className="border border-gray-200 rounded-lg p-3">
@@ -8658,98 +8711,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <p className="text-xs text-amber-700">Set flange specs in Global Specifications</p>
                       ) : null}
                     </div>
-
-                    {/* Tangents Section - Compact */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <h5 className="text-xs font-bold text-blue-900 mb-2">Tangent Extensions</h5>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Number of Tangents
-                        </label>
-                        <select
-                          value={entry.specs?.numberOfTangents || 0}
-                          onChange={(e) => {
-                            const count = parseInt(e.target.value) || 0;
-                            const currentLengths = entry.specs?.tangentLengths || [];
-                            const newLengths = count === 0 ? [] :
-                                             count === 1 ? [currentLengths[0] || 150] :
-                                             [currentLengths[0] || 150, currentLengths[1] || 150];
-                            const updatedEntry = {
-                              ...entry,
-                              specs: {
-                                ...entry.specs,
-                                numberOfTangents: count,
-                                tangentLengths: newLengths
-                              }
-                            };
-                          // Auto-update description
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
-                          // Auto-calculate if all required fields are filled
-                          if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="0">0 - No Tangents</option>
-                        <option value="1">1 - Single Tangent</option>
-                        <option value="2">2 - Both Tangents</option>
-                      </select>
-                    </div>
-
-                    {(entry.specs?.numberOfTangents || 0) >= 1 && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Tangent 1 Length (mm)
-                        </label>
-                        <input
-                          type="number"
-                          value={entry.specs?.tangentLengths?.[0] || ''}
-                          onChange={(e) => {
-                            const lengths = [...(entry.specs?.tangentLengths || [])];
-                            lengths[0] = parseInt(e.target.value) || 0;
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, tangentLengths: lengths }
-                            });
-                            // Auto-calculate if all required fields are filled
-                            if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                              setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                            }
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                          min="0"
-                          placeholder="150"
-                        />
-                      </div>
-                    )}
-
-                    {(entry.specs?.numberOfTangents || 0) >= 2 && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Tangent 2 Length (mm)
-                        </label>
-                        <input
-                          type="number"
-                          value={entry.specs?.tangentLengths?.[1] || ''}
-                          onChange={(e) => {
-                            const lengths = [...(entry.specs?.tangentLengths || [])];
-                            lengths[1] = parseInt(e.target.value) || 0;
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, tangentLengths: lengths }
-                            });
-                            // Auto-calculate if all required fields are filled
-                            if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                              setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                            }
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                          min="0"
-                          placeholder="150"
-                        />
-                      </div>
-                    )}
-                  </div>
 
                     {/* Stubs Section - Compact */}
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3">
