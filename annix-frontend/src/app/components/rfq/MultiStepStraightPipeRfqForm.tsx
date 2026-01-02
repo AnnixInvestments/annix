@@ -8845,16 +8845,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     })()}
 
                     {/* Flange Specifications - Uses Global Specs with Override Option */}
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <div>
                       <div className="flex justify-between items-start mb-2">
-                        <h5 className="text-xs font-bold text-orange-900">
+                        <h5 className="text-xs font-bold text-gray-900">
                           Flanges
                           {entry.hasFlangeOverride ? (
                             <span className="text-blue-600 text-xs ml-2 font-normal">(Override Active)</span>
                           ) : globalSpecs?.flangeStandardId ? (
                             <span className="text-green-600 text-xs ml-2 font-normal">(From Global Specs)</span>
                           ) : (
-                            <span className="text-orange-600 text-xs ml-2 font-normal">(Not Set)</span>
+                            <span className="text-gray-500 text-xs ml-2 font-normal">(Not Set)</span>
                           )}
                         </h5>
                         {globalSpecs?.flangeStandardId && (
@@ -8944,7 +8944,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           )}
                         </div>
                       ) : !globalSpecs?.flangeStandardId ? (
-                        <p className="text-xs text-orange-700">Set flange specs in Global Specifications</p>
+                        <p className="text-xs text-gray-500">Set flange specs in Global Specifications</p>
                       ) : (
                         <div className="space-y-2">
                           {entry.flangeOverrideConfirmed ? (
@@ -8990,7 +8990,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                     onChange={(e) => onUpdateEntry(entry.id, {
                                       specs: { ...entry.specs, flangeStandardId: parseInt(e.target.value) || undefined }
                                     })}
-                                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                                   >
                                     <option value="">Select Standard</option>
                                     {masterData.flangeStandards?.map((standard: any) => (
@@ -9012,7 +9012,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                         flangePressureClassId: parseInt(e.target.value) || undefined
                                       }
                                     })}
-                                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                                   >
                                     <option value="">Select Class</option>
                                     {masterData.pressureClasses?.map((pressureClass: any) => (
