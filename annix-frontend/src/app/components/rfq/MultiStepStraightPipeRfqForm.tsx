@@ -9083,40 +9083,120 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       {(entry.specs?.numberOfStubs || 0) >= 1 && (
                         <div className="mt-2 p-2 bg-white rounded border border-green-300">
                           <p className="text-xs font-medium text-green-900 mb-1">Stub 1</p>
-                          <div className="grid grid-cols-3 gap-2">
-                            <input
-                              type="number"
-                              value={entry.specs?.stubs?.[0]?.nominalBoreMm || ''}
-                              onChange={(e) => {
-                                const stubs = [...(entry.specs?.stubs || [])];
-                                stubs[0] = { ...stubs[0], nominalBoreMm: parseInt(e.target.value) || 0 };
-                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
-                              }}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
-                              placeholder="NB"
-                            />
-                            <input
-                              type="number"
-                              value={entry.specs?.stubs?.[0]?.length || ''}
-                              onChange={(e) => {
-                                const stubs = [...(entry.specs?.stubs || [])];
-                                stubs[0] = { ...stubs[0], length: parseInt(e.target.value) || 0 };
-                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
-                              }}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
-                              placeholder="Length"
-                            />
-                            <input
-                              type="text"
-                              value={entry.specs?.stubs?.[0]?.flangeSpec || ''}
-                              onChange={(e) => {
-                                const stubs = [...(entry.specs?.stubs || [])];
-                                stubs[0] = { ...stubs[0], flangeSpec: e.target.value };
-                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
-                              }}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
-                              placeholder="Flange"
-                            />
+                          <div className="grid grid-cols-2 gap-2 mb-2">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">NB</label>
+                              <select
+                                value={entry.specs?.stubs?.[0]?.nominalBoreMm || ''}
+                                onChange={(e) => {
+                                  const stubs = [...(entry.specs?.stubs || [])];
+                                  stubs[0] = { ...stubs[0], nominalBoreMm: parseInt(e.target.value) || 0 };
+                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                }}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                              >
+                                <option value="">Select NB</option>
+                                {(() => {
+                                  const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                  const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === effectiveSteelSpecId);
+                                  const steelSpecName = steelSpec?.steelSpecName || '';
+                                  const fallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => steelSpecName.includes(pattern))?.[1];
+                                  const nbs = fallbackNBs || [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300];
+                                  return nbs.map((nb: number) => (
+                                    <option key={nb} value={nb}>{nb} NB</option>
+                                  ));
+                                })()}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">Length (mm)</label>
+                              <input
+                                type="number"
+                                value={entry.specs?.stubs?.[0]?.length || ''}
+                                onChange={(e) => {
+                                  const stubs = [...(entry.specs?.stubs || [])];
+                                  stubs[0] = { ...stubs[0], length: parseInt(e.target.value) || 0 };
+                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                }}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                                placeholder="150"
+                              />
+                            </div>
+                          </div>
+                          {/* Stub 1 Flange - Global with Override */}
+                          <div className="bg-orange-50 border border-orange-200 rounded p-2">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs font-medium text-orange-900">
+                                Flange
+                                {entry.specs?.stubs?.[0]?.hasFlangeOverride ? (
+                                  <span className="text-blue-600 ml-1">(Override)</span>
+                                ) : globalSpecs?.flangeStandardId ? (
+                                  <span className="text-green-600 ml-1">(Global)</span>
+                                ) : null}
+                              </span>
+                              {globalSpecs?.flangeStandardId && (
+                                <label className="flex items-center gap-1 text-xs cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={entry.specs?.stubs?.[0]?.hasFlangeOverride || false}
+                                    onChange={(e) => {
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      stubs[0] = {
+                                        ...stubs[0],
+                                        hasFlangeOverride: e.target.checked,
+                                        flangeStandardId: e.target.checked ? (stubs[0]?.flangeStandardId || globalSpecs?.flangeStandardId) : undefined,
+                                        flangePressureClassId: e.target.checked ? (stubs[0]?.flangePressureClassId || globalSpecs?.flangePressureClassId) : undefined
+                                      };
+                                      onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                    }}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <span className="text-gray-600">Override</span>
+                                </label>
+                              )}
+                            </div>
+                            {!entry.specs?.stubs?.[0]?.hasFlangeOverride && globalSpecs?.flangeStandardId ? (
+                              <p className="text-xs text-orange-800">
+                                {(() => {
+                                  const flangeStandard = masterData.flangeStandards?.find((fs: any) => fs.id === globalSpecs.flangeStandardId);
+                                  const pressureClass = masterData.pressureClasses?.find((pc: any) => pc.id === globalSpecs.flangePressureClassId);
+                                  return flangeStandard && pressureClass ? `${flangeStandard.code}/${pressureClass.designation}` : 'Using global';
+                                })()}
+                              </p>
+                            ) : entry.specs?.stubs?.[0]?.hasFlangeOverride ? (
+                              <div className="grid grid-cols-2 gap-1">
+                                <select
+                                  value={entry.specs?.stubs?.[0]?.flangeStandardId || ''}
+                                  onChange={(e) => {
+                                    const stubs = [...(entry.specs?.stubs || [])];
+                                    stubs[0] = { ...stubs[0], flangeStandardId: parseInt(e.target.value) || undefined };
+                                    onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                  }}
+                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                >
+                                  <option value="">Standard</option>
+                                  {masterData.flangeStandards?.map((s: any) => (
+                                    <option key={s.id} value={s.id}>{s.code}</option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={entry.specs?.stubs?.[0]?.flangePressureClassId || ''}
+                                  onChange={(e) => {
+                                    const stubs = [...(entry.specs?.stubs || [])];
+                                    stubs[0] = { ...stubs[0], flangePressureClassId: parseInt(e.target.value) || undefined };
+                                    onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                  }}
+                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                >
+                                  <option value="">Class</option>
+                                  {masterData.pressureClasses?.map((p: any) => (
+                                    <option key={p.id} value={p.id}>{p.designation}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-orange-700">Set in Global Specs</p>
+                            )}
                           </div>
                         </div>
                       )}
@@ -9124,40 +9204,120 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       {(entry.specs?.numberOfStubs || 0) >= 2 && (
                         <div className="mt-2 p-2 bg-white rounded border border-green-300">
                           <p className="text-xs font-medium text-green-900 mb-1">Stub 2</p>
-                          <div className="grid grid-cols-3 gap-2">
-                            <input
-                              type="number"
-                              value={entry.specs?.stubs?.[1]?.nominalBoreMm || ''}
-                              onChange={(e) => {
-                                const stubs = [...(entry.specs?.stubs || [])];
-                                stubs[1] = { ...stubs[1], nominalBoreMm: parseInt(e.target.value) || 0 };
-                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
-                              }}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
-                              placeholder="NB"
-                            />
-                            <input
-                              type="number"
-                              value={entry.specs?.stubs?.[1]?.length || ''}
-                              onChange={(e) => {
-                                const stubs = [...(entry.specs?.stubs || [])];
-                                stubs[1] = { ...stubs[1], length: parseInt(e.target.value) || 0 };
-                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
-                              }}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
-                              placeholder="Length"
-                            />
-                            <input
-                              type="text"
-                              value={entry.specs?.stubs?.[1]?.flangeSpec || ''}
-                              onChange={(e) => {
-                                const stubs = [...(entry.specs?.stubs || [])];
-                                stubs[1] = { ...stubs[1], flangeSpec: e.target.value };
-                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
-                              }}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
-                              placeholder="Flange"
-                            />
+                          <div className="grid grid-cols-2 gap-2 mb-2">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">NB</label>
+                              <select
+                                value={entry.specs?.stubs?.[1]?.nominalBoreMm || ''}
+                                onChange={(e) => {
+                                  const stubs = [...(entry.specs?.stubs || [])];
+                                  stubs[1] = { ...stubs[1], nominalBoreMm: parseInt(e.target.value) || 0 };
+                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                }}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                              >
+                                <option value="">Select NB</option>
+                                {(() => {
+                                  const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                  const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === effectiveSteelSpecId);
+                                  const steelSpecName = steelSpec?.steelSpecName || '';
+                                  const fallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => steelSpecName.includes(pattern))?.[1];
+                                  const nbs = fallbackNBs || [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300];
+                                  return nbs.map((nb: number) => (
+                                    <option key={nb} value={nb}>{nb} NB</option>
+                                  ));
+                                })()}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">Length (mm)</label>
+                              <input
+                                type="number"
+                                value={entry.specs?.stubs?.[1]?.length || ''}
+                                onChange={(e) => {
+                                  const stubs = [...(entry.specs?.stubs || [])];
+                                  stubs[1] = { ...stubs[1], length: parseInt(e.target.value) || 0 };
+                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                }}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                                placeholder="150"
+                              />
+                            </div>
+                          </div>
+                          {/* Stub 2 Flange - Global with Override */}
+                          <div className="bg-orange-50 border border-orange-200 rounded p-2">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs font-medium text-orange-900">
+                                Flange
+                                {entry.specs?.stubs?.[1]?.hasFlangeOverride ? (
+                                  <span className="text-blue-600 ml-1">(Override)</span>
+                                ) : globalSpecs?.flangeStandardId ? (
+                                  <span className="text-green-600 ml-1">(Global)</span>
+                                ) : null}
+                              </span>
+                              {globalSpecs?.flangeStandardId && (
+                                <label className="flex items-center gap-1 text-xs cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={entry.specs?.stubs?.[1]?.hasFlangeOverride || false}
+                                    onChange={(e) => {
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      stubs[1] = {
+                                        ...stubs[1],
+                                        hasFlangeOverride: e.target.checked,
+                                        flangeStandardId: e.target.checked ? (stubs[1]?.flangeStandardId || globalSpecs?.flangeStandardId) : undefined,
+                                        flangePressureClassId: e.target.checked ? (stubs[1]?.flangePressureClassId || globalSpecs?.flangePressureClassId) : undefined
+                                      };
+                                      onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                    }}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <span className="text-gray-600">Override</span>
+                                </label>
+                              )}
+                            </div>
+                            {!entry.specs?.stubs?.[1]?.hasFlangeOverride && globalSpecs?.flangeStandardId ? (
+                              <p className="text-xs text-orange-800">
+                                {(() => {
+                                  const flangeStandard = masterData.flangeStandards?.find((fs: any) => fs.id === globalSpecs.flangeStandardId);
+                                  const pressureClass = masterData.pressureClasses?.find((pc: any) => pc.id === globalSpecs.flangePressureClassId);
+                                  return flangeStandard && pressureClass ? `${flangeStandard.code}/${pressureClass.designation}` : 'Using global';
+                                })()}
+                              </p>
+                            ) : entry.specs?.stubs?.[1]?.hasFlangeOverride ? (
+                              <div className="grid grid-cols-2 gap-1">
+                                <select
+                                  value={entry.specs?.stubs?.[1]?.flangeStandardId || ''}
+                                  onChange={(e) => {
+                                    const stubs = [...(entry.specs?.stubs || [])];
+                                    stubs[1] = { ...stubs[1], flangeStandardId: parseInt(e.target.value) || undefined };
+                                    onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                  }}
+                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                >
+                                  <option value="">Standard</option>
+                                  {masterData.flangeStandards?.map((s: any) => (
+                                    <option key={s.id} value={s.id}>{s.code}</option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={entry.specs?.stubs?.[1]?.flangePressureClassId || ''}
+                                  onChange={(e) => {
+                                    const stubs = [...(entry.specs?.stubs || [])];
+                                    stubs[1] = { ...stubs[1], flangePressureClassId: parseInt(e.target.value) || undefined };
+                                    onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                  }}
+                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                >
+                                  <option value="">Class</option>
+                                  {masterData.pressureClasses?.map((p: any) => (
+                                    <option key={p.id} value={p.id}>{p.designation}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-orange-700">Set in Global Specs</p>
+                            )}
                           </div>
                         </div>
                       )}
