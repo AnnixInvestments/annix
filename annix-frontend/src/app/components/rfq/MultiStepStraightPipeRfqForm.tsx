@@ -10153,13 +10153,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 entry.specs?.angleRange
                               );
                               if (dims) {
-                                if (dims.dimensionAMm && !entry.specs?.pipeLengthAOverride) {
-                                  pipeLengthA = dims.dimensionAMm;
-                                  pipeLengthAMmAuto = dims.dimensionAMm;
+                                // Parse string values to numbers (API returns decimal strings)
+                                const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
+                                const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
+                                if (dimA && !entry.specs?.pipeLengthAOverride) {
+                                  pipeLengthA = dimA;
+                                  pipeLengthAMmAuto = dimA;
                                 }
-                                if (dims.dimensionBMm && !entry.specs?.pipeLengthBOverride) {
-                                  pipeLengthB = dims.dimensionBMm;
-                                  pipeLengthBMmAuto = dims.dimensionBMm;
+                                if (dimB && !entry.specs?.pipeLengthBOverride) {
+                                  pipeLengthB = dimB;
+                                  pipeLengthBMmAuto = dimB;
                                 }
                               }
                             } catch (err) {
@@ -10269,13 +10272,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 entry.specs?.angleRange
                               );
                               if (dims) {
-                                if (dims.dimensionAMm && !entry.specs?.pipeLengthAOverride) {
-                                  pipeLengthA = dims.dimensionAMm;
-                                  pipeLengthAMmAuto = dims.dimensionAMm;
+                                // Parse string values to numbers (API returns decimal strings)
+                                const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
+                                const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
+                                if (dimA && !entry.specs?.pipeLengthAOverride) {
+                                  pipeLengthA = dimA;
+                                  pipeLengthAMmAuto = dimA;
                                 }
-                                if (dims.dimensionBMm && !entry.specs?.pipeLengthBOverride) {
-                                  pipeLengthB = dims.dimensionBMm;
-                                  pipeLengthBMmAuto = dims.dimensionBMm;
+                                if (dimB && !entry.specs?.pipeLengthBOverride) {
+                                  pipeLengthB = dimB;
+                                  pipeLengthBMmAuto = dimB;
                                 }
                               }
                             } catch (err) {
@@ -10456,13 +10462,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                   angleRange
                                 );
                                 if (dims) {
-                                  if (dims.dimensionAMm && !entry.specs?.pipeLengthAOverride) {
-                                    pipeLengthA = dims.dimensionAMm;
-                                    pipeLengthAMmAuto = dims.dimensionAMm;
+                                  // Parse string values to numbers (API returns decimal strings)
+                                  const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
+                                  const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
+                                  if (dimA && !entry.specs?.pipeLengthAOverride) {
+                                    pipeLengthA = dimA;
+                                    pipeLengthAMmAuto = dimA;
                                   }
-                                  if (dims.dimensionBMm && !entry.specs?.pipeLengthBOverride) {
-                                    pipeLengthB = dims.dimensionBMm;
-                                    pipeLengthBMmAuto = dims.dimensionBMm;
+                                  if (dimB && !entry.specs?.pipeLengthBOverride) {
+                                    pipeLengthB = dimB;
+                                    pipeLengthBMmAuto = dimB;
                                   }
                                 }
                               } catch (err) {
@@ -10554,14 +10563,17 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         try {
                           const dims = await api.getFittingDimensions(effectiveStandard as 'SABS62' | 'SABS719', fittingType, nb, entry.specs?.angleRange);
                           if (dims) {
+                            // Parse string values to numbers (API returns decimal strings)
+                            const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
+                            const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
                             const updates: any = { specs: { ...entry.specs } };
-                            if (dims.dimensionAMm && !entry.specs?.pipeLengthAOverride) {
-                              updates.specs.pipeLengthAMm = dims.dimensionAMm;
-                              updates.specs.pipeLengthAMmAuto = dims.dimensionAMm;
+                            if (dimA && !entry.specs?.pipeLengthAOverride) {
+                              updates.specs.pipeLengthAMm = dimA;
+                              updates.specs.pipeLengthAMmAuto = dimA;
                             }
-                            if (dims.dimensionBMm && !entry.specs?.pipeLengthBOverride) {
-                              updates.specs.pipeLengthBMm = dims.dimensionBMm;
-                              updates.specs.pipeLengthBMmAuto = dims.dimensionBMm;
+                            if (dimB && !entry.specs?.pipeLengthBOverride) {
+                              updates.specs.pipeLengthBMm = dimB;
+                              updates.specs.pipeLengthBMmAuto = dimB;
                             }
                             onUpdateEntry(entry.id, updates);
                           }
