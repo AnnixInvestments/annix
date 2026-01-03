@@ -305,7 +305,19 @@ class ApiClient {
         throw new Error(`API Error (${response.status}): ${errorText}`);
       }
 
-      return response.json();
+      // Handle empty responses gracefully
+      const text = await response.text();
+      if (!text || text.trim() === '') {
+        // Return empty object/null for empty responses - caller should handle
+        return {} as T;
+      }
+
+      try {
+        return JSON.parse(text) as T;
+      } catch (parseError) {
+        console.warn('Failed to parse JSON response:', text.substring(0, 100));
+        return {} as T;
+      }
     } catch (error) {
       // Silently handle network errors (backend unavailable)
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
