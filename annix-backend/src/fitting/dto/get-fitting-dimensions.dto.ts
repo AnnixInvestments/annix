@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export enum FittingStandard {
@@ -16,17 +17,23 @@ export enum FittingType {
   Y_PIECE = 'Y_PIECE',
   GUSSETTED_TEE = 'GUSSETTED_TEE',
   EQUAL_CROSS = 'EQUAL_CROSS',
-  // SABS719 Types
+  // SABS719 Tee Types
+  SHORT_TEE = 'SHORT_TEE',
+  GUSSET_TEE = 'GUSSET_TEE',
+  UNEQUAL_SHORT_TEE = 'UNEQUAL_SHORT_TEE',
+  UNEQUAL_GUSSET_TEE = 'UNEQUAL_GUSSET_TEE',
+  // SABS719 Elbow/Bend Types
   ELBOW = 'ELBOW',
   MEDIUM_RADIUS_BEND = 'MEDIUM_RADIUS_BEND',
   LONG_RADIUS_BEND = 'LONG_RADIUS_BEND',
+  // SABS719 Specialty Types
   DUCKFOOT_SHORT = 'DUCKFOOT_SHORT',
   DUCKFOOT_GUSSETTED = 'DUCKFOOT_GUSSETTED',
   SWEEP_LONG_RADIUS = 'SWEEP_LONG_RADIUS',
   SWEEP_MEDIUM_RADIUS = 'SWEEP_MEDIUM_RADIUS',
   SWEEP_ELBOW = 'SWEEP_ELBOW',
   SABS719_LATERAL = 'SABS719_LATERAL',
-  // Additional types
+  // Reducers
   CON_REDUCER = 'CON_REDUCER',
   ECCENTRIC_REDUCER = 'ECCENTRIC_REDUCER',
 }
@@ -53,6 +60,7 @@ export class GetFittingDimensionsDto {
     example: 100,
     minimum: 1,
   })
+  @Transform(({ value }) => Number(value))
   @IsNumber()
   @Min(1)
   nominalDiameterMm: number;
