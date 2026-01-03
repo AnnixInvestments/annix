@@ -10,9 +10,29 @@
   --amix-orange-light: #FFB733;
   --amix-orange-dark: #CC8400;
 
-  /* Legacy variables (for compatibility) */
+  /* Light mode (default) */
   --background: #ffffff;
   --foreground: #171717;
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --input-bg: #ffffff;
+  --input-border: #d1d5db;
+  --muted-bg: #f9fafb;
+  --muted-text: #6b7280;
+}
+
+/* Dark mode - follows browser preference */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #111827;
+    --foreground: #f9fafb;
+    --card-bg: #1f2937;
+    --card-border: #374151;
+    --input-bg: #1f2937;
+    --input-border: #4b5563;
+    --muted-bg: #1f2937;
+    --muted-text: #9ca3af;
+  }
 }
 
 @theme inline {
@@ -30,15 +50,74 @@
   --color-amix-orange-dark: #CC8400;
 }
 
-/* Force light mode - ignore system dark mode preference */
+/* Respect system color scheme preference */
 html {
-  color-scheme: light only;
+  color-scheme: light dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Dark mode overrides for common elements */
+@media (prefers-color-scheme: dark) {
+  /* Form inputs */
+  input, select, textarea {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--foreground) !important;
+  }
+
+  /* Cards and containers */
+  .bg-white {
+    background-color: var(--card-bg) !important;
+  }
+
+  .bg-gray-50, .bg-gray-100 {
+    background-color: var(--muted-bg) !important;
+  }
+
+  /* Borders */
+  .border-gray-200, .border-gray-300 {
+    border-color: var(--card-border) !important;
+  }
+
+  /* Text colors */
+  .text-gray-900, .text-gray-800, .text-gray-700 {
+    color: var(--foreground) !important;
+  }
+
+  .text-gray-600, .text-gray-500 {
+    color: var(--muted-text) !important;
+  }
+
+  /* Special backgrounds */
+  .bg-green-50 {
+    background-color: rgba(34, 197, 94, 0.15) !important;
+  }
+
+  .bg-blue-50 {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+  }
+
+  .bg-orange-50, .bg-yellow-50 {
+    background-color: rgba(251, 146, 60, 0.15) !important;
+  }
+
+  .bg-red-50 {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+  }
+
+  .bg-purple-50 {
+    background-color: rgba(168, 85, 247, 0.15) !important;
+  }
+
+  /* Shadows for dark mode */
+  .shadow, .shadow-md, .shadow-lg {
+    --tw-shadow-color: rgba(0, 0, 0, 0.4);
+  }
 }
 
 /* Amix Signature Font Utility */

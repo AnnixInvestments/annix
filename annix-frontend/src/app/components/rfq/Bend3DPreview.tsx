@@ -693,28 +693,241 @@ const BendScene = ({
           );
         })()}
 
-        {/* Dimension lines for tangents - just the lines, labels are HTML overlays */}
+        {/* Horizontal tangent dimension line with text label */}
         {horizontalTangent > 0 && (() => {
-          const dimOffset = outerRadius + 0.3;
+          const dimOffset = outerRadius + 0.4;
+          const startX = outletX;
+          const startY = outletY;
           const endX = outletX + (-Math.sin(angleRad)) * horizontalTangent;
           const endY = outletY + Math.cos(angleRad) * horizontalTangent;
+          // Dimension line below the pipe
+          const dimY = startY - dimOffset;
+          const midX = (startX + endX) / 2;
+          const midY = (startY + endY) / 2 - dimOffset;
+
           return (
-            <Line
-              points={[[outletX, outletY - dimOffset, 0], [endX, endY - dimOffset, 0]]}
-              color="#dc2626"
-              lineWidth={1}
-            />
+            <group>
+              {/* Main dimension line */}
+              <Line
+                points={[[startX, dimY, 0], [endX, endY - dimOffset, 0]]}
+                color="#dc2626"
+                lineWidth={2}
+              />
+              {/* Vertical leader at start */}
+              <Line
+                points={[[startX, startY - outerRadius, 0], [startX, dimY - 0.1, 0]]}
+                color="#dc2626"
+                lineWidth={1}
+              />
+              {/* Vertical leader at end */}
+              <Line
+                points={[[endX, endY - outerRadius, 0], [endX, endY - dimOffset - 0.1, 0]]}
+                color="#dc2626"
+                lineWidth={1}
+              />
+              {/* Arrow tick at start */}
+              <Line
+                points={[[startX - 0.06, dimY - 0.12, 0], [startX + 0.06, dimY + 0.12, 0]]}
+                color="#dc2626"
+                lineWidth={2}
+              />
+              {/* Arrow tick at end */}
+              <Line
+                points={[[endX - 0.06, endY - dimOffset - 0.12, 0], [endX + 0.06, endY - dimOffset + 0.12, 0]]}
+                color="#dc2626"
+                lineWidth={2}
+              />
+              {/* Dimension text */}
+              <Text
+                position={[midX, midY - 0.15, 0]}
+                fontSize={0.22}
+                color="#dc2626"
+                anchorX="center"
+                anchorY="top"
+                outlineWidth={0.02}
+                outlineColor="white"
+                fontWeight="bold"
+              >
+                {`${horizontalLabel}mm`}
+              </Text>
+            </group>
           );
         })()}
 
+        {/* Vertical tangent dimension line with text label */}
         {verticalTangent > 0 && (() => {
-          const dimOffset = outerRadius + 0.3;
+          const dimOffset = outerRadius + 0.4;
+          const startY = inletY;
+          const endY = inletY - verticalTangent;
+          const dimX = inletX + dimOffset;
+          const midY = (startY + endY) / 2;
+
           return (
-            <Line
-              points={[[inletX + dimOffset, inletY, 0], [inletX + dimOffset, inletY - verticalTangent, 0]]}
-              color="#dc2626"
-              lineWidth={1}
-            />
+            <group>
+              {/* Main dimension line */}
+              <Line
+                points={[[dimX, startY, 0], [dimX, endY, 0]]}
+                color="#dc2626"
+                lineWidth={2}
+              />
+              {/* Horizontal leader at start */}
+              <Line
+                points={[[inletX + outerRadius, startY, 0], [dimX + 0.1, startY, 0]]}
+                color="#dc2626"
+                lineWidth={1}
+              />
+              {/* Horizontal leader at end */}
+              <Line
+                points={[[inletX + outerRadius, endY, 0], [dimX + 0.1, endY, 0]]}
+                color="#dc2626"
+                lineWidth={1}
+              />
+              {/* Arrow tick at start */}
+              <Line
+                points={[[dimX - 0.12, startY - 0.06, 0], [dimX + 0.12, startY + 0.06, 0]]}
+                color="#dc2626"
+                lineWidth={2}
+              />
+              {/* Arrow tick at end */}
+              <Line
+                points={[[dimX - 0.12, endY - 0.06, 0], [dimX + 0.12, endY + 0.06, 0]]}
+                color="#dc2626"
+                lineWidth={2}
+              />
+              {/* Dimension text */}
+              <Text
+                position={[dimX + 0.2, midY, 0]}
+                fontSize={0.22}
+                color="#dc2626"
+                anchorX="left"
+                anchorY="middle"
+                outlineWidth={0.02}
+                outlineColor="white"
+                fontWeight="bold"
+              >
+                {`${verticalLabel}mm`}
+              </Text>
+            </group>
+          );
+        })()}
+
+        {/* Center-to-Face (C/F) dimension on the bend */}
+        {(() => {
+          // C/F is measured from the center of the bend arc to the face of the outlet
+          const cfDimension = bendRadius; // In scene units
+          const cfMm = Math.round(cfDimension * 100); // Convert back to mm
+
+          // Draw arc showing the radius/C/F
+          const arcMidAngle = angleRad / 2;
+          const arcMidX = bendRadius * Math.cos(arcMidAngle) * 0.5;
+          const arcMidY = bendRadius * Math.sin(arcMidAngle) * 0.5;
+
+          // Corner point at bottom-left (below inlet, left of outlet direction)
+          const cornerX = -bendRadius;
+          const cornerY = -bendRadius;
+
+          return (
+            <group>
+              {/* Vertical C/F line - from corner UP to inlet face */}
+              <Line
+                points={[[cornerX, cornerY, 0], [cornerX, 0, 0]]}
+                color="#dc2626"
+                lineWidth={2}
+                dashed
+                dashSize={0.05}
+                gapSize={0.08}
+              />
+              {/* Horizontal C/F line - from corner RIGHT to below outlet */}
+              <Line
+                points={[[cornerX, cornerY, 0], [0, cornerY, 0]]}
+                color="#dc2626"
+                lineWidth={2}
+                dashed
+                dashSize={0.05}
+                gapSize={0.08}
+              />
+              {/* Small marker at corner point */}
+              <mesh position={[cornerX, cornerY, 0]}>
+                <sphereGeometry args={[0.06, 8, 8]} />
+                <meshBasicMaterial color="#dc2626" />
+              </mesh>
+              {/* Arrow at top of vertical line (inlet face) */}
+              <mesh position={[cornerX, -0.1, 0]} rotation={[0, 0, 0]}>
+                <coneGeometry args={[0.06, 0.15, 8]} />
+                <meshBasicMaterial color="#dc2626" />
+              </mesh>
+              {/* Arrow at end of horizontal line */}
+              <mesh position={[-0.1, cornerY, 0]} rotation={[0, 0, -Math.PI/2]}>
+                <coneGeometry args={[0.06, 0.15, 8]} />
+                <meshBasicMaterial color="#dc2626" />
+              </mesh>
+              {/* C/F label on vertical line */}
+              <Text
+                position={[cornerX - 0.15, -bendRadius / 2, 0]}
+                fontSize={0.22}
+                color="#dc2626"
+                anchorX="right"
+                anchorY="middle"
+                outlineWidth={0.02}
+                outlineColor="white"
+                fontWeight="bold"
+              >
+                {`C/F: ${cfMm}mm`}
+              </Text>
+              {/* C/F label on horizontal line */}
+              <Text
+                position={[-bendRadius / 2, cornerY - 0.15, 0]}
+                fontSize={0.22}
+                color="#dc2626"
+                anchorX="center"
+                anchorY="top"
+                outlineWidth={0.02}
+                outlineColor="white"
+                fontWeight="bold"
+              >
+                {`C/F: ${cfMm}mm`}
+              </Text>
+            </group>
+          );
+        })()}
+
+        {/* Angle label with pointer line at top of bend */}
+        {(() => {
+          // Position the angle label above the midpoint of the bend arc
+          const midAngle = angleRad / 2;
+          const arcMidX = bendRadius * Math.cos(midAngle);
+          const arcMidY = bendRadius * Math.sin(midAngle);
+          // Label position above the arc
+          const labelY = arcMidY + bendRadius * 0.8;
+          const labelX = arcMidX;
+
+          return (
+            <group>
+              {/* Pointer line from label to bend arc */}
+              <Line
+                points={[[labelX, labelY, 0], [arcMidX, arcMidY, 0]]}
+                color="#dc2626"
+                lineWidth={1.5}
+              />
+              {/* Arrow at the arc end */}
+              <mesh position={[arcMidX, arcMidY + 0.1, 0]} rotation={[0, 0, 0]}>
+                <coneGeometry args={[0.05, 0.12, 8]} />
+                <meshBasicMaterial color="#dc2626" />
+              </mesh>
+              {/* Angle text */}
+              <Text
+                position={[labelX, labelY + 0.15, 0]}
+                fontSize={0.28}
+                color="#dc2626"
+                anchorX="center"
+                anchorY="bottom"
+                outlineWidth={0.03}
+                outlineColor="white"
+                fontWeight="bold"
+              >
+                {`${bendAngle}°`}
+              </Text>
+            </group>
           );
         })()}
 
@@ -772,12 +985,13 @@ const BendScene = ({
               {/* Dimension text above the line */}
               <Text
                 position={[textX, textY, 0]}
-                fontSize={0.18}
+                fontSize={0.24}
                 color="#0066cc"
                 anchorX="center"
                 anchorY="bottom"
-                outlineWidth={0.015}
+                outlineWidth={0.02}
                 outlineColor="white"
+                fontWeight="bold"
               >
                 {`${stub1.locationFromFlange}mm`}
               </Text>
@@ -822,12 +1036,13 @@ const BendScene = ({
               {/* Dimension text next to the line */}
               <Text
                 position={[textX, textY, 0]}
-                fontSize={0.18}
+                fontSize={0.24}
                 color="#0066cc"
                 anchorX="left"
                 anchorY="middle"
-                outlineWidth={0.015}
+                outlineWidth={0.02}
                 outlineColor="white"
+                fontWeight="bold"
               >
                 {`${stub2.locationFromFlange}mm`}
               </Text>
@@ -845,10 +1060,9 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
 
+  // Only SABS 719 bends are segmented - SABS 62 are always pulled bends
   const isSegmentedBend = props.isSegmented ||
-    props.materialName?.toLowerCase().includes("sabs 719") ||
-    props.materialName?.toLowerCase().includes("erw") ||
-    (props.numberOfSegments && props.numberOfSegments >= 2);
+    props.materialName?.toLowerCase().includes("sabs 719");
 
   // Calculate camera distance to fit entire model with dimension lines
   const scaleFactor = 100;
@@ -873,7 +1087,7 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
     return (
       <div className="w-full bg-slate-100 rounded-md border border-slate-200 px-3 py-2 mb-4 flex items-center justify-between">
         <span className="text-sm text-gray-600">
-          3D Preview - {isSegmentedBend ? "SABS 719 Segmented" : "SABS 62 Pulled"} Bend ({props.bendAngle}°)
+          3D Preview - {isSegmentedBend ? "SABS 719 Segmented" : `SABS 62 ${props.bendType || ''} Pulled Bend`} ({props.bendAngle}°)
         </span>
         <button
           onClick={() => setIsHidden(false)}
@@ -904,62 +1118,67 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
 
       {/* Badge - top left */}
       <div className="absolute top-2 left-2 text-[10px] bg-white/90 px-2 py-1 rounded shadow-sm">
-        <span className={isSegmentedBend ? "text-purple-700" : "text-blue-700"} style={{fontWeight: 500}}>
-          {isSegmentedBend ? "SABS 719 Segmented" : "SABS 62 Pulled"}
-        </span>
+        <div className={isSegmentedBend ? "text-purple-700" : "text-blue-700"} style={{fontWeight: 500}}>
+          <div>{props.materialName || (isSegmentedBend ? "SABS 719" : "SABS 62")}</div>
+          <div className="text-[9px] opacity-80">{isSegmentedBend ? "Segmented Bend" : "Pulled Bend"}</div>
+        </div>
       </div>
 
       {/* Pipe & Flange Info - top right */}
       <div className="absolute top-2 right-2 text-[9px] bg-white/95 px-2 py-1.5 rounded shadow-sm leading-tight">
         <div className="font-semibold text-blue-700 mb-0.5">PIPE</div>
         <div className="text-gray-700">OD: {odRaw.toFixed(0)}mm | ID: {idRaw.toFixed(0)}mm</div>
-        <div className="font-semibold text-blue-700 mt-1 mb-0.5">FLANGE</div>
-        <div className="text-gray-700">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
-        <div className="text-gray-700">THK: {flangeSpecs.thickness}mm | {flangeSpecs.boltHoles} x Ø{flangeSpecs.holeID}mm</div>
+        {/* Only show flange info if flanges have been allocated (not PE - Plain End) */}
+        {(props.flangeConfig || 'PE').toUpperCase() !== 'PE' && (
+          <>
+            <div className="font-semibold text-blue-700 mt-1 mb-0.5">FLANGE</div>
+            <div className="text-gray-700">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
+            <div className="text-gray-700">THK: {flangeSpecs.thickness}mm | {flangeSpecs.boltHoles} x Ø{flangeSpecs.holeID}mm</div>
+          </>
+        )}
       </div>
 
-      {/* Angle display - center top */}
-      <div className="absolute top-2 left-1/2 transform -translate-x-1/2 text-sm font-bold text-red-600 bg-white/90 px-2 py-0.5 rounded shadow-sm">
-        {props.bendAngle}°
+
+      {/* Bottom-left info container - Stubs and Tangent lengths */}
+      <div className="absolute bottom-2 left-2 flex flex-col gap-1">
+        {/* Stub info with flange details - yellow background like in image */}
+        {props.numberOfStubs && props.numberOfStubs > 0 && props.stubs && (
+          <div className="text-[9px] bg-yellow-50/95 px-2 py-1.5 rounded shadow-sm border border-yellow-300">
+            <div className="font-bold text-yellow-800 mb-1">STUBS</div>
+            {props.stubs[0] && props.stubs[0].nominalBoreMm && (() => {
+              const stub1Flange = getFlangeSpecs(props.stubs[0].nominalBoreMm);
+              return (
+                <div className="text-gray-800 mb-1">
+                  <div className="font-semibold">S1: {props.stubs[0].nominalBoreMm}NB x {props.stubs[0].length || 0}mm @ {props.stubs[0].locationFromFlange || 0}mm</div>
+                  <div className="text-gray-600 pl-2">OD: {stub1Flange.flangeOD}mm | THK: {stub1Flange.thickness}mm</div>
+                  <div className="text-gray-600 pl-2">PCD: {stub1Flange.pcd}mm | {stub1Flange.boltHoles} x Ø{stub1Flange.holeID}mm</div>
+                </div>
+              );
+            })()}
+            {props.stubs[1] && props.stubs[1].nominalBoreMm && (() => {
+              const stub2Flange = getFlangeSpecs(props.stubs[1].nominalBoreMm);
+              return (
+                <div className="text-gray-800">
+                  <div className="font-semibold">S2: {props.stubs[1].nominalBoreMm}NB x {props.stubs[1].length || 0}mm @ {props.stubs[1].locationFromFlange || 0}mm</div>
+                  <div className="text-gray-600 pl-2">OD: {stub2Flange.flangeOD}mm | THK: {stub2Flange.thickness}mm</div>
+                  <div className="text-gray-600 pl-2">PCD: {stub2Flange.pcd}mm | {stub2Flange.boltHoles} x Ø{stub2Flange.holeID}mm</div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Tangent lengths - below stubs */}
+        {(longerTangent > 0 || shorterTangent > 0) && (
+          <div className="text-[9px] bg-orange-50/95 px-2 py-1 rounded shadow-sm border border-orange-200">
+            {longerTangent > 0 && <div className="text-orange-700 font-medium">Horiz: {longerTangent}mm</div>}
+            {shorterTangent > 0 && <div className="text-orange-700 font-medium">Vert: {shorterTangent}mm</div>}
+          </div>
+        )}
       </div>
 
-      {/* Tangent lengths - bottom left */}
-      {(longerTangent > 0 || shorterTangent > 0) && (
-        <div className="absolute bottom-2 left-2 text-[9px] bg-white/95 px-2 py-1 rounded shadow-sm">
-          {longerTangent > 0 && <div className="text-red-600">Horiz: {longerTangent}mm</div>}
-          {shorterTangent > 0 && <div className="text-red-600">Vert: {shorterTangent}mm</div>}
-        </div>
-      )}
-
-      {/* Stub info with flange details */}
-      {props.numberOfStubs && props.numberOfStubs > 0 && props.stubs && (
-        <div className="absolute bottom-10 left-2 text-[9px] bg-blue-50/95 px-2 py-1 rounded shadow-sm border border-blue-200">
-          <div className="font-semibold text-blue-700">STUBS</div>
-          {props.stubs[0] && props.stubs[0].nominalBoreMm && (() => {
-            const stub1Flange = getFlangeSpecs(props.stubs[0].nominalBoreMm);
-            return (
-              <div className="text-gray-700 mb-1">
-                <div className="font-medium">S1: {props.stubs[0].nominalBoreMm}NB x {props.stubs[0].length || 0}mm @ {props.stubs[0].locationFromFlange || 0}mm</div>
-                <div className="text-gray-500 pl-2">OD: {stub1Flange.flangeOD}mm | THK: {stub1Flange.thickness}mm</div>
-                <div className="text-gray-500 pl-2">PCD: {stub1Flange.pcd}mm | {stub1Flange.boltHoles} x Ø{stub1Flange.holeID}mm</div>
-              </div>
-            );
-          })()}
-          {props.stubs[1] && props.stubs[1].nominalBoreMm && (() => {
-            const stub2Flange = getFlangeSpecs(props.stubs[1].nominalBoreMm);
-            return (
-              <div className="text-gray-700">
-                <div className="font-medium">S2: {props.stubs[1].nominalBoreMm}NB x {props.stubs[1].length || 0}mm @ {props.stubs[1].locationFromFlange || 0}mm</div>
-                <div className="text-gray-500 pl-2">OD: {stub2Flange.flangeOD}mm | THK: {stub2Flange.thickness}mm</div>
-                <div className="text-gray-500 pl-2">PCD: {stub2Flange.pcd}mm | {stub2Flange.boltHoles} x Ø{stub2Flange.holeID}mm</div>
-              </div>
-            );
-          })()}
-        </div>
-      )}
-
-      {/* Expand button, Drag hint, and Hide button - bottom right */}
-      <div className="absolute bottom-2 right-2 flex flex-col items-end gap-1">
+      {/* Bottom toolbar - Expand, Drag hint, and Hide button in horizontal row */}
+      <div className="absolute bottom-2 right-2 flex flex-row items-center gap-2">
         <button
           onClick={() => setIsExpanded(true)}
           className="text-[10px] text-blue-600 bg-white/90 px-2 py-1 rounded shadow-sm hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-1"
@@ -983,10 +1202,10 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
         </button>
       </div>
 
-      {/* Expanded Modal */}
+      {/* Expanded Modal - positioned above bottom toolbar */}
       {isExpanded && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="relative w-full h-full max-w-6xl max-h-[90vh] bg-slate-100 rounded-lg overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-start justify-center pt-4 pb-24">
+          <div className="relative w-full h-full max-w-6xl max-h-[calc(100vh-120px)] bg-slate-100 rounded-lg overflow-hidden">
             {/* Close button */}
             <button
               onClick={() => setIsExpanded(false)}
@@ -1012,7 +1231,7 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
             {/* Info overlay in expanded view */}
             <div className="absolute top-4 left-4 text-sm bg-white/95 px-3 py-2 rounded-lg shadow-lg">
               <div className="font-semibold text-gray-800 mb-1">
-                {isSegmentedBend ? "SABS 719 Segmented Bend" : "SABS 62 Pulled Bend"}
+                {isSegmentedBend ? "SABS 719 Segmented Bend" : `SABS 62 ${props.bendType || ''} Pulled Bend`}
               </div>
               <div className="text-gray-600">
                 {props.bendAngle}° | {props.nominalBore}NB | OD: {odRaw.toFixed(0)}mm

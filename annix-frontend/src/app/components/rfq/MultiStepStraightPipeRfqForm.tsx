@@ -10042,7 +10042,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     schedule={entry.specs.scheduleNumber}
                     materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
                     numberOfSegments={entry.specs?.numberOfSegments}
-                    isSegmented={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName?.toLowerCase().includes('sabs 719')}
+                    isSegmented={(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8}
                     stubs={entry.specs?.stubs}
                     numberOfStubs={entry.specs?.numberOfStubs || 0}
                     flangeConfig={entry.specs?.bendEndConfiguration || 'PE'}
@@ -10073,25 +10073,54 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   <div className="space-y-3">
                     <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
                       Fitting Specifications
-                  </h4>                    {/* Fitting Standard */}
+                  </h4>                    {/* Fitting Standard - Auto from Global Steel Spec (ID 8 = SABS 719) */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Fitting Standard *
+                        {(() => {
+                          const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                          const derived = isSABS719 ? 'SABS719' : 'SABS62';
+                          const hasGlobal = !!globalSpecs?.steelSpecificationId;
+                          const current = entry.specs?.fittingStandard || derived;
+                          if (hasGlobal && current === derived) return <span className="text-green-600 text-xs ml-2 font-normal">(From Steel Spec)</span>;
+                          if (hasGlobal && current !== derived) return <span className="text-blue-600 text-xs ml-2 font-normal">(Override)</span>;
+                          return null;
+                        })()}
                       </label>
-                      <select
-                        value={entry.specs?.fittingStandard || 'SABS62'}
-                        onChange={(e) => {
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, fittingStandard: e.target.value as 'SABS62' | 'SABS719' }
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                      >
-                        <option value="SABS62">SABS62 (Standard Fittings)</option>
-                        <option value="SABS719">SABS719 (Fabricated Fittings)</option>
-                      </select>
+                      <div className="flex gap-2">
+                        <select
+                          value={entry.specs?.fittingStandard || (globalSpecs?.steelSpecificationId === 8 ? 'SABS719' : 'SABS62')}
+                          onChange={(e) => {
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, fittingStandard: e.target.value as 'SABS62' | 'SABS719', nominalDiameterMm: undefined }
+                            });
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                        >
+                          <option value="SABS62">SABS62 (Standard Fittings)</option>
+                          <option value="SABS719">SABS719 (Fabricated Fittings)</option>
+                        </select>
+                        {(() => {
+                          const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                          const derived = isSABS719 ? 'SABS719' : 'SABS62';
+                          const hasGlobal = !!globalSpecs?.steelSpecificationId;
+                          const current = entry.specs?.fittingStandard;
+                          if (hasGlobal && current && current !== derived) {
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, fittingStandard: undefined, nominalDiameterMm: undefined } })}
+                                className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded"
+                              >
+                                Reset
+                              </button>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        {entry.specs?.fittingStandard === 'SABS719' 
+                        {(entry.specs?.fittingStandard || (globalSpecs?.steelSpecificationId === 8 ? 'SABS719' : 'SABS62')) === 'SABS719'
                           ? 'Uses pipe table for cut lengths, tee/lateral weld + flange welds'
                           : 'Uses standard fitting dimensions from tables'}
                       </p>
@@ -10112,7 +10141,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                       >
                         <option value="">Select fitting type...</option>
-                        {entry.specs?.fittingStandard === 'SABS62' ? (
+                        {(entry.specs?.fittingStandard || (globalSpecs?.steelSpecificationId === 8 ? 'SABS719' : 'SABS62')) === 'SABS62' ? (
                           <>
                             <option value="EQUAL_TEE">Equal Tee</option>
                             <option value="UNEQUAL_TEE">Unequal Tee</option>
@@ -10125,6 +10154,10 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           </>
                         ) : (
                           <>
+                            <option value="SHORT_TEE">Short Tee (Equal)</option>
+                            <option value="UNEQUAL_SHORT_TEE">Short Tee (Unequal)</option>
+                            <option value="GUSSET_TEE">Gusset Tee (Equal)</option>
+                            <option value="UNEQUAL_GUSSET_TEE">Gusset Tee (Unequal)</option>
                             <option value="ELBOW">Elbow</option>
                             <option value="MEDIUM_RADIUS_BEND">Medium Radius Bend</option>
                             <option value="LONG_RADIUS_BEND">Long Radius Bend</option>
@@ -10154,11 +10187,15 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         onChange={(e) => {
                           const nominalDiameter = Number(e.target.value);
 
+                          // Get effective fitting standard (ID 8 = SABS 719)
+                          const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                          const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+
                           // Auto-populate schedule for SABS719 fittings
                           let matchedSchedule = entry.specs?.scheduleNumber;
                           let matchedWT = entry.specs?.wallThicknessMm;
 
-                          if (entry.specs?.fittingStandard === 'SABS719' && globalSpecs?.workingPressureBar) {
+                          if (effectiveStandard === 'SABS719' && globalSpecs?.workingPressureBar) {
                             const availableSchedules = FALLBACK_PIPE_SCHEDULES[nominalDiameter] || [];
                             if (availableSchedules.length > 0) {
                               const minWT = getMinimumWallThickness(nominalDiameter, globalSpecs.workingPressureBar);
@@ -10189,19 +10226,37 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                       >
                         <option value="">Select diameter...</option>
-                        {nominalBores.map((nb: number) => (
-                          <option key={nb} value={nb}>{nb}mm</option>
-                        ))}
+                        {(() => {
+                          const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                          const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                          const sizes = effectiveStandard === 'SABS719'
+                            ? [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900]
+                            : [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150];
+                          return sizes.map((nb: number) => (
+                            <option key={nb} value={nb}>{nb}mm</option>
+                          ));
+                        })()}
                       </select>
-                      {globalSpecs?.steelSpecificationId && nominalBores.length > 0 && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          {nominalBores.length} sizes available for selected steel specification
-                        </p>
-                      )}
+                      {(() => {
+                        const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                        const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                        const sizes = effectiveStandard === 'SABS719'
+                          ? [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900]
+                          : [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150];
+                        return (
+                          <p className="mt-1 text-xs text-gray-500">
+                            {sizes.length} sizes available ({effectiveStandard})
+                          </p>
+                        );
+                      })()}
                     </div>
 
                     {/* Schedule - Required for SABS719 fabricated fittings */}
-                    {entry.specs?.fittingStandard === 'SABS719' && (
+                    {(() => {
+                      const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                      const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                      return effectiveStandard === 'SABS719';
+                    })() && (
                       <div>
                         <label className="block text-xs font-semibold text-gray-900 mb-1">
                           Schedule *
