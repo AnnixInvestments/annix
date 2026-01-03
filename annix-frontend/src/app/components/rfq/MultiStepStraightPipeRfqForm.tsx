@@ -18,18 +18,17 @@ import {
   calculateMinWallThickness,
   validateScheduleForPressure,
   findRecommendedSchedule,
-  MATERIAL_ALLOWABLE_STRESS,
   calculateTotalSurfaceArea,
   calculateInsideDiameter
 } from '@/app/lib/utils/pipeCalculations';
 import {
-  recommendWallThicknessCarbonPipe,
-  WeldThicknessRecommendation
+  recommendWallThicknessCarbonPipe
 } from '@/app/lib/utils/weldThicknessLookup';
 import {
   SABS62_NB_OPTIONS,
   SABS62_BEND_RADIUS,
   getSabs62CFInterpolated,
+  getSabs62AvailableAngles,
   getSabs62BendTypes,
   SABS62BendType
 } from '@/app/lib/utils/sabs62CfData';
@@ -8448,20 +8447,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         value={entry.specs?.bendType || ''}
                         onChange={(e) => {
                           const bendType = e.target.value;
-                          let centerToFaceMm: number | undefined;
-                          let bendRadiusMm: number | undefined;
-                          if (bendType && entry.specs?.nominalBoreMm && entry.specs?.bendDegrees) {
-                            centerToFaceMm = getSabs62CFInterpolated(bendType as SABS62BendType, entry.specs.bendDegrees, entry.specs.nominalBoreMm);
-                            bendRadiusMm = SABS62_BEND_RADIUS[bendType as SABS62BendType]?.[entry.specs.nominalBoreMm];
-                          }
+                          // Clear dependent fields since different bend types have different NB options and angles
                           const updatedEntry: any = {
                             ...entry,
                             specs: {
                               ...entry.specs,
                               bendType: bendType || undefined,
                               nominalBoreMm: undefined, // Clear NB when bend type changes
-                              centerToFaceMm,
-                              bendRadiusMm
+                              bendDegrees: undefined, // Clear angle since each bend type has different valid angles
+                              centerToFaceMm: undefined,
+                              bendRadiusMm: undefined
                             }
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
@@ -8507,11 +8502,21 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     </div>
                   );
 
-                  // Angle Dropdown (shared)
+                  // Angle Dropdown (shared) - uses getSabs62AvailableAngles for SABS 62 bends
+                  // This pulls ALL available angles from the Excel data for the selected bend type AND NB
+                  const sabs62BendType = entry.specs?.bendType as SABS62BendType | undefined;
+                  const sabs62NB = entry.specs?.nominalBoreMm;
+                  const availableAngles = !isSABS719 && sabs62BendType && sabs62NB
+                    ? getSabs62AvailableAngles(sabs62BendType, sabs62NB)
+                    : []; // SABS 719 will use a different range
+
                   const AngleDropdown = (
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Bend Angle *
+                        {!isSABS719 && sabs62BendType && (
+                          <span className="text-purple-600 text-xs ml-1">({sabs62BendType})</span>
+                        )}
                       </label>
                       <select
                         value={entry.specs?.bendDegrees || ''}
@@ -8534,20 +8539,33 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                           }
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                        disabled={!isSABS719 && !sabs62BendType}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 ${
+                          !isSABS719 && !sabs62BendType ? 'bg-gray-100 cursor-not-allowed' : ''
+                        }`}
                       >
-                        <option value="">Select Angle</option>
-                        {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22].map(deg => (
-                          <option key={deg} value={deg}>{deg}°</option>
-                        ))}
-                        <option value="22.5">22.5°</option>
-                        {[23,24,25,26,27,28,29,30,31,32,33,34,35,36,37].map(deg => (
-                          <option key={deg} value={deg}>{deg}°</option>
-                        ))}
-                        <option value="37.5">37.5°</option>
-                        {[38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90].map(deg => (
-                          <option key={deg} value={deg}>{deg}°</option>
-                        ))}
+                        <option value="">{!isSABS719 && !sabs62BendType ? 'Select Bend Type first' : 'Select Angle'}</option>
+                        {!isSABS719 ? (
+                          // SABS 62: Show only angles valid for the selected bend type
+                          availableAngles.map(deg => (
+                            <option key={deg} value={deg}>{deg}°</option>
+                          ))
+                        ) : (
+                          // SABS 719: Show full range of angles
+                          <>
+                            {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22].map(deg => (
+                              <option key={deg} value={deg}>{deg}°</option>
+                            ))}
+                            <option value="22.5">22.5°</option>
+                            {[23,24,25,26,27,28,29,30,31,32,33,34,35,36,37].map(deg => (
+                              <option key={deg} value={deg}>{deg}°</option>
+                            ))}
+                            <option value="37.5">37.5°</option>
+                            {[38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90].map(deg => (
+                              <option key={deg} value={deg}>{deg}°</option>
+                            ))}
+                          </>
+                        )}
                       </select>
                     </div>
                   );
@@ -13220,11 +13238,18 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
               `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/flange-pt-ratings/recommended-class?standardId=${standardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`
             );
             if (response.ok) {
-              const recommendedClassId = await response.json();
-              if (recommendedClassId) {
-                const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
-                console.log(`P/T rating: Selected class ID ${recommendedClassId} for ${standard?.code || standardId} at ${workingPressureBar} bar, ${temperatureCelsius}°C (${ptMaterialGroup})`);
-                return recommendedClassId;
+              const text = await response.text();
+              if (text && text.trim()) {
+                try {
+                  const recommendedClassId = JSON.parse(text);
+                  if (recommendedClassId) {
+                    const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
+                    console.log(`P/T rating: Selected class ID ${recommendedClassId} for ${standard?.code || standardId} at ${workingPressureBar} bar, ${temperatureCelsius}°C (${ptMaterialGroup})`);
+                    return recommendedClassId;
+                  }
+                } catch {
+                  // Invalid JSON, fall through to fallback
+                }
               }
             }
           } catch (ptError) {
@@ -13418,15 +13443,22 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
               `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/flange-pt-ratings/recommended-class?standardId=${flangeStandardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`
             );
             if (response.ok) {
-              recommendedId = await response.json();
-              if (recommendedId && updateCallback) {
-                const recommendedClass = classes.find((c: any) => c.id === recommendedId);
-                updateCallback({
-                  flangePressureClassId: recommendedId,
-                  autoSelectedPressureClass: true
-                });
-                console.log(`Auto-selected pressure class ${recommendedClass?.designation || recommendedId} for ${workingPressureBar} bar at ${temperatureCelsius}°C (${ptMaterialGroup})`);
-                return;
+              const text = await response.text();
+              if (text && text.trim()) {
+                try {
+                  recommendedId = JSON.parse(text);
+                  if (recommendedId && updateCallback) {
+                    const recommendedClass = classes.find((c: any) => c.id === recommendedId);
+                    updateCallback({
+                      flangePressureClassId: recommendedId,
+                      autoSelectedPressureClass: true
+                    });
+                    console.log(`Auto-selected pressure class ${recommendedClass?.designation || recommendedId} for ${workingPressureBar} bar at ${temperatureCelsius}°C (${ptMaterialGroup})`);
+                    return;
+                  }
+                } catch {
+                  // Invalid JSON, fall through to fallback
+                }
               }
             }
           } catch {

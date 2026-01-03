@@ -429,7 +429,18 @@ class ApiClient {
       throw new Error(`API Error (${response.status}): ${errorText}`);
     }
 
-    return response.json();
+    // Handle empty responses gracefully
+    const text = await response.text();
+    if (!text || text.trim() === '') {
+      return {} as RfqDocument;
+    }
+
+    try {
+      return JSON.parse(text) as RfqDocument;
+    } catch {
+      console.warn('Failed to parse JSON response:', text.substring(0, 100));
+      return {} as RfqDocument;
+    }
   }
 
   async getRfqDocuments(rfqId: number): Promise<RfqDocument[]> {
