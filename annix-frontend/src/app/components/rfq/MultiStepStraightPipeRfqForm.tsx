@@ -10146,7 +10146,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                           if (fittingType && entry.specs?.nominalDiameterMm) {
                             try {
-                              const dims = await api.getFittingDimensions(
+                              const dims = await masterDataApi.getFittingDimensions(
                                 effectiveStandard as 'SABS62' | 'SABS719',
                                 fittingType,
                                 entry.specs.nominalDiameterMm,
@@ -10265,7 +10265,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                           if (entry.specs?.fittingType && nominalDiameter) {
                             try {
-                              const dims = await api.getFittingDimensions(
+                              const dims = await masterDataApi.getFittingDimensions(
                                 effectiveStandard as 'SABS62' | 'SABS719',
                                 entry.specs.fittingType,
                                 nominalDiameter,
@@ -10455,7 +10455,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                             if (entry.specs?.fittingType && entry.specs?.nominalDiameterMm && angleRange) {
                               try {
-                                const dims = await api.getFittingDimensions(
+                                const dims = await masterDataApi.getFittingDimensions(
                                   effectiveStandard as 'SABS62' | 'SABS719',
                                   entry.specs.fittingType,
                                   entry.specs.nominalDiameterMm,
@@ -10561,7 +10561,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       const fetchDimensions = async () => {
                         if (!fittingType || !nb) return;
                         try {
-                          const dims = await api.getFittingDimensions(effectiveStandard as 'SABS62' | 'SABS719', fittingType, nb, entry.specs?.angleRange);
+                          const dims = await masterDataApi.getFittingDimensions(effectiveStandard as 'SABS62' | 'SABS719', fittingType, nb, entry.specs?.angleRange);
                           if (dims) {
                             // Parse string values to numbers (API returns decimal strings)
                             const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
