@@ -10,10 +10,19 @@ jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({
     send: mockSend,
   })),
-  PutObjectCommand: jest.fn().mockImplementation((params) => ({ ...params, type: 'PutObjectCommand' })),
-  GetObjectCommand: jest.fn().mockImplementation((params) => ({ ...params, type: 'GetObjectCommand' })),
-  DeleteObjectCommand: jest.fn().mockImplementation((params) => ({ ...params, type: 'DeleteObjectCommand' })),
-  HeadObjectCommand: jest.fn().mockImplementation((params) => ({ ...params, type: 'HeadObjectCommand' })),
+  PutObjectCommand: jest
+    .fn()
+    .mockImplementation((params) => ({ ...params, type: 'PutObjectCommand' })),
+  GetObjectCommand: jest
+    .fn()
+    .mockImplementation((params) => ({ ...params, type: 'GetObjectCommand' })),
+  DeleteObjectCommand: jest.fn().mockImplementation((params) => ({
+    ...params,
+    type: 'DeleteObjectCommand',
+  })),
+  HeadObjectCommand: jest
+    .fn()
+    .mockImplementation((params) => ({ ...params, type: 'HeadObjectCommand' })),
 }));
 
 const mockGetSignedUrl = jest.fn();
@@ -100,7 +109,9 @@ describe('S3StorageService', () => {
 
       mockSend.mockRejectedValueOnce(new Error('Upload failed'));
 
-      await expect(service.upload(mockFile, 'documents')).rejects.toThrow('Upload failed');
+      await expect(service.upload(mockFile, 'documents')).rejects.toThrow(
+        'Upload failed',
+      );
     });
   });
 
@@ -125,13 +136,17 @@ describe('S3StorageService', () => {
       error.name = 'NoSuchKey';
       mockSend.mockRejectedValueOnce(error);
 
-      await expect(service.download('documents/nonexistent.pdf')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.download('documents/nonexistent.pdf'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when Body is empty', async () => {
       mockSend.mockResolvedValueOnce({ Body: null });
 
-      await expect(service.download('documents/test-file.pdf')).rejects.toThrow(NotFoundException);
+      await expect(service.download('documents/test-file.pdf')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -147,7 +162,9 @@ describe('S3StorageService', () => {
     it('should throw an error when delete fails', async () => {
       mockSend.mockRejectedValueOnce(new Error('Delete failed'));
 
-      await expect(service.delete('documents/test-file.pdf')).rejects.toThrow('Delete failed');
+      await expect(service.delete('documents/test-file.pdf')).rejects.toThrow(
+        'Delete failed',
+      );
     });
   });
 
@@ -174,7 +191,9 @@ describe('S3StorageService', () => {
     it('should throw an error for other S3 errors', async () => {
       mockSend.mockRejectedValueOnce(new Error('S3 error'));
 
-      await expect(service.exists('documents/test-file.pdf')).rejects.toThrow('S3 error');
+      await expect(service.exists('documents/test-file.pdf')).rejects.toThrow(
+        'S3 error',
+      );
     });
   });
 
@@ -182,13 +201,19 @@ describe('S3StorageService', () => {
     it('should return the correct S3 URL', () => {
       const result = service.getPublicUrl('documents/test-file.pdf');
 
-      expect(result).toBe('https://test-bucket.s3.af-south-1.amazonaws.com/documents/test-file.pdf');
+      expect(result).toBe(
+        'https://test-bucket.s3.af-south-1.amazonaws.com/documents/test-file.pdf',
+      );
     });
 
     it('should normalize Windows-style paths', () => {
-      const result = service.getPublicUrl('documents\\subfolder\\test-file.pdf');
+      const result = service.getPublicUrl(
+        'documents\\subfolder\\test-file.pdf',
+      );
 
-      expect(result).toBe('https://test-bucket.s3.af-south-1.amazonaws.com/documents/subfolder/test-file.pdf');
+      expect(result).toBe(
+        'https://test-bucket.s3.af-south-1.amazonaws.com/documents/subfolder/test-file.pdf',
+      );
     });
   });
 
@@ -212,7 +237,7 @@ describe('S3StorageService', () => {
       expect(mockGetSignedUrl).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
-        expect.objectContaining({ expiresIn: 7200 })
+        expect.objectContaining({ expiresIn: 7200 }),
       );
     });
   });

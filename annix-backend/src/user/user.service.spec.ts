@@ -53,17 +53,26 @@ describe('UserService', () => {
 
   describe('create', () => {
     it('should create and return a user', async () => {
-      const dto = { username: 'john', email: 'john@test.com', password: '123456' };
+      const dto = {
+        username: 'john',
+        email: 'john@test.com',
+        password: '123456',
+      };
       const salt = 'random_salt';
       const hashedPassword = 'hashed_pass';
 
-    (bcrypt.genSalt as jest.Mock).mockResolvedValue(salt);
-    (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
+      (bcrypt.genSalt as jest.Mock).mockResolvedValue(salt);
+      (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
 
       const role = { id: 1, name: 'employee' } as UserRole;
       roleRepo.findOne.mockResolvedValue(role);
 
-      const createdUser = { ...dto, password: hashedPassword, salt, roles: [role] } as User;
+      const createdUser = {
+        ...dto,
+        password: hashedPassword,
+        salt,
+        roles: [role],
+      } as User;
       userRepo.create.mockReturnValue(createdUser);
       userRepo.save.mockResolvedValue({ ...createdUser, id: 1 });
 
@@ -75,13 +84,19 @@ describe('UserService', () => {
         salt,
       });
       expect(userRepo.save).toHaveBeenCalled();
-      expect(result).toMatchObject({ id: 1, username: 'john', email: 'john@test.com' });
+      expect(result).toMatchObject({
+        id: 1,
+        username: 'john',
+        email: 'john@test.com',
+      });
     });
   });
 
   describe('findAll', () => {
     it('should return all users', async () => {
-      const users = [{ id: 1, username: 'john', email: 'john@test.com' }] as User[];
+      const users = [
+        { id: 1, username: 'john', email: 'john@test.com' },
+      ] as User[];
       userRepo.find.mockResolvedValue(users);
 
       const result = await service.findAll();

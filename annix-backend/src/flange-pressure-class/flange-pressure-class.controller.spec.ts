@@ -11,7 +11,9 @@ describe('FlangePressureClassController', () => {
       providers: [FlangePressureClassService],
     }).compile();
 
-    controller = module.get<FlangePressureClassController>(FlangePressureClassController);
+    controller = module.get<FlangePressureClassController>(
+      FlangePressureClassController,
+    );
   });
 
   it('should be defined', () => {

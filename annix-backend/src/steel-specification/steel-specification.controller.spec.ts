@@ -26,8 +26,10 @@ describe('SteelSpecificationController', () => {
       ],
     }).compile();
 
-    controller = module.get<SteelSpecificationController>(SteelSpecificationController);
-    service = module.get(SteelSpecificationService) as jest.Mocked<SteelSpecificationService>;
+    controller = module.get<SteelSpecificationController>(
+      SteelSpecificationController,
+    );
+    service = module.get(SteelSpecificationService);
   });
 
   it('should be defined', () => {
@@ -37,7 +39,10 @@ describe('SteelSpecificationController', () => {
   describe('create', () => {
     it('should call service.create with dto and return result', async () => {
       const dto: CreateSteelSpecificationDto = { steelSpecName: 'S355' };
-      const result: SteelSpecification = { id: 1, steelSpecName: dto.steelSpecName };
+      const result: SteelSpecification = {
+        id: 1,
+        steelSpecName: dto.steelSpecName,
+      };
 
       service.create.mockResolvedValue(result);
 
@@ -69,7 +74,10 @@ describe('SteelSpecificationController', () => {
   describe('update', () => {
     it('should call service.update with id and dto', async () => {
       const dto: UpdateSteelSpecificationDto = { steelSpecName: 'S275' };
-      const result: SteelSpecification = { id: 1, steelSpecName: dto.steelSpecName! };
+      const result: SteelSpecification = {
+        id: 1,
+        steelSpecName: dto.steelSpecName!,
+      };
 
       service.update.mockResolvedValue(result);
 

@@ -26,7 +26,9 @@ describe('NominalOutsideDiameterMmService', () => {
       ],
     }).compile();
 
-    service = module.get<NominalOutsideDiameterMmService>(NominalOutsideDiameterMmService);
+    service = module.get<NominalOutsideDiameterMmService>(
+      NominalOutsideDiameterMmService,
+    );
 
     jest.clearAllMocks();
   });
@@ -60,7 +62,9 @@ describe('NominalOutsideDiameterMmService', () => {
 
   describe('findAll', () => {
     it('should return all entities', async () => {
-      const entities = [{ id: 1, nominal_diameter_mm: 65, outside_diameter_mm: 76.2 }];
+      const entities = [
+        { id: 1, nominal_diameter_mm: 65, outside_diameter_mm: 76.2 },
+      ];
       mockRepo.find.mockResolvedValue(entities);
 
       const result = await service.findAll();
@@ -71,7 +75,11 @@ describe('NominalOutsideDiameterMmService', () => {
 
   describe('findOne', () => {
     it('should return one entity', async () => {
-      const entity = { id: 1, nominal_diameter_mm: 65, outside_diameter_mm: 76.2 };
+      const entity = {
+        id: 1,
+        nominal_diameter_mm: 65,
+        outside_diameter_mm: 76.2,
+      };
       mockRepo.findOneBy.mockResolvedValue(entity);
 
       const result = await service.findOne(1);
@@ -87,13 +95,17 @@ describe('NominalOutsideDiameterMmService', () => {
 
   describe('update', () => {
     it('should update an entity', async () => {
-      const existing = { id: 1, nominal_diameter_mm: 65, outside_diameter_mm: 76.2 };
+      const existing = {
+        id: 1,
+        nominal_diameter_mm: 65,
+        outside_diameter_mm: 76.2,
+      };
       const dto = { nominal_diameter_mm: 70, outside_diameter_mm: 80 };
       const updated = { ...existing, ...dto };
 
       mockRepo.findOneBy
-        .mockResolvedValueOnce(existing) 
-        .mockResolvedValueOnce(undefined); 
+        .mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce(undefined);
 
       mockRepo.save.mockResolvedValue(updated);
 
@@ -103,13 +115,21 @@ describe('NominalOutsideDiameterMmService', () => {
     });
 
     it('should throw BadRequestException if duplicate exists', async () => {
-      const existing = { id: 1, nominal_diameter_mm: 65, outside_diameter_mm: 76.2 };
-      const duplicate = { id: 2, nominal_diameter_mm: 70, outside_diameter_mm: 80 };
+      const existing = {
+        id: 1,
+        nominal_diameter_mm: 65,
+        outside_diameter_mm: 76.2,
+      };
+      const duplicate = {
+        id: 2,
+        nominal_diameter_mm: 70,
+        outside_diameter_mm: 80,
+      };
       const dto = { nominal_diameter_mm: 70, outside_diameter_mm: 80 };
 
       mockRepo.findOneBy
-        .mockResolvedValueOnce(existing) 
-        .mockResolvedValueOnce(duplicate); 
+        .mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce(duplicate);
 
       await expect(service.update(1, dto)).rejects.toThrow(BadRequestException);
     });

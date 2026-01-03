@@ -11,7 +11,9 @@ describe('FlangeDimensionController', () => {
       providers: [FlangeDimensionService],
     }).compile();
 
-    controller = module.get<FlangeDimensionController>(FlangeDimensionController);
+    controller = module.get<FlangeDimensionController>(
+      FlangeDimensionController,
+    );
   });
 
   it('should be defined', () => {

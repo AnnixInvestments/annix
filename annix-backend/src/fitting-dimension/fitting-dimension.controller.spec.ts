@@ -11,7 +11,9 @@ describe('FittingDimensionController', () => {
       providers: [FittingDimensionService],
     }).compile();
 
-    controller = module.get<FittingDimensionController>(FittingDimensionController);
+    controller = module.get<FittingDimensionController>(
+      FittingDimensionController,
+    );
   });
 
   it('should be defined', () => {

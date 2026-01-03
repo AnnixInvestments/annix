@@ -36,8 +36,17 @@ describe('UserController', () => {
 
   describe('create', () => {
     it('should create a new user', async () => {
-      const dto: CreateUserDto = { username: 'john', email: 'john@test.com', password: '123456' };
-      const result: Partial<User> = { id: 1, username: 'john', email: 'john@test.com', roles: [] };
+      const dto: CreateUserDto = {
+        username: 'john',
+        email: 'john@test.com',
+        password: '123456',
+      };
+      const result: Partial<User> = {
+        id: 1,
+        username: 'john',
+        email: 'john@test.com',
+        roles: [],
+      };
 
       mockUserService.create.mockResolvedValue(result);
 
@@ -48,7 +57,9 @@ describe('UserController', () => {
 
   describe('findAll', () => {
     it('should return an array of users', async () => {
-      const users: Partial<User>[] = [{ id: 1, username: 'john', email: 'john@test.com', roles: [] }];
+      const users: Partial<User>[] = [
+        { id: 1, username: 'john', email: 'john@test.com', roles: [] },
+      ];
       mockUserService.findAll.mockResolvedValue(users);
 
       expect(await controller.findAll()).toEqual(users);
@@ -58,7 +69,12 @@ describe('UserController', () => {
 
   describe('findOne', () => {
     it('should return a single user', async () => {
-      const user: Partial<User> = { id: 1, username: 'john', email: 'john@test.com', roles: [] };
+      const user: Partial<User> = {
+        id: 1,
+        username: 'john',
+        email: 'john@test.com',
+        roles: [],
+      };
       mockUserService.findOne.mockResolvedValue(user);
 
       expect(await controller.findOne('1')).toEqual(user);
@@ -69,7 +85,12 @@ describe('UserController', () => {
   describe('update', () => {
     it('should update a user', async () => {
       const dto: UpdateUserDto = { username: 'john_updated' };
-      const updatedUser: Partial<User> = { id: 1, username: 'john_updated', email: 'john@test.com', roles: [] };
+      const updatedUser: Partial<User> = {
+        id: 1,
+        username: 'john_updated',
+        email: 'john@test.com',
+        roles: [],
+      };
 
       mockUserService.update.mockResolvedValue(updatedUser);
 

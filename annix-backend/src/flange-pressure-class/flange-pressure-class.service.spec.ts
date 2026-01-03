@@ -9,7 +9,9 @@ describe('FlangePressureClassService', () => {
       providers: [FlangePressureClassService],
     }).compile();
 
-    service = module.get<FlangePressureClassService>(FlangePressureClassService);
+    service = module.get<FlangePressureClassService>(
+      FlangePressureClassService,
+    );
   });
 
   it('should be defined', () => {

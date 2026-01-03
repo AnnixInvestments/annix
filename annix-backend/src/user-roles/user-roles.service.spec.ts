@@ -23,7 +23,7 @@ describe('UserRolesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserRolesService,
-        { provide: getRepositoryToken(UserRole), useValue: mockUserRoleRepo }
+        { provide: getRepositoryToken(UserRole), useValue: mockUserRoleRepo },
       ],
     }).compile();
 
@@ -52,12 +52,15 @@ describe('UserRolesService', () => {
 
     it('should throw ConflictException if role exists', async () => {
       const dto: CreateUserRoleDto = { name: 'admin' };
-      
-      (repo.findOne as jest.Mock).mockResolvedValue({ id: 1, name: 'admin', users: [] });
+
+      (repo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        name: 'admin',
+        users: [],
+      });
 
       await expect(service.create(dto)).rejects.toThrow(ConflictException);
     });
-
   });
 
   describe('findAll', () => {
@@ -97,7 +100,7 @@ describe('UserRolesService', () => {
       const updated: UserRole = { id: 1, name: 'superadmin', users: [] };
 
       (repo.findOne as jest.Mock)
-        .mockResolvedValueOnce(role) 
+        .mockResolvedValueOnce(role)
         .mockResolvedValueOnce(null);
       (repo.save as jest.Mock).mockResolvedValue(updated);
 
@@ -114,7 +117,7 @@ describe('UserRolesService', () => {
 
       (repo.findOne as jest.Mock)
         .mockResolvedValueOnce(role)
-        .mockResolvedValueOnce(existing); 
+        .mockResolvedValueOnce(existing);
 
       await expect(service.update(1, dto)).rejects.toThrow(ConflictException);
     });

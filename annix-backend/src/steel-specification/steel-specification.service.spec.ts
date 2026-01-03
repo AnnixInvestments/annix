@@ -36,13 +36,15 @@ describe('SteelSpecificationService', () => {
       const dto = { steelSpecName: 'S355' };
       const entity = { id: 1, ...dto } as SteelSpecification;
 
-      mockRepo.findOneBy.mockResolvedValue(undefined); 
+      mockRepo.findOneBy.mockResolvedValue(undefined);
       mockRepo.create.mockReturnValue(dto);
       mockRepo.save.mockResolvedValue(entity);
 
       const result = await service.create(dto);
       expect(result).toEqual(entity);
-      expect(mockRepo.findOneBy).toHaveBeenCalledWith({ steelSpecName: dto.steelSpecName });
+      expect(mockRepo.findOneBy).toHaveBeenCalledWith({
+        steelSpecName: dto.steelSpecName,
+      });
       expect(mockRepo.create).toHaveBeenCalledWith(dto);
       expect(mockRepo.save).toHaveBeenCalledWith(dto);
     });
@@ -52,7 +54,9 @@ describe('SteelSpecificationService', () => {
       mockRepo.findOneBy.mockResolvedValue({ id: 1, steelSpecName: 'S355' });
 
       await expect(service.create(dto)).rejects.toThrow(BadRequestException);
-      expect(mockRepo.findOneBy).toHaveBeenCalledWith({ steelSpecName: dto.steelSpecName });
+      expect(mockRepo.findOneBy).toHaveBeenCalledWith({
+        steelSpecName: dto.steelSpecName,
+      });
     });
   });
 
@@ -89,8 +93,8 @@ describe('SteelSpecificationService', () => {
       const updated = { id: 1, steelSpecName: 'S275' } as SteelSpecification;
 
       mockRepo.findOneBy
-        .mockResolvedValueOnce(undefined) 
-        .mockResolvedValueOnce(existing); 
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(existing);
       mockRepo.save.mockResolvedValue(updated);
 
       jest.spyOn(service, 'findOne').mockResolvedValue(existing);
@@ -106,16 +110,15 @@ describe('SteelSpecificationService', () => {
       const existing = { id: 2, steelSpecName: 'S275' } as SteelSpecification;
 
       mockRepo.findOneBy.mockImplementation(({ id, steelSpecName }) => {
-        if (id === 1) return Promise.resolve(current);         
-        if (steelSpecName === 'S275') return Promise.resolve(existing); 
+        if (id === 1) return Promise.resolve(current);
+        if (steelSpecName === 'S275') return Promise.resolve(existing);
         return Promise.resolve(null);
       });
 
-      mockRepo.save.mockResolvedValue({ ...current, ...dto }); 
+      mockRepo.save.mockResolvedValue({ ...current, ...dto });
 
       await expect(service.update(1, dto)).rejects.toThrow(BadRequestException);
     });
-
   });
 
   describe('remove', () => {

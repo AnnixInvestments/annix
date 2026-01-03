@@ -68,9 +68,9 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException if user is not found', async () => {
       mockUserRepo.findOne.mockResolvedValue(null);
-      await expect(service.validateUser('nonexistent@test.com', '123456')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.validateUser('nonexistent@test.com', '123456'),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException if password is invalid', async () => {
@@ -87,9 +87,9 @@ describe('AuthService', () => {
 
       (bcrypt.hash as jest.Mock).mockResolvedValue('wrong_hash');
 
-      await expect(service.validateUser('john@test.com', '123456')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.validateUser('john@test.com', '123456'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 

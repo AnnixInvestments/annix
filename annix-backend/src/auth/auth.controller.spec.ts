@@ -23,7 +23,7 @@ describe('AuthController', () => {
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
-    service = module.get(AuthService) as jest.Mocked<AuthService>;
+    service = module.get(AuthService);
   });
 
   it('should be defined', () => {
@@ -41,7 +41,10 @@ describe('AuthController', () => {
       service.login.mockResolvedValue(token);
 
       const result = await controller.login(dto);
-      expect(service.validateUser).toHaveBeenCalledWith(dto.email, dto.password);
+      expect(service.validateUser).toHaveBeenCalledWith(
+        dto.email,
+        dto.password,
+      );
       expect(service.login).toHaveBeenCalledWith(user);
       expect(result).toEqual(token);
     });
@@ -49,8 +52,13 @@ describe('AuthController', () => {
     it('should throw UnauthorizedException if validateUser returns null', async () => {
       service.validateUser.mockResolvedValue(null);
 
-      await expect(controller.login(dto)).rejects.toThrow(UnauthorizedException);
-      expect(service.validateUser).toHaveBeenCalledWith(dto.email, dto.password);
+      await expect(controller.login(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(service.validateUser).toHaveBeenCalledWith(
+        dto.email,
+        dto.password,
+      );
       expect(service.login).not.toHaveBeenCalled();
     });
   });
