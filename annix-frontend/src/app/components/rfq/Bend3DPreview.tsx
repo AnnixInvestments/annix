@@ -496,10 +496,10 @@ const BendScene = ({
   // Debug logging
   console.log('BendScene:', { flangeConfig, showOutletFlange, showInletFlange, numberOfStubs, stubs: safeStubs });
 
-  const isSABS719 = isSegmented ||
+  const isSABS719 = Boolean(isSegmented ||
     materialName?.toLowerCase().includes("sabs 719") ||
     materialName?.toLowerCase().includes("erw") ||
-    (numberOfSegments && numberOfSegments >= 2);
+    (numberOfSegments && numberOfSegments >= 2));
 
   const nb = (nominalBore || 50) / scaleFactor;
   const estimatedWt = estimateWallThickness(nominalBore, schedule, wallThickness);

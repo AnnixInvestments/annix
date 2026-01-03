@@ -26,6 +26,13 @@ import {
   recommendWallThicknessCarbonPipe,
   WeldThicknessRecommendation
 } from '@/app/lib/utils/weldThicknessLookup';
+import {
+  SABS62_NB_OPTIONS,
+  SABS62_BEND_RADIUS,
+  getSabs62CFInterpolated,
+  getSabs62BendTypes,
+  SABS62BendType
+} from '@/app/lib/utils/sabs62CfData';
 import GoogleMapLocationPicker from '@/app/components/GoogleMapLocationPicker';
 import { useEnvironmentalIntelligence } from '@/app/lib/hooks/useEnvironmentalIntelligence';
 import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
@@ -8219,10 +8226,13 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   />
                 </div>
 
-                {/* Green 3-Column Section: Steel Spec, NB, Schedule */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {/* Steel Specification */}
+                {/* Conditional Bend Layout - SABS 719 vs SABS 62 */}
+                {(() => {
+                  const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                  const isSABS719 = effectiveSteelSpecId === 8;
+
+                  // Common Steel Spec dropdown (used in both layouts)
+                  const SteelSpecDropdown = (
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Steel Specification
@@ -8245,7 +8255,13 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               steelSpecificationId: newSpecId,
                               nominalBoreMm: undefined,
                               scheduleNumber: undefined,
-                              wallThicknessMm: undefined
+                              wallThicknessMm: undefined,
+                              bendType: undefined,
+                              bendRadiusType: undefined,
+                              bendDegrees: undefined,
+                              numberOfSegments: undefined,
+                              centerToFaceMm: undefined,
+                              bendRadiusMm: undefined
                             }
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
@@ -8259,11 +8275,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         ))}
                       </select>
                     </div>
+                  );
 
-                    {/* Nominal Bore */}
+                  // NB Dropdown (shared logic but different placement)
+                  const NBDropdown = (
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Nominal Bore (mm) *
+                        {!isSABS719 && !entry.specs?.bendType && (
+                          <span className="text-orange-500 text-xs ml-1">(Select Bend Type first)</span>
+                        )}
                       </label>
                       <select
                         value={entry.specs?.nominalBoreMm || ''}
@@ -8271,25 +8292,19 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           const nominalBore = parseInt(e.target.value);
                           if (!nominalBore) return;
 
-                          // Get pressure and temperature from global specs
                           const pressure = globalSpecs?.workingPressureBar || 0;
-                          const temperature = globalSpecs?.workingTemperatureC || 20;
-
-                          // Get schedules from fallback data
                           const schedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
 
                           let matchedSchedule: string | null = null;
                           let matchedWT = 0;
 
                           if (pressure > 0 && schedules.length > 0) {
-                            // Calculate minimum wall thickness using Barlow formula
                             const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
                             const pressureMpa = pressure * 0.1;
-                            const allowableStress = 137.9; // MPa for A106 Gr B
+                            const allowableStress = 137.9;
                             const safetyFactor = 1.2;
                             const minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
 
-                            // Find the lightest schedule that meets minimum wall thickness
                             const eligibleSchedules = schedules
                               .filter(s => s.wallThicknessMm >= minWT)
                               .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
@@ -8298,14 +8313,11 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               matchedSchedule = eligibleSchedules[0].scheduleDesignation;
                               matchedWT = eligibleSchedules[0].wallThicknessMm;
                             } else {
-                              // Use thickest available if none meet requirements
                               const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
                               matchedSchedule = sorted[0].scheduleDesignation;
                               matchedWT = sorted[0].wallThicknessMm;
                             }
-                            console.log(`[Bend NB] Auto-selected schedule: ${matchedSchedule} (${matchedWT}mm) for ${nominalBore}NB @ ${pressure}bar`);
                           } else if (schedules.length > 0) {
-                            // No pressure - use Sch 40 as default or first available
                             const sch40 = schedules.find(s => s.scheduleDesignation === '40' || s.scheduleDesignation === 'Sch 40');
                             if (sch40) {
                               matchedSchedule = sch40.scheduleDesignation;
@@ -8314,17 +8326,11 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               matchedSchedule = schedules[0].scheduleDesignation;
                               matchedWT = schedules[0].wallThicknessMm;
                             }
-                            console.log(`[Bend NB] No pressure set, using default: ${matchedSchedule}`);
                           }
-
-                          // Check if SABS 719 for local C/F lookup
-                          const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                          const isSABS719 = effectiveSteelSpecId === 8;
 
                           let newCenterToFace: number | undefined = undefined;
                           let newBendRadius: number | undefined = undefined;
 
-                          // For SABS 719, recalculate C/F with new NB if segments are set
                           if (isSABS719 && entry.specs?.bendRadiusType && entry.specs?.numberOfSegments) {
                             const cfResult = getSABS719CenterToFaceBySegments(
                               entry.specs.bendRadiusType,
@@ -8334,8 +8340,14 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             if (cfResult) {
                               newCenterToFace = cfResult.centerToFace;
                               newBendRadius = cfResult.radius;
-                              console.log(`[Bend NB] SABS 719 C/F recalculated: ${newCenterToFace}mm for ${nominalBore}NB, ${entry.specs.numberOfSegments} segments`);
                             }
+                          }
+
+                          // For SABS 62, calculate C/F if bend type and angle are set
+                          if (!isSABS719 && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                            const bendType = entry.specs.bendType as SABS62BendType;
+                            newCenterToFace = getSabs62CFInterpolated(bendType, entry.specs.bendDegrees, nominalBore);
+                            newBendRadius = SABS62_BEND_RADIUS[bendType]?.[nominalBore];
                           }
 
                           const updatedEntry: any = {
@@ -8345,19 +8357,13 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               nominalBoreMm: nominalBore,
                               scheduleNumber: matchedSchedule,
                               wallThicknessMm: matchedWT,
-                              centerToFaceMm: newCenterToFace, // Use recalculated C/F for SABS 719
+                              centerToFaceMm: newCenterToFace,
                               bendRadiusMm: newBendRadius
                             }
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
 
-                          // For SABS 62, fetch C/F from API if bend type and angle are already set
-                          if (!isSABS719 && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                            fetchCenterToFace(entry.id, entry.specs.bendType, nominalBore, entry.specs.bendDegrees);
-                          }
-
-                          // Trigger calculation if all required fields are filled
                           const hasBendSpecs = isSABS719
                             ? (entry.specs?.bendRadiusType && entry.specs?.bendDegrees)
                             : (entry.specs?.bendType && entry.specs?.bendDegrees);
@@ -8366,10 +8372,18 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                        disabled={!isSABS719 && !entry.specs?.bendType}
                       >
-                        <option value="">Select NB</option>
+                        <option value="">{!isSABS719 && !entry.specs?.bendType ? 'Select Bend Type first' : 'Select NB'}</option>
                         {(() => {
-                          const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                          if (!isSABS719 && entry.specs?.bendType) {
+                            const bendType = entry.specs.bendType as SABS62BendType;
+                            const sabs62NBs = SABS62_NB_OPTIONS[bendType] || [];
+                            return sabs62NBs.map((nb: number) => (
+                              <option key={nb} value={nb}>{nb} NB</option>
+                            ));
+                          }
+                          // SABS 719 or no bend type - show fallback
                           const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === effectiveSteelSpecId);
                           const steelSpecName = steelSpec?.steelSpecName || '';
                           const fallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => steelSpecName.includes(pattern))?.[1];
@@ -8380,16 +8394,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         })()}
                       </select>
                     </div>
+                  );
 
-                    {/* Schedule */}
+                  // Schedule Dropdown (shared)
+                  const ScheduleDropdown = (
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Schedule *
-                        {(() => {
-                          const hasAutoSchedule = entry.specs?.scheduleNumber && globalSpecs?.workingPressureBar;
-                          if (hasAutoSchedule) return <span className="text-green-600 text-xs ml-2">(Auto)</span>;
-                          return null;
-                        })()}
+                        {entry.specs?.scheduleNumber && globalSpecs?.workingPressureBar && (
+                          <span className="text-green-600 text-xs ml-2">(Auto)</span>
+                        )}
                       </label>
                       <select
                         value={entry.specs?.scheduleNumber || ''}
@@ -8421,266 +8435,288 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <p className="text-xs text-green-700 mt-0.5">WT: {entry.specs.wallThicknessMm}mm</p>
                       )}
                     </div>
-                  </div>
-                </div>
+                  );
 
-                {/* 3-Column Bend Specs Row: Bend Radius, Bend Angle, C/F */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-                  {/* Bend Radius Type */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 mb-1">
-                      Bend Radius *
-                      {(() => {
-                        const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                        const isSABS719 = effectiveSteelSpecId === 8;
-                        if (isSABS719) return <span className="text-blue-600 text-xs ml-1">(SABS 719)</span>;
-                        return <span className="text-purple-600 text-xs ml-1">(SABS 62)</span>;
-                      })()}
-                    </label>
-                    {(() => {
-                      const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                      const isSABS719 = effectiveSteelSpecId === 8;
-                      if (isSABS719) {
-                        return (
-                          <select
-                            value={entry.specs?.bendRadiusType || ''}
-                            onChange={(e) => {
-                              const radiusType = e.target.value || undefined;
-                              const updatedEntry: any = {
-                                ...entry,
-                                specs: { ...entry.specs, bendRadiusType: radiusType, bendType: undefined, numberOfSegments: undefined, centerToFaceMm: undefined, bendDegrees: undefined }
-                              };
-                              updatedEntry.description = generateItemDescription(updatedEntry);
-                              onUpdateEntry(entry.id, updatedEntry);
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                          >
-                            <option value="">Select Radius Type</option>
-                            {SABS719_BEND_TYPES.map(opt => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
-                        );
-                      }
-                      // SABS 62
-                      return (
-                        <select
-                          value={entry.specs?.bendType || ''}
-                          onChange={async (e) => {
-                            const bendType = e.target.value;
-                            const updatedEntry: any = {
-                              ...entry,
-                              specs: { ...entry.specs, bendType, centerToFaceMm: undefined, bendDegrees: undefined }
-                            };
-                            updatedEntry.description = generateItemDescription(updatedEntry);
-                            onUpdateEntry(entry.id, updatedEntry);
-                            if (bendType) {
-                              await fetchBendOptions(bendType);
-                            }
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                        >
-                          <option value="">Select Bend Type</option>
-                          <option value="1.5D">1.5D (Short Radius)</option>
-                          <option value="3D">3D (Long Radius)</option>
-                          <option value="5D">5D (Extra Long)</option>
-                        </select>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Bend Angle */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 mb-1">
-                      Bend Angle *
-                    </label>
-                    <select
-                      value={entry.specs?.bendDegrees || ''}
-                      onChange={(e) => {
-                        const bendDegrees = e.target.value ? parseFloat(e.target.value) : undefined;
-                        const updatedEntry: any = {
-                          ...entry,
-                          specs: { ...entry.specs, bendDegrees, centerToFaceMm: undefined, numberOfSegments: undefined }
-                        };
-                        updatedEntry.description = generateItemDescription(updatedEntry);
-                        onUpdateEntry(entry.id, updatedEntry);
-                        // Fetch C/F if all required fields available
-                        if (bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
-                          fetchCenterToFace(entry.id, entry.specs.bendType, entry.specs.nominalBoreMm, bendDegrees);
-                        }
-                        // Auto-calculate if all required fields are filled
-                        if (bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType) {
-                          setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                    >
-                      <option value="">Select Angle</option>
-                      {/* 1° to 22° */}
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22].map(deg => (
-                        <option key={deg} value={deg}>{deg}°</option>
-                      ))}
-                      {/* 22.5° */}
-                      <option value="22.5">22.5°</option>
-                      {/* 23° to 37° */}
-                      {[23,24,25,26,27,28,29,30,31,32,33,34,35,36,37].map(deg => (
-                        <option key={deg} value={deg}>{deg}°</option>
-                      ))}
-                      {/* 37.5° */}
-                      <option value="37.5">37.5°</option>
-                      {/* 38° to 90° */}
-                      {[38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90].map(deg => (
-                        <option key={deg} value={deg}>{deg}°</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Segments (SABS 719) or C/F (SABS 62) */}
-                  <div>
-                    {(() => {
-                      const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                      const isSABS719 = effectiveSteelSpecId === 8;
-
-                      if (!isSABS719) {
-                        // For non-SABS 719, show C/F
-                        return (
-                          <>
-                            <label className="block text-xs font-semibold text-gray-900 mb-1">
-                              C/F (mm)
-                              {entry.specs?.centerToFaceMm && <span className="text-green-600 text-xs ml-1">(Auto)</span>}
-                            </label>
-                            <input
-                              type="text"
-                              value={
-                                entry.specs?.centerToFaceMm
-                                  ? `${Number(entry.specs.centerToFaceMm).toFixed(1)} mm`
-                                  : entry.calculation?.centerToFaceDimension
-                                    ? `${entry.calculation.centerToFaceDimension.toFixed(1)} mm`
-                                    : 'Select specs'
-                              }
-                              disabled
-                              className={`w-full px-3 py-2 border rounded-md text-sm cursor-not-allowed ${
-                                entry.specs?.centerToFaceMm ? 'bg-green-50 border-green-300 text-green-900 font-medium' : 'bg-gray-100 border-gray-300 text-gray-600'
-                              }`}
-                            />
-                          </>
-                        );
-                      }
-
-                      // SABS 719: Segments based on angle
-                      const bendRadiusType = entry.specs?.bendRadiusType;
-                      const bendDeg = entry.specs?.bendDegrees || 0;
-                      const nominalBore = entry.specs?.nominalBoreMm || 0;
-
-                      if (!bendRadiusType || bendDeg <= 0) {
-                        return (
-                          <>
-                            <label className="block text-xs font-semibold text-gray-900 mb-1">
-                              Segments
-                              <span className="text-blue-600 text-xs ml-1">(SABS 719)</span>
-                            </label>
-                            <input type="text" value="Select radius & angle" disabled className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-500 cursor-not-allowed" />
-                          </>
-                        );
-                      }
-
-                      // Determine segment options based on angle
-                      // ≤11°: Auto 2 segments | 11.5-37°: [2,3] | 37.5-59°: [3,4] | 60-90°: [5,6,7]
-                      const getSegmentOptions = (deg: number): number[] => {
-                        if (deg <= 11) return [2]; // Auto-fill
-                        if (deg <= 37) return [2, 3];
-                        if (deg <= 59) return [3, 4];
-                        return [5, 6, 7];
-                      };
-
-                      const segmentOptions = getSegmentOptions(bendDeg);
-                      const isAutoFill = bendDeg <= 11;
-
-                      // Auto-fill effect for ≤11°
-                      if (isAutoFill && entry.specs?.numberOfSegments !== 2) {
-                        // Trigger auto-fill
-                        setTimeout(() => {
-                          const cfResult = getSABS719CenterToFaceBySegments(bendRadiusType, nominalBore, 2);
+                  // SABS 62 Bend Type Dropdown
+                  const BendTypeDropdown = (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Bend Type *
+                        <span className="text-purple-600 text-xs ml-1">(SABS 62)</span>
+                      </label>
+                      <select
+                        value={entry.specs?.bendType || ''}
+                        onChange={(e) => {
+                          const bendType = e.target.value;
+                          let centerToFaceMm: number | undefined;
+                          let bendRadiusMm: number | undefined;
+                          if (bendType && entry.specs?.nominalBoreMm && entry.specs?.bendDegrees) {
+                            centerToFaceMm = getSabs62CFInterpolated(bendType as SABS62BendType, entry.specs.bendDegrees, entry.specs.nominalBoreMm);
+                            bendRadiusMm = SABS62_BEND_RADIUS[bendType as SABS62BendType]?.[entry.specs.nominalBoreMm];
+                          }
                           const updatedEntry: any = {
                             ...entry,
                             specs: {
                               ...entry.specs,
-                              numberOfSegments: 2,
-                              centerToFaceMm: cfResult?.centerToFace,
-                              bendRadiusMm: cfResult?.radius
+                              bendType: bendType || undefined,
+                              nominalBoreMm: undefined, // Clear NB when bend type changes
+                              centerToFaceMm,
+                              bendRadiusMm
                             }
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
-                          if (nominalBore && entry.specs?.scheduleNumber) {
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                      >
+                        <option value="">Select Bend Type</option>
+                        <option value="1D">1D (Elbow)</option>
+                        <option value="1.5D">1.5D (Short Radius)</option>
+                        <option value="2D">2D (Standard)</option>
+                        <option value="3D">3D (Long Radius)</option>
+                        <option value="5D">5D (Extra Long)</option>
+                      </select>
+                    </div>
+                  );
+
+                  // SABS 719 Radius Type Dropdown
+                  const RadiusTypeDropdown = (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Bend Radius *
+                        <span className="text-blue-600 text-xs ml-1">(SABS 719)</span>
+                      </label>
+                      <select
+                        value={entry.specs?.bendRadiusType || ''}
+                        onChange={(e) => {
+                          const radiusType = e.target.value || undefined;
+                          const updatedEntry: any = {
+                            ...entry,
+                            specs: { ...entry.specs, bendRadiusType: radiusType, bendType: undefined, numberOfSegments: undefined, centerToFaceMm: undefined, bendDegrees: undefined }
+                          };
+                          updatedEntry.description = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, updatedEntry);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                      >
+                        <option value="">Select Radius Type</option>
+                        {SABS719_BEND_TYPES.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+
+                  // Angle Dropdown (shared)
+                  const AngleDropdown = (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Bend Angle *
+                      </label>
+                      <select
+                        value={entry.specs?.bendDegrees || ''}
+                        onChange={(e) => {
+                          const bendDegrees = e.target.value ? parseFloat(e.target.value) : undefined;
+                          let centerToFaceMm: number | undefined;
+                          let bendRadiusMm: number | undefined;
+                          if (!isSABS719 && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
+                            const bendType = entry.specs.bendType as SABS62BendType;
+                            centerToFaceMm = getSabs62CFInterpolated(bendType, bendDegrees, entry.specs.nominalBoreMm);
+                            bendRadiusMm = SABS62_BEND_RADIUS[bendType]?.[entry.specs.nominalBoreMm];
+                          }
+                          const updatedEntry: any = {
+                            ...entry,
+                            specs: { ...entry.specs, bendDegrees, centerToFaceMm, bendRadiusMm, numberOfSegments: isSABS719 ? undefined : entry.specs?.numberOfSegments }
+                          };
+                          updatedEntry.description = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, updatedEntry);
+                          if (bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType) {
                             setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                           }
-                        }, 50);
-                      }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                      >
+                        <option value="">Select Angle</option>
+                        {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22].map(deg => (
+                          <option key={deg} value={deg}>{deg}°</option>
+                        ))}
+                        <option value="22.5">22.5°</option>
+                        {[23,24,25,26,27,28,29,30,31,32,33,34,35,36,37].map(deg => (
+                          <option key={deg} value={deg}>{deg}°</option>
+                        ))}
+                        <option value="37.5">37.5°</option>
+                        {[38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90].map(deg => (
+                          <option key={deg} value={deg}>{deg}°</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
 
-                      if (isAutoFill) {
-                        // Show auto-filled value
+                  // SABS 62 C/F Display
+                  const CFDisplay = (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        C/F (mm)
+                        {entry.specs?.centerToFaceMm && <span className="text-green-600 text-xs ml-1">(Auto)</span>}
+                      </label>
+                      <input
+                        type="text"
+                        value={
+                          entry.specs?.centerToFaceMm
+                            ? `${Number(entry.specs.centerToFaceMm).toFixed(1)} mm`
+                            : 'Select specs'
+                        }
+                        disabled
+                        className={`w-full px-3 py-2 border rounded-md text-sm cursor-not-allowed ${
+                          entry.specs?.centerToFaceMm ? 'bg-green-50 border-green-300 text-green-900 font-medium' : 'bg-gray-100 border-gray-300 text-gray-600'
+                        }`}
+                      />
+                    </div>
+                  );
+
+                  // SABS 719 Segments Dropdown
+                  const SegmentsDropdown = (
+                    <div>
+                      {(() => {
+                        const bendRadiusType = entry.specs?.bendRadiusType;
+                        const bendDeg = entry.specs?.bendDegrees || 0;
+                        const nominalBore = entry.specs?.nominalBoreMm || 0;
+
+                        if (!bendRadiusType || bendDeg <= 0) {
+                          return (
+                            <>
+                              <label className="block text-xs font-semibold text-gray-900 mb-1">
+                                Segments <span className="text-blue-600 text-xs ml-1">(SABS 719)</span>
+                              </label>
+                              <input type="text" value="Select radius & angle" disabled className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-500 cursor-not-allowed" />
+                            </>
+                          );
+                        }
+
+                        const getSegmentOptions = (deg: number): number[] => {
+                          if (deg <= 11) return [2];
+                          if (deg <= 37) return [2, 3];
+                          if (deg <= 59) return [3, 4];
+                          return [5, 6, 7];
+                        };
+
+                        const segmentOptions = getSegmentOptions(bendDeg);
+                        const isAutoFill = bendDeg <= 11;
+
+                        if (isAutoFill && entry.specs?.numberOfSegments !== 2) {
+                          setTimeout(() => {
+                            const cfResult = getSABS719CenterToFaceBySegments(bendRadiusType, nominalBore, 2);
+                            const updatedEntry: any = {
+                              ...entry,
+                              specs: {
+                                ...entry.specs,
+                                numberOfSegments: 2,
+                                centerToFaceMm: cfResult?.centerToFace,
+                                bendRadiusMm: cfResult?.radius
+                              }
+                            };
+                            updatedEntry.description = generateItemDescription(updatedEntry);
+                            onUpdateEntry(entry.id, updatedEntry);
+                            if (nominalBore && entry.specs?.scheduleNumber) {
+                              setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                            }
+                          }, 50);
+                        }
+
+                        if (isAutoFill) {
+                          return (
+                            <>
+                              <label className="block text-xs font-semibold text-gray-900 mb-1">
+                                Segments <span className="text-green-600 text-xs ml-1">(Auto: 2)</span>
+                              </label>
+                              <input type="text" value="2 segments" disabled className="w-full px-3 py-2 border border-green-300 rounded-md text-sm bg-green-50 text-green-900 font-medium cursor-not-allowed" />
+                              {entry.specs?.centerToFaceMm && (
+                                <p className="text-xs text-green-600 mt-0.5">C/F: {Number(entry.specs.centerToFaceMm).toFixed(1)}mm</p>
+                              )}
+                            </>
+                          );
+                        }
+
                         return (
                           <>
                             <label className="block text-xs font-semibold text-gray-900 mb-1">
-                              Segments
-                              <span className="text-green-600 text-xs ml-1">(Auto: 2)</span>
+                              Segments * <span className="text-blue-600 text-xs ml-1">({segmentOptions.join(' or ')})</span>
                             </label>
-                            <input
-                              type="text"
-                              value="2 segments"
-                              disabled
-                              className="w-full px-3 py-2 border border-green-300 rounded-md text-sm bg-green-50 text-green-900 font-medium cursor-not-allowed"
-                            />
+                            <select
+                              value={entry.specs?.numberOfSegments || ''}
+                              onChange={(e) => {
+                                const segments = e.target.value ? parseInt(e.target.value) : undefined;
+                                let centerToFace: number | undefined;
+                                let bendRadius: number | undefined;
+                                if (segments && bendRadiusType && nominalBore) {
+                                  const cfResult = getSABS719CenterToFaceBySegments(bendRadiusType, nominalBore, segments);
+                                  if (cfResult) { centerToFace = cfResult.centerToFace; bendRadius = cfResult.radius; }
+                                }
+                                const updatedEntry: any = {
+                                  ...entry,
+                                  specs: { ...entry.specs, numberOfSegments: segments, centerToFaceMm: centerToFace, bendRadiusMm: bendRadius }
+                                };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+                                if (segments && nominalBore && entry.specs?.scheduleNumber) {
+                                  setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                                }
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                            >
+                              <option value="">Select</option>
+                              {segmentOptions.map(seg => (
+                                <option key={seg} value={seg}>{seg} segments</option>
+                              ))}
+                            </select>
                             {entry.specs?.centerToFaceMm && (
                               <p className="text-xs text-green-600 mt-0.5">C/F: {Number(entry.specs.centerToFaceMm).toFixed(1)}mm</p>
                             )}
                           </>
                         );
-                      }
+                      })()}
+                    </div>
+                  );
 
-                      // Show dropdown for angles > 11°
-                      return (
-                        <>
-                          <label className="block text-xs font-semibold text-gray-900 mb-1">
-                            Segments *
-                            <span className="text-blue-600 text-xs ml-1">({segmentOptions.join(' or ')})</span>
-                          </label>
-                          <select
-                            value={entry.specs?.numberOfSegments || ''}
-                            onChange={(e) => {
-                              const segments = e.target.value ? parseInt(e.target.value) : undefined;
-                              let centerToFace: number | undefined;
-                              let bendRadius: number | undefined;
-                              if (segments && bendRadiusType && nominalBore) {
-                                const cfResult = getSABS719CenterToFaceBySegments(bendRadiusType, nominalBore, segments);
-                                if (cfResult) { centerToFace = cfResult.centerToFace; bendRadius = cfResult.radius; }
-                              }
-                              const updatedEntry: any = {
-                                ...entry,
-                                specs: { ...entry.specs, numberOfSegments: segments, centerToFaceMm: centerToFace, bendRadiusMm: bendRadius }
-                              };
-                              updatedEntry.description = generateItemDescription(updatedEntry);
-                              onUpdateEntry(entry.id, updatedEntry);
-                              if (segments && nominalBore && entry.specs?.scheduleNumber) {
-                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                              }
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                          >
-                            <option value="">Select</option>
-                            {segmentOptions.map(seg => (
-                              <option key={seg} value={seg}>{seg} segments</option>
-                            ))}
-                          </select>
-                          {entry.specs?.centerToFaceMm && (
-                            <p className="text-xs text-green-600 mt-0.5">C/F: {Number(entry.specs.centerToFaceMm).toFixed(1)}mm</p>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
+                  // Render the appropriate layout
+                  if (isSABS719) {
+                    // SABS 719 Layout: Steel Spec -> NB -> Schedule | Radius Type -> Angle -> Segments
+                    return (
+                      <>
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {SteelSpecDropdown}
+                            {NBDropdown}
+                            {ScheduleDropdown}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                          {RadiusTypeDropdown}
+                          {AngleDropdown}
+                          {SegmentsDropdown}
+                        </div>
+                      </>
+                    );
+                  } else {
+                    // SABS 62 Layout: Steel Spec -> Bend Type -> NB | Schedule -> Angle -> C/F
+                    return (
+                      <>
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {SteelSpecDropdown}
+                            {BendTypeDropdown}
+                            {NBDropdown}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                          {ScheduleDropdown}
+                          {AngleDropdown}
+                          {CFDisplay}
+                        </div>
+                      </>
+                    );
+                  }
+                })()}
 
                 {/* Two-Column Layout Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
