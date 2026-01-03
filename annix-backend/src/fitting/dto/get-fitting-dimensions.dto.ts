@@ -58,7 +58,8 @@ export class GetFittingDimensionsDto {
   nominalDiameterMm: number;
 
   @ApiPropertyOptional({
-    description: 'Angle range for laterals and Y-pieces (e.g., "60-90", "45-59", "30-44")',
+    description:
+      'Angle range for laterals and Y-pieces (e.g., "60-90", "45-59", "30-44")',
     example: '60-90',
   })
   @IsOptional()

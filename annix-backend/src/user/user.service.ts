@@ -24,10 +24,12 @@ export class UserService {
     const user = this.userRepo.create({
       ...createUserDto,
       password: hashedPassword,
-      salt: salt
+      salt: salt,
     });
 
-    let employeeRole = await this.userRoleRepo.findOne({ where: { name: 'employee' } });
+    let employeeRole = await this.userRoleRepo.findOne({
+      where: { name: 'employee' },
+    });
     if (!employeeRole) {
       employeeRole = this.userRoleRepo.create({ name: 'employee' });
       await this.userRoleRepo.save(employeeRole);
@@ -41,7 +43,9 @@ export class UserService {
   }
 
   findAll() {
-    return this.userRepo.find().then(users => users.map(user => plainToInstance(User, user)));
+    return this.userRepo
+      .find()
+      .then((users) => users.map((user) => plainToInstance(User, user)));
   }
 
   async findOne(id: number) {

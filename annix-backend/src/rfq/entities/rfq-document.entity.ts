@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  JoinColumn,
+} from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Rfq } from './rfq.entity';
 import { User } from '../../user/entities/user.entity';
@@ -14,11 +21,17 @@ export class RfqDocument {
   @JoinColumn({ name: 'rfq_id' })
   rfq: Rfq;
 
-  @ApiProperty({ description: 'Original filename', example: 'project-specs.pdf' })
+  @ApiProperty({
+    description: 'Original filename',
+    example: 'project-specs.pdf',
+  })
   @Column({ name: 'filename' })
   filename: string;
 
-  @ApiProperty({ description: 'Storage path', example: 'rfq-documents/1/abc123.pdf' })
+  @ApiProperty({
+    description: 'Storage path',
+    example: 'rfq-documents/1/abc123.pdf',
+  })
   @Column({ name: 'file_path' })
   filePath: string;
 
@@ -30,7 +43,11 @@ export class RfqDocument {
   @Column({ name: 'file_size_bytes', type: 'bigint' })
   fileSizeBytes: number;
 
-  @ApiProperty({ description: 'User who uploaded the document', type: () => User, required: false })
+  @ApiProperty({
+    description: 'User who uploaded the document',
+    type: () => User,
+    required: false,
+  })
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'uploaded_by_user_id' })
   uploadedBy?: User;

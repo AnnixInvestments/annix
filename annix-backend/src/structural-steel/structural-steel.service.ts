@@ -53,7 +53,9 @@ export class StructuralSteelService {
     return this.typeRepository.findOne({ where: { code, isActive: true } });
   }
 
-  async getTypeWithSections(typeId: number): Promise<StructuralSteelType | null> {
+  async getTypeWithSections(
+    typeId: number,
+  ): Promise<StructuralSteelType | null> {
     return this.typeRepository.findOne({
       where: { id: typeId, isActive: true },
       relations: ['sections'],
@@ -71,7 +73,9 @@ export class StructuralSteelService {
   }
 
   async getSectionsByType(typeCode: string): Promise<StructuralSteelSection[]> {
-    const type = await this.typeRepository.findOne({ where: { code: typeCode, isActive: true } });
+    const type = await this.typeRepository.findOne({
+      where: { code: typeCode, isActive: true },
+    });
     if (!type) return [];
 
     return this.sectionRepository.find({
@@ -92,7 +96,10 @@ export class StructuralSteelService {
       .createQueryBuilder('section')
       .leftJoinAndSelect('section.steelType', 'type')
       .where('section.is_active = :active', { active: true })
-      .andWhere('(section.designation ILIKE :query OR type.name ILIKE :query)', { query: `%${query}%` })
+      .andWhere(
+        '(section.designation ILIKE :query OR type.name ILIKE :query)',
+        { query: `%${query}%` },
+      )
       .orderBy('type.display_order', 'ASC')
       .addOrderBy('section.display_order', 'ASC')
       .getMany();
@@ -125,7 +132,9 @@ export class StructuralSteelService {
   /**
    * Calculate weight and surface area for a standard section
    */
-  async calculateForSection(dto: CalculateSteelWeightDto): Promise<SteelCalculationResultDto> {
+  async calculateForSection(
+    dto: CalculateSteelWeightDto,
+  ): Promise<SteelCalculationResultDto> {
     const section = await this.getSectionById(dto.sectionId);
     if (!section) {
       throw new NotFoundException(`Section with ID ${dto.sectionId} not found`);
@@ -161,7 +170,8 @@ export class StructuralSteelService {
     const lengthM = dto.lengthMm / 1000;
 
     // Weight per plate
-    const weightPerPlateKg = thicknessM * widthM * lengthM * STEEL_DENSITY_KG_M3;
+    const weightPerPlateKg =
+      thicknessM * widthM * lengthM * STEEL_DENSITY_KG_M3;
     // Surface area per plate (both sides)
     const surfacePerPlateM2 = 2 * widthM * lengthM;
 
@@ -293,7 +303,8 @@ export class StructuralSteelService {
   ): { totalWeightKg: number; totalSurfaceAreaM2: number } {
     return {
       totalWeightKg: Math.round(weightKgPerM * lengthM * quantity * 100) / 100,
-      totalSurfaceAreaM2: Math.round(surfaceAreaM2PerM * lengthM * quantity * 1000) / 1000,
+      totalSurfaceAreaM2:
+        Math.round(surfaceAreaM2PerM * lengthM * quantity * 1000) / 1000,
     };
   }
 
@@ -325,7 +336,9 @@ export class StructuralSteelService {
   }
 
   async getOperationByCode(code: string): Promise<FabricationOperation | null> {
-    return this.operationRepository.findOne({ where: { code, isActive: true } });
+    return this.operationRepository.findOne({
+      where: { code, isActive: true },
+    });
   }
 
   // ==================== Fabrication Complexity Methods ====================
@@ -337,8 +350,12 @@ export class StructuralSteelService {
     });
   }
 
-  async getComplexityByLevel(level: string): Promise<FabricationComplexity | null> {
-    return this.complexityRepository.findOne({ where: { level, isActive: true } });
+  async getComplexityByLevel(
+    level: string,
+  ): Promise<FabricationComplexity | null> {
+    return this.complexityRepository.findOne({
+      where: { level, isActive: true },
+    });
   }
 
   // ==================== Labor Rate Methods ====================
@@ -351,10 +368,15 @@ export class StructuralSteelService {
   }
 
   async getLaborRateByCode(code: string): Promise<ShopLaborRate | null> {
-    return this.laborRateRepository.findOne({ where: { code, isActive: true } });
+    return this.laborRateRepository.findOne({
+      where: { code, isActive: true },
+    });
   }
 
-  async updateLaborRate(code: string, dto: UpdateLaborRateDto): Promise<ShopLaborRate> {
+  async updateLaborRate(
+    code: string,
+    dto: UpdateLaborRateDto,
+  ): Promise<ShopLaborRate> {
     const rate = await this.laborRateRepository.findOne({ where: { code } });
     if (!rate) {
       throw new NotFoundException(`Labor rate with code ${code} not found`);
@@ -377,15 +399,21 @@ export class StructuralSteelService {
    * Stainless multiplier = 1.5x for stainless steel
    * Total cost = total hours × labor rate × stainless multiplier
    */
-  async calculateFabricationCost(dto: CalculateFabricationCostDto): Promise<FabricationCostResultDto> {
+  async calculateFabricationCost(
+    dto: CalculateFabricationCostDto,
+  ): Promise<FabricationCostResultDto> {
     // Get complexity level
     const complexity = await this.getComplexityByLevel(dto.complexityLevel);
     if (!complexity) {
-      throw new NotFoundException(`Complexity level ${dto.complexityLevel} not found`);
+      throw new NotFoundException(
+        `Complexity level ${dto.complexityLevel} not found`,
+      );
     }
 
     // Get labor rate
-    const laborRateCode = dto.laborRateCode || (dto.isStainless ? 'stainless_steel' : 'carbon_steel');
+    const laborRateCode =
+      dto.laborRateCode ||
+      (dto.isStainless ? 'stainless_steel' : 'carbon_steel');
     const laborRate = await this.getLaborRateByCode(laborRateCode);
     if (!laborRate) {
       throw new NotFoundException(`Labor rate ${laborRateCode} not found`);
@@ -406,12 +434,16 @@ export class StructuralSteelService {
       for (const opItem of dto.operations) {
         const operation = await this.getOperationByCode(opItem.operationCode);
         if (!operation) {
-          throw new NotFoundException(`Operation ${opItem.operationCode} not found`);
+          throw new NotFoundException(
+            `Operation ${opItem.operationCode} not found`,
+          );
         }
 
         const hoursPerUnit = Number(operation.hoursPerUnit);
         const opHours = hoursPerUnit * opItem.quantity;
-        const stainlessMult = dto.isStainless ? Number(operation.stainlessMultiplier) : 1.0;
+        const stainlessMult = dto.isStainless
+          ? Number(operation.stainlessMultiplier)
+          : 1.0;
         const adjustedHours = opHours * stainlessMult;
 
         totalOperationHours += adjustedHours;
@@ -422,7 +454,9 @@ export class StructuralSteelService {
           quantity: opItem.quantity,
           hoursPerUnit,
           totalHours: Math.round(adjustedHours * 100) / 100,
-          cost: Math.round(adjustedHours * Number(laborRate.ratePerHour) * 100) / 100,
+          cost:
+            Math.round(adjustedHours * Number(laborRate.ratePerHour) * 100) /
+            100,
         });
       }
     }
@@ -430,7 +464,8 @@ export class StructuralSteelService {
     // Calculate totals
     const totalLaborHours = baseFabricationHours + totalOperationHours;
     const stainlessMultiplier = dto.isStainless ? 1.5 : 1.0;
-    const totalFabricationCost = totalLaborHours * Number(laborRate.ratePerHour) * stainlessMultiplier;
+    const totalFabricationCost =
+      totalLaborHours * Number(laborRate.ratePerHour) * stainlessMultiplier;
 
     return {
       totalWeightKg: dto.totalWeightKg,

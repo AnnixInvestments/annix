@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class PopulateWeldTypesAndPipeEndConfigurationsData1699375000000 implements MigrationInterface {
+export class PopulateWeldTypesAndPipeEndConfigurationsData1699375000000
+  implements MigrationInterface
+{
   name = 'PopulateWeldTypesAndPipeEndConfigurationsData1699375000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -89,7 +91,11 @@ export class PopulateWeldTypesAndPipeEndConfigurationsData1699375000000 implemen
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Delete the data we inserted
-    await queryRunner.query(`DELETE FROM "pipe_end_configurations" WHERE "config_code" IN ('PE', 'FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF')`);
-    await queryRunner.query(`DELETE FROM "weld_types" WHERE "weld_code" IN ('FW_STR', 'FW_FIT', 'BW_NO_XRAY', 'BW_XRAY', 'MW', 'BRW_90', 'LW_LT45', 'LW_45_UP', 'GST_BEND', 'GRL', 'YP')`);
+    await queryRunner.query(
+      `DELETE FROM "pipe_end_configurations" WHERE "config_code" IN ('PE', 'FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF')`,
+    );
+    await queryRunner.query(
+      `DELETE FROM "weld_types" WHERE "weld_code" IN ('FW_STR', 'FW_FIT', 'BW_NO_XRAY', 'BW_XRAY', 'MW', 'BRW_90', 'LW_LT45', 'LW_45_UP', 'GST_BEND', 'GRL', 'YP')`,
+    );
   }
 }

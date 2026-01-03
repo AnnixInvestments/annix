@@ -10,7 +10,12 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AdminUserManagementService } from './admin-user-management.service';
 import { AdminAuthGuard } from './guards/admin-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -31,7 +36,9 @@ import { User } from '../user/entities/user.entity';
 @Roles('admin') // Only admins can manage users
 @ApiBearerAuth()
 export class AdminUserManagementController {
-  constructor(private readonly userManagementService: AdminUserManagementService) {}
+  constructor(
+    private readonly userManagementService: AdminUserManagementService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List all admin users' })

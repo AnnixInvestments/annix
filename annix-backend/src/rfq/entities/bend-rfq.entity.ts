@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { RfqItem } from './rfq-item.entity';
 
@@ -41,11 +47,21 @@ export class BendRfq {
   quantityType: string;
 
   @ApiProperty({ description: 'Working pressure in bar', example: 16 })
-  @Column({ name: 'working_pressure_bar', type: 'decimal', precision: 6, scale: 2 })
+  @Column({
+    name: 'working_pressure_bar',
+    type: 'decimal',
+    precision: 6,
+    scale: 2,
+  })
   workingPressureBar: number;
 
   @ApiProperty({ description: 'Working temperature in Celsius', example: 20 })
-  @Column({ name: 'working_temperature_c', type: 'decimal', precision: 5, scale: 2 })
+  @Column({
+    name: 'working_temperature_c',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+  })
   workingTemperatureC: number;
 
   @ApiProperty({ description: 'Steel specification ID', example: 2 })
@@ -66,15 +82,36 @@ export class BendRfq {
 
   // Calculated fields
   @ApiProperty({ description: 'Total weight in kg', example: 125.5 })
-  @Column({ name: 'total_weight_kg', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({
+    name: 'total_weight_kg',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   totalWeightKg?: number;
 
-  @ApiProperty({ description: 'Center-to-face dimension in mm', example: 525.0 })
-  @Column({ name: 'center_to_face_mm', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @ApiProperty({
+    description: 'Center-to-face dimension in mm',
+    example: 525.0,
+  })
+  @Column({
+    name: 'center_to_face_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   centerToFaceMm?: number;
 
-  @ApiProperty({ description: 'Total cost in Rand', example: 15500.00 })
-  @Column({ name: 'total_cost', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @ApiProperty({ description: 'Total cost in Rand', example: 15500.0 })
+  @Column({
+    name: 'total_cost',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
   totalCost?: number;
 
   @ApiProperty({ description: 'Lead time in days', example: 21 })
@@ -82,13 +119,22 @@ export class BendRfq {
   leadTimeDays?: number;
 
   // Relationship to RfqItem
-  @OneToOne(() => RfqItem, rfqItem => rfqItem.bendDetails)
+  @OneToOne(() => RfqItem, (rfqItem) => rfqItem.bendDetails)
   @JoinColumn({ name: 'rfq_item_id' })
   rfqItem: RfqItem;
 
-  @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    name: 'created_at',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   createdAt: Date;
 
-  @Column({ name: 'updated_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+  @Column({
+    name: 'updated_at',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
   updatedAt: Date;
 }

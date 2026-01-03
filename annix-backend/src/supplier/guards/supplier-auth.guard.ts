@@ -35,9 +35,12 @@ export class SupplierAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<SupplierJwtPayload>(token, {
-        secret: this.configService.get<string>('JWT_SECRET'),
-      });
+      const payload = await this.jwtService.verifyAsync<SupplierJwtPayload>(
+        token,
+        {
+          secret: this.configService.get<string>('JWT_SECRET'),
+        },
+      );
 
       // Verify this is a supplier token
       if (payload.type !== 'supplier') {
@@ -45,7 +48,9 @@ export class SupplierAuthGuard implements CanActivate {
       }
 
       // Verify session is still valid
-      const session = await this.supplierAuthService.verifySession(payload.sessionToken);
+      const session = await this.supplierAuthService.verifySession(
+        payload.sessionToken,
+      );
       if (!session) {
         throw new UnauthorizedException('Session expired or invalid');
       }

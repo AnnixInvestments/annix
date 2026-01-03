@@ -19,7 +19,9 @@ export class DrawingVersion {
   id: number;
 
   @ApiProperty({ description: 'Parent drawing', type: () => Drawing })
-  @ManyToOne(() => Drawing, (drawing) => drawing.versions, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Drawing, (drawing) => drawing.versions, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'drawing_id' })
   drawing: Drawing;
 
@@ -39,11 +41,17 @@ export class DrawingVersion {
   @Column({ name: 'file_size_bytes', type: 'bigint' })
   fileSizeBytes: number;
 
-  @ApiProperty({ description: 'Change notes for this version', required: false })
+  @ApiProperty({
+    description: 'Change notes for this version',
+    required: false,
+  })
   @Column({ name: 'change_notes', type: 'text', nullable: true })
   changeNotes?: string;
 
-  @ApiProperty({ description: 'User who uploaded this version', type: () => User })
+  @ApiProperty({
+    description: 'User who uploaded this version',
+    type: () => User,
+  })
   @ManyToOne(() => User)
   @JoinColumn({ name: 'uploaded_by_user_id' })
   uploadedBy: User;

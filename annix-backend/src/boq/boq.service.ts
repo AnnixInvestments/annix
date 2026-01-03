@@ -63,8 +63,8 @@ export class BoqService {
       description: dto.description,
       status: BoqStatus.DRAFT,
       createdBy: user,
-      drawing: dto.drawingId ? { id: dto.drawingId } as any : undefined,
-      rfq: dto.rfqId ? { id: dto.rfqId } as any : undefined,
+      drawing: dto.drawingId ? ({ id: dto.drawingId } as any) : undefined,
+      rfq: dto.rfqId ? ({ id: dto.rfqId } as any) : undefined,
     });
 
     const savedBoq = await this.boqRepository.save(boq);
@@ -92,15 +92,21 @@ export class BoqService {
       .leftJoinAndSelect('boq.rfq', 'rfq');
 
     if (query.status) {
-      queryBuilder = queryBuilder.andWhere('boq.status = :status', { status: query.status });
+      queryBuilder = queryBuilder.andWhere('boq.status = :status', {
+        status: query.status,
+      });
     }
 
     if (query.drawingId) {
-      queryBuilder = queryBuilder.andWhere('boq.drawing_id = :drawingId', { drawingId: query.drawingId });
+      queryBuilder = queryBuilder.andWhere('boq.drawing_id = :drawingId', {
+        drawingId: query.drawingId,
+      });
     }
 
     if (query.rfqId) {
-      queryBuilder = queryBuilder.andWhere('boq.rfq_id = :rfqId', { rfqId: query.rfqId });
+      queryBuilder = queryBuilder.andWhere('boq.rfq_id = :rfqId', {
+        rfqId: query.rfqId,
+      });
     }
 
     if (query.createdByUserId) {
@@ -162,10 +168,10 @@ export class BoqService {
     if (dto.title) boq.title = dto.title;
     if (dto.description !== undefined) boq.description = dto.description;
     if (dto.drawingId !== undefined) {
-      boq.drawing = dto.drawingId ? { id: dto.drawingId } as any : undefined;
+      boq.drawing = dto.drawingId ? ({ id: dto.drawingId } as any) : undefined;
     }
     if (dto.rfqId !== undefined) {
-      boq.rfq = dto.rfqId ? { id: dto.rfqId } as any : undefined;
+      boq.rfq = dto.rfqId ? ({ id: dto.rfqId } as any) : undefined;
     }
 
     await this.boqRepository.save(boq);
@@ -204,7 +210,11 @@ export class BoqService {
   }
 
   // Line Items
-  async addLineItem(boqId: number, dto: CreateBoqLineItemDto, user: User): Promise<BoqLineItem> {
+  async addLineItem(
+    boqId: number,
+    dto: CreateBoqLineItemDto,
+    user: User,
+  ): Promise<BoqLineItem> {
     const boq = await this.findOne(boqId);
 
     if (boq.status === BoqStatus.APPROVED) {
@@ -229,9 +239,13 @@ export class BoqService {
     lineItem.unitOfMeasure = dto.unitOfMeasure;
     lineItem.quantity = dto.quantity;
     lineItem.unitWeightKg = dto.unitWeightKg;
-    lineItem.totalWeightKg = dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : undefined;
+    lineItem.totalWeightKg = dto.unitWeightKg
+      ? dto.quantity * dto.unitWeightKg
+      : undefined;
     lineItem.unitPrice = dto.unitPrice;
-    lineItem.totalPrice = dto.unitPrice ? dto.quantity * dto.unitPrice : undefined;
+    lineItem.totalPrice = dto.unitPrice
+      ? dto.quantity * dto.unitPrice
+      : undefined;
     lineItem.notes = dto.notes;
     lineItem.drawingReference = dto.drawingReference;
     lineItem.specifications = dto.specifications;
@@ -281,7 +295,9 @@ export class BoqService {
         unitOfMeasure: dto.unitOfMeasure,
         quantity: dto.quantity,
         unitWeightKg: dto.unitWeightKg,
-        totalWeightKg: dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : undefined,
+        totalWeightKg: dto.unitWeightKg
+          ? dto.quantity * dto.unitWeightKg
+          : undefined,
         unitPrice: dto.unitPrice,
         totalPrice: dto.unitPrice ? dto.quantity * dto.unitPrice : undefined,
         notes: dto.notes,
@@ -334,11 +350,14 @@ export class BoqService {
     if (dto.itemType) lineItem.itemType = dto.itemType;
     if (dto.unitOfMeasure) lineItem.unitOfMeasure = dto.unitOfMeasure;
     if (dto.quantity !== undefined) lineItem.quantity = dto.quantity;
-    if (dto.unitWeightKg !== undefined) lineItem.unitWeightKg = dto.unitWeightKg;
+    if (dto.unitWeightKg !== undefined)
+      lineItem.unitWeightKg = dto.unitWeightKg;
     if (dto.unitPrice !== undefined) lineItem.unitPrice = dto.unitPrice;
     if (dto.notes !== undefined) lineItem.notes = dto.notes;
-    if (dto.drawingReference !== undefined) lineItem.drawingReference = dto.drawingReference;
-    if (dto.specifications !== undefined) lineItem.specifications = dto.specifications;
+    if (dto.drawingReference !== undefined)
+      lineItem.drawingReference = dto.drawingReference;
+    if (dto.specifications !== undefined)
+      lineItem.specifications = dto.specifications;
 
     // Recalculate totals
     lineItem.totalWeightKg = lineItem.unitWeightKg
@@ -363,7 +382,11 @@ export class BoqService {
     return updated;
   }
 
-  async removeLineItem(boqId: number, lineItemId: number, user: User): Promise<void> {
+  async removeLineItem(
+    boqId: number,
+    lineItemId: number,
+    user: User,
+  ): Promise<void> {
     const boq = await this.findOne(boqId);
 
     if (boq.status === BoqStatus.APPROVED) {
@@ -410,13 +433,17 @@ export class BoqService {
     const existingIds = new Set(existingItems.map((i) => i.id));
     for (const id of dto.itemIds) {
       if (!existingIds.has(id)) {
-        throw new BadRequestException(`Line item ${id} does not belong to this BOQ`);
+        throw new BadRequestException(
+          `Line item ${id} does not belong to this BOQ`,
+        );
       }
     }
 
     // Update line numbers
     for (let i = 0; i < dto.itemIds.length; i++) {
-      await this.lineItemRepository.update(dto.itemIds[i], { lineNumber: i + 1 });
+      await this.lineItemRepository.update(dto.itemIds[i], {
+        lineNumber: i + 1,
+      });
     }
 
     await this.auditService.log({
@@ -431,7 +458,11 @@ export class BoqService {
     return boqUpdated.lineItems;
   }
 
-  async linkToDrawing(boqId: number, drawingId: number, user: User): Promise<Boq> {
+  async linkToDrawing(
+    boqId: number,
+    drawingId: number,
+    user: User,
+  ): Promise<Boq> {
     const boq = await this.findOne(boqId);
 
     if (boq.status === BoqStatus.APPROVED) {
@@ -486,7 +517,9 @@ export class BoqService {
 
     for (let i = 0; i < items.length; i++) {
       if (items[i].lineNumber !== i + 1) {
-        await this.lineItemRepository.update(items[i].id, { lineNumber: i + 1 });
+        await this.lineItemRepository.update(items[i].id, {
+          lineNumber: i + 1,
+        });
       }
     }
   }

@@ -1,9 +1,4 @@
-import {
-  IsString,
-  IsOptional,
-  IsBoolean,
-  MaxLength,
-} from 'class-validator';
+import { IsString, IsOptional, IsBoolean, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateSupplierProfileDto {
@@ -19,19 +14,28 @@ export class UpdateSupplierProfileDto {
   @MaxLength(100)
   lastName?: string;
 
-  @ApiPropertyOptional({ description: 'Job title or role', example: 'Sales Manager' })
+  @ApiPropertyOptional({
+    description: 'Job title or role',
+    example: 'Sales Manager',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(100)
   jobTitle?: string;
 
-  @ApiPropertyOptional({ description: 'Direct phone number', example: '+27 21 555 0125' })
+  @ApiPropertyOptional({
+    description: 'Direct phone number',
+    example: '+27 21 555 0125',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(30)
   directPhone?: string;
 
-  @ApiPropertyOptional({ description: 'Mobile phone number', example: '+27 82 555 0123' })
+  @ApiPropertyOptional({
+    description: 'Mobile phone number',
+    example: '+27 82 555 0123',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(30)

@@ -54,7 +54,12 @@ export class SupplierAdminService {
     page: number = 1,
     limit: number = 20,
     status?: SupplierOnboardingStatus,
-  ): Promise<{ items: SupplierListItemDto[]; total: number; page: number; totalPages: number }> {
+  ): Promise<{
+    items: SupplierListItemDto[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
     const queryBuilder = this.profileRepo
       .createQueryBuilder('profile')
       .leftJoinAndSelect('profile.user', 'user')
@@ -74,14 +79,15 @@ export class SupplierAdminService {
       .take(limit)
       .getMany();
 
-    const items: SupplierListItemDto[] = profiles.map(profile => ({
+    const items: SupplierListItemDto[] = profiles.map((profile) => ({
       id: profile.id,
       email: profile.user?.email,
       firstName: profile.firstName,
       lastName: profile.lastName,
       companyName: profile.company?.tradingName || profile.company?.legalName,
       accountStatus: profile.accountStatus,
-      onboardingStatus: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
+      onboardingStatus:
+        profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
       createdAt: profile.createdAt,
     }));
 
@@ -102,7 +108,7 @@ export class SupplierAdminService {
       order: { createdAt: 'ASC' },
     });
 
-    return profiles.map(profile => ({
+    return profiles.map((profile) => ({
       id: profile.id,
       email: profile.user?.email,
       firstName: profile.firstName,
@@ -134,24 +140,27 @@ export class SupplierAdminService {
       lastName: profile.lastName,
       companyName: profile.company?.tradingName || profile.company?.legalName,
       accountStatus: profile.accountStatus,
-      onboardingStatus: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
+      onboardingStatus:
+        profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
       createdAt: profile.createdAt,
-      company: profile.company ? {
-        id: profile.company.id,
-        legalName: profile.company.legalName,
-        tradingName: profile.company.tradingName,
-        registrationNumber: profile.company.registrationNumber,
-        taxNumber: profile.company.taxNumber,
-        vatNumber: profile.company.vatNumber,
-        city: profile.company.city,
-        provinceState: profile.company.provinceState,
-        country: profile.company.country,
-        primaryContactName: profile.company.primaryContactName,
-        primaryContactEmail: profile.company.primaryContactEmail,
-        primaryContactPhone: profile.company.primaryContactPhone,
-        industryType: profile.company.industryType,
-      } : undefined,
-      documents: (profile.documents || []).map(doc => ({
+      company: profile.company
+        ? {
+            id: profile.company.id,
+            legalName: profile.company.legalName,
+            tradingName: profile.company.tradingName,
+            registrationNumber: profile.company.registrationNumber,
+            taxNumber: profile.company.taxNumber,
+            vatNumber: profile.company.vatNumber,
+            city: profile.company.city,
+            provinceState: profile.company.provinceState,
+            country: profile.company.country,
+            primaryContactName: profile.company.primaryContactName,
+            primaryContactEmail: profile.company.primaryContactEmail,
+            primaryContactPhone: profile.company.primaryContactPhone,
+            industryType: profile.company.industryType,
+          }
+        : undefined,
+      documents: (profile.documents || []).map((doc) => ({
         id: doc.id,
         documentType: doc.documentType,
         fileName: doc.fileName,
@@ -160,7 +169,8 @@ export class SupplierAdminService {
       })),
       onboarding: {
         status: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
-        companyDetailsComplete: profile.onboarding?.companyDetailsComplete || false,
+        companyDetailsComplete:
+          profile.onboarding?.companyDetailsComplete || false,
         documentsComplete: profile.onboarding?.documentsComplete || false,
         submittedAt: profile.onboarding?.submittedAt,
         rejectionReason: profile.onboarding?.rejectionReason ?? undefined,
@@ -202,7 +212,11 @@ export class SupplierAdminService {
       entityId: documentId,
       action: AuditAction.UPDATE,
       oldValues: { validationStatus: oldStatus },
-      newValues: { validationStatus: dto.validationStatus, validationNotes: dto.validationNotes, reviewedById: adminUserId },
+      newValues: {
+        validationStatus: dto.validationStatus,
+        validationNotes: dto.validationNotes,
+        reviewedById: adminUserId,
+      },
       ipAddress: clientIp,
     });
 
@@ -231,8 +245,10 @@ export class SupplierAdminService {
       throw new NotFoundException('Onboarding record not found');
     }
 
-    if (onboarding.status !== SupplierOnboardingStatus.SUBMITTED &&
-        onboarding.status !== SupplierOnboardingStatus.UNDER_REVIEW) {
+    if (
+      onboarding.status !== SupplierOnboardingStatus.SUBMITTED &&
+      onboarding.status !== SupplierOnboardingStatus.UNDER_REVIEW
+    ) {
       throw new BadRequestException('Onboarding is not in a reviewable status');
     }
 
@@ -250,7 +266,9 @@ export class SupplierAdminService {
     if (profile.user?.email) {
       await this.emailService.sendSupplierApprovalEmail(
         profile.user.email,
-        profile.company?.tradingName || profile.company?.legalName || 'Your Company',
+        profile.company?.tradingName ||
+          profile.company?.legalName ||
+          'Your Company',
       );
     }
 
@@ -258,7 +276,10 @@ export class SupplierAdminService {
       entityType: 'supplier_onboarding',
       entityId: onboarding.id,
       action: AuditAction.APPROVE,
-      newValues: { status: SupplierOnboardingStatus.APPROVED, approvedById: adminUserId },
+      newValues: {
+        status: SupplierOnboardingStatus.APPROVED,
+        approvedById: adminUserId,
+      },
       ipAddress: clientIp,
     });
 
@@ -291,8 +312,10 @@ export class SupplierAdminService {
       throw new NotFoundException('Onboarding record not found');
     }
 
-    if (onboarding.status !== SupplierOnboardingStatus.SUBMITTED &&
-        onboarding.status !== SupplierOnboardingStatus.UNDER_REVIEW) {
+    if (
+      onboarding.status !== SupplierOnboardingStatus.SUBMITTED &&
+      onboarding.status !== SupplierOnboardingStatus.UNDER_REVIEW
+    ) {
       throw new BadRequestException('Onboarding is not in a reviewable status');
     }
 
@@ -308,7 +331,9 @@ export class SupplierAdminService {
     if (profile.user?.email) {
       await this.emailService.sendSupplierRejectionEmail(
         profile.user.email,
-        profile.company?.tradingName || profile.company?.legalName || 'Your Company',
+        profile.company?.tradingName ||
+          profile.company?.legalName ||
+          'Your Company',
         dto.rejectionReason,
         dto.remediationSteps,
       );
@@ -359,7 +384,10 @@ export class SupplierAdminService {
       entityType: 'supplier_onboarding',
       entityId: onboarding.id,
       action: AuditAction.UPDATE,
-      newValues: { status: SupplierOnboardingStatus.UNDER_REVIEW, reviewStartedById: adminUserId },
+      newValues: {
+        status: SupplierOnboardingStatus.UNDER_REVIEW,
+        reviewStartedById: adminUserId,
+      },
       ipAddress: clientIp,
     });
 
@@ -430,7 +458,10 @@ export class SupplierAdminService {
       entityType: 'supplier_profile',
       entityId: supplierId,
       action: AuditAction.UPDATE,
-      newValues: { accountStatus: SupplierAccountStatus.ACTIVE, reactivatedById: adminUserId },
+      newValues: {
+        accountStatus: SupplierAccountStatus.ACTIVE,
+        reactivatedById: adminUserId,
+      },
       ipAddress: clientIp,
     });
 

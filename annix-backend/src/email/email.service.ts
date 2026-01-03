@@ -39,12 +39,15 @@ export class EmailService {
       this.isConfigured = true;
       this.logger.log('Email transporter configured successfully');
     } else {
-      this.logger.warn('SMTP not configured - emails will be logged to console');
+      this.logger.warn(
+        'SMTP not configured - emails will be logged to console',
+      );
     }
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
-    const from = this.configService.get<string>('EMAIL_FROM') || 'noreply@annix.com';
+    const from =
+      this.configService.get<string>('EMAIL_FROM') || 'noreply@annix.com';
 
     if (!this.isConfigured) {
       this.logger.log('=== EMAIL (Console Mode) ===');
@@ -76,7 +79,8 @@ export class EmailService {
     email: string,
     verificationToken: string,
   ): Promise<boolean> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const verificationLink = `${frontendUrl}/supplier/verify-email?token=${verificationToken}`;
 
     const html = `
@@ -128,8 +132,12 @@ export class EmailService {
     });
   }
 
-  async sendSupplierApprovalEmail(email: string, companyName: string): Promise<boolean> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+  async sendSupplierApprovalEmail(
+    email: string,
+    companyName: string,
+  ): Promise<boolean> {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const portalLink = `${frontendUrl}/supplier/portal/dashboard`;
 
     const html = `
@@ -177,7 +185,8 @@ export class EmailService {
     reason: string,
     remediationSteps: string,
   ): Promise<boolean> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const onboardingLink = `${frontendUrl}/supplier/portal/onboarding`;
 
     const html = `
@@ -230,7 +239,8 @@ export class EmailService {
     email: string,
     verificationToken: string,
   ): Promise<boolean> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const verificationLink = `${frontendUrl}/customer/verify-email?token=${verificationToken}`;
 
     const html = `
@@ -282,8 +292,12 @@ export class EmailService {
     });
   }
 
-  async sendCustomerOnboardingApprovalEmail(email: string, companyName: string): Promise<boolean> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+  async sendCustomerOnboardingApprovalEmail(
+    email: string,
+    companyName: string,
+  ): Promise<boolean> {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const portalLink = `${frontendUrl}/customer/portal/dashboard`;
 
     const html = `
@@ -331,7 +345,8 @@ export class EmailService {
     reason: string,
     remediationSteps: string,
   ): Promise<boolean> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const onboardingLink = `${frontendUrl}/customer/portal/onboarding`;
 
     const html = `
@@ -384,7 +399,8 @@ export class EmailService {
     invitationToken: string,
     message?: string,
   ): Promise<boolean> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const registerLink = `${frontendUrl}/supplier/register?invitation=${invitationToken}`;
 
     const html = `
@@ -398,12 +414,16 @@ export class EmailService {
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #2563eb;">You've Been Invited!</h1>
           <p><strong>${customerCompanyName}</strong> has invited you to register as a supplier on the Annix platform.</p>
-          ${message ? `
+          ${
+            message
+              ? `
           <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
             <strong>Message from ${customerCompanyName}:</strong>
             <p style="margin: 5px 0 0 0;">${message}</p>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
           <p>As a registered supplier, you'll be able to:</p>
           <ul>
             <li>Receive RFQ notifications</li>
@@ -442,9 +462,11 @@ export class EmailService {
     documentType: string,
     reason: string,
   ): Promise<boolean> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const adminLink = `${frontendUrl}/admin/customers/${customerId}`;
-    const supportEmail = this.configService.get<string>('SUPPORT_EMAIL') || 'info@annix.co.za';
+    const supportEmail =
+      this.configService.get<string>('SUPPORT_EMAIL') || 'info@annix.co.za';
 
     const html = `
       <!DOCTYPE html>
@@ -505,7 +527,8 @@ export class EmailService {
     name: string,
     temporaryPassword: string,
   ): Promise<boolean> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const adminLoginLink = `${frontendUrl}/admin/login`;
 
     const html = `

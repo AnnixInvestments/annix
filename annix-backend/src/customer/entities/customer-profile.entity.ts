@@ -88,10 +88,19 @@ export class CustomerProfile {
   @Column({ name: 'email_verified', default: false })
   emailVerified: boolean;
 
-  @Column({ name: 'email_verification_token', type: 'varchar', length: 500, nullable: true })
+  @Column({
+    name: 'email_verification_token',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
   emailVerificationToken: string | null;
 
-  @Column({ name: 'email_verification_expires', type: 'timestamp', nullable: true })
+  @Column({
+    name: 'email_verification_expires',
+    type: 'timestamp',
+    nullable: true,
+  })
   emailVerificationExpires: Date | null;
 
   @Column({ name: 'suspension_reason', type: 'text', nullable: true })
@@ -124,7 +133,11 @@ export class CustomerProfile {
   @Column({ name: 'terms_accepted_at', type: 'timestamp', nullable: true })
   termsAcceptedAt: Date;
 
-  @Column({ name: 'security_policy_accepted_at', type: 'timestamp', nullable: true })
+  @Column({
+    name: 'security_policy_accepted_at',
+    type: 'timestamp',
+    nullable: true,
+  })
   securityPolicyAcceptedAt: Date;
 
   // Onboarding

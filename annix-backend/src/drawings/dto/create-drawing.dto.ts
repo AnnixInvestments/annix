@@ -1,8 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, MaxLength, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateDrawingDto {
-  @ApiProperty({ description: 'Drawing title', example: 'Pipeline Section A - General Arrangement' })
+  @ApiProperty({
+    description: 'Drawing title',
+    example: 'Pipeline Section A - General Arrangement',
+  })
   @IsString()
   @MinLength(3)
   @MaxLength(255)

@@ -2,7 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString, IsNumber } from 'class-validator';
 
 export class UploadBoqDto {
-  @ApiProperty({ description: 'BOQ title', example: 'Pipeline Section A - Materials' })
+  @ApiProperty({
+    description: 'BOQ title',
+    example: 'Pipeline Section A - Materials',
+  })
   @IsString()
   title: string;
 

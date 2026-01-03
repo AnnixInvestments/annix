@@ -1,5 +1,11 @@
 import { Type } from 'class-transformer';
-import { ValidateNested, IsArray, IsOptional, IsNumber, IsNotEmpty } from 'class-validator';
+import {
+  ValidateNested,
+  IsArray,
+  IsOptional,
+  IsNumber,
+  IsNotEmpty,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { CreateFittingBoreDto } from 'src/fitting-bore/dto/create-fitting-bore.dto';
 import { CreateFittingDimensionDto } from '../../fitting-dimension/dto/create-fitting-dimension.dto';
@@ -32,4 +38,3 @@ export class CreateFittingVariantDto {
   @IsOptional()
   dimensions?: CreateFittingDimensionDto[];
 }
-

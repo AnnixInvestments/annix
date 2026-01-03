@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Unique,
+} from 'typeorm';
 import { FlangeStandard } from '../../flange-standard/entities/flange-standard.entity';
 
 @Entity('flange_bolting')
@@ -26,12 +33,30 @@ export class FlangeBolting {
   @Column({ type: 'decimal', precision: 5, scale: 3, name: 'bolt_dia' })
   boltDia: number; // Bolt diameter in inches
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'bolt_length_default', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'bolt_length_default',
+    nullable: true,
+  })
   boltLengthDefault: number | null; // Default bolt length (usually for WN flanges)
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'bolt_length_so_sw_th', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'bolt_length_so_sw_th',
+    nullable: true,
+  })
   boltLengthSoSwTh: number | null; // Bolt length for SO, SW, Threaded flanges
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'bolt_length_lj', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'bolt_length_lj',
+    nullable: true,
+  })
   boltLengthLj: number | null; // Bolt length for Lap Joint flanges
 }

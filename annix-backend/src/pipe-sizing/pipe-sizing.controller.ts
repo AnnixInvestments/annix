@@ -32,7 +32,10 @@ export class PipeSizingController {
     @Query('temperatureC') temperatureC: string,
   ) {
     const tempF = Number(temperatureC) * 1.8 + 32;
-    const stress = await this.pipeSizingService.getAllowableStress(materialCode, tempF);
+    const stress = await this.pipeSizingService.getAllowableStress(
+      materialCode,
+      tempF,
+    );
     return {
       materialCode,
       temperatureC: Number(temperatureC),
@@ -66,7 +69,9 @@ export class PipeSizingController {
       nps,
       materialCode,
       selectedSchedule,
-      corrosionAllowanceMm: corrosionAllowanceMm ? Number(corrosionAllowanceMm) : 0,
+      corrosionAllowanceMm: corrosionAllowanceMm
+        ? Number(corrosionAllowanceMm)
+        : 0,
     });
   }
 
@@ -75,6 +80,9 @@ export class PipeSizingController {
     @Query('nps') nps: string,
     @Query('requiredThicknessInch') requiredThicknessInch: string,
   ) {
-    return this.pipeSizingService.getNextSuitableSchedule(nps, Number(requiredThicknessInch));
+    return this.pipeSizingService.getNextSuitableSchedule(
+      nps,
+      Number(requiredThicknessInch),
+    );
   }
 }

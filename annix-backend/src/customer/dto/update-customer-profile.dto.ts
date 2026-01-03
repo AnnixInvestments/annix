@@ -10,19 +10,28 @@ import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 
 // Only allow updating specific fields
 export class UpdateCustomerProfileDto {
-  @ApiPropertyOptional({ description: 'Job title', example: 'Senior Procurement Manager' })
+  @ApiPropertyOptional({
+    description: 'Job title',
+    example: 'Senior Procurement Manager',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(100)
   jobTitle?: string;
 
-  @ApiPropertyOptional({ description: 'Direct phone number', example: '+27 11 555 0125' })
+  @ApiPropertyOptional({
+    description: 'Direct phone number',
+    example: '+27 11 555 0125',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(30)
   directPhone?: string;
 
-  @ApiPropertyOptional({ description: 'Mobile phone number', example: '+27 82 555 0123' })
+  @ApiPropertyOptional({
+    description: 'Mobile phone number',
+    example: '+27 82 555 0123',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(30)
@@ -30,7 +39,10 @@ export class UpdateCustomerProfileDto {
 }
 
 export class UpdateCompanyAddressDto {
-  @ApiPropertyOptional({ description: 'Street address', example: '456 New Industrial Road' })
+  @ApiPropertyOptional({
+    description: 'Street address',
+    example: '456 New Industrial Road',
+  })
   @IsString()
   @IsOptional()
   streetAddress?: string;
@@ -41,7 +53,10 @@ export class UpdateCompanyAddressDto {
   @MaxLength(100)
   city?: string;
 
-  @ApiPropertyOptional({ description: 'Province or state', example: 'Western Cape' })
+  @ApiPropertyOptional({
+    description: 'Province or state',
+    example: 'Western Cape',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(100)
@@ -53,7 +68,10 @@ export class UpdateCompanyAddressDto {
   @MaxLength(20)
   postalCode?: string;
 
-  @ApiPropertyOptional({ description: 'Primary contact phone number', example: '+27 21 555 0123' })
+  @ApiPropertyOptional({
+    description: 'Primary contact phone number',
+    example: '+27 21 555 0123',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(30)
@@ -66,7 +84,8 @@ export class ChangePasswordDto {
   currentPassword: string;
 
   @ApiProperty({
-    description: 'New password (min 10 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char)',
+    description:
+      'New password (min 10 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char)',
     example: 'NewSecure1!',
   })
   @IsString()

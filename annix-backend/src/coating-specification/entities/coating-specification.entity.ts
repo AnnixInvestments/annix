@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { CoatingEnvironment } from './coating-environment.entity';
 
 @Entity('coating_specifications')
@@ -6,7 +12,9 @@ export class CoatingSpecification {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => CoatingEnvironment, (env) => env.specifications, { onDelete: 'CASCADE' })
+  @ManyToOne(() => CoatingEnvironment, (env) => env.specifications, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'environment_id' })
   environment: CoatingEnvironment;
 

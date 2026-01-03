@@ -24,7 +24,11 @@
 //     return `This action removes a #${id} angleRange`;
 //   }
 // }
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AngleRange } from './entities/angle-range.entity';
@@ -39,7 +43,9 @@ export class AngleRangeService {
   ) {}
 
   async create(dto: CreateAngleRangeDto): Promise<AngleRange> {
-    const exists = await this.rangeRepo.findOne({ where: { angle_min: dto.angle_min, angle_max: dto.angle_max } });
+    const exists = await this.rangeRepo.findOne({
+      where: { angle_min: dto.angle_min, angle_max: dto.angle_max },
+    });
     if (exists) {
       throw new BadRequestException(
         `AngleRange with min ${dto.angle_min}° and max ${dto.angle_max}° already exists`,
@@ -55,7 +61,10 @@ export class AngleRangeService {
   }
 
   async findOne(id: number): Promise<AngleRange> {
-    const range = await this.rangeRepo.findOne({ where: { id }, relations: ['fittingDimensions'] });
+    const range = await this.rangeRepo.findOne({
+      where: { id },
+      relations: ['fittingDimensions'],
+    });
     if (!range) throw new NotFoundException(`AngleRange ${id} not found`);
     return range;
   }

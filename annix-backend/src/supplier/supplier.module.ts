@@ -72,10 +72,6 @@ import { EmailModule } from '../email/email.module';
     SupplierAdminService,
     SupplierAuthGuard,
   ],
-  exports: [
-    SupplierAuthService,
-    SupplierService,
-    SupplierAuthGuard,
-  ],
+  exports: [SupplierAuthService, SupplierService, SupplierAuthGuard],
 })
 export class SupplierModule {}

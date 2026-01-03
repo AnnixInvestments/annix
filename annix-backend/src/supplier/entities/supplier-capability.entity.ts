@@ -121,7 +121,13 @@ export class SupplierCapability {
   expeditedLeadTimeDays: number;
 
   // Minimum Order
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, name: 'minimum_order_value' })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    name: 'minimum_order_value',
+  })
   minimumOrderValue: number;
 
   @Column({ type: 'text', nullable: true, name: 'minimum_order_quantity' })
@@ -145,7 +151,13 @@ export class SupplierCapability {
   isActive: boolean;
 
   // Capability Score (for FR-P8)
-  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, name: 'capability_score' })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    name: 'capability_score',
+  })
   capabilityScore: number; // 0-100 score based on completeness, certifications, performance
 
   @Column({ type: 'timestamp', nullable: true, name: 'last_verified_at' })

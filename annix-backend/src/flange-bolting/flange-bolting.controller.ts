@@ -1,6 +1,10 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { FlangeBoltingService } from './flange-bolting.service';
-import { CreateFlangeBoltingDto, CreateFlangeBoltingMaterialDto, BulkCreateFlangeBoltingDto } from './dto/create-flange-bolting.dto';
+import {
+  CreateFlangeBoltingDto,
+  CreateFlangeBoltingMaterialDto,
+  BulkCreateFlangeBoltingDto,
+} from './dto/create-flange-bolting.dto';
 
 @Controller('flange-bolting')
 export class FlangeBoltingController {
@@ -46,7 +50,10 @@ export class FlangeBoltingController {
     @Query('standardId') standardId: string,
     @Query('pressureClass') pressureClass: string,
   ) {
-    return this.boltingService.findBoltingByStandardAndClass(Number(standardId), pressureClass);
+    return this.boltingService.findBoltingByStandardAndClass(
+      Number(standardId),
+      pressureClass,
+    );
   }
 
   @Get('for-flange')
@@ -55,7 +62,11 @@ export class FlangeBoltingController {
     @Query('pressureClass') pressureClass: string,
     @Query('nps') nps: string,
   ) {
-    return this.boltingService.getBoltingForFlange(Number(standardId), pressureClass, nps);
+    return this.boltingService.getBoltingForFlange(
+      Number(standardId),
+      pressureClass,
+      nps,
+    );
   }
 
   @Get('complete')

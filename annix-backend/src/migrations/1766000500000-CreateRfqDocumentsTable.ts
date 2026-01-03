@@ -1,11 +1,13 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateRfqDocumentsTable1766000500000 implements MigrationInterface {
-    name = 'CreateRfqDocumentsTable1766000500000'
+export class CreateRfqDocumentsTable1766000500000
+  implements MigrationInterface
+{
+  name = 'CreateRfqDocumentsTable1766000500000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create rfq_documents table
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create rfq_documents table
+    await queryRunner.query(`
             CREATE TABLE "rfq_documents" (
                 "id" SERIAL NOT NULL,
                 "rfq_id" integer NOT NULL,
@@ -19,8 +21,8 @@ export class CreateRfqDocumentsTable1766000500000 implements MigrationInterface 
             )
         `);
 
-        // Add foreign key constraint to rfq
-        await queryRunner.query(`
+    // Add foreign key constraint to rfq
+    await queryRunner.query(`
             ALTER TABLE "rfq_documents"
             ADD CONSTRAINT "FK_rfq_documents_rfq"
             FOREIGN KEY ("rfq_id")
@@ -28,8 +30,8 @@ export class CreateRfqDocumentsTable1766000500000 implements MigrationInterface 
             ON DELETE CASCADE
         `);
 
-        // Add foreign key constraint to user
-        await queryRunner.query(`
+    // Add foreign key constraint to user
+    await queryRunner.query(`
             ALTER TABLE "rfq_documents"
             ADD CONSTRAINT "FK_rfq_documents_uploaded_by"
             FOREIGN KEY ("uploaded_by_user_id")
@@ -37,16 +39,24 @@ export class CreateRfqDocumentsTable1766000500000 implements MigrationInterface 
             ON DELETE SET NULL
         `);
 
-        // Create indexes for common queries
-        await queryRunner.query(`CREATE INDEX "IDX_rfq_documents_rfq_id" ON "rfq_documents" ("rfq_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_rfq_documents_created_at" ON "rfq_documents" ("created_at")`);
-    }
+    // Create indexes for common queries
+    await queryRunner.query(
+      `CREATE INDEX "IDX_rfq_documents_rfq_id" ON "rfq_documents" ("rfq_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_rfq_documents_created_at" ON "rfq_documents" ("created_at")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX "IDX_rfq_documents_created_at"`);
-        await queryRunner.query(`DROP INDEX "IDX_rfq_documents_rfq_id"`);
-        await queryRunner.query(`ALTER TABLE "rfq_documents" DROP CONSTRAINT "FK_rfq_documents_uploaded_by"`);
-        await queryRunner.query(`ALTER TABLE "rfq_documents" DROP CONSTRAINT "FK_rfq_documents_rfq"`);
-        await queryRunner.query(`DROP TABLE "rfq_documents"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP INDEX "IDX_rfq_documents_created_at"`);
+    await queryRunner.query(`DROP INDEX "IDX_rfq_documents_rfq_id"`);
+    await queryRunner.query(
+      `ALTER TABLE "rfq_documents" DROP CONSTRAINT "FK_rfq_documents_uploaded_by"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "rfq_documents" DROP CONSTRAINT "FK_rfq_documents_rfq"`,
+    );
+    await queryRunner.query(`DROP TABLE "rfq_documents"`);
+  }
 }

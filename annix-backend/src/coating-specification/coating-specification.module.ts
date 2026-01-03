@@ -7,7 +7,13 @@ import { CoatingSpecificationService } from './coating-specification.service';
 import { CoatingSpecificationController } from './coating-specification.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CoatingStandard, CoatingEnvironment, CoatingSpecification])],
+  imports: [
+    TypeOrmModule.forFeature([
+      CoatingStandard,
+      CoatingEnvironment,
+      CoatingSpecification,
+    ]),
+  ],
   controllers: [CoatingSpecificationController],
   providers: [CoatingSpecificationService],
   exports: [CoatingSpecificationService],

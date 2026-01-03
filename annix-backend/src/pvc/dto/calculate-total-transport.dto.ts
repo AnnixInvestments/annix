@@ -1,4 +1,13 @@
-import { IsArray, IsInt, IsNumber, IsPositive, IsString, IsOptional, ValidateNested, Min } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsNumber,
+  IsPositive,
+  IsString,
+  IsOptional,
+  ValidateNested,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -18,7 +27,9 @@ export class PvcTransportItemDto {
   @IsOptional()
   pressureRating?: number;
 
-  @ApiPropertyOptional({ description: 'Length in meters (required for straight_pipe)' })
+  @ApiPropertyOptional({
+    description: 'Length in meters (required for straight_pipe)',
+  })
   @IsNumber()
   @IsPositive()
   @Min(0.1)
@@ -33,7 +44,10 @@ export class PvcTransportItemDto {
 }
 
 export class CalculatePvcTotalTransportDto {
-  @ApiProperty({ description: 'Array of items to calculate transport weight', type: [PvcTransportItemDto] })
+  @ApiProperty({
+    description: 'Array of items to calculate transport weight',
+    type: [PvcTransportItemDto],
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => PvcTransportItemDto)

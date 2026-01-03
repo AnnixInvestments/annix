@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { FittingVariantService } from './fitting-variant.service';
 import { CreateFittingVariantDto } from './dto/create-fitting-variant.dto';
 import { UpdateFittingVariantDto } from './dto/update-fitting-variant.dto';
@@ -19,14 +27,20 @@ export class FittingVariantController {
 
   @Get()
   @ApiOperation({ summary: 'Get all fitting variant' })
-  @ApiResponse({ status: 200, description: 'List of fitting variants retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of fitting variants retrieved successfully',
+  })
   findAll() {
     return this.fittingVariantService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a fitting variant by ID' })
-  @ApiResponse({ status: 200, description: 'Fitting variant retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Fitting variant retrieved successfully',
+  })
   @ApiResponse({ status: 404, description: 'Fitting variant not found' })
   @ApiResponse({ status: 400, description: 'Invalid ID parameter' })
   findOne(@Param('id') id: string) {
@@ -35,16 +49,28 @@ export class FittingVariantController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a fitting variant' })
-  @ApiResponse({ status: 200, description: 'Fitting variant updated successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid request or duplicate fitting variant' })
+  @ApiResponse({
+    status: 200,
+    description: 'Fitting variant updated successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or duplicate fitting variant',
+  })
   @ApiResponse({ status: 404, description: 'Fitting variant not found' })
-  update(@Param('id') id: string, @Body() updateFittingVariantDto: UpdateFittingVariantDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateFittingVariantDto: UpdateFittingVariantDto,
+  ) {
     return this.fittingVariantService.update(+id, updateFittingVariantDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a fitting variant' })
-  @ApiResponse({ status: 200, description: 'Fitting variant deleted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Fitting variant deleted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Fitting variant not found' })
   @ApiResponse({ status: 400, description: 'Invalid ID parameter' })
   remove(@Param('id') id: string) {

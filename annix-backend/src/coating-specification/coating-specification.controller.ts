@@ -30,12 +30,19 @@ export class CoatingSpecificationController {
     @Query('standardCode') standardCode: string,
     @Query('category') category: string,
   ) {
-    return this.coatingService.findEnvironmentByCategory(standardCode, category);
+    return this.coatingService.findEnvironmentByCategory(
+      standardCode,
+      category,
+    );
   }
 
   @Get('specifications/by-environment')
-  findSpecificationsByEnvironment(@Query('environmentId') environmentId: string) {
-    return this.coatingService.findSpecificationsByEnvironment(Number(environmentId));
+  findSpecificationsByEnvironment(
+    @Query('environmentId') environmentId: string,
+  ) {
+    return this.coatingService.findSpecificationsByEnvironment(
+      Number(environmentId),
+    );
   }
 
   @Get('recommended')
@@ -45,7 +52,12 @@ export class CoatingSpecificationController {
     @Query('coatingType') coatingType: 'external' | 'internal',
     @Query('lifespan') lifespan?: string,
   ) {
-    return this.coatingService.getRecommendedCoatings(standardCode, category, coatingType, lifespan);
+    return this.coatingService.getRecommendedCoatings(
+      standardCode,
+      category,
+      coatingType,
+      lifespan,
+    );
   }
 
   @Get('complete')

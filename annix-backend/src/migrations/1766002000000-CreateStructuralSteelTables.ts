@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateStructuralSteelTables1766002000000 implements MigrationInterface {
+export class CreateStructuralSteelTables1766002000000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create structural_steel_types table
     await queryRunner.query(`
@@ -55,167 +57,374 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
     `);
 
     // Create index for faster lookups
-    await queryRunner.query(`CREATE INDEX idx_sections_type_id ON structural_steel_sections(type_id)`);
-    await queryRunner.query(`CREATE INDEX idx_sections_designation ON structural_steel_sections(designation)`);
+    await queryRunner.query(
+      `CREATE INDEX idx_sections_type_id ON structural_steel_sections(type_id)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_sections_designation ON structural_steel_sections(designation)`,
+    );
 
     // Seed steel types
     const types = [
-      { name: 'Equal Leg Angle', code: 'angle_equal', description: 'Equal leg angle sections (L-shaped)', order: 1 },
-      { name: 'Unequal Leg Angle', code: 'angle_unequal', description: 'Unequal leg angle sections', order: 2 },
-      { name: 'Channel', code: 'channel', description: 'Channel sections (C-shaped, U-shaped)', order: 3 },
-      { name: 'Wide Flange Beam', code: 'beam_wf', description: 'Wide flange I-beam sections (W shapes)', order: 4 },
-      { name: 'I-Beam', code: 'beam_i', description: 'Standard I-beam sections (S shapes)', order: 5 },
-      { name: 'HSS Square', code: 'hss_square', description: 'Hollow structural section - square (SHS)', order: 6 },
-      { name: 'HSS Rectangular', code: 'hss_rect', description: 'Hollow structural section - rectangular (RHS)', order: 7 },
-      { name: 'HSS Round', code: 'hss_round', description: 'Hollow structural section - circular (CHS)', order: 8 },
-      { name: 'Flat Bar', code: 'bar_flat', description: 'Flat bar sections', order: 9 },
-      { name: 'Round Bar', code: 'bar_round', description: 'Round bar sections', order: 10 },
-      { name: 'Square Bar', code: 'bar_square', description: 'Square bar sections', order: 11 },
-      { name: 'Plate', code: 'plate', description: 'Steel plate (custom dimensions)', order: 12 },
+      {
+        name: 'Equal Leg Angle',
+        code: 'angle_equal',
+        description: 'Equal leg angle sections (L-shaped)',
+        order: 1,
+      },
+      {
+        name: 'Unequal Leg Angle',
+        code: 'angle_unequal',
+        description: 'Unequal leg angle sections',
+        order: 2,
+      },
+      {
+        name: 'Channel',
+        code: 'channel',
+        description: 'Channel sections (C-shaped, U-shaped)',
+        order: 3,
+      },
+      {
+        name: 'Wide Flange Beam',
+        code: 'beam_wf',
+        description: 'Wide flange I-beam sections (W shapes)',
+        order: 4,
+      },
+      {
+        name: 'I-Beam',
+        code: 'beam_i',
+        description: 'Standard I-beam sections (S shapes)',
+        order: 5,
+      },
+      {
+        name: 'HSS Square',
+        code: 'hss_square',
+        description: 'Hollow structural section - square (SHS)',
+        order: 6,
+      },
+      {
+        name: 'HSS Rectangular',
+        code: 'hss_rect',
+        description: 'Hollow structural section - rectangular (RHS)',
+        order: 7,
+      },
+      {
+        name: 'HSS Round',
+        code: 'hss_round',
+        description: 'Hollow structural section - circular (CHS)',
+        order: 8,
+      },
+      {
+        name: 'Flat Bar',
+        code: 'bar_flat',
+        description: 'Flat bar sections',
+        order: 9,
+      },
+      {
+        name: 'Round Bar',
+        code: 'bar_round',
+        description: 'Round bar sections',
+        order: 10,
+      },
+      {
+        name: 'Square Bar',
+        code: 'bar_square',
+        description: 'Square bar sections',
+        order: 11,
+      },
+      {
+        name: 'Plate',
+        code: 'plate',
+        description: 'Steel plate (custom dimensions)',
+        order: 12,
+      },
     ];
 
     const typeIdMap: Record<string, number> = {};
     for (const type of types) {
-      const result = await queryRunner.query(`
+      const result = await queryRunner.query(
+        `
         INSERT INTO structural_steel_types (name, code, description, display_order)
         VALUES ($1, $2, $3, $4)
         RETURNING id
-      `, [type.name, type.code, type.description, type.order]);
+      `,
+        [type.name, type.code, type.description, type.order],
+      );
       typeIdMap[type.code] = result[0].id;
     }
 
     // Seed steel grades
     const grades = [
-      { code: 'A36', name: 'ASTM A36', standard: 'ASTM', yield: 250, tensile: 400, types: ['angle_equal', 'angle_unequal', 'channel', 'beam_wf', 'beam_i', 'plate', 'bar_flat', 'bar_round', 'bar_square'], desc: 'General purpose structural steel', order: 1 },
-      { code: 'A572-50', name: 'ASTM A572 Grade 50', standard: 'ASTM', yield: 345, tensile: 450, types: ['angle_equal', 'angle_unequal', 'channel', 'beam_wf', 'beam_i', 'plate'], desc: 'High-strength low-alloy structural steel', order: 2 },
-      { code: 'A992', name: 'ASTM A992', standard: 'ASTM', yield: 345, tensile: 450, types: ['beam_wf', 'beam_i'], desc: 'Standard specification for structural steel shapes', order: 3 },
-      { code: 'A500-B', name: 'ASTM A500 Grade B', standard: 'ASTM', yield: 290, tensile: 400, types: ['hss_square', 'hss_rect', 'hss_round'], desc: 'Cold-formed welded and seamless carbon steel structural tubing', order: 4 },
-      { code: 'A500-C', name: 'ASTM A500 Grade C', standard: 'ASTM', yield: 317, tensile: 427, types: ['hss_square', 'hss_rect', 'hss_round'], desc: 'Cold-formed welded and seamless carbon steel structural tubing (higher strength)', order: 5 },
-      { code: 'S235', name: 'EN 10025 S235', standard: 'EN', yield: 235, tensile: 360, types: ['angle_equal', 'angle_unequal', 'channel', 'beam_wf', 'beam_i', 'plate', 'bar_flat', 'bar_round', 'bar_square'], desc: 'European standard structural steel', order: 6 },
-      { code: 'S275', name: 'EN 10025 S275', standard: 'EN', yield: 275, tensile: 430, types: ['angle_equal', 'angle_unequal', 'channel', 'beam_wf', 'beam_i', 'plate', 'bar_flat', 'bar_round', 'bar_square'], desc: 'European standard structural steel', order: 7 },
-      { code: 'S355', name: 'EN 10025 S355', standard: 'EN', yield: 355, tensile: 470, types: ['angle_equal', 'angle_unequal', 'channel', 'beam_wf', 'beam_i', 'plate', 'bar_flat', 'bar_round', 'bar_square', 'hss_square', 'hss_rect', 'hss_round'], desc: 'European standard high-strength structural steel', order: 8 },
+      {
+        code: 'A36',
+        name: 'ASTM A36',
+        standard: 'ASTM',
+        yield: 250,
+        tensile: 400,
+        types: [
+          'angle_equal',
+          'angle_unequal',
+          'channel',
+          'beam_wf',
+          'beam_i',
+          'plate',
+          'bar_flat',
+          'bar_round',
+          'bar_square',
+        ],
+        desc: 'General purpose structural steel',
+        order: 1,
+      },
+      {
+        code: 'A572-50',
+        name: 'ASTM A572 Grade 50',
+        standard: 'ASTM',
+        yield: 345,
+        tensile: 450,
+        types: [
+          'angle_equal',
+          'angle_unequal',
+          'channel',
+          'beam_wf',
+          'beam_i',
+          'plate',
+        ],
+        desc: 'High-strength low-alloy structural steel',
+        order: 2,
+      },
+      {
+        code: 'A992',
+        name: 'ASTM A992',
+        standard: 'ASTM',
+        yield: 345,
+        tensile: 450,
+        types: ['beam_wf', 'beam_i'],
+        desc: 'Standard specification for structural steel shapes',
+        order: 3,
+      },
+      {
+        code: 'A500-B',
+        name: 'ASTM A500 Grade B',
+        standard: 'ASTM',
+        yield: 290,
+        tensile: 400,
+        types: ['hss_square', 'hss_rect', 'hss_round'],
+        desc: 'Cold-formed welded and seamless carbon steel structural tubing',
+        order: 4,
+      },
+      {
+        code: 'A500-C',
+        name: 'ASTM A500 Grade C',
+        standard: 'ASTM',
+        yield: 317,
+        tensile: 427,
+        types: ['hss_square', 'hss_rect', 'hss_round'],
+        desc: 'Cold-formed welded and seamless carbon steel structural tubing (higher strength)',
+        order: 5,
+      },
+      {
+        code: 'S235',
+        name: 'EN 10025 S235',
+        standard: 'EN',
+        yield: 235,
+        tensile: 360,
+        types: [
+          'angle_equal',
+          'angle_unequal',
+          'channel',
+          'beam_wf',
+          'beam_i',
+          'plate',
+          'bar_flat',
+          'bar_round',
+          'bar_square',
+        ],
+        desc: 'European standard structural steel',
+        order: 6,
+      },
+      {
+        code: 'S275',
+        name: 'EN 10025 S275',
+        standard: 'EN',
+        yield: 275,
+        tensile: 430,
+        types: [
+          'angle_equal',
+          'angle_unequal',
+          'channel',
+          'beam_wf',
+          'beam_i',
+          'plate',
+          'bar_flat',
+          'bar_round',
+          'bar_square',
+        ],
+        desc: 'European standard structural steel',
+        order: 7,
+      },
+      {
+        code: 'S355',
+        name: 'EN 10025 S355',
+        standard: 'EN',
+        yield: 355,
+        tensile: 470,
+        types: [
+          'angle_equal',
+          'angle_unequal',
+          'channel',
+          'beam_wf',
+          'beam_i',
+          'plate',
+          'bar_flat',
+          'bar_round',
+          'bar_square',
+          'hss_square',
+          'hss_rect',
+          'hss_round',
+        ],
+        desc: 'European standard high-strength structural steel',
+        order: 8,
+      },
     ];
 
     for (const grade of grades) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_grades (code, name, standard, yield_strength_mpa, tensile_strength_mpa, compatible_types, description, display_order)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [grade.code, grade.name, grade.standard, grade.yield, grade.tensile, JSON.stringify(grade.types), grade.desc, grade.order]);
+      `,
+        [
+          grade.code,
+          grade.name,
+          grade.standard,
+          grade.yield,
+          grade.tensile,
+          JSON.stringify(grade.types),
+          grade.desc,
+          grade.order,
+        ],
+      );
     }
 
     // Seed Equal Leg Angles - Format: [designation, leg1_mm, leg2_mm, thickness_mm, weight_kg/m, surface_m2/m]
-    const equalAngles: Array<[string, number, number, number, number, number]> = [
-      ['20x20x3', 20, 20, 3, 0.89, 0.074],
-      ['25x25x3', 25, 25, 3, 1.12, 0.094],
-      ['25x25x4', 25, 25, 4, 1.46, 0.094],
-      ['25x25x5', 25, 25, 5, 1.80, 0.094],
-      ['30x30x3', 30, 30, 3, 1.36, 0.114],
-      ['30x30x4', 30, 30, 4, 1.78, 0.114],
-      ['30x30x5', 30, 30, 5, 2.18, 0.114],
-      ['35x35x3', 35, 35, 3, 1.60, 0.134],
-      ['35x35x4', 35, 35, 4, 2.10, 0.134],
-      ['35x35x5', 35, 35, 5, 2.58, 0.134],
-      ['40x40x3', 40, 40, 3, 1.83, 0.154],
-      ['40x40x4', 40, 40, 4, 2.42, 0.154],
-      ['40x40x5', 40, 40, 5, 2.97, 0.154],
-      ['40x40x6', 40, 40, 6, 3.52, 0.154],
-      ['45x45x3', 45, 45, 3, 2.07, 0.174],
-      ['45x45x4', 45, 45, 4, 2.74, 0.174],
-      ['45x45x5', 45, 45, 5, 3.38, 0.174],
-      ['45x45x6', 45, 45, 6, 4.00, 0.174],
-      ['50x50x3', 50, 50, 3, 2.30, 0.194],
-      ['50x50x4', 50, 50, 4, 3.06, 0.194],
-      ['50x50x5', 50, 50, 5, 3.77, 0.193],
-      ['50x50x6', 50, 50, 6, 4.47, 0.193],
-      ['50x50x8', 50, 50, 8, 5.82, 0.193],
-      ['60x60x4', 60, 60, 4, 3.69, 0.234],
-      ['60x60x5', 60, 60, 5, 4.57, 0.233],
-      ['60x60x6', 60, 60, 6, 5.42, 0.233],
-      ['60x60x8', 60, 60, 8, 7.09, 0.233],
-      ['65x65x5', 65, 65, 5, 4.97, 0.253],
-      ['65x65x6', 65, 65, 6, 5.91, 0.253],
-      ['65x65x8', 65, 65, 8, 7.73, 0.253],
-      ['70x70x5', 70, 70, 5, 5.37, 0.273],
-      ['70x70x6', 70, 70, 6, 6.38, 0.273],
-      ['70x70x7', 70, 70, 7, 7.38, 0.273],
-      ['70x70x8', 70, 70, 8, 8.37, 0.273],
-      ['75x75x5', 75, 75, 5, 5.77, 0.293],
-      ['75x75x6', 75, 75, 6, 6.85, 0.293],
-      ['75x75x8', 75, 75, 8, 9.01, 0.293],
-      ['75x75x10', 75, 75, 10, 11.0, 0.293],
-      ['80x80x6', 80, 80, 6, 7.34, 0.313],
-      ['80x80x8', 80, 80, 8, 9.63, 0.313],
-      ['80x80x10', 80, 80, 10, 11.9, 0.313],
-      ['90x90x6', 90, 90, 6, 8.30, 0.353],
-      ['90x90x7', 90, 90, 7, 9.61, 0.353],
-      ['90x90x8', 90, 90, 8, 10.9, 0.353],
-      ['90x90x9', 90, 90, 9, 12.2, 0.353],
-      ['90x90x10', 90, 90, 10, 13.4, 0.353],
-      ['100x100x6', 100, 100, 6, 9.26, 0.393],
-      ['100x100x8', 100, 100, 8, 12.2, 0.393],
-      ['100x100x10', 100, 100, 10, 15.0, 0.393],
-      ['100x100x12', 100, 100, 12, 17.8, 0.393],
-      ['110x110x8', 110, 110, 8, 13.4, 0.433],
-      ['110x110x10', 110, 110, 10, 16.6, 0.433],
-      ['110x110x12', 110, 110, 12, 19.7, 0.433],
-      ['120x120x8', 120, 120, 8, 14.7, 0.473],
-      ['120x120x10', 120, 120, 10, 18.2, 0.473],
-      ['120x120x12', 120, 120, 12, 21.6, 0.473],
-      ['120x120x15', 120, 120, 15, 26.6, 0.473],
-      ['130x130x10', 130, 130, 10, 19.8, 0.513],
-      ['130x130x12', 130, 130, 12, 23.5, 0.513],
-      ['140x140x10', 140, 140, 10, 21.4, 0.553],
-      ['140x140x12', 140, 140, 12, 25.4, 0.553],
-      ['140x140x14', 140, 140, 14, 29.3, 0.553],
-      ['150x150x10', 150, 150, 10, 23.0, 0.593],
-      ['150x150x12', 150, 150, 12, 27.3, 0.593],
-      ['150x150x15', 150, 150, 15, 33.8, 0.593],
-      ['150x150x18', 150, 150, 18, 40.1, 0.593],
-      ['160x160x12', 160, 160, 12, 29.2, 0.633],
-      ['160x160x14', 160, 160, 14, 33.8, 0.633],
-      ['160x160x16', 160, 160, 16, 38.3, 0.633],
-      ['180x180x12', 180, 180, 12, 32.9, 0.713],
-      ['180x180x14', 180, 180, 14, 38.2, 0.713],
-      ['180x180x16', 180, 180, 16, 43.3, 0.713],
-      ['180x180x18', 180, 180, 18, 48.4, 0.713],
-      ['200x200x14', 200, 200, 14, 42.6, 0.793],
-      ['200x200x16', 200, 200, 16, 48.5, 0.793],
-      ['200x200x18', 200, 200, 18, 54.2, 0.793],
-      ['200x200x20', 200, 200, 20, 59.9, 0.793],
-    ];
+    const equalAngles: Array<[string, number, number, number, number, number]> =
+      [
+        ['20x20x3', 20, 20, 3, 0.89, 0.074],
+        ['25x25x3', 25, 25, 3, 1.12, 0.094],
+        ['25x25x4', 25, 25, 4, 1.46, 0.094],
+        ['25x25x5', 25, 25, 5, 1.8, 0.094],
+        ['30x30x3', 30, 30, 3, 1.36, 0.114],
+        ['30x30x4', 30, 30, 4, 1.78, 0.114],
+        ['30x30x5', 30, 30, 5, 2.18, 0.114],
+        ['35x35x3', 35, 35, 3, 1.6, 0.134],
+        ['35x35x4', 35, 35, 4, 2.1, 0.134],
+        ['35x35x5', 35, 35, 5, 2.58, 0.134],
+        ['40x40x3', 40, 40, 3, 1.83, 0.154],
+        ['40x40x4', 40, 40, 4, 2.42, 0.154],
+        ['40x40x5', 40, 40, 5, 2.97, 0.154],
+        ['40x40x6', 40, 40, 6, 3.52, 0.154],
+        ['45x45x3', 45, 45, 3, 2.07, 0.174],
+        ['45x45x4', 45, 45, 4, 2.74, 0.174],
+        ['45x45x5', 45, 45, 5, 3.38, 0.174],
+        ['45x45x6', 45, 45, 6, 4.0, 0.174],
+        ['50x50x3', 50, 50, 3, 2.3, 0.194],
+        ['50x50x4', 50, 50, 4, 3.06, 0.194],
+        ['50x50x5', 50, 50, 5, 3.77, 0.193],
+        ['50x50x6', 50, 50, 6, 4.47, 0.193],
+        ['50x50x8', 50, 50, 8, 5.82, 0.193],
+        ['60x60x4', 60, 60, 4, 3.69, 0.234],
+        ['60x60x5', 60, 60, 5, 4.57, 0.233],
+        ['60x60x6', 60, 60, 6, 5.42, 0.233],
+        ['60x60x8', 60, 60, 8, 7.09, 0.233],
+        ['65x65x5', 65, 65, 5, 4.97, 0.253],
+        ['65x65x6', 65, 65, 6, 5.91, 0.253],
+        ['65x65x8', 65, 65, 8, 7.73, 0.253],
+        ['70x70x5', 70, 70, 5, 5.37, 0.273],
+        ['70x70x6', 70, 70, 6, 6.38, 0.273],
+        ['70x70x7', 70, 70, 7, 7.38, 0.273],
+        ['70x70x8', 70, 70, 8, 8.37, 0.273],
+        ['75x75x5', 75, 75, 5, 5.77, 0.293],
+        ['75x75x6', 75, 75, 6, 6.85, 0.293],
+        ['75x75x8', 75, 75, 8, 9.01, 0.293],
+        ['75x75x10', 75, 75, 10, 11.0, 0.293],
+        ['80x80x6', 80, 80, 6, 7.34, 0.313],
+        ['80x80x8', 80, 80, 8, 9.63, 0.313],
+        ['80x80x10', 80, 80, 10, 11.9, 0.313],
+        ['90x90x6', 90, 90, 6, 8.3, 0.353],
+        ['90x90x7', 90, 90, 7, 9.61, 0.353],
+        ['90x90x8', 90, 90, 8, 10.9, 0.353],
+        ['90x90x9', 90, 90, 9, 12.2, 0.353],
+        ['90x90x10', 90, 90, 10, 13.4, 0.353],
+        ['100x100x6', 100, 100, 6, 9.26, 0.393],
+        ['100x100x8', 100, 100, 8, 12.2, 0.393],
+        ['100x100x10', 100, 100, 10, 15.0, 0.393],
+        ['100x100x12', 100, 100, 12, 17.8, 0.393],
+        ['110x110x8', 110, 110, 8, 13.4, 0.433],
+        ['110x110x10', 110, 110, 10, 16.6, 0.433],
+        ['110x110x12', 110, 110, 12, 19.7, 0.433],
+        ['120x120x8', 120, 120, 8, 14.7, 0.473],
+        ['120x120x10', 120, 120, 10, 18.2, 0.473],
+        ['120x120x12', 120, 120, 12, 21.6, 0.473],
+        ['120x120x15', 120, 120, 15, 26.6, 0.473],
+        ['130x130x10', 130, 130, 10, 19.8, 0.513],
+        ['130x130x12', 130, 130, 12, 23.5, 0.513],
+        ['140x140x10', 140, 140, 10, 21.4, 0.553],
+        ['140x140x12', 140, 140, 12, 25.4, 0.553],
+        ['140x140x14', 140, 140, 14, 29.3, 0.553],
+        ['150x150x10', 150, 150, 10, 23.0, 0.593],
+        ['150x150x12', 150, 150, 12, 27.3, 0.593],
+        ['150x150x15', 150, 150, 15, 33.8, 0.593],
+        ['150x150x18', 150, 150, 18, 40.1, 0.593],
+        ['160x160x12', 160, 160, 12, 29.2, 0.633],
+        ['160x160x14', 160, 160, 14, 33.8, 0.633],
+        ['160x160x16', 160, 160, 16, 38.3, 0.633],
+        ['180x180x12', 180, 180, 12, 32.9, 0.713],
+        ['180x180x14', 180, 180, 14, 38.2, 0.713],
+        ['180x180x16', 180, 180, 16, 43.3, 0.713],
+        ['180x180x18', 180, 180, 18, 48.4, 0.713],
+        ['200x200x14', 200, 200, 14, 42.6, 0.793],
+        ['200x200x16', 200, 200, 16, 48.5, 0.793],
+        ['200x200x18', 200, 200, 18, 54.2, 0.793],
+        ['200x200x20', 200, 200, 20, 59.9, 0.793],
+      ];
 
     let order = 1;
     for (const [desig, leg1, leg2, thick, weight, surface] of equalAngles) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_sections (type_id, designation, dimensions, weight_kg_per_m, surface_area_m2_per_m, grades, display_order)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        typeIdMap['angle_equal'],
-        desig,
-        JSON.stringify({ leg1Mm: leg1, leg2Mm: leg2, thicknessMm: thick }),
-        weight,
-        surface,
-        JSON.stringify(['A36', 'A572-50', 'S235', 'S275', 'S355']),
-        order++,
-      ]);
+      `,
+        [
+          typeIdMap['angle_equal'],
+          desig,
+          JSON.stringify({ leg1Mm: leg1, leg2Mm: leg2, thicknessMm: thick }),
+          weight,
+          surface,
+          JSON.stringify(['A36', 'A572-50', 'S235', 'S275', 'S355']),
+          order++,
+        ],
+      );
     }
 
     // Seed Unequal Leg Angles - Format: [designation, leg1_mm, leg2_mm, thickness_mm, weight_kg/m, surface_m2/m]
-    const unequalAngles: Array<[string, number, number, number, number, number]> = [
+    const unequalAngles: Array<
+      [string, number, number, number, number, number]
+    > = [
       ['30x20x3', 30, 20, 3, 1.12, 0.094],
       ['30x20x4', 30, 20, 4, 1.46, 0.094],
       ['40x20x3', 40, 20, 3, 1.36, 0.114],
       ['40x20x4', 40, 20, 4, 1.78, 0.114],
       ['40x25x3', 40, 25, 3, 1.46, 0.124],
       ['40x25x4', 40, 25, 4, 1.93, 0.124],
-      ['45x30x3', 45, 30, 3, 1.70, 0.144],
+      ['45x30x3', 45, 30, 3, 1.7, 0.144],
       ['45x30x4', 45, 30, 4, 2.25, 0.144],
       ['45x30x5', 45, 30, 5, 2.77, 0.144],
       ['50x30x4', 50, 30, 4, 2.42, 0.154],
       ['50x30x5', 50, 30, 5, 2.98, 0.154],
       ['60x30x4', 60, 30, 4, 2.74, 0.174],
       ['60x30x5', 60, 30, 5, 3.38, 0.174],
-      ['60x30x6', 60, 30, 6, 4.00, 0.174],
+      ['60x30x6', 60, 30, 6, 4.0, 0.174],
       ['60x40x4', 60, 40, 4, 3.06, 0.194],
       ['60x40x5', 60, 40, 5, 3.77, 0.194],
       ['60x40x6', 60, 40, 6, 4.47, 0.194],
@@ -237,7 +446,7 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['90x60x8', 90, 60, 8, 9.01, 0.293],
       ['100x50x6', 100, 50, 6, 6.85, 0.293],
       ['100x50x8', 100, 50, 8, 9.01, 0.293],
-      ['100x65x7', 100, 65, 7, 8.80, 0.323],
+      ['100x65x7', 100, 65, 7, 8.8, 0.323],
       ['100x65x8', 100, 65, 8, 9.99, 0.323],
       ['100x65x10', 100, 65, 10, 12.3, 0.323],
       ['100x75x8', 100, 75, 8, 10.6, 0.343],
@@ -260,18 +469,21 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
 
     order = 1;
     for (const [desig, leg1, leg2, thick, weight, surface] of unequalAngles) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_sections (type_id, designation, dimensions, weight_kg_per_m, surface_area_m2_per_m, grades, display_order)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        typeIdMap['angle_unequal'],
-        desig,
-        JSON.stringify({ leg1Mm: leg1, leg2Mm: leg2, thicknessMm: thick }),
-        weight,
-        surface,
-        JSON.stringify(['A36', 'A572-50', 'S235', 'S275', 'S355']),
-        order++,
-      ]);
+      `,
+        [
+          typeIdMap['angle_unequal'],
+          desig,
+          JSON.stringify({ leg1Mm: leg1, leg2Mm: leg2, thicknessMm: thick }),
+          weight,
+          surface,
+          JSON.stringify(['A36', 'A572-50', 'S235', 'S275', 'S355']),
+          order++,
+        ],
+      );
     }
 
     // Seed Channels (PFC/UPN style) - Format: [designation, depth_mm, flange_mm, web_mm, weight_kg/m, surface_m2/m]
@@ -285,23 +497,23 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['PFC 220x80', 220, 80, 6.5, 26.6, 0.62],
       ['PFC 250x80', 250, 80, 7, 28.8, 0.68],
       ['PFC 260x90', 260, 90, 7, 34.2, 0.72],
-      ['PFC 300x90', 300, 90, 7.5, 38.0, 0.80],
+      ['PFC 300x90', 300, 90, 7.5, 38.0, 0.8],
       ['PFC 300x100', 300, 100, 9, 46.2, 0.82],
       ['PFC 380x100', 380, 100, 9.5, 54.6, 0.99],
       ['PFC 400x100', 400, 100, 10, 60.0, 1.03],
       ['UPN 50', 50, 38, 5, 5.59, 0.21],
       ['UPN 65', 65, 42, 5.5, 7.09, 0.26],
-      ['UPN 80', 80, 45, 6, 8.64, 0.30],
+      ['UPN 80', 80, 45, 6, 8.64, 0.3],
       ['UPN 100', 100, 50, 6, 10.6, 0.36],
       ['UPN 120', 120, 55, 7, 13.4, 0.42],
       ['UPN 140', 140, 60, 7, 16.0, 0.48],
       ['UPN 160', 160, 65, 7.5, 18.8, 0.54],
-      ['UPN 180', 180, 70, 8, 22.0, 0.60],
+      ['UPN 180', 180, 70, 8, 22.0, 0.6],
       ['UPN 200', 200, 75, 8.5, 25.3, 0.66],
       ['UPN 220', 220, 80, 9, 29.4, 0.72],
       ['UPN 240', 240, 85, 9.5, 33.2, 0.78],
       ['UPN 260', 260, 90, 10, 37.9, 0.84],
-      ['UPN 280', 280, 95, 10, 41.8, 0.90],
+      ['UPN 280', 280, 95, 10, 41.8, 0.9],
       ['UPN 300', 300, 100, 10, 46.2, 0.96],
       ['UPN 320', 320, 100, 14, 59.5, 1.01],
       ['UPN 350', 350, 100, 14, 60.6, 1.08],
@@ -318,7 +530,7 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['C6x10.5', 152, 48, 6.1, 15.6, 0.44],
       ['C6x13', 152, 51, 7.1, 19.4, 0.45],
       ['C7x9.8', 178, 48, 5.3, 14.6, 0.49],
-      ['C7x12.25', 178, 51, 6.4, 18.2, 0.50],
+      ['C7x12.25', 178, 51, 6.4, 18.2, 0.5],
       ['C8x11.5', 203, 51, 5.6, 17.1, 0.55],
       ['C8x13.75', 203, 53, 6.4, 20.5, 0.56],
       ['C8x18.75', 203, 59, 8.3, 27.9, 0.58],
@@ -339,32 +551,37 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
 
     order = 1;
     for (const [desig, depth, flange, web, weight, surface] of channels) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_sections (type_id, designation, dimensions, weight_kg_per_m, surface_area_m2_per_m, grades, display_order)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        typeIdMap['channel'],
-        desig,
-        JSON.stringify({ depthMm: depth, flangeMm: flange, webMm: web }),
-        weight,
-        surface,
-        JSON.stringify(['A36', 'A572-50', 'S235', 'S275', 'S355']),
-        order++,
-      ]);
+      `,
+        [
+          typeIdMap['channel'],
+          desig,
+          JSON.stringify({ depthMm: depth, flangeMm: flange, webMm: web }),
+          weight,
+          surface,
+          JSON.stringify(['A36', 'A572-50', 'S235', 'S275', 'S355']),
+          order++,
+        ],
+      );
     }
 
     // Seed Wide Flange Beams (W shapes) - Format: [designation, depth_mm, width_mm, web_mm, flange_mm, weight_kg/m, surface_m2/m]
-    const wfBeams: Array<[string, number, number, number, number, number, number]> = [
+    const wfBeams: Array<
+      [string, number, number, number, number, number, number]
+    > = [
       ['W4x13', 106, 103, 7.5, 8.8, 19.4, 0.42],
       ['W5x16', 127, 127, 6.9, 9.1, 23.8, 0.51],
       ['W5x19', 131, 128, 7.5, 10.9, 28.3, 0.52],
-      ['W6x9', 150, 99, 4.3, 5.5, 13.4, 0.50],
+      ['W6x9', 150, 99, 4.3, 5.5, 13.4, 0.5],
       ['W6x12', 152, 102, 5.6, 6.6, 17.9, 0.51],
       ['W6x15', 152, 152, 5.8, 6.6, 22.3, 0.61],
       ['W6x16', 160, 102, 6.6, 7.9, 23.8, 0.52],
       ['W6x20', 157, 153, 6.6, 7.7, 29.8, 0.62],
       ['W6x25', 162, 154, 8.1, 9.7, 37.2, 0.63],
-      ['W8x10', 201, 100, 4.3, 5.2, 14.9, 0.60],
+      ['W8x10', 201, 100, 4.3, 5.2, 14.9, 0.6],
       ['W8x13', 201, 102, 5.6, 6.4, 19.4, 0.61],
       ['W8x15', 206, 102, 6.2, 7.1, 22.3, 0.62],
       ['W8x18', 207, 133, 5.8, 7.2, 26.8, 0.68],
@@ -377,14 +594,14 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['W8x48', 216, 206, 10.2, 13.5, 71.4, 0.84],
       ['W8x58', 222, 208, 11.9, 15.9, 86.3, 0.86],
       ['W8x67', 229, 210, 13.5, 18.0, 99.7, 0.88],
-      ['W10x12', 251, 101, 4.8, 5.3, 17.9, 0.70],
+      ['W10x12', 251, 101, 4.8, 5.3, 17.9, 0.7],
       ['W10x15', 254, 102, 5.8, 6.4, 22.3, 0.71],
       ['W10x17', 257, 102, 6.1, 7.1, 25.3, 0.72],
       ['W10x19', 260, 102, 6.4, 7.9, 28.3, 0.73],
       ['W10x22', 258, 146, 6.1, 7.1, 32.7, 0.81],
       ['W10x26', 262, 147, 6.6, 8.4, 38.7, 0.82],
       ['W10x30', 266, 148, 7.5, 9.7, 44.6, 0.83],
-      ['W10x33', 247, 202, 7.4, 9.1, 49.1, 0.90],
+      ['W10x33', 247, 202, 7.4, 9.1, 49.1, 0.9],
       ['W10x39', 252, 203, 8.1, 10.9, 58.0, 0.91],
       ['W10x45', 257, 204, 8.9, 12.4, 67.0, 0.92],
       ['W10x49', 254, 254, 8.6, 11.2, 72.9, 1.01],
@@ -395,7 +612,7 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['W10x88', 275, 262, 14.2, 19.6, 130.9, 1.07],
       ['W10x100', 283, 264, 15.8, 22.1, 148.8, 1.09],
       ['W10x112', 289, 267, 17.3, 24.9, 166.7, 1.11],
-      ['W12x14', 302, 101, 5.1, 5.7, 20.8, 0.80],
+      ['W12x14', 302, 101, 5.1, 5.7, 20.8, 0.8],
       ['W12x16', 305, 101, 5.6, 6.7, 23.8, 0.81],
       ['W12x19', 309, 102, 6.1, 7.7, 28.3, 0.82],
       ['W12x22', 312, 102, 6.6, 8.8, 32.7, 0.83],
@@ -423,7 +640,7 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['W14x30', 352, 171, 6.9, 8.5, 44.6, 1.05],
       ['W14x34', 356, 171, 7.5, 9.6, 50.6, 1.05],
       ['W14x38', 358, 172, 8.0, 10.8, 56.5, 1.06],
-      ['W14x43', 348, 203, 7.5, 10.2, 64.0, 1.10],
+      ['W14x43', 348, 203, 7.5, 10.2, 64.0, 1.1],
       ['W14x48', 351, 204, 8.0, 11.4, 71.4, 1.11],
       ['W14x53', 354, 205, 8.6, 12.7, 78.9, 1.12],
       ['W14x61', 353, 254, 9.5, 11.8, 90.8, 1.21],
@@ -440,7 +657,7 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['W14x176', 390, 380, 20.1, 25.9, 261.9, 1.54],
       ['W14x193', 396, 383, 22.1, 28.2, 287.2, 1.56],
       ['W14x211', 403, 386, 24.1, 30.5, 314.0, 1.58],
-      ['W14x233', 412, 389, 26.4, 33.3, 346.8, 1.60],
+      ['W14x233', 412, 389, 26.4, 33.3, 346.8, 1.6],
       ['W14x257', 421, 392, 28.7, 36.3, 382.4, 1.62],
       ['W14x283', 430, 396, 31.0, 39.6, 421.1, 1.65],
       ['W14x311', 440, 399, 33.5, 43.2, 462.8, 1.68],
@@ -449,18 +666,26 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
 
     order = 1;
     for (const [desig, depth, width, web, flange, weight, surface] of wfBeams) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_sections (type_id, designation, dimensions, weight_kg_per_m, surface_area_m2_per_m, grades, display_order)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        typeIdMap['beam_wf'],
-        desig,
-        JSON.stringify({ depthMm: depth, widthMm: width, webMm: web, flangeMm: flange }),
-        weight,
-        surface,
-        JSON.stringify(['A992', 'A572-50', 'S355']),
-        order++,
-      ]);
+      `,
+        [
+          typeIdMap['beam_wf'],
+          desig,
+          JSON.stringify({
+            depthMm: depth,
+            widthMm: width,
+            webMm: web,
+            flangeMm: flange,
+          }),
+          weight,
+          surface,
+          JSON.stringify(['A992', 'A572-50', 'S355']),
+          order++,
+        ],
+      );
     }
 
     // Seed HSS Square - Format: [designation, side_mm, thickness_mm, weight_kg/m, surface_m2/m]
@@ -478,11 +703,11 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['40x40x1.6', 40, 1.6, 1.87, 0.154],
       ['40x40x2.0', 40, 2.0, 2.31, 0.154],
       ['40x40x2.5', 40, 2.5, 2.82, 0.154],
-      ['40x40x3.0', 40, 3.0, 3.30, 0.154],
-      ['40x40x4.0', 40, 4.0, 4.20, 0.154],
+      ['40x40x3.0', 40, 3.0, 3.3, 0.154],
+      ['40x40x4.0', 40, 4.0, 4.2, 0.154],
       ['50x50x1.6', 50, 1.6, 2.36, 0.194],
       ['50x50x2.0', 50, 2.0, 2.93, 0.194],
-      ['50x50x2.5', 50, 2.5, 3.60, 0.194],
+      ['50x50x2.5', 50, 2.5, 3.6, 0.194],
       ['50x50x3.0', 50, 3.0, 4.25, 0.194],
       ['50x50x4.0', 50, 4.0, 5.45, 0.194],
       ['50x50x5.0', 50, 5.0, 6.56, 0.194],
@@ -494,9 +719,9 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['70x70x2.5', 70, 2.5, 5.17, 0.274],
       ['70x70x3.0', 70, 3.0, 6.13, 0.274],
       ['70x70x4.0', 70, 4.0, 7.97, 0.274],
-      ['70x70x5.0', 70, 5.0, 9.70, 0.274],
+      ['70x70x5.0', 70, 5.0, 9.7, 0.274],
       ['75x75x2.5', 75, 2.5, 5.57, 0.294],
-      ['75x75x3.0', 75, 3.0, 6.60, 0.294],
+      ['75x75x3.0', 75, 3.0, 6.6, 0.294],
       ['75x75x4.0', 75, 4.0, 8.59, 0.294],
       ['75x75x5.0', 75, 5.0, 10.5, 0.294],
       ['75x75x6.0', 75, 6.0, 12.3, 0.294],
@@ -559,18 +784,21 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
 
     order = 1;
     for (const [desig, side, thick, weight, surface] of hssSquare) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_sections (type_id, designation, dimensions, weight_kg_per_m, surface_area_m2_per_m, grades, display_order)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        typeIdMap['hss_square'],
-        desig,
-        JSON.stringify({ sideMm: side, thicknessMm: thick }),
-        weight,
-        surface,
-        JSON.stringify(['A500-B', 'A500-C', 'S355']),
-        order++,
-      ]);
+      `,
+        [
+          typeIdMap['hss_square'],
+          desig,
+          JSON.stringify({ sideMm: side, thicknessMm: thick }),
+          weight,
+          surface,
+          JSON.stringify(['A500-B', 'A500-C', 'S355']),
+          order++,
+        ],
+      );
     }
 
     // Seed HSS Rectangular - Format: [designation, height_mm, width_mm, thickness_mm, weight_kg/m, surface_m2/m]
@@ -584,12 +812,12 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['50x25x3.0', 50, 25, 3.0, 3.06, 0.144],
       ['50x30x2.0', 50, 30, 2.0, 2.31, 0.154],
       ['50x30x2.5', 50, 30, 2.5, 2.82, 0.154],
-      ['50x30x3.0', 50, 30, 3.0, 3.30, 0.154],
+      ['50x30x3.0', 50, 30, 3.0, 3.3, 0.154],
       ['60x30x2.0', 60, 30, 2.0, 2.62, 0.174],
       ['60x30x2.5', 60, 30, 2.5, 3.21, 0.174],
       ['60x30x3.0', 60, 30, 3.0, 3.77, 0.174],
       ['60x40x2.0', 60, 40, 2.0, 2.93, 0.194],
-      ['60x40x2.5', 60, 40, 2.5, 3.60, 0.194],
+      ['60x40x2.5', 60, 40, 2.5, 3.6, 0.194],
       ['60x40x3.0', 60, 40, 3.0, 4.25, 0.194],
       ['60x40x4.0', 60, 40, 4.0, 5.45, 0.194],
       ['80x40x2.0', 80, 40, 2.0, 3.56, 0.234],
@@ -599,9 +827,9 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['80x40x5.0', 80, 40, 5.0, 8.13, 0.234],
       ['80x60x3.0', 80, 60, 3.0, 6.13, 0.274],
       ['80x60x4.0', 80, 60, 4.0, 7.97, 0.274],
-      ['80x60x5.0', 80, 60, 5.0, 9.70, 0.274],
+      ['80x60x5.0', 80, 60, 5.0, 9.7, 0.274],
       ['100x50x2.5', 100, 50, 2.5, 5.57, 0.294],
-      ['100x50x3.0', 100, 50, 3.0, 6.60, 0.294],
+      ['100x50x3.0', 100, 50, 3.0, 6.6, 0.294],
       ['100x50x4.0', 100, 50, 4.0, 8.59, 0.294],
       ['100x50x5.0', 100, 50, 5.0, 10.5, 0.294],
       ['100x50x6.0', 100, 50, 6.0, 12.3, 0.294],
@@ -664,24 +892,31 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
 
     order = 1;
     for (const [desig, height, width, thick, weight, surface] of hssRect) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_sections (type_id, designation, dimensions, weight_kg_per_m, surface_area_m2_per_m, grades, display_order)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        typeIdMap['hss_rect'],
-        desig,
-        JSON.stringify({ heightMm: height, widthMm: width, thicknessMm: thick }),
-        weight,
-        surface,
-        JSON.stringify(['A500-B', 'A500-C', 'S355']),
-        order++,
-      ]);
+      `,
+        [
+          typeIdMap['hss_rect'],
+          desig,
+          JSON.stringify({
+            heightMm: height,
+            widthMm: width,
+            thicknessMm: thick,
+          }),
+          weight,
+          surface,
+          JSON.stringify(['A500-B', 'A500-C', 'S355']),
+          order++,
+        ],
+      );
     }
 
     // Seed HSS Round (CHS) - Format: [designation, diameter_mm, thickness_mm, weight_kg/m, surface_m2/m]
     const hssRound: Array<[string, number, number, number, number]> = [
       ['21.3x2.0', 21.3, 2.0, 0.95, 0.067],
-      ['21.3x2.6', 21.3, 2.6, 1.20, 0.067],
+      ['21.3x2.6', 21.3, 2.6, 1.2, 0.067],
       ['21.3x3.2', 21.3, 3.2, 1.43, 0.067],
       ['26.9x2.0', 26.9, 2.0, 1.23, 0.085],
       ['26.9x2.6', 26.9, 2.6, 1.56, 0.085],
@@ -697,14 +932,14 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['48.3x3.2', 48.3, 3.2, 3.56, 0.152],
       ['48.3x4.0', 48.3, 4.0, 4.37, 0.152],
       ['48.3x5.0', 48.3, 5.0, 5.34, 0.152],
-      ['60.3x2.6', 60.3, 2.6, 3.70, 0.189],
+      ['60.3x2.6', 60.3, 2.6, 3.7, 0.189],
       ['60.3x3.2', 60.3, 3.2, 4.51, 0.189],
       ['60.3x4.0', 60.3, 4.0, 5.55, 0.189],
       ['60.3x5.0', 60.3, 5.0, 6.82, 0.189],
       ['60.3x6.3', 60.3, 6.3, 8.39, 0.189],
       ['76.1x2.6', 76.1, 2.6, 4.71, 0.239],
       ['76.1x3.2', 76.1, 3.2, 5.75, 0.239],
-      ['76.1x4.0', 76.1, 4.0, 7.10, 0.239],
+      ['76.1x4.0', 76.1, 4.0, 7.1, 0.239],
       ['76.1x5.0', 76.1, 5.0, 8.77, 0.239],
       ['76.1x6.3', 76.1, 6.3, 10.8, 0.239],
       ['88.9x3.2', 88.9, 3.2, 6.76, 0.279],
@@ -772,106 +1007,112 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
 
     order = 1;
     for (const [desig, dia, thick, weight, surface] of hssRound) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_sections (type_id, designation, dimensions, weight_kg_per_m, surface_area_m2_per_m, grades, display_order)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        typeIdMap['hss_round'],
-        desig,
-        JSON.stringify({ diameterMm: dia, thicknessMm: thick }),
-        weight,
-        surface,
-        JSON.stringify(['A500-B', 'A500-C', 'S355']),
-        order++,
-      ]);
+      `,
+        [
+          typeIdMap['hss_round'],
+          desig,
+          JSON.stringify({ diameterMm: dia, thicknessMm: thick }),
+          weight,
+          surface,
+          JSON.stringify(['A500-B', 'A500-C', 'S355']),
+          order++,
+        ],
+      );
     }
 
     // Seed Flat Bars - Format: [designation, width_mm, thickness_mm, weight_kg/m, surface_m2/m]
     const flatBars: Array<[string, number, number, number, number]> = [
       ['20x3', 20, 3, 0.47, 0.046],
-      ['20x5', 20, 5, 0.79, 0.050],
+      ['20x5', 20, 5, 0.79, 0.05],
       ['25x3', 25, 3, 0.59, 0.056],
-      ['25x5', 25, 5, 0.98, 0.060],
+      ['25x5', 25, 5, 0.98, 0.06],
       ['25x6', 25, 6, 1.18, 0.062],
       ['30x3', 30, 3, 0.71, 0.066],
-      ['30x5', 30, 5, 1.18, 0.070],
+      ['30x5', 30, 5, 1.18, 0.07],
       ['30x6', 30, 6, 1.41, 0.072],
       ['30x8', 30, 8, 1.88, 0.076],
       ['40x3', 40, 3, 0.94, 0.086],
-      ['40x5', 40, 5, 1.57, 0.090],
+      ['40x5', 40, 5, 1.57, 0.09],
       ['40x6', 40, 6, 1.88, 0.092],
       ['40x8', 40, 8, 2.51, 0.096],
-      ['40x10', 40, 10, 3.14, 0.100],
+      ['40x10', 40, 10, 3.14, 0.1],
       ['50x3', 50, 3, 1.18, 0.106],
-      ['50x5', 50, 5, 1.96, 0.110],
+      ['50x5', 50, 5, 1.96, 0.11],
       ['50x6', 50, 6, 2.36, 0.112],
       ['50x8', 50, 8, 3.14, 0.116],
-      ['50x10', 50, 10, 3.93, 0.120],
+      ['50x10', 50, 10, 3.93, 0.12],
       ['50x12', 50, 12, 4.71, 0.124],
-      ['60x5', 60, 5, 2.36, 0.130],
+      ['60x5', 60, 5, 2.36, 0.13],
       ['60x6', 60, 6, 2.83, 0.132],
       ['60x8', 60, 8, 3.77, 0.136],
-      ['60x10', 60, 10, 4.71, 0.140],
+      ['60x10', 60, 10, 4.71, 0.14],
       ['60x12', 60, 12, 5.65, 0.144],
-      ['70x5', 70, 5, 2.75, 0.150],
-      ['70x6', 70, 6, 3.30, 0.152],
-      ['70x8', 70, 8, 4.40, 0.156],
-      ['70x10', 70, 10, 5.50, 0.160],
+      ['70x5', 70, 5, 2.75, 0.15],
+      ['70x6', 70, 6, 3.3, 0.152],
+      ['70x8', 70, 8, 4.4, 0.156],
+      ['70x10', 70, 10, 5.5, 0.16],
       ['70x12', 70, 12, 6.59, 0.164],
-      ['75x5', 75, 5, 2.94, 0.160],
+      ['75x5', 75, 5, 2.94, 0.16],
       ['75x6', 75, 6, 3.53, 0.162],
       ['75x8', 75, 8, 4.71, 0.166],
-      ['75x10', 75, 10, 5.89, 0.170],
+      ['75x10', 75, 10, 5.89, 0.17],
       ['75x12', 75, 12, 7.07, 0.174],
-      ['80x5', 80, 5, 3.14, 0.170],
+      ['80x5', 80, 5, 3.14, 0.17],
       ['80x6', 80, 6, 3.77, 0.172],
       ['80x8', 80, 8, 5.02, 0.176],
-      ['80x10', 80, 10, 6.28, 0.180],
+      ['80x10', 80, 10, 6.28, 0.18],
       ['80x12', 80, 12, 7.54, 0.184],
       ['90x6', 90, 6, 4.24, 0.192],
       ['90x8', 90, 8, 5.65, 0.196],
-      ['90x10', 90, 10, 7.07, 0.200],
+      ['90x10', 90, 10, 7.07, 0.2],
       ['90x12', 90, 12, 8.48, 0.204],
-      ['100x5', 100, 5, 3.93, 0.210],
+      ['100x5', 100, 5, 3.93, 0.21],
       ['100x6', 100, 6, 4.71, 0.212],
       ['100x8', 100, 8, 6.28, 0.216],
-      ['100x10', 100, 10, 7.85, 0.220],
+      ['100x10', 100, 10, 7.85, 0.22],
       ['100x12', 100, 12, 9.42, 0.224],
-      ['100x15', 100, 15, 11.78, 0.230],
-      ['100x20', 100, 20, 15.70, 0.240],
+      ['100x15', 100, 15, 11.78, 0.23],
+      ['100x20', 100, 20, 15.7, 0.24],
       ['120x6', 120, 6, 5.65, 0.252],
       ['120x8', 120, 8, 7.54, 0.256],
-      ['120x10', 120, 10, 9.42, 0.260],
+      ['120x10', 120, 10, 9.42, 0.26],
       ['120x12', 120, 12, 11.31, 0.264],
-      ['120x15', 120, 15, 14.14, 0.270],
+      ['120x15', 120, 15, 14.14, 0.27],
       ['150x6', 150, 6, 7.07, 0.312],
       ['150x8', 150, 8, 9.42, 0.316],
-      ['150x10', 150, 10, 11.78, 0.320],
+      ['150x10', 150, 10, 11.78, 0.32],
       ['150x12', 150, 12, 14.14, 0.324],
-      ['150x15', 150, 15, 17.67, 0.330],
-      ['150x20', 150, 20, 23.56, 0.340],
+      ['150x15', 150, 15, 17.67, 0.33],
+      ['150x20', 150, 20, 23.56, 0.34],
       ['200x8', 200, 8, 12.56, 0.416],
-      ['200x10', 200, 10, 15.70, 0.420],
+      ['200x10', 200, 10, 15.7, 0.42],
       ['200x12', 200, 12, 18.84, 0.424],
-      ['200x15', 200, 15, 23.55, 0.430],
-      ['200x20', 200, 20, 31.40, 0.440],
-      ['200x25', 200, 25, 39.25, 0.450],
+      ['200x15', 200, 15, 23.55, 0.43],
+      ['200x20', 200, 20, 31.4, 0.44],
+      ['200x25', 200, 25, 39.25, 0.45],
     ];
 
     order = 1;
     for (const [desig, width, thick, weight, surface] of flatBars) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_sections (type_id, designation, dimensions, weight_kg_per_m, surface_area_m2_per_m, grades, display_order)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        typeIdMap['bar_flat'],
-        desig,
-        JSON.stringify({ widthMm: width, thicknessMm: thick }),
-        weight,
-        surface,
-        JSON.stringify(['A36', 'S235', 'S275', 'S355']),
-        order++,
-      ]);
+      `,
+        [
+          typeIdMap['bar_flat'],
+          desig,
+          JSON.stringify({ widthMm: width, thicknessMm: thick }),
+          weight,
+          surface,
+          JSON.stringify(['A36', 'S235', 'S275', 'S355']),
+          order++,
+        ],
+      );
     }
 
     // Seed Round Bars - Format: [designation, diameter_mm, weight_kg/m, surface_m2/m]
@@ -881,16 +1122,16 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['Ø10', 10, 0.617, 0.031],
       ['Ø12', 12, 0.888, 0.038],
       ['Ø14', 14, 1.21, 0.044],
-      ['Ø16', 16, 1.58, 0.050],
-      ['Ø18', 18, 2.00, 0.057],
+      ['Ø16', 16, 1.58, 0.05],
+      ['Ø18', 18, 2.0, 0.057],
       ['Ø20', 20, 2.47, 0.063],
       ['Ø22', 22, 2.98, 0.069],
       ['Ø25', 25, 3.85, 0.079],
       ['Ø28', 28, 4.83, 0.088],
       ['Ø30', 30, 5.55, 0.094],
       ['Ø32', 32, 6.31, 0.101],
-      ['Ø35', 35, 7.55, 0.110],
-      ['Ø38', 38, 8.90, 0.119],
+      ['Ø35', 35, 7.55, 0.11],
+      ['Ø38', 38, 8.9, 0.119],
       ['Ø40', 40, 9.86, 0.126],
       ['Ø42', 42, 10.9, 0.132],
       ['Ø45', 45, 12.5, 0.141],
@@ -898,7 +1139,7 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['Ø55', 55, 18.7, 0.173],
       ['Ø60', 60, 22.2, 0.188],
       ['Ø65', 65, 26.0, 0.204],
-      ['Ø70', 70, 30.2, 0.220],
+      ['Ø70', 70, 30.2, 0.22],
       ['Ø75', 75, 34.7, 0.236],
       ['Ø80', 80, 39.5, 0.251],
       ['Ø85', 85, 44.5, 0.267],
@@ -908,68 +1149,74 @@ export class CreateStructuralSteelTables1766002000000 implements MigrationInterf
       ['Ø110', 110, 74.6, 0.346],
       ['Ø120', 120, 88.8, 0.377],
       ['Ø130', 130, 104.2, 0.408],
-      ['Ø140', 140, 120.8, 0.440],
+      ['Ø140', 140, 120.8, 0.44],
       ['Ø150', 150, 138.7, 0.471],
     ];
 
     order = 1;
     for (const [desig, dia, weight, surface] of roundBars) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_sections (type_id, designation, dimensions, weight_kg_per_m, surface_area_m2_per_m, grades, display_order)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        typeIdMap['bar_round'],
-        desig,
-        JSON.stringify({ diameterMm: dia }),
-        weight,
-        surface,
-        JSON.stringify(['A36', 'S235', 'S275', 'S355']),
-        order++,
-      ]);
+      `,
+        [
+          typeIdMap['bar_round'],
+          desig,
+          JSON.stringify({ diameterMm: dia }),
+          weight,
+          surface,
+          JSON.stringify(['A36', 'S235', 'S275', 'S355']),
+          order++,
+        ],
+      );
     }
 
     // Seed Square Bars - Format: [designation, side_mm, weight_kg/m, surface_m2/m]
     const squareBars: Array<[string, number, number, number]> = [
-      ['8x8', 8, 0.50, 0.032],
-      ['10x10', 10, 0.79, 0.040],
+      ['8x8', 8, 0.5, 0.032],
+      ['10x10', 10, 0.79, 0.04],
       ['12x12', 12, 1.13, 0.048],
       ['14x14', 14, 1.54, 0.056],
       ['16x16', 16, 2.01, 0.064],
       ['18x18', 18, 2.54, 0.072],
-      ['20x20', 20, 3.14, 0.080],
-      ['22x22', 22, 3.80, 0.088],
-      ['25x25', 25, 4.91, 0.100],
+      ['20x20', 20, 3.14, 0.08],
+      ['22x22', 22, 3.8, 0.088],
+      ['25x25', 25, 4.91, 0.1],
       ['28x28', 28, 6.15, 0.112],
-      ['30x30', 30, 7.07, 0.120],
+      ['30x30', 30, 7.07, 0.12],
       ['32x32', 32, 8.04, 0.128],
-      ['35x35', 35, 9.62, 0.140],
-      ['40x40', 40, 12.56, 0.160],
-      ['45x45', 45, 15.90, 0.180],
-      ['50x50', 50, 19.63, 0.200],
-      ['55x55', 55, 23.75, 0.220],
-      ['60x60', 60, 28.26, 0.240],
-      ['65x65', 65, 33.17, 0.260],
-      ['70x70', 70, 38.47, 0.280],
-      ['75x75', 75, 44.16, 0.300],
-      ['80x80', 80, 50.24, 0.320],
-      ['90x90', 90, 63.59, 0.360],
-      ['100x100', 100, 78.50, 0.400],
+      ['35x35', 35, 9.62, 0.14],
+      ['40x40', 40, 12.56, 0.16],
+      ['45x45', 45, 15.9, 0.18],
+      ['50x50', 50, 19.63, 0.2],
+      ['55x55', 55, 23.75, 0.22],
+      ['60x60', 60, 28.26, 0.24],
+      ['65x65', 65, 33.17, 0.26],
+      ['70x70', 70, 38.47, 0.28],
+      ['75x75', 75, 44.16, 0.3],
+      ['80x80', 80, 50.24, 0.32],
+      ['90x90', 90, 63.59, 0.36],
+      ['100x100', 100, 78.5, 0.4],
     ];
 
     order = 1;
     for (const [desig, side, weight, surface] of squareBars) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_sections (type_id, designation, dimensions, weight_kg_per_m, surface_area_m2_per_m, grades, display_order)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        typeIdMap['bar_square'],
-        desig,
-        JSON.stringify({ sideMm: side }),
-        weight,
-        surface,
-        JSON.stringify(['A36', 'S235', 'S275', 'S355']),
-        order++,
-      ]);
+      `,
+        [
+          typeIdMap['bar_square'],
+          desig,
+          JSON.stringify({ sideMm: side }),
+          weight,
+          surface,
+          JSON.stringify(['A36', 'S235', 'S275', 'S355']),
+          order++,
+        ],
+      );
     }
   }
 

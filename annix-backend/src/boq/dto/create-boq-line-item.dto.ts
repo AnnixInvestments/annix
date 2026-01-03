@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, IsEnum, MaxLength, MinLength, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsEnum,
+  MaxLength,
+  MinLength,
+  IsObject,
+} from 'class-validator';
 import { BoqItemType } from '../entities/boq-line-item.entity';
 
 export class CreateBoqLineItemDto {
@@ -9,7 +17,10 @@ export class CreateBoqLineItemDto {
   @MaxLength(100)
   itemCode?: string;
 
-  @ApiProperty({ description: 'Item description', example: '500NB Sch40 Carbon Steel Pipe' })
+  @ApiProperty({
+    description: 'Item description',
+    example: '500NB Sch40 Carbon Steel Pipe',
+  })
   @IsString()
   @MinLength(3)
   @MaxLength(500)

@@ -35,9 +35,12 @@ export class CustomerAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<CustomerJwtPayload>(token, {
-        secret: this.configService.get<string>('JWT_SECRET'),
-      });
+      const payload = await this.jwtService.verifyAsync<CustomerJwtPayload>(
+        token,
+        {
+          secret: this.configService.get<string>('JWT_SECRET'),
+        },
+      );
 
       // Verify this is a customer token
       if (payload.type !== 'customer') {
@@ -45,7 +48,9 @@ export class CustomerAuthGuard implements CanActivate {
       }
 
       // Verify session is still valid
-      const session = await this.customerAuthService.verifySession(payload.sessionToken);
+      const session = await this.customerAuthService.verifySession(
+        payload.sessionToken,
+      );
       if (!session) {
         throw new UnauthorizedException('Session expired or invalid');
       }

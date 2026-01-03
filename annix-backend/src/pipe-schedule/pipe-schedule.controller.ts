@@ -35,7 +35,10 @@ export class PipeScheduleController {
       materialCode,
       Number(temperatureCelsius),
     );
-    return { allowableStressKsi: stress, allowableStressMpa: stress ? stress * 6.895 : null };
+    return {
+      allowableStressKsi: stress,
+      allowableStressMpa: stress ? stress * 6.895 : null,
+    };
   }
 
   @Post('calculate')
@@ -56,7 +59,9 @@ export class PipeScheduleController {
       pressureBar: Number(pressureBar),
       temperatureCelsius: Number(temperatureCelsius),
       materialCode,
-      corrosionAllowanceMm: corrosionAllowanceMm ? Number(corrosionAllowanceMm) : undefined,
+      corrosionAllowanceMm: corrosionAllowanceMm
+        ? Number(corrosionAllowanceMm)
+        : undefined,
     });
 
     return {

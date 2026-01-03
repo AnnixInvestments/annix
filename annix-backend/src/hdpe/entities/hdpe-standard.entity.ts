@@ -26,7 +26,12 @@ export class HdpeStandard {
   @Column({ type: 'varchar', length: 50, nullable: true })
   region: string; // International, US, EU, etc.
 
-  @Column({ name: 'applicable_to', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'applicable_to',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   applicableTo: string; // pipes, fittings, both
 
   @Column({ name: 'display_order', type: 'int', default: 0 })

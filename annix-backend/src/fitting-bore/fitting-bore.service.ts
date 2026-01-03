@@ -24,7 +24,11 @@
 //     return `This action removes a #${id} fittingBore`;
 //   }
 // }
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FittingBore } from './entities/fitting-bore.entity';
@@ -45,28 +49,51 @@ export class FittingBoreService {
   ) {}
 
   async create(dto: CreateFittingBoreDto): Promise<FittingBore> {
-    const variant = await this.variantRepo.findOne({ where: { id: dto.variantId } });
-    if (!variant) throw new NotFoundException(`FittingVariant ${dto.variantId} not found`);
+    const variant = await this.variantRepo.findOne({
+      where: { id: dto.variantId },
+    });
+    if (!variant)
+      throw new NotFoundException(`FittingVariant ${dto.variantId} not found`);
 
-    const nominal = await this.nominalRepo.findOne({ where: { id: dto.nominalId } });
-    if (!nominal) throw new NotFoundException(`NominalOutsideDiameter ${dto.nominalId} not found`);
+    const nominal = await this.nominalRepo.findOne({
+      where: { id: dto.nominalId },
+    });
+    if (!nominal)
+      throw new NotFoundException(
+        `NominalOutsideDiameter ${dto.nominalId} not found`,
+      );
 
     // Duplicate check: same borePosition in same variant
-    const existing = await this.boreRepo.findOne({ 
-      where: { variant: { id: dto.variantId }, borePositionName: dto.borePosition } 
+    const existing = await this.boreRepo.findOne({
+      where: {
+        variant: { id: dto.variantId },
+        borePositionName: dto.borePosition,
+      },
     });
-    if (existing) throw new BadRequestException(`Bore position "${dto.borePosition}" already exists for this variant`);
+    if (existing)
+      throw new BadRequestException(
+        `Bore position "${dto.borePosition}" already exists for this variant`,
+      );
 
-    const bore = this.boreRepo.create({ variant, nominalOutsideDiameter: nominal, borePositionName: dto.borePosition });
+    const bore = this.boreRepo.create({
+      variant,
+      nominalOutsideDiameter: nominal,
+      borePositionName: dto.borePosition,
+    });
     return this.boreRepo.save(bore);
   }
 
   async findAll(): Promise<FittingBore[]> {
-    return this.boreRepo.find({ relations: ['variant', 'nominalOutsideDiameter'] });
+    return this.boreRepo.find({
+      relations: ['variant', 'nominalOutsideDiameter'],
+    });
   }
 
   async findOne(id: number): Promise<FittingBore> {
-    const bore = await this.boreRepo.findOne({ where: { id }, relations: ['variant', 'nominalOutsideDiameter'] });
+    const bore = await this.boreRepo.findOne({
+      where: { id },
+      relations: ['variant', 'nominalOutsideDiameter'],
+    });
     if (!bore) throw new NotFoundException(`FittingBore ${id} not found`);
     return bore;
   }

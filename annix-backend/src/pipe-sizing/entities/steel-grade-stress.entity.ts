@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Unique,
+} from 'typeorm';
 
 @Entity('pipe_steel_grades')
 @Unique(['code'])
@@ -38,6 +45,11 @@ export class PipeAllowableStress {
   @Column({ type: 'int', name: 'temperature_f' })
   temperatureF: number; // Temperature in Fahrenheit
 
-  @Column({ type: 'decimal', precision: 6, scale: 2, name: 'allowable_stress_ksi' })
+  @Column({
+    type: 'decimal',
+    precision: 6,
+    scale: 2,
+    name: 'allowable_stress_ksi',
+  })
   allowableStressKsi: number; // Allowable stress in ksi (from ASME B31.3)
 }

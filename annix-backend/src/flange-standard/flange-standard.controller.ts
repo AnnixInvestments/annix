@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { FlangeStandardService } from './flange-standard.service';
 import { CreateFlangeStandardDto } from './dto/create-flange-standard.dto';
 import { UpdateFlangeStandardDto } from './dto/update-flange-standard.dto';
@@ -18,14 +26,20 @@ export class FlangeStandardController {
 
   @Get()
   @ApiOperation({ summary: 'Get all flange standards with relations' })
-  @ApiResponse({ status: 200, description: 'List of flange standards retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of flange standards retrieved successfully',
+  })
   findAll() {
     return this.flangeStandardService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a flange standard by ID' })
-  @ApiResponse({ status: 200, description: 'Flange standard retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Flange standard retrieved successfully',
+  })
   @ApiResponse({ status: 404, description: 'Flange standard not found' })
   @ApiResponse({ status: 400, description: 'Invalid ID parameter' })
   findOne(@Param('id') id: string) {
@@ -34,16 +48,28 @@ export class FlangeStandardController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a flange standard' })
-  @ApiResponse({ status: 200, description: 'Flange standard updated successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid request or duplicate flange standard' })
+  @ApiResponse({
+    status: 200,
+    description: 'Flange standard updated successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or duplicate flange standard',
+  })
   @ApiResponse({ status: 404, description: 'Flange standard not found' })
-  update(@Param('id') id: string, @Body() updateFlangeStandardDto: UpdateFlangeStandardDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateFlangeStandardDto: UpdateFlangeStandardDto,
+  ) {
     return this.flangeStandardService.update(+id, updateFlangeStandardDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a flange standard' })
-  @ApiResponse({ status: 200, description: 'Flange standard deleted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Flange standard deleted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Flange standard not found' })
   @ApiResponse({ status: 400, description: 'Invalid ID parameter' })
   remove(@Param('id') id: string) {

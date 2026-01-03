@@ -78,8 +78,9 @@ export class AdminRfqService {
     }
 
     // Apply sorting
-    const sortField = sortBy === 'projectName' ? 'rfq.projectName' : 'rfq.createdAt';
-    queryBuilder.orderBy(sortField, sortOrder as 'ASC' | 'DESC');
+    const sortField =
+      sortBy === 'projectName' ? 'rfq.projectName' : 'rfq.createdAt';
+    queryBuilder.orderBy(sortField, sortOrder);
 
     // Get total count
     const total = await queryBuilder.getCount();
@@ -94,7 +95,9 @@ export class AdminRfqService {
     // Get item counts for each RFQ
     const itemCounts = await Promise.all(
       rfqs.map(async (rfq) => {
-        const count = await this.rfqItemRepo.count({ where: { rfq: { id: rfq.id } } });
+        const count = await this.rfqItemRepo.count({
+          where: { rfq: { id: rfq.id } },
+        });
         return { rfqId: rfq.id, count };
       }),
     );

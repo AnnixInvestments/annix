@@ -23,7 +23,11 @@ export class AdminAuthController {
     @Ip() clientIp: string,
     @Headers('user-agent') userAgent: string,
   ) {
-    return this.adminAuthService.login(loginDto, clientIp, userAgent || 'unknown');
+    return this.adminAuthService.login(
+      loginDto,
+      clientIp,
+      userAgent || 'unknown',
+    );
   }
 
   @Post('logout')

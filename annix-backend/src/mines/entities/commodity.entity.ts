@@ -7,7 +7,12 @@ export class Commodity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'commodity_name', type: 'varchar', length: 100, unique: true })
+  @Column({
+    name: 'commodity_name',
+    type: 'varchar',
+    length: 100,
+    unique: true,
+  })
   commodityName: string;
 
   @Column({ name: 'typical_process_route', type: 'text', nullable: true })

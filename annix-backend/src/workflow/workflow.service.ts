@@ -193,7 +193,9 @@ export class WorkflowService {
     const workflow = await this.findOne(workflowId);
 
     if (workflow.currentStatus !== ReviewStatus.UNDER_REVIEW) {
-      throw new BadRequestException('Can only make decisions on items under review');
+      throw new BadRequestException(
+        'Can only make decisions on items under review',
+      );
     }
 
     if (!this.canTransition(workflow.currentStatus, newStatus)) {
@@ -210,7 +212,11 @@ export class WorkflowService {
 
     const saved = await this.workflowRepository.save(workflow);
 
-    await this.updateEntityStatus(workflow.entityType, workflow.entityId, newStatus);
+    await this.updateEntityStatus(
+      workflow.entityType,
+      workflow.entityId,
+      newStatus,
+    );
 
     await this.auditService.log({
       entityType: workflow.entityType.toLowerCase(),
@@ -234,7 +240,9 @@ export class WorkflowService {
       workflow.currentStatus !== ReviewStatus.SUBMITTED &&
       workflow.currentStatus !== ReviewStatus.UNDER_REVIEW
     ) {
-      throw new BadRequestException('Can only assign reviewer to submitted or under review items');
+      throw new BadRequestException(
+        'Can only assign reviewer to submitted or under review items',
+      );
     }
 
     workflow.assignedReviewer = { id: dto.reviewerUserId } as User;
@@ -288,12 +296,14 @@ export class WorkflowService {
     });
   }
 
-  async getPendingReviews(
-    reviewerUserId: number,
-  ): Promise<ReviewWorkflow[]> {
+  async getPendingReviews(reviewerUserId: number): Promise<ReviewWorkflow[]> {
     return this.workflowRepository.find({
       where: [
-        { assignedReviewer: { id: reviewerUserId }, currentStatus: ReviewStatus.UNDER_REVIEW, isActive: true },
+        {
+          assignedReviewer: { id: reviewerUserId },
+          currentStatus: ReviewStatus.UNDER_REVIEW,
+          isActive: true,
+        },
         { currentStatus: ReviewStatus.SUBMITTED, isActive: true },
       ],
       relations: ['submittedBy', 'assignedReviewer'],
@@ -301,7 +311,9 @@ export class WorkflowService {
     });
   }
 
-  async findAll(query: WorkflowQueryDto): Promise<PaginatedResult<ReviewWorkflow>> {
+  async findAll(
+    query: WorkflowQueryDto,
+  ): Promise<PaginatedResult<ReviewWorkflow>> {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -313,21 +325,30 @@ export class WorkflowService {
       .leftJoinAndSelect('workflow.decidedBy', 'decidedBy');
 
     if (query.workflowType) {
-      queryBuilder = queryBuilder.andWhere('workflow.workflow_type = :workflowType', {
-        workflowType: query.workflowType,
-      });
+      queryBuilder = queryBuilder.andWhere(
+        'workflow.workflow_type = :workflowType',
+        {
+          workflowType: query.workflowType,
+        },
+      );
     }
 
     if (query.entityType) {
-      queryBuilder = queryBuilder.andWhere('workflow.entity_type = :entityType', {
-        entityType: query.entityType,
-      });
+      queryBuilder = queryBuilder.andWhere(
+        'workflow.entity_type = :entityType',
+        {
+          entityType: query.entityType,
+        },
+      );
     }
 
     if (query.status) {
-      queryBuilder = queryBuilder.andWhere('workflow.current_status = :status', {
-        status: query.status,
-      });
+      queryBuilder = queryBuilder.andWhere(
+        'workflow.current_status = :status',
+        {
+          status: query.status,
+        },
+      );
     }
 
     if (query.assignedReviewerId) {
@@ -384,9 +405,15 @@ export class WorkflowService {
     };
 
     if (entityType === ReviewEntityType.DRAWING) {
-      await this.drawingsService.updateStatus(entityId, statusMap[status] as DrawingStatus);
+      await this.drawingsService.updateStatus(
+        entityId,
+        statusMap[status] as DrawingStatus,
+      );
     } else if (entityType === ReviewEntityType.BOQ) {
-      await this.boqService.updateStatus(entityId, statusMap[status] as BoqStatus);
+      await this.boqService.updateStatus(
+        entityId,
+        statusMap[status] as BoqStatus,
+      );
     }
   }
 }

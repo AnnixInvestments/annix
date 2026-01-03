@@ -97,11 +97,16 @@ export class WeldThicknessService {
   /**
    * Get all available weld thicknesses for a given DN
    */
-  getAllWeldThicknessesForDn(dn: number, temperatureC: number = 20): WeldThicknessResult[] {
+  getAllWeldThicknessesForDn(
+    dn: number,
+    temperatureC: number = 20,
+  ): WeldThicknessResult[] {
     const results: WeldThicknessResult[] = [];
     const tempIdx = this.getFittingTempIndex(temperatureC);
 
-    for (const [fittingClass, fittings] of Object.entries(CARBON_STEEL_FITTINGS)) {
+    for (const [fittingClass, fittings] of Object.entries(
+      CARBON_STEEL_FITTINGS,
+    )) {
       const fitting = fittings.find((f) => f.dn === dn);
       if (fitting) {
         results.push({
@@ -266,7 +271,11 @@ export class WeldThicknessService {
     }
 
     // Try partial matching
-    if (upper.includes('XXS') || upper.includes('XXH') || upper.includes('160')) {
+    if (
+      upper.includes('XXS') ||
+      upper.includes('XXH') ||
+      upper.includes('160')
+    ) {
       return 'XXH';
     }
     if (upper.includes('XS') || upper.includes('XH') || upper.includes('80')) {
@@ -300,7 +309,10 @@ export class WeldThicknessService {
     return 7;
   }
 
-  private scheduleMatches(pipeSchedule: string, targetSchedule: string): boolean {
+  private scheduleMatches(
+    pipeSchedule: string,
+    targetSchedule: string,
+  ): boolean {
     const normalizedPipe = pipeSchedule.toUpperCase().replace(/\s+/g, '');
     const normalizedTarget = targetSchedule.toUpperCase().replace(/\s+/g, '');
 

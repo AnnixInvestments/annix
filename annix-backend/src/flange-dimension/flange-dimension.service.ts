@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateFlangeDimensionDto } from './dto/create-flange-dimension.dto';
 import { UpdateFlangeDimensionDto } from './dto/update-flange-dimension.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,22 +16,39 @@ import { Repository } from 'typeorm';
 @Injectable()
 export class FlangeDimensionService {
   constructor(
-    @InjectRepository(FlangeDimension) private readonly flangeRepo: Repository<FlangeDimension>,
-    @InjectRepository(NominalOutsideDiameterMm) private readonly nominalRepo: Repository<NominalOutsideDiameterMm>,
-    @InjectRepository(FlangeStandard) private readonly standardRepo: Repository<FlangeStandard>,
-    @InjectRepository(FlangePressureClass) private readonly pressureRepo: Repository<FlangePressureClass>,
+    @InjectRepository(FlangeDimension)
+    private readonly flangeRepo: Repository<FlangeDimension>,
+    @InjectRepository(NominalOutsideDiameterMm)
+    private readonly nominalRepo: Repository<NominalOutsideDiameterMm>,
+    @InjectRepository(FlangeStandard)
+    private readonly standardRepo: Repository<FlangeStandard>,
+    @InjectRepository(FlangePressureClass)
+    private readonly pressureRepo: Repository<FlangePressureClass>,
     @InjectRepository(Bolt) private readonly boltRepo: Repository<Bolt>,
   ) {}
 
   async create(dto: CreateFlangeDimensionDto): Promise<FlangeDimension> {
-    const nominal = await this.nominalRepo.findOne({ where: { id: dto.nominalOutsideDiameterId } });
-    if (!nominal) throw new NotFoundException(`NominalOutsideDiameter ${dto.nominalOutsideDiameterId} not found`);
+    const nominal = await this.nominalRepo.findOne({
+      where: { id: dto.nominalOutsideDiameterId },
+    });
+    if (!nominal)
+      throw new NotFoundException(
+        `NominalOutsideDiameter ${dto.nominalOutsideDiameterId} not found`,
+      );
 
-    const standard = await this.standardRepo.findOne({ where: { id: dto.standardId } });
-    if (!standard) throw new NotFoundException(`FlangeStandard ${dto.standardId} not found`);
+    const standard = await this.standardRepo.findOne({
+      where: { id: dto.standardId },
+    });
+    if (!standard)
+      throw new NotFoundException(`FlangeStandard ${dto.standardId} not found`);
 
-    const pressure = await this.pressureRepo.findOne({ where: { id: dto.pressureClassId } });
-    if (!pressure) throw new NotFoundException(`FlangePressureClass ${dto.pressureClassId} not found`);
+    const pressure = await this.pressureRepo.findOne({
+      where: { id: dto.pressureClassId },
+    });
+    if (!pressure)
+      throw new NotFoundException(
+        `FlangePressureClass ${dto.pressureClassId} not found`,
+      );
 
     let bolt: Bolt | null = null;
     if (dto.boltId) {
@@ -50,16 +71,22 @@ export class FlangeDimensionService {
         mass_kg: dto.mass_kg,
         bolt: bolt ?? undefined,
       },
-      relations: ['nominalOutsideDiameter', 'standard', 'pressureClass', 'bolt'],
+      relations: [
+        'nominalOutsideDiameter',
+        'standard',
+        'pressureClass',
+        'bolt',
+      ],
     });
 
-    if (exists) throw new BadRequestException('Flange dimension already exists');
+    if (exists)
+      throw new BadRequestException('Flange dimension already exists');
 
     const flange = this.flangeRepo.create({
       nominalOutsideDiameter: nominal,
       standard,
       pressureClass: pressure,
-      bolt: bolt ?? undefined, 
+      bolt: bolt ?? undefined,
       D: dto.D,
       b: dto.b,
       d4: dto.d4,
@@ -75,37 +102,65 @@ export class FlangeDimensionService {
 
   async findAll(): Promise<FlangeDimension[]> {
     return this.flangeRepo.find({
-      relations: ['nominalOutsideDiameter', 'standard', 'pressureClass', 'bolt'],
+      relations: [
+        'nominalOutsideDiameter',
+        'standard',
+        'pressureClass',
+        'bolt',
+      ],
     });
   }
 
   async findOne(id: number): Promise<FlangeDimension> {
     const flange = await this.flangeRepo.findOne({
       where: { id },
-      relations: ['nominalOutsideDiameter', 'standard', 'pressureClass', 'bolt'],
+      relations: [
+        'nominalOutsideDiameter',
+        'standard',
+        'pressureClass',
+        'bolt',
+      ],
     });
     if (!flange) throw new NotFoundException(`FlangeDimension ${id} not found`);
     return flange;
   }
 
-  async update(id: number, dto: UpdateFlangeDimensionDto): Promise<FlangeDimension> {
+  async update(
+    id: number,
+    dto: UpdateFlangeDimensionDto,
+  ): Promise<FlangeDimension> {
     const flange = await this.findOne(id);
 
     if (dto.nominalOutsideDiameterId) {
-      const nominal = await this.nominalRepo.findOne({ where: { id: dto.nominalOutsideDiameterId } });
-      if (!nominal) throw new NotFoundException(`NominalOutsideDiameter ${dto.nominalOutsideDiameterId} not found`);
+      const nominal = await this.nominalRepo.findOne({
+        where: { id: dto.nominalOutsideDiameterId },
+      });
+      if (!nominal)
+        throw new NotFoundException(
+          `NominalOutsideDiameter ${dto.nominalOutsideDiameterId} not found`,
+        );
       flange.nominalOutsideDiameter = nominal;
     }
 
     if (dto.standardId) {
-      const standard = await this.standardRepo.findOne({ where: { id: dto.standardId } });
-      if (!standard) throw new NotFoundException(`FlangeStandard ${dto.standardId} not found`);
+      const standard = await this.standardRepo.findOne({
+        where: { id: dto.standardId },
+      });
+      if (!standard)
+        throw new NotFoundException(
+          `FlangeStandard ${dto.standardId} not found`,
+        );
       flange.standard = standard;
     }
 
     if (dto.pressureClassId) {
-      const pressure = await this.pressureRepo.findOne({ where: { id: dto.pressureClassId } });
-      if (!pressure) throw new NotFoundException(`FlangePressureClass ${dto.pressureClassId} not found`);
+      const pressure = await this.pressureRepo.findOne({
+        where: { id: dto.pressureClassId },
+      });
+      if (!pressure)
+        throw new NotFoundException(
+          `FlangePressureClass ${dto.pressureClassId} not found`,
+        );
       flange.pressureClass = pressure;
     }
 

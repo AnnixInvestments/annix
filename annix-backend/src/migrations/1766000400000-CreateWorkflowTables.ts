@@ -1,11 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateWorkflowTables1766000400000 implements MigrationInterface {
-    name = 'CreateWorkflowTables1766000400000'
+  name = 'CreateWorkflowTables1766000400000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create workflow_type enum
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create workflow_type enum
+    await queryRunner.query(`
             CREATE TYPE "workflow_type_enum" AS ENUM (
                 'drawing_review',
                 'boq_review',
@@ -13,8 +13,8 @@ export class CreateWorkflowTables1766000400000 implements MigrationInterface {
             )
         `);
 
-        // Create review_entity_type enum
-        await queryRunner.query(`
+    // Create review_entity_type enum
+    await queryRunner.query(`
             CREATE TYPE "review_entity_type_enum" AS ENUM (
                 'drawing',
                 'boq',
@@ -22,8 +22,8 @@ export class CreateWorkflowTables1766000400000 implements MigrationInterface {
             )
         `);
 
-        // Create review_status enum
-        await queryRunner.query(`
+    // Create review_status enum
+    await queryRunner.query(`
             CREATE TYPE "review_status_enum" AS ENUM (
                 'draft',
                 'submitted',
@@ -34,8 +34,8 @@ export class CreateWorkflowTables1766000400000 implements MigrationInterface {
             )
         `);
 
-        // Create review_workflows table
-        await queryRunner.query(`
+    // Create review_workflows table
+    await queryRunner.query(`
             CREATE TABLE "review_workflows" (
                 "id" SERIAL NOT NULL,
                 "workflow_type" "workflow_type_enum" NOT NULL,
@@ -57,8 +57,8 @@ export class CreateWorkflowTables1766000400000 implements MigrationInterface {
             )
         `);
 
-        // Add foreign key constraints
-        await queryRunner.query(`
+    // Add foreign key constraints
+    await queryRunner.query(`
             ALTER TABLE "review_workflows"
             ADD CONSTRAINT "FK_review_workflows_submitted_by"
             FOREIGN KEY ("submitted_by_user_id")
@@ -66,7 +66,7 @@ export class CreateWorkflowTables1766000400000 implements MigrationInterface {
             ON DELETE RESTRICT
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "review_workflows"
             ADD CONSTRAINT "FK_review_workflows_assigned_reviewer"
             FOREIGN KEY ("assigned_reviewer_user_id")
@@ -74,7 +74,7 @@ export class CreateWorkflowTables1766000400000 implements MigrationInterface {
             ON DELETE SET NULL
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "review_workflows"
             ADD CONSTRAINT "FK_review_workflows_decided_by"
             FOREIGN KEY ("decided_by_user_id")
@@ -82,33 +82,51 @@ export class CreateWorkflowTables1766000400000 implements MigrationInterface {
             ON DELETE SET NULL
         `);
 
-        // Create indexes
-        await queryRunner.query(`CREATE INDEX "IDX_review_workflows_entity" ON "review_workflows" ("entity_type", "entity_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_review_workflows_status" ON "review_workflows" ("current_status")`);
-        await queryRunner.query(`CREATE INDEX "IDX_review_workflows_submitted_by" ON "review_workflows" ("submitted_by_user_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_review_workflows_assigned_reviewer" ON "review_workflows" ("assigned_reviewer_user_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_review_workflows_is_active" ON "review_workflows" ("is_active")`);
-    }
+    // Create indexes
+    await queryRunner.query(
+      `CREATE INDEX "IDX_review_workflows_entity" ON "review_workflows" ("entity_type", "entity_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_review_workflows_status" ON "review_workflows" ("current_status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_review_workflows_submitted_by" ON "review_workflows" ("submitted_by_user_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_review_workflows_assigned_reviewer" ON "review_workflows" ("assigned_reviewer_user_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_review_workflows_is_active" ON "review_workflows" ("is_active")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Drop indexes
-        await queryRunner.query(`DROP INDEX "IDX_review_workflows_is_active"`);
-        await queryRunner.query(`DROP INDEX "IDX_review_workflows_assigned_reviewer"`);
-        await queryRunner.query(`DROP INDEX "IDX_review_workflows_submitted_by"`);
-        await queryRunner.query(`DROP INDEX "IDX_review_workflows_status"`);
-        await queryRunner.query(`DROP INDEX "IDX_review_workflows_entity"`);
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Drop indexes
+    await queryRunner.query(`DROP INDEX "IDX_review_workflows_is_active"`);
+    await queryRunner.query(
+      `DROP INDEX "IDX_review_workflows_assigned_reviewer"`,
+    );
+    await queryRunner.query(`DROP INDEX "IDX_review_workflows_submitted_by"`);
+    await queryRunner.query(`DROP INDEX "IDX_review_workflows_status"`);
+    await queryRunner.query(`DROP INDEX "IDX_review_workflows_entity"`);
 
-        // Drop foreign key constraints
-        await queryRunner.query(`ALTER TABLE "review_workflows" DROP CONSTRAINT "FK_review_workflows_decided_by"`);
-        await queryRunner.query(`ALTER TABLE "review_workflows" DROP CONSTRAINT "FK_review_workflows_assigned_reviewer"`);
-        await queryRunner.query(`ALTER TABLE "review_workflows" DROP CONSTRAINT "FK_review_workflows_submitted_by"`);
+    // Drop foreign key constraints
+    await queryRunner.query(
+      `ALTER TABLE "review_workflows" DROP CONSTRAINT "FK_review_workflows_decided_by"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "review_workflows" DROP CONSTRAINT "FK_review_workflows_assigned_reviewer"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "review_workflows" DROP CONSTRAINT "FK_review_workflows_submitted_by"`,
+    );
 
-        // Drop table
-        await queryRunner.query(`DROP TABLE "review_workflows"`);
+    // Drop table
+    await queryRunner.query(`DROP TABLE "review_workflows"`);
 
-        // Drop enums
-        await queryRunner.query(`DROP TYPE "review_status_enum"`);
-        await queryRunner.query(`DROP TYPE "review_entity_type_enum"`);
-        await queryRunner.query(`DROP TYPE "workflow_type_enum"`);
-    }
+    // Drop enums
+    await queryRunner.query(`DROP TYPE "review_status_enum"`);
+    await queryRunner.query(`DROP TYPE "review_entity_type_enum"`);
+    await queryRunner.query(`DROP TYPE "workflow_type_enum"`);
+  }
 }

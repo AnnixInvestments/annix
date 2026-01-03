@@ -1,15 +1,32 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsEnum, IsNumber, IsBoolean, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  IsBoolean,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { ReviewStatus, ReviewEntityType, WorkflowType } from '../entities/review-workflow.entity';
+import {
+  ReviewStatus,
+  ReviewEntityType,
+  WorkflowType,
+} from '../entities/review-workflow.entity';
 
 export class WorkflowQueryDto {
-  @ApiPropertyOptional({ description: 'Filter by workflow type', enum: WorkflowType })
+  @ApiPropertyOptional({
+    description: 'Filter by workflow type',
+    enum: WorkflowType,
+  })
   @IsOptional()
   @IsEnum(WorkflowType)
   workflowType?: WorkflowType;
 
-  @ApiPropertyOptional({ description: 'Filter by entity type', enum: ReviewEntityType })
+  @ApiPropertyOptional({
+    description: 'Filter by entity type',
+    enum: ReviewEntityType,
+  })
   @IsOptional()
   @IsEnum(ReviewEntityType)
   entityType?: ReviewEntityType;

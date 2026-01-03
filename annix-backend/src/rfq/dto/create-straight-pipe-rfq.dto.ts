@@ -1,7 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, IsEnum, IsPositive, IsInt, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsEnum,
+  IsPositive,
+  IsInt,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { LengthUnit, QuantityType, ScheduleType } from '../entities/straight-pipe-rfq.entity';
+import {
+  LengthUnit,
+  QuantityType,
+  ScheduleType,
+} from '../entities/straight-pipe-rfq.entity';
 
 export class CreateStraightPipeRfqDto {
   @ApiProperty({ description: 'Nominal bore in mm', example: 500 })
@@ -10,23 +23,36 @@ export class CreateStraightPipeRfqDto {
   @Type(() => Number)
   nominalBoreMm: number;
 
-  @ApiProperty({ description: 'Schedule type - using schedule number or wall thickness', enum: ScheduleType })
+  @ApiProperty({
+    description: 'Schedule type - using schedule number or wall thickness',
+    enum: ScheduleType,
+  })
   @IsEnum(ScheduleType)
   scheduleType: ScheduleType;
 
-  @ApiProperty({ description: 'Schedule number (e.g., Sch20, Sch40)', required: false })
+  @ApiProperty({
+    description: 'Schedule number (e.g., Sch20, Sch40)',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   scheduleNumber?: string;
 
-  @ApiProperty({ description: 'Wall thickness in mm (if not using schedule)', required: false })
+  @ApiProperty({
+    description: 'Wall thickness in mm (if not using schedule)',
+    required: false,
+  })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 3 })
   @IsPositive()
   @Type(() => Number)
   wallThicknessMm?: number;
 
-  @ApiProperty({ description: 'Pipe end configuration', example: 'FBE', required: false })
+  @ApiProperty({
+    description: 'Pipe end configuration',
+    example: 'FBE',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   pipeEndConfiguration?: string;
@@ -41,11 +67,17 @@ export class CreateStraightPipeRfqDto {
   @IsEnum(LengthUnit)
   lengthUnit: LengthUnit;
 
-  @ApiProperty({ description: 'Quantity type - total length or number of pipes', enum: QuantityType })
+  @ApiProperty({
+    description: 'Quantity type - total length or number of pipes',
+    enum: QuantityType,
+  })
   @IsEnum(QuantityType)
   quantityType: QuantityType;
 
-  @ApiProperty({ description: 'Quantity value - total meters or number of pipes', example: 8000 })
+  @ApiProperty({
+    description: 'Quantity value - total meters or number of pipes',
+    example: 8000,
+  })
   @IsNumber({ maxDecimalPlaces: 3 })
   @IsPositive()
   @Type(() => Number)
@@ -58,7 +90,10 @@ export class CreateStraightPipeRfqDto {
   @Type(() => Number)
   workingPressureBar: number;
 
-  @ApiProperty({ description: 'Working temperature in celsius', required: false })
+  @ApiProperty({
+    description: 'Working temperature in celsius',
+    required: false,
+  })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(-273)

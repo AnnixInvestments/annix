@@ -13,7 +13,11 @@ import { AdminSession } from './entities/admin-session.entity';
 import { User } from '../user/entities/user.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
-import { AdminLoginDto, AdminLoginResponseDto, TokenResponseDto } from './dto/admin-auth.dto';
+import {
+  AdminLoginDto,
+  AdminLoginResponseDto,
+  TokenResponseDto,
+} from './dto/admin-auth.dto';
 
 @Injectable()
 export class AdminAuthService {
@@ -67,7 +71,8 @@ export class AdminAuthService {
 
     // Check if user has admin or employee role
     const roleNames = user.roles?.map((r) => r.name) || [];
-    const hasAdminAccess = roleNames.includes('admin') || roleNames.includes('employee');
+    const hasAdminAccess =
+      roleNames.includes('admin') || roleNames.includes('employee');
 
     if (!hasAdminAccess) {
       await this.auditService.log({
@@ -75,11 +80,16 @@ export class AdminAuthService {
         entityType: 'auth',
         entityId: user.id,
         performedBy: user,
-        newValues: { email: loginDto.email, reason: 'insufficient_permissions' },
+        newValues: {
+          email: loginDto.email,
+          reason: 'insufficient_permissions',
+        },
         ipAddress: clientIp,
         userAgent,
       });
-      throw new ForbiddenException('You do not have permission to access the admin portal');
+      throw new ForbiddenException(
+        'You do not have permission to access the admin portal',
+      );
     }
 
     // DEVELOPMENT MODE: Skip status check
@@ -156,7 +166,12 @@ export class AdminAuthService {
     };
   }
 
-  async logout(userId: number, sessionToken: string, clientIp: string, userAgent?: string): Promise<void> {
+  async logout(
+    userId: number,
+    sessionToken: string,
+    clientIp: string,
+    userAgent?: string,
+  ): Promise<void> {
     const session = await this.adminSessionRepository.findOne({
       where: { userId, sessionToken, isRevoked: false },
     });

@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { FlangeDimensionService } from './flange-dimension.service';
 import { CreateFlangeDimensionDto } from './dto/create-flange-dimension.dto';
 import { UpdateFlangeDimensionDto } from './dto/update-flange-dimension.dto';
@@ -6,7 +14,9 @@ import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @Controller('flange-dimension')
 export class FlangeDimensionController {
-  constructor(private readonly flangeDimensionService: FlangeDimensionService) {}
+  constructor(
+    private readonly flangeDimensionService: FlangeDimensionService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new bolt mass' })
@@ -18,7 +28,10 @@ export class FlangeDimensionController {
 
   @Get()
   @ApiOperation({ summary: 'Get all bolt masss with relations' })
-  @ApiResponse({ status: 200, description: 'List of bolt masss retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of bolt masss retrieved successfully',
+  })
   findAll() {
     return this.flangeDimensionService.findAll();
   }
@@ -35,9 +48,15 @@ export class FlangeDimensionController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update a bolt mass' })
   @ApiResponse({ status: 200, description: 'Bolt mass updated successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid request or duplicate bolt mass' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or duplicate bolt mass',
+  })
   @ApiResponse({ status: 404, description: 'Bolt mass not found' })
-  update(@Param('id') id: string, @Body() updateFlangeDimensionDto: UpdateFlangeDimensionDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateFlangeDimensionDto: UpdateFlangeDimensionDto,
+  ) {
     return this.flangeDimensionService.update(+id, updateFlangeDimensionDto);
   }
 

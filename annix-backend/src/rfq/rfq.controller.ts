@@ -25,7 +25,10 @@ import { RfqService } from './rfq.service';
 import { CreateStraightPipeRfqWithItemDto } from './dto/create-rfq-item.dto';
 import { CreateBendRfqWithItemDto } from './dto/create-bend-rfq-with-item.dto';
 import { CreateBendRfqDto } from './dto/create-bend-rfq.dto';
-import { StraightPipeCalculationResultDto, RfqResponseDto } from './dto/rfq-response.dto';
+import {
+  StraightPipeCalculationResultDto,
+  RfqResponseDto,
+} from './dto/rfq-response.dto';
 import { BendCalculationResultDto } from './dto/bend-calculation-result.dto';
 import { RfqDocumentResponseDto } from './dto/rfq-document.dto';
 import { Rfq } from './entities/rfq.entity';
@@ -38,7 +41,8 @@ export class RfqController {
   @Post('straight-pipe/calculate')
   @ApiOperation({
     summary: 'Calculate straight pipe requirements',
-    description: 'Calculate pipe weight, quantities, and welding requirements for straight pipe RFQ',
+    description:
+      'Calculate pipe weight, quantities, and welding requirements for straight pipe RFQ',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -140,7 +144,8 @@ export class RfqController {
   @Post('straight-pipe')
   @ApiOperation({
     summary: 'Create straight pipe RFQ',
-    description: 'Create a new RFQ for straight pipe with automatic calculations',
+    description:
+      'Create a new RFQ for straight pipe with automatic calculations',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -175,7 +180,8 @@ export class RfqController {
         value: {
           rfq: {
             projectName: '500NB Pipeline Extension',
-            description: 'Extension of existing pipeline system with carbon steel pipe',
+            description:
+              'Extension of existing pipeline system with carbon steel pipe',
             customerName: 'Acme Industrial Solutions',
             customerEmail: 'procurement@acme-industrial.co.za',
             customerPhone: '+27 11 555 0123',
@@ -214,7 +220,8 @@ export class RfqController {
   @Post('bend/calculate')
   @ApiOperation({
     summary: 'Calculate bend requirements',
-    description: 'Calculate bend weight, center-to-face dimensions, welding requirements, and pricing for bend RFQ',
+    description:
+      'Calculate bend weight, center-to-face dimensions, welding requirements, and pricing for bend RFQ',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -238,7 +245,8 @@ export class RfqController {
   @Post('bend')
   @ApiOperation({
     summary: 'Create bend RFQ',
-    description: 'Create a new RFQ for bends/elbows with automatic calculations including center-to-face, weights, and welding requirements',
+    description:
+      'Create a new RFQ for bends/elbows with automatic calculations including center-to-face, weights, and welding requirements',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -261,7 +269,8 @@ export class RfqController {
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'User, bend data, pipe dimension, or steel specification not found',
+    description:
+      'User, bend data, pipe dimension, or steel specification not found',
   })
   @ApiBody({
     description: 'Complete bend RFQ data',
@@ -294,7 +303,8 @@ export class RfqController {
             steelSpecificationId: 2,
             useGlobalFlangeSpecs: true,
           },
-          itemDescription: '350NB 3D 45° Pulled Bend, Sch30 with 1 tangent of 400mm for 16 Bar Line',
+          itemDescription:
+            '350NB 3D 45° Pulled Bend, Sch30 with 1 tangent of 400mm for 16 Bar Line',
           itemNotes: 'Requires special surface treatment and inspection',
         },
       },
@@ -327,7 +337,8 @@ export class RfqController {
   @Get(':id')
   @ApiOperation({
     summary: 'Get RFQ by ID',
-    description: 'Get detailed RFQ information including all items and calculations',
+    description:
+      'Get detailed RFQ information including all items and calculations',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -345,12 +356,15 @@ export class RfqController {
   // ==================== Document Endpoints ====================
 
   @Post(':id/documents')
-  @UseInterceptors(FileInterceptor('file', {
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
-  }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+    }),
+  )
   @ApiOperation({
     summary: 'Upload document to RFQ',
-    description: 'Upload a document file (PDF, Excel, Word, etc.) to an RFQ. Maximum 10 documents per RFQ, 50MB per file.',
+    description:
+      'Upload a document file (PDF, Excel, Word, etc.) to an RFQ. Maximum 10 documents per RFQ, 50MB per file.',
   })
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'id', description: 'RFQ ID', type: Number })
@@ -435,7 +449,8 @@ export class RfqController {
     @Param('documentId', ParseIntPipe) documentId: number,
     @Res() res: Response,
   ): Promise<void> {
-    const { buffer, document } = await this.rfqService.downloadDocument(documentId);
+    const { buffer, document } =
+      await this.rfqService.downloadDocument(documentId);
 
     res.set({
       'Content-Type': document.mimeType,

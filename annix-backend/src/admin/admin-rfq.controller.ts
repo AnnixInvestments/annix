@@ -8,7 +8,12 @@ import {
   StreamableFile,
   Response,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Response as ExpressResponse } from 'express';
 import { AdminRfqService } from './admin-rfq.service';
 import { AdminAuthGuard } from './guards/admin-auth.guard';
@@ -37,7 +42,9 @@ export class AdminRfqController {
     description: 'RFQs retrieved successfully',
     type: RfqListResponseDto,
   })
-  async getAllRfqs(@Query() queryDto: RfqQueryDto): Promise<RfqListResponseDto> {
+  async getAllRfqs(
+    @Query() queryDto: RfqQueryDto,
+  ): Promise<RfqListResponseDto> {
     return this.rfqService.getAllRfqs(queryDto);
   }
 
@@ -49,7 +56,9 @@ export class AdminRfqController {
     type: RfqDetailDto,
   })
   @ApiResponse({ status: 404, description: 'RFQ not found' })
-  async getRfqDetail(@Param('id', ParseIntPipe) id: number): Promise<RfqDetailDto> {
+  async getRfqDetail(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<RfqDetailDto> {
     return this.rfqService.getRfqDetail(id);
   }
 
@@ -92,9 +101,8 @@ export class AdminRfqController {
     @Param('documentId', ParseIntPipe) documentId: number,
     @Response({ passthrough: true }) res: ExpressResponse,
   ): Promise<StreamableFile> {
-    const { file, fileName, mimeType } = await this.rfqService.downloadDocument(
-      documentId,
-    );
+    const { file, fileName, mimeType } =
+      await this.rfqService.downloadDocument(documentId);
 
     res.set({
       'Content-Type': mimeType,

@@ -1,14 +1,16 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateBendRfqTable1762759500000 implements MigrationInterface {
-    name = 'CreateBendRfqTable1762759500000'
+  name = 'CreateBendRfqTable1762759500000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Add 'bend' to the RfqItemType enum
-        await queryRunner.query(`ALTER TYPE "rfq_items_item_type_enum" ADD VALUE 'bend'`);
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Add 'bend' to the RfqItemType enum
+    await queryRunner.query(
+      `ALTER TYPE "rfq_items_item_type_enum" ADD VALUE 'bend'`,
+    );
 
-        // Create the bend_rfqs table
-        await queryRunner.query(`
+    // Create the bend_rfqs table
+    await queryRunner.query(`
             CREATE TABLE "bend_rfqs" (
                 "id" SERIAL NOT NULL,
                 "nominal_bore_mm" integer NOT NULL,
@@ -37,24 +39,26 @@ export class CreateBendRfqTable1762759500000 implements MigrationInterface {
             )
         `);
 
-        // Add foreign key constraint to rfq_items
-        await queryRunner.query(`
+    // Add foreign key constraint to rfq_items
+    await queryRunner.query(`
             ALTER TABLE "bend_rfqs" 
             ADD CONSTRAINT "FK_cd439a37b8b2bc118e33004885" 
             FOREIGN KEY ("rfq_item_id") 
             REFERENCES "rfq_items"("id") 
             ON DELETE NO ACTION ON UPDATE NO ACTION
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Drop the foreign key constraint
-        await queryRunner.query(`ALTER TABLE "bend_rfqs" DROP CONSTRAINT "FK_cd439a37b8b2bc118e33004885"`);
-        
-        // Drop the bend_rfqs table
-        await queryRunner.query(`DROP TABLE "bend_rfqs"`);
-        
-        // Note: Cannot remove enum value from PostgreSQL enum type easily
-        // This would require recreating the enum type
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Drop the foreign key constraint
+    await queryRunner.query(
+      `ALTER TABLE "bend_rfqs" DROP CONSTRAINT "FK_cd439a37b8b2bc118e33004885"`,
+    );
+
+    // Drop the bend_rfqs table
+    await queryRunner.query(`DROP TABLE "bend_rfqs"`);
+
+    // Note: Cannot remove enum value from PostgreSQL enum type easily
+    // This would require recreating the enum type
+  }
 }

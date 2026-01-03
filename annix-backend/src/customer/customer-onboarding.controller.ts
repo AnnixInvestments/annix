@@ -7,7 +7,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { CustomerOnboardingService } from './customer-onboarding.service';
@@ -38,16 +43,17 @@ export class CustomerOnboardingController {
   ) {
     const customerId = (req as any).customer.id;
     const clientIp = this.getClientIp(req);
-    return this.onboardingService.updateCompanyDetails(customerId, data, clientIp);
+    return this.onboardingService.updateCompanyDetails(
+      customerId,
+      data,
+      clientIp,
+    );
   }
 
   @Post('save-draft')
   @ApiOperation({ summary: 'Save onboarding progress as draft' })
   @ApiResponse({ status: 200, description: 'Draft saved' })
-  async saveDraft(
-    @Body() data: Record<string, any>,
-    @Req() req: Request,
-  ) {
+  async saveDraft(@Body() data: Record<string, any>, @Req() req: Request) {
     const customerId = (req as any).customer.id;
     const clientIp = this.getClientIp(req);
     return this.onboardingService.saveDraft(customerId, data, clientIp);
@@ -66,7 +72,9 @@ export class CustomerOnboardingController {
   private getClientIp(req: Request): string {
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
-      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded)
+        ? forwarded[0]
+        : forwarded.split(',')[0];
       return ips.trim();
     }
     return req.ip || req.socket?.remoteAddress || 'unknown';

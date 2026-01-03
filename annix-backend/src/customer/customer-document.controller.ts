@@ -13,7 +13,14 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import * as fs from 'fs';
 
@@ -44,7 +51,10 @@ export class CustomerDocumentController {
       type: 'object',
       properties: {
         file: { type: 'string', format: 'binary' },
-        documentType: { type: 'string', enum: Object.values(CustomerDocumentType) },
+        documentType: {
+          type: 'string',
+          enum: Object.values(CustomerDocumentType),
+        },
         expiryDate: { type: 'string', format: 'date', nullable: true },
       },
     },
@@ -93,7 +103,8 @@ export class CustomerDocumentController {
     @Res() res: Response,
   ) {
     const customerId = (req as any).customer.id;
-    const { filePath, fileName, mimeType } = await this.documentService.getDocumentFile(customerId, id);
+    const { filePath, fileName, mimeType } =
+      await this.documentService.getDocumentFile(customerId, id);
 
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
@@ -105,7 +116,9 @@ export class CustomerDocumentController {
   private getClientIp(req: Request): string {
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
-      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded)
+        ? forwarded[0]
+        : forwarded.split(',')[0];
       return ips.trim();
     }
     return req.ip || req.socket?.remoteAddress || 'unknown';

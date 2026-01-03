@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateFlangeBoltingTables1766001700000 implements MigrationInterface {
+export class CreateFlangeBoltingTables1766001700000
+  implements MigrationInterface
+{
   name = 'CreateFlangeBoltingTables1766001700000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

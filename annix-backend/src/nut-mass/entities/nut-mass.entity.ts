@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, Unique, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  Unique,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+} from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Bolt } from '../../bolt/entities/bolt.entity';
 
@@ -12,8 +20,10 @@ export class NutMass {
   @JoinColumn({ name: 'bolt_id' })
   bolt: Bolt;
 
-  @ApiProperty({ example: 0.017, description: 'Mass of a single nut in kilograms' })
+  @ApiProperty({
+    example: 0.017,
+    description: 'Mass of a single nut in kilograms',
+  })
   @Column({ type: 'float' })
   mass_kg: number;
-
 }

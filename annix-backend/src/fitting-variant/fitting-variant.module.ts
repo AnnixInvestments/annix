@@ -9,7 +9,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Fitting, FittingVariant, FittingBore, FittingDimension]),
+    TypeOrmModule.forFeature([
+      Fitting,
+      FittingVariant,
+      FittingBore,
+      FittingDimension,
+    ]),
   ],
   controllers: [FittingVariantController],
   providers: [FittingVariantService],

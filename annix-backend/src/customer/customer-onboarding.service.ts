@@ -15,7 +15,10 @@ import {
   CustomerAccountStatus,
 } from './entities';
 import { CustomerOnboardingStatus } from './entities/customer-onboarding.entity';
-import { CustomerDocumentType, CustomerDocumentValidationStatus } from './entities/customer-document.entity';
+import {
+  CustomerDocumentType,
+  CustomerDocumentValidationStatus,
+} from './entities/customer-document.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 
@@ -54,9 +57,9 @@ export class CustomerOnboardingService {
     });
 
     // Check document completeness
-    const uploadedTypes = documents.map(d => d.documentType);
+    const uploadedTypes = documents.map((d) => d.documentType);
     const missingDocuments = REQUIRED_DOCUMENT_TYPES.filter(
-      type => !uploadedTypes.includes(type),
+      (type) => !uploadedTypes.includes(type),
     );
 
     // Get profile and company
@@ -85,7 +88,7 @@ export class CustomerOnboardingService {
           required: REQUIRED_DOCUMENT_TYPES,
           uploaded: uploadedTypes,
           missing: missingDocuments,
-          items: documents.map(d => ({
+          items: documents.map((d) => ({
             id: d.id,
             type: d.documentType,
             fileName: d.fileName,
@@ -101,15 +104,35 @@ export class CustomerOnboardingService {
     if (!company) return [];
 
     return [
-      { field: 'legalName', label: 'Legal Company Name', complete: !!company.legalName },
-      { field: 'registrationNumber', label: 'Registration Number', complete: !!company.registrationNumber },
-      { field: 'streetAddress', label: 'Street Address', complete: !!company.streetAddress },
+      {
+        field: 'legalName',
+        label: 'Legal Company Name',
+        complete: !!company.legalName,
+      },
+      {
+        field: 'registrationNumber',
+        label: 'Registration Number',
+        complete: !!company.registrationNumber,
+      },
+      {
+        field: 'streetAddress',
+        label: 'Street Address',
+        complete: !!company.streetAddress,
+      },
       { field: 'city', label: 'City', complete: !!company.city },
-      { field: 'primaryPhone', label: 'Primary Phone', complete: !!company.primaryPhone },
+      {
+        field: 'primaryPhone',
+        label: 'Primary Phone',
+        complete: !!company.primaryPhone,
+      },
     ];
   }
 
-  async updateCompanyDetails(customerId: number, data: Partial<CustomerCompany>, clientIp: string) {
+  async updateCompanyDetails(
+    customerId: number,
+    data: Partial<CustomerCompany>,
+    clientIp: string,
+  ) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
       relations: ['company'],
@@ -128,8 +151,15 @@ export class CustomerOnboardingService {
     }
 
     // Only allow updates in DRAFT or REJECTED status
-    if (![CustomerOnboardingStatus.DRAFT, CustomerOnboardingStatus.REJECTED].includes(onboarding.status)) {
-      throw new ForbiddenException('Cannot update company details at this stage');
+    if (
+      ![
+        CustomerOnboardingStatus.DRAFT,
+        CustomerOnboardingStatus.REJECTED,
+      ].includes(onboarding.status)
+    ) {
+      throw new ForbiddenException(
+        'Cannot update company details at this stage',
+      );
     }
 
     // Update company
@@ -170,26 +200,35 @@ export class CustomerOnboardingService {
     }
 
     // Only allow submission from DRAFT or REJECTED status
-    if (![CustomerOnboardingStatus.DRAFT, CustomerOnboardingStatus.REJECTED].includes(onboarding.status)) {
+    if (
+      ![
+        CustomerOnboardingStatus.DRAFT,
+        CustomerOnboardingStatus.REJECTED,
+      ].includes(onboarding.status)
+    ) {
       throw new BadRequestException('Onboarding has already been submitted');
     }
 
     // Check company details complete
     if (!onboarding.companyDetailsComplete) {
-      throw new BadRequestException('Please complete all company details before submitting');
+      throw new BadRequestException(
+        'Please complete all company details before submitting',
+      );
     }
 
     // Check documents complete
     const documents = await this.documentRepo.find({
       where: { customerId },
     });
-    const uploadedTypes = documents.map(d => d.documentType);
+    const uploadedTypes = documents.map((d) => d.documentType);
     const missingDocuments = REQUIRED_DOCUMENT_TYPES.filter(
-      type => !uploadedTypes.includes(type),
+      (type) => !uploadedTypes.includes(type),
     );
 
     if (missingDocuments.length > 0) {
-      throw new BadRequestException(`Missing required documents: ${missingDocuments.join(', ')}`);
+      throw new BadRequestException(
+        `Missing required documents: ${missingDocuments.join(', ')}`,
+      );
     }
 
     // Update status
@@ -210,18 +249,26 @@ export class CustomerOnboardingService {
       entityType: 'customer_onboarding',
       entityId: onboarding.id,
       action: AuditAction.UPDATE,
-      newValues: { status: CustomerOnboardingStatus.SUBMITTED, submittedAt: onboarding.submittedAt },
+      newValues: {
+        status: CustomerOnboardingStatus.SUBMITTED,
+        submittedAt: onboarding.submittedAt,
+      },
       ipAddress: clientIp,
     });
 
     return {
       success: true,
-      message: 'Onboarding submitted successfully. It will be reviewed shortly.',
+      message:
+        'Onboarding submitted successfully. It will be reviewed shortly.',
       status: onboarding.status,
     };
   }
 
-  async saveDraft(customerId: number, data: Partial<CustomerCompany>, clientIp: string) {
+  async saveDraft(
+    customerId: number,
+    data: Partial<CustomerCompany>,
+    clientIp: string,
+  ) {
     return this.updateCompanyDetails(customerId, data, clientIp);
   }
 }

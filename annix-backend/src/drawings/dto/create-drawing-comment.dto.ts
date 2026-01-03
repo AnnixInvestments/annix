@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, IsEnum, MaxLength, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsEnum,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { CommentType } from '../entities/drawing-comment.entity';
 
 export class CreateDrawingCommentDto {

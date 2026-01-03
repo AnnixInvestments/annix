@@ -77,16 +77,22 @@ export class SupplierAuthService {
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
   ) {
-    this.uploadDir = this.configService.get<string>('UPLOAD_DIR') || './uploads';
+    this.uploadDir =
+      this.configService.get<string>('UPLOAD_DIR') || './uploads';
   }
 
   /**
    * Register a new supplier with email + password only
    * Returns auth tokens for immediate login (email verification disabled for development)
    */
-  async register(dto: CreateSupplierRegistrationDto, clientIp: string): Promise<SupplierLoginResponseDto> {
+  async register(
+    dto: CreateSupplierRegistrationDto,
+    clientIp: string,
+  ): Promise<SupplierLoginResponseDto> {
     // Check if email already exists
-    const existingUser = await this.userRepo.findOne({ where: { email: dto.email } });
+    const existingUser = await this.userRepo.findOne({
+      where: { email: dto.email },
+    });
     if (existingUser) {
       throw new ConflictException('An account with this email already exists');
     }
@@ -102,7 +108,9 @@ export class SupplierAuthService {
       const hashedPassword = await bcrypt.hash(dto.password, salt);
 
       // Get or create supplier role
-      let supplierRole = await this.userRoleRepo.findOne({ where: { name: 'supplier' } });
+      let supplierRole = await this.userRoleRepo.findOne({
+        where: { name: 'supplier' },
+      });
       if (!supplierRole) {
         supplierRole = this.userRoleRepo.create({ name: 'supplier' });
         supplierRole = await queryRunner.manager.save(supplierRole);
@@ -119,11 +127,17 @@ export class SupplierAuthService {
 
       // 2. Generate email verification token
       const verificationToken = this.jwtService.sign(
-        { userId: savedUser.id, email: dto.email, type: 'supplier_verification' },
+        {
+          userId: savedUser.id,
+          email: dto.email,
+          type: 'supplier_verification',
+        },
         { expiresIn: `${EMAIL_VERIFICATION_EXPIRY_HOURS}h` },
       );
       const verificationExpires = new Date();
-      verificationExpires.setHours(verificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS);
+      verificationExpires.setHours(
+        verificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS,
+      );
 
       // 3. Create the supplier profile (minimal info, awaiting email verification)
       const profile = this.profileRepo.create({
@@ -247,7 +261,9 @@ export class SupplierAuthService {
     beeDocument?: Express.Multer.File,
   ): Promise<SupplierLoginResponseDto> {
     // Check if email already exists
-    const existingUser = await this.userRepo.findOne({ where: { email: dto.email } });
+    const existingUser = await this.userRepo.findOne({
+      where: { email: dto.email },
+    });
     if (existingUser) {
       throw new ConflictException('An account with this email already exists');
     }
@@ -258,7 +274,9 @@ export class SupplierAuthService {
         where: { registrationNumber: dto.company.registrationNumber },
       });
       if (existingCompany) {
-        throw new ConflictException('A company with this registration number already exists');
+        throw new ConflictException(
+          'A company with this registration number already exists',
+        );
       }
     }
 
@@ -301,7 +319,9 @@ export class SupplierAuthService {
       const salt = await bcrypt.genSalt();
       const hashedPassword = await bcrypt.hash(dto.password, salt);
 
-      let supplierRole = await this.userRoleRepo.findOne({ where: { name: 'supplier' } });
+      let supplierRole = await this.userRoleRepo.findOne({
+        where: { name: 'supplier' },
+      });
       if (!supplierRole) {
         supplierRole = this.userRoleRepo.create({ name: 'supplier' });
         supplierRole = await queryRunner.manager.save(supplierRole);
@@ -443,7 +463,11 @@ export class SupplierAuthService {
     companyRegDocument?: Express.Multer.File,
     beeDocument?: Express.Multer.File,
   ): Promise<void> {
-    const supplierDir = path.join(this.uploadDir, 'suppliers', supplierId.toString());
+    const supplierDir = path.join(
+      this.uploadDir,
+      'suppliers',
+      supplierId.toString(),
+    );
 
     // Create directory if it doesn't exist
     if (!fs.existsSync(supplierDir)) {
@@ -517,7 +541,10 @@ export class SupplierAuthService {
   /**
    * Verify email address
    */
-  async verifyEmail(token: string, clientIp: string): Promise<{ success: boolean; message: string }> {
+  async verifyEmail(
+    token: string,
+    clientIp: string,
+  ): Promise<{ success: boolean; message: string }> {
     try {
       const payload = await this.jwtService.verifyAsync(token);
 
@@ -537,11 +564,19 @@ export class SupplierAuthService {
       }
 
       if (profile.emailVerified) {
-        return { success: true, message: 'Email already verified. You can now log in.' };
+        return {
+          success: true,
+          message: 'Email already verified. You can now log in.',
+        };
       }
 
-      if (profile.emailVerificationExpires && new Date() > profile.emailVerificationExpires) {
-        throw new BadRequestException('Verification token has expired. Please request a new one.');
+      if (
+        profile.emailVerificationExpires &&
+        new Date() > profile.emailVerificationExpires
+      ) {
+        throw new BadRequestException(
+          'Verification token has expired. Please request a new one.',
+        );
       }
 
       // Mark email as verified
@@ -560,7 +595,8 @@ export class SupplierAuthService {
 
       return {
         success: true,
-        message: 'Email verified successfully. You can now log in and complete your onboarding.',
+        message:
+          'Email verified successfully. You can now log in and complete your onboarding.',
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -573,16 +609,29 @@ export class SupplierAuthService {
   /**
    * Resend verification email
    */
-  async resendVerificationEmail(email: string, clientIp: string): Promise<{ success: boolean; message: string }> {
+  async resendVerificationEmail(
+    email: string,
+    clientIp: string,
+  ): Promise<{ success: boolean; message: string }> {
     const user = await this.userRepo.findOne({ where: { email } });
     if (!user) {
       // Don't reveal if email exists
-      return { success: true, message: 'If an account exists with this email, a verification link has been sent.' };
+      return {
+        success: true,
+        message:
+          'If an account exists with this email, a verification link has been sent.',
+      };
     }
 
-    const profile = await this.profileRepo.findOne({ where: { userId: user.id } });
+    const profile = await this.profileRepo.findOne({
+      where: { userId: user.id },
+    });
     if (!profile) {
-      return { success: true, message: 'If an account exists with this email, a verification link has been sent.' };
+      return {
+        success: true,
+        message:
+          'If an account exists with this email, a verification link has been sent.',
+      };
     }
 
     if (profile.emailVerified) {
@@ -595,13 +644,18 @@ export class SupplierAuthService {
       { expiresIn: `${EMAIL_VERIFICATION_EXPIRY_HOURS}h` },
     );
     const verificationExpires = new Date();
-    verificationExpires.setHours(verificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS);
+    verificationExpires.setHours(
+      verificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS,
+    );
 
     profile.emailVerificationToken = verificationToken;
     profile.emailVerificationExpires = verificationExpires;
     await this.profileRepo.save(profile);
 
-    await this.emailService.sendSupplierVerificationEmail(email, verificationToken);
+    await this.emailService.sendSupplierVerificationEmail(
+      email,
+      verificationToken,
+    );
 
     return {
       success: true,
@@ -612,7 +666,11 @@ export class SupplierAuthService {
   /**
    * Login with email, password, and device fingerprint verification
    */
-  async login(dto: SupplierLoginDto, clientIp: string, userAgent: string): Promise<SupplierLoginResponseDto> {
+  async login(
+    dto: SupplierLoginDto,
+    clientIp: string,
+    userAgent: string,
+  ): Promise<SupplierLoginResponseDto> {
     // Check for too many failed attempts (rate limiting)
     await this.checkLoginAttempts(dto.email, clientIp);
 
@@ -623,7 +681,15 @@ export class SupplierAuthService {
     });
 
     if (!user) {
-      await this.logLoginAttempt(null, dto.email, false, SupplierLoginFailureReason.INVALID_CREDENTIALS, dto.deviceFingerprint, clientIp, userAgent);
+      await this.logLoginAttempt(
+        null,
+        dto.email,
+        false,
+        SupplierLoginFailureReason.INVALID_CREDENTIALS,
+        dto.deviceFingerprint,
+        clientIp,
+        userAgent,
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -707,7 +773,10 @@ export class SupplierAuthService {
     const ipMismatchWarning = false;
 
     // Invalidate any existing active sessions (single session enforcement)
-    await this.invalidateAllSessions(profile.id, SupplierSessionInvalidationReason.NEW_LOGIN);
+    await this.invalidateAllSessions(
+      profile.id,
+      SupplierSessionInvalidationReason.NEW_LOGIN,
+    );
 
     // Create new session
     const sessionToken = uuidv4();
@@ -743,7 +812,16 @@ export class SupplierAuthService {
     ]);
 
     // Log successful login
-    await this.logLoginAttempt(profile.id, dto.email, true, null, dto.deviceFingerprint, clientIp, userAgent, ipMismatchWarning);
+    await this.logLoginAttempt(
+      profile.id,
+      dto.email,
+      true,
+      null,
+      dto.deviceFingerprint,
+      clientIp,
+      userAgent,
+      ipMismatchWarning,
+    );
 
     // Log audit
     await this.auditService.log({
@@ -769,7 +847,8 @@ export class SupplierAuthService {
         lastName: profile.lastName,
         companyName: profile.company?.tradingName || profile.company?.legalName,
         accountStatus: profile.accountStatus,
-        onboardingStatus: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
+        onboardingStatus:
+          profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
       },
     };
   }
@@ -801,7 +880,11 @@ export class SupplierAuthService {
   /**
    * Refresh session token
    */
-  async refreshSession(refreshToken: string, deviceFingerprint: string, clientIp: string): Promise<SupplierLoginResponseDto> {
+  async refreshSession(
+    refreshToken: string,
+    deviceFingerprint: string,
+    clientIp: string,
+  ): Promise<SupplierLoginResponseDto> {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken);
 
@@ -814,12 +897,20 @@ export class SupplierAuthService {
         throw new UnauthorizedException('Supplier not found');
       }
 
-      const activeBinding = profile.deviceBindings.find((b) => b.isActive && b.isPrimary);
-      if (!activeBinding || activeBinding.deviceFingerprint !== deviceFingerprint) {
+      const activeBinding = profile.deviceBindings.find(
+        (b) => b.isActive && b.isPrimary,
+      );
+      if (
+        !activeBinding ||
+        activeBinding.deviceFingerprint !== deviceFingerprint
+      ) {
         throw new UnauthorizedException('Device mismatch');
       }
 
-      if (profile.accountStatus !== SupplierAccountStatus.PENDING && profile.accountStatus !== SupplierAccountStatus.ACTIVE) {
+      if (
+        profile.accountStatus !== SupplierAccountStatus.PENDING &&
+        profile.accountStatus !== SupplierAccountStatus.ACTIVE
+      ) {
         throw new ForbiddenException('Account is not active');
       }
 
@@ -856,9 +947,11 @@ export class SupplierAuthService {
           email: profile.user.email,
           firstName: profile.firstName,
           lastName: profile.lastName,
-          companyName: profile.company?.tradingName || profile.company?.legalName,
+          companyName:
+            profile.company?.tradingName || profile.company?.legalName,
           accountStatus: profile.accountStatus,
-          onboardingStatus: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
+          onboardingStatus:
+            profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
         },
       };
     } catch (error) {
@@ -905,7 +998,10 @@ export class SupplierAuthService {
 
   // Private helper methods
 
-  private async checkLoginAttempts(email: string, ipAddress: string): Promise<void> {
+  private async checkLoginAttempts(
+    email: string,
+    ipAddress: string,
+  ): Promise<void> {
     const lockoutTime = new Date();
     lockoutTime.setMinutes(lockoutTime.getMinutes() - LOGIN_LOCKOUT_MINUTES);
 

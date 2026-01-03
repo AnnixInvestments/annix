@@ -1,11 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateDrawingsTables1766000200000 implements MigrationInterface {
-    name = 'CreateDrawingsTables1766000200000'
+  name = 'CreateDrawingsTables1766000200000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create drawing_file_type enum
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create drawing_file_type enum
+    await queryRunner.query(`
             CREATE TYPE "drawing_file_type_enum" AS ENUM (
                 'pdf',
                 'dwg',
@@ -16,8 +16,8 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             )
         `);
 
-        // Create drawing_status enum
-        await queryRunner.query(`
+    // Create drawing_status enum
+    await queryRunner.query(`
             CREATE TYPE "drawing_status_enum" AS ENUM (
                 'draft',
                 'submitted',
@@ -28,8 +28,8 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             )
         `);
 
-        // Create drawings table
-        await queryRunner.query(`
+    // Create drawings table
+    await queryRunner.query(`
             CREATE TABLE "drawings" (
                 "id" SERIAL NOT NULL,
                 "drawing_number" character varying(50) NOT NULL,
@@ -51,8 +51,8 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             )
         `);
 
-        // Create drawing_versions table
-        await queryRunner.query(`
+    // Create drawing_versions table
+    await queryRunner.query(`
             CREATE TABLE "drawing_versions" (
                 "id" SERIAL NOT NULL,
                 "drawing_id" integer NOT NULL,
@@ -67,8 +67,8 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             )
         `);
 
-        // Create comment_type enum
-        await queryRunner.query(`
+    // Create comment_type enum
+    await queryRunner.query(`
             CREATE TYPE "comment_type_enum" AS ENUM (
                 'general',
                 'annotation',
@@ -78,8 +78,8 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             )
         `);
 
-        // Create drawing_comments table
-        await queryRunner.query(`
+    // Create drawing_comments table
+    await queryRunner.query(`
             CREATE TABLE "drawing_comments" (
                 "id" SERIAL NOT NULL,
                 "drawing_id" integer NOT NULL,
@@ -97,8 +97,8 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             )
         `);
 
-        // Add foreign key constraints for drawings
-        await queryRunner.query(`
+    // Add foreign key constraints for drawings
+    await queryRunner.query(`
             ALTER TABLE "drawings"
             ADD CONSTRAINT "FK_drawings_rfq"
             FOREIGN KEY ("rfq_id")
@@ -106,7 +106,7 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             ON DELETE SET NULL
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "drawings"
             ADD CONSTRAINT "FK_drawings_uploaded_by"
             FOREIGN KEY ("uploaded_by_user_id")
@@ -114,8 +114,8 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             ON DELETE RESTRICT
         `);
 
-        // Add foreign key constraints for drawing_versions
-        await queryRunner.query(`
+    // Add foreign key constraints for drawing_versions
+    await queryRunner.query(`
             ALTER TABLE "drawing_versions"
             ADD CONSTRAINT "FK_drawing_versions_drawing"
             FOREIGN KEY ("drawing_id")
@@ -123,7 +123,7 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             ON DELETE CASCADE
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "drawing_versions"
             ADD CONSTRAINT "FK_drawing_versions_uploaded_by"
             FOREIGN KEY ("uploaded_by_user_id")
@@ -131,8 +131,8 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             ON DELETE RESTRICT
         `);
 
-        // Add foreign key constraints for drawing_comments
-        await queryRunner.query(`
+    // Add foreign key constraints for drawing_comments
+    await queryRunner.query(`
             ALTER TABLE "drawing_comments"
             ADD CONSTRAINT "FK_drawing_comments_drawing"
             FOREIGN KEY ("drawing_id")
@@ -140,7 +140,7 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             ON DELETE CASCADE
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "drawing_comments"
             ADD CONSTRAINT "FK_drawing_comments_user"
             FOREIGN KEY ("user_id")
@@ -148,7 +148,7 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             ON DELETE RESTRICT
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "drawing_comments"
             ADD CONSTRAINT "FK_drawing_comments_parent"
             FOREIGN KEY ("parent_comment_id")
@@ -156,41 +156,67 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
             ON DELETE CASCADE
         `);
 
-        // Create indexes
-        await queryRunner.query(`CREATE INDEX "IDX_drawings_rfq_id" ON "drawings" ("rfq_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_drawings_status" ON "drawings" ("status")`);
-        await queryRunner.query(`CREATE INDEX "IDX_drawings_uploaded_by" ON "drawings" ("uploaded_by_user_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_drawing_versions_drawing_id" ON "drawing_versions" ("drawing_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_drawing_comments_drawing_id" ON "drawing_comments" ("drawing_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_drawing_comments_user_id" ON "drawing_comments" ("user_id")`);
-    }
+    // Create indexes
+    await queryRunner.query(
+      `CREATE INDEX "IDX_drawings_rfq_id" ON "drawings" ("rfq_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_drawings_status" ON "drawings" ("status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_drawings_uploaded_by" ON "drawings" ("uploaded_by_user_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_drawing_versions_drawing_id" ON "drawing_versions" ("drawing_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_drawing_comments_drawing_id" ON "drawing_comments" ("drawing_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_drawing_comments_user_id" ON "drawing_comments" ("user_id")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Drop indexes
-        await queryRunner.query(`DROP INDEX "IDX_drawing_comments_user_id"`);
-        await queryRunner.query(`DROP INDEX "IDX_drawing_comments_drawing_id"`);
-        await queryRunner.query(`DROP INDEX "IDX_drawing_versions_drawing_id"`);
-        await queryRunner.query(`DROP INDEX "IDX_drawings_uploaded_by"`);
-        await queryRunner.query(`DROP INDEX "IDX_drawings_status"`);
-        await queryRunner.query(`DROP INDEX "IDX_drawings_rfq_id"`);
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Drop indexes
+    await queryRunner.query(`DROP INDEX "IDX_drawing_comments_user_id"`);
+    await queryRunner.query(`DROP INDEX "IDX_drawing_comments_drawing_id"`);
+    await queryRunner.query(`DROP INDEX "IDX_drawing_versions_drawing_id"`);
+    await queryRunner.query(`DROP INDEX "IDX_drawings_uploaded_by"`);
+    await queryRunner.query(`DROP INDEX "IDX_drawings_status"`);
+    await queryRunner.query(`DROP INDEX "IDX_drawings_rfq_id"`);
 
-        // Drop foreign key constraints
-        await queryRunner.query(`ALTER TABLE "drawing_comments" DROP CONSTRAINT "FK_drawing_comments_parent"`);
-        await queryRunner.query(`ALTER TABLE "drawing_comments" DROP CONSTRAINT "FK_drawing_comments_user"`);
-        await queryRunner.query(`ALTER TABLE "drawing_comments" DROP CONSTRAINT "FK_drawing_comments_drawing"`);
-        await queryRunner.query(`ALTER TABLE "drawing_versions" DROP CONSTRAINT "FK_drawing_versions_uploaded_by"`);
-        await queryRunner.query(`ALTER TABLE "drawing_versions" DROP CONSTRAINT "FK_drawing_versions_drawing"`);
-        await queryRunner.query(`ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_uploaded_by"`);
-        await queryRunner.query(`ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_rfq"`);
+    // Drop foreign key constraints
+    await queryRunner.query(
+      `ALTER TABLE "drawing_comments" DROP CONSTRAINT "FK_drawing_comments_parent"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "drawing_comments" DROP CONSTRAINT "FK_drawing_comments_user"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "drawing_comments" DROP CONSTRAINT "FK_drawing_comments_drawing"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "drawing_versions" DROP CONSTRAINT "FK_drawing_versions_uploaded_by"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "drawing_versions" DROP CONSTRAINT "FK_drawing_versions_drawing"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_uploaded_by"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_rfq"`,
+    );
 
-        // Drop tables
-        await queryRunner.query(`DROP TABLE "drawing_comments"`);
-        await queryRunner.query(`DROP TABLE "drawing_versions"`);
-        await queryRunner.query(`DROP TABLE "drawings"`);
+    // Drop tables
+    await queryRunner.query(`DROP TABLE "drawing_comments"`);
+    await queryRunner.query(`DROP TABLE "drawing_versions"`);
+    await queryRunner.query(`DROP TABLE "drawings"`);
 
-        // Drop enums
-        await queryRunner.query(`DROP TYPE "comment_type_enum"`);
-        await queryRunner.query(`DROP TYPE "drawing_status_enum"`);
-        await queryRunner.query(`DROP TYPE "drawing_file_type_enum"`);
-    }
+    // Drop enums
+    await queryRunner.query(`DROP TYPE "comment_type_enum"`);
+    await queryRunner.query(`DROP TYPE "drawing_status_enum"`);
+    await queryRunner.query(`DROP TYPE "drawing_file_type_enum"`);
+  }
 }

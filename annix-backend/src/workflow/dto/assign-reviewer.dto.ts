@@ -6,7 +6,9 @@ export class AssignReviewerDto {
   @IsNumber()
   reviewerUserId: number;
 
-  @ApiPropertyOptional({ description: 'Due date for the review (ISO 8601 format)' })
+  @ApiPropertyOptional({
+    description: 'Due date for the review (ISO 8601 format)',
+  })
   @IsOptional()
   @IsDateString()
   dueDate?: string;

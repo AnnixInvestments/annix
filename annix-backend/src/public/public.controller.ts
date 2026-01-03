@@ -11,7 +11,8 @@ export class PublicController {
   @Get('stats')
   @ApiOperation({
     summary: 'Get public dashboard statistics',
-    description: 'Returns public statistics for the home page dashboard including RFQ count, supplier count, and upcoming RFQ closing dates. No authentication required.',
+    description:
+      'Returns public statistics for the home page dashboard including RFQ count, supplier count, and upcoming RFQ closing dates. No authentication required.',
   })
   @ApiResponse({
     status: HttpStatus.OK,

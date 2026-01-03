@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { NutMassService } from './nut-mass.service';
 import { CreateNutMassDto } from './dto/create-nut-mass.dto';
 import { UpdateNutMassDto } from './dto/update-nut-mass.dto';
@@ -18,7 +26,10 @@ export class NutMassController {
 
   @Get()
   @ApiOperation({ summary: 'Get all nut masss with relations' })
-  @ApiResponse({ status: 200, description: 'List of nut masss retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of nut masss retrieved successfully',
+  })
   findAll() {
     return this.nutMassService.findAll();
   }
@@ -35,7 +46,10 @@ export class NutMassController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update a nut mass' })
   @ApiResponse({ status: 200, description: 'Nut mass updated successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid request or duplicate nut mass' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or duplicate nut mass',
+  })
   @ApiResponse({ status: 404, description: 'Nut mass not found' })
   update(@Param('id') id: string, @Body() updateNutMassDto: UpdateNutMassDto) {
     return this.nutMassService.update(+id, updateNutMassDto);

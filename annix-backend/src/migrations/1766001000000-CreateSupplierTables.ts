@@ -1,11 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateSupplierTables1766001000000 implements MigrationInterface {
-    name = 'CreateSupplierTables1766001000000'
+  name = 'CreateSupplierTables1766001000000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create enums
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create enums
+    await queryRunner.query(`
             CREATE TYPE "supplier_account_status_enum" AS ENUM (
                 'pending',
                 'active',
@@ -14,7 +14,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TYPE "supplier_onboarding_status_enum" AS ENUM (
                 'draft',
                 'submitted',
@@ -24,7 +24,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TYPE "supplier_document_type_enum" AS ENUM (
                 'registration_cert',
                 'tax_clearance',
@@ -35,7 +35,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TYPE "supplier_document_validation_status_enum" AS ENUM (
                 'pending',
                 'valid',
@@ -45,7 +45,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TYPE "supplier_session_invalidation_reason_enum" AS ENUM (
                 'logout',
                 'new_login',
@@ -56,7 +56,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TYPE "supplier_login_failure_reason_enum" AS ENUM (
                 'invalid_credentials',
                 'device_mismatch',
@@ -68,8 +68,8 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        // Create supplier_companies table
-        await queryRunner.query(`
+    // Create supplier_companies table
+    await queryRunner.query(`
             CREATE TABLE "supplier_companies" (
                 "id" SERIAL NOT NULL,
                 "legal_name" character varying(255) NOT NULL,
@@ -99,8 +99,8 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        // Create supplier_profiles table
-        await queryRunner.query(`
+    // Create supplier_profiles table
+    await queryRunner.query(`
             CREATE TABLE "supplier_profiles" (
                 "id" SERIAL NOT NULL,
                 "user_id" integer NOT NULL UNIQUE,
@@ -125,8 +125,8 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        // Create supplier_onboarding table
-        await queryRunner.query(`
+    // Create supplier_onboarding table
+    await queryRunner.query(`
             CREATE TABLE "supplier_onboarding" (
                 "id" SERIAL NOT NULL,
                 "supplier_id" integer NOT NULL UNIQUE,
@@ -145,8 +145,8 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        // Create supplier_documents table
-        await queryRunner.query(`
+    // Create supplier_documents table
+    await queryRunner.query(`
             CREATE TABLE "supplier_documents" (
                 "id" SERIAL NOT NULL,
                 "supplier_id" integer NOT NULL,
@@ -168,8 +168,8 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        // Create supplier_device_bindings table
-        await queryRunner.query(`
+    // Create supplier_device_bindings table
+    await queryRunner.query(`
             CREATE TABLE "supplier_device_bindings" (
                 "id" SERIAL NOT NULL,
                 "supplier_profile_id" integer NOT NULL,
@@ -187,8 +187,8 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        // Create supplier_sessions table
-        await queryRunner.query(`
+    // Create supplier_sessions table
+    await queryRunner.query(`
             CREATE TABLE "supplier_sessions" (
                 "id" SERIAL NOT NULL,
                 "supplier_profile_id" integer NOT NULL,
@@ -207,8 +207,8 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        // Create supplier_login_attempts table
-        await queryRunner.query(`
+    // Create supplier_login_attempts table
+    await queryRunner.query(`
             CREATE TABLE "supplier_login_attempts" (
                 "id" SERIAL NOT NULL,
                 "supplier_profile_id" integer,
@@ -224,8 +224,8 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             )
         `);
 
-        // Add foreign key constraints
-        await queryRunner.query(`
+    // Add foreign key constraints
+    await queryRunner.query(`
             ALTER TABLE "supplier_profiles"
             ADD CONSTRAINT "FK_supplier_profiles_user"
             FOREIGN KEY ("user_id")
@@ -233,7 +233,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             ON DELETE CASCADE
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "supplier_profiles"
             ADD CONSTRAINT "FK_supplier_profiles_company"
             FOREIGN KEY ("company_id")
@@ -241,7 +241,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             ON DELETE SET NULL
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "supplier_onboarding"
             ADD CONSTRAINT "FK_supplier_onboarding_supplier"
             FOREIGN KEY ("supplier_id")
@@ -249,7 +249,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             ON DELETE CASCADE
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "supplier_onboarding"
             ADD CONSTRAINT "FK_supplier_onboarding_reviewed_by"
             FOREIGN KEY ("reviewed_by")
@@ -257,7 +257,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             ON DELETE SET NULL
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "supplier_documents"
             ADD CONSTRAINT "FK_supplier_documents_supplier"
             FOREIGN KEY ("supplier_id")
@@ -265,7 +265,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             ON DELETE CASCADE
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "supplier_documents"
             ADD CONSTRAINT "FK_supplier_documents_reviewed_by"
             FOREIGN KEY ("reviewed_by")
@@ -273,7 +273,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             ON DELETE SET NULL
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "supplier_device_bindings"
             ADD CONSTRAINT "FK_supplier_device_bindings_profile"
             FOREIGN KEY ("supplier_profile_id")
@@ -281,7 +281,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             ON DELETE CASCADE
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "supplier_sessions"
             ADD CONSTRAINT "FK_supplier_sessions_profile"
             FOREIGN KEY ("supplier_profile_id")
@@ -289,7 +289,7 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             ON DELETE CASCADE
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "supplier_login_attempts"
             ADD CONSTRAINT "FK_supplier_login_attempts_profile"
             FOREIGN KEY ("supplier_profile_id")
@@ -297,62 +297,104 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
             ON DELETE SET NULL
         `);
 
-        // Create indexes
-        await queryRunner.query(`CREATE INDEX "IDX_supplier_profiles_user" ON "supplier_profiles" ("user_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_supplier_profiles_company" ON "supplier_profiles" ("company_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_supplier_profiles_status" ON "supplier_profiles" ("account_status")`);
-        await queryRunner.query(`CREATE INDEX "IDX_supplier_onboarding_status" ON "supplier_onboarding" ("status")`);
-        await queryRunner.query(`CREATE INDEX "IDX_supplier_documents_supplier" ON "supplier_documents" ("supplier_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_supplier_documents_type" ON "supplier_documents" ("document_type")`);
-        await queryRunner.query(`CREATE INDEX "IDX_supplier_sessions_token" ON "supplier_sessions" ("session_token")`);
-        await queryRunner.query(`CREATE INDEX "IDX_supplier_sessions_active" ON "supplier_sessions" ("supplier_profile_id", "is_active")`);
-        await queryRunner.query(`CREATE INDEX "IDX_supplier_login_attempts_email" ON "supplier_login_attempts" ("email", "attempt_time")`);
-        await queryRunner.query(`CREATE INDEX "IDX_supplier_login_attempts_profile" ON "supplier_login_attempts" ("supplier_profile_id", "attempt_time")`);
-    }
+    // Create indexes
+    await queryRunner.query(
+      `CREATE INDEX "IDX_supplier_profiles_user" ON "supplier_profiles" ("user_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_supplier_profiles_company" ON "supplier_profiles" ("company_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_supplier_profiles_status" ON "supplier_profiles" ("account_status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_supplier_onboarding_status" ON "supplier_onboarding" ("status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_supplier_documents_supplier" ON "supplier_documents" ("supplier_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_supplier_documents_type" ON "supplier_documents" ("document_type")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_supplier_sessions_token" ON "supplier_sessions" ("session_token")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_supplier_sessions_active" ON "supplier_sessions" ("supplier_profile_id", "is_active")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_supplier_login_attempts_email" ON "supplier_login_attempts" ("email", "attempt_time")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_supplier_login_attempts_profile" ON "supplier_login_attempts" ("supplier_profile_id", "attempt_time")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Drop indexes
-        await queryRunner.query(`DROP INDEX "IDX_supplier_login_attempts_profile"`);
-        await queryRunner.query(`DROP INDEX "IDX_supplier_login_attempts_email"`);
-        await queryRunner.query(`DROP INDEX "IDX_supplier_sessions_active"`);
-        await queryRunner.query(`DROP INDEX "IDX_supplier_sessions_token"`);
-        await queryRunner.query(`DROP INDEX "IDX_supplier_documents_type"`);
-        await queryRunner.query(`DROP INDEX "IDX_supplier_documents_supplier"`);
-        await queryRunner.query(`DROP INDEX "IDX_supplier_onboarding_status"`);
-        await queryRunner.query(`DROP INDEX "IDX_supplier_profiles_status"`);
-        await queryRunner.query(`DROP INDEX "IDX_supplier_profiles_company"`);
-        await queryRunner.query(`DROP INDEX "IDX_supplier_profiles_user"`);
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Drop indexes
+    await queryRunner.query(`DROP INDEX "IDX_supplier_login_attempts_profile"`);
+    await queryRunner.query(`DROP INDEX "IDX_supplier_login_attempts_email"`);
+    await queryRunner.query(`DROP INDEX "IDX_supplier_sessions_active"`);
+    await queryRunner.query(`DROP INDEX "IDX_supplier_sessions_token"`);
+    await queryRunner.query(`DROP INDEX "IDX_supplier_documents_type"`);
+    await queryRunner.query(`DROP INDEX "IDX_supplier_documents_supplier"`);
+    await queryRunner.query(`DROP INDEX "IDX_supplier_onboarding_status"`);
+    await queryRunner.query(`DROP INDEX "IDX_supplier_profiles_status"`);
+    await queryRunner.query(`DROP INDEX "IDX_supplier_profiles_company"`);
+    await queryRunner.query(`DROP INDEX "IDX_supplier_profiles_user"`);
 
-        // Drop foreign keys and tables
-        await queryRunner.query(`ALTER TABLE "supplier_login_attempts" DROP CONSTRAINT "FK_supplier_login_attempts_profile"`);
-        await queryRunner.query(`DROP TABLE "supplier_login_attempts"`);
+    // Drop foreign keys and tables
+    await queryRunner.query(
+      `ALTER TABLE "supplier_login_attempts" DROP CONSTRAINT "FK_supplier_login_attempts_profile"`,
+    );
+    await queryRunner.query(`DROP TABLE "supplier_login_attempts"`);
 
-        await queryRunner.query(`ALTER TABLE "supplier_sessions" DROP CONSTRAINT "FK_supplier_sessions_profile"`);
-        await queryRunner.query(`DROP TABLE "supplier_sessions"`);
+    await queryRunner.query(
+      `ALTER TABLE "supplier_sessions" DROP CONSTRAINT "FK_supplier_sessions_profile"`,
+    );
+    await queryRunner.query(`DROP TABLE "supplier_sessions"`);
 
-        await queryRunner.query(`ALTER TABLE "supplier_device_bindings" DROP CONSTRAINT "FK_supplier_device_bindings_profile"`);
-        await queryRunner.query(`DROP TABLE "supplier_device_bindings"`);
+    await queryRunner.query(
+      `ALTER TABLE "supplier_device_bindings" DROP CONSTRAINT "FK_supplier_device_bindings_profile"`,
+    );
+    await queryRunner.query(`DROP TABLE "supplier_device_bindings"`);
 
-        await queryRunner.query(`ALTER TABLE "supplier_documents" DROP CONSTRAINT "FK_supplier_documents_reviewed_by"`);
-        await queryRunner.query(`ALTER TABLE "supplier_documents" DROP CONSTRAINT "FK_supplier_documents_supplier"`);
-        await queryRunner.query(`DROP TABLE "supplier_documents"`);
+    await queryRunner.query(
+      `ALTER TABLE "supplier_documents" DROP CONSTRAINT "FK_supplier_documents_reviewed_by"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "supplier_documents" DROP CONSTRAINT "FK_supplier_documents_supplier"`,
+    );
+    await queryRunner.query(`DROP TABLE "supplier_documents"`);
 
-        await queryRunner.query(`ALTER TABLE "supplier_onboarding" DROP CONSTRAINT "FK_supplier_onboarding_reviewed_by"`);
-        await queryRunner.query(`ALTER TABLE "supplier_onboarding" DROP CONSTRAINT "FK_supplier_onboarding_supplier"`);
-        await queryRunner.query(`DROP TABLE "supplier_onboarding"`);
+    await queryRunner.query(
+      `ALTER TABLE "supplier_onboarding" DROP CONSTRAINT "FK_supplier_onboarding_reviewed_by"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "supplier_onboarding" DROP CONSTRAINT "FK_supplier_onboarding_supplier"`,
+    );
+    await queryRunner.query(`DROP TABLE "supplier_onboarding"`);
 
-        await queryRunner.query(`ALTER TABLE "supplier_profiles" DROP CONSTRAINT "FK_supplier_profiles_company"`);
-        await queryRunner.query(`ALTER TABLE "supplier_profiles" DROP CONSTRAINT "FK_supplier_profiles_user"`);
-        await queryRunner.query(`DROP TABLE "supplier_profiles"`);
+    await queryRunner.query(
+      `ALTER TABLE "supplier_profiles" DROP CONSTRAINT "FK_supplier_profiles_company"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "supplier_profiles" DROP CONSTRAINT "FK_supplier_profiles_user"`,
+    );
+    await queryRunner.query(`DROP TABLE "supplier_profiles"`);
 
-        await queryRunner.query(`DROP TABLE "supplier_companies"`);
+    await queryRunner.query(`DROP TABLE "supplier_companies"`);
 
-        // Drop enums
-        await queryRunner.query(`DROP TYPE "supplier_login_failure_reason_enum"`);
-        await queryRunner.query(`DROP TYPE "supplier_session_invalidation_reason_enum"`);
-        await queryRunner.query(`DROP TYPE "supplier_document_validation_status_enum"`);
-        await queryRunner.query(`DROP TYPE "supplier_document_type_enum"`);
-        await queryRunner.query(`DROP TYPE "supplier_onboarding_status_enum"`);
-        await queryRunner.query(`DROP TYPE "supplier_account_status_enum"`);
-    }
+    // Drop enums
+    await queryRunner.query(`DROP TYPE "supplier_login_failure_reason_enum"`);
+    await queryRunner.query(
+      `DROP TYPE "supplier_session_invalidation_reason_enum"`,
+    );
+    await queryRunner.query(
+      `DROP TYPE "supplier_document_validation_status_enum"`,
+    );
+    await queryRunner.query(`DROP TYPE "supplier_document_type_enum"`);
+    await queryRunner.query(`DROP TYPE "supplier_onboarding_status_enum"`);
+    await queryRunner.query(`DROP TYPE "supplier_account_status_enum"`);
+  }
 }

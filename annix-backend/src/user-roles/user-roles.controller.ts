@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { UserRolesService } from './user-roles.service';
 import { CreateUserRoleDto } from './dto/create-user-role.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
@@ -11,7 +19,11 @@ export class UserRolesController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new role' })
-  @ApiResponse({ status: 201, description: 'Role created successfully', type: UserRole })
+  @ApiResponse({
+    status: 201,
+    description: 'Role created successfully',
+    type: UserRole,
+  })
   @ApiResponse({ status: 409, description: 'Role already exists' })
   create(@Body() createUserRoleDto: CreateUserRoleDto) {
     return this.userRolesService.create(createUserRoleDto);
@@ -34,9 +46,16 @@ export class UserRolesController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a role by ID' })
-  @ApiResponse({ status: 200, description: 'Role updated successfully', type: UserRole })
+  @ApiResponse({
+    status: 200,
+    description: 'Role updated successfully',
+    type: UserRole,
+  })
   @ApiResponse({ status: 404, description: 'Role not found' })
-  update(@Param('id') id: string, @Body() updateUserRoleDto: UpdateUserRoleDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateUserRoleDto: UpdateUserRoleDto,
+  ) {
     return this.userRolesService.update(+id, updateUserRoleDto);
   }
 

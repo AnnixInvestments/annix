@@ -30,6 +30,9 @@ export class PublicStatsDto {
   @ApiProperty({ description: 'Total number of registered customers' })
   totalCustomers: number;
 
-  @ApiProperty({ description: 'RFQs with upcoming closing dates', type: [UpcomingRfqDto] })
+  @ApiProperty({
+    description: 'RFQs with upcoming closing dates',
+    type: [UpcomingRfqDto],
+  })
   upcomingRfqs: UpcomingRfqDto[];
 }

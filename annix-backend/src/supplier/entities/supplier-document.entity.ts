@@ -59,7 +59,11 @@ export class SupplierDocument {
   @Column({ name: 'mime_type', length: 100 })
   mimeType: string;
 
-  @Column({ name: 'uploaded_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    name: 'uploaded_at',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   uploadedAt: Date;
 
   @Column({
@@ -70,7 +74,12 @@ export class SupplierDocument {
   })
   validationStatus: SupplierDocumentValidationStatus;
 
-  @Column({ name: 'validation_notes', type: 'text', nullable: true, default: null })
+  @Column({
+    name: 'validation_notes',
+    type: 'text',
+    nullable: true,
+    default: null,
+  })
   validationNotes: string | null;
 
   @ManyToOne(() => User, { nullable: true })

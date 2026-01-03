@@ -6,7 +6,7 @@ import {
   OneToMany,
   JoinTable,
 } from 'typeorm';
-import { UserRole } from '../../user-roles/entities/user-role.entity'
+import { UserRole } from '../../user-roles/entities/user-role.entity';
 import { Rfq } from '../../rfq/entities/rfq.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
@@ -21,7 +21,10 @@ export class User {
   @Column({ unique: true, nullable: true })
   username: string;
 
-  @ApiProperty({ description: 'User email address', example: 'john@example.com' })
+  @ApiProperty({
+    description: 'User email address',
+    example: 'john@example.com',
+  })
   @Column({ unique: true, nullable: true })
   email: string;
 

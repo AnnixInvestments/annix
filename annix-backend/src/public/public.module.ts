@@ -6,9 +6,7 @@ import { Rfq } from '../rfq/entities/rfq.entity';
 import { CustomerProfile } from '../customer/entities/customer-profile.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Rfq, CustomerProfile]),
-  ],
+  imports: [TypeOrmModule.forFeature([Rfq, CustomerProfile])],
   controllers: [PublicController],
   providers: [PublicService],
   exports: [PublicService],

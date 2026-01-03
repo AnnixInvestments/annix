@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateNbNpsLookupDto } from './dto/create-nb-nps-lookup.dto';
 import { UpdateNbNpsLookupDto } from './dto/update-nb-nps-lookup.dto';
 import { InjectRepository } from '@nestjs/typeorm';

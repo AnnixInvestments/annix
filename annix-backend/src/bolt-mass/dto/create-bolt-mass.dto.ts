@@ -13,14 +13,14 @@ export class CreateBoltMassDto {
   @ApiProperty({
     description: 'Length of the bolt in mm',
     example: 50,
-  })  
+  })
   @IsInt()
   length_mm: number;
 
   @ApiProperty({
     description: 'Mass of the bolt in kg',
     example: 0.137,
-  })  
+  })
   @IsNumber()
   mass_kg: number;
 }

@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AddBeeFieldsToSupplierCompany1766004200000 implements MigrationInterface {
+export class AddBeeFieldsToSupplierCompany1766004200000
+  implements MigrationInterface
+{
   name = 'AddBeeFieldsToSupplierCompany1766004200000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -73,9 +75,18 @@ export class AddBeeFieldsToSupplierCompany1766004200000 implements MigrationInte
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Remove BEE fields
-    await queryRunner.dropColumn('supplier_companies', 'is_exempt_micro_enterprise');
-    await queryRunner.dropColumn('supplier_companies', 'bee_verification_agency');
-    await queryRunner.dropColumn('supplier_companies', 'bee_certificate_expiry');
+    await queryRunner.dropColumn(
+      'supplier_companies',
+      'is_exempt_micro_enterprise',
+    );
+    await queryRunner.dropColumn(
+      'supplier_companies',
+      'bee_verification_agency',
+    );
+    await queryRunner.dropColumn(
+      'supplier_companies',
+      'bee_certificate_expiry',
+    );
     await queryRunner.dropColumn('supplier_companies', 'bee_level');
 
     // Revert enum

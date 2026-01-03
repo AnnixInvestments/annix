@@ -1,12 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, IsEnum, IsInt, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsEnum,
+  IsInt,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateRfqDto } from './create-rfq.dto';
 import { CreateStraightPipeRfqDto } from './create-straight-pipe-rfq.dto';
 import { RfqItemType } from '../entities/rfq-item.entity';
 
 export class CreateRfqItemDto {
-  @ApiProperty({ description: 'Item description', example: '500NB Sch20 Straight Pipe for 10 Bar Pipeline' })
+  @ApiProperty({
+    description: 'Item description',
+    example: '500NB Sch20 Straight Pipe for 10 Bar Pipeline',
+  })
   @IsString()
   description: string;
 
@@ -31,7 +41,10 @@ export class CreateStraightPipeRfqWithItemDto {
   @Type(() => CreateStraightPipeRfqDto)
   straightPipe: CreateStraightPipeRfqDto;
 
-  @ApiProperty({ description: 'Item description', example: '500NB Sch20 Straight Pipe for 10 Bar Pipeline' })
+  @ApiProperty({
+    description: 'Item description',
+    example: '500NB Sch20 Straight Pipe for 10 Bar Pipeline',
+  })
   @IsString()
   itemDescription: string;
 

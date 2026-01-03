@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 import { FlangeStandard } from '../../flange-standard/entities/flange-standard.entity';
 import { FlangeDimension } from '../../flange-dimension/entities/flange-dimension.entity';
 
@@ -10,7 +16,9 @@ export class FlangePressureClass {
   @Column()
   designation: string; // e.g. "6/3", "10/3", "T/D"
 
-  @ManyToOne(() => FlangeStandard, (standard) => standard.id, { onDelete: 'CASCADE' })
+  @ManyToOne(() => FlangeStandard, (standard) => standard.id, {
+    onDelete: 'CASCADE',
+  })
   standard: FlangeStandard;
 
   @OneToMany(() => FlangeDimension, (flange) => flange.pressureClass)

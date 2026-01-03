@@ -1,4 +1,13 @@
-import { IsString, IsNumber, IsOptional, IsPositive, Min, IsArray, IsBoolean, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  Min,
+  IsArray,
+  IsBoolean,
+  ValidateNested,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -18,7 +27,11 @@ export class CalculateSteelWeightDto {
   @Min(1)
   quantity: number;
 
-  @ApiProperty({ description: 'Grade code (optional)', example: 'A36', required: false })
+  @ApiProperty({
+    description: 'Grade code (optional)',
+    example: 'A36',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   gradeCode?: string;
@@ -46,7 +59,11 @@ export class CalculatePlateDto {
   @Min(1)
   quantity: number;
 
-  @ApiProperty({ description: 'Grade code (optional)', example: 'A36', required: false })
+  @ApiProperty({
+    description: 'Grade code (optional)',
+    example: 'A36',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   gradeCode?: string;
@@ -74,7 +91,11 @@ export class CalculateFlatBarDto {
   @Min(1)
   quantity: number;
 
-  @ApiProperty({ description: 'Grade code (optional)', example: 'A36', required: false })
+  @ApiProperty({
+    description: 'Grade code (optional)',
+    example: 'A36',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   gradeCode?: string;
@@ -97,7 +118,11 @@ export class CalculateRoundBarDto {
   @Min(1)
   quantity: number;
 
-  @ApiProperty({ description: 'Grade code (optional)', example: 'A36', required: false })
+  @ApiProperty({
+    description: 'Grade code (optional)',
+    example: 'A36',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   gradeCode?: string;
@@ -120,7 +145,11 @@ export class CalculateSquareBarDto {
   @Min(1)
   quantity: number;
 
-  @ApiProperty({ description: 'Grade code (optional)', example: 'A36', required: false })
+  @ApiProperty({
+    description: 'Grade code (optional)',
+    example: 'A36',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   gradeCode?: string;
@@ -145,7 +174,10 @@ export class SteelCalculationResultDto {
   @ApiProperty({ description: 'Quantity' })
   quantity: number;
 
-  @ApiProperty({ description: 'Section designation (if applicable)', required: false })
+  @ApiProperty({
+    description: 'Section designation (if applicable)',
+    required: false,
+  })
   designation?: string;
 
   @ApiProperty({ description: 'Steel type name', required: false })
@@ -177,7 +209,11 @@ export class CalculateFabricationCostDto {
   @IsPositive()
   totalWeightKg: number;
 
-  @ApiProperty({ description: 'Complexity level', example: 'medium', enum: ['simple', 'medium', 'complex'] })
+  @ApiProperty({
+    description: 'Complexity level',
+    example: 'medium',
+    enum: ['simple', 'medium', 'complex'],
+  })
   @IsString()
   complexityLevel: string;
 
@@ -191,7 +227,11 @@ export class CalculateFabricationCostDto {
   @IsOptional()
   laborRateCode?: string;
 
-  @ApiProperty({ description: 'List of fabrication operations', type: [FabricationOperationItemDto], required: false })
+  @ApiProperty({
+    description: 'List of fabrication operations',
+    type: [FabricationOperationItemDto],
+    required: false,
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => FabricationOperationItemDto)
@@ -235,7 +275,10 @@ export class FabricationCostResultDto {
   @ApiProperty({ description: 'Base fabrication hours (complexity-based)' })
   baseFabricationHours: number;
 
-  @ApiProperty({ description: 'Additional operation hours', type: [FabricationCostBreakdownDto] })
+  @ApiProperty({
+    description: 'Additional operation hours',
+    type: [FabricationCostBreakdownDto],
+  })
   operationBreakdown: FabricationCostBreakdownDto[];
 
   @ApiProperty({ description: 'Total additional operation hours' })
@@ -258,12 +301,16 @@ export class FabricationCostResultDto {
 }
 
 export class UpdateLaborRateDto {
-  @ApiProperty({ description: 'New rate per hour', example: 450.00 })
+  @ApiProperty({ description: 'New rate per hour', example: 450.0 })
   @IsNumber()
   @IsPositive()
   ratePerHour: number;
 
-  @ApiProperty({ description: 'Currency (default ZAR)', example: 'ZAR', required: false })
+  @ApiProperty({
+    description: 'Currency (default ZAR)',
+    example: 'ZAR',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   currency?: string;

@@ -7,7 +7,9 @@ import { FittingVariant } from 'src/fitting-variant/entities/fitting-variant.ent
 import { AngleRange } from 'src/angle-range/entities/angle-range.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FittingDimension, FittingVariant, AngleRange])],
+  imports: [
+    TypeOrmModule.forFeature([FittingDimension, FittingVariant, AngleRange]),
+  ],
   controllers: [FittingDimensionController],
   providers: [FittingDimensionService],
   exports: [FittingDimensionService],

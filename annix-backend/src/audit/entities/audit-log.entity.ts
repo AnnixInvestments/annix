@@ -41,7 +41,10 @@ export class AuditLog {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ description: 'Entity type (drawing, boq, rfq, etc.)', example: 'drawing' })
+  @ApiProperty({
+    description: 'Entity type (drawing, boq, rfq, etc.)',
+    example: 'drawing',
+  })
   @Column({ name: 'entity_type', length: 100 })
   entityType: string;
 
@@ -53,7 +56,10 @@ export class AuditLog {
   @Column({ name: 'action', type: 'enum', enum: AuditAction })
   action: AuditAction;
 
-  @ApiProperty({ description: 'Previous values before the action', required: false })
+  @ApiProperty({
+    description: 'Previous values before the action',
+    required: false,
+  })
   @Column({ name: 'old_values', type: 'jsonb', nullable: true })
   oldValues?: Record<string, any>;
 
@@ -61,7 +67,11 @@ export class AuditLog {
   @Column({ name: 'new_values', type: 'jsonb', nullable: true })
   newValues?: Record<string, any>;
 
-  @ApiProperty({ description: 'User who performed the action', type: () => User, required: false })
+  @ApiProperty({
+    description: 'User who performed the action',
+    type: () => User,
+    required: false,
+  })
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'performed_by_user_id' })
   performedBy?: User;

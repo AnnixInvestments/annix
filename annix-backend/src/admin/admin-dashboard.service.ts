@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 
-import { CustomerProfile, CustomerAccountStatus } from '../customer/entities/customer-profile.entity';
+import {
+  CustomerProfile,
+  CustomerAccountStatus,
+} from '../customer/entities/customer-profile.entity';
 import { CustomerOnboarding } from '../customer/entities/customer-onboarding.entity';
 import { CustomerOnboardingStatus } from '../customer/entities/customer-onboarding.entity';
 import { CustomerSession } from '../customer/entities/customer-session.entity';
@@ -114,7 +117,9 @@ export class AdminDashboardService {
   /**
    * Get recent activity from audit logs
    */
-  async getRecentActivity(limit: number = 20): Promise<RecentActivityItemDto[]> {
+  async getRecentActivity(
+    limit: number = 20,
+  ): Promise<RecentActivityItemDto[]> {
     const auditLogs = await this.auditLogRepo.find({
       order: { timestamp: 'DESC' },
       take: limit,
@@ -139,21 +144,22 @@ export class AdminDashboardService {
    * Get customer statistics
    */
   async getCustomerStats(): Promise<CustomerStatsDto> {
-    const [total, active, suspended, pendingReview, deactivated] = await Promise.all([
-      this.customerProfileRepo.count(),
-      this.customerProfileRepo.count({
-        where: { accountStatus: CustomerAccountStatus.ACTIVE },
-      }),
-      this.customerProfileRepo.count({
-        where: { accountStatus: CustomerAccountStatus.SUSPENDED },
-      }),
-      this.customerOnboardingRepo.count({
-        where: { status: CustomerOnboardingStatus.UNDER_REVIEW },
-      }),
-      this.customerProfileRepo.count({
-        where: { accountStatus: CustomerAccountStatus.DEACTIVATED },
-      }),
-    ]);
+    const [total, active, suspended, pendingReview, deactivated] =
+      await Promise.all([
+        this.customerProfileRepo.count(),
+        this.customerProfileRepo.count({
+          where: { accountStatus: CustomerAccountStatus.ACTIVE },
+        }),
+        this.customerProfileRepo.count({
+          where: { accountStatus: CustomerAccountStatus.SUSPENDED },
+        }),
+        this.customerOnboardingRepo.count({
+          where: { status: CustomerOnboardingStatus.UNDER_REVIEW },
+        }),
+        this.customerProfileRepo.count({
+          where: { accountStatus: CustomerAccountStatus.DEACTIVATED },
+        }),
+      ]);
 
     return {
       total,
@@ -168,21 +174,22 @@ export class AdminDashboardService {
    * Get supplier statistics
    */
   async getSupplierStats(): Promise<SupplierStatsDto> {
-    const [total, active, suspended, pendingReview, deactivated] = await Promise.all([
-      this.supplierProfileRepo.count(),
-      this.supplierProfileRepo.count({
-        where: { accountStatus: SupplierAccountStatus.ACTIVE },
-      }),
-      this.supplierProfileRepo.count({
-        where: { accountStatus: SupplierAccountStatus.SUSPENDED },
-      }),
-      this.supplierOnboardingRepo.count({
-        where: { status: SupplierOnboardingStatus.UNDER_REVIEW },
-      }),
-      this.supplierProfileRepo.count({
-        where: { accountStatus: SupplierAccountStatus.DEACTIVATED },
-      }),
-    ]);
+    const [total, active, suspended, pendingReview, deactivated] =
+      await Promise.all([
+        this.supplierProfileRepo.count(),
+        this.supplierProfileRepo.count({
+          where: { accountStatus: SupplierAccountStatus.ACTIVE },
+        }),
+        this.supplierProfileRepo.count({
+          where: { accountStatus: SupplierAccountStatus.SUSPENDED },
+        }),
+        this.supplierOnboardingRepo.count({
+          where: { status: SupplierOnboardingStatus.UNDER_REVIEW },
+        }),
+        this.supplierProfileRepo.count({
+          where: { accountStatus: SupplierAccountStatus.DEACTIVATED },
+        }),
+      ]);
 
     return {
       total,

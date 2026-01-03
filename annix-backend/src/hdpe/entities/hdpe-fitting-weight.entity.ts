@@ -19,7 +19,9 @@ export class HdpeFittingWeight {
   @Column({ name: 'fitting_type_id', type: 'int' })
   fittingTypeId: number;
 
-  @ManyToOne(() => HdpeFittingType, (type) => type.weights, { onDelete: 'CASCADE' })
+  @ManyToOne(() => HdpeFittingType, (type) => type.weights, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'fitting_type_id' })
   fittingType: HdpeFittingType;
 

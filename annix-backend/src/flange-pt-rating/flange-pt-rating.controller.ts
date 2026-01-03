@@ -1,6 +1,9 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { FlangePtRatingService } from './flange-pt-rating.service';
-import { CreateFlangePtRatingDto, BulkCreateFlangePtRatingDto } from './dto/create-flange-pt-rating.dto';
+import {
+  CreateFlangePtRatingDto,
+  BulkCreateFlangePtRatingDto,
+} from './dto/create-flange-pt-rating.dto';
 
 @Controller('flange-pt-ratings')
 export class FlangePtRatingController {

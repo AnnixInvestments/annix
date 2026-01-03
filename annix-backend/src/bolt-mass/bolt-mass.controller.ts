@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { BoltMassService } from './bolt-mass.service';
 import { CreateBoltMassDto } from './dto/create-bolt-mass.dto';
 import { UpdateBoltMassDto } from './dto/update-bolt-mass.dto';
@@ -18,7 +26,10 @@ export class BoltMassController {
 
   @Get()
   @ApiOperation({ summary: 'Get all bolt masses with relations' })
-  @ApiResponse({ status: 200, description: 'List of bolt masses retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of bolt masses retrieved successfully',
+  })
   findAll() {
     return this.boltMassService.findAll();
   }
@@ -35,14 +46,20 @@ export class BoltMassController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update a bolt mass' })
   @ApiResponse({ status: 200, description: 'Bolt mass updated successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid request or duplicate bolt mass' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or duplicate bolt mass',
+  })
   @ApiResponse({ status: 404, description: 'Bolt mass not found' })
-  update(@Param('id') id: string, @Body() updateBoltMassDto: UpdateBoltMassDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateBoltMassDto: UpdateBoltMassDto,
+  ) {
     return this.boltMassService.update(+id, updateBoltMassDto);
   }
 
   @Delete(':id')
-    @ApiOperation({ summary: 'Delete a bolt mass' })
+  @ApiOperation({ summary: 'Delete a bolt mass' })
   @ApiResponse({ status: 200, description: 'bolt mass deleted successfully' })
   @ApiResponse({ status: 404, description: 'bolt mass not found' })
   @ApiResponse({ status: 400, description: 'Invalid ID parameter' })

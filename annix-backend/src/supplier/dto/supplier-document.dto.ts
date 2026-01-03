@@ -6,7 +6,10 @@ import {
   IsDateString,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { SupplierDocumentType, SupplierDocumentValidationStatus } from '../entities/supplier-document.entity';
+import {
+  SupplierDocumentType,
+  SupplierDocumentValidationStatus,
+} from '../entities/supplier-document.entity';
 
 export class UploadSupplierDocumentDto {
   @ApiProperty({
@@ -18,7 +21,10 @@ export class UploadSupplierDocumentDto {
   @IsNotEmpty()
   documentType: SupplierDocumentType;
 
-  @ApiPropertyOptional({ description: 'Document expiry date', example: '2025-12-31' })
+  @ApiPropertyOptional({
+    description: 'Document expiry date',
+    example: '2025-12-31',
+  })
   @IsDateString()
   @IsOptional()
   expiryDate?: string;
@@ -34,7 +40,10 @@ export class ReviewDocumentDto {
   @IsNotEmpty()
   validationStatus: SupplierDocumentValidationStatus;
 
-  @ApiPropertyOptional({ description: 'Validation notes', example: 'Document verified successfully' })
+  @ApiPropertyOptional({
+    description: 'Validation notes',
+    example: 'Document verified successfully',
+  })
   @IsString()
   @IsOptional()
   validationNotes?: string;

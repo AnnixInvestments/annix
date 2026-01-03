@@ -45,7 +45,10 @@ export class ReviewWorkflow {
   @Column({ name: 'workflow_type', type: 'enum', enum: WorkflowType })
   workflowType: WorkflowType;
 
-  @ApiProperty({ description: 'Entity type being reviewed', enum: ReviewEntityType })
+  @ApiProperty({
+    description: 'Entity type being reviewed',
+    enum: ReviewEntityType,
+  })
   @Column({ name: 'entity_type', type: 'enum', enum: ReviewEntityType })
   entityType: ReviewEntityType;
 
@@ -54,24 +57,49 @@ export class ReviewWorkflow {
   entityId: number;
 
   @ApiProperty({ description: 'Current review status', enum: ReviewStatus })
-  @Column({ name: 'current_status', type: 'enum', enum: ReviewStatus, default: ReviewStatus.DRAFT })
+  @Column({
+    name: 'current_status',
+    type: 'enum',
+    enum: ReviewStatus,
+    default: ReviewStatus.DRAFT,
+  })
   currentStatus: ReviewStatus;
 
-  @ApiProperty({ description: 'Previous status', enum: ReviewStatus, required: false })
-  @Column({ name: 'previous_status', type: 'enum', enum: ReviewStatus, nullable: true })
+  @ApiProperty({
+    description: 'Previous status',
+    enum: ReviewStatus,
+    required: false,
+  })
+  @Column({
+    name: 'previous_status',
+    type: 'enum',
+    enum: ReviewStatus,
+    nullable: true,
+  })
   previousStatus?: ReviewStatus;
 
-  @ApiProperty({ description: 'User who submitted for review', type: () => User })
+  @ApiProperty({
+    description: 'User who submitted for review',
+    type: () => User,
+  })
   @ManyToOne(() => User)
   @JoinColumn({ name: 'submitted_by_user_id' })
   submittedBy: User;
 
-  @ApiProperty({ description: 'Assigned reviewer', type: () => User, required: false })
+  @ApiProperty({
+    description: 'Assigned reviewer',
+    type: () => User,
+    required: false,
+  })
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'assigned_reviewer_user_id' })
   assignedReviewer?: User;
 
-  @ApiProperty({ description: 'User who made the decision', type: () => User, required: false })
+  @ApiProperty({
+    description: 'User who made the decision',
+    type: () => User,
+    required: false,
+  })
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'decided_by_user_id' })
   decidedBy?: User;
@@ -92,7 +120,9 @@ export class ReviewWorkflow {
   @Column({ name: 'due_date', type: 'date', nullable: true })
   dueDate?: Date;
 
-  @ApiProperty({ description: 'Whether this is the active workflow for the entity' })
+  @ApiProperty({
+    description: 'Whether this is the active workflow for the entity',
+  })
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 

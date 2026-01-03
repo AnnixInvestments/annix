@@ -47,7 +47,9 @@ export class AdminUserManagementService {
   /**
    * List all admin/employee users with pagination
    */
-  async listAdminUsers(queryDto: AdminUserQueryDto): Promise<AdminUserListResponseDto> {
+  async listAdminUsers(
+    queryDto: AdminUserQueryDto,
+  ): Promise<AdminUserListResponseDto> {
     const { search, role, page = 1, limit = 20 } = queryDto;
 
     const queryBuilder = this.userRepo
@@ -138,7 +140,9 @@ export class AdminUserManagementService {
     const hashedPassword = await bcrypt.hash(temporaryPassword, salt);
 
     // Get or create the specified role
-    let userRole = await this.userRoleRepo.findOne({ where: { name: dto.role } });
+    let userRole = await this.userRoleRepo.findOne({
+      where: { name: dto.role },
+    });
     if (!userRole) {
       userRole = this.userRoleRepo.create({ name: dto.role });
       userRole = await this.userRoleRepo.save(userRole);
@@ -156,7 +160,9 @@ export class AdminUserManagementService {
     const savedUser = await this.userRepo.save(user);
 
     // Log audit
-    const createdByUser = await this.userRepo.findOne({ where: { id: createdBy } });
+    const createdByUser = await this.userRepo.findOne({
+      where: { id: createdBy },
+    });
     await this.auditService.log({
       entityType: 'user',
       entityId: savedUser.id,
@@ -176,7 +182,9 @@ export class AdminUserManagementService {
         temporaryPassword,
       );
     } catch (error) {
-      this.logger.error(`Failed to send welcome email to ${dto.email}: ${error.message}`);
+      this.logger.error(
+        `Failed to send welcome email to ${dto.email}: ${error.message}`,
+      );
       // Don't fail the user creation if email fails
     }
 
@@ -211,7 +219,9 @@ export class AdminUserManagementService {
     }
 
     // Get the new role
-    let newRole = await this.userRoleRepo.findOne({ where: { name: dto.role } });
+    let newRole = await this.userRoleRepo.findOne({
+      where: { name: dto.role },
+    });
     if (!newRole) {
       newRole = this.userRoleRepo.create({ name: dto.role });
       newRole = await this.userRoleRepo.save(newRole);
@@ -230,7 +240,9 @@ export class AdminUserManagementService {
     );
 
     // Log audit
-    const updatedByUser = await this.userRepo.findOne({ where: { id: updatedBy } });
+    const updatedByUser = await this.userRepo.findOne({
+      where: { id: updatedBy },
+    });
     await this.auditService.log({
       entityType: 'user',
       entityId: userId,
@@ -275,7 +287,9 @@ export class AdminUserManagementService {
     );
 
     // Log audit
-    const deactivatedByUser = await this.userRepo.findOne({ where: { id: deactivatedBy } });
+    const deactivatedByUser = await this.userRepo.findOne({
+      where: { id: deactivatedBy },
+    });
     await this.auditService.log({
       entityType: 'user',
       entityId: userId,
@@ -309,7 +323,9 @@ export class AdminUserManagementService {
     }
 
     // Log audit
-    const reactivatedByUser = await this.userRepo.findOne({ where: { id: reactivatedBy } });
+    const reactivatedByUser = await this.userRepo.findOne({
+      where: { id: reactivatedBy },
+    });
     await this.auditService.log({
       entityType: 'user',
       entityId: userId,
@@ -320,7 +336,9 @@ export class AdminUserManagementService {
       },
     });
 
-    this.logger.log(`Admin user ${userId} reactivated by user ${reactivatedBy}`);
+    this.logger.log(
+      `Admin user ${userId} reactivated by user ${reactivatedBy}`,
+    );
 
     return user;
   }
@@ -345,16 +363,23 @@ export class AdminUserManagementService {
       take: 20,
     });
 
-    const loginHistory: AdminLoginHistoryItemDto[] = sessions.map((session) => ({
-      id: session.id,
-      timestamp: session.createdAt,
-      clientIp: session.clientIp,
-      userAgent: session.userAgent,
-      success: !session.isRevoked,
-    }));
+    const loginHistory: AdminLoginHistoryItemDto[] = sessions.map(
+      (session) => ({
+        id: session.id,
+        timestamp: session.createdAt,
+        clientIp: session.clientIp,
+        userAgent: session.userAgent,
+        success: !session.isRevoked,
+      }),
+    );
 
     // Get audit trail (last 50 actions)
-    const auditLogs = await this.auditService.getUserActivity(userId, undefined, undefined, 50);
+    const auditLogs = await this.auditService.getUserActivity(
+      userId,
+      undefined,
+      undefined,
+      50,
+    );
     const auditTrail: AdminAuditItemDto[] = auditLogs.map((log) => ({
       id: log.id,
       timestamp: log.timestamp,

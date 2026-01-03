@@ -23,14 +23,22 @@ export class PvcFittingWeight {
   @Column({ name: 'fitting_type_id', type: 'int' })
   fittingTypeId: number;
 
-  @ManyToOne(() => PvcFittingType, (type) => type.weights, { onDelete: 'CASCADE' })
+  @ManyToOne(() => PvcFittingType, (type) => type.weights, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'fitting_type_id' })
   fittingType: PvcFittingType;
 
   @Column({ name: 'nominal_diameter', type: 'int' })
   nominalDiameter: number; // DN in mm
 
-  @Column({ name: 'pressure_rating', type: 'decimal', precision: 6, scale: 2, default: 10 })
+  @Column({
+    name: 'pressure_rating',
+    type: 'decimal',
+    precision: 6,
+    scale: 2,
+    default: 10,
+  })
   pressureRating: number; // PN rating (some fittings may vary by pressure class)
 
   @Column({ name: 'weight_kg', type: 'decimal', precision: 10, scale: 4 })

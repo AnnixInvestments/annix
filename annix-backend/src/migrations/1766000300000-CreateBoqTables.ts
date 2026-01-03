@@ -1,11 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateBoqTables1766000300000 implements MigrationInterface {
-    name = 'CreateBoqTables1766000300000'
+  name = 'CreateBoqTables1766000300000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create boq_status enum
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create boq_status enum
+    await queryRunner.query(`
             CREATE TYPE "boq_status_enum" AS ENUM (
                 'draft',
                 'submitted',
@@ -16,8 +16,8 @@ export class CreateBoqTables1766000300000 implements MigrationInterface {
             )
         `);
 
-        // Create boq_item_type enum
-        await queryRunner.query(`
+    // Create boq_item_type enum
+    await queryRunner.query(`
             CREATE TYPE "boq_item_type_enum" AS ENUM (
                 'straight_pipe',
                 'bend',
@@ -31,8 +31,8 @@ export class CreateBoqTables1766000300000 implements MigrationInterface {
             )
         `);
 
-        // Create boqs table
-        await queryRunner.query(`
+    // Create boqs table
+    await queryRunner.query(`
             CREATE TABLE "boqs" (
                 "id" SERIAL NOT NULL,
                 "boq_number" character varying(50) NOT NULL,
@@ -52,8 +52,8 @@ export class CreateBoqTables1766000300000 implements MigrationInterface {
             )
         `);
 
-        // Create boq_line_items table
-        await queryRunner.query(`
+    // Create boq_line_items table
+    await queryRunner.query(`
             CREATE TABLE "boq_line_items" (
                 "id" SERIAL NOT NULL,
                 "boq_id" integer NOT NULL,
@@ -76,8 +76,8 @@ export class CreateBoqTables1766000300000 implements MigrationInterface {
             )
         `);
 
-        // Add foreign key constraints for boqs
-        await queryRunner.query(`
+    // Add foreign key constraints for boqs
+    await queryRunner.query(`
             ALTER TABLE "boqs"
             ADD CONSTRAINT "FK_boqs_drawing"
             FOREIGN KEY ("drawing_id")
@@ -85,7 +85,7 @@ export class CreateBoqTables1766000300000 implements MigrationInterface {
             ON DELETE SET NULL
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "boqs"
             ADD CONSTRAINT "FK_boqs_rfq"
             FOREIGN KEY ("rfq_id")
@@ -93,7 +93,7 @@ export class CreateBoqTables1766000300000 implements MigrationInterface {
             ON DELETE SET NULL
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "boqs"
             ADD CONSTRAINT "FK_boqs_created_by"
             FOREIGN KEY ("created_by_user_id")
@@ -101,8 +101,8 @@ export class CreateBoqTables1766000300000 implements MigrationInterface {
             ON DELETE RESTRICT
         `);
 
-        // Add foreign key constraint for boq_line_items
-        await queryRunner.query(`
+    // Add foreign key constraint for boq_line_items
+    await queryRunner.query(`
             ALTER TABLE "boq_line_items"
             ADD CONSTRAINT "FK_boq_line_items_boq"
             FOREIGN KEY ("boq_id")
@@ -110,36 +110,54 @@ export class CreateBoqTables1766000300000 implements MigrationInterface {
             ON DELETE CASCADE
         `);
 
-        // Create indexes
-        await queryRunner.query(`CREATE INDEX "IDX_boqs_drawing_id" ON "boqs" ("drawing_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_boqs_rfq_id" ON "boqs" ("rfq_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_boqs_status" ON "boqs" ("status")`);
-        await queryRunner.query(`CREATE INDEX "IDX_boqs_created_by" ON "boqs" ("created_by_user_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_boq_line_items_boq_id" ON "boq_line_items" ("boq_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_boq_line_items_item_type" ON "boq_line_items" ("item_type")`);
-    }
+    // Create indexes
+    await queryRunner.query(
+      `CREATE INDEX "IDX_boqs_drawing_id" ON "boqs" ("drawing_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_boqs_rfq_id" ON "boqs" ("rfq_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_boqs_status" ON "boqs" ("status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_boqs_created_by" ON "boqs" ("created_by_user_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_boq_line_items_boq_id" ON "boq_line_items" ("boq_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_boq_line_items_item_type" ON "boq_line_items" ("item_type")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Drop indexes
-        await queryRunner.query(`DROP INDEX "IDX_boq_line_items_item_type"`);
-        await queryRunner.query(`DROP INDEX "IDX_boq_line_items_boq_id"`);
-        await queryRunner.query(`DROP INDEX "IDX_boqs_created_by"`);
-        await queryRunner.query(`DROP INDEX "IDX_boqs_status"`);
-        await queryRunner.query(`DROP INDEX "IDX_boqs_rfq_id"`);
-        await queryRunner.query(`DROP INDEX "IDX_boqs_drawing_id"`);
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Drop indexes
+    await queryRunner.query(`DROP INDEX "IDX_boq_line_items_item_type"`);
+    await queryRunner.query(`DROP INDEX "IDX_boq_line_items_boq_id"`);
+    await queryRunner.query(`DROP INDEX "IDX_boqs_created_by"`);
+    await queryRunner.query(`DROP INDEX "IDX_boqs_status"`);
+    await queryRunner.query(`DROP INDEX "IDX_boqs_rfq_id"`);
+    await queryRunner.query(`DROP INDEX "IDX_boqs_drawing_id"`);
 
-        // Drop foreign key constraints
-        await queryRunner.query(`ALTER TABLE "boq_line_items" DROP CONSTRAINT "FK_boq_line_items_boq"`);
-        await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_created_by"`);
-        await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_rfq"`);
-        await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_drawing"`);
+    // Drop foreign key constraints
+    await queryRunner.query(
+      `ALTER TABLE "boq_line_items" DROP CONSTRAINT "FK_boq_line_items_boq"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_created_by"`,
+    );
+    await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_rfq"`);
+    await queryRunner.query(
+      `ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_drawing"`,
+    );
 
-        // Drop tables
-        await queryRunner.query(`DROP TABLE "boq_line_items"`);
-        await queryRunner.query(`DROP TABLE "boqs"`);
+    // Drop tables
+    await queryRunner.query(`DROP TABLE "boq_line_items"`);
+    await queryRunner.query(`DROP TABLE "boqs"`);
 
-        // Drop enums
-        await queryRunner.query(`DROP TYPE "boq_item_type_enum"`);
-        await queryRunner.query(`DROP TYPE "boq_status_enum"`);
-    }
+    // Drop enums
+    await queryRunner.query(`DROP TYPE "boq_item_type_enum"`);
+    await queryRunner.query(`DROP TYPE "boq_status_enum"`);
+  }
 }

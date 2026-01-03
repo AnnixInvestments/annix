@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AddOcrFieldsToCustomerDocuments1766002600000 implements MigrationInterface {
+export class AddOcrFieldsToCustomerDocuments1766002600000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Add ocr_extracted_data column (JSONB to store extracted OCR data)
     await queryRunner.addColumn(
@@ -9,7 +11,8 @@ export class AddOcrFieldsToCustomerDocuments1766002600000 implements MigrationIn
         name: 'ocr_extracted_data',
         type: 'jsonb',
         isNullable: true,
-        comment: 'Extracted data from OCR processing (VAT number, registration number, company name, etc.)',
+        comment:
+          'Extracted data from OCR processing (VAT number, registration number, company name, etc.)',
       }),
     );
 

@@ -26,7 +26,9 @@ export class CustomerLoginAttempt {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => CustomerProfile, (profile) => profile.loginAttempts, { nullable: true })
+  @ManyToOne(() => CustomerProfile, (profile) => profile.loginAttempts, {
+    nullable: true,
+  })
   @JoinColumn({ name: 'customer_profile_id' })
   customerProfile: CustomerProfile;
 

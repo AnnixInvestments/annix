@@ -16,7 +16,10 @@ import {
   CustomerDocument,
 } from './entities';
 import { CustomerOnboardingStatus } from './entities/customer-onboarding.entity';
-import { CustomerDocumentType, CustomerDocumentValidationStatus } from './entities/customer-document.entity';
+import {
+  CustomerDocumentType,
+  CustomerDocumentValidationStatus,
+} from './entities/customer-document.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { EmailService } from '../email/email.service';
@@ -43,9 +46,10 @@ export class CustomerDocumentService {
     private readonly onboardingRepo: Repository<CustomerOnboarding>,
     private readonly configService: ConfigService,
     private readonly auditService: AuditService,
-        private readonly emailService: EmailService,
+    private readonly emailService: EmailService,
   ) {
-    this.uploadDir = this.configService.get<string>('UPLOAD_DIR') || './uploads';
+    this.uploadDir =
+      this.configService.get<string>('UPLOAD_DIR') || './uploads';
   }
 
   async getDocuments(customerId: number) {
@@ -54,7 +58,7 @@ export class CustomerDocumentService {
       order: { uploadedAt: 'DESC' },
     });
 
-    return documents.map(doc => ({
+    return documents.map((doc) => ({
       id: doc.id,
       documentType: doc.documentType,
       fileName: doc.fileName,
@@ -85,7 +89,12 @@ export class CustomerDocumentService {
     }
 
     // Only allow uploads in DRAFT or REJECTED status
-    if (![CustomerOnboardingStatus.DRAFT, CustomerOnboardingStatus.REJECTED].includes(onboarding.status)) {
+    if (
+      ![
+        CustomerOnboardingStatus.DRAFT,
+        CustomerOnboardingStatus.REJECTED,
+      ].includes(onboarding.status)
+    ) {
       throw new ForbiddenException('Cannot upload documents at this stage');
     }
 
@@ -95,15 +104,24 @@ export class CustomerDocumentService {
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      throw new BadRequestException(`File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+      throw new BadRequestException(
+        `File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+      );
     }
 
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-      throw new BadRequestException(`File type not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`);
+      throw new BadRequestException(
+        `File type not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`,
+      );
     }
 
     // Create upload directory if it doesn't exist
-    const customerDir = path.join(this.uploadDir, 'customers', customerId.toString(), 'documents');
+    const customerDir = path.join(
+      this.uploadDir,
+      'customers',
+      customerId.toString(),
+      'documents',
+    );
     if (!fs.existsSync(customerDir)) {
       fs.mkdirSync(customerDir, { recursive: true });
     }
@@ -200,7 +218,11 @@ export class CustomerDocumentService {
     };
   }
 
-  async deleteDocument(customerId: number, documentId: number, clientIp: string) {
+  async deleteDocument(
+    customerId: number,
+    documentId: number,
+    clientIp: string,
+  ) {
     const document = await this.documentRepo.findOne({
       where: { id: documentId, customerId },
     });
@@ -214,7 +236,13 @@ export class CustomerDocumentService {
       where: { customerId },
     });
 
-    if (onboarding && ![CustomerOnboardingStatus.DRAFT, CustomerOnboardingStatus.REJECTED].includes(onboarding.status)) {
+    if (
+      onboarding &&
+      ![
+        CustomerOnboardingStatus.DRAFT,
+        CustomerOnboardingStatus.REJECTED,
+      ].includes(onboarding.status)
+    ) {
       throw new ForbiddenException('Cannot delete documents at this stage');
     }
 
@@ -269,7 +297,12 @@ export class CustomerDocumentService {
       ocrFailed: boolean;
       requiresManualReview: boolean;
       extractedData: any;
-      mismatches?: Array<{ field: string; expected: string; extracted: string; similarity?: number }>;
+      mismatches?: Array<{
+        field: string;
+        expected: string;
+        extracted: string;
+        similarity?: number;
+      }>;
     },
     customerId: number,
   ) {
@@ -293,11 +326,15 @@ export class CustomerDocumentService {
       validationStatus = CustomerDocumentValidationStatus.MANUAL_REVIEW;
       if (ocrResult.mismatches && ocrResult.mismatches.length > 0) {
         const mismatchDetails = ocrResult.mismatches
-          .map(m => `${m.field}: expected "${m.expected}", found "${m.extracted}" (${m.similarity ? Math.round(m.similarity * 100) : 0}% match)`)
+          .map(
+            (m) =>
+              `${m.field}: expected "${m.expected}", found "${m.extracted}" (${m.similarity ? Math.round(m.similarity * 100) : 0}% match)`,
+          )
           .join('; ');
         validationNotes = `Validation mismatches detected: ${mismatchDetails}`;
       } else {
-        validationNotes = 'Validation mismatches detected - requires manual review';
+        validationNotes =
+          'Validation mismatches detected - requires manual review';
       }
     } else if (ocrResult.isValid) {
       validationStatus = CustomerDocumentValidationStatus.VALID;
@@ -319,7 +356,8 @@ export class CustomerDocumentService {
     // Send admin notification if manual review is required
     if (validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW) {
       await this.emailService.sendManualReviewNotification(
-        document.customer.company.tradingName || document.customer.company.legalName,
+        document.customer.company.tradingName ||
+          document.customer.company.legalName,
         document.customer.user.email,
         document.customer.id,
         document.documentType,
@@ -344,7 +382,8 @@ export class CustomerDocumentService {
       success: true,
       validationStatus,
       validationNotes,
-      requiresManualReview: validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW,
+      requiresManualReview:
+        validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW,
     };
   }
 }

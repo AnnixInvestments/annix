@@ -90,7 +90,11 @@ export class SupplierCompany {
   @Column({ name: 'bee_verification_agency', length: 255, nullable: true })
   beeVerificationAgency: string;
 
-  @Column({ name: 'is_exempt_micro_enterprise', type: 'boolean', default: false })
+  @Column({
+    name: 'is_exempt_micro_enterprise',
+    type: 'boolean',
+    default: false,
+  })
   isExemptMicroEnterprise: boolean;
 
   @OneToMany(() => SupplierProfile, (profile) => profile.company)

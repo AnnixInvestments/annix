@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateBendCenterToFaceAndPopulateData1699380000000 implements MigrationInterface {
+export class CreateBendCenterToFaceAndPopulateData1699380000000
+  implements MigrationInterface
+{
   name = 'CreateBendCenterToFaceAndPopulateData1699380000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -66,7 +68,7 @@ export class CreateBendCenterToFaceAndPopulateData1699380000000 implements Migra
       ('1.5D', 50, 50, 36, 76.2, 0.8727),
       ('1.5D', 50, 90, 76.2, 76.2, 1.5708);
     `;
-    
+
     await queryRunner.query(insert1_5D);
 
     // Insert selected 2D bend data (sample entries)
@@ -102,7 +104,7 @@ export class CreateBendCenterToFaceAndPopulateData1699380000000 implements Migra
       ('2D', 50, 80, 170.5, 152.4, 1.3963),
       ('2D', 50, 90, 203.2, 152.4, 1.5708);
     `;
-    
+
     await queryRunner.query(insert2D);
 
     // Insert selected 3D bend data (sample entries)
@@ -138,7 +140,7 @@ export class CreateBendCenterToFaceAndPopulateData1699380000000 implements Migra
       ('3D', 50, 80, 127.9, 152.4, 1.3963),
       ('3D', 50, 90, 152.4, 152.4, 1.5708);
     `;
-    
+
     await queryRunner.query(insert3D);
 
     // Insert selected 5D bend data (sample entries)
@@ -174,7 +176,7 @@ export class CreateBendCenterToFaceAndPopulateData1699380000000 implements Migra
       ('5D', 50, 80, 247.5, 254.0, 1.3963),
       ('5D', 50, 90, 295.0, 254.0, 1.5708);
     `;
-    
+
     await queryRunner.query(insert5D);
   }
 

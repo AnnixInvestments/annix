@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { HdpePipeSpecification } from './entities/hdpe-pipe-specification.entity';
@@ -12,7 +16,10 @@ import { CalculateFittingCostDto } from './dto/calculate-fitting-cost.dto';
 import { CalculateTotalTransportDto } from './dto/calculate-total-transport.dto';
 import { PipeCostResponseDto } from './dto/pipe-cost-response.dto';
 import { FittingCostResponseDto } from './dto/fitting-cost-response.dto';
-import { TransportWeightResponseDto, TransportItemWeightDto } from './dto/transport-weight-response.dto';
+import {
+  TransportWeightResponseDto,
+  TransportItemWeightDto,
+} from './dto/transport-weight-response.dto';
 
 @Injectable()
 export class HdpeService {
@@ -146,9 +153,12 @@ export class HdpeService {
   }
 
   // Calculation: Pipe Cost
-  async calculatePipeCost(dto: CalculatePipeCostDto): Promise<PipeCostResponseDto> {
+  async calculatePipeCost(
+    dto: CalculatePipeCostDto,
+  ): Promise<PipeCostResponseDto> {
     const spec = await this.getPipeSpecification(dto.nominalBore, dto.sdr);
-    const buttweldPrice = dto.buttweldPrice ?? (await this.getButtweldPrice(dto.nominalBore));
+    const buttweldPrice =
+      dto.buttweldPrice ?? (await this.getButtweldPrice(dto.nominalBore));
 
     const totalWeight = Number(spec.weightKgPerM) * dto.length;
     const numButtwelds = 0; // Straight pipe has no welds
@@ -175,10 +185,16 @@ export class HdpeService {
   }
 
   // Calculation: Fitting Cost
-  async calculateFittingCost(dto: CalculateFittingCostDto): Promise<FittingCostResponseDto> {
+  async calculateFittingCost(
+    dto: CalculateFittingCostDto,
+  ): Promise<FittingCostResponseDto> {
     const fittingType = await this.getFittingTypeByCode(dto.fittingTypeCode);
-    const weightData = await this.getFittingWeight(dto.fittingTypeCode, dto.nominalBore);
-    const buttweldPrice = dto.buttweldPrice ?? (await this.getButtweldPrice(dto.nominalBore));
+    const weightData = await this.getFittingWeight(
+      dto.fittingTypeCode,
+      dto.nominalBore,
+    );
+    const buttweldPrice =
+      dto.buttweldPrice ?? (await this.getButtweldPrice(dto.nominalBore));
 
     const weightKg = Number(weightData.weightKg);
     const numButtwelds = fittingType.numButtwelds;
@@ -225,10 +241,16 @@ export class HdpeService {
             'SDR and length are required for straight_pipe items',
           );
         }
-        const spec = await this.getPipeSpecification(item.nominalBore, item.sdr);
+        const spec = await this.getPipeSpecification(
+          item.nominalBore,
+          item.sdr,
+        );
         weightKg = Number(spec.weightKgPerM) * item.length;
       } else {
-        const weightData = await this.getFittingWeight(item.type, item.nominalBore);
+        const weightData = await this.getFittingWeight(
+          item.type,
+          item.nominalBore,
+        );
         weightKg = Number(weightData.weightKg);
       }
 

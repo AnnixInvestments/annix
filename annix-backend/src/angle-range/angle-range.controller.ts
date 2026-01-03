@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { AngleRangeService } from './angle-range.service';
 import { CreateAngleRangeDto } from './dto/create-angle-range.dto';
 import { UpdateAngleRangeDto } from './dto/update-angle-range.dto';
@@ -19,14 +27,20 @@ export class AngleRangeController {
 
   @Get()
   @ApiOperation({ summary: 'Get all angle ranges' })
-  @ApiResponse({ status: 200, description: 'List of angle ranges retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of angle ranges retrieved successfully',
+  })
   findAll() {
     return this.angleRangeService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get an angle range by ID' })
-  @ApiResponse({ status: 200, description: 'Angle range retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Angle range retrieved successfully',
+  })
   @ApiResponse({ status: 404, description: 'Angle range not found' })
   @ApiResponse({ status: 400, description: 'Invalid ID parameter' })
   findOne(@Param('id') id: string) {
@@ -36,9 +50,15 @@ export class AngleRangeController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update an angle range' })
   @ApiResponse({ status: 200, description: 'Angle range updated successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid request or duplicate angle range' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or duplicate angle range',
+  })
   @ApiResponse({ status: 404, description: 'Angle range not found' })
-  update(@Param('id') id: string, @Body() updateAngleRangeDto: UpdateAngleRangeDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateAngleRangeDto: UpdateAngleRangeDto,
+  ) {
     return this.angleRangeService.update(+id, updateAngleRangeDto);
   }
 

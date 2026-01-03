@@ -23,7 +23,12 @@ export class LiningCoatingRule {
   @Column({ name: 'recommended_lining', type: 'varchar', length: 255 })
   recommendedLining: string;
 
-  @Column({ name: 'recommended_coating', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'recommended_coating',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   recommendedCoating: string | null;
 
   @Column({ name: 'application_notes', type: 'text', nullable: true })

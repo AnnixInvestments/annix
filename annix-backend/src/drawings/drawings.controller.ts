@@ -27,7 +27,10 @@ import {
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { DrawingsService, PaginatedResult } from './drawings.service';
-import { DrawingAnalyzerService, DrawingAnalysisResult } from './drawing-analyzer.service';
+import {
+  DrawingAnalyzerService,
+  DrawingAnalysisResult,
+} from './drawing-analyzer.service';
 import { Drawing } from './entities/drawing.entity';
 import { DrawingVersion } from './entities/drawing-version.entity';
 import { DrawingComment } from './entities/drawing-comment.entity';
@@ -53,9 +56,11 @@ export class DrawingsController {
 
   @Post('upload')
   @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @UseInterceptors(FileInterceptor('file', {
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
-  }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+    }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload a new drawing' })
   @ApiBody({
@@ -81,9 +86,11 @@ export class DrawingsController {
 
   @Post(':id/version')
   @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @UseInterceptors(FileInterceptor('file', {
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
-  }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+    }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload a new version of an existing drawing' })
   @ApiBody({
@@ -103,21 +110,46 @@ export class DrawingsController {
     @Body() uploadVersionDto: UploadVersionDto,
     @Request() req,
   ): Promise<DrawingVersion> {
-    return this.drawingsService.uploadNewVersion(id, file, uploadVersionDto, req.user);
+    return this.drawingsService.uploadNewVersion(
+      id,
+      file,
+      uploadVersionDto,
+      req.user,
+    );
   }
 
   // === READ ===
 
   @Get()
-  @Roles('rfq_administrator', 'reviewer', 'approver', 'compliance_officer', 'customer', 'supplier', 'admin', 'user')
+  @Roles(
+    'rfq_administrator',
+    'reviewer',
+    'approver',
+    'compliance_officer',
+    'customer',
+    'supplier',
+    'admin',
+    'user',
+  )
   @ApiOperation({ summary: 'Get all drawings with pagination and filtering' })
   @ApiResponse({ status: HttpStatus.OK })
-  async findAll(@Query() query: DrawingQueryDto): Promise<PaginatedResult<Drawing>> {
+  async findAll(
+    @Query() query: DrawingQueryDto,
+  ): Promise<PaginatedResult<Drawing>> {
     return this.drawingsService.findAll(query);
   }
 
   @Get(':id')
-  @Roles('rfq_administrator', 'reviewer', 'approver', 'compliance_officer', 'customer', 'supplier', 'admin', 'user')
+  @Roles(
+    'rfq_administrator',
+    'reviewer',
+    'approver',
+    'compliance_officer',
+    'customer',
+    'supplier',
+    'admin',
+    'user',
+  )
   @ApiOperation({ summary: 'Get drawing by ID with all versions' })
   @ApiResponse({ status: HttpStatus.OK, type: Drawing })
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<Drawing> {
@@ -125,7 +157,16 @@ export class DrawingsController {
   }
 
   @Get(':id/download')
-  @Roles('rfq_administrator', 'reviewer', 'approver', 'compliance_officer', 'customer', 'supplier', 'admin', 'user')
+  @Roles(
+    'rfq_administrator',
+    'reviewer',
+    'approver',
+    'compliance_officer',
+    'customer',
+    'supplier',
+    'admin',
+    'user',
+  )
   @ApiOperation({ summary: 'Download drawing file' })
   @ApiResponse({ status: HttpStatus.OK })
   async downloadDrawing(
@@ -134,11 +175,8 @@ export class DrawingsController {
     @Request() req,
     @Res() res: Response,
   ): Promise<void> {
-    const { buffer, filename, mimeType } = await this.drawingsService.downloadFile(
-      id,
-      version,
-      req.user,
-    );
+    const { buffer, filename, mimeType } =
+      await this.drawingsService.downloadFile(id, version, req.user);
 
     res.set({
       'Content-Type': mimeType,
@@ -150,10 +188,21 @@ export class DrawingsController {
   }
 
   @Get(':id/versions')
-  @Roles('rfq_administrator', 'reviewer', 'approver', 'compliance_officer', 'customer', 'supplier', 'admin', 'user')
+  @Roles(
+    'rfq_administrator',
+    'reviewer',
+    'approver',
+    'compliance_officer',
+    'customer',
+    'supplier',
+    'admin',
+    'user',
+  )
   @ApiOperation({ summary: 'Get version history for a drawing' })
   @ApiResponse({ status: HttpStatus.OK, type: [DrawingVersion] })
-  async getVersionHistory(@Param('id', ParseIntPipe) id: number): Promise<DrawingVersion[]> {
+  async getVersionHistory(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<DrawingVersion[]> {
     return this.drawingsService.getVersionHistory(id);
   }
 
@@ -177,14 +226,23 @@ export class DrawingsController {
   @Roles('rfq_administrator', 'admin')
   @ApiOperation({ summary: 'Delete a drawing' })
   @ApiResponse({ status: HttpStatus.NO_CONTENT })
-  async remove(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<void> {
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req,
+  ): Promise<void> {
     await this.drawingsService.remove(id, req.user);
   }
 
   // === COMMENTS/ANNOTATIONS ===
 
   @Post(':id/comments')
-  @Roles('rfq_administrator', 'reviewer', 'approver', 'compliance_officer', 'admin')
+  @Roles(
+    'rfq_administrator',
+    'reviewer',
+    'approver',
+    'compliance_officer',
+    'admin',
+  )
   @ApiOperation({ summary: 'Add a comment or annotation to a drawing' })
   @ApiResponse({ status: HttpStatus.CREATED, type: DrawingComment })
   async addComment(
@@ -196,10 +254,21 @@ export class DrawingsController {
   }
 
   @Get(':id/comments')
-  @Roles('rfq_administrator', 'reviewer', 'approver', 'compliance_officer', 'customer', 'supplier', 'admin', 'user')
+  @Roles(
+    'rfq_administrator',
+    'reviewer',
+    'approver',
+    'compliance_officer',
+    'customer',
+    'supplier',
+    'admin',
+    'user',
+  )
   @ApiOperation({ summary: 'Get all comments for a drawing' })
   @ApiResponse({ status: HttpStatus.OK, type: [DrawingComment] })
-  async getComments(@Param('id', ParseIntPipe) id: number): Promise<DrawingComment[]> {
+  async getComments(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<DrawingComment[]> {
     return this.drawingsService.getComments(id);
   }
 
@@ -218,11 +287,15 @@ export class DrawingsController {
 
   @Post('analyze')
   @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @UseInterceptors(FileInterceptor('file', {
-    limits: { fileSize: 50 * 1024 * 1024 },
-  }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 50 * 1024 * 1024 },
+    }),
+  )
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload and analyze a PDF drawing to extract components' })
+  @ApiOperation({
+    summary: 'Upload and analyze a PDF drawing to extract components',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -236,8 +309,14 @@ export class DrawingsController {
       },
     },
   })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Analysis results with extracted components' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid file or analysis failed' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Analysis results with extracted components',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid file or analysis failed',
+  })
   async analyzeDrawing(
     @UploadedFile() file: Express.Multer.File,
   ): Promise<DrawingAnalysisResult> {
@@ -256,7 +335,9 @@ export class DrawingsController {
     }
 
     // Validate file type
-    const ext = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf('.'));
+    const ext = file.originalname
+      .toLowerCase()
+      .slice(file.originalname.lastIndexOf('.'));
     if (ext !== '.pdf' && file.mimetype !== 'application/pdf') {
       return {
         success: false,
@@ -276,9 +357,17 @@ export class DrawingsController {
 
   @Get(':id/analyze')
   @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @ApiOperation({ summary: 'Analyze an existing drawing to extract components' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Analysis results with extracted components' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Drawing is not a PDF or analysis failed' })
+  @ApiOperation({
+    summary: 'Analyze an existing drawing to extract components',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Analysis results with extracted components',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Drawing is not a PDF or analysis failed',
+  })
   async analyzeExistingDrawing(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<DrawingAnalysisResult> {
@@ -289,7 +378,9 @@ export class DrawingsController {
       return {
         success: false,
         components: [],
-        errors: ['Only PDF drawings can be analyzed. This drawing is not a PDF file.'],
+        errors: [
+          'Only PDF drawings can be analyzed. This drawing is not a PDF file.',
+        ],
         warnings: [],
         metadata: {
           pageCount: 0,
@@ -307,7 +398,10 @@ export class DrawingsController {
   @Post(':id/analyze-to-rfq')
   @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
   @ApiOperation({ summary: 'Analyze drawing and get RFQ-ready line items' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Analysis results converted to RFQ line item format' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Analysis results converted to RFQ line item format',
+  })
   async analyzeToRfqItems(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<{ analysis: DrawingAnalysisResult; rfqItems: any[] }> {
@@ -318,7 +412,9 @@ export class DrawingsController {
         analysis: {
           success: false,
           components: [],
-          errors: ['Only PDF drawings can be analyzed. This drawing is not a PDF file.'],
+          errors: [
+            'Only PDF drawings can be analyzed. This drawing is not a PDF file.',
+          ],
           warnings: [],
           metadata: {
             pageCount: 0,
@@ -332,7 +428,9 @@ export class DrawingsController {
 
     const { buffer } = await this.drawingsService.downloadFile(id);
     const analysis = await this.analyzerService.analyzePdf(buffer);
-    const rfqItems = this.analyzerService.convertToRfqItems(analysis.components);
+    const rfqItems = this.analyzerService.convertToRfqItems(
+      analysis.components,
+    );
 
     return { analysis, rfqItems };
   }

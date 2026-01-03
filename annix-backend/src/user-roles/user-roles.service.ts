@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateUserRoleDto } from './dto/create-user-role.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UserRole } from './entities/user-role.entity';
@@ -22,7 +26,8 @@ export class UserRolesService {
     }
 
     const role = this.userRoleRepository.create(createUserRoleDto);
-    return this.userRoleRepository.save(role);  }
+    return this.userRoleRepository.save(role);
+  }
 
   findAll() {
     return this.userRoleRepository.find();
@@ -36,7 +41,10 @@ export class UserRolesService {
     return role;
   }
 
-  async update(id: number, updateUserRoleDto: UpdateUserRoleDto): Promise<UserRole> {
+  async update(
+    id: number,
+    updateUserRoleDto: UpdateUserRoleDto,
+  ): Promise<UserRole> {
     const role = await this.findOne(id);
 
     if (updateUserRoleDto.name) {

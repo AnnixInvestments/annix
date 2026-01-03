@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { CreateFittingVariantDto } from '../../fitting-variant/dto/create-fitting-variant.dto';
@@ -14,14 +20,14 @@ export class CreateFittingDto {
   @IsNotEmpty()
   fittingTypeId: number;
 
-//   @ApiProperty({
-//     type: [CreateFittingVariantDto],
-//     description: 'Optional array of variants to create with this fitting',
-//     required: false,
-//   })
-//   @IsOptional()
-//   @IsArray()
-//   @ValidateNested({ each: true })
-//   @Type(() => CreateFittingVariantDto)
-//   variants?: CreateFittingVariantDto[];
+  //   @ApiProperty({
+  //     type: [CreateFittingVariantDto],
+  //     description: 'Optional array of variants to create with this fitting',
+  //     required: false,
+  //   })
+  //   @IsOptional()
+  //   @IsArray()
+  //   @ValidateNested({ each: true })
+  //   @Type(() => CreateFittingVariantDto)
+  //   variants?: CreateFittingVariantDto[];
 }

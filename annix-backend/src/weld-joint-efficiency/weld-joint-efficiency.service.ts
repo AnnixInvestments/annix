@@ -199,7 +199,9 @@ export class WeldJointEfficiencyService {
     results: Array<B31_3_QualityFactorRow & { materialCategory: string }>;
   } {
     const normalizedSpec = specNo.toLowerCase().trim().replace(/\s+/g, ' ');
-    const results: Array<B31_3_QualityFactorRow & { materialCategory: string }> = [];
+    const results: Array<
+      B31_3_QualityFactorRow & { materialCategory: string }
+    > = [];
 
     for (const [category, rows] of Object.entries(B31_3_TABLE_A_1B)) {
       for (const row of rows) {
@@ -311,7 +313,9 @@ export class WeldJointEfficiencyService {
     );
 
     // Search B31.3 table
-    const b31_3_matches: Array<B31_3_QualityFactorRow & { materialCategory: string }> = [];
+    const b31_3_matches: Array<
+      B31_3_QualityFactorRow & { materialCategory: string }
+    > = [];
     for (const [category, rows] of Object.entries(B31_3_TABLE_A_1B)) {
       for (const row of rows) {
         if (

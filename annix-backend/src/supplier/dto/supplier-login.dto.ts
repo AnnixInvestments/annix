@@ -8,7 +8,10 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SupplierLoginDto {
-  @ApiProperty({ description: 'Email address', example: 'supplier@company.co.za' })
+  @ApiProperty({
+    description: 'Email address',
+    example: 'supplier@company.co.za',
+  })
   @IsEmail()
   @IsNotEmpty()
   email: string;
@@ -18,7 +21,10 @@ export class SupplierLoginDto {
   @IsNotEmpty()
   password: string;
 
-  @ApiProperty({ description: 'Device fingerprint hash', example: 'a1b2c3d4e5f6...' })
+  @ApiProperty({
+    description: 'Device fingerprint hash',
+    example: 'a1b2c3d4e5f6...',
+  })
   @IsString()
   @IsNotEmpty()
   deviceFingerprint: string;

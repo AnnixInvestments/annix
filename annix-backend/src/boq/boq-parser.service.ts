@@ -17,15 +17,61 @@ export class BoqParserService {
   ];
 
   private readonly columnMappings: Record<string, string[]> = {
-    itemCode: ['item code', 'itemcode', 'code', 'item no', 'item number', 'item_code', 'no', 'ref'],
-    description: ['description', 'desc', 'item description', 'item', 'name', 'material', 'product'],
+    itemCode: [
+      'item code',
+      'itemcode',
+      'code',
+      'item no',
+      'item number',
+      'item_code',
+      'no',
+      'ref',
+    ],
+    description: [
+      'description',
+      'desc',
+      'item description',
+      'item',
+      'name',
+      'material',
+      'product',
+    ],
     itemType: ['item type', 'itemtype', 'type', 'item_type', 'category'],
-    unitOfMeasure: ['unit', 'uom', 'unit of measure', 'units', 'measure', 'unit_of_measure'],
+    unitOfMeasure: [
+      'unit',
+      'uom',
+      'unit of measure',
+      'units',
+      'measure',
+      'unit_of_measure',
+    ],
     quantity: ['quantity', 'qty', 'amount', 'count', 'no of items', 'no.'],
-    unitWeightKg: ['unit weight', 'unit weight kg', 'weight', 'unit_weight_kg', 'kg', 'weight (kg)'],
-    unitPrice: ['unit price', 'price', 'unit cost', 'cost', 'rate', 'unit_price', 'price (zar)'],
+    unitWeightKg: [
+      'unit weight',
+      'unit weight kg',
+      'weight',
+      'unit_weight_kg',
+      'kg',
+      'weight (kg)',
+    ],
+    unitPrice: [
+      'unit price',
+      'price',
+      'unit cost',
+      'cost',
+      'rate',
+      'unit_price',
+      'price (zar)',
+    ],
     notes: ['notes', 'remarks', 'comments', 'note', 'remark'],
-    drawingReference: ['drawing ref', 'drawing reference', 'drawing', 'drawing_reference', 'dwg ref', 'dwg'],
+    drawingReference: [
+      'drawing ref',
+      'drawing reference',
+      'drawing',
+      'drawing_reference',
+      'dwg ref',
+      'dwg',
+    ],
   };
 
   parseExcel(buffer: Buffer): ParsedBoqData {
@@ -50,7 +96,9 @@ export class BoqParserService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new BadRequestException(`Failed to parse Excel file: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to parse Excel file: ${error.message}`,
+      );
     }
   }
 
@@ -72,12 +120,16 @@ export class BoqParserService {
 
     // Check for required columns
     if (!headerMap.description) {
-      result.errors.push('Required column "Description" not found. Please ensure your file has a Description column.');
+      result.errors.push(
+        'Required column "Description" not found. Please ensure your file has a Description column.',
+      );
       return result;
     }
 
     if (!headerMap.quantity) {
-      result.errors.push('Required column "Quantity" not found. Please ensure your file has a Quantity column.');
+      result.errors.push(
+        'Required column "Quantity" not found. Please ensure your file has a Quantity column.',
+      );
       return result;
     }
 
@@ -143,7 +195,9 @@ export class BoqParserService {
     if (!itemType || !this.validItemTypes.includes(itemType)) {
       itemType = this.detectItemType(description);
       if (itemType !== 'custom') {
-        warnings.push(`Row ${rowNum}: Auto-detected item type as "${itemType}"`);
+        warnings.push(
+          `Row ${rowNum}: Auto-detected item type as "${itemType}"`,
+        );
       }
     }
 
@@ -151,7 +205,9 @@ export class BoqParserService {
     let unitOfMeasure = this.getStringValue(row, headerMap.unitOfMeasure);
     if (!unitOfMeasure) {
       unitOfMeasure = this.detectUnitOfMeasure(description, itemType);
-      warnings.push(`Row ${rowNum}: Using default unit of measure "${unitOfMeasure}"`);
+      warnings.push(
+        `Row ${rowNum}: Using default unit of measure "${unitOfMeasure}"`,
+      );
     }
 
     const lineItem: ParsedBoqLineItem = {
@@ -169,50 +225,87 @@ export class BoqParserService {
     return lineItem;
   }
 
-  private getStringValue(row: Record<string, any>, header?: string): string | undefined {
+  private getStringValue(
+    row: Record<string, any>,
+    header?: string,
+  ): string | undefined {
     if (!header) return undefined;
     const value = row[header];
     if (value === null || value === undefined || value === '') return undefined;
     return String(value).trim();
   }
 
-  private getNumericValue(row: Record<string, any>, header?: string): number | undefined {
+  private getNumericValue(
+    row: Record<string, any>,
+    header?: string,
+  ): number | undefined {
     if (!header) return undefined;
     const value = row[header];
     if (value === null || value === undefined || value === '') return undefined;
 
-    const num = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
+    const num =
+      typeof value === 'number'
+        ? value
+        : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
     return isNaN(num) ? undefined : num;
   }
 
   private detectItemType(description: string): string {
     const desc = description.toLowerCase();
 
-    if (desc.includes('pipe') && !desc.includes('fitting') && !desc.includes('bend')) {
+    if (
+      desc.includes('pipe') &&
+      !desc.includes('fitting') &&
+      !desc.includes('bend')
+    ) {
       return 'straight_pipe';
     }
     if (desc.includes('bend') || desc.includes('elbow')) {
       return 'bend';
     }
-    if (desc.includes('tee') || desc.includes('reducer') || desc.includes('cap') ||
-        desc.includes('nipple') || desc.includes('coupling') || desc.includes('fitting')) {
+    if (
+      desc.includes('tee') ||
+      desc.includes('reducer') ||
+      desc.includes('cap') ||
+      desc.includes('nipple') ||
+      desc.includes('coupling') ||
+      desc.includes('fitting')
+    ) {
       return 'fitting';
     }
     if (desc.includes('flange')) {
       return 'flange';
     }
-    if (desc.includes('valve') || desc.includes('gate') || desc.includes('ball') ||
-        desc.includes('check') || desc.includes('butterfly')) {
+    if (
+      desc.includes('valve') ||
+      desc.includes('gate') ||
+      desc.includes('ball') ||
+      desc.includes('check') ||
+      desc.includes('butterfly')
+    ) {
       return 'valve';
     }
-    if (desc.includes('support') || desc.includes('hanger') || desc.includes('bracket') ||
-        desc.includes('clamp') || desc.includes('anchor')) {
+    if (
+      desc.includes('support') ||
+      desc.includes('hanger') ||
+      desc.includes('bracket') ||
+      desc.includes('clamp') ||
+      desc.includes('anchor')
+    ) {
       return 'support';
     }
-    if (desc.includes('coating') || desc.includes('paint') || desc.includes('external')) {
+    if (
+      desc.includes('coating') ||
+      desc.includes('paint') ||
+      desc.includes('external')
+    ) {
       return 'coating';
     }
-    if (desc.includes('lining') || desc.includes('internal') || desc.includes('epoxy')) {
+    if (
+      desc.includes('lining') ||
+      desc.includes('internal') ||
+      desc.includes('epoxy')
+    ) {
       return 'lining';
     }
 
@@ -223,7 +316,11 @@ export class BoqParserService {
     const desc = description.toLowerCase();
 
     // Check for explicit units in description
-    if (desc.includes('meter') || desc.includes('metre') || desc.includes(' m ')) {
+    if (
+      desc.includes('meter') ||
+      desc.includes('metre') ||
+      desc.includes(' m ')
+    ) {
       return 'm';
     }
     if (desc.includes('kg') || desc.includes('kilogram')) {
@@ -254,8 +351,12 @@ export class BoqParserService {
     // For now, return an error suggesting Excel format
     return {
       lineItems: [],
-      errors: ['PDF parsing is not fully supported. For best results, please convert your PDF to Excel format first, or ensure the PDF contains structured tabular data.'],
-      warnings: ['Tip: You can copy data from PDF to Excel and upload the Excel file for accurate parsing.'],
+      errors: [
+        'PDF parsing is not fully supported. For best results, please convert your PDF to Excel format first, or ensure the PDF contains structured tabular data.',
+      ],
+      warnings: [
+        'Tip: You can copy data from PDF to Excel and upload the Excel file for accurate parsing.',
+      ],
     };
   }
 }

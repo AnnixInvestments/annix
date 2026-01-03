@@ -8,7 +8,13 @@ import {
   ParseIntPipe,
   ParseFloatPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { HdpeService } from './hdpe.service';
 import { CalculatePipeCostDto } from './dto/calculate-pipe-cost.dto';
 import { CalculateFittingCostDto } from './dto/calculate-fitting-cost.dto';
@@ -22,7 +28,10 @@ export class HdpeController {
   // ========== Standards ==========
   @Get('standards')
   @ApiOperation({ summary: 'Get all HDPE standards' })
-  @ApiResponse({ status: 200, description: 'Returns all active HDPE standards' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns all active HDPE standards',
+  })
   async getAllStandards() {
     return this.hdpeService.getAllStandards();
   }
@@ -45,7 +54,9 @@ export class HdpeController {
   @Get('pipe-specifications/nb/:nominalBore')
   @ApiOperation({ summary: 'Get pipe specifications by nominal bore' })
   @ApiParam({ name: 'nominalBore', description: 'Nominal bore in mm' })
-  async getPipeSpecificationsByNB(@Param('nominalBore', ParseIntPipe) nominalBore: number) {
+  async getPipeSpecificationsByNB(
+    @Param('nominalBore', ParseIntPipe) nominalBore: number,
+  ) {
     return this.hdpeService.getPipeSpecificationsByNB(nominalBore);
   }
 
@@ -79,7 +90,9 @@ export class HdpeController {
   @Get('fitting-weights/:fittingTypeId')
   @ApiOperation({ summary: 'Get fitting weights for a fitting type' })
   @ApiParam({ name: 'fittingTypeId', description: 'Fitting type ID' })
-  async getFittingWeights(@Param('fittingTypeId', ParseIntPipe) fittingTypeId: number) {
+  async getFittingWeights(
+    @Param('fittingTypeId', ParseIntPipe) fittingTypeId: number,
+  ) {
     return this.hdpeService.getFittingWeights(fittingTypeId);
   }
 
@@ -121,7 +134,9 @@ export class HdpeController {
       sdr,
       length,
       pricePerKg,
-      buttweldPrice: buttweldPrice ? parseFloat(String(buttweldPrice)) : undefined,
+      buttweldPrice: buttweldPrice
+        ? parseFloat(String(buttweldPrice))
+        : undefined,
     };
     return this.hdpeService.calculatePipeCost(dto);
   }
@@ -151,14 +166,18 @@ export class HdpeController {
       fittingTypeCode,
       nominalBore,
       pricePerKg,
-      buttweldPrice: buttweldPrice ? parseFloat(String(buttweldPrice)) : undefined,
+      buttweldPrice: buttweldPrice
+        ? parseFloat(String(buttweldPrice))
+        : undefined,
       stubPrice: stubPrice ? parseFloat(String(stubPrice)) : undefined,
     };
     return this.hdpeService.calculateFittingCost(dto);
   }
 
   @Post('calculate/transport-weight')
-  @ApiOperation({ summary: 'Calculate total transport weight for multiple items' })
+  @ApiOperation({
+    summary: 'Calculate total transport weight for multiple items',
+  })
   @ApiResponse({ status: 200, description: 'Returns total transport weight' })
   async calculateTotalTransportWeight(@Body() dto: CalculateTotalTransportDto) {
     return this.hdpeService.calculateTotalTransportWeight(dto);
@@ -167,7 +186,10 @@ export class HdpeController {
   // ========== Utilities ==========
   @Get('nominal-bores')
   @ApiOperation({ summary: 'Get available nominal bores' })
-  @ApiResponse({ status: 200, description: 'Returns list of available nominal bores' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns list of available nominal bores',
+  })
   async getAvailableNominalBores() {
     return this.hdpeService.getAvailableNominalBores();
   }
@@ -175,7 +197,9 @@ export class HdpeController {
   @Get('sdrs/:nominalBore')
   @ApiOperation({ summary: 'Get available SDRs for a nominal bore' })
   @ApiParam({ name: 'nominalBore', description: 'Nominal bore in mm' })
-  async getAvailableSDRs(@Param('nominalBore', ParseIntPipe) nominalBore: number) {
+  async getAvailableSDRs(
+    @Param('nominalBore', ParseIntPipe) nominalBore: number,
+  ) {
     return this.hdpeService.getAvailableSDRs(nominalBore);
   }
 }

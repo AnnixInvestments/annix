@@ -36,7 +36,9 @@ export class CoatingSpecificationService {
     });
   }
 
-  async findEnvironmentsByStandard(standardCode: string): Promise<CoatingEnvironment[]> {
+  async findEnvironmentsByStandard(
+    standardCode: string,
+  ): Promise<CoatingEnvironment[]> {
     return this.environmentRepository.find({
       where: { standard: { code: standardCode } },
       relations: ['standard'],
@@ -44,17 +46,22 @@ export class CoatingSpecificationService {
     });
   }
 
-  async findEnvironmentByCategory(standardCode: string, category: string): Promise<CoatingEnvironment | null> {
+  async findEnvironmentByCategory(
+    standardCode: string,
+    category: string,
+  ): Promise<CoatingEnvironment | null> {
     return this.environmentRepository.findOne({
       where: {
         standard: { code: standardCode },
-        category
+        category,
       },
       relations: ['standard', 'specifications'],
     });
   }
 
-  async findSpecificationsByEnvironment(environmentId: number): Promise<CoatingSpecification[]> {
+  async findSpecificationsByEnvironment(
+    environmentId: number,
+  ): Promise<CoatingSpecification[]> {
     return this.specificationRepository.find({
       where: { environmentId },
       order: { coatingType: 'ASC', lifespan: 'ASC' },
@@ -73,7 +80,7 @@ export class CoatingSpecificationService {
     const environment = await this.environmentRepository.findOne({
       where: {
         standard: { code: standardCode },
-        category
+        category,
       },
       relations: ['standard'],
     });
@@ -117,7 +124,7 @@ export class CoatingSpecificationService {
     const environment = await this.environmentRepository.findOne({
       where: {
         standard: { code: standardCode },
-        category
+        category,
       },
       relations: ['standard'],
     });
@@ -165,13 +172,15 @@ export class CoatingSpecificationService {
   /**
    * Get all corrosivity categories for ISO 12944
    */
-  async getCorrosivityCategories(): Promise<{ category: string; description: string }[]> {
+  async getCorrosivityCategories(): Promise<
+    { category: string; description: string }[]
+  > {
     const environments = await this.environmentRepository.find({
       where: { standard: { code: 'ISO 12944' } },
       order: { category: 'ASC' },
     });
 
-    return environments.map(env => ({
+    return environments.map((env) => ({
       category: env.category,
       description: env.description,
     }));

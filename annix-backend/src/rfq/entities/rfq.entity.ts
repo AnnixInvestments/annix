@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
+  JoinColumn,
+} from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { RfqItem } from './rfq-item.entity';
 import { RfqDocument } from './rfq-document.entity';
@@ -21,11 +30,17 @@ export class Rfq {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ description: 'Auto-generated RFQ number', example: 'RFQ-2025-0001' })
+  @ApiProperty({
+    description: 'Auto-generated RFQ number',
+    example: 'RFQ-2025-0001',
+  })
   @Column({ name: 'rfq_number', unique: true })
   rfqNumber: string;
 
-  @ApiProperty({ description: 'Project name', example: '500NB Pipeline Extension' })
+  @ApiProperty({
+    description: 'Project name',
+    example: '500NB Pipeline Extension',
+  })
   @Column({ name: 'project_name' })
   projectName: string;
 
@@ -50,7 +65,12 @@ export class Rfq {
   requiredDate?: Date;
 
   @ApiProperty({ description: 'RFQ status', enum: RfqStatus })
-  @Column({ name: 'status', type: 'enum', enum: RfqStatus, default: RfqStatus.DRAFT })
+  @Column({
+    name: 'status',
+    type: 'enum',
+    enum: RfqStatus,
+    default: RfqStatus.DRAFT,
+  })
   status: RfqStatus;
 
   @ApiProperty({ description: 'Additional notes', required: false })
@@ -58,14 +78,30 @@ export class Rfq {
   notes?: string;
 
   @ApiProperty({ description: 'Total estimated weight in kg', required: false })
-  @Column({ name: 'total_estimated_weight', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({
+    name: 'total_estimated_weight',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   totalWeightKg?: number;
 
   @ApiProperty({ description: 'Total estimated cost', required: false })
-  @Column({ name: 'total_quoted_price', type: 'decimal', precision: 15, scale: 2, nullable: true })
+  @Column({
+    name: 'total_quoted_price',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
   totalCost?: number;
 
-  @ApiProperty({ description: 'User who created this RFQ', type: () => User, required: false })
+  @ApiProperty({
+    description: 'User who created this RFQ',
+    type: () => User,
+    required: false,
+  })
   @ManyToOne(() => User, (user) => user.rfqs, { nullable: true })
   @JoinColumn({ name: 'created_by_user_id' })
   createdBy?: User;

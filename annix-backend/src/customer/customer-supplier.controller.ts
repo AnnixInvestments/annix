@@ -10,7 +10,13 @@ import {
   UseGuards,
   ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { CustomerSupplierService } from './customer-supplier.service';
@@ -39,10 +45,22 @@ export class CustomerSupplierController {
     schema: {
       type: 'object',
       properties: {
-        supplierProfileId: { type: 'number', description: 'ID of registered supplier (optional)' },
-        supplierName: { type: 'string', description: 'Name for unregistered supplier' },
-        supplierEmail: { type: 'string', description: 'Email for unregistered supplier' },
-        priority: { type: 'number', description: 'Priority order (lower = higher priority)' },
+        supplierProfileId: {
+          type: 'number',
+          description: 'ID of registered supplier (optional)',
+        },
+        supplierName: {
+          type: 'string',
+          description: 'Name for unregistered supplier',
+        },
+        supplierEmail: {
+          type: 'string',
+          description: 'Email for unregistered supplier',
+        },
+        priority: {
+          type: 'number',
+          description: 'Priority order (lower = higher priority)',
+        },
         notes: { type: 'string', description: 'Notes about this supplier' },
       },
     },
@@ -51,7 +69,8 @@ export class CustomerSupplierController {
   @ApiResponse({ status: 403, description: 'Not authorized' })
   @ApiResponse({ status: 409, description: 'Supplier already exists' })
   async addPreferredSupplier(
-    @Body() data: {
+    @Body()
+    data: {
       supplierProfileId?: number;
       supplierName?: string;
       supplierEmail?: string;
@@ -62,7 +81,11 @@ export class CustomerSupplierController {
   ) {
     const customerId = (req as any).customer.id;
     const clientIp = this.getClientIp(req);
-    return this.supplierService.addPreferredSupplier(customerId, data, clientIp);
+    return this.supplierService.addPreferredSupplier(
+      customerId,
+      data,
+      clientIp,
+    );
   }
 
   @Patch(':id')
@@ -76,7 +99,12 @@ export class CustomerSupplierController {
   ) {
     const customerId = (req as any).customer.id;
     const clientIp = this.getClientIp(req);
-    return this.supplierService.updatePreferredSupplier(customerId, id, data, clientIp);
+    return this.supplierService.updatePreferredSupplier(
+      customerId,
+      id,
+      data,
+      clientIp,
+    );
   }
 
   @Delete(':id')
@@ -89,7 +117,11 @@ export class CustomerSupplierController {
   ) {
     const customerId = (req as any).customer.id;
     const clientIp = this.getClientIp(req);
-    return this.supplierService.removePreferredSupplier(customerId, id, clientIp);
+    return this.supplierService.removePreferredSupplier(
+      customerId,
+      id,
+      clientIp,
+    );
   }
 
   // Invitations
@@ -119,7 +151,8 @@ export class CustomerSupplierController {
   @ApiResponse({ status: 400, description: 'Supplier already registered' })
   @ApiResponse({ status: 409, description: 'Active invitation exists' })
   async createInvitation(
-    @Body() data: { email: string; supplierCompanyName?: string; message?: string },
+    @Body()
+    data: { email: string; supplierCompanyName?: string; message?: string },
     @Req() req: Request,
   ) {
     const customerId = (req as any).customer.id;
@@ -130,7 +163,10 @@ export class CustomerSupplierController {
   @Post('invitations/:id/cancel')
   @ApiOperation({ summary: 'Cancel a pending invitation' })
   @ApiResponse({ status: 200, description: 'Invitation cancelled' })
-  @ApiResponse({ status: 400, description: 'Cannot cancel non-pending invitation' })
+  @ApiResponse({
+    status: 400,
+    description: 'Cannot cancel non-pending invitation',
+  })
   async cancelInvitation(
     @Param('id', ParseIntPipe) id: number,
     @Req() req: Request,
@@ -155,7 +191,9 @@ export class CustomerSupplierController {
   private getClientIp(req: Request): string {
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
-      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded)
+        ? forwarded[0]
+        : forwarded.split(',')[0];
       return ips.trim();
     }
     return req.ip || req.socket?.remoteAddress || 'unknown';

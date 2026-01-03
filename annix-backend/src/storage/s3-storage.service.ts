@@ -21,24 +21,34 @@ export class S3StorageService implements IStorageService {
 
   constructor(private configService: ConfigService) {
     this.region = this.configService.get<string>('AWS_REGION') || 'af-south-1';
-    this.bucket = this.configService.get<string>('AWS_S3_BUCKET') || 'annix-sync-files';
-    this.presignedUrlExpiration = this.configService.get<number>('AWS_S3_URL_EXPIRATION') || 3600; // 1 hour default
+    this.bucket =
+      this.configService.get<string>('AWS_S3_BUCKET') || 'annix-sync-files';
+    this.presignedUrlExpiration =
+      this.configService.get<number>('AWS_S3_URL_EXPIRATION') || 3600; // 1 hour default
 
     this.s3Client = new S3Client({
       region: this.region,
       credentials: {
         accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID') || '',
-        secretAccessKey: this.configService.get<string>('AWS_SECRET_ACCESS_KEY') || '',
+        secretAccessKey:
+          this.configService.get<string>('AWS_SECRET_ACCESS_KEY') || '',
       },
     });
 
-    this.logger.log(`S3 Storage Service initialized for bucket: ${this.bucket} in region: ${this.region}`);
+    this.logger.log(
+      `S3 Storage Service initialized for bucket: ${this.bucket} in region: ${this.region}`,
+    );
   }
 
-  async upload(file: Express.Multer.File, subPath: string): Promise<StorageResult> {
+  async upload(
+    file: Express.Multer.File,
+    subPath: string,
+  ): Promise<StorageResult> {
     const ext = file.originalname.substring(file.originalname.lastIndexOf('.'));
     const uniqueFilename = `${uuidv4()}${ext}`;
-    const key = `${subPath}/${uniqueFilename}`.replace(/\\/g, '/').replace(/^\//, '');
+    const key = `${subPath}/${uniqueFilename}`
+      .replace(/\\/g, '/')
+      .replace(/^\//, '');
 
     try {
       const command = new PutObjectCommand({
@@ -64,7 +74,10 @@ export class S3StorageService implements IStorageService {
         originalFilename: file.originalname,
       };
     } catch (error) {
-      this.logger.error(`Failed to upload file to S3: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to upload file to S3: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -93,10 +106,16 @@ export class S3StorageService implements IStorageService {
 
       return Buffer.concat(chunks);
     } catch (error) {
-      if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+      if (
+        error.name === 'NoSuchKey' ||
+        error.$metadata?.httpStatusCode === 404
+      ) {
         throw new NotFoundException(`File not found: ${path}`);
       }
-      this.logger.error(`Failed to download file from S3: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to download file from S3: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -113,7 +132,10 @@ export class S3StorageService implements IStorageService {
       await this.s3Client.send(command);
       this.logger.log(`File deleted from S3: ${key}`);
     } catch (error) {
-      this.logger.error(`Failed to delete file from S3: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete file from S3: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -130,10 +152,16 @@ export class S3StorageService implements IStorageService {
       await this.s3Client.send(command);
       return true;
     } catch (error) {
-      if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+      if (
+        error.name === 'NotFound' ||
+        error.$metadata?.httpStatusCode === 404
+      ) {
         return false;
       }
-      this.logger.error(`Failed to check file existence in S3: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to check file existence in S3: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -165,7 +193,10 @@ export class S3StorageService implements IStorageService {
 
       return url;
     } catch (error) {
-      this.logger.error(`Failed to generate presigned URL: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate presigned URL: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

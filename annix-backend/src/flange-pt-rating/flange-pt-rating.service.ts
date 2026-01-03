@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FlangePtRating } from './entities/flange-pt-rating.entity';
-import { CreateFlangePtRatingDto, BulkCreateFlangePtRatingDto } from './dto/create-flange-pt-rating.dto';
+import {
+  CreateFlangePtRatingDto,
+  BulkCreateFlangePtRatingDto,
+} from './dto/create-flange-pt-rating.dto';
 
 @Injectable()
 export class FlangePtRatingService {
@@ -22,15 +25,17 @@ export class FlangePtRatingService {
     return this.ptRatingRepository.save(entity);
   }
 
-  async bulkCreate(dto: BulkCreateFlangePtRatingDto): Promise<FlangePtRating[]> {
-    const entities = dto.ratings.map(rating =>
+  async bulkCreate(
+    dto: BulkCreateFlangePtRatingDto,
+  ): Promise<FlangePtRating[]> {
+    const entities = dto.ratings.map((rating) =>
       this.ptRatingRepository.create({
         pressureClassId: dto.pressureClassId,
         materialGroup: dto.materialGroup,
         temperatureCelsius: rating.temperatureCelsius,
         maxPressureBar: rating.maxPressureBar,
         maxPressurePsi: rating.maxPressurePsi,
-      })
+      }),
     );
     return this.ptRatingRepository.save(entities);
   }
@@ -42,7 +47,9 @@ export class FlangePtRatingService {
     });
   }
 
-  async findByPressureClass(pressureClassId: number): Promise<FlangePtRating[]> {
+  async findByPressureClass(
+    pressureClassId: number,
+  ): Promise<FlangePtRating[]> {
     return this.ptRatingRepository.find({
       where: { pressureClassId },
       order: { temperatureCelsius: 'ASC' },
@@ -52,7 +59,9 @@ export class FlangePtRatingService {
   /**
    * Get available material groups with P-T rating data
    */
-  async getAvailableMaterialGroups(): Promise<{ name: string; description: string }[]> {
+  async getAvailableMaterialGroups(): Promise<
+    { name: string; description: string }[]
+  > {
     const distinctGroups = await this.ptRatingRepository
       .createQueryBuilder('rating')
       .select('DISTINCT rating.material_group', 'materialGroup')
@@ -61,21 +70,25 @@ export class FlangePtRatingService {
     // Map to user-friendly names with descriptions
     const materialGroupInfo: { [key: string]: string } = {
       'Carbon Steel A105 (Group 1.1)': 'General service carbon steel',
-      'Stainless Steel 304 (Group 2.1)': 'Austenitic SS - slightly higher ratings at elevated temps',
+      'Stainless Steel 304 (Group 2.1)':
+        'Austenitic SS - slightly higher ratings at elevated temps',
       'Stainless Steel 316 (Group 2.2)': 'Corrosion-resistant austenitic SS',
     };
 
-    return distinctGroups.map(g => ({
+    return distinctGroups.map((g) => ({
       name: g.materialGroup,
       description: materialGroupInfo[g.materialGroup] || g.materialGroup,
     }));
   }
 
-  async findByStandardAndMaterial(standardId: number, materialGroup: string): Promise<FlangePtRating[]> {
+  async findByStandardAndMaterial(
+    standardId: number,
+    materialGroup: string,
+  ): Promise<FlangePtRating[]> {
     return this.ptRatingRepository.find({
       where: {
         pressureClass: { standard: { id: standardId } },
-        materialGroup
+        materialGroup,
       },
       relations: ['pressureClass', 'pressureClass.standard'],
       order: { pressureClassId: 'ASC', temperatureCelsius: 'ASC' },
@@ -123,10 +136,13 @@ export class FlangePtRatingService {
     }
 
     // Linear interpolation
-    const tempRange = Number(upper.temperatureCelsius) - Number(lower.temperatureCelsius);
-    const pressureRange = Number(upper.maxPressureBar) - Number(lower.maxPressureBar);
+    const tempRange =
+      Number(upper.temperatureCelsius) - Number(lower.temperatureCelsius);
+    const pressureRange =
+      Number(upper.maxPressureBar) - Number(lower.maxPressureBar);
     const tempOffset = temperatureCelsius - Number(lower.temperatureCelsius);
-    const interpolatedPressure = Number(lower.maxPressureBar) + (pressureRange * tempOffset / tempRange);
+    const interpolatedPressure =
+      Number(lower.maxPressureBar) + (pressureRange * tempOffset) / tempRange;
 
     return Math.round(interpolatedPressure * 100) / 100;
   }
@@ -143,7 +159,7 @@ export class FlangePtRatingService {
     const ratings = await this.ptRatingRepository.find({
       where: {
         pressureClass: { standard: { id: standardId } },
-        materialGroup
+        materialGroup,
       },
       relations: ['pressureClass'],
       order: { pressureClassId: 'ASC', temperatureCelsius: 'ASC' },
@@ -162,9 +178,17 @@ export class FlangePtRatingService {
     }
 
     // Get all class IDs and their max pressures at the given temperature
-    const classCapacities: Array<{ classId: number; maxPressure: number; designation: string }> = [];
+    const classCapacities: Array<{
+      classId: number;
+      maxPressure: number;
+      designation: string;
+    }> = [];
     for (const [classId, classRatings] of ratingsByClass) {
-      const maxPressure = await this.getMaxPressureAtTemperature(classId, temperatureCelsius, materialGroup);
+      const maxPressure = await this.getMaxPressureAtTemperature(
+        classId,
+        temperatureCelsius,
+        materialGroup,
+      );
       if (maxPressure !== null) {
         const designation = classRatings[0]?.pressureClass?.designation || '';
         classCapacities.push({ classId, maxPressure, designation });
@@ -177,7 +201,9 @@ export class FlangePtRatingService {
     // Find the lowest pressure class that can handle the working pressure
     for (const { classId, maxPressure, designation } of classCapacities) {
       if (maxPressure >= workingPressureBar) {
-        console.log(`P/T Rating: Selected ${designation} (${maxPressure.toFixed(1)} bar at ${temperatureCelsius}°C) for ${workingPressureBar} bar`);
+        console.log(
+          `P/T Rating: Selected ${designation} (${maxPressure.toFixed(1)} bar at ${temperatureCelsius}°C) for ${workingPressureBar} bar`,
+        );
         return classId;
       }
     }
@@ -185,7 +211,9 @@ export class FlangePtRatingService {
     // Return the highest class if none can handle it
     const highest = classCapacities[classCapacities.length - 1];
     if (highest) {
-      console.log(`P/T Rating: Using highest class ${highest.designation} (${highest.maxPressure.toFixed(1)} bar) for ${workingPressureBar} bar`);
+      console.log(
+        `P/T Rating: Using highest class ${highest.designation} (${highest.maxPressure.toFixed(1)} bar) for ${workingPressureBar} bar`,
+      );
       return highest.classId;
     }
 

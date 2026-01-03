@@ -12,10 +12,20 @@ export class PipeScheduleWall {
   @Column({ type: 'varchar' })
   schedule: string; // e.g., "5S", "10", "40", "80", "160", "XXS"
 
-  @Column({ type: 'decimal', precision: 6, scale: 4, name: 'wall_thickness_inch' })
+  @Column({
+    type: 'decimal',
+    precision: 6,
+    scale: 4,
+    name: 'wall_thickness_inch',
+  })
   wallThicknessInch: number; // Wall thickness in inches
 
-  @Column({ type: 'decimal', precision: 6, scale: 2, name: 'wall_thickness_mm' })
+  @Column({
+    type: 'decimal',
+    precision: 6,
+    scale: 2,
+    name: 'wall_thickness_mm',
+  })
   wallThicknessMm: number; // Wall thickness in mm (computed)
 }
 

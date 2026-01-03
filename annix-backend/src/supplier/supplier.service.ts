@@ -147,22 +147,31 @@ export class SupplierService {
     }
 
     // Check company details
-    const companyDetailsComplete = !!profile.company && this.isCompanyComplete(profile.company);
+    const companyDetailsComplete =
+      !!profile.company && this.isCompanyComplete(profile.company);
 
     // Check documents
-    const uploadedTypes = profile.documents?.map(d => d.documentType) || [];
-    const missingDocuments = REQUIRED_DOCUMENT_TYPES.filter(type => !uploadedTypes.includes(type));
+    const uploadedTypes = profile.documents?.map((d) => d.documentType) || [];
+    const missingDocuments = REQUIRED_DOCUMENT_TYPES.filter(
+      (type) => !uploadedTypes.includes(type),
+    );
     const documentsComplete = missingDocuments.length === 0;
 
     // Update onboarding record if needed
-    if (onboarding.companyDetailsComplete !== companyDetailsComplete || onboarding.documentsComplete !== documentsComplete) {
+    if (
+      onboarding.companyDetailsComplete !== companyDetailsComplete ||
+      onboarding.documentsComplete !== documentsComplete
+    ) {
       onboarding.companyDetailsComplete = companyDetailsComplete;
       onboarding.documentsComplete = documentsComplete;
       await this.onboardingRepo.save(onboarding);
     }
 
-    const canSubmit = companyDetailsComplete && documentsComplete &&
-      (onboarding.status === SupplierOnboardingStatus.DRAFT || onboarding.status === SupplierOnboardingStatus.REJECTED);
+    const canSubmit =
+      companyDetailsComplete &&
+      documentsComplete &&
+      (onboarding.status === SupplierOnboardingStatus.DRAFT ||
+        onboarding.status === SupplierOnboardingStatus.REJECTED);
 
     return {
       status: onboarding.status,
@@ -194,7 +203,9 @@ export class SupplierService {
 
     // Check onboarding status
     if (profile.onboarding?.status === SupplierOnboardingStatus.APPROVED) {
-      throw new BadRequestException('Cannot modify company details after approval');
+      throw new BadRequestException(
+        'Cannot modify company details after approval',
+      );
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -234,14 +245,18 @@ export class SupplierService {
           entityType: 'supplier_company',
           entityId: company.id,
           action: AuditAction.CREATE,
-          newValues: { legalName: dto.legalName, registrationNumber: dto.registrationNumber },
+          newValues: {
+            legalName: dto.legalName,
+            registrationNumber: dto.registrationNumber,
+          },
           ipAddress: clientIp,
         });
       }
 
       // Update onboarding company details status
       if (profile.onboarding) {
-        profile.onboarding.companyDetailsComplete = this.isCompanyComplete(company);
+        profile.onboarding.companyDetailsComplete =
+          this.isCompanyComplete(company);
         await queryRunner.manager.save(profile.onboarding);
       }
 
@@ -287,7 +302,9 @@ export class SupplierService {
       try {
         await this.storageService.delete(existingDoc.filePath);
       } catch (error) {
-        this.logger.warn(`Failed to delete old document: ${existingDoc.filePath}`);
+        this.logger.warn(
+          `Failed to delete old document: ${existingDoc.filePath}`,
+        );
       }
       await this.documentRepo.remove(existingDoc);
     }
@@ -342,13 +359,15 @@ export class SupplierService {
   /**
    * Get documents for supplier
    */
-  async getDocuments(supplierId: number): Promise<SupplierDocumentResponseDto[]> {
+  async getDocuments(
+    supplierId: number,
+  ): Promise<SupplierDocumentResponseDto[]> {
     const documents = await this.documentRepo.find({
       where: { supplierId },
       order: { uploadedAt: 'DESC' },
     });
 
-    return documents.map(doc => ({
+    return documents.map((doc) => ({
       id: doc.id,
       documentType: doc.documentType,
       fileName: doc.fileName,
@@ -365,7 +384,11 @@ export class SupplierService {
   /**
    * Delete document
    */
-  async deleteDocument(supplierId: number, documentId: number, clientIp: string): Promise<void> {
+  async deleteDocument(
+    supplierId: number,
+    documentId: number,
+    clientIp: string,
+  ): Promise<void> {
     const document = await this.documentRepo.findOne({
       where: { id: documentId, supplierId },
     });
@@ -410,7 +433,10 @@ export class SupplierService {
   /**
    * Submit onboarding for review
    */
-  async submitOnboarding(supplierId: number, clientIp: string): Promise<{ success: boolean; message: string }> {
+  async submitOnboarding(
+    supplierId: number,
+    clientIp: string,
+  ): Promise<{ success: boolean; message: string }> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
       relations: ['onboarding', 'company', 'documents'],
@@ -426,9 +452,13 @@ export class SupplierService {
     }
 
     // Validate current status
-    if (onboarding.status !== SupplierOnboardingStatus.DRAFT &&
-        onboarding.status !== SupplierOnboardingStatus.REJECTED) {
-      throw new BadRequestException('Onboarding cannot be submitted in current status');
+    if (
+      onboarding.status !== SupplierOnboardingStatus.DRAFT &&
+      onboarding.status !== SupplierOnboardingStatus.REJECTED
+    ) {
+      throw new BadRequestException(
+        'Onboarding cannot be submitted in current status',
+      );
     }
 
     // Validate company details
@@ -437,11 +467,15 @@ export class SupplierService {
     }
 
     // Validate documents
-    const uploadedTypes = profile.documents?.map(d => d.documentType) || [];
-    const missingDocuments = REQUIRED_DOCUMENT_TYPES.filter(type => !uploadedTypes.includes(type));
+    const uploadedTypes = profile.documents?.map((d) => d.documentType) || [];
+    const missingDocuments = REQUIRED_DOCUMENT_TYPES.filter(
+      (type) => !uploadedTypes.includes(type),
+    );
 
     if (missingDocuments.length > 0) {
-      throw new BadRequestException(`Missing required documents: ${missingDocuments.join(', ')}`);
+      throw new BadRequestException(
+        `Missing required documents: ${missingDocuments.join(', ')}`,
+      );
     }
 
     // Update onboarding status
@@ -471,7 +505,8 @@ export class SupplierService {
 
     return {
       success: true,
-      message: 'Onboarding submitted for review. You will be notified of the outcome.',
+      message:
+        'Onboarding submitted for review. You will be notified of the outcome.',
     };
   }
 
@@ -510,11 +545,16 @@ export class SupplierService {
     const documents = profile.documents || [];
     const documentStats = {
       total: documents.length,
-      pending: documents.filter(d => d.validationStatus === SupplierDocumentValidationStatus.PENDING).length,
-      valid: documents.filter(d => d.validationStatus === SupplierDocumentValidationStatus.VALID).length,
-      invalid: documents.filter(d =>
-        d.validationStatus === SupplierDocumentValidationStatus.INVALID ||
-        d.validationStatus === SupplierDocumentValidationStatus.FAILED
+      pending: documents.filter(
+        (d) => d.validationStatus === SupplierDocumentValidationStatus.PENDING,
+      ).length,
+      valid: documents.filter(
+        (d) => d.validationStatus === SupplierDocumentValidationStatus.VALID,
+      ).length,
+      invalid: documents.filter(
+        (d) =>
+          d.validationStatus === SupplierDocumentValidationStatus.INVALID ||
+          d.validationStatus === SupplierDocumentValidationStatus.FAILED,
       ).length,
     };
 
@@ -527,7 +567,8 @@ export class SupplierService {
       },
       onboarding: {
         status: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
-        companyDetailsComplete: profile.onboarding?.companyDetailsComplete || false,
+        companyDetailsComplete:
+          profile.onboarding?.companyDetailsComplete || false,
         documentsComplete: profile.onboarding?.documentsComplete || false,
         submittedAt: profile.onboarding?.submittedAt,
       },
@@ -553,13 +594,12 @@ export class SupplierService {
 
   private async updateDocumentsStatus(supplierId: number): Promise<void> {
     const documents = await this.documentRepo.find({ where: { supplierId } });
-    const uploadedTypes = documents.map(d => d.documentType);
-    const missingDocuments = REQUIRED_DOCUMENT_TYPES.filter(type => !uploadedTypes.includes(type));
+    const uploadedTypes = documents.map((d) => d.documentType);
+    const missingDocuments = REQUIRED_DOCUMENT_TYPES.filter(
+      (type) => !uploadedTypes.includes(type),
+    );
     const documentsComplete = missingDocuments.length === 0;
 
-    await this.onboardingRepo.update(
-      { supplierId },
-      { documentsComplete },
-    );
+    await this.onboardingRepo.update({ supplierId }, { documentsComplete });
   }
 }

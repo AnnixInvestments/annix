@@ -574,11 +574,12 @@ const BendScene = ({
               startX={inletX}
               startY={inletY}
             />
-            {/* Buttweld ring at tangent-to-bend connection - horizontal ring */}
-            <mesh position={[inletX, inletY, 0]} rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[outerRadius * 1.02, outerRadius * 0.08, 8, 32]} />
-              <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.8} />
-            </mesh>
+            {/* Buttweld ring at tangent-to-bend connection - perpendicular to vertical pipe */}
+            <WeldRing
+              position={new THREE.Vector3(inletX, inletY, 0)}
+              tangentAngle={0}
+              outerRadius={outerRadius}
+            />
           </>
         )}
 
@@ -594,11 +595,12 @@ const BendScene = ({
               startY={outletY}
               angleRad={angleRad}
             />
-            {/* Buttweld ring at tangent-to-bend connection - perpendicular to pipe direction */}
-            <mesh position={[outletX, outletY, 0]} rotation={[Math.PI / 2, 0, angleRad]}>
-              <torusGeometry args={[outerRadius * 1.02, outerRadius * 0.08, 8, 32]} />
-              <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.8} />
-            </mesh>
+            {/* Buttweld ring at tangent-to-bend connection - perpendicular to angled pipe */}
+            <WeldRing
+              position={new THREE.Vector3(outletX, outletY, 0)}
+              tangentAngle={angleRad}
+              outerRadius={outerRadius}
+            />
           </>
         )}
 
@@ -913,7 +915,7 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
         <div className="text-gray-700">OD: {odRaw.toFixed(0)}mm | ID: {idRaw.toFixed(0)}mm</div>
         <div className="font-semibold text-blue-700 mt-1 mb-0.5">FLANGE</div>
         <div className="text-gray-700">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
-        <div className="text-gray-700">{flangeSpecs.boltHoles} x {flangeSpecs.holeID}mm holes</div>
+        <div className="text-gray-700">THK: {flangeSpecs.thickness}mm | {flangeSpecs.boltHoles} x Ø{flangeSpecs.holeID}mm</div>
       </div>
 
       {/* Angle display - center top */}
@@ -936,9 +938,10 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
           {props.stubs[0] && props.stubs[0].nominalBoreMm && (() => {
             const stub1Flange = getFlangeSpecs(props.stubs[0].nominalBoreMm);
             return (
-              <div className="text-gray-700">
-                <div>S1: {props.stubs[0].nominalBoreMm}NB x {props.stubs[0].length || 0}mm @ {props.stubs[0].locationFromFlange || 0}mm</div>
-                <div className="text-gray-500 pl-2">Flange: {stub1Flange.flangeOD}mm OD, {stub1Flange.boltHoles}x{stub1Flange.holeID}mm</div>
+              <div className="text-gray-700 mb-1">
+                <div className="font-medium">S1: {props.stubs[0].nominalBoreMm}NB x {props.stubs[0].length || 0}mm @ {props.stubs[0].locationFromFlange || 0}mm</div>
+                <div className="text-gray-500 pl-2">OD: {stub1Flange.flangeOD}mm | THK: {stub1Flange.thickness}mm</div>
+                <div className="text-gray-500 pl-2">PCD: {stub1Flange.pcd}mm | {stub1Flange.boltHoles} x Ø{stub1Flange.holeID}mm</div>
               </div>
             );
           })()}
@@ -946,8 +949,9 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
             const stub2Flange = getFlangeSpecs(props.stubs[1].nominalBoreMm);
             return (
               <div className="text-gray-700">
-                <div>S2: {props.stubs[1].nominalBoreMm}NB x {props.stubs[1].length || 0}mm @ {props.stubs[1].locationFromFlange || 0}mm</div>
-                <div className="text-gray-500 pl-2">Flange: {stub2Flange.flangeOD}mm OD, {stub2Flange.boltHoles}x{stub2Flange.holeID}mm</div>
+                <div className="font-medium">S2: {props.stubs[1].nominalBoreMm}NB x {props.stubs[1].length || 0}mm @ {props.stubs[1].locationFromFlange || 0}mm</div>
+                <div className="text-gray-500 pl-2">OD: {stub2Flange.flangeOD}mm | THK: {stub2Flange.thickness}mm</div>
+                <div className="text-gray-500 pl-2">PCD: {stub2Flange.pcd}mm | {stub2Flange.boltHoles} x Ø{stub2Flange.holeID}mm</div>
               </div>
             );
           })()}

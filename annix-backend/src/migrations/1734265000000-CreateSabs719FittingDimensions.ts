@@ -1,167 +1,170 @@
-import { MigrationInterface, QueryRunner, Table } from "typeorm";
+import { MigrationInterface, QueryRunner, Table } from 'typeorm';
 
-export class CreateSabs719FittingDimensions1734265000000 implements MigrationInterface {
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create the SABS719 fitting dimensions table
-        await queryRunner.createTable(
-            new Table({
-                name: 'sabs719_fitting_dimension',
-                columns: [
-                    {
-                        name: 'id',
-                        type: 'int',
-                        isPrimary: true,
-                        isGenerated: true,
-                        generationStrategy: 'increment',
-                    },
-                    {
-                        name: 'fitting_type',
-                        type: 'varchar',
-                        length: '50',
-                        comment: 'Type of fitting: ELBOW, MEDIUM_RADIUS_BEND, LONG_RADIUS_BEND, DUCKFOOT_SHORT, DUCKFOOT_GUSSETTED, SWEEP_LONG_RADIUS, SWEEP_MEDIUM_RADIUS, SWEEP_ELBOW, LATERAL',
-                    },
-                    {
-                        name: 'nominal_diameter_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        comment: 'Nominal diameter in mm',
-                    },
-                    {
-                        name: 'outside_diameter_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        comment: 'Outside diameter in mm',
-                    },
-                    {
-                        name: 'dimension_a_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Dimension A in mm',
-                    },
-                    {
-                        name: 'dimension_b_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Dimension B in mm',
-                    },
-                    {
-                        name: 'dimension_c_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Dimension C in mm',
-                    },
-                    {
-                        name: 'dimension_d_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Dimension D in mm (for sweeps and laterals)',
-                    },
-                    {
-                        name: 'dimension_e_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Dimension E in mm (for sweeps and laterals)',
-                    },
-                    {
-                        name: 'dimension_f_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Dimension F in mm (for sweeps and laterals)',
-                    },
-                    {
-                        name: 'dimension_x_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Dimension X in mm (for duckfoot base)',
-                    },
-                    {
-                        name: 'dimension_y_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Dimension Y in mm (for duckfoot)',
-                    },
-                    {
-                        name: 'thickness_t1_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Thickness T1 in mm (for duckfoot ribs)',
-                    },
-                    {
-                        name: 'thickness_t2_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Thickness T2 in mm (for duckfoot)',
-                    },
-                    {
-                        name: 'dimension_h_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Dimension H in mm (for duckfoot height)',
-                    },
-                    {
-                        name: 'radius_r_mm',
-                        type: 'decimal',
-                        precision: 10,
-                        scale: 2,
-                        isNullable: true,
-                        comment: 'Radius R in mm',
-                    },
-                    {
-                        name: 'created_at',
-                        type: 'timestamp',
-                        default: 'CURRENT_TIMESTAMP',
-                    },
-                    {
-                        name: 'updated_at',
-                        type: 'timestamp',
-                        default: 'CURRENT_TIMESTAMP',
-                        onUpdate: 'CURRENT_TIMESTAMP',
-                    },
-                ],
-                indices: [
-                    {
-                        name: 'IDX_sabs719_fitting_type',
-                        columnNames: ['fitting_type'],
-                    },
-                    {
-                        name: 'IDX_sabs719_nominal_diameter',
-                        columnNames: ['nominal_diameter_mm'],
-                    },
-                    {
-                        name: 'IDX_sabs719_fitting_lookup',
-                        columnNames: ['fitting_type', 'nominal_diameter_mm'],
-                    },
-                ],
-            }),
-            true,
-        );
+export class CreateSabs719FittingDimensions1734265000000
+  implements MigrationInterface
+{
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create the SABS719 fitting dimensions table
+    await queryRunner.createTable(
+      new Table({
+        name: 'sabs719_fitting_dimension',
+        columns: [
+          {
+            name: 'id',
+            type: 'int',
+            isPrimary: true,
+            isGenerated: true,
+            generationStrategy: 'increment',
+          },
+          {
+            name: 'fitting_type',
+            type: 'varchar',
+            length: '50',
+            comment:
+              'Type of fitting: ELBOW, MEDIUM_RADIUS_BEND, LONG_RADIUS_BEND, DUCKFOOT_SHORT, DUCKFOOT_GUSSETTED, SWEEP_LONG_RADIUS, SWEEP_MEDIUM_RADIUS, SWEEP_ELBOW, LATERAL',
+          },
+          {
+            name: 'nominal_diameter_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            comment: 'Nominal diameter in mm',
+          },
+          {
+            name: 'outside_diameter_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            comment: 'Outside diameter in mm',
+          },
+          {
+            name: 'dimension_a_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Dimension A in mm',
+          },
+          {
+            name: 'dimension_b_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Dimension B in mm',
+          },
+          {
+            name: 'dimension_c_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Dimension C in mm',
+          },
+          {
+            name: 'dimension_d_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Dimension D in mm (for sweeps and laterals)',
+          },
+          {
+            name: 'dimension_e_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Dimension E in mm (for sweeps and laterals)',
+          },
+          {
+            name: 'dimension_f_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Dimension F in mm (for sweeps and laterals)',
+          },
+          {
+            name: 'dimension_x_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Dimension X in mm (for duckfoot base)',
+          },
+          {
+            name: 'dimension_y_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Dimension Y in mm (for duckfoot)',
+          },
+          {
+            name: 'thickness_t1_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Thickness T1 in mm (for duckfoot ribs)',
+          },
+          {
+            name: 'thickness_t2_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Thickness T2 in mm (for duckfoot)',
+          },
+          {
+            name: 'dimension_h_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Dimension H in mm (for duckfoot height)',
+          },
+          {
+            name: 'radius_r_mm',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            isNullable: true,
+            comment: 'Radius R in mm',
+          },
+          {
+            name: 'created_at',
+            type: 'timestamp',
+            default: 'CURRENT_TIMESTAMP',
+          },
+          {
+            name: 'updated_at',
+            type: 'timestamp',
+            default: 'CURRENT_TIMESTAMP',
+            onUpdate: 'CURRENT_TIMESTAMP',
+          },
+        ],
+        indices: [
+          {
+            name: 'IDX_sabs719_fitting_type',
+            columnNames: ['fitting_type'],
+          },
+          {
+            name: 'IDX_sabs719_nominal_diameter',
+            columnNames: ['nominal_diameter_mm'],
+          },
+          {
+            name: 'IDX_sabs719_fitting_lookup',
+            columnNames: ['fitting_type', 'nominal_diameter_mm'],
+          },
+        ],
+      }),
+      true,
+    );
 
-        // Insert ELBOW data
-        await queryRunner.query(`
+    // Insert ELBOW data
+    await queryRunner.query(`
             INSERT INTO sabs719_fitting_dimension 
             (fitting_type, nominal_diameter_mm, outside_diameter_mm, dimension_a_mm, dimension_b_mm, dimension_c_mm, radius_r_mm)
             VALUES
@@ -182,8 +185,8 @@ export class CreateSabs719FittingDimensions1734265000000 implements MigrationInt
             ('ELBOW', 900, 914.0, 915.0, 510.0, 460.0, 915.0)
         `);
 
-        // Insert MEDIUM RADIUS BEND data
-        await queryRunner.query(`
+    // Insert MEDIUM RADIUS BEND data
+    await queryRunner.query(`
             INSERT INTO sabs719_fitting_dimension 
             (fitting_type, nominal_diameter_mm, outside_diameter_mm, dimension_a_mm, dimension_b_mm, dimension_c_mm, radius_r_mm)
             VALUES
@@ -204,8 +207,8 @@ export class CreateSabs719FittingDimensions1734265000000 implements MigrationInt
             ('MEDIUM_RADIUS_BEND', 900, 914.0, 1830.0, 915.0, 610.0, 1830.0)
         `);
 
-        // Insert LONG RADIUS BEND data
-        await queryRunner.query(`
+    // Insert LONG RADIUS BEND data
+    await queryRunner.query(`
             INSERT INTO sabs719_fitting_dimension 
             (fitting_type, nominal_diameter_mm, outside_diameter_mm, dimension_a_mm, dimension_b_mm, dimension_c_mm, radius_r_mm)
             VALUES
@@ -226,8 +229,8 @@ export class CreateSabs719FittingDimensions1734265000000 implements MigrationInt
             ('LONG_RADIUS_BEND', 900, 914.0, 2745.0, 1830.0, 915.0, 2745.0)
         `);
 
-        // Insert DUCKFOOT SHORT data (uses dimension A)
-        await queryRunner.query(`
+    // Insert DUCKFOOT SHORT data (uses dimension A)
+    await queryRunner.query(`
             INSERT INTO sabs719_fitting_dimension 
             (fitting_type, nominal_diameter_mm, outside_diameter_mm, dimension_a_mm, dimension_x_mm, dimension_y_mm, thickness_t1_mm, thickness_t2_mm, dimension_h_mm)
             VALUES
@@ -248,8 +251,8 @@ export class CreateSabs719FittingDimensions1734265000000 implements MigrationInt
             ('DUCKFOOT_SHORT', 900, 914.0, 915.0, 1070.0, 933.0, 14.0, 18.0, 610.0)
         `);
 
-        // Insert DUCKFOOT GUSSETTED data (uses dimensions B and C)
-        await queryRunner.query(`
+    // Insert DUCKFOOT GUSSETTED data (uses dimensions B and C)
+    await queryRunner.query(`
             INSERT INTO sabs719_fitting_dimension 
             (fitting_type, nominal_diameter_mm, outside_diameter_mm, dimension_b_mm, dimension_c_mm, dimension_x_mm, dimension_y_mm, thickness_t1_mm, thickness_t2_mm, dimension_h_mm)
             VALUES
@@ -270,8 +273,8 @@ export class CreateSabs719FittingDimensions1734265000000 implements MigrationInt
             ('DUCKFOOT_GUSSETTED', 900, 914.0, 1070.0, 460.0, 1070.0, 933.0, 14.0, 18.0, 610.0)
         `);
 
-        // Insert SWEEP LONG RADIUS data
-        await queryRunner.query(`
+    // Insert SWEEP LONG RADIUS data
+    await queryRunner.query(`
             INSERT INTO sabs719_fitting_dimension 
             (fitting_type, nominal_diameter_mm, outside_diameter_mm, dimension_a_mm, dimension_b_mm, dimension_c_mm, dimension_d_mm, dimension_e_mm, dimension_f_mm, radius_r_mm)
             VALUES
@@ -292,8 +295,8 @@ export class CreateSabs719FittingDimensions1734265000000 implements MigrationInt
             ('SWEEP_LONG_RADIUS', 900, 914.0, 2745.0, 3660.0, 1830.0, 2745.0, 915.0, 1830.0, 890.0)
         `);
 
-        // Insert SWEEP MEDIUM RADIUS data (same as SWEEP_LONG_RADIUS dimensions A, C, D, E, F)
-        await queryRunner.query(`
+    // Insert SWEEP MEDIUM RADIUS data (same as SWEEP_LONG_RADIUS dimensions A, C, D, E, F)
+    await queryRunner.query(`
             INSERT INTO sabs719_fitting_dimension 
             (fitting_type, nominal_diameter_mm, outside_diameter_mm, dimension_a_mm, dimension_c_mm, dimension_d_mm, dimension_e_mm, dimension_f_mm)
             VALUES
@@ -314,8 +317,8 @@ export class CreateSabs719FittingDimensions1734265000000 implements MigrationInt
             ('SWEEP_MEDIUM_RADIUS', 900, 914.0, 2745.0, 1830.0, 2745.0, 915.0, 1830.0)
         `);
 
-        // Insert SWEEP ELBOW data (dimensions E and F from sweep table)
-        await queryRunner.query(`
+    // Insert SWEEP ELBOW data (dimensions E and F from sweep table)
+    await queryRunner.query(`
             INSERT INTO sabs719_fitting_dimension 
             (fitting_type, nominal_diameter_mm, outside_diameter_mm, dimension_e_mm, dimension_f_mm)
             VALUES
@@ -336,8 +339,8 @@ export class CreateSabs719FittingDimensions1734265000000 implements MigrationInt
             ('SWEEP_ELBOW', 900, 914.0, 915.0, 1830.0)
         `);
 
-        // Insert LATERAL data
-        await queryRunner.query(`
+    // Insert LATERAL data
+    await queryRunner.query(`
             INSERT INTO sabs719_fitting_dimension 
             (fitting_type, nominal_diameter_mm, outside_diameter_mm, dimension_a_mm, dimension_b_mm, dimension_c_mm, dimension_d_mm, dimension_e_mm, dimension_f_mm)
             VALUES
@@ -357,9 +360,9 @@ export class CreateSabs719FittingDimensions1734265000000 implements MigrationInt
             ('LATERAL', 850, 864.0, 1095.0, 1595.0, 1595.0, 2030.0, 2465.0, 2895.0),
             ('LATERAL', 900, 914.0, 1145.0, 1670.0, 1670.0, 2130.0, 2595.0, 3040.0)
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.dropTable('sabs719_fitting_dimension');
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.dropTable('sabs719_fitting_dimension');
+  }
 }

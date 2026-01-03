@@ -7,7 +7,13 @@ import { NominalOutsideDiameterMm } from 'src/nominal-outside-diameter-mm/entiti
 import { FittingVariant } from 'src/fitting-variant/entities/fitting-variant.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FittingBore, NominalOutsideDiameterMm, FittingVariant])],
+  imports: [
+    TypeOrmModule.forFeature([
+      FittingBore,
+      NominalOutsideDiameterMm,
+      FittingVariant,
+    ]),
+  ],
   providers: [FittingBoreService],
   controllers: [FittingBoreController],
 })

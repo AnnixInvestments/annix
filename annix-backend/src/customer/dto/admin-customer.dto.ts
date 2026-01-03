@@ -17,7 +17,10 @@ export class CustomerQueryDto {
   @IsOptional()
   search?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by account status', enum: CustomerAccountStatus })
+  @ApiPropertyOptional({
+    description: 'Filter by account status',
+    enum: CustomerAccountStatus,
+  })
   @IsEnum(CustomerAccountStatus)
   @IsOptional()
   status?: CustomerAccountStatus;
@@ -49,20 +52,29 @@ export class CustomerQueryDto {
 }
 
 export class SuspendCustomerDto {
-  @ApiProperty({ description: 'Reason for suspension', example: 'Violation of terms of service' })
+  @ApiProperty({
+    description: 'Reason for suspension',
+    example: 'Violation of terms of service',
+  })
   @IsString()
   reason: string;
 }
 
 export class ReactivateCustomerDto {
-  @ApiPropertyOptional({ description: 'Note for reactivation', example: 'Issue resolved' })
+  @ApiPropertyOptional({
+    description: 'Note for reactivation',
+    example: 'Issue resolved',
+  })
   @IsString()
   @IsOptional()
   note?: string;
 }
 
 export class ResetDeviceBindingDto {
-  @ApiProperty({ description: 'Reason for device reset', example: 'Customer requested device change' })
+  @ApiProperty({
+    description: 'Reason for device reset',
+    example: 'Customer requested device change',
+  })
   @IsString()
   reason: string;
 }

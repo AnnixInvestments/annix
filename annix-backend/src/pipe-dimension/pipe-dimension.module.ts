@@ -7,7 +7,13 @@ import { NominalOutsideDiameterMm } from 'src/nominal-outside-diameter-mm/entiti
 import { SteelSpecification } from 'src/steel-specification/entities/steel-specification.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PipeDimension, NominalOutsideDiameterMm, SteelSpecification])],
+  imports: [
+    TypeOrmModule.forFeature([
+      PipeDimension,
+      NominalOutsideDiameterMm,
+      SteelSpecification,
+    ]),
+  ],
   providers: [PipeDimensionService],
   controllers: [PipeDimensionController],
   exports: [PipeDimensionService],

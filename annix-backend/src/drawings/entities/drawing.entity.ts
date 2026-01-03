@@ -40,11 +40,17 @@ export class Drawing {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ description: 'Auto-generated drawing number', example: 'DRW-2025-0001' })
+  @ApiProperty({
+    description: 'Auto-generated drawing number',
+    example: 'DRW-2025-0001',
+  })
   @Column({ name: 'drawing_number', length: 50, unique: true })
   drawingNumber: string;
 
-  @ApiProperty({ description: 'Drawing title', example: 'Pipeline Section A - General Arrangement' })
+  @ApiProperty({
+    description: 'Drawing title',
+    example: 'Pipeline Section A - General Arrangement',
+  })
   @Column({ name: 'title', length: 255 })
   title: string;
 
@@ -77,25 +83,44 @@ export class Drawing {
   currentVersion: number;
 
   @ApiProperty({ description: 'Drawing status', enum: DrawingStatus })
-  @Column({ name: 'status', type: 'enum', enum: DrawingStatus, default: DrawingStatus.DRAFT })
+  @Column({
+    name: 'status',
+    type: 'enum',
+    enum: DrawingStatus,
+    default: DrawingStatus.DRAFT,
+  })
   status: DrawingStatus;
 
-  @ApiProperty({ description: 'Associated RFQ', type: () => Rfq, required: false })
+  @ApiProperty({
+    description: 'Associated RFQ',
+    type: () => Rfq,
+    required: false,
+  })
   @ManyToOne(() => Rfq, (rfq) => rfq.drawings, { nullable: true })
   @JoinColumn({ name: 'rfq_id' })
   rfq?: Rfq;
 
-  @ApiProperty({ description: 'User who uploaded the drawing', type: () => User })
+  @ApiProperty({
+    description: 'User who uploaded the drawing',
+    type: () => User,
+  })
   @ManyToOne(() => User)
   @JoinColumn({ name: 'uploaded_by_user_id' })
   uploadedBy: User;
 
   @ApiProperty({ description: 'Version history', type: () => [DrawingVersion] })
-  @OneToMany(() => DrawingVersion, (version) => version.drawing, { cascade: true })
+  @OneToMany(() => DrawingVersion, (version) => version.drawing, {
+    cascade: true,
+  })
   versions: DrawingVersion[];
 
-  @ApiProperty({ description: 'Comments on the drawing', type: () => [DrawingComment] })
-  @OneToMany(() => DrawingComment, (comment) => comment.drawing, { cascade: true })
+  @ApiProperty({
+    description: 'Comments on the drawing',
+    type: () => [DrawingComment],
+  })
+  @OneToMany(() => DrawingComment, (comment) => comment.drawing, {
+    cascade: true,
+  })
   comments: DrawingComment[];
 
   @ApiProperty({ description: 'Creation date' })

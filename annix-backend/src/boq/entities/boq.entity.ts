@@ -31,11 +31,17 @@ export class Boq {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ description: 'Auto-generated BOQ number', example: 'BOQ-2025-0001' })
+  @ApiProperty({
+    description: 'Auto-generated BOQ number',
+    example: 'BOQ-2025-0001',
+  })
   @Column({ name: 'boq_number', length: 50, unique: true })
   boqNumber: string;
 
-  @ApiProperty({ description: 'BOQ title', example: 'Pipeline Section A - Materials List' })
+  @ApiProperty({
+    description: 'BOQ title',
+    example: 'Pipeline Section A - Materials List',
+  })
   @Column({ name: 'title', length: 255 })
   title: string;
 
@@ -44,15 +50,28 @@ export class Boq {
   description?: string;
 
   @ApiProperty({ description: 'BOQ status', enum: BoqStatus })
-  @Column({ name: 'status', type: 'enum', enum: BoqStatus, default: BoqStatus.DRAFT })
+  @Column({
+    name: 'status',
+    type: 'enum',
+    enum: BoqStatus,
+    default: BoqStatus.DRAFT,
+  })
   status: BoqStatus;
 
-  @ApiProperty({ description: 'Associated drawing', type: () => Drawing, required: false })
+  @ApiProperty({
+    description: 'Associated drawing',
+    type: () => Drawing,
+    required: false,
+  })
   @ManyToOne(() => Drawing, { nullable: true })
   @JoinColumn({ name: 'drawing_id' })
   drawing?: Drawing;
 
-  @ApiProperty({ description: 'Associated RFQ', type: () => Rfq, required: false })
+  @ApiProperty({
+    description: 'Associated RFQ',
+    type: () => Rfq,
+    required: false,
+  })
   @ManyToOne(() => Rfq, (rfq) => rfq.boqs, { nullable: true })
   @JoinColumn({ name: 'rfq_id' })
   rfq?: Rfq;
@@ -67,15 +86,33 @@ export class Boq {
   lineItems: BoqLineItem[];
 
   @ApiProperty({ description: 'Total quantity', required: false })
-  @Column({ name: 'total_quantity', type: 'decimal', precision: 12, scale: 3, nullable: true })
+  @Column({
+    name: 'total_quantity',
+    type: 'decimal',
+    precision: 12,
+    scale: 3,
+    nullable: true,
+  })
   totalQuantity?: number;
 
   @ApiProperty({ description: 'Total weight in kg', required: false })
-  @Column({ name: 'total_weight_kg', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    name: 'total_weight_kg',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
   totalWeightKg?: number;
 
   @ApiProperty({ description: 'Total estimated cost', required: false })
-  @Column({ name: 'total_estimated_cost', type: 'decimal', precision: 15, scale: 2, nullable: true })
+  @Column({
+    name: 'total_estimated_cost',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
   totalEstimatedCost?: number;
 
   @ApiProperty({ description: 'Creation date' })

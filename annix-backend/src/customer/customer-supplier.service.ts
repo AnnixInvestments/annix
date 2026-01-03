@@ -59,14 +59,16 @@ export class CustomerSupplierService {
       order: { priority: 'ASC', createdAt: 'DESC' },
     });
 
-    return suppliers.map(s => ({
+    return suppliers.map((s) => ({
       id: s.id,
       supplierProfileId: s.supplierProfileId,
       supplierName: s.supplierProfile?.company?.legalName || s.supplierName,
       supplierEmail: s.supplierProfile?.user?.email || s.supplierEmail,
       priority: s.priority,
       notes: s.notes ?? undefined,
-      addedBy: s.addedBy ? `${s.addedBy.firstName} ${s.addedBy.lastName}` : undefined,
+      addedBy: s.addedBy
+        ? `${s.addedBy.firstName} ${s.addedBy.lastName}`
+        : undefined,
       createdAt: s.createdAt,
       isRegistered: !!s.supplierProfileId,
     }));
@@ -94,7 +96,9 @@ export class CustomerSupplierService {
 
     // Only admins can add suppliers
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException('Only customer admins can manage preferred suppliers');
+      throw new ForbiddenException(
+        'Only customer admins can manage preferred suppliers',
+      );
     }
 
     // Check if supplier already exists
@@ -108,7 +112,9 @@ export class CustomerSupplierService {
       });
 
       if (existing) {
-        throw new ConflictException('Supplier is already in your preferred list');
+        throw new ConflictException(
+          'Supplier is already in your preferred list',
+        );
       }
     }
 
@@ -158,11 +164,17 @@ export class CustomerSupplierService {
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException('Only customer admins can manage preferred suppliers');
+      throw new ForbiddenException(
+        'Only customer admins can manage preferred suppliers',
+      );
     }
 
     const supplier = await this.preferredSupplierRepo.findOne({
-      where: { id: supplierId, customerCompanyId: profile.companyId, isActive: true },
+      where: {
+        id: supplierId,
+        customerCompanyId: profile.companyId,
+        isActive: true,
+      },
     });
 
     if (!supplier) {
@@ -185,7 +197,11 @@ export class CustomerSupplierService {
     return { success: true, message: 'Supplier updated' };
   }
 
-  async removePreferredSupplier(customerId: number, supplierId: number, clientIp: string) {
+  async removePreferredSupplier(
+    customerId: number,
+    supplierId: number,
+    clientIp: string,
+  ) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
     });
@@ -195,7 +211,9 @@ export class CustomerSupplierService {
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException('Only customer admins can manage preferred suppliers');
+      throw new ForbiddenException(
+        'Only customer admins can manage preferred suppliers',
+      );
     }
 
     const supplier = await this.preferredSupplierRepo.findOne({
@@ -237,7 +255,7 @@ export class CustomerSupplierService {
       order: { createdAt: 'DESC' },
     });
 
-    return invitations.map(inv => ({
+    return invitations.map((inv) => ({
       id: inv.id,
       email: inv.email,
       supplierCompanyName: inv.supplierCompanyName ?? undefined,
@@ -245,7 +263,9 @@ export class CustomerSupplierService {
       createdAt: inv.createdAt,
       expiresAt: inv.expiresAt,
       acceptedAt: inv.acceptedAt ?? undefined,
-      invitedBy: inv.invitedBy ? `${inv.invitedBy.firstName} ${inv.invitedBy.lastName}` : undefined,
+      invitedBy: inv.invitedBy
+        ? `${inv.invitedBy.firstName} ${inv.invitedBy.lastName}`
+        : undefined,
       isExpired: new Date() > inv.expiresAt,
     }));
   }
@@ -269,7 +289,9 @@ export class CustomerSupplierService {
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException('Only customer admins can send supplier invitations');
+      throw new ForbiddenException(
+        'Only customer admins can send supplier invitations',
+      );
     }
 
     // Check if active invitation already exists
@@ -283,7 +305,9 @@ export class CustomerSupplierService {
     });
 
     if (existingInvitation) {
-      throw new ConflictException('An active invitation already exists for this email');
+      throw new ConflictException(
+        'An active invitation already exists for this email',
+      );
     }
 
     // Check if supplier is already registered
@@ -293,7 +317,9 @@ export class CustomerSupplierService {
     });
 
     if (existingSupplier) {
-      throw new BadRequestException('This supplier is already registered. Add them directly to your preferred list.');
+      throw new BadRequestException(
+        'This supplier is already registered. Add them directly to your preferred list.',
+      );
     }
 
     // Generate invitation
@@ -340,7 +366,11 @@ export class CustomerSupplierService {
     };
   }
 
-  async cancelInvitation(customerId: number, invitationId: number, clientIp: string) {
+  async cancelInvitation(
+    customerId: number,
+    invitationId: number,
+    clientIp: string,
+  ) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
     });
@@ -350,7 +380,9 @@ export class CustomerSupplierService {
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException('Only customer admins can manage invitations');
+      throw new ForbiddenException(
+        'Only customer admins can manage invitations',
+      );
     }
 
     const invitation = await this.invitationRepo.findOne({
@@ -379,7 +411,11 @@ export class CustomerSupplierService {
     return { success: true, message: 'Invitation cancelled' };
   }
 
-  async resendInvitation(customerId: number, invitationId: number, clientIp: string) {
+  async resendInvitation(
+    customerId: number,
+    invitationId: number,
+    clientIp: string,
+  ) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
       relations: ['company'],
@@ -390,7 +426,9 @@ export class CustomerSupplierService {
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException('Only customer admins can manage invitations');
+      throw new ForbiddenException(
+        'Only customer admins can manage invitations',
+      );
     }
 
     const invitation = await this.invitationRepo.findOne({
@@ -404,7 +442,9 @@ export class CustomerSupplierService {
     // Generate new token and extend expiry
     invitation.token = uuidv4();
     invitation.expiresAt = new Date();
-    invitation.expiresAt.setDate(invitation.expiresAt.getDate() + INVITATION_EXPIRY_DAYS);
+    invitation.expiresAt.setDate(
+      invitation.expiresAt.getDate() + INVITATION_EXPIRY_DAYS,
+    );
     invitation.status = SupplierInvitationStatus.PENDING;
 
     await this.invitationRepo.save(invitation);
@@ -425,7 +465,11 @@ export class CustomerSupplierService {
       ipAddress: clientIp,
     });
 
-    return { success: true, message: 'Invitation resent', expiresAt: invitation.expiresAt };
+    return {
+      success: true,
+      message: 'Invitation resent',
+      expiresAt: invitation.expiresAt,
+    };
   }
 
   // Public method for validating invitation token (used by supplier registration)
@@ -446,7 +490,9 @@ export class CustomerSupplierService {
     return {
       id: invitation.id,
       email: invitation.email,
-      customerCompanyName: invitation.customerCompany.tradingName || invitation.customerCompany.legalName,
+      customerCompanyName:
+        invitation.customerCompany.tradingName ||
+        invitation.customerCompany.legalName,
       supplierCompanyName: invitation.supplierCompanyName,
     };
   }

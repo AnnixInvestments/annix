@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateFlangePressureClassDto } from './dto/create-flange-pressure-class.dto';
 import { UpdateFlangePressureClassDto } from './dto/update-flange-pressure-class.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -9,18 +13,35 @@ import { FlangeStandard } from 'src/flange-standard/entities/flange-standard.ent
 @Injectable()
 export class FlangePressureClassService {
   constructor(
-    @InjectRepository(FlangePressureClass) private readonly pressureRepo: Repository<FlangePressureClass>,
-    @InjectRepository(FlangeStandard) private readonly standardRepo: Repository<FlangeStandard>,
+    @InjectRepository(FlangePressureClass)
+    private readonly pressureRepo: Repository<FlangePressureClass>,
+    @InjectRepository(FlangeStandard)
+    private readonly standardRepo: Repository<FlangeStandard>,
   ) {}
 
-  async create(dto: CreateFlangePressureClassDto): Promise<FlangePressureClass> {
-    const standard = await this.standardRepo.findOne({ where: { id: dto.standardId } });
-    if (!standard) throw new NotFoundException(`Flange standard ${dto.standardId} not found`);
+  async create(
+    dto: CreateFlangePressureClassDto,
+  ): Promise<FlangePressureClass> {
+    const standard = await this.standardRepo.findOne({
+      where: { id: dto.standardId },
+    });
+    if (!standard)
+      throw new NotFoundException(
+        `Flange standard ${dto.standardId} not found`,
+      );
 
-    const exists = await this.pressureRepo.findOne({ where: { designation: dto.designation, standard: { id: dto.standardId } } });
-    if (exists) throw new BadRequestException('Pressure class already exists for this standard');
+    const exists = await this.pressureRepo.findOne({
+      where: { designation: dto.designation, standard: { id: dto.standardId } },
+    });
+    if (exists)
+      throw new BadRequestException(
+        'Pressure class already exists for this standard',
+      );
 
-    const pressure = this.pressureRepo.create({ designation: dto.designation, standard });
+    const pressure = this.pressureRepo.create({
+      designation: dto.designation,
+      standard,
+    });
     return this.pressureRepo.save(pressure);
   }
 
@@ -29,12 +50,19 @@ export class FlangePressureClassService {
   }
 
   async findOne(id: number): Promise<FlangePressureClass> {
-    const pressure = await this.pressureRepo.findOne({ where: { id }, relations: ['standard'] });
-    if (!pressure) throw new NotFoundException(`Flange pressure class ${id} not found`);
+    const pressure = await this.pressureRepo.findOne({
+      where: { id },
+      relations: ['standard'],
+    });
+    if (!pressure)
+      throw new NotFoundException(`Flange pressure class ${id} not found`);
     return pressure;
   }
 
-  async update(id: number, dto: UpdateFlangePressureClassDto): Promise<FlangePressureClass> {
+  async update(
+    id: number,
+    dto: UpdateFlangePressureClassDto,
+  ): Promise<FlangePressureClass> {
     const pressure = await this.findOne(id);
     if (dto.designation) pressure.designation = dto.designation;
     return this.pressureRepo.save(pressure);
@@ -46,9 +74,14 @@ export class FlangePressureClassService {
   }
 
   async getAllByStandard(standardId: number): Promise<FlangePressureClass[]> {
-    const standard = await this.standardRepo.findOne({ where: { id: standardId } });
-    if (!standard) throw new NotFoundException(`Flange standard ${standardId} not found`);
-    const classes = await this.pressureRepo.find({ where: { standard: { id: standardId } } });
+    const standard = await this.standardRepo.findOne({
+      where: { id: standardId },
+    });
+    if (!standard)
+      throw new NotFoundException(`Flange standard ${standardId} not found`);
+    const classes = await this.pressureRepo.find({
+      where: { standard: { id: standardId } },
+    });
 
     // Sort by numeric value extracted from designation
     // Handles formats like: "600/3", "1000/3", "PN10", "150", "Class 150", etc.

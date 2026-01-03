@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Sabs62FittingDimension } from '../sabs62-fitting-dimension/entities/sabs62-fitting-dimension.entity';
@@ -10,7 +14,10 @@ import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
 import { NutMass } from '../nut-mass/entities/nut-mass.entity';
 import { SteelSpecification } from '../steel-specification/entities/steel-specification.entity';
 import { FittingStandard, FittingType } from './dto/get-fitting-dimensions.dto';
-import { CalculateFittingDto, FittingCalculationResultDto } from './dto/calculate-fitting.dto';
+import {
+  CalculateFittingDto,
+  FittingCalculationResultDto,
+} from './dto/calculate-fitting.dto';
 
 @Injectable()
 export class FittingService {
@@ -40,7 +47,11 @@ export class FittingService {
     angleRange?: string,
   ) {
     if (standard === FittingStandard.SABS62) {
-      return this.getSabs62FittingDimensions(fittingType, nominalDiameterMm, angleRange);
+      return this.getSabs62FittingDimensions(
+        fittingType,
+        nominalDiameterMm,
+        angleRange,
+      );
     } else {
       return this.getSabs719FittingDimensions(fittingType, nominalDiameterMm);
     }
@@ -54,7 +65,9 @@ export class FittingService {
     const queryBuilder = this.sabs62Repository
       .createQueryBuilder('fitting')
       .where('fitting.fittingType = :fittingType', { fittingType })
-      .andWhere('fitting.nominalDiameterMm = :nominalDiameterMm', { nominalDiameterMm });
+      .andWhere('fitting.nominalDiameterMm = :nominalDiameterMm', {
+        nominalDiameterMm,
+      });
 
     if (angleRange) {
       queryBuilder.andWhere('fitting.angleRange = :angleRange', { angleRange });
@@ -97,13 +110,13 @@ export class FittingService {
         .createQueryBuilder('fitting')
         .select('DISTINCT fitting.fittingType', 'fittingType')
         .getRawMany();
-      return types.map(t => t.fittingType);
+      return types.map((t) => t.fittingType);
     } else {
       const types = await this.sabs719Repository
         .createQueryBuilder('fitting')
         .select('DISTINCT fitting.fittingType', 'fittingType')
         .getRawMany();
-      return types.map(t => t.fittingType);
+      return types.map((t) => t.fittingType);
     }
   }
 
@@ -115,7 +128,7 @@ export class FittingService {
         .where('fitting.fittingType = :fittingType', { fittingType })
         .orderBy('fitting.nominalDiameterMm', 'ASC')
         .getRawMany();
-      return sizes.map(s => parseFloat(s.nominalDiameterMm));
+      return sizes.map((s) => parseFloat(s.nominalDiameterMm));
     } else {
       const sizes = await this.sabs719Repository
         .createQueryBuilder('fitting')
@@ -123,22 +136,29 @@ export class FittingService {
         .where('fitting.fittingType = :fittingType', { fittingType })
         .orderBy('fitting.nominalDiameterMm', 'ASC')
         .getRawMany();
-      return sizes.map(s => parseFloat(s.nominalDiameterMm));
+      return sizes.map((s) => parseFloat(s.nominalDiameterMm));
     }
   }
 
-  async getAvailableAngleRanges(fittingType: FittingType, nominalDiameterMm: number) {
+  async getAvailableAngleRanges(
+    fittingType: FittingType,
+    nominalDiameterMm: number,
+  ) {
     const angleRanges = await this.sabs62Repository
       .createQueryBuilder('fitting')
       .select('DISTINCT fitting.angleRange', 'angleRange')
       .where('fitting.fittingType = :fittingType', { fittingType })
-      .andWhere('fitting.nominalDiameterMm = :nominalDiameterMm', { nominalDiameterMm })
+      .andWhere('fitting.nominalDiameterMm = :nominalDiameterMm', {
+        nominalDiameterMm,
+      })
       .andWhere('fitting.angleRange IS NOT NULL')
       .getRawMany();
-    return angleRanges.map(a => a.angleRange).filter(Boolean);
+    return angleRanges.map((a) => a.angleRange).filter(Boolean);
   }
 
-  async calculateFitting(dto: CalculateFittingDto): Promise<FittingCalculationResultDto> {
+  async calculateFitting(
+    dto: CalculateFittingDto,
+  ): Promise<FittingCalculationResultDto> {
     if (dto.fittingStandard === FittingStandard.SABS719) {
       return this.calculateSabs719Fitting(dto);
     } else {
@@ -146,15 +166,21 @@ export class FittingService {
     }
   }
 
-  private async calculateSabs719Fitting(dto: CalculateFittingDto): Promise<FittingCalculationResultDto> {
+  private async calculateSabs719Fitting(
+    dto: CalculateFittingDto,
+  ): Promise<FittingCalculationResultDto> {
     // SABS719: Fabricated fittings - use pipe table for cut lengths + welds
 
     // Validate required fields for SABS719
     if (!dto.scheduleNumber) {
-      throw new BadRequestException('Schedule number is required for SABS719 fittings');
+      throw new BadRequestException(
+        'Schedule number is required for SABS719 fittings',
+      );
     }
     if (dto.pipeLengthAMm === undefined || dto.pipeLengthBMm === undefined) {
-      throw new BadRequestException('Pipe lengths A and B are required for SABS719 fittings');
+      throw new BadRequestException(
+        'Pipe lengths A and B are required for SABS719 fittings',
+      );
     }
 
     // Get fitting dimensions from SABS719 table
@@ -170,7 +196,9 @@ export class FittingService {
         where: { id: dto.steelSpecificationId },
       });
       if (!steelSpec) {
-        throw new NotFoundException(`Steel specification with ID ${dto.steelSpecificationId} not found`);
+        throw new NotFoundException(
+          `Steel specification with ID ${dto.steelSpecificationId} not found`,
+        );
       }
     }
 
@@ -208,7 +236,9 @@ export class FittingService {
     });
 
     if (!nbNpsLookup) {
-      throw new NotFoundException(`NB-NPS lookup not found for ${dto.nominalDiameterMm}NB`);
+      throw new NotFoundException(
+        `NB-NPS lookup not found for ${dto.nominalDiameterMm}NB`,
+      );
     }
 
     const outsideDiameterMm = nbNpsLookup.outside_diameter_mm;
@@ -220,8 +250,12 @@ export class FittingService {
       pipeWeightPerMeter = pipeDimension.mass_kgm;
     } else {
       const steelDensity = 7.85; // kg/dm³
-      pipeWeightPerMeter = 
-        Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * steelDensity / 1000;
+      pipeWeightPerMeter =
+        (Math.PI *
+          wallThicknessMm *
+          (outsideDiameterMm - wallThicknessMm) *
+          steelDensity) /
+        1000;
     }
 
     // Calculate weights for pipe sections (convert mm to m)
@@ -243,7 +277,9 @@ export class FittingService {
     const totalTeeWeldLength = numberOfTeeWelds * circumferenceM;
 
     // Estimate weld weight (typical: 2-3% of pipe weight for butt welds)
-    const weldWeight = (totalPipeWeight * 0.025) + ((totalFlangeWeldLength + totalTeeWeldLength) * 0.5);
+    const weldWeight =
+      totalPipeWeight * 0.025 +
+      (totalFlangeWeldLength + totalTeeWeldLength) * 0.5;
 
     // Calculate flange, bolt, and nut weights
     let totalFlangeWeight = 0;
@@ -254,11 +290,13 @@ export class FittingService {
       try {
         const flangeDimension = await this.flangeDimensionRepository.findOne({
           where: {
-            nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalDiameterMm },
+            nominalOutsideDiameter: {
+              nominal_diameter_mm: dto.nominalDiameterMm,
+            },
             standard: { id: dto.flangeStandardId },
-            pressureClass: { id: dto.flangePressureClassId }
+            pressureClass: { id: dto.flangePressureClassId },
           },
-          relations: ['bolt', 'nominalOutsideDiameter']
+          relations: ['bolt', 'nominalOutsideDiameter'],
         });
 
         if (flangeDimension) {
@@ -266,11 +304,13 @@ export class FittingService {
 
           if (flangeDimension.bolt) {
             const estimatedBoltLengthMm = Math.max(50, flangeDimension.b * 3);
-            
+
             const boltMass = await this.boltMassRepository
               .createQueryBuilder('bm')
               .where('bm.bolt = :boltId', { boltId: flangeDimension.bolt.id })
-              .andWhere('bm.length_mm >= :minLength', { minLength: estimatedBoltLengthMm })
+              .andWhere('bm.length_mm >= :minLength', {
+                minLength: estimatedBoltLengthMm,
+              })
               .orderBy('bm.length_mm', 'ASC')
               .getOne();
 
@@ -280,7 +320,7 @@ export class FittingService {
             }
 
             const nutMass = await this.nutMassRepository.findOne({
-              where: { bolt: { id: flangeDimension.bolt.id } }
+              where: { bolt: { id: flangeDimension.bolt.id } },
             });
 
             if (nutMass) {
@@ -297,7 +337,13 @@ export class FittingService {
     // Fitting body weight is minimal for SABS719 (it's fabricated from pipe sections)
     const fittingWeight = 0;
 
-    const totalWeight = totalPipeWeight + fittingWeight + totalFlangeWeight + totalBoltWeight + totalNutWeight + weldWeight;
+    const totalWeight =
+      totalPipeWeight +
+      fittingWeight +
+      totalFlangeWeight +
+      totalBoltWeight +
+      totalNutWeight +
+      weldWeight;
 
     return {
       totalWeight: Math.round(totalWeight * 100) / 100,
@@ -317,7 +363,9 @@ export class FittingService {
     };
   }
 
-  private async calculateSabs62Fitting(dto: CalculateFittingDto): Promise<FittingCalculationResultDto> {
+  private async calculateSabs62Fitting(
+    dto: CalculateFittingDto,
+  ): Promise<FittingCalculationResultDto> {
     // SABS62: Standard fittings - use standard dimensions from table
 
     // Get fitting dimensions from SABS62 table
@@ -333,11 +381,13 @@ export class FittingService {
     });
 
     if (!nbNpsLookup) {
-      throw new NotFoundException(`NB-NPS lookup not found for ${dto.nominalDiameterMm}NB`);
+      throw new NotFoundException(
+        `NB-NPS lookup not found for ${dto.nominalDiameterMm}NB`,
+      );
     }
 
     const outsideDiameterMm = nbNpsLookup.outside_diameter_mm;
-    
+
     // For SABS62, we'll estimate wall thickness based on standard schedules
     // Typically these are Sch40 or STD
     const wallThicknessMm = this.estimateWallThickness(dto.nominalDiameterMm);
@@ -346,12 +396,14 @@ export class FittingService {
     // Using a simplified formula based on fitting dimensions from the table
     // Mass estimation: use density and approximate volume
     const steelDensity = 7.85; // kg/dm³
-    
+
     // Estimate fitting weight based on center-to-face and nominal diameter
     // This is a simplified calculation - in reality, exact volumes would be used
-    const estimatedVolumeDm3 = (fittingDimensions.centreToFaceCMm / 1000) * 
-                                Math.PI * Math.pow((outsideDiameterMm / 1000), 2) * 
-                                0.5; // factor for tee/cross/lateral shape
+    const estimatedVolumeDm3 =
+      (fittingDimensions.centreToFaceCMm / 1000) *
+      Math.PI *
+      Math.pow(outsideDiameterMm / 1000, 2) *
+      0.5; // factor for tee/cross/lateral shape
     const fittingWeight = estimatedVolumeDm3 * steelDensity * dto.quantityValue;
 
     // For SABS62, typically 3 flanges for tees/crosses/laterals
@@ -389,7 +441,9 @@ export class FittingService {
 
       const pipeDimension = await this.pipeDimensionRepository.findOne({
         where: {
-          nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalDiameterMm },
+          nominalOutsideDiameter: {
+            nominal_diameter_mm: dto.nominalDiameterMm,
+          },
           schedule_designation: normalizedSchedule,
           ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
         },
@@ -401,13 +455,18 @@ export class FittingService {
         if (pipeDimension.mass_kgm && pipeDimension.mass_kgm > 0) {
           pipeWeightPerMeter = pipeDimension.mass_kgm;
         } else {
-          pipeWeightPerMeter = 
-            Math.PI * pipeDimension.wall_thickness_mm * 
-            (outsideDiameterMm - pipeDimension.wall_thickness_mm) * steelDensity / 1000;
+          pipeWeightPerMeter =
+            (Math.PI *
+              pipeDimension.wall_thickness_mm *
+              (outsideDiameterMm - pipeDimension.wall_thickness_mm) *
+              steelDensity) /
+            1000;
         }
 
-        const totalTangentLength = (dto.pipeLengthAMm || 0) + (dto.pipeLengthBMm || 0);
-        totalPipeWeight = pipeWeightPerMeter * (totalTangentLength / 1000) * dto.quantityValue;
+        const totalTangentLength =
+          (dto.pipeLengthAMm || 0) + (dto.pipeLengthBMm || 0);
+        totalPipeWeight =
+          pipeWeightPerMeter * (totalTangentLength / 1000) * dto.quantityValue;
       }
     }
 
@@ -420,11 +479,13 @@ export class FittingService {
       try {
         const flangeDimension = await this.flangeDimensionRepository.findOne({
           where: {
-            nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalDiameterMm },
+            nominalOutsideDiameter: {
+              nominal_diameter_mm: dto.nominalDiameterMm,
+            },
             standard: { id: dto.flangeStandardId },
-            pressureClass: { id: dto.flangePressureClassId }
+            pressureClass: { id: dto.flangePressureClassId },
           },
-          relations: ['bolt', 'nominalOutsideDiameter']
+          relations: ['bolt', 'nominalOutsideDiameter'],
         });
 
         if (flangeDimension) {
@@ -432,11 +493,13 @@ export class FittingService {
 
           if (flangeDimension.bolt) {
             const estimatedBoltLengthMm = Math.max(50, flangeDimension.b * 3);
-            
+
             const boltMass = await this.boltMassRepository
               .createQueryBuilder('bm')
               .where('bm.bolt = :boltId', { boltId: flangeDimension.bolt.id })
-              .andWhere('bm.length_mm >= :minLength', { minLength: estimatedBoltLengthMm })
+              .andWhere('bm.length_mm >= :minLength', {
+                minLength: estimatedBoltLengthMm,
+              })
               .orderBy('bm.length_mm', 'ASC')
               .getOne();
 
@@ -446,7 +509,7 @@ export class FittingService {
             }
 
             const nutMass = await this.nutMassRepository.findOne({
-              where: { bolt: { id: flangeDimension.bolt.id } }
+              where: { bolt: { id: flangeDimension.bolt.id } },
             });
 
             if (nutMass) {
@@ -460,7 +523,13 @@ export class FittingService {
       }
     }
 
-    const totalWeight = totalPipeWeight + fittingWeight + totalFlangeWeight + totalBoltWeight + totalNutWeight + weldWeight;
+    const totalWeight =
+      totalPipeWeight +
+      fittingWeight +
+      totalFlangeWeight +
+      totalBoltWeight +
+      totalNutWeight +
+      weldWeight;
 
     return {
       totalWeight: Math.round(totalWeight * 100) / 100,

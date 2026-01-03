@@ -1,9 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsDateString, IsEmail, IsEnum, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsDateString,
+  IsEmail,
+  IsEnum,
+  IsNumber,
+} from 'class-validator';
 import { RfqStatus } from '../entities/rfq.entity';
 
 export class CreateRfqDto {
-  @ApiProperty({ description: 'Project name', example: '500NB Pipeline Extension' })
+  @ApiProperty({
+    description: 'Project name',
+    example: '500NB Pipeline Extension',
+  })
   @IsString()
   projectName: string;
 

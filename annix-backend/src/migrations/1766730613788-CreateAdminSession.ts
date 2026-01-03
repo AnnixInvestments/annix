@@ -1,9 +1,8 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateAdminSession1766730613788 implements MigrationInterface {
-
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE TABLE admin_sessions (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
@@ -19,28 +18,29 @@ export class CreateAdminSession1766730613788 implements MigrationInterface {
             )
         `);
 
-        // Create indexes for performance
-        await queryRunner.query(`
+    // Create indexes for performance
+    await queryRunner.query(`
             CREATE INDEX idx_admin_session_token ON admin_sessions(session_token)
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX idx_admin_session_user_id ON admin_sessions(user_id)
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX idx_admin_session_expires_at ON admin_sessions(expires_at)
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Drop indexes first
-        await queryRunner.query(`DROP INDEX IF EXISTS idx_admin_session_expires_at`);
-        await queryRunner.query(`DROP INDEX IF EXISTS idx_admin_session_user_id`);
-        await queryRunner.query(`DROP INDEX IF EXISTS idx_admin_session_token`);
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Drop indexes first
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS idx_admin_session_expires_at`,
+    );
+    await queryRunner.query(`DROP INDEX IF EXISTS idx_admin_session_user_id`);
+    await queryRunner.query(`DROP INDEX IF EXISTS idx_admin_session_token`);
 
-        // Drop table
-        await queryRunner.query(`DROP TABLE IF EXISTS admin_sessions`);
-    }
-
+    // Drop table
+    await queryRunner.query(`DROP TABLE IF EXISTS admin_sessions`);
+  }
 }

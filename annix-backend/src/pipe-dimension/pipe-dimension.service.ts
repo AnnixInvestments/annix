@@ -60,7 +60,6 @@
 //     return this.pipeDimensionRepo.save(dimension);
 //   }
 
-
 //   async findAll(): Promise<PipeDimension[]> {
 //     return this.pipeDimensionRepo.find({relations: ['nominalOutsideDiameter'],});
 //   }
@@ -130,12 +129,16 @@
 
 //   async remove(id: number): Promise<void> {
 //     const result = await this.pipeDimensionRepo.delete(id);
-//     if (result.affected === 0) 
+//     if (result.affected === 0)
 //       throw new NotFoundException(`PipeDimension #${id} not found`);
 //   }
 // }
 
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PipeDimension } from './entities/pipe-dimension.entity';
@@ -156,27 +159,49 @@ export class PipeDimensionService {
   ) {}
 
   async create(dto: CreatePipeDimensionDto): Promise<PipeDimension> {
-    const nominal = await this.nominalRepo.findOne({ where: { id: dto.nominalOutsideDiameterId } });
-    if (!nominal) throw new NotFoundException(`NominalOutsideDiameter ${dto.nominalOutsideDiameterId} not found`);
+    const nominal = await this.nominalRepo.findOne({
+      where: { id: dto.nominalOutsideDiameterId },
+    });
+    if (!nominal)
+      throw new NotFoundException(
+        `NominalOutsideDiameter ${dto.nominalOutsideDiameterId} not found`,
+      );
 
-    const steel = await this.steelRepo.findOne({ where: { id: dto.steelSpecificationId } });
-    if (!steel) throw new NotFoundException(`SteelSpecification ${dto.steelSpecificationId} not found`);
+    const steel = await this.steelRepo.findOne({
+      where: { id: dto.steelSpecificationId },
+    });
+    if (!steel)
+      throw new NotFoundException(
+        `SteelSpecification ${dto.steelSpecificationId} not found`,
+      );
 
-    const pipe = this.pipeRepo.create({ nominalOutsideDiameter: nominal, steelSpecification: steel, ...dto });
+    const pipe = this.pipeRepo.create({
+      nominalOutsideDiameter: nominal,
+      steelSpecification: steel,
+      ...dto,
+    });
     return this.pipeRepo.save(pipe);
   }
 
   async findAll(): Promise<PipeDimension[]> {
-    return this.pipeRepo.find({ relations: ['nominalOutsideDiameter', 'steelSpecification', 'pressures'] });
+    return this.pipeRepo.find({
+      relations: ['nominalOutsideDiameter', 'steelSpecification', 'pressures'],
+    });
   }
 
   async findOne(id: number): Promise<PipeDimension> {
-    const pipe = await this.pipeRepo.findOne({ where: { id }, relations: ['nominalOutsideDiameter', 'steelSpecification', 'pressures'] });
+    const pipe = await this.pipeRepo.findOne({
+      where: { id },
+      relations: ['nominalOutsideDiameter', 'steelSpecification', 'pressures'],
+    });
     if (!pipe) throw new NotFoundException(`PipeDimension ${id} not found`);
     return pipe;
   }
 
-  async update(id: number, dto: UpdatePipeDimensionDto): Promise<PipeDimension> {
+  async update(
+    id: number,
+    dto: UpdatePipeDimensionDto,
+  ): Promise<PipeDimension> {
     const pipe = await this.findOne(id);
     Object.assign(pipe, dto);
     return this.pipeRepo.save(pipe);
@@ -191,7 +216,7 @@ export class PipeDimensionService {
     nominalBore: number,
     workingPressure: number,
     temperature: number = 20,
-    steelSpecId?: number
+    steelSpecId?: number,
   ): Promise<{
     pipeDimension: PipeDimension;
     schedule?: string;
@@ -200,12 +225,14 @@ export class PipeDimensionService {
     availableUpgrades?: PipeDimension[];
   }> {
     // Find nominal outside diameter that matches the bore
-    const nominal = await this.nominalRepo.findOne({ 
-      where: { nominal_diameter_mm: nominalBore } 
+    const nominal = await this.nominalRepo.findOne({
+      where: { nominal_diameter_mm: nominalBore },
     });
-    
+
     if (!nominal) {
-      throw new NotFoundException(`No pipe dimensions found for ${nominalBore}mm nominal bore`);
+      throw new NotFoundException(
+        `No pipe dimensions found for ${nominalBore}mm nominal bore`,
+      );
     }
 
     // Working pressure is already in MPa (converted by frontend)
@@ -230,13 +257,15 @@ export class PipeDimensionService {
       .andWhere('pressure.temperature_c IS NOT NULL')
       .andWhere('pressure.temperature_c >= :temperature', { temperature })
       .andWhere('pressure.max_working_pressure_mpa IS NOT NULL')
-      .andWhere('pressure.max_working_pressure_mpa >= :workingPressureMpa', { workingPressureMpa });
+      .andWhere('pressure.max_working_pressure_mpa >= :workingPressureMpa', {
+        workingPressureMpa,
+      });
 
     const suitablePipes = await query.getMany();
-    
+
     if (suitablePipes.length === 0) {
       throw new NotFoundException(
-        `No suitable pipe dimensions found for ${nominalBore}mm NB at ${workingPressure} bar and ${temperature}°C`
+        `No suitable pipe dimensions found for ${nominalBore}mm NB at ${workingPressure} bar and ${temperature}°C`,
       );
     }
 
@@ -245,42 +274,48 @@ export class PipeDimensionService {
     const sortedPipes = suitablePipes.sort((a, b) => {
       const getSchedulePriority = (pipe: PipeDimension): number => {
         // STD or Sch40 is the most common and economical
-        if (pipe.schedule_designation === 'STD' || pipe.schedule_number === 40) return 1;
-        if (pipe.schedule_number === 80 || pipe.schedule_designation === 'XS') return 2;
+        if (pipe.schedule_designation === 'STD' || pipe.schedule_number === 40)
+          return 1;
+        if (pipe.schedule_number === 80 || pipe.schedule_designation === 'XS')
+          return 2;
         if (pipe.schedule_number === 120) return 3;
-        if (pipe.schedule_number === 160 || pipe.schedule_designation === 'XXS') return 4;
+        if (pipe.schedule_number === 160 || pipe.schedule_designation === 'XXS')
+          return 4;
         if (pipe.schedule_number) return pipe.schedule_number;
         // For pipes without schedule numbers, sort by wall thickness
-        return 100 + (pipe.wall_thickness_mm * 10);
+        return 100 + pipe.wall_thickness_mm * 10;
       };
-      
+
       return getSchedulePriority(a) - getSchedulePriority(b);
     });
 
     // The recommended pipe is the first one (minimum acceptable schedule)
     const recommendedPipe = sortedPipes[0];
-    
+
     // Find all higher schedules available for potential upgrade
     const recommendedScheduleNum = this.getScheduleNumber(recommendedPipe);
-    const availableUpgrades = sortedPipes.filter(pipe => {
+    const availableUpgrades = sortedPipes.filter((pipe) => {
       const pipeScheduleNum = this.getScheduleNumber(pipe);
       return pipeScheduleNum > recommendedScheduleNum;
     });
 
     // Get the pressure rating for the recommended pipe at the specified temperature
     const suitablePressure = recommendedPipe.pressures
-      .filter(p => p.temperature_c !== null && p.temperature_c >= temperature)
+      .filter((p) => p.temperature_c !== null && p.temperature_c >= temperature)
       .sort((a, b) => (a.temperature_c || 0) - (b.temperature_c || 0))[0];
 
-    const schedule = recommendedPipe.schedule_designation || 
-                    (recommendedPipe.schedule_number ? `Sch${recommendedPipe.schedule_number}` : 'STD');
+    const schedule =
+      recommendedPipe.schedule_designation ||
+      (recommendedPipe.schedule_number
+        ? `Sch${recommendedPipe.schedule_number}`
+        : 'STD');
 
     return {
       pipeDimension: recommendedPipe,
       schedule,
       wallThickness: recommendedPipe.wall_thickness_mm,
       maxPressure: (suitablePressure?.max_working_pressure_mpa || 0) * 10, // Convert MPa to bar
-      availableUpgrades
+      availableUpgrades,
     };
   }
 
@@ -300,14 +335,16 @@ export class PipeDimensionService {
     currentWallThickness: number,
     workingPressure: number,
     temperature: number = 20,
-    steelSpecId?: number
+    steelSpecId?: number,
   ): Promise<PipeDimension[]> {
-    const nominal = await this.nominalRepo.findOne({ 
-      where: { nominal_diameter_mm: nominalBore } 
+    const nominal = await this.nominalRepo.findOne({
+      where: { nominal_diameter_mm: nominalBore },
     });
-    
+
     if (!nominal) {
-      throw new NotFoundException(`No pipe dimensions found for ${nominalBore}mm nominal bore`);
+      throw new NotFoundException(
+        `No pipe dimensions found for ${nominalBore}mm nominal bore`,
+      );
     }
 
     const workingPressureMpa = workingPressure;
@@ -318,23 +355,32 @@ export class PipeDimensionService {
       .leftJoinAndSelect('pipe.steelSpecification', 'steel')
       .leftJoinAndSelect('pipe.pressures', 'pressure')
       .where('nominal.id = :nominalId', { nominalId: nominal.id })
-      .andWhere('pipe.wall_thickness_mm > :currentWallThickness', { currentWallThickness })
+      .andWhere('pipe.wall_thickness_mm > :currentWallThickness', {
+        currentWallThickness,
+      })
       .andWhere('pressure.temperature_c IS NOT NULL')
       .andWhere('pressure.temperature_c >= :temperature', { temperature })
       .andWhere('pressure.max_working_pressure_mpa IS NOT NULL')
-      .andWhere('pressure.max_working_pressure_mpa >= :workingPressureMpa', { workingPressureMpa });
+      .andWhere('pressure.max_working_pressure_mpa >= :workingPressureMpa', {
+        workingPressureMpa,
+      });
 
     if (steelSpecId) {
       query = query.andWhere('steel.id = :steelSpecId', { steelSpecId });
     }
 
     const higherSchedules = await query.getMany();
-    
+
     // Sort by wall thickness ascending (show closest upgrades first)
-    return higherSchedules.sort((a, b) => a.wall_thickness_mm - b.wall_thickness_mm);
+    return higherSchedules.sort(
+      (a, b) => a.wall_thickness_mm - b.wall_thickness_mm,
+    );
   }
 
-  async findAllBySpecAndNominal(steelSpecId: number, nominalId: number): Promise<PipeDimension[]> {
+  async findAllBySpecAndNominal(
+    steelSpecId: number,
+    nominalId: number,
+  ): Promise<PipeDimension[]> {
     const pipes = await this.pipeRepo.find({
       where: {
         steelSpecification: { id: steelSpecId },

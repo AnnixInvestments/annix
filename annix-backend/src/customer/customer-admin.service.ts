@@ -58,15 +58,32 @@ export class CustomerAdminService {
   /**
    * List all customers with filtering and pagination
    */
-  async listCustomers(query: CustomerQueryDto): Promise<CustomerListResponseDto> {
-    const { search, status, page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'DESC' } = query;
+  async listCustomers(
+    query: CustomerQueryDto,
+  ): Promise<CustomerListResponseDto> {
+    const {
+      search,
+      status,
+      page = 1,
+      limit = 20,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+    } = query;
 
     const queryBuilder = this.profileRepo
       .createQueryBuilder('profile')
       .leftJoinAndSelect('profile.company', 'company')
       .leftJoinAndSelect('profile.user', 'user')
-      .leftJoinAndSelect('profile.deviceBindings', 'deviceBinding', 'deviceBinding.isActive = true AND deviceBinding.isPrimary = true')
-      .leftJoin('profile.sessions', 'session', 'session.isActive = true OR session.invalidatedAt IS NOT NULL');
+      .leftJoinAndSelect(
+        'profile.deviceBindings',
+        'deviceBinding',
+        'deviceBinding.isActive = true AND deviceBinding.isPrimary = true',
+      )
+      .leftJoin(
+        'profile.sessions',
+        'session',
+        'session.isActive = true OR session.invalidatedAt IS NOT NULL',
+      );
 
     // Search filter
     if (search) {
@@ -82,7 +99,12 @@ export class CustomerAdminService {
     }
 
     // Sorting
-    const validSortFields = ['createdAt', 'firstName', 'lastName', 'accountStatus'];
+    const validSortFields = [
+      'createdAt',
+      'firstName',
+      'lastName',
+      'accountStatus',
+    ];
     const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
     queryBuilder.orderBy(`profile.${sortField}`, sortOrder);
 
@@ -97,7 +119,8 @@ export class CustomerAdminService {
       firstName: profile.firstName,
       lastName: profile.lastName,
       email: profile.user?.email || '',
-      companyName: profile.company?.tradingName || profile.company?.legalName || '',
+      companyName:
+        profile.company?.tradingName || profile.company?.legalName || '',
       accountStatus: profile.accountStatus,
       createdAt: profile.createdAt,
       lastLoginAt: null as Date | null, // Would need to query separately
@@ -228,7 +251,9 @@ export class CustomerAdminService {
       },
     );
 
-    const adminUser = await this.userRepo.findOne({ where: { id: adminUserId } });
+    const adminUser = await this.userRepo.findOne({
+      where: { id: adminUserId },
+    });
     await this.auditService.log({
       entityType: 'customer_profile',
       entityId: customerId,
@@ -279,7 +304,9 @@ export class CustomerAdminService {
 
     await this.profileRepo.save(profile);
 
-    const adminUser = await this.userRepo.findOne({ where: { id: adminUserId } });
+    const adminUser = await this.userRepo.findOne({
+      where: { id: adminUserId },
+    });
     await this.auditService.log({
       entityType: 'customer_profile',
       entityId: customerId,
@@ -348,7 +375,9 @@ export class CustomerAdminService {
     profile.accountStatus = CustomerAccountStatus.PENDING;
     await this.profileRepo.save(profile);
 
-    const adminUser = await this.userRepo.findOne({ where: { id: adminUserId } });
+    const adminUser = await this.userRepo.findOne({
+      where: { id: adminUserId },
+    });
     await this.auditService.log({
       entityType: 'customer_profile',
       entityId: customerId,
@@ -357,14 +386,16 @@ export class CustomerAdminService {
       newValues: {
         event: 'device_binding_reset',
         reason: dto.reason,
-        oldDeviceFingerprint: activeBinding.deviceFingerprint.substring(0, 20) + '...',
+        oldDeviceFingerprint:
+          activeBinding.deviceFingerprint.substring(0, 20) + '...',
       },
       ipAddress: clientIp,
     });
 
     return {
       success: true,
-      message: 'Device binding reset successfully. Customer will need to register new device on next login.',
+      message:
+        'Device binding reset successfully. Customer will need to register new device on next login.',
     };
   }
 
@@ -398,13 +429,16 @@ export class CustomerAdminService {
   async getPendingReviewCustomers() {
     const onboardings = await this.onboardingRepo.find({
       where: {
-        status: In([CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW]),
+        status: In([
+          CustomerOnboardingStatus.SUBMITTED,
+          CustomerOnboardingStatus.UNDER_REVIEW,
+        ]),
       },
       relations: ['customer', 'customer.company', 'customer.user'],
       order: { submittedAt: 'ASC' },
     });
 
-    return onboardings.map(onb => ({
+    return onboardings.map((onb) => ({
       id: onb.id,
       customerId: onb.customerId,
       status: onb.status,
@@ -414,7 +448,8 @@ export class CustomerAdminService {
         id: onb.customer.id,
         name: `${onb.customer.firstName} ${onb.customer.lastName}`,
         email: onb.customer.user?.email,
-        companyName: onb.customer.company?.tradingName || onb.customer.company?.legalName,
+        companyName:
+          onb.customer.company?.tradingName || onb.customer.company?.legalName,
       },
     }));
   }
@@ -425,7 +460,12 @@ export class CustomerAdminService {
   async getOnboardingForReview(onboardingId: number) {
     const onboarding = await this.onboardingRepo.findOne({
       where: { id: onboardingId },
-      relations: ['customer', 'customer.company', 'customer.user', 'reviewedBy'],
+      relations: [
+        'customer',
+        'customer.company',
+        'customer.user',
+        'reviewedBy',
+      ],
     });
 
     if (!onboarding) {
@@ -470,7 +510,7 @@ export class CustomerAdminService {
         country: onboarding.customer.company.country,
         primaryPhone: onboarding.customer.company.primaryPhone,
       },
-      documents: documents.map(doc => ({
+      documents: documents.map((doc) => ({
         id: doc.id,
         documentType: doc.documentType,
         fileName: doc.fileName,
@@ -502,7 +542,12 @@ export class CustomerAdminService {
       throw new NotFoundException('Onboarding not found');
     }
 
-    if (![CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW].includes(onboarding.status)) {
+    if (
+      ![
+        CustomerOnboardingStatus.SUBMITTED,
+        CustomerOnboardingStatus.UNDER_REVIEW,
+      ].includes(onboarding.status)
+    ) {
       throw new BadRequestException('Onboarding is not in a reviewable state');
     }
 
@@ -511,12 +556,17 @@ export class CustomerAdminService {
       where: { customerId: onboarding.customerId, isRequired: true },
     });
 
-    const invalidDocuments = documents.filter(doc => {
+    const invalidDocuments = documents.filter((doc) => {
       // Documents must be either VALID or MANUAL_REVIEW (with admin review completed)
       if (doc.validationStatus === CustomerDocumentValidationStatus.VALID) {
         return false; // Valid documents are OK
       }
-      if (doc.validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW && doc.reviewedById && doc.reviewedAt) {
+      if (
+        doc.validationStatus ===
+          CustomerDocumentValidationStatus.MANUAL_REVIEW &&
+        doc.reviewedById &&
+        doc.reviewedAt
+      ) {
         return false; // Manual review completed by admin is OK
       }
       return true; // All other states (PENDING, INVALID, FAILED, unreviewed MANUAL_REVIEW) are not OK
@@ -524,14 +574,13 @@ export class CustomerAdminService {
 
     if (invalidDocuments.length > 0) {
       const docList = invalidDocuments
-        .map(doc => `${doc.documentType} (${doc.validationStatus})`)
+        .map((doc) => `${doc.documentType} (${doc.validationStatus})`)
         .join(', ');
       throw new BadRequestException(
         `Cannot approve onboarding. The following documents require review: ${docList}. ` +
-        `Please review each document individually using the document review endpoint.`
+          `Please review each document individually using the document review endpoint.`,
       );
     }
-
 
     // Update onboarding
     onboarding.status = CustomerOnboardingStatus.APPROVED;
@@ -546,8 +595,15 @@ export class CustomerAdminService {
 
     // Approve all documents
     await this.documentRepo.update(
-      { customerId: onboarding.customerId, validationStatus: CustomerDocumentValidationStatus.PENDING },
-      { validationStatus: CustomerDocumentValidationStatus.VALID, reviewedById: adminUserId, reviewedAt: new Date() },
+      {
+        customerId: onboarding.customerId,
+        validationStatus: CustomerDocumentValidationStatus.PENDING,
+      },
+      {
+        validationStatus: CustomerDocumentValidationStatus.VALID,
+        reviewedById: adminUserId,
+        reviewedAt: new Date(),
+      },
     );
 
     // Send approval email
@@ -556,7 +612,9 @@ export class CustomerAdminService {
       profile.company.tradingName || profile.company.legalName,
     );
 
-    const adminUser = await this.userRepo.findOne({ where: { id: adminUserId } });
+    const adminUser = await this.userRepo.findOne({
+      where: { id: adminUserId },
+    });
     await this.auditService.log({
       entityType: 'customer_onboarding',
       entityId: onboardingId,
@@ -594,7 +652,12 @@ export class CustomerAdminService {
       throw new NotFoundException('Onboarding not found');
     }
 
-    if (![CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW].includes(onboarding.status)) {
+    if (
+      ![
+        CustomerOnboardingStatus.SUBMITTED,
+        CustomerOnboardingStatus.UNDER_REVIEW,
+      ].includes(onboarding.status)
+    ) {
       throw new BadRequestException('Onboarding is not in a reviewable state');
     }
 
@@ -615,7 +678,9 @@ export class CustomerAdminService {
       remediationSteps,
     );
 
-    const adminUser = await this.userRepo.findOne({ where: { id: adminUserId } });
+    const adminUser = await this.userRepo.findOne({
+      where: { id: adminUserId },
+    });
     await this.auditService.log({
       entityType: 'customer_onboarding',
       entityId: onboardingId,
@@ -660,7 +725,9 @@ export class CustomerAdminService {
     document.reviewedAt = new Date();
     await this.documentRepo.save(document);
 
-    const adminUser = await this.userRepo.findOne({ where: { id: adminUserId } });
+    const adminUser = await this.userRepo.findOne({
+      where: { id: adminUserId },
+    });
     await this.auditService.log({
       entityType: 'customer_document',
       entityId: documentId,
@@ -691,7 +758,7 @@ export class CustomerAdminService {
       order: { uploadedAt: 'DESC' },
     });
 
-    return documents.map(doc => ({
+    return documents.map((doc) => ({
       id: doc.id,
       documentType: doc.documentType,
       fileName: doc.fileName,

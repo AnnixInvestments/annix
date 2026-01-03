@@ -10,7 +10,13 @@ import {
   UseGuards,
   ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { SupplierAdminService } from './supplier-admin.service';
@@ -95,7 +101,11 @@ export class SupplierAdminController {
   ) {
     const adminUserId = req['user'].userId;
     const clientIp = this.getClientIp(req);
-    return this.supplierAdminService.startReview(supplierId, adminUserId, clientIp);
+    return this.supplierAdminService.startReview(
+      supplierId,
+      adminUserId,
+      clientIp,
+    );
   }
 
   @Post(':id/approve')
@@ -108,7 +118,11 @@ export class SupplierAdminController {
   ) {
     const adminUserId = req['user'].userId;
     const clientIp = this.getClientIp(req);
-    return this.supplierAdminService.approveOnboarding(supplierId, adminUserId, clientIp);
+    return this.supplierAdminService.approveOnboarding(
+      supplierId,
+      adminUserId,
+      clientIp,
+    );
   }
 
   @Post(':id/reject')
@@ -122,7 +136,12 @@ export class SupplierAdminController {
   ) {
     const adminUserId = req['user'].userId;
     const clientIp = this.getClientIp(req);
-    return this.supplierAdminService.rejectOnboarding(supplierId, dto, adminUserId, clientIp);
+    return this.supplierAdminService.rejectOnboarding(
+      supplierId,
+      dto,
+      adminUserId,
+      clientIp,
+    );
   }
 
   @Post(':id/suspend')
@@ -135,7 +154,12 @@ export class SupplierAdminController {
   ) {
     const adminUserId = req['user'].userId;
     const clientIp = this.getClientIp(req);
-    return this.supplierAdminService.suspendSupplier(supplierId, dto, adminUserId, clientIp);
+    return this.supplierAdminService.suspendSupplier(
+      supplierId,
+      dto,
+      adminUserId,
+      clientIp,
+    );
   }
 
   @Post(':id/reactivate')
@@ -147,13 +171,19 @@ export class SupplierAdminController {
   ) {
     const adminUserId = req['user'].userId;
     const clientIp = this.getClientIp(req);
-    return this.supplierAdminService.reactivateSupplier(supplierId, adminUserId, clientIp);
+    return this.supplierAdminService.reactivateSupplier(
+      supplierId,
+      adminUserId,
+      clientIp,
+    );
   }
 
   private getClientIp(req: Request): string {
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
-      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded)
+        ? forwarded[0]
+        : forwarded.split(',')[0];
       return ips.trim();
     }
     return req.ip || req.socket?.remoteAddress || 'unknown';

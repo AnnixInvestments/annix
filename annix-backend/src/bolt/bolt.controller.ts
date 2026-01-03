@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { BoltService } from './bolt.service';
 import { CreateBoltDto } from './dto/create-bolt.dto';
 import { UpdateBoltDto } from './dto/update-bolt.dto';
@@ -18,7 +26,10 @@ export class BoltController {
 
   @Get()
   @ApiOperation({ summary: 'Get all bolts with relations' })
-  @ApiResponse({ status: 200, description: 'List of fitting bolts retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of fitting bolts retrieved successfully',
+  })
   findAll() {
     return this.boltService.findAll();
   }
@@ -34,7 +45,10 @@ export class BoltController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update a bolt' })
   @ApiResponse({ status: 200, description: 'Bolt updated successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid request or duplicate bolt' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or duplicate bolt',
+  })
   @ApiResponse({ status: 404, description: 'Bolt not found' })
   update(@Param('id') id: string, @Body() updateBoltDto: UpdateBoltDto) {
     return this.boltService.update(+id, updateBoltDto);

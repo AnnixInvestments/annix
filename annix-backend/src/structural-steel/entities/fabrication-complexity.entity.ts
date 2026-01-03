@@ -23,7 +23,13 @@ export class FabricationComplexity {
   @Column({ name: 'hours_per_ton', type: 'decimal', precision: 8, scale: 2 })
   hoursPerTon: number;
 
-  @Column({ name: 'labor_multiplier', type: 'decimal', precision: 4, scale: 2, default: 1.0 })
+  @Column({
+    name: 'labor_multiplier',
+    type: 'decimal',
+    precision: 4,
+    scale: 2,
+    default: 1.0,
+  })
   laborMultiplier: number;
 
   @Column({ type: 'jsonb', nullable: true })

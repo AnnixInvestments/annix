@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class StraightPipeCalculationResultDto {
-  @ApiProperty({ description: 'Calculated outside diameter in mm', example: 508 })
+  @ApiProperty({
+    description: 'Calculated outside diameter in mm',
+    example: 508,
+  })
   outsideDiameterMm: number;
 
   @ApiProperty({ description: 'Wall thickness in mm', example: 15.09 })
@@ -22,13 +25,19 @@ export class StraightPipeCalculationResultDto {
   @ApiProperty({ description: 'Total nut weight in kg', example: 78.16 })
   totalNutWeight: number;
 
-  @ApiProperty({ description: 'Total weight including pipes, flanges, bolts and nuts in kg', example: 1468744.72 })
+  @ApiProperty({
+    description: 'Total weight including pipes, flanges, bolts and nuts in kg',
+    example: 1468744.72,
+  })
   totalSystemWeight: number;
 
   @ApiProperty({ description: 'Calculated number of pipes', example: 656 })
   calculatedPipeCount: number;
 
-  @ApiProperty({ description: 'Calculated total length in meters', example: 8000 })
+  @ApiProperty({
+    description: 'Calculated total length in meters',
+    example: 8000,
+  })
   calculatedTotalLength: number;
 
   @ApiProperty({ description: 'Number of flanges required', example: 1312 })
@@ -40,10 +49,16 @@ export class StraightPipeCalculationResultDto {
   @ApiProperty({ description: 'Total butt weld length in meters', example: 0 })
   totalButtWeldLength: number;
 
-  @ApiProperty({ description: 'Number of flange welds required', example: 1312 })
+  @ApiProperty({
+    description: 'Number of flange welds required',
+    example: 1312,
+  })
   numberOfFlangeWelds: number;
 
-  @ApiProperty({ description: 'Total flange weld length in meters', example: 2098.4 })
+  @ApiProperty({
+    description: 'Total flange weld length in meters',
+    example: 2098.4,
+  })
   totalFlangeWeldLength: number;
 }
 
@@ -54,7 +69,10 @@ export class RfqResponseDto {
   @ApiProperty({ description: 'RFQ number', example: 'RFQ-2025-0001' })
   rfqNumber: string;
 
-  @ApiProperty({ description: 'Project name', example: '500NB Pipeline Extension' })
+  @ApiProperty({
+    description: 'Project name',
+    example: '500NB Pipeline Extension',
+  })
   projectName: string;
 
   @ApiProperty({ description: 'Project description', required: false })

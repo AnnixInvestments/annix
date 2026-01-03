@@ -143,11 +143,12 @@ export class WeldJointEfficiencyController {
     }
 
     const isRadiographed = radiographed === 'true';
-    const efficiency = this.weldJointEfficiencyService.getDefaultJointEfficiency(
-      specNo,
-      pipeType,
-      isRadiographed,
-    );
+    const efficiency =
+      this.weldJointEfficiencyService.getDefaultJointEfficiency(
+        specNo,
+        pipeType,
+        isRadiographed,
+      );
 
     return {
       specNo,

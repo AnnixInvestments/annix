@@ -1,4 +1,12 @@
-import { IsEmail, IsNotEmpty, IsString, IsEnum, IsOptional, IsNumber, Min } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsNumber,
+  Min,
+} from 'class-validator';
 
 export enum AdminUserRole {
   ADMIN = 'admin',

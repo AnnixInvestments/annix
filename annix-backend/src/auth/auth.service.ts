@@ -16,7 +16,10 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.userRepo.findOne({ where: { email }, relations: ['roles'] });
+    const user = await this.userRepo.findOne({
+      where: { email },
+      relations: ['roles'],
+    });
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -37,7 +40,7 @@ export class AuthService {
       sub: user.id,
       username: user.username,
       email: user.email,
-      roles: user.roles ? user.roles.map(r => r.name) : [],
+      roles: user.roles ? user.roles.map((r) => r.name) : [],
     };
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -68,11 +71,11 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken);
-      
+
       // Verify user still exists
-      const user = await this.userRepo.findOne({ 
-        where: { id: payload.sub }, 
-        relations: ['roles'] 
+      const user = await this.userRepo.findOne({
+        where: { id: payload.sub },
+        relations: ['roles'],
       });
 
       if (!user) {

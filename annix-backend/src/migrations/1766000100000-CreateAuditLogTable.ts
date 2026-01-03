@@ -1,11 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateAuditLogTable1766000100000 implements MigrationInterface {
-    name = 'CreateAuditLogTable1766000100000'
+  name = 'CreateAuditLogTable1766000100000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create audit_action enum
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create audit_action enum
+    await queryRunner.query(`
             CREATE TYPE "audit_action_enum" AS ENUM (
                 'create',
                 'update',
@@ -22,8 +22,8 @@ export class CreateAuditLogTable1766000100000 implements MigrationInterface {
             )
         `);
 
-        // Create audit_logs table
-        await queryRunner.query(`
+    // Create audit_logs table
+    await queryRunner.query(`
             CREATE TABLE "audit_logs" (
                 "id" SERIAL NOT NULL,
                 "entity_type" character varying(100) NOT NULL,
@@ -39,8 +39,8 @@ export class CreateAuditLogTable1766000100000 implements MigrationInterface {
             )
         `);
 
-        // Add foreign key constraint to user
-        await queryRunner.query(`
+    // Add foreign key constraint to user
+    await queryRunner.query(`
             ALTER TABLE "audit_logs"
             ADD CONSTRAINT "FK_audit_logs_performed_by"
             FOREIGN KEY ("performed_by_user_id")
@@ -48,20 +48,30 @@ export class CreateAuditLogTable1766000100000 implements MigrationInterface {
             ON DELETE SET NULL
         `);
 
-        // Create indexes for common queries
-        await queryRunner.query(`CREATE INDEX "IDX_audit_logs_entity" ON "audit_logs" ("entity_type", "entity_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_audit_logs_timestamp" ON "audit_logs" ("timestamp")`);
-        await queryRunner.query(`CREATE INDEX "IDX_audit_logs_performed_by" ON "audit_logs" ("performed_by_user_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_audit_logs_action" ON "audit_logs" ("action")`);
-    }
+    // Create indexes for common queries
+    await queryRunner.query(
+      `CREATE INDEX "IDX_audit_logs_entity" ON "audit_logs" ("entity_type", "entity_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_audit_logs_timestamp" ON "audit_logs" ("timestamp")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_audit_logs_performed_by" ON "audit_logs" ("performed_by_user_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_audit_logs_action" ON "audit_logs" ("action")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX "IDX_audit_logs_action"`);
-        await queryRunner.query(`DROP INDEX "IDX_audit_logs_performed_by"`);
-        await queryRunner.query(`DROP INDEX "IDX_audit_logs_timestamp"`);
-        await queryRunner.query(`DROP INDEX "IDX_audit_logs_entity"`);
-        await queryRunner.query(`ALTER TABLE "audit_logs" DROP CONSTRAINT "FK_audit_logs_performed_by"`);
-        await queryRunner.query(`DROP TABLE "audit_logs"`);
-        await queryRunner.query(`DROP TYPE "audit_action_enum"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP INDEX "IDX_audit_logs_action"`);
+    await queryRunner.query(`DROP INDEX "IDX_audit_logs_performed_by"`);
+    await queryRunner.query(`DROP INDEX "IDX_audit_logs_timestamp"`);
+    await queryRunner.query(`DROP INDEX "IDX_audit_logs_entity"`);
+    await queryRunner.query(
+      `ALTER TABLE "audit_logs" DROP CONSTRAINT "FK_audit_logs_performed_by"`,
+    );
+    await queryRunner.query(`DROP TABLE "audit_logs"`);
+    await queryRunner.query(`DROP TYPE "audit_action_enum"`);
+  }
 }

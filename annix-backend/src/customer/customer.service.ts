@@ -167,9 +167,11 @@ export class CustomerService {
     };
 
     // Update allowed fields only
-    if (dto.streetAddress !== undefined) company.streetAddress = dto.streetAddress;
+    if (dto.streetAddress !== undefined)
+      company.streetAddress = dto.streetAddress;
     if (dto.city !== undefined) company.city = dto.city;
-    if (dto.provinceState !== undefined) company.provinceState = dto.provinceState;
+    if (dto.provinceState !== undefined)
+      company.provinceState = dto.provinceState;
     if (dto.postalCode !== undefined) company.postalCode = dto.postalCode;
     if (dto.primaryPhone !== undefined) company.primaryPhone = dto.primaryPhone;
 
@@ -260,7 +262,10 @@ export class CustomerService {
 
     const lastSession = profile.sessions
       .filter((s) => s.isActive || s.invalidatedAt)
-      .sort((a, b) => (b.lastActivity?.getTime() || 0) - (a.lastActivity?.getTime() || 0))[0];
+      .sort(
+        (a, b) =>
+          (b.lastActivity?.getTime() || 0) - (a.lastActivity?.getTime() || 0),
+      )[0];
 
     return {
       profile: {

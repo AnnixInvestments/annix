@@ -1,4 +1,11 @@
-import { IsArray, ValidateNested, IsString, IsInt, IsNumber, IsOptional } from 'class-validator';
+import {
+  IsArray,
+  ValidateNested,
+  IsString,
+  IsInt,
+  IsNumber,
+  IsOptional,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class HdpeItemDto {

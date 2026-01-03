@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
-import { Drawing, DrawingStatus, DrawingFileType } from './entities/drawing.entity';
+import {
+  Drawing,
+  DrawingStatus,
+  DrawingFileType,
+} from './entities/drawing.entity';
 import { DrawingVersion } from './entities/drawing-version.entity';
 import { DrawingComment, CommentType } from './entities/drawing-comment.entity';
 import { CreateDrawingDto } from './dto/create-drawing.dto';
@@ -72,12 +76,12 @@ export class DrawingsService {
     if (!fileType) {
       // Try by extension
       const extTypes: Record<string, DrawingFileType> = {
-        'pdf': DrawingFileType.PDF,
-        'png': DrawingFileType.PNG,
-        'jpg': DrawingFileType.JPG,
-        'jpeg': DrawingFileType.JPEG,
-        'dwg': DrawingFileType.DWG,
-        'dxf': DrawingFileType.DXF,
+        pdf: DrawingFileType.PDF,
+        png: DrawingFileType.PNG,
+        jpg: DrawingFileType.JPG,
+        jpeg: DrawingFileType.JPEG,
+        dwg: DrawingFileType.DWG,
+        dxf: DrawingFileType.DXF,
       };
 
       if (ext && extTypes[ext]) {
@@ -104,7 +108,10 @@ export class DrawingsService {
 
     let nextNumber = 1;
     if (lastDrawing) {
-      const lastNumber = parseInt(lastDrawing.drawingNumber.replace(prefix, ''), 10);
+      const lastNumber = parseInt(
+        lastDrawing.drawingNumber.replace(prefix, ''),
+        10,
+      );
       nextNumber = lastNumber + 1;
     }
 
@@ -138,7 +145,7 @@ export class DrawingsService {
       currentVersion: 1,
       status: DrawingStatus.DRAFT,
       uploadedBy: user,
-      rfq: dto.rfqId ? { id: dto.rfqId } as any : undefined,
+      rfq: dto.rfqId ? ({ id: dto.rfqId } as any) : undefined,
     });
 
     const savedDrawing = await this.drawingRepository.save(drawing);
@@ -181,7 +188,9 @@ export class DrawingsService {
     const drawing = await this.findOne(drawingId);
 
     if (drawing.status === DrawingStatus.APPROVED) {
-      throw new BadRequestException('Cannot upload new version for approved drawing');
+      throw new BadRequestException(
+        'Cannot upload new version for approved drawing',
+      );
     }
 
     this.validateFile(file);
@@ -255,17 +264,24 @@ export class DrawingsService {
       .leftJoinAndSelect('drawing.rfq', 'rfq');
 
     if (query.status) {
-      queryBuilder = queryBuilder.andWhere('drawing.status = :status', { status: query.status });
+      queryBuilder = queryBuilder.andWhere('drawing.status = :status', {
+        status: query.status,
+      });
     }
 
     if (query.rfqId) {
-      queryBuilder = queryBuilder.andWhere('drawing.rfq_id = :rfqId', { rfqId: query.rfqId });
+      queryBuilder = queryBuilder.andWhere('drawing.rfq_id = :rfqId', {
+        rfqId: query.rfqId,
+      });
     }
 
     if (query.uploadedByUserId) {
-      queryBuilder = queryBuilder.andWhere('drawing.uploaded_by_user_id = :userId', {
-        userId: query.uploadedByUserId,
-      });
+      queryBuilder = queryBuilder.andWhere(
+        'drawing.uploaded_by_user_id = :userId',
+        {
+          userId: query.uploadedByUserId,
+        },
+      );
     }
 
     if (query.search) {
@@ -303,7 +319,11 @@ export class DrawingsService {
     return drawing;
   }
 
-  async update(id: number, dto: UpdateDrawingDto, user: User): Promise<Drawing> {
+  async update(
+    id: number,
+    dto: UpdateDrawingDto,
+    user: User,
+  ): Promise<Drawing> {
     const drawing = await this.findOne(id);
 
     if (drawing.status === DrawingStatus.APPROVED) {
@@ -318,7 +338,7 @@ export class DrawingsService {
     if (dto.title) drawing.title = dto.title;
     if (dto.description !== undefined) drawing.description = dto.description;
     if (dto.rfqId !== undefined) {
-      drawing.rfq = dto.rfqId ? { id: dto.rfqId } as any : undefined;
+      drawing.rfq = dto.rfqId ? ({ id: dto.rfqId } as any) : undefined;
     }
 
     await this.drawingRepository.save(drawing);
@@ -366,7 +386,11 @@ export class DrawingsService {
     });
   }
 
-  async downloadFile(id: number, version?: number, user?: User): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
+  async downloadFile(
+    id: number,
+    version?: number,
+    user?: User,
+  ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
     const drawing = await this.findOne(id);
 
     let filePath = drawing.filePath;
@@ -416,7 +440,9 @@ export class DrawingsService {
       positionX: dto.positionX,
       positionY: dto.positionY,
       pageNumber: dto.pageNumber,
-      parentComment: dto.parentCommentId ? { id: dto.parentCommentId } as any : undefined,
+      parentComment: dto.parentCommentId
+        ? ({ id: dto.parentCommentId } as any)
+        : undefined,
     });
 
     const savedComment = await this.commentRepository.save(comment);

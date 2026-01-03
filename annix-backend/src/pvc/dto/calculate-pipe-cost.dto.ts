@@ -1,4 +1,11 @@
-import { IsInt, IsNumber, IsPositive, Min, IsOptional, IsString } from 'class-validator';
+import {
+  IsInt,
+  IsNumber,
+  IsPositive,
+  Min,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CalculatePvcPipeCostDto {
@@ -28,7 +35,9 @@ export class CalculatePvcPipeCostDto {
   @IsOptional()
   pvcType?: string; // PVC-U, CPVC, PVC-O, PVC-M
 
-  @ApiPropertyOptional({ description: 'Optional override for cement joint price' })
+  @ApiPropertyOptional({
+    description: 'Optional override for cement joint price',
+  })
   @IsNumber()
   @Min(0)
   @IsOptional()

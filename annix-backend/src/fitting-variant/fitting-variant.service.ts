@@ -24,7 +24,11 @@
 //     return `This action removes a #${id} fittingVariant`;
 //   }
 // }
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FittingVariant } from './entities/fitting-variant.entity';
@@ -55,43 +59,47 @@ export class FittingVariantService {
   //   return this.variantRepo.save(variant);
   // }
 
-//   async create(dto: CreateFittingVariantDto): Promise<FittingVariant> {
-//   // Find parent fitting
-//   const fitting = await this.fittingRepo.findOne({ where: { id: dto.fittingId } });
-//   if (!fitting) throw new NotFoundException(`Fitting ${dto.fittingId} not found`);
+  //   async create(dto: CreateFittingVariantDto): Promise<FittingVariant> {
+  //   // Find parent fitting
+  //   const fitting = await this.fittingRepo.findOne({ where: { id: dto.fittingId } });
+  //   if (!fitting) throw new NotFoundException(`Fitting ${dto.fittingId} not found`);
 
-//   // Map nested DTOs to entities
-//   const bores = dto.bores.map(b => this.boreRepo.create(b));
-//   const dimensions = dto.dimensions?.map(d => this.dimensionRepo.create(d)) || [];
+  //   // Map nested DTOs to entities
+  //   const bores = dto.bores.map(b => this.boreRepo.create(b));
+  //   const dimensions = dto.dimensions?.map(d => this.dimensionRepo.create(d)) || [];
 
-//   // Create variant entity
-//   const variant = this.variantRepo.create({
-//     fitting,
-//     bores,
-//     dimensions,
-//   });
+  //   // Create variant entity
+  //   const variant = this.variantRepo.create({
+  //     fitting,
+  //     bores,
+  //     dimensions,
+  //   });
 
-//   return this.variantRepo.save(variant);
-// }
+  //   return this.variantRepo.save(variant);
+  // }
 
   async create(dto: CreateFittingVariantDto): Promise<FittingVariant> {
-    const fitting = await this.fittingRepo.findOne({ where: { id: dto.fittingId } });
-    if (!fitting) throw new NotFoundException(`Fitting ${dto.fittingId} not found`);
+    const fitting = await this.fittingRepo.findOne({
+      where: { id: dto.fittingId },
+    });
+    if (!fitting)
+      throw new NotFoundException(`Fitting ${dto.fittingId} not found`);
 
-    const bores: FittingBore[] = dto.bores.map(b => 
+    const bores: FittingBore[] = dto.bores.map((b) =>
       this.boreRepo.create({
         borePositionName: b.borePosition,
         nominalOutsideDiameter: { id: b.nominalId },
       }),
     );
 
-    const dimensions: FittingDimension[] = dto.dimensions?.map(d =>
-      this.dimensionRepo.create({
-        dimension_name: d.dimensionName,
-        dimension_value_mm: d.dimensionValueMm,
-        angleRange: d.angleRangeId ? { id: d.angleRangeId } : null,
-      }),
-    ) || [];
+    const dimensions: FittingDimension[] =
+      dto.dimensions?.map((d) =>
+        this.dimensionRepo.create({
+          dimension_name: d.dimensionName,
+          dimension_value_mm: d.dimensionValueMm,
+          angleRange: d.angleRangeId ? { id: d.angleRangeId } : null,
+        }),
+      ) || [];
 
     const variant = this.variantRepo.create({
       fitting,
@@ -103,19 +111,24 @@ export class FittingVariantService {
   }
 
   async findAll(): Promise<FittingVariant[]> {
-    return this.variantRepo.find({ relations: ['fitting', 'bores', 'dimensions'] });
+    return this.variantRepo.find({
+      relations: ['fitting', 'bores', 'dimensions'],
+    });
   }
 
   async findOne(id: number): Promise<FittingVariant> {
-    const variant = await this.variantRepo.findOne({ 
-      where: { id }, 
-      relations: ['fitting', 'bores', 'dimensions'] 
+    const variant = await this.variantRepo.findOne({
+      where: { id },
+      relations: ['fitting', 'bores', 'dimensions'],
     });
     if (!variant) throw new NotFoundException(`FittingVariant ${id} not found`);
     return variant;
   }
 
-  async update(id: number, dto: UpdateFittingVariantDto): Promise<FittingVariant> {
+  async update(
+    id: number,
+    dto: UpdateFittingVariantDto,
+  ): Promise<FittingVariant> {
     const variant = await this.findOne(id);
     Object.assign(variant, dto);
     return this.variantRepo.save(variant);

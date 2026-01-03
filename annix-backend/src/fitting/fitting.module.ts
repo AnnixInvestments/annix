@@ -14,7 +14,7 @@ import { SteelSpecification } from '../steel-specification/entities/steel-specif
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      Sabs62FittingDimension, 
+      Sabs62FittingDimension,
       Sabs719FittingDimension,
       PipeDimension,
       NbNpsLookup,

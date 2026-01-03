@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WeldType } from './entities/weld-type.entity';
@@ -13,9 +17,13 @@ export class WeldTypeService {
   ) {}
 
   async create(dto: CreateWeldTypeDto): Promise<WeldType> {
-    const exists = await this.weldTypeRepo.findOne({ where: { weld_code: dto.weld_code } });
+    const exists = await this.weldTypeRepo.findOne({
+      where: { weld_code: dto.weld_code },
+    });
     if (exists) {
-      throw new BadRequestException(`WeldType with code "${dto.weld_code}" already exists`);
+      throw new BadRequestException(
+        `WeldType with code "${dto.weld_code}" already exists`,
+      );
     }
 
     const weldType = this.weldTypeRepo.create({
@@ -39,7 +47,10 @@ export class WeldTypeService {
 
   async findByCode(weld_code: string): Promise<WeldType> {
     const weldType = await this.weldTypeRepo.findOne({ where: { weld_code } });
-    if (!weldType) throw new NotFoundException(`WeldType with code "${weld_code}" not found`);
+    if (!weldType)
+      throw new NotFoundException(
+        `WeldType with code "${weld_code}" not found`,
+      );
     return weldType;
   }
 

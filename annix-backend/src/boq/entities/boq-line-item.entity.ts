@@ -43,7 +43,10 @@ export class BoqLineItem {
   @Column({ name: 'item_code', length: 100, nullable: true })
   itemCode?: string;
 
-  @ApiProperty({ description: 'Item description', example: '500NB Sch40 Carbon Steel Pipe' })
+  @ApiProperty({
+    description: 'Item description',
+    example: '500NB Sch40 Carbon Steel Pipe',
+  })
   @Column({ name: 'description', length: 500 })
   description: string;
 
@@ -60,30 +63,60 @@ export class BoqLineItem {
   quantity: number;
 
   @ApiProperty({ description: 'Unit weight in kg', required: false })
-  @Column({ name: 'unit_weight_kg', type: 'decimal', precision: 10, scale: 3, nullable: true })
+  @Column({
+    name: 'unit_weight_kg',
+    type: 'decimal',
+    precision: 10,
+    scale: 3,
+    nullable: true,
+  })
   unitWeightKg?: number;
 
   @ApiProperty({ description: 'Total weight in kg', required: false })
-  @Column({ name: 'total_weight_kg', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    name: 'total_weight_kg',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
   totalWeightKg?: number;
 
   @ApiProperty({ description: 'Unit price', required: false })
-  @Column({ name: 'unit_price', type: 'decimal', precision: 15, scale: 2, nullable: true })
+  @Column({
+    name: 'unit_price',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
   unitPrice?: number;
 
   @ApiProperty({ description: 'Total price', required: false })
-  @Column({ name: 'total_price', type: 'decimal', precision: 15, scale: 2, nullable: true })
+  @Column({
+    name: 'total_price',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
   totalPrice?: number;
 
   @ApiProperty({ description: 'Additional notes', required: false })
   @Column({ name: 'notes', type: 'text', nullable: true })
   notes?: string;
 
-  @ApiProperty({ description: 'Reference to drawing location', required: false })
+  @ApiProperty({
+    description: 'Reference to drawing location',
+    required: false,
+  })
   @Column({ name: 'drawing_reference', length: 100, nullable: true })
   drawingReference?: string;
 
-  @ApiProperty({ description: 'Additional specifications as JSON', required: false })
+  @ApiProperty({
+    description: 'Additional specifications as JSON',
+    required: false,
+  })
   @Column({ name: 'specifications', type: 'jsonb', nullable: true })
   specifications?: Record<string, any>;
 

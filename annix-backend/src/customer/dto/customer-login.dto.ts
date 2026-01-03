@@ -1,8 +1,17 @@
-import { IsString, IsNotEmpty, IsEmail, IsOptional, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEmail,
+  IsOptional,
+  IsObject,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CustomerLoginDto {
-  @ApiProperty({ description: 'Email address', example: 'john.smith@acme.co.za' })
+  @ApiProperty({
+    description: 'Email address',
+    example: 'john.smith@acme.co.za',
+  })
   @IsEmail()
   @IsNotEmpty()
   email: string;
@@ -12,7 +21,10 @@ export class CustomerLoginDto {
   @IsNotEmpty()
   password: string;
 
-  @ApiProperty({ description: 'Device fingerprint hash', example: 'a1b2c3d4e5f6...' })
+  @ApiProperty({
+    description: 'Device fingerprint hash',
+    example: 'a1b2c3d4e5f6...',
+  })
   @IsString()
   @IsNotEmpty()
   deviceFingerprint: string;
@@ -62,7 +74,10 @@ export class RefreshTokenDto {
 }
 
 export class ResendVerificationEmailDto {
-  @ApiProperty({ description: 'Email address', example: 'john.smith@acme.co.za' })
+  @ApiProperty({
+    description: 'Email address',
+    example: 'john.smith@acme.co.za',
+  })
   @IsEmail()
   @IsNotEmpty()
   email: string;

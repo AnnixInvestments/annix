@@ -26,7 +26,12 @@ export class SlurryProfile {
   @Column({ name: 'commodity_id' })
   commodityId: number;
 
-  @Column({ name: 'profile_name', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'profile_name',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   profileName: string | null;
 
   // Specific Gravity (SG) range
@@ -37,10 +42,20 @@ export class SlurryProfile {
   typicalSgMax: number;
 
   // Solids concentration (% w/w)
-  @Column({ name: 'solids_concentration_min', type: 'decimal', precision: 5, scale: 2 })
+  @Column({
+    name: 'solids_concentration_min',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+  })
   solidsConcentrationMin: number;
 
-  @Column({ name: 'solids_concentration_max', type: 'decimal', precision: 5, scale: 2 })
+  @Column({
+    name: 'solids_concentration_max',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+  })
   solidsConcentrationMax: number;
 
   // pH range
@@ -74,7 +89,12 @@ export class SlurryProfile {
   })
   corrosionRisk: RiskLevel;
 
-  @Column({ name: 'primary_failure_mode', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'primary_failure_mode',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   primaryFailureMode: string | null;
 
   @Column({ name: 'notes', type: 'text', nullable: true })

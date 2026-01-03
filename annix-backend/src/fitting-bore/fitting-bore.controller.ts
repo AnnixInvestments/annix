@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { FittingBoreService } from './fitting-bore.service';
 import { CreateFittingBoreDto } from './dto/create-fitting-bore.dto';
 import { UpdateFittingBoreDto } from './dto/update-fitting-bore.dto';
@@ -19,14 +27,20 @@ export class FittingBoreController {
 
   @Get()
   @ApiOperation({ summary: 'Get all fitting bores' })
-  @ApiResponse({ status: 200, description: 'List of fitting bores retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of fitting bores retrieved successfully',
+  })
   findAll() {
     return this.fittingBoreService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a fitting bore by ID' })
-  @ApiResponse({ status: 200, description: 'Fitting bore retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Fitting bore retrieved successfully',
+  })
   @ApiResponse({ status: 404, description: 'Fitting bore not found' })
   @ApiResponse({ status: 400, description: 'Invalid ID parameter' })
   findOne(@Param('id') id: string) {
@@ -35,16 +49,28 @@ export class FittingBoreController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a fitting bore' })
-  @ApiResponse({ status: 200, description: 'Fitting bore updated successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid request or duplicate fitting bore' })
+  @ApiResponse({
+    status: 200,
+    description: 'Fitting bore updated successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or duplicate fitting bore',
+  })
   @ApiResponse({ status: 404, description: 'Fitting bore not found' })
-  update(@Param('id') id: string, @Body() updateFittingBoreDto: UpdateFittingBoreDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateFittingBoreDto: UpdateFittingBoreDto,
+  ) {
     return this.fittingBoreService.update(+id, updateFittingBoreDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a fitting bore' })
-  @ApiResponse({ status: 200, description: 'Fitting bore deleted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Fitting bore deleted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Fitting bore not found' })
   @ApiResponse({ status: 400, description: 'Invalid ID parameter' })
   remove(@Param('id') id: string) {

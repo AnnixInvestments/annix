@@ -17,7 +17,13 @@ export class HdpeStubPrice {
   @Column({ name: 'price_per_stub', type: 'decimal', precision: 10, scale: 2 })
   pricePerStub: number; // Fixed price per stub
 
-  @Column({ name: 'weight_kg', type: 'decimal', precision: 10, scale: 3, nullable: true })
+  @Column({
+    name: 'weight_kg',
+    type: 'decimal',
+    precision: 10,
+    scale: 3,
+    nullable: true,
+  })
   weightKg: number; // Weight of stub (optional, may be in fitting weights)
 
   @Column({ type: 'varchar', length: 3, default: 'ZAR' })

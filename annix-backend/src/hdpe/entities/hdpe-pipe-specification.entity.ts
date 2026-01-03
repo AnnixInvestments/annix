@@ -31,10 +31,21 @@ export class HdpePipeSpecification {
   @Column({ name: 'weight_kg_per_m', type: 'decimal', precision: 10, scale: 4 })
   weightKgPerM: number; // Weight per meter (kg/m)
 
-  @Column({ name: 'pressure_rating_pn', type: 'decimal', precision: 6, scale: 2, nullable: true })
+  @Column({
+    name: 'pressure_rating_pn',
+    type: 'decimal',
+    precision: 6,
+    scale: 2,
+    nullable: true,
+  })
   pressureRatingPn: number; // PN rating in bar (for PE100: ~20/(SDR-1))
 
-  @Column({ name: 'material_grade', type: 'varchar', length: 20, default: 'PE100' })
+  @Column({
+    name: 'material_grade',
+    type: 'varchar',
+    length: 20,
+    default: 'PE100',
+  })
   materialGrade: string; // PE100, PE80
 
   @Column({ name: 'display_order', type: 'int', default: 0 })

@@ -20,7 +20,14 @@ export interface ExtractedDocumentData {
 }
 
 export interface ValidationMismatch {
-  field: 'vatNumber' | 'registrationNumber' | 'companyName' | 'streetAddress' | 'city' | 'provinceState' | 'postalCode';
+  field:
+    | 'vatNumber'
+    | 'registrationNumber'
+    | 'companyName'
+    | 'streetAddress'
+    | 'city'
+    | 'provinceState'
+    | 'postalCode';
   expected: string;
   extracted: string;
   similarity?: number;
@@ -128,12 +135,14 @@ export class DocumentOcrService {
       }
 
       // Determine confidence based on Tesseract's confidence score
-      const confidence = data.confidence > 80 ? 'high' : data.confidence > 60 ? 'medium' : 'low';
+      const confidence =
+        data.confidence > 80 ? 'high' : data.confidence > 60 ? 'medium' : 'low';
 
       // Parse based on document type
-      const parsed = documentType === 'vat'
-        ? this.parseVatDocument(rawText)
-        : this.parseRegistrationDocument(rawText);
+      const parsed =
+        documentType === 'vat'
+          ? this.parseVatDocument(rawText)
+          : this.parseRegistrationDocument(rawText);
 
       return {
         ...parsed,
@@ -203,7 +212,9 @@ export class DocumentOcrService {
     const regMatches = rawText.match(this.REGISTRATION_NUMBER_PATTERN);
     if (regMatches && regMatches.length > 0) {
       result.registrationNumber = regMatches[0];
-      this.logger.log(`Extracted Registration Number: ${result.registrationNumber}`);
+      this.logger.log(
+        `Extracted Registration Number: ${result.registrationNumber}`,
+      );
     } else {
       errors.push('Could not find registration number in document');
     }
@@ -218,10 +229,18 @@ export class DocumentOcrService {
     }
 
     // Success if at least one field was extracted
-    result.success = !!(result.vatNumber || result.registrationNumber || result.companyName);
+    result.success = !!(
+      result.vatNumber ||
+      result.registrationNumber ||
+      result.companyName
+    );
 
     // Adjust confidence based on how many fields we extracted
-    const fieldsExtracted = [result.vatNumber, result.registrationNumber, result.companyName].filter(Boolean).length;
+    const fieldsExtracted = [
+      result.vatNumber,
+      result.registrationNumber,
+      result.companyName,
+    ].filter(Boolean).length;
     if (fieldsExtracted === 3) {
       result.confidence = 'high';
     } else if (fieldsExtracted === 2) {
@@ -250,7 +269,9 @@ export class DocumentOcrService {
     const regMatches = rawText.match(this.REGISTRATION_NUMBER_PATTERN);
     if (regMatches && regMatches.length > 0) {
       result.registrationNumber = regMatches[0];
-      this.logger.log(`Extracted Registration Number: ${result.registrationNumber}`);
+      this.logger.log(
+        `Extracted Registration Number: ${result.registrationNumber}`,
+      );
     } else {
       errors.push('Could not find registration number in document');
     }
@@ -293,7 +314,7 @@ export class DocumentOcrService {
       result.streetAddress,
       result.city,
       result.provinceState,
-      result.postalCode
+      result.postalCode,
     ].filter(Boolean).length;
     if (fieldsExtracted >= 5) {
       result.confidence = 'high';
@@ -327,7 +348,15 @@ export class DocumentOcrService {
     for (const pattern of companyPatterns) {
       const match = normalizedText.match(pattern);
       if (match && match[1] && match.index !== undefined) {
-        const companyName = match[1].trim() + ' ' + normalizedText.substring(match.index + match[1].length, match.index + match[0].length).trim();
+        const companyName =
+          match[1].trim() +
+          ' ' +
+          normalizedText
+            .substring(
+              match.index + match[1].length,
+              match.index + match[0].length,
+            )
+            .trim();
         return this.cleanCompanyName(companyName);
       }
     }
@@ -352,10 +381,7 @@ export class DocumentOcrService {
    * Clean and normalize company name
    */
   private cleanCompanyName(name: string): string {
-    return name
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toUpperCase();
+    return name.replace(/\s+/g, ' ').trim().toUpperCase();
   }
 
   /**
@@ -389,7 +415,7 @@ export class DocumentOcrService {
     const postalMatches = text.match(/\b(\d{4})\b/g);
     if (postalMatches && postalMatches.length > 0) {
       // Take the last 4-digit match as it's usually the postal code
-      const filtered = postalMatches.filter(code => {
+      const filtered = postalMatches.filter((code) => {
         // Filter out years (1900-2099)
         const num = parseInt(code);
         return num < 1900 || num > 2099;
@@ -408,7 +434,10 @@ export class DocumentOcrService {
       const match = text.match(pattern);
       if (match && match[1]) {
         const addressBlock = match[1].trim();
-        const lines = addressBlock.split('\n').map(l => l.trim()).filter(l => l);
+        const lines = addressBlock
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l);
 
         if (lines.length > 0) {
           // First line is usually street address
@@ -421,10 +450,14 @@ export class DocumentOcrService {
             // Remove postal code and province from city line
             let cityCandidate = cityLine.toUpperCase();
             if (result.postalCode) {
-              cityCandidate = cityCandidate.replace(result.postalCode, '').trim();
+              cityCandidate = cityCandidate
+                .replace(result.postalCode, '')
+                .trim();
             }
             if (result.provinceState) {
-              cityCandidate = cityCandidate.replace(result.provinceState, '').trim();
+              cityCandidate = cityCandidate
+                .replace(result.provinceState, '')
+                .trim();
             }
             cityCandidate = cityCandidate.replace(/,/g, '').trim();
             if (cityCandidate) {
@@ -491,12 +524,18 @@ export class DocumentOcrService {
     // Validate Registration Number (exact match, case-insensitive)
     if (expectedData.registrationNumber && extractedData.registrationNumber) {
       const expectedReg = this.normalizeNumber(expectedData.registrationNumber);
-      const extractedReg = this.normalizeNumber(extractedData.registrationNumber);
+      const extractedReg = this.normalizeNumber(
+        extractedData.registrationNumber,
+      );
 
-      this.logger.log(`Registration comparison: "${expectedReg}" vs "${extractedReg}"`);
+      this.logger.log(
+        `Registration comparison: "${expectedReg}" vs "${extractedReg}"`,
+      );
 
       if (expectedReg !== extractedReg) {
-        this.logger.warn(`REGISTRATION MISMATCH: ${expectedReg} !== ${extractedReg}`);
+        this.logger.warn(
+          `REGISTRATION MISMATCH: ${expectedReg} !== ${extractedReg}`,
+        );
         mismatches.push({
           field: 'registrationNumber',
           expected: expectedData.registrationNumber,
@@ -578,10 +617,14 @@ export class DocumentOcrService {
       const expectedProv = expectedData.provinceState.toUpperCase().trim();
       const extractedProv = extractedData.provinceState.toUpperCase().trim();
 
-      this.logger.log(`Province comparison: "${expectedProv}" vs "${extractedProv}"`);
+      this.logger.log(
+        `Province comparison: "${expectedProv}" vs "${extractedProv}"`,
+      );
 
       if (expectedProv !== extractedProv) {
-        this.logger.warn(`PROVINCE MISMATCH: ${expectedProv} !== ${extractedProv}`);
+        this.logger.warn(
+          `PROVINCE MISMATCH: ${expectedProv} !== ${extractedProv}`,
+        );
         mismatches.push({
           field: 'provinceState',
           expected: expectedData.provinceState,
@@ -595,10 +638,14 @@ export class DocumentOcrService {
       const expectedPostal = this.normalizeNumber(expectedData.postalCode);
       const extractedPostal = this.normalizeNumber(extractedData.postalCode);
 
-      this.logger.log(`Postal code comparison: "${expectedPostal}" vs "${extractedPostal}"`);
+      this.logger.log(
+        `Postal code comparison: "${expectedPostal}" vs "${extractedPostal}"`,
+      );
 
       if (expectedPostal !== extractedPostal) {
-        this.logger.warn(`POSTAL CODE MISMATCH: ${expectedPostal} !== ${extractedPostal}`);
+        this.logger.warn(
+          `POSTAL CODE MISMATCH: ${expectedPostal} !== ${extractedPostal}`,
+        );
         mismatches.push({
           field: 'postalCode',
           expected: expectedData.postalCode,
@@ -615,7 +662,8 @@ export class DocumentOcrService {
       isValid: mismatches.length === 0,
       mismatches,
       extractedData,
-      requiresManualReview: extractedData.confidence === 'low' && mismatches.length > 0,
+      requiresManualReview:
+        extractedData.confidence === 'low' && mismatches.length > 0,
       ocrFailed: false,
     };
   }
@@ -714,8 +762,8 @@ export class DocumentOcrService {
         } else {
           matrix[i][j] = Math.min(
             matrix[i - 1][j - 1] + 1, // substitution
-            matrix[i][j - 1] + 1,     // insertion
-            matrix[i - 1][j] + 1,     // deletion
+            matrix[i][j - 1] + 1, // insertion
+            matrix[i - 1][j] + 1, // deletion
           );
         }
       }

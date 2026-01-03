@@ -44,7 +44,12 @@ export class SupplierInvitation {
   @Column({ name: 'email', type: 'varchar', length: 255 })
   email: string;
 
-  @Column({ name: 'supplier_company_name', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'supplier_company_name',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   supplierCompanyName: string | null;
 
   @Column({

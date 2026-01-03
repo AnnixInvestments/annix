@@ -1,5 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, MaxLength, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateBoqDto {
   @ApiPropertyOptional({ description: 'BOQ title' })

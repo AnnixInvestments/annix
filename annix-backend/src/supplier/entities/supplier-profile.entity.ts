@@ -39,7 +39,9 @@ export class SupplierProfile {
   userId: number;
 
   // Links to SupplierCompany (many-to-one, nullable for initial registration)
-  @ManyToOne(() => SupplierCompany, (company) => company.profiles, { nullable: true })
+  @ManyToOne(() => SupplierCompany, (company) => company.profiles, {
+    nullable: true,
+  })
   @JoinColumn({ name: 'company_id' })
   company: SupplierCompany;
 
@@ -75,10 +77,19 @@ export class SupplierProfile {
   @Column({ name: 'email_verified', default: false })
   emailVerified: boolean;
 
-  @Column({ name: 'email_verification_token', type: 'varchar', length: 500, nullable: true })
+  @Column({
+    name: 'email_verification_token',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
   emailVerificationToken: string | null;
 
-  @Column({ name: 'email_verification_expires', type: 'timestamp', nullable: true })
+  @Column({
+    name: 'email_verification_expires',
+    type: 'timestamp',
+    nullable: true,
+  })
   emailVerificationExpires: Date | null;
 
   // Suspension tracking
@@ -112,7 +123,10 @@ export class SupplierProfile {
   documents: SupplierDocument[];
 
   // Capabilities (FR-P7: Product/Service Mapping)
-  @OneToMany(() => SupplierCapability, (capability) => capability.supplierProfile)
+  @OneToMany(
+    () => SupplierCapability,
+    (capability) => capability.supplierProfile,
+  )
   capabilities: SupplierCapability[];
 
   @CreateDateColumn({ name: 'created_at' })
@@ -124,6 +138,10 @@ export class SupplierProfile {
   @Column({ name: 'terms_accepted_at', type: 'timestamp', nullable: true })
   termsAcceptedAt: Date;
 
-  @Column({ name: 'security_policy_accepted_at', type: 'timestamp', nullable: true })
+  @Column({
+    name: 'security_policy_accepted_at',
+    type: 'timestamp',
+    nullable: true,
+  })
   securityPolicyAcceptedAt: Date;
 }

@@ -1,9 +1,20 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Rfq, RfqStatus } from './entities/rfq.entity';
 import { RfqItem, RfqItemType } from './entities/rfq-item.entity';
-import { StraightPipeRfq, LengthUnit, QuantityType, ScheduleType } from './entities/straight-pipe-rfq.entity';
+import {
+  StraightPipeRfq,
+  LengthUnit,
+  QuantityType,
+  ScheduleType,
+} from './entities/straight-pipe-rfq.entity';
 import { BendRfq } from './entities/bend-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { User } from '../user/entities/user.entity';
@@ -17,7 +28,10 @@ import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
 import { CreateStraightPipeRfqWithItemDto } from './dto/create-rfq-item.dto';
 import { CreateBendRfqWithItemDto } from './dto/create-bend-rfq-with-item.dto';
 import { CreateBendRfqDto } from './dto/create-bend-rfq.dto';
-import { StraightPipeCalculationResultDto, RfqResponseDto } from './dto/rfq-response.dto';
+import {
+  StraightPipeCalculationResultDto,
+  RfqResponseDto,
+} from './dto/rfq-response.dto';
 import { BendCalculationResultDto } from './dto/bend-calculation-result.dto';
 import { RfqDocumentResponseDto } from './dto/rfq-document.dto';
 
@@ -70,20 +84,22 @@ export class RfqService {
         where: { id: dto.steelSpecificationId },
       });
       if (!steelSpec) {
-        throw new NotFoundException(`Steel specification with ID ${dto.steelSpecificationId} not found`);
+        throw new NotFoundException(
+          `Steel specification with ID ${dto.steelSpecificationId} not found`,
+        );
       }
     }
 
     // Normalize schedule number format (convert "Sch40" to "40", etc.)
     const normalizeScheduleNumber = (scheduleNumber: string): string => {
       if (!scheduleNumber) return scheduleNumber;
-      
+
       // Convert "Sch40" -> "40", "Sch80" -> "80", etc.
       const schMatch = scheduleNumber.match(/^[Ss]ch(\d+)$/);
       if (schMatch) {
         return schMatch[1];
       }
-      
+
       // Return as-is for other formats (STD, XS, XXS, MEDIUM, HEAVY, etc.)
       return scheduleNumber;
     };
@@ -91,7 +107,7 @@ export class RfqService {
     // Find pipe dimension based on schedule type
     if (dto.scheduleType === ScheduleType.SCHEDULE && dto.scheduleNumber) {
       const normalizedSchedule = normalizeScheduleNumber(dto.scheduleNumber);
-      
+
       pipeDimension = await this.pipeDimensionRepository.findOne({
         where: {
           nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalBoreMm },
@@ -100,7 +116,10 @@ export class RfqService {
         },
         relations: ['nominalOutsideDiameter', 'steelSpecification'],
       });
-    } else if (dto.scheduleType === ScheduleType.WALL_THICKNESS && dto.wallThicknessMm) {
+    } else if (
+      dto.scheduleType === ScheduleType.WALL_THICKNESS &&
+      dto.wallThicknessMm
+    ) {
       pipeDimension = await this.pipeDimensionRepository.findOne({
         where: {
           nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalBoreMm },
@@ -112,12 +131,13 @@ export class RfqService {
     }
 
     if (!pipeDimension) {
-      const scheduleInfo = dto.scheduleType === ScheduleType.SCHEDULE && dto.scheduleNumber
-        ? `schedule ${dto.scheduleNumber}${dto.scheduleNumber !== normalizeScheduleNumber(dto.scheduleNumber) ? ` (normalized to: ${normalizeScheduleNumber(dto.scheduleNumber)})` : ''}` 
-        : `wall thickness ${dto.wallThicknessMm}mm`;
-        
+      const scheduleInfo =
+        dto.scheduleType === ScheduleType.SCHEDULE && dto.scheduleNumber
+          ? `schedule ${dto.scheduleNumber}${dto.scheduleNumber !== normalizeScheduleNumber(dto.scheduleNumber) ? ` (normalized to: ${normalizeScheduleNumber(dto.scheduleNumber)})` : ''}`
+          : `wall thickness ${dto.wallThicknessMm}mm`;
+
       throw new NotFoundException(
-        `The combination of ${dto.nominalBoreMm}NB with ${scheduleInfo} is not available in the database.\n\nPlease select a different schedule (STD, XS, XXS, 40, 80, 120, 160, MEDIUM, or HEAVY) or use the automated calculation by setting working pressure.`
+        `The combination of ${dto.nominalBoreMm}NB with ${scheduleInfo} is not available in the database.\n\nPlease select a different schedule (STD, XS, XXS, 40, 80, 120, 160, MEDIUM, or HEAVY) or use the automated calculation by setting working pressure.`,
       );
     }
 
@@ -127,7 +147,9 @@ export class RfqService {
     });
 
     if (!nbNpsLookup) {
-      throw new NotFoundException(`NB-NPS lookup not found for ${dto.nominalBoreMm}NB`);
+      throw new NotFoundException(
+        `NB-NPS lookup not found for ${dto.nominalBoreMm}NB`,
+      );
     }
 
     const outsideDiameterMm = nbNpsLookup.outside_diameter_mm;
@@ -142,8 +164,12 @@ export class RfqService {
       // Fallback: Calculate pipe weight per meter using the formula
       // Weight (kg/m) = π × WT × (OD - WT) × Density / 1,000,000
       const steelDensity = 7.85; // kg/dm³ (default for carbon steel)
-      pipeWeightPerMeter = 
-        Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * steelDensity / 1000;
+      pipeWeightPerMeter =
+        (Math.PI *
+          wallThicknessMm *
+          (outsideDiameterMm - wallThicknessMm) *
+          steelDensity) /
+        1000;
     }
 
     // Convert length to meters if needed
@@ -198,9 +224,9 @@ export class RfqService {
           where: {
             nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalBoreMm },
             standard: { id: dto.flangeStandardId },
-            pressureClass: { id: dto.flangePressureClassId }
+            pressureClass: { id: dto.flangePressureClassId },
           },
-          relations: ['bolt', 'nominalOutsideDiameter']
+          relations: ['bolt', 'nominalOutsideDiameter'],
         });
 
         if (flangeDimension) {
@@ -211,12 +237,14 @@ export class RfqService {
           if (flangeDimension.bolt) {
             // Find the closest bolt mass for reasonable length (typically 3-4 times flange thickness)
             const estimatedBoltLengthMm = Math.max(50, flangeDimension.b * 3); // Minimum 50mm, or 3x flange thickness
-            
+
             // Find the closest available bolt length
             const boltMass = await this.boltMassRepository
               .createQueryBuilder('bm')
               .where('bm.bolt = :boltId', { boltId: flangeDimension.bolt.id })
-              .andWhere('bm.length_mm >= :minLength', { minLength: estimatedBoltLengthMm })
+              .andWhere('bm.length_mm >= :minLength', {
+                minLength: estimatedBoltLengthMm,
+              })
               .orderBy('bm.length_mm', 'ASC')
               .getOne();
 
@@ -228,8 +256,8 @@ export class RfqService {
             // Calculate nut weight
             const nutMass = await this.nutMassRepository.findOne({
               where: {
-                bolt: { id: flangeDimension.bolt.id }
-              }
+                bolt: { id: flangeDimension.bolt.id },
+              },
             });
 
             if (nutMass) {
@@ -241,11 +269,19 @@ export class RfqService {
       } catch (error) {
         // If flange weight calculation fails, log it but don't break the calculation
         console.warn('Flange weight calculation failed:', error.message);
-        console.warn('Flange Standard ID:', dto.flangeStandardId, 'Pressure Class ID:', dto.flangePressureClassId, 'Nominal Bore:', dto.nominalBoreMm);
+        console.warn(
+          'Flange Standard ID:',
+          dto.flangeStandardId,
+          'Pressure Class ID:',
+          dto.flangePressureClassId,
+          'Nominal Bore:',
+          dto.nominalBoreMm,
+        );
       }
     }
 
-    const totalSystemWeight = totalPipeWeight + totalFlangeWeight + totalBoltWeight + totalNutWeight;
+    const totalSystemWeight =
+      totalPipeWeight + totalFlangeWeight + totalBoltWeight + totalNutWeight;
 
     return {
       outsideDiameterMm,
@@ -271,10 +307,14 @@ export class RfqService {
     userId: number,
   ): Promise<{ rfq: Rfq; calculation: StraightPipeCalculationResultDto }> {
     // Find user (optional - for when authentication is implemented)
-    const user = await this.userRepository.findOne({ where: { id: userId } }).catch(() => null);
+    const user = await this.userRepository
+      .findOne({ where: { id: userId } })
+      .catch(() => null);
 
     // Calculate requirements first
-    const calculation = await this.calculateStraightPipeRequirements(dto.straightPipe);
+    const calculation = await this.calculateStraightPipeRequirements(
+      dto.straightPipe,
+    );
 
     // Generate RFQ number
     const rfqCount = await this.rfqRepository.count();
@@ -297,7 +337,8 @@ export class RfqService {
       description: dto.itemDescription,
       itemType: RfqItemType.STRAIGHT_PIPE,
       quantity: calculation.calculatedPipeCount,
-      weightPerUnitKg: calculation.totalSystemWeight / calculation.calculatedPipeCount,
+      weightPerUnitKg:
+        calculation.totalSystemWeight / calculation.calculatedPipeCount,
       totalWeightKg: calculation.totalSystemWeight,
       notes: dto.itemNotes,
       rfq: savedRfq,
@@ -350,7 +391,7 @@ export class RfqService {
       order: { createdAt: 'DESC' },
     });
 
-    return rfqs.map(rfq => ({
+    return rfqs.map((rfq) => ({
       id: rfq.id,
       rfqNumber: rfq.rfqNumber,
       projectName: rfq.projectName,
@@ -393,7 +434,7 @@ export class RfqService {
   ): Promise<BendCalculationResultDto> {
     // For now, use a comprehensive calculation based on the bend specifications
     // This would integrate with proper bend tables and pricing in a full implementation
-    
+
     const approximateWeight = this.calculateBendWeight(dto);
     const centerToFace = this.calculateCenterToFace(dto);
 
@@ -405,9 +446,11 @@ export class RfqService {
       flangeWeight: approximateWeight * 0.1,
       numberOfFlanges: dto.numberOfTangents + 1,
       numberOfFlangeWelds: dto.numberOfTangents,
-      totalFlangeWeldLength: (dto.numberOfTangents * Math.PI * dto.nominalBoreMm) / 1000,
+      totalFlangeWeldLength:
+        (dto.numberOfTangents * Math.PI * dto.nominalBoreMm) / 1000,
       numberOfButtWelds: dto.numberOfTangents > 0 ? 1 : 0,
-      totalButtWeldLength: dto.numberOfTangents > 0 ? (Math.PI * dto.nominalBoreMm) / 1000 : 0,
+      totalButtWeldLength:
+        dto.numberOfTangents > 0 ? (Math.PI * dto.nominalBoreMm) / 1000 : 0,
       outsideDiameterMm: dto.nominalBoreMm + 20, // Simplified OD calculation
       wallThicknessMm: this.getWallThicknessFromSchedule(dto.scheduleNumber),
     };
@@ -426,7 +469,7 @@ export class RfqService {
     // Simplified center-to-face calculation
     // This should use proper bend tables in production
     const radius = this.getBendRadius(dto.bendType, dto.nominalBoreMm);
-    return radius * Math.sin(dto.bendDegrees * Math.PI / 180 / 2);
+    return radius * Math.sin((dto.bendDegrees * Math.PI) / 180 / 2);
   }
 
   private getBendRadius(bendType: string, nominalBoreMm: number): number {
@@ -437,12 +480,12 @@ export class RfqService {
   private getWallThicknessFromSchedule(scheduleNumber: string): number {
     // Simplified wall thickness lookup
     const scheduleMap: { [key: string]: number } = {
-      'Sch10': 2.77,
-      'Sch20': 3.91,
-      'Sch30': 5.54,
-      'Sch40': 6.35,
-      'Sch80': 8.74,
-      'Sch160': 14.27,
+      Sch10: 2.77,
+      Sch20: 3.91,
+      Sch30: 5.54,
+      Sch40: 6.35,
+      Sch80: 8.74,
+      Sch160: 14.27,
     };
     return scheduleMap[scheduleNumber] || 6.35; // Default to Sch40
   }
@@ -452,7 +495,9 @@ export class RfqService {
     userId: number,
   ): Promise<{ rfq: Rfq; calculation: BendCalculationResultDto }> {
     // Find user (optional - for when authentication is implemented)
-    const user = await this.userRepository.findOne({ where: { id: userId } }).catch(() => null);
+    const user = await this.userRepository
+      .findOne({ where: { id: userId } })
+      .catch(() => null);
 
     // Calculate bend requirements first
     const calculation = await this.calculateBendRequirements(dto.bend);
@@ -514,7 +559,9 @@ export class RfqService {
   ): Promise<RfqDocumentResponseDto> {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      throw new BadRequestException(`File size exceeds maximum allowed size of 50MB`);
+      throw new BadRequestException(
+        `File size exceeds maximum allowed size of 50MB`,
+      );
     }
 
     // Find the RFQ
@@ -531,7 +578,7 @@ export class RfqService {
     const currentDocCount = rfq.documents?.length || 0;
     if (currentDocCount >= MAX_DOCUMENTS_PER_RFQ) {
       throw new BadRequestException(
-        `Maximum number of documents (${MAX_DOCUMENTS_PER_RFQ}) reached for this RFQ`
+        `Maximum number of documents (${MAX_DOCUMENTS_PER_RFQ}) reached for this RFQ`,
       );
     }
 
@@ -569,7 +616,7 @@ export class RfqService {
       order: { createdAt: 'DESC' },
     });
 
-    return documents.map(doc => this.mapDocumentToResponse(doc));
+    return documents.map((doc) => this.mapDocumentToResponse(doc));
   }
 
   async getDocumentById(documentId: number): Promise<RfqDocument> {
@@ -585,7 +632,9 @@ export class RfqService {
     return document;
   }
 
-  async downloadDocument(documentId: number): Promise<{ buffer: Buffer; document: RfqDocument }> {
+  async downloadDocument(
+    documentId: number,
+  ): Promise<{ buffer: Buffer; document: RfqDocument }> {
     const document = await this.getDocumentById(documentId);
     const buffer = await this.storageService.download(document.filePath);
 

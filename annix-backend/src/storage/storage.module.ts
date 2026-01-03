@@ -15,7 +15,11 @@ const logger = new Logger('StorageModule');
  */
 const storageServiceFactory = {
   provide: STORAGE_SERVICE,
-  useFactory: (configService: ConfigService, localStorageService: LocalStorageService, s3StorageService: S3StorageService): IStorageService => {
+  useFactory: (
+    configService: ConfigService,
+    localStorageService: LocalStorageService,
+    s3StorageService: S3StorageService,
+  ): IStorageService => {
     const storageType = configService.get<string>('STORAGE_TYPE') || 'local';
 
     logger.log(`Storage type configured: ${storageType}`);
@@ -36,11 +40,7 @@ const storageServiceFactory = {
 @Global()
 @Module({
   imports: [ConfigModule],
-  providers: [
-    LocalStorageService,
-    S3StorageService,
-    storageServiceFactory,
-  ],
+  providers: [LocalStorageService, S3StorageService, storageServiceFactory],
   exports: [STORAGE_SERVICE, LocalStorageService, S3StorageService],
 })
 export class StorageModule {}

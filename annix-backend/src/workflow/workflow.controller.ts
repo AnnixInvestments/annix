@@ -18,10 +18,17 @@ import {
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { WorkflowService, PaginatedResult } from './workflow.service';
-import { ReviewWorkflow, ReviewEntityType } from './entities/review-workflow.entity';
+import {
+  ReviewWorkflow,
+  ReviewEntityType,
+} from './entities/review-workflow.entity';
 import { WorkflowQueryDto } from './dto/workflow-query.dto';
 import { AssignReviewerDto } from './dto/assign-reviewer.dto';
-import { ApprovalDto, RejectionDto, ChangeRequestDto } from '../drawings/dto/workflow-action.dto';
+import {
+  ApprovalDto,
+  RejectionDto,
+  ChangeRequestDto,
+} from '../drawings/dto/workflow-action.dto';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { AuditLog } from '../audit/entities/audit-log.entity';
@@ -43,7 +50,11 @@ export class WorkflowController {
     @Param('id', ParseIntPipe) id: number,
     @Request() req,
   ): Promise<ReviewWorkflow> {
-    return this.workflowService.submitForReview(ReviewEntityType.DRAWING, id, req.user);
+    return this.workflowService.submitForReview(
+      ReviewEntityType.DRAWING,
+      id,
+      req.user,
+    );
   }
 
   @Post('boqs/:id/submit')
@@ -54,14 +65,20 @@ export class WorkflowController {
     @Param('id', ParseIntPipe) id: number,
     @Request() req,
   ): Promise<ReviewWorkflow> {
-    return this.workflowService.submitForReview(ReviewEntityType.BOQ, id, req.user);
+    return this.workflowService.submitForReview(
+      ReviewEntityType.BOQ,
+      id,
+      req.user,
+    );
   }
 
   // === START REVIEW ===
 
   @Post(':id/start-review')
   @Roles('reviewer', 'approver', 'admin')
-  @ApiOperation({ summary: 'Start reviewing an item (assigns to current user)' })
+  @ApiOperation({
+    summary: 'Start reviewing an item (assigns to current user)',
+  })
   @ApiResponse({ status: HttpStatus.OK, type: ReviewWorkflow })
   async startReview(
     @Param('id', ParseIntPipe) id: number,
@@ -105,7 +122,11 @@ export class WorkflowController {
     @Body() dto: ChangeRequestDto,
     @Request() req,
   ): Promise<ReviewWorkflow> {
-    return this.workflowService.requestChanges(id, dto.changesRequired, req.user);
+    return this.workflowService.requestChanges(
+      id,
+      dto.changesRequired,
+      req.user,
+    );
   }
 
   // === ASSIGN REVIEWER ===
@@ -133,18 +154,34 @@ export class WorkflowController {
   }
 
   @Get()
-  @Roles('rfq_administrator', 'reviewer', 'approver', 'compliance_officer', 'admin')
+  @Roles(
+    'rfq_administrator',
+    'reviewer',
+    'approver',
+    'compliance_officer',
+    'admin',
+  )
   @ApiOperation({ summary: 'Get all workflows with filtering' })
   @ApiResponse({ status: HttpStatus.OK })
-  async findAll(@Query() query: WorkflowQueryDto): Promise<PaginatedResult<ReviewWorkflow>> {
+  async findAll(
+    @Query() query: WorkflowQueryDto,
+  ): Promise<PaginatedResult<ReviewWorkflow>> {
     return this.workflowService.findAll(query);
   }
 
   @Get(':id')
-  @Roles('rfq_administrator', 'reviewer', 'approver', 'compliance_officer', 'admin')
+  @Roles(
+    'rfq_administrator',
+    'reviewer',
+    'approver',
+    'compliance_officer',
+    'admin',
+  )
   @ApiOperation({ summary: 'Get workflow by ID' })
   @ApiResponse({ status: HttpStatus.OK, type: ReviewWorkflow })
-  async findOne(@Param('id', ParseIntPipe) id: number): Promise<ReviewWorkflow> {
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ReviewWorkflow> {
     return this.workflowService.findOne(id);
   }
 

@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Patch,
-  Body,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Patch, Body, Req, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -39,7 +32,11 @@ export class CustomerController {
 
   @Get('profile')
   @ApiOperation({ summary: 'Get customer profile' })
-  @ApiResponse({ status: 200, description: 'Profile retrieved', type: CustomerProfileResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile retrieved',
+    type: CustomerProfileResponseDto,
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getProfile(@Req() req: Request): Promise<CustomerProfileResponseDto> {
     const customerId = req['customer'].customerId;
@@ -48,7 +45,11 @@ export class CustomerController {
 
   @Patch('profile')
   @ApiOperation({ summary: 'Update customer profile (limited fields)' })
-  @ApiResponse({ status: 200, description: 'Profile updated', type: CustomerProfileResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile updated',
+    type: CustomerProfileResponseDto,
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateProfile(
     @Body() dto: UpdateCustomerProfileDto,
@@ -86,10 +87,7 @@ export class CustomerController {
   @ApiResponse({ status: 200, description: 'Password changed successfully' })
   @ApiResponse({ status: 400, description: 'Current password incorrect' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async changePassword(
-    @Body() dto: ChangePasswordDto,
-    @Req() req: Request,
-  ) {
+  async changePassword(@Body() dto: ChangePasswordDto, @Req() req: Request) {
     const customerId = req['customer'].customerId;
     const clientIp = this.getClientIp(req);
     return this.customerService.changePassword(customerId, dto, clientIp);
@@ -109,7 +107,9 @@ export class CustomerController {
   private getClientIp(req: Request): string {
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
-      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded)
+        ? forwarded[0]
+        : forwarded.split(',')[0];
       return ips.trim();
     }
     return req.ip || req.socket?.remoteAddress || 'unknown';

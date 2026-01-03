@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, IsEnum, MaxLength, MinLength, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsEnum,
+  MaxLength,
+  MinLength,
+  IsObject,
+} from 'class-validator';
 import { BoqItemType } from '../entities/boq-line-item.entity';
 
 export class UpdateBoqLineItemDto {

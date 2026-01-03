@@ -10,7 +10,12 @@ async function bootstrap() {
   app.enableCors({
     origin: ['http://localhost:3000', 'http://localhost:3001'], // Frontend URLs
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-device-fingerprint'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'x-device-fingerprint',
+    ],
     credentials: true,
   });
 
@@ -23,17 +28,17 @@ async function bootstrap() {
     next();
   });
 
-    // Enable global validation (checks DTOs automatically)
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true, // remove unknown properties
-        forbidNonWhitelisted: true, // throw error if extra fields
-        transform: true, // auto-transform payloads to DTO instances
-      }),
-    );
-  
-    // swagger configuration
-    const config = new DocumentBuilder()
+  // Enable global validation (checks DTOs automatically)
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // remove unknown properties
+      forbidNonWhitelisted: true, // throw error if extra fields
+      transform: true, // auto-transform payloads to DTO instances
+    }),
+  );
+
+  // swagger configuration
+  const config = new DocumentBuilder()
     .setTitle('Annix API')
     .setDescription('API documentation')
     .setVersion('1.0')

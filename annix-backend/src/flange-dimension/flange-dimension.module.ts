@@ -11,7 +11,11 @@ import { Bolt } from 'src/bolt/entities/bolt.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      FlangeDimension, NominalOutsideDiameterMm, FlangeStandard, FlangePressureClass, Bolt,
+      FlangeDimension,
+      NominalOutsideDiameterMm,
+      FlangeStandard,
+      FlangePressureClass,
+      Bolt,
     ]),
   ],
   controllers: [FlangeDimensionController],

@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { WeldTypeService } from './weld-type.service';
 import { CreateWeldTypeDto } from './dto/create-weld-type.dto';
 import { UpdateWeldTypeDto } from './dto/update-weld-type.dto';
@@ -19,7 +27,10 @@ export class WeldTypeController {
 
   @Get()
   @ApiOperation({ summary: 'Get all weld types' })
-  @ApiResponse({ status: 200, description: 'List of weld types retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of weld types retrieved successfully',
+  })
   findAll() {
     return this.weldTypeService.findAll();
   }
@@ -37,7 +48,10 @@ export class WeldTypeController {
   @ApiOperation({ summary: 'Update a weld type' })
   @ApiResponse({ status: 200, description: 'Weld type updated successfully' })
   @ApiResponse({ status: 404, description: 'Weld type not found' })
-  update(@Param('id') id: string, @Body() updateWeldTypeDto: UpdateWeldTypeDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateWeldTypeDto: UpdateWeldTypeDto,
+  ) {
     return this.weldTypeService.update(+id, updateWeldTypeDto);
   }
 

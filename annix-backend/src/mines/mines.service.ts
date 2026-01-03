@@ -78,7 +78,9 @@ export class MinesService {
     return this.mapMineToDto(mine);
   }
 
-  async getMineWithEnvironmentalData(mineId: number): Promise<MineWithEnvironmentalDataDto> {
+  async getMineWithEnvironmentalData(
+    mineId: number,
+  ): Promise<MineWithEnvironmentalDataDto> {
     const mine = await this.saMineRepository.findOne({
       where: { id: mineId },
       relations: ['commodity'],
@@ -105,14 +107,18 @@ export class MinesService {
 
     return {
       mine: this.mapMineToDto(mine),
-      slurryProfile: slurryProfile ? this.mapSlurryProfileToDto(slurryProfile) : null,
+      slurryProfile: slurryProfile
+        ? this.mapSlurryProfileToDto(slurryProfile)
+        : null,
       liningRecommendation: liningRecommendation
         ? this.mapLiningRuleToDto(liningRecommendation)
         : null,
     };
   }
 
-  async getSlurryProfileByCommodity(commodityId: number): Promise<SlurryProfileDto | null> {
+  async getSlurryProfileByCommodity(
+    commodityId: number,
+  ): Promise<SlurryProfileDto | null> {
     const profile = await this.slurryProfileRepository.findOne({
       where: { commodityId },
       relations: ['commodity'],
@@ -165,7 +171,9 @@ export class MinesService {
     });
 
     if (!commodity) {
-      throw new NotFoundException(`Commodity with ID ${createMineDto.commodityId} not found`);
+      throw new NotFoundException(
+        `Commodity with ID ${createMineDto.commodityId} not found`,
+      );
     }
 
     const mine = this.saMineRepository.create({
@@ -176,7 +184,8 @@ export class MinesService {
       district: createMineDto.district || null,
       physicalAddress: createMineDto.physicalAddress || null,
       mineType: createMineDto.mineType || MineType.UNDERGROUND,
-      operationalStatus: createMineDto.operationalStatus || OperationalStatus.ACTIVE,
+      operationalStatus:
+        createMineDto.operationalStatus || OperationalStatus.ACTIVE,
       latitude: createMineDto.latitude || null,
       longitude: createMineDto.longitude || null,
     });

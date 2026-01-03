@@ -42,9 +42,21 @@ export class CustomerAdminController {
 
   @Get()
   @ApiOperation({ summary: 'List all customers with filtering and pagination' })
-  @ApiResponse({ status: 200, description: 'Customer list', type: CustomerListResponseDto })
-  @ApiQuery({ name: 'search', required: false, description: 'Search by company name or email' })
-  @ApiQuery({ name: 'status', required: false, description: 'Filter by account status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Customer list',
+    type: CustomerListResponseDto,
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Search by company name or email',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'Filter by account status',
+  })
   @ApiQuery({ name: 'page', required: false, description: 'Page number' })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page' })
   async listCustomers(
@@ -56,7 +68,11 @@ export class CustomerAdminController {
   @Get(':id')
   @ApiOperation({ summary: 'Get customer details' })
   @ApiParam({ name: 'id', description: 'Customer ID' })
-  @ApiResponse({ status: 200, description: 'Customer details', type: CustomerDetailDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Customer details',
+    type: CustomerDetailDto,
+  })
   @ApiResponse({ status: 404, description: 'Customer not found' })
   async getCustomerDetail(
     @Param('id', ParseIntPipe) id: number,
@@ -77,7 +93,12 @@ export class CustomerAdminController {
   ) {
     const adminUserId = req['user']?.sub || req['user']?.id;
     const clientIp = this.getClientIp(req);
-    return this.customerAdminService.suspendCustomer(id, dto, adminUserId, clientIp);
+    return this.customerAdminService.suspendCustomer(
+      id,
+      dto,
+      adminUserId,
+      clientIp,
+    );
   }
 
   @Post(':id/reactivate')
@@ -93,7 +114,12 @@ export class CustomerAdminController {
   ) {
     const adminUserId = req['user']?.sub || req['user']?.id;
     const clientIp = this.getClientIp(req);
-    return this.customerAdminService.reactivateCustomer(id, dto, adminUserId, clientIp);
+    return this.customerAdminService.reactivateCustomer(
+      id,
+      dto,
+      adminUserId,
+      clientIp,
+    );
   }
 
   @Post(':id/reset-device')
@@ -109,13 +135,22 @@ export class CustomerAdminController {
   ) {
     const adminUserId = req['user']?.sub || req['user']?.id;
     const clientIp = this.getClientIp(req);
-    return this.customerAdminService.resetDeviceBinding(id, dto, adminUserId, clientIp);
+    return this.customerAdminService.resetDeviceBinding(
+      id,
+      dto,
+      adminUserId,
+      clientIp,
+    );
   }
 
   @Get(':id/login-history')
   @ApiOperation({ summary: 'Get customer login history' })
   @ApiParam({ name: 'id', description: 'Customer ID' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Number of records to return' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of records to return',
+  })
   @ApiResponse({ status: 200, description: 'Login history' })
   async getLoginHistory(
     @Param('id', ParseIntPipe) id: number,
@@ -161,7 +196,11 @@ export class CustomerAdminController {
   ) {
     const adminUserId = req['user']?.sub || req['user']?.id;
     const clientIp = this.getClientIp(req);
-    return this.customerAdminService.approveOnboarding(id, adminUserId, clientIp);
+    return this.customerAdminService.approveOnboarding(
+      id,
+      adminUserId,
+      clientIp,
+    );
   }
 
   @Post('onboarding/:id/reject')
@@ -211,7 +250,9 @@ export class CustomerAdminController {
   private getClientIp(req: Request): string {
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
-      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded)
+        ? forwarded[0]
+        : forwarded.split(',')[0];
       return ips.trim();
     }
     return req.ip || req.socket?.remoteAddress || 'unknown';

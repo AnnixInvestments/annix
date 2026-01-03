@@ -58,10 +58,20 @@ export class CustomerOnboarding {
   @Column({ name: 'reviewed_by_id', nullable: true })
   reviewedById: number | null;
 
-  @Column({ name: 'rejection_reason', type: 'text', nullable: true, default: null })
+  @Column({
+    name: 'rejection_reason',
+    type: 'text',
+    nullable: true,
+    default: null,
+  })
   rejectionReason: string | null;
 
-  @Column({ name: 'remediation_steps', type: 'text', nullable: true, default: null })
+  @Column({
+    name: 'remediation_steps',
+    type: 'text',
+    nullable: true,
+    default: null,
+  })
   remediationSteps: string | null;
 
   @Column({ name: 'resubmission_count', default: 0 })

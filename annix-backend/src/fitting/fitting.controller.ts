@@ -1,8 +1,15 @@
 import { Controller, Get, Post, Body, Query, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { FittingService } from './fitting.service';
-import { GetFittingDimensionsDto, FittingStandard, FittingType } from './dto/get-fitting-dimensions.dto';
-import { CalculateFittingDto, FittingCalculationResultDto } from './dto/calculate-fitting.dto';
+import {
+  GetFittingDimensionsDto,
+  FittingStandard,
+  FittingType,
+} from './dto/get-fitting-dimensions.dto';
+import {
+  CalculateFittingDto,
+  FittingCalculationResultDto,
+} from './dto/calculate-fitting.dto';
 
 @ApiTags('fittings')
 @Controller('fittings')
@@ -12,7 +19,8 @@ export class FittingController {
   @Post('calculate')
   @ApiOperation({
     summary: 'Calculate fitting weight and requirements',
-    description: 'Calculate fitting weight, flange requirements, and welding requirements for SABS62 or SABS719 fittings',
+    description:
+      'Calculate fitting weight, flange requirements, and welding requirements for SABS62 or SABS719 fittings',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -31,12 +39,16 @@ export class FittingController {
     description: 'Fitting specifications for calculation',
     type: CalculateFittingDto,
   })
-  async calculateFitting(@Body() dto: CalculateFittingDto): Promise<FittingCalculationResultDto> {
+  async calculateFitting(
+    @Body() dto: CalculateFittingDto,
+  ): Promise<FittingCalculationResultDto> {
     return this.fittingService.calculateFitting(dto);
   }
 
   @Get('dimensions')
-  @ApiOperation({ summary: 'Get fitting dimensions by standard, type, and size' })
+  @ApiOperation({
+    summary: 'Get fitting dimensions by standard, type, and size',
+  })
   @ApiResponse({ status: 200, description: 'Returns fitting dimensions' })
   @ApiResponse({ status: 404, description: 'Fitting not found' })
   async getFittingDimensions(@Query() dto: GetFittingDimensionsDto) {
@@ -72,6 +84,9 @@ export class FittingController {
     @Query('fittingType') fittingType: FittingType,
     @Query('nominalDiameterMm') nominalDiameterMm: number,
   ) {
-    return this.fittingService.getAvailableAngleRanges(fittingType, nominalDiameterMm);
+    return this.fittingService.getAvailableAngleRanges(
+      fittingType,
+      nominalDiameterMm,
+    );
   }
 }

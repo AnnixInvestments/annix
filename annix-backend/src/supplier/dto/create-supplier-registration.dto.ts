@@ -8,13 +8,17 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateSupplierRegistrationDto {
-  @ApiProperty({ description: 'Email address (used as login)', example: 'supplier@company.co.za' })
+  @ApiProperty({
+    description: 'Email address (used as login)',
+    example: 'supplier@company.co.za',
+  })
   @IsEmail()
   @IsNotEmpty()
   email: string;
 
   @ApiProperty({
-    description: 'Password (min 10 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char)',
+    description:
+      'Password (min 10 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char)',
     example: 'SecureP@ss!',
   })
   @IsString()

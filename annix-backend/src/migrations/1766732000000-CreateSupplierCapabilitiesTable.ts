@@ -1,6 +1,13 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableForeignKey,
+} from 'typeorm';
 
-export class CreateSupplierCapabilitiesTable1766732000000 implements MigrationInterface {
+export class CreateSupplierCapabilitiesTable1766732000000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.createTable(
       new Table({
@@ -38,7 +45,7 @@ export class CreateSupplierCapabilitiesTable1766732000000 implements MigrationIn
             name: 'material_specializations',
             type: 'text',
             isArray: true,
-            default: '\'{}\'',
+            default: "'{}'",
           },
           {
             name: 'monthly_capacity_tons',
@@ -59,7 +66,7 @@ export class CreateSupplierCapabilitiesTable1766732000000 implements MigrationIn
             name: 'operational_regions',
             type: 'text',
             isArray: true,
-            default: '\'{}\'',
+            default: "'{}'",
           },
           {
             name: 'nationwide_coverage',
@@ -75,7 +82,7 @@ export class CreateSupplierCapabilitiesTable1766732000000 implements MigrationIn
             name: 'certifications',
             type: 'text',
             isArray: true,
-            default: '\'{}\'',
+            default: "'{}'",
           },
           {
             name: 'certification_expiry_date',

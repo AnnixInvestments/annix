@@ -30,7 +30,10 @@ import {
 import { CustomerOnboardingStatus } from './entities/customer-onboarding.entity';
 import { LoginFailureReason } from './entities/customer-login-attempt.entity';
 import { SessionInvalidationReason } from './entities/customer-session.entity';
-import { CustomerDocumentType, CustomerDocumentValidationStatus } from './entities/customer-document.entity';
+import {
+  CustomerDocumentType,
+  CustomerDocumentValidationStatus,
+} from './entities/customer-document.entity';
 import * as path from 'path';
 import * as fs from 'fs';
 import {
@@ -82,7 +85,8 @@ export class CustomerAuthService {
     private readonly emailService: EmailService,
     private readonly documentOcrService: DocumentOcrService,
   ) {
-    this.uploadDir = this.configService.get<string>('UPLOAD_DIR') || './uploads';
+    this.uploadDir =
+      this.configService.get<string>('UPLOAD_DIR') || './uploads';
   }
 
   /**
@@ -100,11 +104,15 @@ export class CustomerAuthService {
       throw new BadRequestException('Terms and conditions must be accepted');
     }
     if (!dto.security.securityPolicyAccepted) {
-      throw new BadRequestException('Security policy must be accepted (account locked to this device)');
+      throw new BadRequestException(
+        'Security policy must be accepted (account locked to this device)',
+      );
     }
 
     // Check if email already exists
-    const existingUser = await this.userRepo.findOne({ where: { email: dto.user.email } });
+    const existingUser = await this.userRepo.findOne({
+      where: { email: dto.user.email },
+    });
     if (existingUser) {
       throw new ConflictException('An account with this email already exists');
     }
@@ -114,7 +122,9 @@ export class CustomerAuthService {
       where: { registrationNumber: dto.company.registrationNumber },
     });
     if (existingCompany) {
-      throw new ConflictException('A company with this registration number already exists');
+      throw new ConflictException(
+        'A company with this registration number already exists',
+      );
     }
 
     // Use transaction to ensure atomicity
@@ -135,7 +145,9 @@ export class CustomerAuthService {
       const hashedPassword = await bcrypt.hash(dto.user.password, salt);
 
       // Get or create customer role
-      let customerRole = await this.userRoleRepo.findOne({ where: { name: 'customer' } });
+      let customerRole = await this.userRoleRepo.findOne({
+        where: { name: 'customer' },
+      });
       if (!customerRole) {
         customerRole = this.userRoleRepo.create({ name: 'customer' });
         customerRole = await queryRunner.manager.save(customerRole);
@@ -153,7 +165,9 @@ export class CustomerAuthService {
       // 3. Generate email verification token
       const emailVerificationToken = uuidv4();
       const emailVerificationExpires = new Date();
-      emailVerificationExpires.setHours(emailVerificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS);
+      emailVerificationExpires.setHours(
+        emailVerificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS,
+      );
 
       // 4. Create the customer profile (PENDING until email verified)
       const profile = this.profileRepo.create({
@@ -215,7 +229,8 @@ export class CustomerAuthService {
         newValues: {
           email: dto.user.email,
           companyName: dto.company.legalName,
-          deviceFingerprint: dto.security.deviceFingerprint.substring(0, 20) + '...',
+          deviceFingerprint:
+            dto.security.deviceFingerprint.substring(0, 20) + '...',
         },
         ipAddress: clientIp,
         userAgent: dto.security.browserInfo?.userAgent,
@@ -286,7 +301,11 @@ export class CustomerAuthService {
     vatDocument?: Express.Multer.File,
     companyRegDocument?: Express.Multer.File,
   ): Promise<void> {
-    const customerDir = path.join(this.uploadDir, 'customers', customerId.toString());
+    const customerDir = path.join(
+      this.uploadDir,
+      'customers',
+      customerId.toString(),
+    );
 
     // Create directory if it doesn't exist
     if (!fs.existsSync(customerDir)) {
@@ -339,7 +358,11 @@ export class CustomerAuthService {
   /**
    * Login with email, password, and device fingerprint verification
    */
-  async login(dto: CustomerLoginDto, clientIp: string, userAgent: string): Promise<CustomerLoginResponseDto> {
+  async login(
+    dto: CustomerLoginDto,
+    clientIp: string,
+    userAgent: string,
+  ): Promise<CustomerLoginResponseDto> {
     // Check for too many failed attempts (rate limiting)
     await this.checkLoginAttempts(dto.email, clientIp);
 
@@ -350,7 +373,15 @@ export class CustomerAuthService {
     });
 
     if (!user) {
-      await this.logLoginAttempt(null, dto.email, false, LoginFailureReason.INVALID_CREDENTIALS, dto.deviceFingerprint, clientIp, userAgent);
+      await this.logLoginAttempt(
+        null,
+        dto.email,
+        false,
+        LoginFailureReason.INVALID_CREDENTIALS,
+        dto.deviceFingerprint,
+        clientIp,
+        userAgent,
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -431,11 +462,16 @@ export class CustomerAuthService {
     // DEVELOPMENT MODE: Skip IP mismatch check
     // Check IP mismatch (WARNING ONLY - not blocking)
     // DEVELOPMENT MODE: Set default values for commented-out checks
-    const activeBinding = profile.deviceBindings?.find((b) => b.isActive && b.isPrimary);
+    const activeBinding = profile.deviceBindings?.find(
+      (b) => b.isActive && b.isPrimary,
+    );
     const ipMismatchWarning = false; // Disabled in development mode
 
     // Invalidate any existing active sessions (single session enforcement)
-    await this.invalidateAllSessions(profile.id, SessionInvalidationReason.NEW_LOGIN);
+    await this.invalidateAllSessions(
+      profile.id,
+      SessionInvalidationReason.NEW_LOGIN,
+    );
 
     // Create new session
     const sessionToken = uuidv4();
@@ -471,7 +507,16 @@ export class CustomerAuthService {
     ]);
 
     // Log successful login
-    await this.logLoginAttempt(profile.id, dto.email, true, null, dto.deviceFingerprint, clientIp, userAgent, ipMismatchWarning);
+    await this.logLoginAttempt(
+      profile.id,
+      dto.email,
+      true,
+      null,
+      dto.deviceFingerprint,
+      clientIp,
+      userAgent,
+      ipMismatchWarning,
+    );
 
     // Log audit
     await this.auditService.log({
@@ -526,7 +571,10 @@ export class CustomerAuthService {
   /**
    * Refresh session token
    */
-  async refreshSession(dto: RefreshTokenDto, clientIp: string): Promise<CustomerLoginResponseDto> {
+  async refreshSession(
+    dto: RefreshTokenDto,
+    clientIp: string,
+  ): Promise<CustomerLoginResponseDto> {
     try {
       const payload = await this.jwtService.verifyAsync(dto.refreshToken);
 
@@ -540,8 +588,13 @@ export class CustomerAuthService {
         throw new UnauthorizedException('Customer not found');
       }
 
-      const activeBinding = profile.deviceBindings.find((b) => b.isActive && b.isPrimary);
-      if (!activeBinding || activeBinding.deviceFingerprint !== dto.deviceFingerprint) {
+      const activeBinding = profile.deviceBindings.find(
+        (b) => b.isActive && b.isPrimary,
+      );
+      if (
+        !activeBinding ||
+        activeBinding.deviceFingerprint !== dto.deviceFingerprint
+      ) {
         throw new UnauthorizedException('Device mismatch');
       }
 
@@ -590,7 +643,10 @@ export class CustomerAuthService {
   /**
    * Verify device binding for a customer
    */
-  async verifyDeviceBinding(customerId: number, deviceFingerprint: string): Promise<CustomerDeviceBinding | null> {
+  async verifyDeviceBinding(
+    customerId: number,
+    deviceFingerprint: string,
+  ): Promise<CustomerDeviceBinding | null> {
     return this.deviceBindingRepo.findOne({
       where: {
         customerProfileId: customerId,
@@ -630,7 +686,10 @@ export class CustomerAuthService {
 
   // Private helper methods
 
-  private async checkLoginAttempts(email: string, ipAddress: string): Promise<void> {
+  private async checkLoginAttempts(
+    email: string,
+    ipAddress: string,
+  ): Promise<void> {
     try {
       const lockoutTime = new Date();
       lockoutTime.setMinutes(lockoutTime.getMinutes() - LOGIN_LOCKOUT_MINUTES);
@@ -651,7 +710,10 @@ export class CustomerAuthService {
     } catch (error) {
       // Silently skip rate limiting if table doesn't exist (development mode)
       if (!error.message.includes('Too many failed login attempts')) {
-        this.logger.warn('Failed to check login attempts (table may not exist): ' + error.message);
+        this.logger.warn(
+          'Failed to check login attempts (table may not exist): ' +
+            error.message,
+        );
       } else {
         throw error; // Re-throw if it's the actual lockout error
       }
@@ -685,7 +747,9 @@ export class CustomerAuthService {
       await this.loginAttemptRepo.save(attempt);
     } catch (error) {
       // Silently fail if login attempts table doesn't exist (development mode)
-      this.logger.warn('Failed to log login attempt (table may not exist): ' + error.message);
+      this.logger.warn(
+        'Failed to log login attempt (table may not exist): ' + error.message,
+      );
     }
   }
 
@@ -706,7 +770,10 @@ export class CustomerAuthService {
   /**
    * Verify email with token
    */
-  async verifyEmail(token: string, clientIp: string): Promise<{ success: boolean; message: string }> {
+  async verifyEmail(
+    token: string,
+    clientIp: string,
+  ): Promise<{ success: boolean; message: string }> {
     const profile = await this.profileRepo.findOne({
       where: {
         emailVerificationToken: token,
@@ -754,13 +821,17 @@ export class CustomerAuthService {
   /**
    * Resend verification email
    */
-  async resendVerificationEmail(email: string, clientIp: string): Promise<{ success: boolean; message: string }> {
+  async resendVerificationEmail(
+    email: string,
+    clientIp: string,
+  ): Promise<{ success: boolean; message: string }> {
     const user = await this.userRepo.findOne({ where: { email } });
     if (!user) {
       // Don't reveal if email exists
       return {
         success: true,
-        message: 'If an account exists with this email, a verification link will be sent.',
+        message:
+          'If an account exists with this email, a verification link will be sent.',
       };
     }
 
@@ -771,25 +842,33 @@ export class CustomerAuthService {
     if (!profile) {
       return {
         success: true,
-        message: 'If an account exists with this email, a verification link will be sent.',
+        message:
+          'If an account exists with this email, a verification link will be sent.',
       };
     }
 
     if (profile.emailVerified) {
-      throw new BadRequestException('Email is already verified. You can log in.');
+      throw new BadRequestException(
+        'Email is already verified. You can log in.',
+      );
     }
 
     // Generate new token
     const emailVerificationToken = uuidv4();
     const emailVerificationExpires = new Date();
-    emailVerificationExpires.setHours(emailVerificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS);
+    emailVerificationExpires.setHours(
+      emailVerificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS,
+    );
 
     profile.emailVerificationToken = emailVerificationToken;
     profile.emailVerificationExpires = emailVerificationExpires;
     await this.profileRepo.save(profile);
 
     // Send verification email
-    await this.emailService.sendCustomerVerificationEmail(email, emailVerificationToken);
+    await this.emailService.sendCustomerVerificationEmail(
+      email,
+      emailVerificationToken,
+    );
 
     // Log the resend
     await this.auditService.log({
@@ -886,7 +965,10 @@ export class CustomerAuthService {
 
       return response;
     } catch (error) {
-      this.logger.error(`Document validation error: ${error.message}`, error.stack);
+      this.logger.error(
+        `Document validation error: ${error.message}`,
+        error.stack,
+      );
 
       // OCR failed - allow to proceed but mark for manual review
       return {
@@ -897,7 +979,8 @@ export class CustomerAuthService {
         allowedToProceed: true,
         mismatches: [],
         extractedData: { success: false, errors: [error.message] },
-        message: 'OCR processing failed. Document will be marked for manual review. You may proceed with registration.',
+        message:
+          'OCR processing failed. Document will be marked for manual review. You may proceed with registration.',
       };
     }
   }

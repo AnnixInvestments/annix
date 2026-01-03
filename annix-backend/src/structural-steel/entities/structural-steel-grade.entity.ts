@@ -1,4 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('structural_steel_grades')
@@ -20,14 +25,29 @@ export class StructuralSteelGrade {
   standard: string;
 
   @ApiProperty({ description: 'Minimum yield strength in MPa', example: 250 })
-  @Column({ name: 'yield_strength_mpa', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  @Column({
+    name: 'yield_strength_mpa',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+  })
   yieldStrengthMpa: number;
 
   @ApiProperty({ description: 'Minimum tensile strength in MPa', example: 400 })
-  @Column({ name: 'tensile_strength_mpa', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  @Column({
+    name: 'tensile_strength_mpa',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+  })
   tensileStrengthMpa: number;
 
-  @ApiProperty({ description: 'Compatible steel types', example: ['angle', 'channel', 'beam'] })
+  @ApiProperty({
+    description: 'Compatible steel types',
+    example: ['angle', 'channel', 'beam'],
+  })
   @Column({ name: 'compatible_types', type: 'jsonb', default: [] })
   compatibleTypes: string[];
 

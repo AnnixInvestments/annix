@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+} from 'typeorm';
 import { NominalOutsideDiameterMm } from '../../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity';
 import { PipePressure } from '../../pipe-pressure/entities/pipe-pressure.entity';
 import { SteelSpecification } from '../../steel-specification/entities/steel-specification.entity';
@@ -23,9 +30,13 @@ export class PipeDimension {
   @Column({ type: 'float', nullable: true })
   schedule_number: number | null;
 
-  @ManyToOne(() => NominalOutsideDiameterMm, (nominal) => nominal.pipeDimensions, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    () => NominalOutsideDiameterMm,
+    (nominal) => nominal.pipeDimensions,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   @JoinColumn({ name: 'nominal_outside_diameter_id' })
   nominalOutsideDiameter: NominalOutsideDiameterMm;
 

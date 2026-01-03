@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class SeedHdpePipeSpecifications1766002400000 implements MigrationInterface {
+export class SeedHdpePipeSpecifications1766002400000
+  implements MigrationInterface
+{
   name = 'SeedHdpePipeSpecifications1766002400000';
 
   // HDPE density in kg/m³
@@ -70,8 +72,14 @@ export class SeedHdpePipeSpecifications1766002400000 implements MigrationInterfa
 
       for (const sdr of this.SDR_LIST) {
         const wallThickness = this.calculateWallThickness(outerDiameter, sdr);
-        const innerDiameter = this.calculateInnerDiameter(outerDiameter, wallThickness);
-        const weightKgPerM = this.calculateWeightPerMeter(outerDiameter, innerDiameter);
+        const innerDiameter = this.calculateInnerDiameter(
+          outerDiameter,
+          wallThickness,
+        );
+        const weightKgPerM = this.calculateWeightPerMeter(
+          outerDiameter,
+          innerDiameter,
+        );
         const pressureRatingPn = this.calculatePressureRating(sdr);
 
         values.push(`

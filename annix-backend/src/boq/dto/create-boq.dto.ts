@@ -1,8 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, MaxLength, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateBoqDto {
-  @ApiProperty({ description: 'BOQ title', example: 'Pipeline Section A - Materials List' })
+  @ApiProperty({
+    description: 'BOQ title',
+    example: 'Pipeline Section A - Materials List',
+  })
   @IsString()
   @MinLength(3)
   @MaxLength(255)

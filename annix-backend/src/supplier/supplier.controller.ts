@@ -13,7 +13,14 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { SupplierService } from './supplier.service';
@@ -96,7 +103,17 @@ export class SupplierController {
       type: 'object',
       properties: {
         file: { type: 'string', format: 'binary' },
-        documentType: { type: 'string', enum: ['registration_cert', 'tax_clearance', 'bee_cert', 'iso_cert', 'insurance', 'other'] },
+        documentType: {
+          type: 'string',
+          enum: [
+            'registration_cert',
+            'tax_clearance',
+            'bee_cert',
+            'iso_cert',
+            'insurance',
+            'other',
+          ],
+        },
         expiryDate: { type: 'string', format: 'date' },
       },
       required: ['file', 'documentType'],
@@ -139,7 +156,9 @@ export class SupplierController {
   private getClientIp(req: Request): string {
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
-      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded)
+        ? forwarded[0]
+        : forwarded.split(',')[0];
       return ips.trim();
     }
     return req.ip || req.socket?.remoteAddress || 'unknown';

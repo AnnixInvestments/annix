@@ -1,11 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateSAMinesTables1766001200000 implements MigrationInterface {
-    name = 'CreateSAMinesTables1766001200000'
+  name = 'CreateSAMinesTables1766001200000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create enums
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create enums
+    await queryRunner.query(`
             CREATE TYPE "mine_type_enum" AS ENUM (
                 'Underground',
                 'Open Cast',
@@ -13,7 +13,7 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TYPE "operational_status_enum" AS ENUM (
                 'Active',
                 'Care and Maintenance',
@@ -21,7 +21,7 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TYPE "risk_level_enum" AS ENUM (
                 'Low',
                 'Medium',
@@ -30,8 +30,8 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             )
         `);
 
-        // Create commodities table
-        await queryRunner.query(`
+    // Create commodities table
+    await queryRunner.query(`
             CREATE TABLE "commodities" (
                 "id" SERIAL NOT NULL,
                 "commodity_name" character varying(100) NOT NULL UNIQUE,
@@ -41,8 +41,8 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             )
         `);
 
-        // Create sa_mines table
-        await queryRunner.query(`
+    // Create sa_mines table
+    await queryRunner.query(`
             CREATE TABLE "sa_mines" (
                 "id" SERIAL NOT NULL,
                 "mine_name" character varying(255) NOT NULL,
@@ -61,8 +61,8 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             )
         `);
 
-        // Create slurry_profiles table
-        await queryRunner.query(`
+    // Create slurry_profiles table
+    await queryRunner.query(`
             CREATE TABLE "slurry_profiles" (
                 "id" SERIAL NOT NULL,
                 "commodity_id" integer NOT NULL,
@@ -83,8 +83,8 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             )
         `);
 
-        // Create lining_coating_rules table
-        await queryRunner.query(`
+    // Create lining_coating_rules table
+    await queryRunner.query(`
             CREATE TABLE "lining_coating_rules" (
                 "id" SERIAL NOT NULL,
                 "abrasion_level" "risk_level_enum" NOT NULL,
@@ -97,8 +97,8 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             )
         `);
 
-        // Add foreign key constraints
-        await queryRunner.query(`
+    // Add foreign key constraints
+    await queryRunner.query(`
             ALTER TABLE "sa_mines"
             ADD CONSTRAINT "FK_sa_mines_commodity"
             FOREIGN KEY ("commodity_id")
@@ -106,7 +106,7 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             ON DELETE CASCADE
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "slurry_profiles"
             ADD CONSTRAINT "FK_slurry_profiles_commodity"
             FOREIGN KEY ("commodity_id")
@@ -114,13 +114,19 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             ON DELETE CASCADE
         `);
 
-        // Create indexes
-        await queryRunner.query(`CREATE INDEX "IDX_sa_mines_province" ON "sa_mines" ("province")`);
-        await queryRunner.query(`CREATE INDEX "IDX_sa_mines_status" ON "sa_mines" ("operational_status")`);
-        await queryRunner.query(`CREATE INDEX "IDX_sa_mines_commodity" ON "sa_mines" ("commodity_id")`);
+    // Create indexes
+    await queryRunner.query(
+      `CREATE INDEX "IDX_sa_mines_province" ON "sa_mines" ("province")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_sa_mines_status" ON "sa_mines" ("operational_status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_sa_mines_commodity" ON "sa_mines" ("commodity_id")`,
+    );
 
-        // Seed commodities data
-        await queryRunner.query(`
+    // Seed commodities data
+    await queryRunner.query(`
             INSERT INTO "commodities" ("commodity_name", "typical_process_route", "application_notes") VALUES
             ('Coal', 'Crushing → Screening → Dense Medium Separation → Flotation → Dewatering', 'Slurry typically contains fine coal particles with variable ash content'),
             ('Gold', 'Crushing → Milling → Gravity Concentration → CIL/CIP → Elution → Electrowinning', 'Highly abrasive with cyanide process requiring corrosion resistance'),
@@ -130,8 +136,8 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             ('Diamonds', 'Crushing → Scrubbing → DMS → X-Ray/Optical Sorting', 'Lower abrasion than metals, focus on particle recovery')
         `);
 
-        // Seed slurry profiles data
-        await queryRunner.query(`
+    // Seed slurry profiles data
+    await queryRunner.query(`
             INSERT INTO "slurry_profiles" (
                 "commodity_id", "profile_name", "typical_sg_min", "typical_sg_max",
                 "solids_concentration_min", "solids_concentration_max",
@@ -146,8 +152,8 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             ((SELECT id FROM commodities WHERE commodity_name = 'Diamonds'), 'Diamond DMS Slurry', 1.40, 1.80, 30.00, 50.00, 6.50, 8.00, 15.00, 35.00, 'Medium', 'Low', 'Abrasion', 'Ferrosilicon medium. Moderate abrasion from kimberlite.')
         `);
 
-        // Seed lining/coating rules
-        await queryRunner.query(`
+    // Seed lining/coating rules
+    await queryRunner.query(`
             INSERT INTO "lining_coating_rules" ("abrasion_level", "corrosion_level", "recommended_lining", "recommended_coating", "application_notes", "priority") VALUES
             ('Low', 'Low', 'Standard Steel', 'Epoxy Paint', 'General purpose - standard carbon steel sufficient', 1),
             ('Low', 'Medium', 'Standard Steel', 'Epoxy Coating', 'Light corrosion protection required', 1),
@@ -167,8 +173,8 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             ('Very High', 'Very High', 'Tungsten Carbide Overlay', 'Specialty Coating', 'Hardfacing with corrosion resistant substrate', 5)
         `);
 
-        // Seed SA mines data - representative major mines
-        await queryRunner.query(`
+    // Seed SA mines data - representative major mines
+    await queryRunner.query(`
             INSERT INTO "sa_mines" (
                 "mine_name", "operating_company", "commodity_id", "province", "district",
                 "physical_address", "mine_type", "operational_status", "latitude", "longitude"
@@ -225,26 +231,30 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
             ('Koffiefontein Mine', 'Petra Diamonds', (SELECT id FROM commodities WHERE commodity_name = 'Diamonds'), 'Free State', 'Xhariep', 'Koffiefontein, Free State', 'Underground', 'Active', -29.4167, 25.0000),
             ('Williamson Mine', 'Petra Diamonds', (SELECT id FROM commodities WHERE commodity_name = 'Diamonds'), 'Free State', 'Xhariep', 'Jagersfontein, Free State', 'Open Cast', 'Care and Maintenance', -29.7667, 25.4333)
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Drop indexes
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sa_mines_commodity"`);
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sa_mines_status"`);
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sa_mines_province"`);
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Drop indexes
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sa_mines_commodity"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sa_mines_status"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sa_mines_province"`);
 
-        // Drop foreign keys and tables
-        await queryRunner.query(`ALTER TABLE "slurry_profiles" DROP CONSTRAINT IF EXISTS "FK_slurry_profiles_commodity"`);
-        await queryRunner.query(`ALTER TABLE "sa_mines" DROP CONSTRAINT IF EXISTS "FK_sa_mines_commodity"`);
+    // Drop foreign keys and tables
+    await queryRunner.query(
+      `ALTER TABLE "slurry_profiles" DROP CONSTRAINT IF EXISTS "FK_slurry_profiles_commodity"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sa_mines" DROP CONSTRAINT IF EXISTS "FK_sa_mines_commodity"`,
+    );
 
-        await queryRunner.query(`DROP TABLE IF EXISTS "lining_coating_rules"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "slurry_profiles"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "sa_mines"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "commodities"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "lining_coating_rules"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "slurry_profiles"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "sa_mines"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "commodities"`);
 
-        // Drop enums
-        await queryRunner.query(`DROP TYPE IF EXISTS "risk_level_enum"`);
-        await queryRunner.query(`DROP TYPE IF EXISTS "operational_status_enum"`);
-        await queryRunner.query(`DROP TYPE IF EXISTS "mine_type_enum"`);
-    }
+    // Drop enums
+    await queryRunner.query(`DROP TYPE IF EXISTS "risk_level_enum"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "operational_status_enum"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "mine_type_enum"`);
+  }
 }

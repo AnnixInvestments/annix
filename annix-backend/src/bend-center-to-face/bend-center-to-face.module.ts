@@ -7,7 +7,13 @@ import { PipeDimension } from '../pipe-dimension/entities/pipe-dimension.entity'
 import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([BendCenterToFace, PipeDimension, FlangeDimension])],
+  imports: [
+    TypeOrmModule.forFeature([
+      BendCenterToFace,
+      PipeDimension,
+      FlangeDimension,
+    ]),
+  ],
   controllers: [BendCenterToFaceController],
   providers: [BendCenterToFaceService],
   exports: [BendCenterToFaceService],

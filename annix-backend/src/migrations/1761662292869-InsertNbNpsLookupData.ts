@@ -1,20 +1,21 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class InsertNbNpsLookupData1761662292869 implements MigrationInterface {
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    console.log('🔧 Inserting NB-NPS lookup data...');
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        console.log('🔧 Inserting NB-NPS lookup data...');
-        
-        // First, check if data already exists
-        const result = await queryRunner.query(`SELECT COUNT(*) FROM nb_nps_lookup`);
-        const count = parseInt(result[0].count);
-        
-        if (count > 0) {
-            console.log('✅ NB-NPS lookup data already exists, skipping...');
-            return;
-        }
-        
-        await queryRunner.query(`
+    // First, check if data already exists
+    const result = await queryRunner.query(
+      `SELECT COUNT(*) FROM nb_nps_lookup`,
+    );
+    const count = parseInt(result[0].count);
+
+    if (count > 0) {
+      console.log('✅ NB-NPS lookup data already exists, skipping...');
+      return;
+    }
+
+    await queryRunner.query(`
             INSERT INTO nb_nps_lookup (nb_mm, nps_inch, outside_diameter_mm) VALUES
             -- Small Bore Pipes
             (6, 0.125, 10.3),      -- 1/8"
@@ -63,22 +64,21 @@ export class InsertNbNpsLookupData1761662292869 implements MigrationInterface {
             (1800, 72, 1828.8),    -- 72"
             (1900, 76, 1930.4)     -- 76"
         `);
-        
-        console.log('✅ NB-NPS lookup data inserted successfully');
-    }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        console.log('⏮️ Removing NB-NPS lookup data...');
-        
-        await queryRunner.query(`
+    console.log('✅ NB-NPS lookup data inserted successfully');
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    console.log('⏮️ Removing NB-NPS lookup data...');
+
+    await queryRunner.query(`
             DELETE FROM nb_nps_lookup 
             WHERE nb_mm IN (6, 8, 10, 15, 20, 25, 32, 40, 50, 65, 80, 90, 100, 125, 150, 200, 
                            250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 
                            950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 
                            1600, 1800, 1900)
         `);
-        
-        console.log('✅ NB-NPS lookup data removed');
-    }
 
+    console.log('✅ NB-NPS lookup data removed');
+  }
 }

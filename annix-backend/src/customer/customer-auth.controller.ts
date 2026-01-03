@@ -11,7 +11,14 @@ import {
   UploadedFiles,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiConsumes } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { CustomerAuthService } from './customer-auth.service';
@@ -36,22 +43,42 @@ export class CustomerAuthController {
       properties: {
         company: { type: 'string', description: 'JSON string of company data' },
         user: { type: 'string', description: 'JSON string of user data' },
-        security: { type: 'string', description: 'JSON string of security data' },
-        vatDocument: { type: 'string', format: 'binary', description: 'VAT registration document' },
-        companyRegDocument: { type: 'string', format: 'binary', description: 'Company registration document' },
+        security: {
+          type: 'string',
+          description: 'JSON string of security data',
+        },
+        vatDocument: {
+          type: 'string',
+          format: 'binary',
+          description: 'VAT registration document',
+        },
+        companyRegDocument: {
+          type: 'string',
+          format: 'binary',
+          description: 'Company registration document',
+        },
       },
     },
   })
   @ApiResponse({ status: 201, description: 'Registration successful' })
-  @ApiResponse({ status: 400, description: 'Invalid input or terms not accepted' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input or terms not accepted',
+  })
   @ApiResponse({ status: 409, description: 'Email or company already exists' })
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'vatDocument', maxCount: 1 },
-    { name: 'companyRegDocument', maxCount: 1 },
-  ]))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'vatDocument', maxCount: 1 },
+      { name: 'companyRegDocument', maxCount: 1 },
+    ]),
+  )
   async register(
     @Body() body: any,
-    @UploadedFiles() files: { vatDocument?: Express.Multer.File[], companyRegDocument?: Express.Multer.File[] },
+    @UploadedFiles()
+    files: {
+      vatDocument?: Express.Multer.File[];
+      companyRegDocument?: Express.Multer.File[];
+    },
     @Req() req: Request,
   ) {
     const clientIp = this.getClientIp(req);
@@ -67,27 +94,46 @@ export class CustomerAuthController {
     const vatDocument = files.vatDocument?.[0];
     const companyRegDocument = files.companyRegDocument?.[0];
 
-    return this.customerAuthService.register(dto, clientIp, vatDocument, companyRegDocument);
+    return this.customerAuthService.register(
+      dto,
+      clientIp,
+      vatDocument,
+      companyRegDocument,
+    );
   }
 
   @Post('validate-document')
-  @ApiOperation({ summary: 'Validate uploaded document against user input using OCR' })
+  @ApiOperation({
+    summary: 'Validate uploaded document against user input using OCR',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        document: { type: 'string', format: 'binary', description: 'Document to validate' },
-        documentType: { type: 'string', enum: ['vat', 'registration'], description: 'Type of document' },
-        expectedData: { type: 'string', description: 'JSON string of expected data to validate against' },
+        document: {
+          type: 'string',
+          format: 'binary',
+          description: 'Document to validate',
+        },
+        documentType: {
+          type: 'string',
+          enum: ['vat', 'registration'],
+          description: 'Type of document',
+        },
+        expectedData: {
+          type: 'string',
+          description: 'JSON string of expected data to validate against',
+        },
       },
     },
   })
   @ApiResponse({ status: 200, description: 'Document validation result' })
-  @ApiResponse({ status: 400, description: 'Invalid input or unsupported file type' })
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'document', maxCount: 1 },
-  ]))
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input or unsupported file type',
+  })
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'document', maxCount: 1 }]))
   async validateDocument(
     @Body() body: { documentType: string; expectedData: string },
     @UploadedFiles() files: { document?: Express.Multer.File[] },
@@ -115,8 +161,15 @@ export class CustomerAuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Customer login with device verification' })
   @ApiBody({ type: CustomerLoginDto })
-  @ApiResponse({ status: 200, description: 'Login successful', type: CustomerLoginResponseDto })
-  @ApiResponse({ status: 401, description: 'Invalid credentials or device mismatch' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful',
+    type: CustomerLoginResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials or device mismatch',
+  })
   @ApiResponse({ status: 403, description: 'Account suspended or pending' })
   async login(
     @Body() dto: CustomerLoginDto,
@@ -146,8 +199,15 @@ export class CustomerAuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh customer session token' })
   @ApiBody({ type: RefreshTokenDto })
-  @ApiResponse({ status: 200, description: 'Token refreshed', type: CustomerLoginResponseDto })
-  @ApiResponse({ status: 401, description: 'Invalid refresh token or device mismatch' })
+  @ApiResponse({
+    status: 200,
+    description: 'Token refreshed',
+    type: CustomerLoginResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid refresh token or device mismatch',
+  })
   async refresh(
     @Body() dto: RefreshTokenDto,
     @Req() req: Request,
@@ -161,10 +221,7 @@ export class CustomerAuthController {
   @ApiParam({ name: 'token', description: 'Email verification token' })
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
-  async verifyEmail(
-    @Param('token') token: string,
-    @Req() req: Request,
-  ) {
+  async verifyEmail(@Param('token') token: string, @Req() req: Request) {
     const clientIp = this.getClientIp(req);
     return this.customerAuthService.verifyEmail(token, clientIp);
   }
@@ -172,7 +229,9 @@ export class CustomerAuthController {
   @Post('auth/resend-verification')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resend email verification link' })
-  @ApiBody({ schema: { properties: { email: { type: 'string', format: 'email' } } } })
+  @ApiBody({
+    schema: { properties: { email: { type: 'string', format: 'email' } } },
+  })
   @ApiResponse({ status: 200, description: 'Verification email sent' })
   @ApiResponse({ status: 400, description: 'Email already verified' })
   async resendVerification(
@@ -180,7 +239,10 @@ export class CustomerAuthController {
     @Req() req: Request,
   ) {
     const clientIp = this.getClientIp(req);
-    return this.customerAuthService.resendVerificationEmail(body.email, clientIp);
+    return this.customerAuthService.resendVerificationEmail(
+      body.email,
+      clientIp,
+    );
   }
 
   @Post('auth/verify-device')
@@ -208,7 +270,9 @@ export class CustomerAuthController {
   private getClientIp(req: Request): string {
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
-      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded)
+        ? forwarded[0]
+        : forwarded.split(',')[0];
       return ips.trim();
     }
     return req.ip || req.socket?.remoteAddress || 'unknown';

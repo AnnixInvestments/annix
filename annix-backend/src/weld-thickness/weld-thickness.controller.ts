@@ -99,7 +99,11 @@ export class WeldThicknessController {
     const dnNum = parseInt(dn, 10);
     const tempC = temperature ? parseFloat(temperature) : 20;
 
-    return this.weldThicknessService.getPipeWallThickness(dnNum, schedule, tempC);
+    return this.weldThicknessService.getPipeWallThickness(
+      dnNum,
+      schedule,
+      tempC,
+    );
   }
 
   /**

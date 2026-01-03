@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, FindOptionsWhere } from 'typeorm';
 import { AuditLog, AuditAction } from './entities/audit-log.entity';
-import { CreateAuditLogDto, AdminAuditLogDto } from './dto/create-audit-log.dto';
+import {
+  CreateAuditLogDto,
+  AdminAuditLogDto,
+} from './dto/create-audit-log.dto';
 import { User } from '../user/entities/user.entity';
 
 export interface AuditLogQuery {
@@ -28,17 +31,23 @@ export class AuditService {
   async log(dto: CreateAuditLogDto | AdminAuditLogDto): Promise<AuditLog> {
     // Handle AdminAuditLogDto format
     if ('userId' in dto || 'metadata' in dto) {
-      const adminDto = dto as AdminAuditLogDto;
+      const adminDto = dto;
       let performedBy: User | undefined;
 
       if (adminDto.userId) {
-        performedBy = await this.userRepository.findOne({ where: { id: adminDto.userId } }) || undefined;
+        performedBy =
+          (await this.userRepository.findOne({
+            where: { id: adminDto.userId },
+          })) || undefined;
       }
 
       // Map string action to AuditAction enum if needed
       let action: AuditAction;
       if (typeof adminDto.action === 'string') {
-        action = (AuditAction as any)[adminDto.action.toUpperCase().replace(/ /g, '_')] || AuditAction.UPDATE;
+        action =
+          (AuditAction as any)[
+            adminDto.action.toUpperCase().replace(/ /g, '_')
+          ] || AuditAction.UPDATE;
       } else {
         action = adminDto.action;
       }
@@ -71,7 +80,10 @@ export class AuditService {
     return this.auditLogRepository.save(auditLog);
   }
 
-  async findByEntity(entityType: string, entityId: number): Promise<AuditLog[]> {
+  async findByEntity(
+    entityType: string,
+    entityId: number,
+  ): Promise<AuditLog[]> {
     return this.auditLogRepository.find({
       where: { entityType, entityId },
       relations: ['performedBy'],
@@ -79,7 +91,9 @@ export class AuditService {
     });
   }
 
-  async findAll(query: AuditLogQuery): Promise<{ data: AuditLog[]; total: number }> {
+  async findAll(
+    query: AuditLogQuery,
+  ): Promise<{ data: AuditLog[]; total: number }> {
     const where: FindOptionsWhere<AuditLog> = {};
 
     if (query.entityType) {

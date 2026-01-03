@@ -19,7 +19,9 @@ export class AdminAuthGuard implements CanActivate {
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing or invalid authorization header');
+      throw new UnauthorizedException(
+        'Missing or invalid authorization header',
+      );
     }
 
     const token = authHeader.substring(7);
@@ -34,7 +36,9 @@ export class AdminAuthGuard implements CanActivate {
       }
 
       // Validate session
-      const user = await this.adminAuthService.validateSession(payload.sessionToken);
+      const user = await this.adminAuthService.validateSession(
+        payload.sessionToken,
+      );
 
       // Attach user to request
       request.user = {

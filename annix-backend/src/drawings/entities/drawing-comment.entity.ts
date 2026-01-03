@@ -28,7 +28,9 @@ export class DrawingComment {
   id: number;
 
   @ApiProperty({ description: 'Parent drawing', type: () => Drawing })
-  @ManyToOne(() => Drawing, (drawing) => drawing.comments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Drawing, (drawing) => drawing.comments, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'drawing_id' })
   drawing: Drawing;
 
@@ -42,18 +44,38 @@ export class DrawingComment {
   commentText: string;
 
   @ApiProperty({ description: 'Type of comment', enum: CommentType })
-  @Column({ name: 'comment_type', type: 'enum', enum: CommentType, default: CommentType.GENERAL })
+  @Column({
+    name: 'comment_type',
+    type: 'enum',
+    enum: CommentType,
+    default: CommentType.GENERAL,
+  })
   commentType: CommentType;
 
   @ApiProperty({ description: 'X position for annotation', required: false })
-  @Column({ name: 'position_x', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({
+    name: 'position_x',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   positionX?: number;
 
   @ApiProperty({ description: 'Y position for annotation', required: false })
-  @Column({ name: 'position_y', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({
+    name: 'position_y',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   positionY?: number;
 
-  @ApiProperty({ description: 'Page number for multi-page documents', required: false })
+  @ApiProperty({
+    description: 'Page number for multi-page documents',
+    required: false,
+  })
   @Column({ name: 'page_number', nullable: true })
   pageNumber?: number;
 
@@ -61,7 +83,11 @@ export class DrawingComment {
   @Column({ name: 'is_resolved', default: false })
   isResolved: boolean;
 
-  @ApiProperty({ description: 'Parent comment for replies', type: () => DrawingComment, required: false })
+  @ApiProperty({
+    description: 'Parent comment for replies',
+    type: () => DrawingComment,
+    required: false,
+  })
   @ManyToOne(() => DrawingComment, { nullable: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'parent_comment_id' })
   parentComment?: DrawingComment;

@@ -9,7 +9,12 @@ import { LiningCoatingRule } from './entities/lining-coating-rule.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Commodity, SaMine, SlurryProfile, LiningCoatingRule]),
+    TypeOrmModule.forFeature([
+      Commodity,
+      SaMine,
+      SlurryProfile,
+      LiningCoatingRule,
+    ]),
   ],
   controllers: [MinesController],
   providers: [MinesService],

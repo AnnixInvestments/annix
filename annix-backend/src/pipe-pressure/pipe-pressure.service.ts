@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { PipePressure } from './entities/pipe-pressure.entity';
@@ -15,13 +19,18 @@ export class PipePressureService {
     private readonly dimensionRepo: Repository<PipeDimension>,
   ) {}
 
-  async create(pipeDimensionId: number, dto: CreatePipePressureDto): Promise<PipePressure> {
+  async create(
+    pipeDimensionId: number,
+    dto: CreatePipePressureDto,
+  ): Promise<PipePressure> {
     const dimension = await this.dimensionRepo.findOne({
       where: { id: pipeDimensionId },
       relations: ['pressures'],
     });
     if (!dimension) {
-      throw new NotFoundException(`PipeDimension #${pipeDimensionId} not found`);
+      throw new NotFoundException(
+        `PipeDimension #${pipeDimensionId} not found`,
+      );
     }
 
     const exists = await this.pressureRepo.findOne({
@@ -37,8 +46,8 @@ export class PipePressureService {
     if (exists) {
       throw new BadRequestException(
         `PipePressure with temperature ${dto.temperature_c ?? 'null'} °C, ` +
-        `max working pressure ${dto.max_working_pressure_mpa ?? 'null'} MPa, ` +
-        `and allowable stress ${dto.allowable_stress_mpa} MPa already exists for PipeDimension ID ${pipeDimensionId}`
+          `max working pressure ${dto.max_working_pressure_mpa ?? 'null'} MPa, ` +
+          `and allowable stress ${dto.allowable_stress_mpa} MPa already exists for PipeDimension ID ${pipeDimensionId}`,
       );
     }
 
@@ -51,7 +60,6 @@ export class PipePressureService {
 
     return this.pressureRepo.save(entity);
   }
-
 
   findAll(): Promise<PipePressure[]> {
     return this.pressureRepo.find({ relations: ['pipeDimension'] });
@@ -72,8 +80,11 @@ export class PipePressureService {
     let dimension: PipeDimension = entity.pipeDimension;
 
     if (id) {
-      const newDimension = await this.dimensionRepo.findOne({ where: { id: id } });
-      if (!newDimension) throw new NotFoundException(`PipeDimension #${id} not found`);
+      const newDimension = await this.dimensionRepo.findOne({
+        where: { id: id },
+      });
+      if (!newDimension)
+        throw new NotFoundException(`PipeDimension #${id} not found`);
       dimension = newDimension;
     }
 
@@ -81,8 +92,12 @@ export class PipePressureService {
       where: {
         pipeDimension: { id: dimension.id },
         temperature_c: dto.temperature_c ?? entity.temperature_c ?? IsNull(),
-        max_working_pressure_mpa: dto.max_working_pressure_mpa ?? entity.max_working_pressure_mpa ?? IsNull(),
-        allowable_stress_mpa: dto.allowable_stress_mpa ?? entity.allowable_stress_mpa,
+        max_working_pressure_mpa:
+          dto.max_working_pressure_mpa ??
+          entity.max_working_pressure_mpa ??
+          IsNull(),
+        allowable_stress_mpa:
+          dto.allowable_stress_mpa ?? entity.allowable_stress_mpa,
       },
       relations: ['pipeDimension'],
     });
@@ -90,9 +105,9 @@ export class PipePressureService {
     if (exists && exists.id !== id) {
       throw new BadRequestException(
         `PipePressure with temperature ${dto.temperature_c ?? entity.temperature_c ?? 'null'} °C, ` +
-        `max working pressure ${dto.max_working_pressure_mpa ?? entity.max_working_pressure_mpa ?? 'null'} MPa, ` +
-        `and allowable stress ${dto.allowable_stress_mpa ?? entity.allowable_stress_mpa} MPa ` +
-        `already exists for PipeDimension ID ${dimension.id}`
+          `max working pressure ${dto.max_working_pressure_mpa ?? entity.max_working_pressure_mpa ?? 'null'} MPa, ` +
+          `and allowable stress ${dto.allowable_stress_mpa ?? entity.allowable_stress_mpa} MPa ` +
+          `already exists for PipeDimension ID ${dimension.id}`,
       );
     }
 

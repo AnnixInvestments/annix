@@ -67,10 +67,22 @@ export class SaMine {
   })
   operationalStatus: OperationalStatus;
 
-  @Column({ name: 'latitude', type: 'decimal', precision: 10, scale: 7, nullable: true })
+  @Column({
+    name: 'latitude',
+    type: 'decimal',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
   latitude: number | null;
 
-  @Column({ name: 'longitude', type: 'decimal', precision: 10, scale: 7, nullable: true })
+  @Column({
+    name: 'longitude',
+    type: 'decimal',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
   longitude: number | null;
 
   @CreateDateColumn({ name: 'created_at' })

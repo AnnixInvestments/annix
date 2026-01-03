@@ -33,10 +33,20 @@ export class CustomerPreferredSupplier {
   supplierProfileId: number | null;
 
   // For suppliers not yet in system
-  @Column({ name: 'supplier_name', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'supplier_name',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   supplierName: string | null;
 
-  @Column({ name: 'supplier_email', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'supplier_email',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   supplierEmail: string | null;
 
   @ManyToOne(() => CustomerProfile)

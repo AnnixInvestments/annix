@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  Unique,
+} from 'typeorm';
 import { CoatingStandard } from './coating-standard.entity';
 import { CoatingSpecification } from './coating-specification.entity';
 
@@ -8,7 +16,9 @@ export class CoatingEnvironment {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => CoatingStandard, (standard) => standard.environments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => CoatingStandard, (standard) => standard.environments, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'standard_id' })
   standard: CoatingStandard;
 

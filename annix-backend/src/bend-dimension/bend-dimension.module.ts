@@ -5,9 +5,9 @@ import { BendDimensionController } from './bend-dimension.controller';
 import { BendDimensionService } from './bend-dimension.service';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([NbNpsLookup])], 
-    controllers: [BendDimensionController],
-    providers: [BendDimensionService],
-    exports: [BendDimensionService],
+  imports: [TypeOrmModule.forFeature([NbNpsLookup])],
+  controllers: [BendDimensionController],
+  providers: [BendDimensionService],
+  exports: [BendDimensionService],
 })
 export class BendDimensionModule {}

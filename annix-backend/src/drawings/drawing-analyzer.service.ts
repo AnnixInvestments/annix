@@ -50,34 +50,78 @@ export class DrawingAnalyzerService {
     /(?:carbon\s*steel|stainless\s*steel|cs|ss|duplex|alloy)/gi,
   ];
 
-  private readonly componentTypePatterns: { type: string; patterns: RegExp[] }[] = [
+  private readonly componentTypePatterns: {
+    type: string;
+    patterns: RegExp[];
+  }[] = [
     {
       type: 'straight_pipe',
       patterns: [/pipe/i, /tube/i, /straight\s*pipe/i, /line\s*pipe/i],
     },
     {
       type: 'bend',
-      patterns: [/bend/i, /elbow/i, /\d+°?\s*bend/i, /\d+°?\s*elbow/i, /45°/i, /90°/i, /180°/i],
+      patterns: [
+        /bend/i,
+        /elbow/i,
+        /\d+°?\s*bend/i,
+        /\d+°?\s*elbow/i,
+        /45°/i,
+        /90°/i,
+        /180°/i,
+      ],
     },
     {
       type: 'fitting',
       patterns: [
-        /tee/i, /reducer/i, /cap/i, /nipple/i, /coupling/i,
-        /weldolet/i, /sockolet/i, /thredolet/i, /fitting/i,
-        /branch/i, /lateral/i, /cross/i,
+        /tee/i,
+        /reducer/i,
+        /cap/i,
+        /nipple/i,
+        /coupling/i,
+        /weldolet/i,
+        /sockolet/i,
+        /thredolet/i,
+        /fitting/i,
+        /branch/i,
+        /lateral/i,
+        /cross/i,
       ],
     },
     {
       type: 'flange',
-      patterns: [/flange/i, /wn\s*flange/i, /so\s*flange/i, /blind/i, /spectacle/i, /lap\s*joint/i],
+      patterns: [
+        /flange/i,
+        /wn\s*flange/i,
+        /so\s*flange/i,
+        /blind/i,
+        /spectacle/i,
+        /lap\s*joint/i,
+      ],
     },
     {
       type: 'valve',
-      patterns: [/valve/i, /gate/i, /ball\s*valve/i, /check/i, /butterfly/i, /globe/i, /needle/i, /plug/i],
+      patterns: [
+        /valve/i,
+        /gate/i,
+        /ball\s*valve/i,
+        /check/i,
+        /butterfly/i,
+        /globe/i,
+        /needle/i,
+        /plug/i,
+      ],
     },
     {
       type: 'support',
-      patterns: [/support/i, /hanger/i, /bracket/i, /clamp/i, /anchor/i, /guide/i, /shoe/i],
+      patterns: [
+        /support/i,
+        /hanger/i,
+        /bracket/i,
+        /clamp/i,
+        /anchor/i,
+        /guide/i,
+        /shoe/i,
+      ],
     },
   ];
 
@@ -103,7 +147,7 @@ export class DrawingAnalyzerService {
       if (!pdfData.text || pdfData.text.trim().length < 50) {
         result.warnings.push(
           'PDF contains minimal or no extractable text. This may be a scanned document or image-based PDF. ' +
-          'Consider uploading a text-based PDF or manually entering the component data.'
+            'Consider uploading a text-based PDF or manually entering the component data.',
         );
       }
 
@@ -120,34 +164,43 @@ export class DrawingAnalyzerService {
       if (components.length === 0) {
         result.warnings.push(
           'No components could be automatically extracted. ' +
-          'This may be due to non-standard formatting or a complex drawing layout.'
+            'This may be due to non-standard formatting or a complex drawing layout.',
         );
       } else {
         result.success = true;
       }
 
       // Add confidence warning
-      const lowConfidenceCount = components.filter(c => c.confidence === 'low').length;
+      const lowConfidenceCount = components.filter(
+        (c) => c.confidence === 'low',
+      ).length;
       if (lowConfidenceCount > components.length / 2) {
         result.warnings.push(
           `${lowConfidenceCount} of ${components.length} extracted components have low confidence. ` +
-          'Please review and verify the extracted data before creating RFQ items.'
+            'Please review and verify the extracted data before creating RFQ items.',
         );
       }
-
     } catch (error) {
       result.errors.push(`PDF parsing failed: ${error.message}`);
       result.warnings.push(
-        'Unable to parse PDF. The file may be corrupted, password-protected, or in an unsupported format.'
+        'Unable to parse PDF. The file may be corrupted, password-protected, or in an unsupported format.',
       );
     }
 
     return result;
   }
 
-  private extractHeaderInfo(text: string): { title?: string; drawingNumber?: string; projectName?: string } {
-    const result: { title?: string; drawingNumber?: string; projectName?: string } = {};
-    const lines = text.split('\n').filter(l => l.trim());
+  private extractHeaderInfo(text: string): {
+    title?: string;
+    drawingNumber?: string;
+    projectName?: string;
+  } {
+    const result: {
+      title?: string;
+      drawingNumber?: string;
+      projectName?: string;
+    } = {};
+    const lines = text.split('\n').filter((l) => l.trim());
 
     // Look for drawing number patterns
     const drawingNumberPatterns = [
@@ -190,7 +243,7 @@ export class DrawingAnalyzerService {
 
   private extractComponents(text: string): ExtractedComponent[] {
     const components: ExtractedComponent[] = [];
-    const lines = text.split('\n').filter(l => l.trim());
+    const lines = text.split('\n').filter((l) => l.trim());
 
     // Try to find a parts list or BOM section
     const bomStartPatterns = [
@@ -198,7 +251,7 @@ export class DrawingAnalyzerService {
     ];
 
     let inBomSection = false;
-    let tableHeaderFound = false;
+    const tableHeaderFound = false;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -222,9 +275,16 @@ export class DrawingAnalyzerService {
     return this.deduplicateComponents(components);
   }
 
-  private parseComponentLine(line: string, allLines: string[], lineIndex: number): ExtractedComponent | null {
+  private parseComponentLine(
+    line: string,
+    allLines: string[],
+    lineIndex: number,
+  ): ExtractedComponent | null {
     // Skip very short lines or lines that look like headers
-    if (line.length < 5 || /^(item|qty|description|material|size|spec)$/i.test(line)) {
+    if (
+      line.length < 5 ||
+      /^(item|qty|description|material|size|spec)$/i.test(line)
+    ) {
       return null;
     }
 
@@ -280,7 +340,8 @@ export class DrawingAnalyzerService {
     let confidenceScore = 0;
     if (component.itemNumber) confidenceScore++;
     if (component.quantity) confidenceScore++;
-    if (component.dimensions && Object.keys(component.dimensions).length > 0) confidenceScore++;
+    if (component.dimensions && Object.keys(component.dimensions).length > 0)
+      confidenceScore++;
     if (component.materialType) confidenceScore++;
 
     if (confidenceScore >= 3) {
@@ -391,14 +452,20 @@ export class DrawingAnalyzerService {
     }
   }
 
-  private deduplicateComponents(components: ExtractedComponent[]): ExtractedComponent[] {
+  private deduplicateComponents(
+    components: ExtractedComponent[],
+  ): ExtractedComponent[] {
     const seen = new Map<string, ExtractedComponent>();
 
     for (const comp of components) {
       const key = comp.description.toLowerCase().replace(/\s+/g, ' ').trim();
       const existing = seen.get(key);
 
-      if (!existing || this.getConfidenceValue(comp.confidence) > this.getConfidenceValue(existing.confidence)) {
+      if (
+        !existing ||
+        this.getConfidenceValue(comp.confidence) >
+          this.getConfidenceValue(existing.confidence)
+      ) {
         seen.set(key, comp);
       }
     }
@@ -408,9 +475,12 @@ export class DrawingAnalyzerService {
 
   private getConfidenceValue(confidence: 'high' | 'medium' | 'low'): number {
     switch (confidence) {
-      case 'high': return 3;
-      case 'medium': return 2;
-      case 'low': return 1;
+      case 'high':
+        return 3;
+      case 'medium':
+        return 2;
+      case 'low':
+        return 1;
     }
   }
 

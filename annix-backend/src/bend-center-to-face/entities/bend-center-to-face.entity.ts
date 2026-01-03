@@ -9,13 +9,13 @@ export class BendCenterToFace {
   @Column({
     type: 'varchar',
     length: 10,
-    comment: 'Bend type: 1.5D, 2D, 3D, or 5D'
+    comment: 'Bend type: 1.5D, 2D, 3D, or 5D',
   })
   bendType: string;
 
   @Column({
     type: 'integer',
-    comment: 'Nominal bore in millimeters'
+    comment: 'Nominal bore in millimeters',
   })
   nominalBoreMm: number;
 
@@ -23,7 +23,7 @@ export class BendCenterToFace {
     type: 'decimal',
     precision: 6,
     scale: 2,
-    comment: 'Bend angle in degrees'
+    comment: 'Bend angle in degrees',
   })
   degrees: number;
 
@@ -31,7 +31,7 @@ export class BendCenterToFace {
     type: 'decimal',
     precision: 8,
     scale: 2,
-    comment: 'Center to face dimension in millimeters'
+    comment: 'Center to face dimension in millimeters',
   })
   centerToFaceMm: number;
 
@@ -39,7 +39,7 @@ export class BendCenterToFace {
     type: 'decimal',
     precision: 8,
     scale: 2,
-    comment: 'Radius for the bend type in millimeters'
+    comment: 'Radius for the bend type in millimeters',
   })
   radiusMm: number;
 
@@ -47,7 +47,7 @@ export class BendCenterToFace {
     type: 'decimal',
     precision: 6,
     scale: 4,
-    comment: 'Radian value for the angle'
+    comment: 'Radian value for the angle',
   })
   radians: number;
 

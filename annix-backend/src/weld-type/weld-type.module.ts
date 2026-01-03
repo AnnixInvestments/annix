@@ -5,7 +5,7 @@ import { WeldType } from './entities/weld-type.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([WeldType])], 
+  imports: [TypeOrmModule.forFeature([WeldType])],
   controllers: [WeldTypeController],
   providers: [WeldTypeService],
   exports: [WeldTypeService],
