@@ -323,16 +323,18 @@ export const useRfqForm = () => {
   const addFittingEntry = useCallback((description?: string) => {
     // Inherit steel specification from global specs if available
     const steelSpecId = rfqData.globalSpecs?.steelSpecificationId || 2;
+    // Derive fitting standard from steel spec: ID 8 = SABS 719 ERW
+    const fittingStandard = steelSpecId === 8 ? 'SABS719' : 'SABS62';
     const newEntry: FittingEntry = {
       id: Date.now().toString(),
       itemType: 'fitting',
       description: description || 'New Fitting Item',
       specs: {
-        fittingStandard: 'SABS62',
+        fittingStandard: fittingStandard as 'SABS62' | 'SABS719',
         fittingType: undefined, // Default to "Select Fitting Type"
         nominalDiameterMm: undefined, // Default to "Select NB"
-        pipeLengthAMm: 1000,
-        pipeLengthBMm: 1000,
+        pipeLengthAMm: undefined, // Will be auto-filled from API
+        pipeLengthBMm: undefined, // Will be auto-filled from API
         quantityValue: 1,
         quantityType: 'number_of_items',
         workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
@@ -348,7 +350,7 @@ export const useRfqForm = () => {
     }));
 
     return newEntry.id;
-  }, []);
+  }, [rfqData.globalSpecs?.steelSpecificationId, rfqData.globalSpecs?.workingPressureBar, rfqData.globalSpecs?.workingTemperatureC]);
 
   const addItem = useCallback((itemType: 'straight_pipe' | 'bend' | 'fitting', description?: string) => {
     if (itemType === 'straight_pipe') {
