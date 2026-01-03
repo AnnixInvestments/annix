@@ -10133,9 +10133,49 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </label>
                       <select
                         value={entry.specs?.fittingType || ''}
-                        onChange={(e) => {
+                        onChange={async (e) => {
+                          const fittingType = e.target.value;
+                          const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                          const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+
+                          // Fetch fitting dimensions for pipe lengths if NB is selected
+                          let pipeLengthA = entry.specs?.pipeLengthAMm;
+                          let pipeLengthB = entry.specs?.pipeLengthBMm;
+                          let pipeLengthAMmAuto = entry.specs?.pipeLengthAMmAuto;
+                          let pipeLengthBMmAuto = entry.specs?.pipeLengthBMmAuto;
+
+                          if (fittingType && entry.specs?.nominalDiameterMm) {
+                            try {
+                              const dims = await api.getFittingDimensions(
+                                effectiveStandard as 'SABS62' | 'SABS719',
+                                fittingType,
+                                entry.specs.nominalDiameterMm,
+                                entry.specs?.angleRange
+                              );
+                              if (dims) {
+                                if (dims.dimensionAMm && !entry.specs?.pipeLengthAOverride) {
+                                  pipeLengthA = dims.dimensionAMm;
+                                  pipeLengthAMmAuto = dims.dimensionAMm;
+                                }
+                                if (dims.dimensionBMm && !entry.specs?.pipeLengthBOverride) {
+                                  pipeLengthB = dims.dimensionBMm;
+                                  pipeLengthBMmAuto = dims.dimensionBMm;
+                                }
+                              }
+                            } catch (err) {
+                              console.log('Could not fetch fitting dimensions:', err);
+                            }
+                          }
+
                           onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, fittingType: e.target.value }
+                            specs: {
+                              ...entry.specs,
+                              fittingType,
+                              pipeLengthAMm: pipeLengthA,
+                              pipeLengthBMm: pipeLengthB,
+                              pipeLengthAMmAuto,
+                              pipeLengthBMmAuto
+                            }
                           });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
@@ -10184,7 +10224,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </label>
                       <select
                         value={entry.specs?.nominalDiameterMm || ''}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const nominalDiameter = Number(e.target.value);
 
                           // Get effective fitting standard (ID 8 = SABS 719)
@@ -10214,12 +10254,45 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             }
                           }
 
+                          // Fetch fitting dimensions for pipe lengths
+                          let pipeLengthA = entry.specs?.pipeLengthAMm;
+                          let pipeLengthB = entry.specs?.pipeLengthBMm;
+                          let pipeLengthAMmAuto = entry.specs?.pipeLengthAMmAuto;
+                          let pipeLengthBMmAuto = entry.specs?.pipeLengthBMmAuto;
+
+                          if (entry.specs?.fittingType && nominalDiameter) {
+                            try {
+                              const dims = await api.getFittingDimensions(
+                                effectiveStandard as 'SABS62' | 'SABS719',
+                                entry.specs.fittingType,
+                                nominalDiameter,
+                                entry.specs?.angleRange
+                              );
+                              if (dims) {
+                                if (dims.dimensionAMm && !entry.specs?.pipeLengthAOverride) {
+                                  pipeLengthA = dims.dimensionAMm;
+                                  pipeLengthAMmAuto = dims.dimensionAMm;
+                                }
+                                if (dims.dimensionBMm && !entry.specs?.pipeLengthBOverride) {
+                                  pipeLengthB = dims.dimensionBMm;
+                                  pipeLengthBMmAuto = dims.dimensionBMm;
+                                }
+                              }
+                            } catch (err) {
+                              console.log('Could not fetch fitting dimensions:', err);
+                            }
+                          }
+
                           onUpdateEntry(entry.id, {
                             specs: {
                               ...entry.specs,
                               nominalDiameterMm: nominalDiameter,
                               scheduleNumber: matchedSchedule,
-                              wallThicknessMm: matchedWT
+                              wallThicknessMm: matchedWT,
+                              pipeLengthAMm: pipeLengthA,
+                              pipeLengthBMm: pipeLengthB,
+                              pipeLengthAMmAuto: pipeLengthAMmAuto,
+                              pipeLengthBMmAuto: pipeLengthBMmAuto
                             }
                           });
                         }}
@@ -10363,9 +10436,49 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         </label>
                         <select
                           value={entry.specs?.angleRange || ''}
-                          onChange={(e) => {
+                          onChange={async (e) => {
+                            const angleRange = e.target.value;
+                            const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                            const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+
+                            // Fetch fitting dimensions for pipe lengths with new angle
+                            let pipeLengthA = entry.specs?.pipeLengthAMm;
+                            let pipeLengthB = entry.specs?.pipeLengthBMm;
+                            let pipeLengthAMmAuto = entry.specs?.pipeLengthAMmAuto;
+                            let pipeLengthBMmAuto = entry.specs?.pipeLengthBMmAuto;
+
+                            if (entry.specs?.fittingType && entry.specs?.nominalDiameterMm && angleRange) {
+                              try {
+                                const dims = await api.getFittingDimensions(
+                                  effectiveStandard as 'SABS62' | 'SABS719',
+                                  entry.specs.fittingType,
+                                  entry.specs.nominalDiameterMm,
+                                  angleRange
+                                );
+                                if (dims) {
+                                  if (dims.dimensionAMm && !entry.specs?.pipeLengthAOverride) {
+                                    pipeLengthA = dims.dimensionAMm;
+                                    pipeLengthAMmAuto = dims.dimensionAMm;
+                                  }
+                                  if (dims.dimensionBMm && !entry.specs?.pipeLengthBOverride) {
+                                    pipeLengthB = dims.dimensionBMm;
+                                    pipeLengthBMmAuto = dims.dimensionBMm;
+                                  }
+                                }
+                              } catch (err) {
+                                console.log('Could not fetch fitting dimensions:', err);
+                              }
+                            }
+
                             onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, angleRange: e.target.value }
+                              specs: {
+                                ...entry.specs,
+                                angleRange,
+                                pipeLengthAMm: pipeLengthA,
+                                pipeLengthBMm: pipeLengthB,
+                                pipeLengthAMmAuto,
+                                pipeLengthBMmAuto
+                              }
                             });
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
@@ -10425,43 +10538,123 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       📐 Pipe Lengths & Configuration
                     </h4>
 
-                    {/* Pipe Length A */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Pipe Length A (mm) *
-                      </label>
-                      <input
-                        type="number"
-                        value={entry.specs?.pipeLengthAMm || ''}
-                        onChange={(e) => {
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, pipeLengthAMm: Number(e.target.value) }
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                        placeholder="e.g., 1000"
-                        min="0"
-                      />
-                    </div>
+                    {/* Pipe Lengths - Auto-filled from fitting dimensions */}
+                    {(() => {
+                      const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                      const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                      const fittingType = entry.specs?.fittingType;
+                      const nb = entry.specs?.nominalDiameterMm;
+                      const hasRequiredData = fittingType && nb;
+                      const isAutoA = entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
+                      const isAutoB = entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
 
-                    {/* Pipe Length B */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Pipe Length B (mm) *
-                      </label>
-                      <input
-                        type="number"
-                        value={entry.specs?.pipeLengthBMm || ''}
-                        onChange={(e) => {
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, pipeLengthBMm: Number(e.target.value) }
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                        placeholder="e.g., 1000"
-                        min="0"
-                      />
-                    </div>
+                      // Function to fetch and set dimensions
+                      const fetchDimensions = async () => {
+                        if (!fittingType || !nb) return;
+                        try {
+                          const dims = await api.getFittingDimensions(effectiveStandard as 'SABS62' | 'SABS719', fittingType, nb, entry.specs?.angleRange);
+                          if (dims) {
+                            const updates: any = { specs: { ...entry.specs } };
+                            if (dims.dimensionAMm && !entry.specs?.pipeLengthAOverride) {
+                              updates.specs.pipeLengthAMm = dims.dimensionAMm;
+                              updates.specs.pipeLengthAMmAuto = dims.dimensionAMm;
+                            }
+                            if (dims.dimensionBMm && !entry.specs?.pipeLengthBOverride) {
+                              updates.specs.pipeLengthBMm = dims.dimensionBMm;
+                              updates.specs.pipeLengthBMmAuto = dims.dimensionBMm;
+                            }
+                            onUpdateEntry(entry.id, updates);
+                          }
+                        } catch (err) {
+                          console.log('Could not fetch fitting dimensions:', err);
+                        }
+                      };
+
+                      return (
+                        <>
+                          {/* Pipe Length A */}
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="block text-xs font-semibold text-gray-900">
+                                Pipe Length A (mm) *
+                                {isAutoA && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
+                                {entry.specs?.pipeLengthAOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
+                              </label>
+                              {hasRequiredData && !entry.specs?.pipeLengthAMmAuto && (
+                                <button
+                                  type="button"
+                                  onClick={fetchDimensions}
+                                  className="text-xs text-blue-600 hover:text-blue-800"
+                                >
+                                  Fetch
+                                </button>
+                              )}
+                              {entry.specs?.pipeLengthAOverride && entry.specs?.pipeLengthAMmAuto && (
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdateEntry(entry.id, {
+                                    specs: { ...entry.specs, pipeLengthAMm: entry.specs?.pipeLengthAMmAuto, pipeLengthAOverride: false }
+                                  })}
+                                  className="text-xs text-gray-500 hover:text-gray-700"
+                                >
+                                  Reset
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              type="number"
+                              value={entry.specs?.pipeLengthAMm || ''}
+                              onChange={(e) => {
+                                const newValue = Number(e.target.value);
+                                const isOverride = entry.specs?.pipeLengthAMmAuto && newValue !== entry.specs?.pipeLengthAMmAuto;
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, pipeLengthAMm: newValue, pipeLengthAOverride: isOverride }
+                                });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                              placeholder="e.g., 1000"
+                              min="0"
+                            />
+                          </div>
+
+                          {/* Pipe Length B */}
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="block text-xs font-semibold text-gray-900">
+                                Pipe Length B (mm) *
+                                {isAutoB && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
+                                {entry.specs?.pipeLengthBOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
+                              </label>
+                              {entry.specs?.pipeLengthBOverride && entry.specs?.pipeLengthBMmAuto && (
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdateEntry(entry.id, {
+                                    specs: { ...entry.specs, pipeLengthBMm: entry.specs?.pipeLengthBMmAuto, pipeLengthBOverride: false }
+                                  })}
+                                  className="text-xs text-gray-500 hover:text-gray-700"
+                                >
+                                  Reset
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              type="number"
+                              value={entry.specs?.pipeLengthBMm || ''}
+                              onChange={(e) => {
+                                const newValue = Number(e.target.value);
+                                const isOverride = entry.specs?.pipeLengthBMmAuto && newValue !== entry.specs?.pipeLengthBMmAuto;
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, pipeLengthBMm: newValue, pipeLengthBOverride: isOverride }
+                                });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                              placeholder="e.g., 1000"
+                              min="0"
+                            />
+                          </div>
+                        </>
+                      );
+                    })()}
 
                     {/* Stub/Lateral Location */}
                     <div>
@@ -10480,230 +10673,123 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         placeholder="e.g., Center, 500mm from end"
                       />
                     </div>
-                  </div>
-                </div>
 
+                    {/* Flange Specifications - Uses Global Specs with Override Option */}
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <h5 className="text-xs font-bold text-orange-900">
+                          Flanges
+                          {entry.hasFlangeOverride ? (
+                            <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>
+                          ) : globalSpecs?.flangeStandardId ? (
+                            <span className="text-green-600 text-xs ml-1 font-normal">(Global)</span>
+                          ) : (
+                            <span className="text-orange-600 text-xs ml-1 font-normal">(Not Set)</span>
+                          )}
+                        </h5>
+                        {globalSpecs?.flangeStandardId && (
+                          <label className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={entry.hasFlangeOverride || false}
+                              onChange={(e) => {
+                                const override = e.target.checked;
+                                onUpdateEntry(entry.id, {
+                                  hasFlangeOverride: override,
+                                  flangeOverrideConfirmed: false,
+                                  specs: override ? {
+                                    ...entry.specs,
+                                    flangeStandardId: entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId,
+                                    flangePressureClassId: entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId
+                                  } : {
+                                    ...entry.specs,
+                                    flangeStandardId: undefined,
+                                    flangePressureClassId: undefined
+                                  }
+                                });
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="font-medium text-xs">Override</span>
+                          </label>
+                        )}
+                      </div>
 
-                {/* Flange Specifications - Uses Global Specs with Override Option */}
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <h5 className="text-sm font-bold text-orange-900">
-                      Flanges
-                      {entry.hasFlangeOverride ? (
-                        <span className="text-blue-600 text-xs ml-2 font-normal">(Override Active)</span>
-                      ) : globalSpecs?.flangeStandardId ? (
-                        <span className="text-green-600 text-xs ml-2 font-normal">(From Global Specs)</span>
-                      ) : (
-                        <span className="text-orange-600 text-xs ml-2 font-normal">(Not Set)</span>
-                      )}
-                    </h5>
-                    {globalSpecs?.flangeStandardId && (
-                      <label className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer">
-                        <span className="text-gray-500 italic">(click to change)</span>
-                        <input
-                          type="checkbox"
-                          checked={entry.hasFlangeOverride || false}
-                          onChange={(e) => {
-                            const override = e.target.checked;
-                            onUpdateEntry(entry.id, {
-                              hasFlangeOverride: override,
-                              flangeOverrideConfirmed: false,
-                              specs: override ? {
-                                ...entry.specs,
-                                flangeStandardId: entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId,
-                                flangePressureClassId: entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId
-                              } : {
-                                ...entry.specs,
-                                flangeStandardId: undefined,
-                                flangePressureClassId: undefined
+                      {globalSpecs?.flangeStandardId && !entry.hasFlangeOverride ? (
+                        <div className="bg-green-50 p-2 rounded-md">
+                          <p className="text-green-800 text-xs font-semibold">
+                            {(() => {
+                              const pressureClass = masterData.pressureClasses?.find(
+                                (pc: any) => pc.id === globalSpecs.flangePressureClassId
+                              );
+                              const flangeStandard = masterData.flangeStandards?.find(
+                                (fs: any) => fs.id === globalSpecs.flangeStandardId
+                              );
+                              if (pressureClass && flangeStandard) {
+                                return `${flangeStandard.code} / ${pressureClass.designation}`;
                               }
-                            });
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="font-medium">Override</span>
-                      </label>
-                    )}
-                  </div>
-
-                  {/* Warning if deviating from recommended pressure class */}
-                  {(() => {
-                    const currentClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
-                    const recommendedClassId = globalSpecs?.flangePressureClassId;
-                    const isOverride = entry.hasFlangeOverride && currentClassId && recommendedClassId && currentClassId !== recommendedClassId;
-
-                    if (isOverride) {
-                      const currentClass = masterData.pressureClasses?.find((p: any) => p.id === currentClassId);
-                      const recommendedClass = masterData.pressureClasses?.find((p: any) => p.id === recommendedClassId);
-                      return (
-                        <div className="bg-red-50 border-2 border-red-400 rounded-lg p-2 mb-3">
-                          <div className="flex items-start gap-2">
-                            <span className="text-red-600 text-base">⚠️</span>
-                            <div className="flex-1">
-                              <p className="text-xs font-bold text-red-900">Pressure Rating Override</p>
-                              <p className="text-xs text-red-700 mt-0.5">
-                                Selected <span className="font-semibold">{currentClass?.designation}</span> instead of recommended{' '}
-                                <span className="font-semibold">{recommendedClass?.designation}</span>
-                              </p>
-                            </div>
-                          </div>
+                              return 'Using global specs';
+                            })()}
+                          </p>
                         </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  {globalSpecs?.flangeStandardId && !entry.hasFlangeOverride ? (
-                    <div className="bg-green-50 p-3 rounded-md">
-                      <p className="text-green-800 text-xs mb-2">
-                        Using global flange standard from specifications page
-                      </p>
-                      {globalSpecs?.flangePressureClassId && (
-                        <div className="bg-blue-50 p-2 rounded border-l-2 border-blue-300">
-                          <p className="text-blue-800 text-xs font-semibold">
-                            Flange Spec:
-                            <span className="ml-1">
-                              {(() => {
-                                const pressureClass = masterData.pressureClasses?.find(
-                                  (pc: any) => pc.id === globalSpecs.flangePressureClassId
-                                );
-                                const flangeStandard = masterData.flangeStandards?.find(
-                                  (fs: any) => fs.id === globalSpecs.flangeStandardId
-                                );
-                                if (pressureClass && flangeStandard) {
-                                  return `${flangeStandard.code}/${pressureClass.designation}`;
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <select
+                              value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
+                              onChange={async (e) => {
+                                const standardId = parseInt(e.target.value) || undefined;
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined }
+                                });
+                                if (standardId) {
+                                  getFilteredPressureClasses(standardId);
                                 }
-                                return 'N/A';
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                            >
+                              <option value="">Standard...</option>
+                              {masterData.flangeStandards?.map((standard: any) => (
+                                <option key={standard.id} value={standard.id}>
+                                  {standard.code}
+                                </option>
+                              ))}
+                            </select>
+                            <select
+                              value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
+                              onChange={(e) => onUpdateEntry(entry.id, {
+                                specs: {
+                                  ...entry.specs,
+                                  flangePressureClassId: parseInt(e.target.value) || undefined
+                                }
+                              })}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                            >
+                              <option value="">Class...</option>
+                              {(() => {
+                                const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                                const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
+                                return filtered.map((pressureClass: any) => (
+                                  <option key={pressureClass.id} value={pressureClass.id}>
+                                    {pressureClass.designation}
+                                  </option>
+                                ));
                               })()}
-                            </span>
-                          </p>
-                          <p className="text-blue-600 text-xs mt-1">
-                            For {globalSpecs?.workingPressureBar || 'N/A'} bar working pressure
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {entry.flangeOverrideConfirmed ? (
-                        <div className="bg-blue-50 border-2 border-blue-400 p-3 rounded-md">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-bold text-blue-900 flex items-center gap-1">
-                              <span className="text-green-600">✓</span> Item-Specific Flange Confirmed
-                            </span>
+                            </select>
+                          </div>
+                          {entry.hasFlangeOverride && entry.specs?.flangeStandardId && entry.specs?.flangePressureClassId && (
                             <button
                               type="button"
-                              onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: false })}
-                              className="px-3 py-1 text-xs font-medium text-blue-700 bg-white border border-blue-300 rounded hover:bg-blue-50 transition-colors"
+                              onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: true })}
+                              className="w-full px-2 py-1 text-xs font-semibold text-white bg-green-600 rounded hover:bg-green-700"
                             >
-                              Edit
+                              ✓ Confirm
                             </button>
-                          </div>
-                          <div className="bg-white p-2 rounded border border-blue-200">
-                            <p className="text-sm font-bold text-blue-800">
-                              {(() => {
-                                const flangeStandard = masterData.flangeStandards?.find(
-                                  (fs: any) => fs.id === entry.specs?.flangeStandardId
-                                );
-                                const pressureClass = masterData.pressureClasses?.find(
-                                  (pc: any) => pc.id === entry.specs?.flangePressureClassId
-                                );
-                                if (flangeStandard && pressureClass) {
-                                  return `${flangeStandard.code} / ${pressureClass.designation}`;
-                                }
-                                return 'N/A';
-                              })()}
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-900 mb-1">
-                                Flange Standard
-                              </label>
-                              <select
-                                value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
-                                onChange={async (e) => {
-                                  const standardId = parseInt(e.target.value) || undefined;
-                                  onUpdateEntry(entry.id, {
-                                    specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined }
-                                  });
-                                  if (standardId) {
-                                    getFilteredPressureClasses(standardId);
-                                  }
-                                }}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
-                              >
-                                <option value="">Select Standard</option>
-                                {masterData.flangeStandards?.map((standard: any) => (
-                                  <option key={standard.id} value={standard.id}>
-                                    {standard.code}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-900 mb-1">
-                                Pressure Class
-                              </label>
-                              <select
-                                value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
-                                onChange={(e) => onUpdateEntry(entry.id, {
-                                  specs: {
-                                    ...entry.specs,
-                                    flangePressureClassId: parseInt(e.target.value) || undefined
-                                  }
-                                })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
-                              >
-                                <option value="">Select Class</option>
-                                {(() => {
-                                  const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                                  const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
-                                  return filtered.map((pressureClass: any) => (
-                                    <option key={pressureClass.id} value={pressureClass.id}>
-                                      {pressureClass.designation}
-                                    </option>
-                                  ));
-                                })()}
-                              </select>
-                            </div>
-                          </div>
-
-                          {entry.hasFlangeOverride && entry.specs?.flangeStandardId && entry.specs?.flangePressureClassId && (
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: true })}
-                                className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-green-600 rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
-                              >
-                                <span>✓</span> Confirm Override
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  onUpdateEntry(entry.id, {
-                                    hasFlangeOverride: false,
-                                    flangeOverrideConfirmed: false,
-                                    specs: {
-                                      ...entry.specs,
-                                      flangeStandardId: undefined,
-                                      flangePressureClassId: undefined
-                                    }
-                                  });
-                                }}
-                                className="px-3 py-2 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            </div>
                           )}
-                        </>
+                        </div>
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Operating Conditions - Hidden: Uses global specs for working pressure/temp */}
