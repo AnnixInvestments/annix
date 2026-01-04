@@ -10254,25 +10254,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       Fitting Specifications
                     </h4>
 
-                    {/* Steel Specification Display - inherited from Global */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Steel Specification
-                        <span className="text-green-600 text-xs ml-2 font-normal">(From Global)</span>
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">
-                          {(() => {
-                            const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                            if (!steelSpecId) return 'Not set - please set on Page 2';
-                            const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
-                            return steelSpec?.steelSpecName || `ID: ${steelSpecId}`;
-                          })()}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Fitting Standard - Auto from Global Steel Spec (ID 8 = SABS 719) */}
+                    {/* Fitting Standard - Auto from Global Steel Spec (ID 8 = SABS 719), can be overridden */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Fitting Standard *
@@ -13185,8 +13167,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <td className="py-2 px-2 text-right text-gray-700">{formatWeight(weightPerItem)}</td>
                         <td className="py-2 px-2 text-right font-semibold text-blue-900">{formatWeight(totalWeight)}</td>
                       </tr>
-                      {/* BNW Line Item - only show if fasteners selected and item has flanges */}
-                      {showBnw && totalFlanges > 0 && (
+                      {/* BNW Line Item - only show if fasteners selected and item has flanges (not for fittings - handled separately) */}
+                      {showBnw && totalFlanges > 0 && entry.itemType !== 'fitting' && (
                         <tr className="border-b border-orange-100 bg-orange-50/50 hover:bg-orange-100/50">
                           <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                           <td className="py-2 px-2 text-orange-700 text-xs">
@@ -13204,8 +13186,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwWeightPerSet * qty)}</td>
                         </tr>
                       )}
-                      {/* Gasket Line Item - only show if fasteners selected and item has flanges */}
-                      {showBnw && totalFlanges > 0 && globalSpecs?.gasketType && (() => {
+                      {/* Gasket Line Item - only show if fasteners selected and item has flanges (not for fittings - handled separately) */}
+                      {showBnw && totalFlanges > 0 && globalSpecs?.gasketType && entry.itemType !== 'fitting' && (() => {
                         const gasketWeight = getGasketWeight(globalSpecs.gasketType, entry.specs?.nominalBoreMm || 100);
                         const gasketTotalWeight = gasketWeight * qty;
                         return (
@@ -13225,6 +13207,124 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             <td className="py-2 px-2 text-right text-green-700">{gasketWeight.toFixed(2)} kg</td>
                             <td className="py-2 px-2 text-right font-semibold text-green-800">{gasketTotalWeight.toFixed(2)} kg</td>
                           </tr>
+                        );
+                      })()}
+                      {/* Fitting BNW and Gasket Line Items - for tees/laterals with flanges */}
+                      {showBnw && totalFlanges > 0 && entry.itemType === 'fitting' && (() => {
+                        const mainNb = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 100;
+                        const branchNb = entry.specs?.branchNominalDiameterMm || entry.specs?.branchNominalBoreMm || mainNb;
+                        const isEqualTee = mainNb === branchNb;
+                        const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+
+                        // Determine number of main and branch flanges based on end configuration
+                        // F2E = 2 main flanges, F2E_LF/F2E_RF = 2 main, 3X_RF = 2 main + 1 branch, etc.
+                        let mainFlangeCount = 0;
+                        let branchFlangeCount = 0;
+                        if (fittingEndConfig === 'F2E' || fittingEndConfig === 'F2E_LF' || fittingEndConfig === 'F2E_RF') {
+                          mainFlangeCount = 2;
+                        } else if (fittingEndConfig === '3X_RF') {
+                          mainFlangeCount = 2;
+                          branchFlangeCount = 1;
+                        } else if (fittingEndConfig === '2X_RF_FOE') {
+                          mainFlangeCount = 2;
+                          branchFlangeCount = 1;
+                        } else if (fittingEndConfig !== 'PE') {
+                          mainFlangeCount = 1;
+                        }
+
+                        if (mainFlangeCount === 0 && branchFlangeCount === 0) return null;
+
+                        const mainBnwInfo = getBnwSetInfo(mainNb, pressureClass || 'PN16');
+                        const mainBnwWeightPerSet = mainBnwInfo.weightPerHole * mainBnwInfo.holesPerFlange;
+                        const mainGasketWeight = globalSpecs?.gasketType ? getGasketWeight(globalSpecs.gasketType, mainNb) : 0;
+
+                        const branchBnwInfo = branchFlangeCount > 0 ? getBnwSetInfo(branchNb, pressureClass || 'PN16') : null;
+                        const branchBnwWeightPerSet = branchBnwInfo ? branchBnwInfo.weightPerHole * branchBnwInfo.holesPerFlange : 0;
+                        const branchGasketWeight = branchFlangeCount > 0 && globalSpecs?.gasketType ? getGasketWeight(globalSpecs.gasketType, branchNb) : 0;
+
+                        return (
+                          <>
+                            {/* Main NB BNW Sets */}
+                            {mainFlangeCount > 0 && (
+                              <tr className="border-b border-orange-100 bg-orange-50/50 hover:bg-orange-100/50">
+                                <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}</td>
+                                <td className="py-2 px-2 text-orange-700 text-xs">
+                                  {isEqualTee && branchFlangeCount === 0
+                                    ? `${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (${mainFlangeCount} sets) - ${mainNb}NB`
+                                    : `Main: ${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (${mainFlangeCount} ${mainFlangeCount === 1 ? 'set' : 'sets'}) - ${mainNb}NB`}
+                                </td>
+                                <td className="py-2 px-2 text-center text-orange-600">-</td>
+                                {requiredProducts.includes('surface_protection') && (
+                                  <td className="py-2 px-2 text-center text-orange-600">-</td>
+                                )}
+                                {requiredProducts.includes('surface_protection') && (
+                                  <td className="py-2 px-2 text-center text-orange-600">-</td>
+                                )}
+                                <td className="py-2 px-2 text-center font-medium text-orange-800">{mainFlangeCount * qty}</td>
+                                <td className="py-2 px-2 text-right text-orange-700">{formatWeight(mainBnwWeightPerSet)}</td>
+                                <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(mainBnwWeightPerSet * mainFlangeCount * qty)}</td>
+                              </tr>
+                            )}
+                            {/* Branch NB BNW Sets - only if different from main */}
+                            {branchFlangeCount > 0 && (
+                              <tr className="border-b border-purple-100 bg-purple-50/50 hover:bg-purple-100/50">
+                                <td className="py-2 px-2 font-medium text-purple-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}-B</td>
+                                <td className="py-2 px-2 text-purple-700 text-xs">
+                                  Branch: {branchBnwInfo?.boltSize} BNW Set x{branchBnwInfo?.holesPerFlange} ({branchFlangeCount} {branchFlangeCount === 1 ? 'set' : 'sets'}) - {branchNb}NB
+                                </td>
+                                <td className="py-2 px-2 text-center text-purple-600">-</td>
+                                {requiredProducts.includes('surface_protection') && (
+                                  <td className="py-2 px-2 text-center text-purple-600">-</td>
+                                )}
+                                {requiredProducts.includes('surface_protection') && (
+                                  <td className="py-2 px-2 text-center text-purple-600">-</td>
+                                )}
+                                <td className="py-2 px-2 text-center font-medium text-purple-800">{branchFlangeCount * qty}</td>
+                                <td className="py-2 px-2 text-right text-purple-700">{formatWeight(branchBnwWeightPerSet)}</td>
+                                <td className="py-2 px-2 text-right font-semibold text-purple-800">{formatWeight(branchBnwWeightPerSet * branchFlangeCount * qty)}</td>
+                              </tr>
+                            )}
+                            {/* Main NB Gaskets */}
+                            {mainFlangeCount > 0 && globalSpecs?.gasketType && (
+                              <tr className="border-b border-green-100 bg-green-50/50 hover:bg-green-100/50">
+                                <td className="py-2 px-2 font-medium text-green-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}</td>
+                                <td className="py-2 px-2 text-green-700 text-xs">
+                                  {isEqualTee && branchFlangeCount === 0
+                                    ? `${globalSpecs.gasketType} Gasket (${mainFlangeCount} pcs) - ${mainNb}NB`
+                                    : `Main: ${globalSpecs.gasketType} Gasket (${mainFlangeCount} ${mainFlangeCount === 1 ? 'pc' : 'pcs'}) - ${mainNb}NB`}
+                                </td>
+                                <td className="py-2 px-2 text-center text-green-600">-</td>
+                                {requiredProducts.includes('surface_protection') && (
+                                  <td className="py-2 px-2 text-center text-green-600">-</td>
+                                )}
+                                {requiredProducts.includes('surface_protection') && (
+                                  <td className="py-2 px-2 text-center text-green-600">-</td>
+                                )}
+                                <td className="py-2 px-2 text-center font-medium text-green-800">{mainFlangeCount * qty}</td>
+                                <td className="py-2 px-2 text-right text-green-700">{mainGasketWeight.toFixed(2)} kg</td>
+                                <td className="py-2 px-2 text-right font-semibold text-green-800">{(mainGasketWeight * mainFlangeCount * qty).toFixed(2)} kg</td>
+                              </tr>
+                            )}
+                            {/* Branch NB Gaskets - only if different from main */}
+                            {branchFlangeCount > 0 && globalSpecs?.gasketType && (
+                              <tr className="border-b border-teal-100 bg-teal-50/50 hover:bg-teal-100/50">
+                                <td className="py-2 px-2 font-medium text-teal-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}-B</td>
+                                <td className="py-2 px-2 text-teal-700 text-xs">
+                                  Branch: {globalSpecs.gasketType} Gasket ({branchFlangeCount} {branchFlangeCount === 1 ? 'pc' : 'pcs'}) - {branchNb}NB
+                                </td>
+                                <td className="py-2 px-2 text-center text-teal-600">-</td>
+                                {requiredProducts.includes('surface_protection') && (
+                                  <td className="py-2 px-2 text-center text-teal-600">-</td>
+                                )}
+                                {requiredProducts.includes('surface_protection') && (
+                                  <td className="py-2 px-2 text-center text-teal-600">-</td>
+                                )}
+                                <td className="py-2 px-2 text-center font-medium text-teal-800">{branchFlangeCount * qty}</td>
+                                <td className="py-2 px-2 text-right text-teal-700">{branchGasketWeight.toFixed(2)} kg</td>
+                                <td className="py-2 px-2 text-right font-semibold text-teal-800">{(branchGasketWeight * branchFlangeCount * qty).toFixed(2)} kg</td>
+                              </tr>
+                            )}
+                          </>
                         );
                       })()}
                       {/* Stub BNW Line Items - only for bends with stubs */}
