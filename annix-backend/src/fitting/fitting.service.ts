@@ -202,12 +202,18 @@ export class FittingService {
       }
     }
 
-    // Normalize schedule number (convert "Sch40" to "40", etc.)
+    // Normalize schedule number (convert "Sch40", "Sch 10", "Sch 40/STD" to "40", etc.)
     const normalizeScheduleNumber = (scheduleNumber: string): string => {
       if (!scheduleNumber) return scheduleNumber;
-      const schMatch = scheduleNumber.match(/^[Ss]ch(\d+)$/);
+      // Handle formats like "Sch10", "Sch 10", "Sch 40/STD", "Sch 80/XS"
+      const schMatch = scheduleNumber.match(/^[Ss]ch\s*(\d+)(?:\/\w+)?$/);
       if (schMatch) {
         return schMatch[1];
+      }
+      // Handle just the number
+      const numMatch = scheduleNumber.match(/^(\d+)(?:\/\w+)?$/);
+      if (numMatch) {
+        return numMatch[1];
       }
       return scheduleNumber;
     };
@@ -426,9 +432,15 @@ export class FittingService {
       // If tangents are specified, calculate their weight
       const normalizeScheduleNumber = (scheduleNumber: string): string => {
         if (!scheduleNumber) return scheduleNumber;
-        const schMatch = scheduleNumber.match(/^[Ss]ch(\d+)$/);
+        // Handle formats like "Sch10", "Sch 10", "Sch 40/STD", "Sch 80/XS"
+        const schMatch = scheduleNumber.match(/^[Ss]ch\s*(\d+)(?:\/\w+)?$/);
         if (schMatch) {
           return schMatch[1];
+        }
+        // Handle just the number
+        const numMatch = scheduleNumber.match(/^(\d+)(?:\/\w+)?$/);
+        if (numMatch) {
+          return numMatch[1];
         }
         return scheduleNumber;
       };

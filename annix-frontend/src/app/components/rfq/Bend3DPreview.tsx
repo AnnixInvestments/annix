@@ -27,6 +27,7 @@ interface Bend3DPreviewProps {
   stubs?: StubData[];
   numberOfStubs?: number;
   flangeConfig?: string; // PE, FOE, FBE, FOE_LF, FOE_RF, 2X_RF
+  closureLengthMm?: number; // Closure length for L/F configurations
 }
 
 const estimateWallThickness = (nb: number, schedule: string = "40", currentWt: number) => {
@@ -412,21 +413,24 @@ const SegmentedBend = ({
 }: any) => {
   const { segments, welds, miterAngle } = useMemo(() => {
     const numSegs = Math.max(2, numberOfSegments || 2);
-    const numJoints = numSegs - 1;
-    const jointAngle = angleRad / numJoints;
-    const miter = jointAngle / 2;
+    // For n segments, divide the total angle by n to get each segment's arc span
+    const segmentArcAngle = angleRad / numSegs;
+    // Miter angle is half the angle change at each joint
+    const miter = segmentArcAngle / 2;
 
     const segs: Array<{ position: THREE.Vector3; tangentAngle: number; length: number }> = [];
     const weldList: Array<{ position: THREE.Vector3; tangentAngle: number }> = [];
 
     for (let i = 0; i < numSegs; i++) {
-      const startAngle = i * jointAngle;
-      const endAngle = (i + 1) * jointAngle;
+      // Each segment spans from i*segmentArcAngle to (i+1)*segmentArcAngle
+      const startAngle = i * segmentArcAngle;
+      const endAngle = (i + 1) * segmentArcAngle;
       const midAngle = (startAngle + endAngle) / 2;
 
       const posX = bendRadius * Math.cos(midAngle);
       const posY = bendRadius * Math.sin(midAngle);
-      const halfLen = bendRadius * Math.tan(jointAngle / 2);
+      // Segment length based on the arc span
+      const halfLen = bendRadius * Math.tan(segmentArcAngle / 2);
 
       segs.push({
         position: new THREE.Vector3(posX, posY, 0),
@@ -434,8 +438,9 @@ const SegmentedBend = ({
         length: halfLen * 2
       });
 
+      // Add weld ring between segments (not after the last one)
       if (i < numSegs - 1) {
-        const weldAngle = (i + 1) * jointAngle;
+        const weldAngle = (i + 1) * segmentArcAngle;
         weldList.push({
           position: new THREE.Vector3(bendRadius * Math.cos(weldAngle), bendRadius * Math.sin(weldAngle), 0),
           tangentAngle: weldAngle
@@ -476,7 +481,7 @@ const BendScene = ({
   nominalBore, outerDiameter, wallThickness, bendAngle, bendType,
   tangent1 = 0, tangent2 = 0, materialName, schedule = "40",
   numberOfSegments = 0, isSegmented = false, stubs, numberOfStubs = 0,
-  flangeConfig = 'PE'
+  flangeConfig = 'PE', closureLengthMm = 0
 }: Bend3DPreviewProps) => {
   const scaleFactor = 100;
 
@@ -486,15 +491,24 @@ const BendScene = ({
   const stub2 = safeStubs[1] || null;
 
   // Determine which flanges to show based on config
-  // FOE = Flanged One End (outlet flange only)
+  // FOE = Flanged One End (fixed flange at inlet/bottom)
   // FBE = Flanged Both Ends
   // PE = Plain End (no flanges)
+  // FOE_LF = Fixed flange at bottom (inlet), Loose flange at top (outlet) with closure extension
+  // LF_BE = Loose flanges both ends (both with closure extensions, same length)
   const configUpper = (flangeConfig || 'PE').toUpperCase();
-  const showOutletFlange = configUpper !== 'PE'; // First flange (outlet/horizontal end)
-  const showInletFlange = ['FBE', 'FOE_RF', '2X_RF'].includes(configUpper); // Second flange (inlet/vertical end)
+
+  // For FOE_LF: Fixed flange at bottom (inlet), Loose flange at top (outlet)
+  // For LF_BE: Loose flanges at both ends with same closure length
+  // For FOE: Only one fixed flange at inlet (bottom)
+  // For FBE: Fixed flanges at both ends
+  const isLooseFlangeOutlet = configUpper === 'FOE_LF' || configUpper === 'LF_BE';
+  const isLooseFlangeInlet = configUpper === 'LF_BE';
+  const showInletFlange = ['FOE', 'FBE', 'FOE_LF', 'LF_BE', 'FOE_RF', '2X_RF'].includes(configUpper); // Flange at bottom (inlet)
+  const showOutletFlange = ['FBE', 'FOE_LF', 'LF_BE', 'FOE_RF', '2X_RF'].includes(configUpper); // Flange at top (outlet)
 
   // Debug logging
-  console.log('BendScene:', { flangeConfig, showOutletFlange, showInletFlange, numberOfStubs, stubs: safeStubs });
+  console.log('BendScene:', { flangeConfig, showOutletFlange, showInletFlange, isLooseFlangeOutlet, isLooseFlangeInlet, closureLengthMm, numberOfStubs, stubs: safeStubs });
 
   const isSABS719 = Boolean(isSegmented ||
     materialName?.toLowerCase().includes("sabs 719") ||
@@ -605,40 +619,267 @@ const BendScene = ({
         )}
 
         {/* Outlet flange - at end of horizontal tangent, or at bend outlet if no tangent */}
-        {showOutletFlange && (
-          <Flange
-            position={
-              horizontalTangent > 0
-                ? [
-                    outletX + (-Math.sin(angleRad)) * horizontalTangent,
-                    outletY + Math.cos(angleRad) * horizontalTangent,
-                    0
-                  ]
-                : [outletX, outletY, 0]
-            }
-            rotation={[0, 0, angleRad]}
-            outerRadius={outerRadius}
-            pipeRadius={innerRadius}
-            nominalBore={nominalBore}
-            material={matProps}
-          />
-        )}
+        {showOutletFlange && (() => {
+          // Calculate flange position at end of horizontal tangent (or bend outlet if no tangent)
+          const flangeX = horizontalTangent > 0
+            ? outletX + (-Math.sin(angleRad)) * horizontalTangent
+            : outletX;
+          const flangeY = horizontalTangent > 0
+            ? outletY + Math.cos(angleRad) * horizontalTangent
+            : outletY;
+
+          // Direction for horizontal extension (perpendicular to outlet angle)
+          const dirX = -Math.sin(angleRad);
+          const dirY = Math.cos(angleRad);
+
+          // Flange thickness for offset calculations
+          const flangeThickness = outerRadius * 0.4;
+
+          // Closure length in scene units
+          const closureLength = (closureLengthMm || 150) / scaleFactor;
+
+          return (
+            <>
+              {/* The flange itself */}
+              <Flange
+                position={[flangeX, flangeY, 0]}
+                rotation={[0, 0, angleRad]}
+                outerRadius={outerRadius}
+                pipeRadius={innerRadius}
+                nominalBore={nominalBore}
+                material={matProps}
+              />
+
+              {/* If loose flange (L/F), add closure pipe extension */}
+              {isLooseFlangeOutlet && closureLengthMm > 0 && (
+                <>
+                  {/* Closure pipe extension - extends horizontally from past the loose flange */}
+                  <group
+                    position={[
+                      flangeX + dirX * (flangeThickness + closureLength / 2),
+                      flangeY + dirY * (flangeThickness + closureLength / 2),
+                      0
+                    ]}
+                    rotation={[0, 0, angleRad]}
+                  >
+                    {/* Outer pipe cylinder */}
+                    <mesh>
+                      <cylinderGeometry args={[outerRadius, outerRadius, closureLength, 32, 1, false]} />
+                      <meshStandardMaterial {...matProps} />
+                    </mesh>
+                    {/* Inner bore */}
+                    <mesh>
+                      <cylinderGeometry args={[innerRadius, innerRadius, closureLength - 0.02, 32, 1, false]} />
+                      <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                    </mesh>
+                    {/* End cap ring to show pipe wall thickness */}
+                    <mesh position={[0, closureLength / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                      <ringGeometry args={[innerRadius, outerRadius, 32]} />
+                      <meshStandardMaterial {...matProps} />
+                    </mesh>
+                  </group>
+
+                  {/* L/F Label next to the loose flange */}
+                  <Text
+                    position={[
+                      flangeX - dirY * (outerRadius * 2.5 + 0.3),
+                      flangeY + dirX * (outerRadius * 2.5 + 0.3),
+                      0
+                    ]}
+                    fontSize={0.2}
+                    color="#9333ea"
+                    anchorX="center"
+                    anchorY="middle"
+                    outlineWidth={0.02}
+                    outlineColor="white"
+                    fontWeight="bold"
+                  >
+                    L/F
+                  </Text>
+
+                  {/* Closure length dimension line */}
+                  {(() => {
+                    const dimOffset = outerRadius + 0.35;
+                    // Start at flange face
+                    const startX = flangeX + dirX * flangeThickness;
+                    const startY = flangeY + dirY * flangeThickness;
+                    // End at end of closure pipe
+                    const endX = flangeX + dirX * (flangeThickness + closureLength);
+                    const endY = flangeY + dirY * (flangeThickness + closureLength);
+                    // Offset perpendicular to the pipe direction
+                    const offsetX = -dirY * dimOffset;
+                    const offsetY = dirX * dimOffset;
+                    // Midpoint for text
+                    const midX = (startX + endX) / 2 + offsetX;
+                    const midY = (startY + endY) / 2 + offsetY;
+
+                    return (
+                      <group>
+                        {/* Main dimension line */}
+                        <Line
+                          points={[
+                            [startX + offsetX, startY + offsetY, 0],
+                            [endX + offsetX, endY + offsetY, 0]
+                          ]}
+                          color="#9333ea"
+                          lineWidth={2}
+                        />
+                        {/* Leader at start */}
+                        <Line
+                          points={[
+                            [startX, startY - outerRadius, 0],
+                            [startX + offsetX, startY + offsetY, 0]
+                          ]}
+                          color="#9333ea"
+                          lineWidth={1}
+                        />
+                        {/* Leader at end */}
+                        <Line
+                          points={[
+                            [endX, endY - outerRadius, 0],
+                            [endX + offsetX, endY + offsetY, 0]
+                          ]}
+                          color="#9333ea"
+                          lineWidth={1}
+                        />
+                        {/* Dimension text */}
+                        <Text
+                          position={[midX, midY - 0.15, 0]}
+                          fontSize={0.18}
+                          color="#9333ea"
+                          anchorX="center"
+                          anchorY="top"
+                          outlineWidth={0.02}
+                          outlineColor="white"
+                          fontWeight="bold"
+                        >
+                          {`Closure: ${closureLengthMm}mm`}
+                        </Text>
+                      </group>
+                    );
+                  })()}
+                </>
+              )}
+            </>
+          );
+        })()}
 
         {/* Inlet flange - at end of vertical tangent, or at bend inlet if no tangent */}
-        {showInletFlange && (
-          <Flange
-            position={
-              verticalTangent > 0
-                ? [inletX, inletY - verticalTangent, 0]
-                : [inletX, inletY, 0]
-            }
-            rotation={[0, 0, 0]}
-            outerRadius={outerRadius}
-            pipeRadius={innerRadius}
-            nominalBore={nominalBore}
-            material={matProps}
-          />
-        )}
+        {showInletFlange && (() => {
+          // Calculate flange position at end of vertical tangent (or bend inlet if no tangent)
+          const flangeX = inletX;
+          const flangeY = verticalTangent > 0 ? inletY - verticalTangent : inletY;
+
+          // Direction for vertical extension (downward)
+          const dirY = -1; // Going down
+
+          // Flange thickness for offset calculations
+          const flangeThickness = outerRadius * 0.4;
+
+          // Closure length in scene units
+          const closureLength = (closureLengthMm || 150) / scaleFactor;
+
+          return (
+            <>
+              {/* The flange itself */}
+              <Flange
+                position={[flangeX, flangeY, 0]}
+                rotation={[0, 0, 0]}
+                outerRadius={outerRadius}
+                pipeRadius={innerRadius}
+                nominalBore={nominalBore}
+                material={matProps}
+              />
+
+              {/* If inlet is loose flange (L/F), add closure pipe extension going downward */}
+              {isLooseFlangeInlet && closureLengthMm > 0 && (
+                <>
+                  {/* Closure pipe extension - extends vertically downward from past the loose flange */}
+                  <group position={[flangeX, flangeY - flangeThickness - closureLength / 2, 0]}>
+                    {/* Outer pipe cylinder */}
+                    <mesh>
+                      <cylinderGeometry args={[outerRadius, outerRadius, closureLength, 32, 1, false]} />
+                      <meshStandardMaterial {...matProps} />
+                    </mesh>
+                    {/* Inner bore */}
+                    <mesh>
+                      <cylinderGeometry args={[innerRadius, innerRadius, closureLength - 0.02, 32, 1, false]} />
+                      <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                    </mesh>
+                    {/* End cap ring to show pipe wall thickness */}
+                    <mesh position={[0, -closureLength / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                      <ringGeometry args={[innerRadius, outerRadius, 32]} />
+                      <meshStandardMaterial {...matProps} />
+                    </mesh>
+                  </group>
+
+                  {/* L/F Label next to the inlet loose flange */}
+                  <Text
+                    position={[flangeX + outerRadius * 2.5 + 0.3, flangeY, 0]}
+                    fontSize={0.2}
+                    color="#9333ea"
+                    anchorX="left"
+                    anchorY="middle"
+                    outlineWidth={0.02}
+                    outlineColor="white"
+                    fontWeight="bold"
+                  >
+                    L/F
+                  </Text>
+
+                  {/* Closure length dimension line for inlet */}
+                  {(() => {
+                    const dimOffset = outerRadius + 0.35;
+                    // Start at flange face (below the flange)
+                    const startY = flangeY - flangeThickness;
+                    // End at end of closure pipe
+                    const endY = flangeY - flangeThickness - closureLength;
+                    // Offset to the right of the pipe
+                    const dimX = flangeX + dimOffset;
+                    // Midpoint for text
+                    const midY = (startY + endY) / 2;
+
+                    return (
+                      <group>
+                        {/* Main dimension line */}
+                        <Line
+                          points={[[dimX, startY, 0], [dimX, endY, 0]]}
+                          color="#9333ea"
+                          lineWidth={2}
+                        />
+                        {/* Leader at start */}
+                        <Line
+                          points={[[flangeX + outerRadius, startY, 0], [dimX + 0.1, startY, 0]]}
+                          color="#9333ea"
+                          lineWidth={1}
+                        />
+                        {/* Leader at end */}
+                        <Line
+                          points={[[flangeX + outerRadius, endY, 0], [dimX + 0.1, endY, 0]]}
+                          color="#9333ea"
+                          lineWidth={1}
+                        />
+                        {/* Dimension text */}
+                        <Text
+                          position={[dimX + 0.15, midY, 0]}
+                          fontSize={0.18}
+                          color="#9333ea"
+                          anchorX="left"
+                          anchorY="middle"
+                          outlineWidth={0.02}
+                          outlineColor="white"
+                          fontWeight="bold"
+                        >
+                          {`Closure: ${closureLengthMm}mm`}
+                        </Text>
+                      </group>
+                    );
+                  })()}
+                </>
+              )}
+            </>
+          );
+        })()}
 
         {/* Stub 1: On horizontal tangent (longer), comes out vertically upward (+Y direction) */}
         {numberOfStubs >= 1 && stub1 && stub1.length && stub1.length > 0 && horizontalTangent > 0 && (() => {
@@ -1120,7 +1361,16 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
       <div className="absolute top-2 left-2 text-[10px] bg-white/90 px-2 py-1 rounded shadow-sm">
         <div className={isSegmentedBend ? "text-purple-700" : "text-blue-700"} style={{fontWeight: 500}}>
           <div>{props.materialName || (isSegmentedBend ? "SABS 719" : "SABS 62")}</div>
-          <div className="text-[9px] opacity-80">{isSegmentedBend ? "Segmented Bend" : "Pulled Bend"}</div>
+          <div className="text-[9px] opacity-80">
+            {isSegmentedBend
+              ? `${props.numberOfSegments || 2}-Segment Bend`
+              : "Pulled Bend"}
+          </div>
+          {isSegmentedBend && props.numberOfSegments && (
+            <div className="text-[9px] text-purple-600 font-medium">
+              {props.numberOfSegments - 1} weld{props.numberOfSegments - 1 !== 1 ? 's' : ''} @ {(props.bendAngle / props.numberOfSegments).toFixed(1)}° each
+            </div>
+          )}
         </div>
       </div>
 

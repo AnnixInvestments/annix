@@ -90,14 +90,20 @@ export class RfqService {
       }
     }
 
-    // Normalize schedule number format (convert "Sch40" to "40", etc.)
+    // Normalize schedule number format (convert "Sch40", "Sch 10", "Sch 40/STD" to "40", etc.)
     const normalizeScheduleNumber = (scheduleNumber: string): string => {
       if (!scheduleNumber) return scheduleNumber;
 
-      // Convert "Sch40" -> "40", "Sch80" -> "80", etc.
-      const schMatch = scheduleNumber.match(/^[Ss]ch(\d+)$/);
+      // Handle formats like "Sch10", "Sch 10", "Sch 40/STD", "Sch 80/XS"
+      const schMatch = scheduleNumber.match(/^[Ss]ch\s*(\d+)(?:\/\w+)?$/);
       if (schMatch) {
         return schMatch[1];
+      }
+
+      // Handle just the number like "40" or "40/STD"
+      const numMatch = scheduleNumber.match(/^(\d+)(?:\/\w+)?$/);
+      if (numMatch) {
+        return numMatch[1];
       }
 
       // Return as-is for other formats (STD, XS, XXS, MEDIUM, HEAVY, etc.)
