@@ -11,6 +11,7 @@ interface Pipe3DPreviewProps {
   wallThickness: number;
   endConfiguration?: string;
   materialName?: string;
+  closureLengthMm?: number; // Closure length for L/F configurations
 }
 
 const getMaterialProps = (name: string = '') => {
@@ -81,6 +82,40 @@ const SimpleFlange = ({ position, outerDiameter, holeDiameter, thickness }: { po
   );
 };
 
+// Retaining ring component for rotating flanges
+// This ring is welded to the pipe end to prevent the rotating flange from sliding off
+const RetainingRing = ({ position, pipeOuterRadius, pipeInnerRadius, wallThickness }: {
+  position: [number, number, number];
+  pipeOuterRadius: number;
+  pipeInnerRadius: number;
+  wallThickness: number;
+}) => {
+  // Ring OD should be larger than pipe OD but smaller than the flange
+  const ringOuterRadius = pipeOuterRadius * 1.15; // 15% larger than pipe OD
+  const ringInnerRadius = pipeInnerRadius; // Same ID as pipe (same wall thickness)
+  const ringThickness = wallThickness; // Same thickness as pipe wall
+
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, ringOuterRadius, 0, Math.PI * 2, false);
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, ringInnerRadius, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+    const extrudeSettings = { depth: ringThickness, bevelEnabled: false, curveSegments: 32 };
+    const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geo.center();
+    return geo;
+  }, [ringOuterRadius, ringInnerRadius, ringThickness]);
+
+  return (
+    <group position={position} rotation={[0, Math.PI / 2, 0]}>
+      <mesh geometry={geometry}>
+        <meshStandardMaterial color="#606060" metalness={0.6} roughness={0.4} />
+      </mesh>
+    </group>
+  );
+};
+
 const DimensionLine = ({ start, end, label }: { start: [number, number, number], end: [number, number, number], label: string }) => {
   const p1 = new THREE.Vector3(...start);
   const p2 = new THREE.Vector3(...end);
@@ -105,7 +140,7 @@ const DimensionLine = ({ start, end, label }: { start: [number, number, number],
   );
 };
 
-const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguration = 'PE', materialName }: Pipe3DPreviewProps) => {
+const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguration = 'PE', materialName, closureLengthMm = 0 }: Pipe3DPreviewProps) => {
   const isInputMeters = length < 50;
   const lengthSceneUnits = isInputMeters ? length : length / 1000;
   const safeLength = lengthSceneUnits || 1;
@@ -115,9 +150,23 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
   const idMm = outerDiameter - (2 * wallThickness);
   const matProps = getMaterialProps(materialName);
   const configUpper = (endConfiguration || 'PE').toUpperCase();
-  const hasRightFlange = configUpper.includes('FOE') || configUpper.includes('FBE') || configUpper.includes('2') || configUpper.includes('R/F');
-  const hasLeftFlange = configUpper.includes('FBE') || configUpper.includes('2') || configUpper.includes('+');
+
+  // Detect loose flanges from configuration
+  // L/F or LF patterns indicate loose flanges
+  const hasLooseLeftFlange = configUpper.includes('L/F') || configUpper.includes('LF_BE') || configUpper.includes('LF_2E');
+  const hasLooseRightFlange = configUpper.includes('L/F') || configUpper.includes('LF_BE') || configUpper.includes('FOE_LF');
+
+  // Detect rotating flanges - R/F patterns
+  const hasRotatingLeftFlange = configUpper.includes('2X_RF') || configUpper.includes('RF_BE');
+  const hasRotatingRightFlange = configUpper.includes('R/F') || configUpper.includes('FOE_RF') || configUpper.includes('2X_RF');
+
+  const hasRightFlange = configUpper.includes('FOE') || configUpper.includes('FBE') || configUpper.includes('2') || configUpper.includes('R/F') || configUpper.includes('L/F');
+  const hasLeftFlange = configUpper.includes('FBE') || configUpper.includes('2') || configUpper.includes('+') || configUpper.includes('LF_BE') || configUpper.includes('RF_BE');
   const flangeThickness = odSceneUnits * 0.15;
+
+  // Closure and gap dimensions
+  const closureLength = (closureLengthMm || 150) / 1000; // Convert mm to scene units
+  const gapLength = 0.1; // 100mm in scene units (meters)
 
   const geometry = useMemo(() => {
     const outerRadius = odSceneUnits / 2;
@@ -132,6 +181,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
 
   const halfLen = safeLength / 2;
   const radius = odSceneUnits / 2;
+  const innerRadius = Math.max(0, (odSceneUnits - (2 * wtSceneUnits)) / 2);
   const offsetDist = radius + 0.3;
 
   return (
@@ -140,17 +190,103 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
         <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
       </mesh>
 
+      {/* Left flange */}
       {hasLeftFlange && (
         <>
-          <SimpleFlange position={[-halfLen, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
-          <WeldBead position={[-halfLen + (flangeThickness/2) + 0.01, 0, 0]} diameter={odSceneUnits} />
+          {hasLooseLeftFlange && closureLengthMm > 0 ? (
+            <>
+              {/* Closure piece (attached to pipe end) */}
+              <mesh rotation={[0, 0, Math.PI / 2]} position={[-halfLen - closureLength / 2, 0, 0]}>
+                <cylinderGeometry args={[radius, radius, closureLength, 32]} />
+                <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
+              </mesh>
+              {/* Inner bore of closure */}
+              <mesh rotation={[0, 0, Math.PI / 2]} position={[-halfLen - closureLength / 2, 0, 0]}>
+                <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32]} />
+                <meshStandardMaterial color="#1a1a1a" />
+              </mesh>
+              {/* Loose flange positioned 100mm after closure piece */}
+              <SimpleFlange position={[-halfLen - closureLength - gapLength, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
+              {/* L/F dimension line */}
+              <Line points={[[-halfLen, -radius - 0.1, 0], [-halfLen - closureLength, -radius - 0.1, 0]]} color="#2563eb" lineWidth={2} />
+              <Line points={[[-halfLen, -radius - 0.05, 0], [-halfLen, -radius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
+              <Line points={[[-halfLen - closureLength, -radius - 0.05, 0], [-halfLen - closureLength, -radius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
+              <Text position={[-halfLen - closureLength / 2, -radius - 0.22, 0]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                {`L/F ${closureLengthMm}mm`}
+              </Text>
+              {/* 100mm gap indicator */}
+              <Line points={[[-halfLen - closureLength, -radius - 0.25, 0], [-halfLen - closureLength - gapLength, -radius - 0.25, 0]]} color="#9333ea" lineWidth={1} dashed />
+              <Text position={[-halfLen - closureLength - gapLength / 2, -radius - 0.35, 0]} fontSize={0.1} color="#9333ea" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                100mm gap
+              </Text>
+            </>
+          ) : hasRotatingLeftFlange ? (
+            <>
+              {/* Retaining ring welded to pipe end */}
+              <RetainingRing position={[-halfLen, 0, 0]} pipeOuterRadius={radius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
+              {/* Rotating flange positioned 50mm back from ring (on the pipe) */}
+              <SimpleFlange position={[-halfLen + 0.05, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
+              {/* R/F label */}
+              <Text position={[-halfLen + 0.025, -radius - 0.15, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                R/F
+              </Text>
+            </>
+          ) : (
+            <>
+              <SimpleFlange position={[-halfLen, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
+              <WeldBead position={[-halfLen + (flangeThickness/2) + 0.01, 0, 0]} diameter={odSceneUnits} />
+            </>
+          )}
         </>
       )}
 
+      {/* Right flange */}
       {hasRightFlange && (
         <>
-          <SimpleFlange position={[halfLen, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
-          <WeldBead position={[halfLen - (flangeThickness/2) - 0.01, 0, 0]} diameter={odSceneUnits} />
+          {hasLooseRightFlange && closureLengthMm > 0 ? (
+            <>
+              {/* Closure piece (attached to pipe end) */}
+              <mesh rotation={[0, 0, Math.PI / 2]} position={[halfLen + closureLength / 2, 0, 0]}>
+                <cylinderGeometry args={[radius, radius, closureLength, 32]} />
+                <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
+              </mesh>
+              {/* Inner bore of closure */}
+              <mesh rotation={[0, 0, Math.PI / 2]} position={[halfLen + closureLength / 2, 0, 0]}>
+                <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32]} />
+                <meshStandardMaterial color="#1a1a1a" />
+              </mesh>
+              {/* Loose flange positioned 100mm after closure piece */}
+              <SimpleFlange position={[halfLen + closureLength + gapLength, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
+              {/* L/F dimension line */}
+              <Line points={[[halfLen, -radius - 0.1, 0], [halfLen + closureLength, -radius - 0.1, 0]]} color="#2563eb" lineWidth={2} />
+              <Line points={[[halfLen, -radius - 0.05, 0], [halfLen, -radius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
+              <Line points={[[halfLen + closureLength, -radius - 0.05, 0], [halfLen + closureLength, -radius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
+              <Text position={[halfLen + closureLength / 2, -radius - 0.22, 0]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                {`L/F ${closureLengthMm}mm`}
+              </Text>
+              {/* 100mm gap indicator */}
+              <Line points={[[halfLen + closureLength, -radius - 0.25, 0], [halfLen + closureLength + gapLength, -radius - 0.25, 0]]} color="#9333ea" lineWidth={1} dashed />
+              <Text position={[halfLen + closureLength + gapLength / 2, -radius - 0.35, 0]} fontSize={0.1} color="#9333ea" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                100mm gap
+              </Text>
+            </>
+          ) : hasRotatingRightFlange ? (
+            <>
+              {/* Retaining ring welded to pipe end */}
+              <RetainingRing position={[halfLen, 0, 0]} pipeOuterRadius={radius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
+              {/* Rotating flange positioned 50mm back from ring (on the pipe) */}
+              <SimpleFlange position={[halfLen - 0.05, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
+              {/* R/F label */}
+              <Text position={[halfLen - 0.025, -radius - 0.15, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                R/F
+              </Text>
+            </>
+          ) : (
+            <>
+              <SimpleFlange position={[halfLen, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
+              <WeldBead position={[halfLen - (flangeThickness/2) - 0.01, 0, 0]} diameter={odSceneUnits} />
+            </>
+          )}
         </>
       )}
 

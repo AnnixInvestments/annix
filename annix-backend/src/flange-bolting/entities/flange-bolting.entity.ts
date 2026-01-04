@@ -59,4 +59,13 @@ export class FlangeBolting {
     nullable: true,
   })
   boltLengthLj: number | null; // Bolt length for Lap Joint flanges
+
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'bolt_length_rf',
+    nullable: true,
+  })
+  boltLengthRf: number | null; // Bolt length for Rotating Flanges (with retaining ring)
 }
