@@ -174,6 +174,7 @@ const BEND_END_OPTIONS = [
 // Flange types: 'fixed' = regular welded flange, 'loose' = loose flange with closure, 'rotating' = rotating flange
 const FITTING_END_OPTIONS = [
   { value: 'PE', label: 'PE - Plain ended (0 welds)', weldCount: 0, hasInlet: false, hasOutlet: false, hasBranch: false, inletType: null, outletType: null, branchType: null },
+  { value: 'FAE', label: 'FAE - Flanged All Ends (3 welds)', weldCount: 3, hasInlet: true, hasOutlet: true, hasBranch: true, inletType: 'fixed', outletType: 'fixed', branchType: 'fixed' },
   { value: 'F2E', label: 'F2E - Flanged 2 ends (2 welds) - Main pipe flanged, Tee OE', weldCount: 2, hasInlet: true, hasOutlet: true, hasBranch: false, inletType: 'fixed', outletType: 'fixed', branchType: null },
   { value: 'F2E_LF', label: 'F2E + L/F - Flanged 2 ends + L/F on Section A, Tee flanged (2 welds + tack)', weldCount: 2, hasInlet: true, hasOutlet: true, hasBranch: true, inletType: 'loose', outletType: 'fixed', branchType: 'fixed' },
   { value: 'F2E_RF', label: 'F2E + R/F - Flanged 2 ends + R/F on Tee Section B (3 welds)', weldCount: 3, hasInlet: true, hasOutlet: true, hasBranch: true, inletType: 'fixed', outletType: 'fixed', branchType: 'rotating' },
@@ -219,6 +220,44 @@ const getFittingFlangeConfig = (fittingEndConfig: string): {
 // Helper function to check if configuration has a loose flange (requires closure length)
 const hasLooseFlange = (endConfig: string): boolean => {
   return endConfig.includes('_LF') || endConfig.includes('FOE_LF') || endConfig === 'LF_BE';
+};
+
+// Helper function to count fixed flanges for fitting configurations
+const getFixedFlangeCount = (fittingEndConfig: string): { count: number; positions: { inlet: boolean; outlet: boolean; branch: boolean } } => {
+  const config = FITTING_END_OPTIONS.find(opt => opt.value === fittingEndConfig);
+  if (!config) return { count: 0, positions: { inlet: false, outlet: false, branch: false } };
+  const positions = {
+    inlet: config.inletType === 'fixed',
+    outlet: config.outletType === 'fixed',
+    branch: config.branchType === 'fixed'
+  };
+  const count = (positions.inlet ? 1 : 0) + (positions.outlet ? 1 : 0) + (positions.branch ? 1 : 0);
+  return { count, positions };
+};
+
+// Blank flange weight lookup (solid disc flange, kg)
+const BLANK_FLANGE_WEIGHT: Record<string, Record<number, number>> = {
+  'PN10': { 50: 2.5, 65: 3.5, 80: 4.5, 100: 6.0, 125: 8.5, 150: 11.0, 200: 16.5, 250: 25.0, 300: 36.0, 350: 46.0, 400: 58.0, 450: 72.0, 500: 90.0, 600: 120.0, 700: 155.0, 750: 175.0, 800: 200.0, 900: 250.0 },
+  'PN16': { 50: 3.0, 65: 4.2, 80: 5.4, 100: 7.2, 125: 10.2, 150: 13.2, 200: 19.8, 250: 30.0, 300: 43.2, 350: 55.2, 400: 69.6, 450: 86.4, 500: 108.0, 600: 144.0, 700: 186.0, 750: 210.0, 800: 240.0, 900: 300.0 },
+  'PN25': { 50: 4.0, 65: 5.6, 80: 7.2, 100: 9.6, 125: 13.6, 150: 17.6, 200: 26.4, 250: 40.0, 300: 57.6, 350: 73.6, 400: 92.8, 450: 115.2, 500: 144.0, 600: 192.0, 700: 248.0, 750: 280.0, 800: 320.0, 900: 400.0 },
+  'PN40': { 50: 5.5, 65: 7.7, 80: 9.9, 100: 13.2, 125: 18.7, 150: 24.2, 200: 36.3, 250: 55.0, 300: 79.2, 350: 101.2, 400: 127.6, 450: 158.4, 500: 198.0, 600: 264.0, 700: 341.0, 750: 385.0, 800: 440.0, 900: 550.0 }
+};
+
+const getBlankFlangeWeight = (nbMm: number, pressureClass: string): number => {
+  const pcNormalized = pressureClass?.toUpperCase().replace(/\s+/g, '') || 'PN16';
+  const pcLookup = pcNormalized.includes('PN40') || pcNormalized.includes('CLASS300') ? 'PN40' :
+                   pcNormalized.includes('PN25') || pcNormalized.includes('CLASS150') ? 'PN25' :
+                   pcNormalized.includes('PN10') ? 'PN10' : 'PN16';
+  return BLANK_FLANGE_WEIGHT[pcLookup]?.[nbMm] || (nbMm * 0.15);
+};
+
+const getBlankFlangeSurfaceArea = (nbMm: number): { external: number; internal: number } => {
+  const FLANGE_OD: Record<number, number> = { 50: 165, 65: 185, 80: 200, 100: 220, 125: 250, 150: 285, 200: 340, 250: 395, 300: 445, 350: 505, 400: 565, 450: 615, 500: 670, 600: 780, 700: 885, 750: 940, 800: 1015, 900: 1115 };
+  const flangeOdMm = FLANGE_OD[nbMm] || nbMm * 1.7;
+  const flangeThicknessMm = Math.max(20, nbMm * 0.08);
+  const faceAreaM2 = 2 * Math.PI * Math.pow(flangeOdMm / 2000, 2);
+  const edgeAreaM2 = Math.PI * (flangeOdMm / 1000) * (flangeThicknessMm / 1000);
+  return { external: faceAreaM2 + edgeAreaM2, internal: 0 };
 };
 
 // Helper function to get weld count per pipe based on pipe end configuration
@@ -11175,6 +11214,74 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     </div>
                   </div>
                 </div>
+
+                {/* Blank Flange Option - Only show if there are fixed flanges */}
+                {(() => {
+                  const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                  const fixedFlangeInfo = getFixedFlangeCount(pipeEndConfig);
+                  if (fixedFlangeInfo.count === 0) return null;
+
+                  return (
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-3">
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={entry.specs?.addBlankFlange || false}
+                            onChange={(e) => {
+                              const addBlank = e.target.checked;
+                              onUpdateEntry(entry.id, {
+                                specs: {
+                                  ...entry.specs,
+                                  addBlankFlange: addBlank,
+                                  blankFlangeCount: addBlank ? 1 : 0,
+                                  blankFlangePositions: addBlank ? ['inlet'] : []
+                                }
+                              });
+                            }}
+                            className="w-4 h-4 text-slate-600 border-gray-300 rounded focus:ring-slate-500"
+                          />
+                          <span className="text-sm font-semibold text-slate-800">Add Blank Flange(s)</span>
+                        </label>
+                        <span className="text-xs text-slate-500">
+                          ({fixedFlangeInfo.count} fixed flange{fixedFlangeInfo.count > 1 ? 's' : ''} available)
+                        </span>
+                      </div>
+
+                      {entry.specs?.addBlankFlange && fixedFlangeInfo.count > 1 && (
+                        <div className="mt-3 pl-6">
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            How many blank flanges?
+                          </label>
+                          <select
+                            value={entry.specs?.blankFlangeCount || 1}
+                            onChange={(e) => {
+                              const count = parseInt(e.target.value) || 1;
+                              const positions: string[] = [];
+                              if (count >= 1 && fixedFlangeInfo.positions.inlet) positions.push('inlet');
+                              if (count >= 2 && fixedFlangeInfo.positions.outlet) positions.push('outlet');
+                              if (count >= 3 && fixedFlangeInfo.positions.branch) positions.push('branch');
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, blankFlangeCount: count, blankFlangePositions: positions.slice(0, count) }
+                              });
+                            }}
+                            className="w-32 px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900"
+                          >
+                            {Array.from({ length: fixedFlangeInfo.count }, (_, i) => i + 1).map(n => (
+                              <option key={n} value={n}>{n}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {entry.specs?.addBlankFlange && (
+                        <p className="mt-2 pl-6 text-xs text-slate-500">
+                          Blank flange(s) shown 50mm from fixed flange end
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Operating Conditions - Hidden: Uses global specs for working pressure/temp */}
 

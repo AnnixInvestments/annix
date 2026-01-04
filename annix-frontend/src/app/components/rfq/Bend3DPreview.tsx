@@ -185,6 +185,48 @@ const Flange = ({ position, rotation, outerRadius, pipeRadius, nominalBore, mate
   );
 };
 
+// Retaining ring component for rotating flanges
+// This ring is welded to the pipe end to prevent the rotating flange from sliding off
+const RetainingRing = ({
+  position,
+  rotation,
+  pipeOuterRadius,
+  pipeInnerRadius,
+  wallThickness,
+  flangeRadius
+}: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  pipeOuterRadius: number;
+  pipeInnerRadius: number;
+  wallThickness: number;
+  flangeRadius: number;
+}) => {
+  // Ring OD should be larger than pipe OD but smaller than the flange
+  // to not interfere with bolt holes
+  const ringOuterRadius = Math.min(
+    pipeOuterRadius * 1.15, // 15% larger than pipe OD
+    flangeRadius * 0.7 // But must clear the bolt holes
+  );
+  const ringInnerRadius = pipeInnerRadius; // Same ID as pipe (same wall thickness)
+  const ringThickness = wallThickness; // Same thickness as pipe wall
+
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Ring body */}
+      <mesh>
+        <cylinderGeometry args={[ringOuterRadius, ringOuterRadius, ringThickness, 32]} />
+        <meshStandardMaterial color="#606060" metalness={0.6} roughness={0.4} />
+      </mesh>
+      {/* Inner bore of ring */}
+      <mesh>
+        <cylinderGeometry args={[ringInnerRadius, ringInnerRadius, ringThickness + 0.01, 32]} />
+        <meshStandardMaterial color="#1a1a1a" />
+      </mesh>
+    </group>
+  );
+};
+
 // Stub pipe component - a small pipe coming out perpendicular to the main pipe
 const StubPipe = ({
   position,
@@ -504,6 +546,9 @@ const BendScene = ({
   // For FBE: Fixed flanges at both ends
   const isLooseFlangeOutlet = configUpper === 'FOE_LF' || configUpper === 'LF_BE';
   const isLooseFlangeInlet = configUpper === 'LF_BE';
+  // Rotating flange detection - FOE_RF has rotating at outlet, 2X_RF has rotating at both ends
+  const isRotatingFlangeOutlet = configUpper === 'FOE_RF' || configUpper === '2X_RF';
+  const isRotatingFlangeInlet = configUpper === '2X_RF';
   const showInletFlange = ['FOE', 'FBE', 'FOE_LF', 'LF_BE', 'FOE_RF', '2X_RF'].includes(configUpper); // Flange at bottom (inlet)
   const showOutletFlange = ['FBE', 'FOE_LF', 'LF_BE', 'FOE_RF', '2X_RF'].includes(configUpper); // Flange at top (outlet)
 
@@ -620,11 +665,11 @@ const BendScene = ({
 
         {/* Outlet flange - at end of horizontal tangent, or at bend outlet if no tangent */}
         {showOutletFlange && (() => {
-          // Calculate flange position at end of horizontal tangent (or bend outlet if no tangent)
-          const flangeX = horizontalTangent > 0
+          // Calculate pipe end position at end of horizontal tangent (or bend outlet if no tangent)
+          const pipeEndX = horizontalTangent > 0
             ? outletX + (-Math.sin(angleRad)) * horizontalTangent
             : outletX;
-          const flangeY = horizontalTangent > 0
+          const pipeEndY = horizontalTangent > 0
             ? outletY + Math.cos(angleRad) * horizontalTangent
             : outletY;
 
@@ -638,26 +683,19 @@ const BendScene = ({
           // Closure length in scene units
           const closureLength = (closureLengthMm || 150) / scaleFactor;
 
+          // 100mm gap in scene units
+          const gapLength = 100 / scaleFactor;
+
           return (
             <>
-              {/* The flange itself */}
-              <Flange
-                position={[flangeX, flangeY, 0]}
-                rotation={[0, 0, angleRad]}
-                outerRadius={outerRadius}
-                pipeRadius={innerRadius}
-                nominalBore={nominalBore}
-                material={matProps}
-              />
-
-              {/* If loose flange (L/F), add closure pipe extension */}
-              {isLooseFlangeOutlet && closureLengthMm > 0 && (
+              {/* For loose flanges: Closure piece first, then 100mm gap, then flange floating */}
+              {isLooseFlangeOutlet && closureLengthMm > 0 ? (
                 <>
-                  {/* Closure pipe extension - extends horizontally from past the loose flange */}
+                  {/* Closure piece (attached to pipe end) */}
                   <group
                     position={[
-                      flangeX + dirX * (flangeThickness + closureLength / 2),
-                      flangeY + dirY * (flangeThickness + closureLength / 2),
+                      pipeEndX + dirX * (closureLength / 2),
+                      pipeEndY + dirY * (closureLength / 2),
                       0
                     ]}
                     rotation={[0, 0, angleRad]}
@@ -679,15 +717,29 @@ const BendScene = ({
                     </mesh>
                   </group>
 
-                  {/* L/F Label next to the loose flange */}
+                  {/* Loose flange positioned 100mm after closure piece */}
+                  <Flange
+                    position={[
+                      pipeEndX + dirX * (closureLength + gapLength),
+                      pipeEndY + dirY * (closureLength + gapLength),
+                      0
+                    ]}
+                    rotation={[0, 0, angleRad]}
+                    outerRadius={outerRadius}
+                    pipeRadius={innerRadius}
+                    nominalBore={nominalBore}
+                    material={matProps}
+                  />
+
+                  {/* L/F Label next to the closure piece */}
                   <Text
                     position={[
-                      flangeX - dirY * (outerRadius * 2.5 + 0.3),
-                      flangeY + dirX * (outerRadius * 2.5 + 0.3),
+                      pipeEndX + dirX * (closureLength / 2) - dirY * (outerRadius * 2.5 + 0.3),
+                      pipeEndY + dirY * (closureLength / 2) + dirX * (outerRadius * 2.5 + 0.3),
                       0
                     ]}
                     fontSize={0.2}
-                    color="#9333ea"
+                    color="#2563eb"
                     anchorX="center"
                     anchorY="middle"
                     outlineWidth={0.02}
@@ -700,12 +752,12 @@ const BendScene = ({
                   {/* Closure length dimension line */}
                   {(() => {
                     const dimOffset = outerRadius + 0.35;
-                    // Start at flange face
-                    const startX = flangeX + dirX * flangeThickness;
-                    const startY = flangeY + dirY * flangeThickness;
+                    // Start at pipe end
+                    const startX = pipeEndX;
+                    const startY = pipeEndY;
                     // End at end of closure pipe
-                    const endX = flangeX + dirX * (flangeThickness + closureLength);
-                    const endY = flangeY + dirY * (flangeThickness + closureLength);
+                    const endX = pipeEndX + dirX * closureLength;
+                    const endY = pipeEndY + dirY * closureLength;
                     // Offset perpendicular to the pipe direction
                     const offsetX = -dirY * dimOffset;
                     const offsetY = dirX * dimOffset;
@@ -721,7 +773,7 @@ const BendScene = ({
                             [startX + offsetX, startY + offsetY, 0],
                             [endX + offsetX, endY + offsetY, 0]
                           ]}
-                          color="#9333ea"
+                          color="#2563eb"
                           lineWidth={2}
                         />
                         {/* Leader at start */}
@@ -730,7 +782,7 @@ const BendScene = ({
                             [startX, startY - outerRadius, 0],
                             [startX + offsetX, startY + offsetY, 0]
                           ]}
-                          color="#9333ea"
+                          color="#2563eb"
                           lineWidth={1}
                         />
                         {/* Leader at end */}
@@ -739,26 +791,117 @@ const BendScene = ({
                             [endX, endY - outerRadius, 0],
                             [endX + offsetX, endY + offsetY, 0]
                           ]}
-                          color="#9333ea"
+                          color="#2563eb"
                           lineWidth={1}
                         />
                         {/* Dimension text */}
                         <Text
                           position={[midX, midY - 0.15, 0]}
                           fontSize={0.18}
-                          color="#9333ea"
+                          color="#2563eb"
                           anchorX="center"
                           anchorY="top"
                           outlineWidth={0.02}
                           outlineColor="white"
                           fontWeight="bold"
                         >
-                          {`Closure: ${closureLengthMm}mm`}
+                          {`L/F ${closureLengthMm}mm`}
+                        </Text>
+                      </group>
+                    );
+                  })()}
+
+                  {/* 100mm gap indicator */}
+                  {(() => {
+                    const dimOffset = outerRadius + 0.55;
+                    const gapStartX = pipeEndX + dirX * closureLength;
+                    const gapStartY = pipeEndY + dirY * closureLength;
+                    const gapEndX = pipeEndX + dirX * (closureLength + gapLength);
+                    const gapEndY = pipeEndY + dirY * (closureLength + gapLength);
+                    const offsetX = -dirY * dimOffset;
+                    const offsetY = dirX * dimOffset;
+                    const midX = (gapStartX + gapEndX) / 2 + offsetX;
+                    const midY = (gapStartY + gapEndY) / 2 + offsetY;
+
+                    return (
+                      <group>
+                        <Line
+                          points={[
+                            [gapStartX + offsetX, gapStartY + offsetY, 0],
+                            [gapEndX + offsetX, gapEndY + offsetY, 0]
+                          ]}
+                          color="#9333ea"
+                          lineWidth={1}
+                          dashed
+                        />
+                        <Text
+                          position={[midX, midY - 0.12, 0]}
+                          fontSize={0.12}
+                          color="#9333ea"
+                          anchorX="center"
+                          anchorY="top"
+                          outlineWidth={0.02}
+                          outlineColor="white"
+                        >
+                          100mm gap
                         </Text>
                       </group>
                     );
                   })()}
                 </>
+              ) : isRotatingFlangeOutlet ? (
+                /* Rotating flange - retaining ring welded to pipe end, flange sits on pipe 50mm back */
+                <>
+                  {/* Retaining ring welded to pipe end - positioned flush with pipe outlet */}
+                  <RetainingRing
+                    position={[pipeEndX, pipeEndY, 0]}
+                    rotation={[angleRad - Math.PI / 2, 0, 0]}
+                    pipeOuterRadius={outerRadius}
+                    pipeInnerRadius={innerRadius}
+                    wallThickness={wt}
+                    flangeRadius={outerRadius * 2.2}
+                  />
+                  {/* Rotating flange positioned 50mm back from ring (on the pipe, towards bend) */}
+                  <Flange
+                    position={[
+                      pipeEndX - dirX * (50 / scaleFactor),
+                      pipeEndY - dirY * (50 / scaleFactor),
+                      0
+                    ]}
+                    rotation={[0, 0, angleRad]}
+                    outerRadius={outerRadius}
+                    pipeRadius={innerRadius}
+                    nominalBore={nominalBore}
+                    material={matProps}
+                  />
+                  {/* R/F label */}
+                  <Text
+                    position={[
+                      pipeEndX - dirX * (25 / scaleFactor) - dirY * (outerRadius * 2.5 + 0.3),
+                      pipeEndY - dirY * (25 / scaleFactor) + dirX * (outerRadius * 2.5 + 0.3),
+                      0
+                    ]}
+                    fontSize={0.2}
+                    color="#ea580c"
+                    anchorX="center"
+                    anchorY="middle"
+                    outlineWidth={0.02}
+                    outlineColor="white"
+                    fontWeight="bold"
+                  >
+                    R/F
+                  </Text>
+                </>
+              ) : (
+                /* Fixed flange - directly on pipe end */
+                <Flange
+                  position={[pipeEndX, pipeEndY, 0]}
+                  rotation={[0, 0, angleRad]}
+                  outerRadius={outerRadius}
+                  pipeRadius={innerRadius}
+                  nominalBore={nominalBore}
+                  material={matProps}
+                />
               )}
             </>
           );
@@ -766,12 +909,9 @@ const BendScene = ({
 
         {/* Inlet flange - at end of vertical tangent, or at bend inlet if no tangent */}
         {showInletFlange && (() => {
-          // Calculate flange position at end of vertical tangent (or bend inlet if no tangent)
-          const flangeX = inletX;
-          const flangeY = verticalTangent > 0 ? inletY - verticalTangent : inletY;
-
-          // Direction for vertical extension (downward)
-          const dirY = -1; // Going down
+          // Calculate pipe end position at end of vertical tangent (or bend inlet if no tangent)
+          const pipeEndX = inletX;
+          const pipeEndY = verticalTangent > 0 ? inletY - verticalTangent : inletY;
 
           // Flange thickness for offset calculations
           const flangeThickness = outerRadius * 0.4;
@@ -779,23 +919,16 @@ const BendScene = ({
           // Closure length in scene units
           const closureLength = (closureLengthMm || 150) / scaleFactor;
 
+          // 100mm gap in scene units
+          const gapLength = 100 / scaleFactor;
+
           return (
             <>
-              {/* The flange itself */}
-              <Flange
-                position={[flangeX, flangeY, 0]}
-                rotation={[0, 0, 0]}
-                outerRadius={outerRadius}
-                pipeRadius={innerRadius}
-                nominalBore={nominalBore}
-                material={matProps}
-              />
-
-              {/* If inlet is loose flange (L/F), add closure pipe extension going downward */}
-              {isLooseFlangeInlet && closureLengthMm > 0 && (
+              {/* For loose flanges: Closure piece first, then 100mm gap, then flange floating */}
+              {isLooseFlangeInlet && closureLengthMm > 0 ? (
                 <>
-                  {/* Closure pipe extension - extends vertically downward from past the loose flange */}
-                  <group position={[flangeX, flangeY - flangeThickness - closureLength / 2, 0]}>
+                  {/* Closure piece (attached to pipe end) - extends downward */}
+                  <group position={[pipeEndX, pipeEndY - closureLength / 2, 0]}>
                     {/* Outer pipe cylinder */}
                     <mesh>
                       <cylinderGeometry args={[outerRadius, outerRadius, closureLength, 32, 1, false]} />
@@ -813,11 +946,21 @@ const BendScene = ({
                     </mesh>
                   </group>
 
-                  {/* L/F Label next to the inlet loose flange */}
+                  {/* Loose flange positioned 100mm after closure piece */}
+                  <Flange
+                    position={[pipeEndX, pipeEndY - closureLength - gapLength, 0]}
+                    rotation={[0, 0, 0]}
+                    outerRadius={outerRadius}
+                    pipeRadius={innerRadius}
+                    nominalBore={nominalBore}
+                    material={matProps}
+                  />
+
+                  {/* L/F Label next to the closure piece */}
                   <Text
-                    position={[flangeX + outerRadius * 2.5 + 0.3, flangeY, 0]}
+                    position={[pipeEndX + outerRadius * 2.5 + 0.3, pipeEndY - closureLength / 2, 0]}
                     fontSize={0.2}
-                    color="#9333ea"
+                    color="#2563eb"
                     anchorX="left"
                     anchorY="middle"
                     outlineWidth={0.02}
@@ -830,12 +973,12 @@ const BendScene = ({
                   {/* Closure length dimension line for inlet */}
                   {(() => {
                     const dimOffset = outerRadius + 0.35;
-                    // Start at flange face (below the flange)
-                    const startY = flangeY - flangeThickness;
+                    // Start at pipe end
+                    const startY = pipeEndY;
                     // End at end of closure pipe
-                    const endY = flangeY - flangeThickness - closureLength;
+                    const endY = pipeEndY - closureLength;
                     // Offset to the right of the pipe
-                    const dimX = flangeX + dimOffset;
+                    const dimX = pipeEndX + dimOffset;
                     // Midpoint for text
                     const midY = (startY + endY) / 2;
 
@@ -844,38 +987,114 @@ const BendScene = ({
                         {/* Main dimension line */}
                         <Line
                           points={[[dimX, startY, 0], [dimX, endY, 0]]}
-                          color="#9333ea"
+                          color="#2563eb"
                           lineWidth={2}
                         />
                         {/* Leader at start */}
                         <Line
-                          points={[[flangeX + outerRadius, startY, 0], [dimX + 0.1, startY, 0]]}
-                          color="#9333ea"
+                          points={[[pipeEndX + outerRadius, startY, 0], [dimX + 0.1, startY, 0]]}
+                          color="#2563eb"
                           lineWidth={1}
                         />
                         {/* Leader at end */}
                         <Line
-                          points={[[flangeX + outerRadius, endY, 0], [dimX + 0.1, endY, 0]]}
-                          color="#9333ea"
+                          points={[[pipeEndX + outerRadius, endY, 0], [dimX + 0.1, endY, 0]]}
+                          color="#2563eb"
                           lineWidth={1}
                         />
                         {/* Dimension text */}
                         <Text
                           position={[dimX + 0.15, midY, 0]}
                           fontSize={0.18}
-                          color="#9333ea"
+                          color="#2563eb"
                           anchorX="left"
                           anchorY="middle"
                           outlineWidth={0.02}
                           outlineColor="white"
                           fontWeight="bold"
                         >
-                          {`Closure: ${closureLengthMm}mm`}
+                          {`L/F ${closureLengthMm}mm`}
+                        </Text>
+                      </group>
+                    );
+                  })()}
+
+                  {/* 100mm gap indicator */}
+                  {(() => {
+                    const dimOffset = outerRadius + 0.55;
+                    const gapStartY = pipeEndY - closureLength;
+                    const gapEndY = pipeEndY - closureLength - gapLength;
+                    const dimX = pipeEndX + dimOffset;
+                    const midY = (gapStartY + gapEndY) / 2;
+
+                    return (
+                      <group>
+                        <Line
+                          points={[[dimX, gapStartY, 0], [dimX, gapEndY, 0]]}
+                          color="#9333ea"
+                          lineWidth={1}
+                          dashed
+                        />
+                        <Text
+                          position={[dimX + 0.15, midY, 0]}
+                          fontSize={0.12}
+                          color="#9333ea"
+                          anchorX="left"
+                          anchorY="middle"
+                          outlineWidth={0.02}
+                          outlineColor="white"
+                        >
+                          100mm gap
                         </Text>
                       </group>
                     );
                   })()}
                 </>
+              ) : isRotatingFlangeInlet ? (
+                /* Rotating flange - retaining ring welded to pipe end, flange sits on pipe 50mm up */
+                <>
+                  {/* Retaining ring welded to pipe end - positioned flush with pipe outlet */}
+                  <RetainingRing
+                    position={[pipeEndX, pipeEndY, 0]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                    pipeOuterRadius={outerRadius}
+                    pipeInnerRadius={innerRadius}
+                    wallThickness={wt}
+                    flangeRadius={outerRadius * 2.2}
+                  />
+                  {/* Rotating flange positioned 50mm up from ring (on the pipe, towards bend) */}
+                  <Flange
+                    position={[pipeEndX, pipeEndY + (50 / scaleFactor), 0]}
+                    rotation={[0, 0, 0]}
+                    outerRadius={outerRadius}
+                    pipeRadius={innerRadius}
+                    nominalBore={nominalBore}
+                    material={matProps}
+                  />
+                  {/* R/F label */}
+                  <Text
+                    position={[pipeEndX + outerRadius * 2.5 + 0.3, pipeEndY + (25 / scaleFactor), 0]}
+                    fontSize={0.2}
+                    color="#ea580c"
+                    anchorX="left"
+                    anchorY="middle"
+                    outlineWidth={0.02}
+                    outlineColor="white"
+                    fontWeight="bold"
+                  >
+                    R/F
+                  </Text>
+                </>
+              ) : (
+                /* Fixed flange - directly on pipe end */
+                <Flange
+                  position={[pipeEndX, pipeEndY, 0]}
+                  rotation={[0, 0, 0]}
+                  outerRadius={outerRadius}
+                  pipeRadius={innerRadius}
+                  nominalBore={nominalBore}
+                  material={matProps}
+                />
               )}
             </>
           );

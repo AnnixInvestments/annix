@@ -44,6 +44,10 @@ export class CreateFlangeBoltingDto {
   @IsOptional()
   @IsNumber()
   boltLengthLj?: number;
+
+  @IsOptional()
+  @IsNumber()
+  boltLengthRf?: number;
 }
 
 export class BulkCreateFlangeBoltingDto {
@@ -60,5 +64,6 @@ export class BulkCreateFlangeBoltingDto {
     boltLengthDefault?: number;
     boltLengthSoSwTh?: number;
     boltLengthLj?: number;
+    boltLengthRf?: number;
   }>;
 }
