@@ -51,6 +51,11 @@ const Bend3DPreview = dynamic(() => import('@/app/components/rfq/Bend3DPreview')
   loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />
 });
 
+const Tee3DPreview = dynamic(() => import('@/app/components/rfq/Tee3DPreview'), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />
+});
+
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 interface Props {
@@ -10819,6 +10824,63 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     placeholder="Any special requirements or notes..."
                   />
                 </div>
+
+                {/* 3D Fitting Preview */}
+                {entry.specs?.fittingType && entry.specs?.nominalDiameterMm && (
+                  (() => {
+                    // Determine tee type based on fitting type
+                    const fittingType = entry.specs?.fittingType || '';
+                    const isTeeType = ['SHORT_TEE', 'GUSSET_TEE', 'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE', 'EQUAL_TEE', 'UNEQUAL_TEE', 'SWEEP_TEE', 'GUSSETTED_TEE'].includes(fittingType);
+
+                    if (!isTeeType) return null;
+
+                    // Map fitting type to tee type for 3D preview
+                    const teeType = ['GUSSET_TEE', 'UNEQUAL_GUSSET_TEE', 'GUSSETTED_TEE'].includes(fittingType)
+                      ? 'gusset' as const
+                      : 'short' as const;
+
+                    const nominalBore = entry.specs?.nominalDiameterMm || 500;
+                    const wallThickness = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 8;
+                    const outerDiameter = entry.calculation?.outsideDiameterMm;
+
+                    // Get material name from global specs
+                    const steelSpec = masterData.steelSpecs?.find((s: any) =>
+                      s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId)
+                    );
+
+                    return (
+                      <div className="border border-gray-200 rounded-lg overflow-hidden bg-slate-50">
+                        <div className="bg-gray-100 px-3 py-2 border-b border-gray-200">
+                          <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+                            </svg>
+                            3D Fitting Preview
+                          </h4>
+                        </div>
+                        <div className="h-64">
+                          <Tee3DPreview
+                            nominalBore={nominalBore}
+                            outerDiameter={outerDiameter}
+                            wallThickness={wallThickness}
+                            teeType={teeType}
+                            runLength={entry.specs?.pipeLengthAMm}
+                            materialName={steelSpec?.steelSpecName}
+                            hasInletFlange={true}
+                            hasOutletFlange={true}
+                            hasBranchFlange={true}
+                          />
+                        </div>
+                        <div className="bg-gray-50 px-3 py-2 border-t border-gray-200">
+                          <p className="text-xs text-gray-500 text-center">
+                            {fittingType.replace(/_/g, ' ')} - {nominalBore}mm NB
+                            {teeType === 'gusset' && ' (Gussetted)'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
 
                 {/* Calculate Button */}
                 <div>
