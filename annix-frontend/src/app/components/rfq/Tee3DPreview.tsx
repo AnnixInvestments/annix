@@ -457,6 +457,71 @@ function TeeScene(props: Tee3DPreviewProps) {
                   R/F 50mm
                 </Text>
               </>
+            ) : inletFlangeType === 'loose' ? (
+              <>
+                {/* Loose flange: Closure piece attached to tee, then 100mm gap, then flange floating */}
+                {/* Closure pipe piece attached to tee end */}
+                <mesh position={[-halfRunLength - (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                  <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32]} />
+                  <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
+                </mesh>
+                {/* Inner bore of closure pipe */}
+                <mesh position={[-halfRunLength - (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                  <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
+                  <meshStandardMaterial color="#1a1a1a" />
+                </mesh>
+                {/* Loose flange floating 100mm (1.0 scene units) away from closure piece */}
+                <FlangeComponent
+                  position={[-halfRunLength - closureLengthMm / scaleFactor - 1.0, 0, 0]}
+                  rotation={[0, Math.PI / 2, 0]}
+                  outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
+                  innerDiameter={id / scaleFactor}
+                  thickness={runFlangeSpecs.thickness / scaleFactor}
+                  pcd={runFlangeSpecs.pcd / scaleFactor}
+                  boltHoles={runFlangeSpecs.boltHoles}
+                  holeID={runFlangeSpecs.holeID / scaleFactor}
+                />
+                {/* Closure length dimension line */}
+                <Line
+                  points={[
+                    [-halfRunLength, -outerRadius - 0.15, 0],
+                    [-halfRunLength - closureLengthMm / scaleFactor, -outerRadius - 0.15, 0]
+                  ]}
+                  color="#2563eb"
+                  lineWidth={2}
+                />
+                <Line points={[[-halfRunLength, -outerRadius - 0.1, 0], [-halfRunLength, -outerRadius - 0.2, 0]]} color="#2563eb" lineWidth={1} />
+                <Line points={[[-halfRunLength - closureLengthMm / scaleFactor, -outerRadius - 0.1, 0], [-halfRunLength - closureLengthMm / scaleFactor, -outerRadius - 0.2, 0]]} color="#2563eb" lineWidth={1} />
+                {/* L/F label with closure length */}
+                <Text
+                  position={[-halfRunLength - (closureLengthMm / scaleFactor / 2), -outerRadius - 0.35, 0]}
+                  fontSize={0.15}
+                  color="#2563eb"
+                  anchorX="center"
+                  anchorY="middle"
+                >
+                  {`L/F ${closureLengthMm}mm`}
+                </Text>
+                {/* 100mm gap dimension line */}
+                <Line
+                  points={[
+                    [-halfRunLength - closureLengthMm / scaleFactor, -outerRadius - 0.5, 0],
+                    [-halfRunLength - closureLengthMm / scaleFactor - 1.0, -outerRadius - 0.5, 0]
+                  ]}
+                  color="#9333ea"
+                  lineWidth={1}
+                  dashed
+                />
+                <Text
+                  position={[-halfRunLength - closureLengthMm / scaleFactor - 0.5, -outerRadius - 0.65, 0]}
+                  fontSize={0.12}
+                  color="#9333ea"
+                  anchorX="center"
+                  anchorY="middle"
+                >
+                  100mm gap
+                </Text>
+              </>
             ) : (
               <FlangeComponent
                 position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor, 0, 0]}
@@ -468,57 +533,6 @@ function TeeScene(props: Tee3DPreviewProps) {
                 boltHoles={runFlangeSpecs.boltHoles}
                 holeID={runFlangeSpecs.holeID / scaleFactor}
               />
-            )}
-            {/* Loose flange: Extended pipe section past flange for site weld */}
-            {inletFlangeType === 'loose' && (
-              <>
-                {/* Extended pipe section */}
-                <mesh position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor - (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32]} />
-                  <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
-                </mesh>
-                {/* Inner bore of extended pipe */}
-                <mesh position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor - (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
-                  <meshStandardMaterial color="#1a1a1a" />
-                </mesh>
-                {/* Closure length dimension line */}
-                <Line
-                  points={[
-                    [-halfRunLength - runFlangeSpecs.thickness / scaleFactor, -outerRadius - 0.15, 0],
-                    [-halfRunLength - runFlangeSpecs.thickness / scaleFactor - closureLengthMm / scaleFactor, -outerRadius - 0.15, 0]
-                  ]}
-                  color="#2563eb"
-                  lineWidth={2}
-                />
-                {/* End caps for dimension */}
-                <Line
-                  points={[
-                    [-halfRunLength - runFlangeSpecs.thickness / scaleFactor, -outerRadius - 0.1, 0],
-                    [-halfRunLength - runFlangeSpecs.thickness / scaleFactor, -outerRadius - 0.2, 0]
-                  ]}
-                  color="#2563eb"
-                  lineWidth={1}
-                />
-                <Line
-                  points={[
-                    [-halfRunLength - runFlangeSpecs.thickness / scaleFactor - closureLengthMm / scaleFactor, -outerRadius - 0.1, 0],
-                    [-halfRunLength - runFlangeSpecs.thickness / scaleFactor - closureLengthMm / scaleFactor, -outerRadius - 0.2, 0]
-                  ]}
-                  color="#2563eb"
-                  lineWidth={1}
-                />
-                {/* L/F label */}
-                <Text
-                  position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor - (closureLengthMm / scaleFactor / 2), -outerRadius - 0.35, 0]}
-                  fontSize={0.15}
-                  color="#2563eb"
-                  anchorX="center"
-                  anchorY="middle"
-                >
-                  {`L/F ${closureLengthMm}mm`}
-                </Text>
-              </>
             )}
           </>
         )}
@@ -565,6 +579,71 @@ function TeeScene(props: Tee3DPreviewProps) {
                   R/F 50mm
                 </Text>
               </>
+            ) : outletFlangeType === 'loose' ? (
+              <>
+                {/* Loose flange: Closure piece attached to tee, then 100mm gap, then flange floating */}
+                {/* Closure pipe piece attached to tee end */}
+                <mesh position={[halfRunLength + (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                  <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32]} />
+                  <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
+                </mesh>
+                {/* Inner bore of closure pipe */}
+                <mesh position={[halfRunLength + (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                  <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
+                  <meshStandardMaterial color="#1a1a1a" />
+                </mesh>
+                {/* Loose flange floating 100mm (1.0 scene units) away from closure piece */}
+                <FlangeComponent
+                  position={[halfRunLength + closureLengthMm / scaleFactor + 1.0, 0, 0]}
+                  rotation={[0, -Math.PI / 2, 0]}
+                  outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
+                  innerDiameter={id / scaleFactor}
+                  thickness={runFlangeSpecs.thickness / scaleFactor}
+                  pcd={runFlangeSpecs.pcd / scaleFactor}
+                  boltHoles={runFlangeSpecs.boltHoles}
+                  holeID={runFlangeSpecs.holeID / scaleFactor}
+                />
+                {/* Closure length dimension line */}
+                <Line
+                  points={[
+                    [halfRunLength, -outerRadius - 0.15, 0],
+                    [halfRunLength + closureLengthMm / scaleFactor, -outerRadius - 0.15, 0]
+                  ]}
+                  color="#2563eb"
+                  lineWidth={2}
+                />
+                <Line points={[[halfRunLength, -outerRadius - 0.1, 0], [halfRunLength, -outerRadius - 0.2, 0]]} color="#2563eb" lineWidth={1} />
+                <Line points={[[halfRunLength + closureLengthMm / scaleFactor, -outerRadius - 0.1, 0], [halfRunLength + closureLengthMm / scaleFactor, -outerRadius - 0.2, 0]]} color="#2563eb" lineWidth={1} />
+                {/* L/F label with closure length */}
+                <Text
+                  position={[halfRunLength + (closureLengthMm / scaleFactor / 2), -outerRadius - 0.35, 0]}
+                  fontSize={0.15}
+                  color="#2563eb"
+                  anchorX="center"
+                  anchorY="middle"
+                >
+                  {`L/F ${closureLengthMm}mm`}
+                </Text>
+                {/* 100mm gap dimension line */}
+                <Line
+                  points={[
+                    [halfRunLength + closureLengthMm / scaleFactor, -outerRadius - 0.5, 0],
+                    [halfRunLength + closureLengthMm / scaleFactor + 1.0, -outerRadius - 0.5, 0]
+                  ]}
+                  color="#9333ea"
+                  lineWidth={1}
+                  dashed
+                />
+                <Text
+                  position={[halfRunLength + closureLengthMm / scaleFactor + 0.5, -outerRadius - 0.65, 0]}
+                  fontSize={0.12}
+                  color="#9333ea"
+                  anchorX="center"
+                  anchorY="middle"
+                >
+                  100mm gap
+                </Text>
+              </>
             ) : (
               <FlangeComponent
                 position={[halfRunLength + runFlangeSpecs.thickness / scaleFactor, 0, 0]}
@@ -576,57 +655,6 @@ function TeeScene(props: Tee3DPreviewProps) {
                 boltHoles={runFlangeSpecs.boltHoles}
                 holeID={runFlangeSpecs.holeID / scaleFactor}
               />
-            )}
-            {/* Loose flange: Extended pipe section past flange for site weld */}
-            {outletFlangeType === 'loose' && (
-              <>
-                {/* Extended pipe section */}
-                <mesh position={[halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor) + (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32]} />
-                  <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
-                </mesh>
-                {/* Inner bore of extended pipe */}
-                <mesh position={[halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor) + (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
-                  <meshStandardMaterial color="#1a1a1a" />
-                </mesh>
-                {/* Closure length dimension line */}
-                <Line
-                  points={[
-                    [halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor), -outerRadius - 0.15, 0],
-                    [halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor) + closureLengthMm / scaleFactor, -outerRadius - 0.15, 0]
-                  ]}
-                  color="#2563eb"
-                  lineWidth={2}
-                />
-                {/* End caps for dimension */}
-                <Line
-                  points={[
-                    [halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor), -outerRadius - 0.1, 0],
-                    [halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor), -outerRadius - 0.2, 0]
-                  ]}
-                  color="#2563eb"
-                  lineWidth={1}
-                />
-                <Line
-                  points={[
-                    [halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor) + closureLengthMm / scaleFactor, -outerRadius - 0.1, 0],
-                    [halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor) + closureLengthMm / scaleFactor, -outerRadius - 0.2, 0]
-                  ]}
-                  color="#2563eb"
-                  lineWidth={1}
-                />
-                {/* L/F label */}
-                <Text
-                  position={[halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor) + (closureLengthMm / scaleFactor / 2), -outerRadius - 0.35, 0]}
-                  fontSize={0.15}
-                  color="#2563eb"
-                  anchorX="center"
-                  anchorY="middle"
-                >
-                  {`L/F ${closureLengthMm}mm`}
-                </Text>
-              </>
             )}
           </>
         )}
@@ -673,6 +701,71 @@ function TeeScene(props: Tee3DPreviewProps) {
                   R/F 50mm
                 </Text>
               </>
+            ) : branchFlangeType === 'loose' ? (
+              <>
+                {/* Loose flange: Closure piece attached to branch, then 100mm gap, then flange floating */}
+                {/* Closure pipe piece attached to branch top */}
+                <mesh position={[branchOffsetX, height + (closureLengthMm / scaleFactor / 2), 0]}>
+                  <cylinderGeometry args={[branchOuterRadius, branchOuterRadius, closureLengthMm / scaleFactor, 32]} />
+                  <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
+                </mesh>
+                {/* Inner bore of closure pipe */}
+                <mesh position={[branchOffsetX, height + (closureLengthMm / scaleFactor / 2), 0]}>
+                  <cylinderGeometry args={[branchInnerRadius, branchInnerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
+                  <meshStandardMaterial color="#1a1a1a" />
+                </mesh>
+                {/* Loose flange floating 100mm (1.0 scene units) above closure piece */}
+                <FlangeComponent
+                  position={[branchOffsetX, height + closureLengthMm / scaleFactor + 1.0, 0]}
+                  rotation={[-Math.PI / 2, 0, 0]}
+                  outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
+                  innerDiameter={branchID / scaleFactor}
+                  thickness={branchFlangeSpecs.thickness / scaleFactor}
+                  pcd={branchFlangeSpecs.pcd / scaleFactor}
+                  boltHoles={branchFlangeSpecs.boltHoles}
+                  holeID={branchFlangeSpecs.holeID / scaleFactor}
+                />
+                {/* Closure length dimension line */}
+                <Line
+                  points={[
+                    [branchOffsetX + branchOuterRadius + 0.15, height, 0],
+                    [branchOffsetX + branchOuterRadius + 0.15, height + closureLengthMm / scaleFactor, 0]
+                  ]}
+                  color="#2563eb"
+                  lineWidth={2}
+                />
+                <Line points={[[branchOffsetX + branchOuterRadius + 0.1, height, 0], [branchOffsetX + branchOuterRadius + 0.2, height, 0]]} color="#2563eb" lineWidth={1} />
+                <Line points={[[branchOffsetX + branchOuterRadius + 0.1, height + closureLengthMm / scaleFactor, 0], [branchOffsetX + branchOuterRadius + 0.2, height + closureLengthMm / scaleFactor, 0]]} color="#2563eb" lineWidth={1} />
+                {/* L/F label */}
+                <Text
+                  position={[branchOffsetX + branchOuterRadius + 0.35, height + (closureLengthMm / scaleFactor / 2), 0]}
+                  fontSize={0.15}
+                  color="#2563eb"
+                  anchorX="left"
+                  anchorY="middle"
+                >
+                  {`L/F ${closureLengthMm}mm`}
+                </Text>
+                {/* 100mm gap dimension line */}
+                <Line
+                  points={[
+                    [branchOffsetX + branchOuterRadius + 0.4, height + closureLengthMm / scaleFactor, 0],
+                    [branchOffsetX + branchOuterRadius + 0.4, height + closureLengthMm / scaleFactor + 1.0, 0]
+                  ]}
+                  color="#9333ea"
+                  lineWidth={1}
+                  dashed
+                />
+                <Text
+                  position={[branchOffsetX + branchOuterRadius + 0.6, height + closureLengthMm / scaleFactor + 0.5, 0]}
+                  fontSize={0.12}
+                  color="#9333ea"
+                  anchorX="left"
+                  anchorY="middle"
+                >
+                  100mm gap
+                </Text>
+              </>
             ) : (
               <FlangeComponent
                 position={[branchOffsetX, height, 0]}
@@ -684,40 +777,6 @@ function TeeScene(props: Tee3DPreviewProps) {
                 boltHoles={branchFlangeSpecs.boltHoles}
                 holeID={branchFlangeSpecs.holeID / scaleFactor}
               />
-            )}
-            {/* Loose flange: Extended pipe section past flange for site weld */}
-            {branchFlangeType === 'loose' && (
-              <>
-                {/* Extended pipe section on branch */}
-                <mesh position={[branchOffsetX, height + branchFlangeSpecs.thickness / scaleFactor + (closureLengthMm / scaleFactor / 2), 0]}>
-                  <cylinderGeometry args={[branchOuterRadius, branchOuterRadius, closureLengthMm / scaleFactor, 32]} />
-                  <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
-                </mesh>
-                {/* Inner bore of extended pipe */}
-                <mesh position={[branchOffsetX, height + branchFlangeSpecs.thickness / scaleFactor + (closureLengthMm / scaleFactor / 2), 0]}>
-                  <cylinderGeometry args={[branchInnerRadius, branchInnerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
-                  <meshStandardMaterial color="#1a1a1a" />
-                </mesh>
-                {/* Closure length dimension line */}
-                <Line
-                  points={[
-                    [branchOffsetX + branchOuterRadius + 0.15, height + branchFlangeSpecs.thickness / scaleFactor, 0],
-                    [branchOffsetX + branchOuterRadius + 0.15, height + branchFlangeSpecs.thickness / scaleFactor + closureLengthMm / scaleFactor, 0]
-                  ]}
-                  color="#2563eb"
-                  lineWidth={2}
-                />
-                {/* L/F label */}
-                <Text
-                  position={[branchOffsetX + branchOuterRadius + 0.35, height + branchFlangeSpecs.thickness / scaleFactor + (closureLengthMm / scaleFactor / 2), 0]}
-                  fontSize={0.15}
-                  color="#2563eb"
-                  anchorX="left"
-                  anchorY="middle"
-                >
-                  {`L/F ${closureLengthMm}`}
-                </Text>
-              </>
             )}
           </>
         )}
