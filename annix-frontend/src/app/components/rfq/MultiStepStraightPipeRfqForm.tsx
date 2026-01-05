@@ -14345,7 +14345,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
   // Load draft from URL parameter if present
   useEffect(() => {
-    const draftId = searchParams?.get('draftId');
+    const draftId = searchParams?.get('draft');
     if (!draftId) return;
 
     const loadDraft = async () => {
