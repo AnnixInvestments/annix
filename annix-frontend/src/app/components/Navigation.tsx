@@ -23,10 +23,34 @@ export default function Navigation() {
   // Quick login state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loggedInUser, setLoggedInUser] = useState<LoggedInUser | null>(null);
   const [showLoginForm, setShowLoginForm] = useState(true);
+
+  // Load remembered credentials on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedCredentials = localStorage.getItem('rememberedCredentials');
+      if (savedCredentials) {
+        try {
+          const { email: savedEmail, password: savedPassword, expiry } = JSON.parse(savedCredentials);
+          // Check if credentials have expired (7 days)
+          if (expiry && new Date().getTime() < expiry) {
+            setEmail(savedEmail);
+            setPassword(savedPassword);
+            setRememberMe(true);
+          } else {
+            // Clear expired credentials
+            localStorage.removeItem('rememberedCredentials');
+          }
+        } catch {
+          localStorage.removeItem('rememberedCredentials');
+        }
+      }
+    }
+  }, []);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -85,12 +109,28 @@ export default function Navigation() {
       fingerprint = fpData.fingerprint;
     }
 
+    // Helper to save/clear remembered credentials
+    const handleRememberMe = (loginEmail: string, loginPassword: string) => {
+      if (rememberMe) {
+        // Save credentials with 7-day expiry
+        const expiry = new Date().getTime() + (7 * 24 * 60 * 60 * 1000); // 7 days
+        localStorage.setItem('rememberedCredentials', JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
+          expiry
+        }));
+      } else {
+        localStorage.removeItem('rememberedCredentials');
+      }
+    };
+
     try {
       // Try admin login first
       try {
         const adminResult = await adminApiClient.login({ email, password });
         localStorage.setItem('adminUser', JSON.stringify(adminResult.user));
         setLoggedInUser({ type: 'admin', name: adminResult.user.firstName || adminResult.user.email });
+        handleRememberMe(email, password);
         setShowLoginForm(false);
         setEmail('');
         setPassword('');
@@ -109,6 +149,7 @@ export default function Navigation() {
         });
         localStorage.setItem('customerName', customerResult.name);
         setLoggedInUser({ type: 'customer', name: customerResult.name });
+        handleRememberMe(email, password);
         setShowLoginForm(false);
         setEmail('');
         setPassword('');
@@ -128,6 +169,7 @@ export default function Navigation() {
         const supplierName = supplierResult.supplier.firstName || supplierResult.supplier.companyName || 'Supplier';
         localStorage.setItem('supplierName', supplierName);
         setLoggedInUser({ type: 'supplier', name: supplierName });
+        handleRememberMe(email, password);
         setShowLoginForm(false);
         setEmail('');
         setPassword('');
@@ -261,6 +303,16 @@ export default function Navigation() {
                   className="px-3 py-1.5 rounded text-sm bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-[#FFA500] w-28"
                   disabled={isLoggingIn}
                 />
+                <label className="flex items-center gap-1 text-xs text-white/70 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-3 h-3 rounded border-white/30 bg-white/10 text-[#FFA500] focus:ring-[#FFA500] focus:ring-offset-0 cursor-pointer"
+                    disabled={isLoggingIn}
+                  />
+                  <span className="whitespace-nowrap">Remember</span>
+                </label>
                 <button
                   type="submit"
                   disabled={isLoggingIn}
