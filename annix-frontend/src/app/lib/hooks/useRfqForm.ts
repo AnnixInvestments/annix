@@ -225,6 +225,18 @@ export interface RfqFormData {
   requiredDate: string;
   requiredProducts: string[]; // Selected product/service types
   notes: string;
+  // Location fields
+  latitude?: number;
+  longitude?: number;
+  siteAddress?: string;
+  region?: string;
+  country?: string;
+  // Mine selection
+  mineId?: number;
+  mineName?: string;
+  // Document upload preference
+  skipDocuments?: boolean;
+  // Global specs for page 2
   globalSpecs: GlobalSpecs;
   items: PipeItem[]; // Unified array for all item types
   // Keep backward compatibility

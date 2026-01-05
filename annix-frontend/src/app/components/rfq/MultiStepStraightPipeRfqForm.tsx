@@ -14365,13 +14365,27 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         // Restore form data from draft - set each field individually
         if (draft.formData) {
           const formData = draft.formData;
+          // Basic project info
           if (formData.projectName) updateRfqField('projectName', formData.projectName);
+          if (formData.projectType) updateRfqField('projectType', formData.projectType);
           if (formData.description) updateRfqField('description', formData.description);
+          // Customer info
           if (formData.customerName) updateRfqField('customerName', formData.customerName);
           if (formData.customerEmail) updateRfqField('customerEmail', formData.customerEmail);
           if (formData.customerPhone) updateRfqField('customerPhone', formData.customerPhone);
           if (formData.requiredDate) updateRfqField('requiredDate', formData.requiredDate);
           if (formData.notes) updateRfqField('notes', formData.notes);
+          // Location fields
+          if (formData.latitude) updateRfqField('latitude', formData.latitude);
+          if (formData.longitude) updateRfqField('longitude', formData.longitude);
+          if (formData.siteAddress) updateRfqField('siteAddress', formData.siteAddress);
+          if (formData.region) updateRfqField('region', formData.region);
+          if (formData.country) updateRfqField('country', formData.country);
+          // Mine selection
+          if (formData.mineId) updateRfqField('mineId', formData.mineId);
+          if (formData.mineName) updateRfqField('mineName', formData.mineName);
+          // Document upload preference
+          if (formData.skipDocuments !== undefined) updateRfqField('skipDocuments', formData.skipDocuments);
         }
 
         // Restore global specs
@@ -15573,13 +15587,27 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         projectName: rfqData.projectName,
         currentStep,
         formData: {
+          // Basic project info
           projectName: rfqData.projectName,
+          projectType: rfqData.projectType,
           description: rfqData.description,
+          // Customer info
           customerName: rfqData.customerName,
           customerEmail: rfqData.customerEmail,
           customerPhone: rfqData.customerPhone,
           requiredDate: rfqData.requiredDate,
           notes: rfqData.notes,
+          // Location fields
+          latitude: rfqData.latitude,
+          longitude: rfqData.longitude,
+          siteAddress: rfqData.siteAddress,
+          region: rfqData.region,
+          country: rfqData.country,
+          // Mine selection
+          mineId: rfqData.mineId,
+          mineName: rfqData.mineName,
+          // Document upload preference
+          skipDocuments: rfqData.skipDocuments,
         },
         globalSpecs: rfqData.globalSpecs,
         requiredProducts: rfqData.requiredProducts,
