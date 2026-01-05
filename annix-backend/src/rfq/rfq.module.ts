@@ -18,9 +18,11 @@ import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.e
 import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
 import { NutMass } from '../nut-mass/entities/nut-mass.entity';
 import { NbNpsLookup } from '../nb-nps-lookup/entities/nb-nps-lookup.entity';
+import { CustomerModule } from '../customer/customer.module';
 
 @Module({
   imports: [
+    CustomerModule,
     TypeOrmModule.forFeature([
       Rfq,
       RfqItem,

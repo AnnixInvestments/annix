@@ -15,33 +15,33 @@ export class AdminSession {
   id: number;
 
   @ManyToOne(() => User, { eager: true })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'userId' })
+  @Column({ name: 'user_id' })
   userId: number;
 
-  @Column({ unique: true })
+  @Column({ name: 'session_token', unique: true })
   sessionToken: string; // UUID
 
-  @Column()
+  @Column({ name: 'client_ip' })
   clientIp: string;
 
-  @Column({ type: 'text' })
+  @Column({ name: 'user_agent', type: 'text' })
   userAgent: string;
 
-  @Column({ type: 'timestamp' })
+  @Column({ name: 'expires_at', type: 'timestamp' })
   expiresAt: Date;
 
-  @Column({ default: false })
+  @Column({ name: 'is_revoked', default: false })
   isRevoked: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ name: 'revoked_at', type: 'timestamp', nullable: true })
   revokedAt: Date | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'last_active_at' })
   lastActiveAt: Date;
 }

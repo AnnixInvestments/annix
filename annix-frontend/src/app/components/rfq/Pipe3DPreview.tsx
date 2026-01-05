@@ -12,6 +12,10 @@ interface Pipe3DPreviewProps {
   endConfiguration?: string;
   materialName?: string;
   closureLengthMm?: number; // Closure length for L/F configurations
+  // Blank flange options
+  addBlankFlange?: boolean;
+  blankFlangeCount?: number;
+  blankFlangePositions?: string[]; // ['inlet', 'outlet']
 }
 
 const getMaterialProps = (name: string = '') => {
@@ -140,7 +144,7 @@ const DimensionLine = ({ start, end, label }: { start: [number, number, number],
   );
 };
 
-const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguration = 'PE', materialName, closureLengthMm = 0 }: Pipe3DPreviewProps) => {
+const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguration = 'PE', materialName, closureLengthMm = 0, addBlankFlange = false, blankFlangePositions = [] }: Pipe3DPreviewProps) => {
   const isInputMeters = length < 50;
   const lengthSceneUnits = isInputMeters ? length : length / 1000;
   const safeLength = lengthSceneUnits || 1;
@@ -152,16 +156,23 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
   const configUpper = (endConfiguration || 'PE').toUpperCase();
 
   // Detect loose flanges from configuration
-  // L/F or LF patterns indicate loose flanges
-  const hasLooseLeftFlange = configUpper.includes('L/F') || configUpper.includes('LF_BE') || configUpper.includes('LF_2E');
-  const hasLooseRightFlange = configUpper.includes('L/F') || configUpper.includes('LF_BE') || configUpper.includes('FOE_LF');
+  // FOE_LF = Fixed End B (right) + Loose End A (left)
+  // LF_BE = Loose both ends
+  const hasLooseLeftFlange = configUpper === 'FOE_LF' || configUpper.includes('LF_BE');
+  const hasLooseRightFlange = configUpper.includes('LF_BE');
 
   // Detect rotating flanges - R/F patterns
-  const hasRotatingLeftFlange = configUpper.includes('2X_RF') || configUpper.includes('RF_BE');
-  const hasRotatingRightFlange = configUpper.includes('R/F') || configUpper.includes('FOE_RF') || configUpper.includes('2X_RF');
+  // FOE_RF = Fixed End B (right) + Rotating End A (left)
+  // 2X_RF = Rotating both ends
+  const hasRotatingLeftFlange = configUpper === 'FOE_RF' || configUpper.includes('2X_RF');
+  const hasRotatingRightFlange = configUpper.includes('2X_RF');
 
-  const hasRightFlange = configUpper.includes('FOE') || configUpper.includes('FBE') || configUpper.includes('2') || configUpper.includes('R/F') || configUpper.includes('L/F');
-  const hasLeftFlange = configUpper.includes('FBE') || configUpper.includes('2') || configUpper.includes('+') || configUpper.includes('LF_BE') || configUpper.includes('RF_BE');
+  // hasRightFlange = any configuration with flange on End B (right)
+  // FOE, FBE, FOE_LF, FOE_RF, 2X_RF, LF_BE all have flange on right
+  const hasRightFlange = configUpper.includes('FOE') || configUpper.includes('FBE') || configUpper.includes('2X_RF') || configUpper.includes('LF_BE');
+  // hasLeftFlange = any configuration with flange on End A (left)
+  // FBE, FOE_LF, FOE_RF, 2X_RF, LF_BE all have flange on left
+  const hasLeftFlange = configUpper.includes('FBE') || configUpper === 'FOE_LF' || configUpper === 'FOE_RF' || configUpper.includes('2X_RF') || configUpper.includes('LF_BE');
   const flangeThickness = odSceneUnits * 0.15;
 
   // Closure and gap dimensions
@@ -193,7 +204,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
       {/* Left flange */}
       {hasLeftFlange && (
         <>
-          {hasLooseLeftFlange && closureLengthMm > 0 ? (
+          {hasLooseLeftFlange ? (
             <>
               {/* Closure piece (attached to pipe end) */}
               <mesh rotation={[0, 0, Math.PI / 2]} position={[-halfLen - closureLength / 2, 0, 0]}>
@@ -243,7 +254,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
       {/* Right flange */}
       {hasRightFlange && (
         <>
-          {hasLooseRightFlange && closureLengthMm > 0 ? (
+          {hasLooseRightFlange ? (
             <>
               {/* Closure piece (attached to pipe end) */}
               <mesh rotation={[0, 0, Math.PI / 2]} position={[halfLen + closureLength / 2, 0, 0]}>

@@ -780,10 +780,12 @@ export class RfqService {
    * Get all drafts for a user
    */
   async getDrafts(userId: number): Promise<RfqDraftResponseDto[]> {
-    const drafts = await this.rfqDraftRepository.find({
-      where: { createdBy: { id: userId }, isConverted: false },
-      order: { updatedAt: 'DESC' },
-    });
+    const drafts = await this.rfqDraftRepository
+      .createQueryBuilder('draft')
+      .where('draft.created_by_user_id = :userId', { userId })
+      .andWhere('draft.is_converted = :isConverted', { isConverted: false })
+      .orderBy('draft.updated_at', 'DESC')
+      .getMany();
 
     return drafts.map(draft => this.mapDraftToResponse(draft));
   }
@@ -792,9 +794,11 @@ export class RfqService {
    * Get a single draft with full data
    */
   async getDraftById(draftId: number, userId: number): Promise<RfqDraftFullResponseDto> {
-    const draft = await this.rfqDraftRepository.findOne({
-      where: { id: draftId, createdBy: { id: userId } },
-    });
+    const draft = await this.rfqDraftRepository
+      .createQueryBuilder('draft')
+      .where('draft.id = :draftId', { draftId })
+      .andWhere('draft.created_by_user_id = :userId', { userId })
+      .getOne();
 
     if (!draft) {
       throw new NotFoundException(`Draft with ID ${draftId} not found or access denied`);
@@ -807,9 +811,11 @@ export class RfqService {
    * Get a draft by draft number
    */
   async getDraftByNumber(draftNumber: string, userId: number): Promise<RfqDraftFullResponseDto> {
-    const draft = await this.rfqDraftRepository.findOne({
-      where: { draftNumber, createdBy: { id: userId } },
-    });
+    const draft = await this.rfqDraftRepository
+      .createQueryBuilder('draft')
+      .where('draft.draft_number = :draftNumber', { draftNumber })
+      .andWhere('draft.created_by_user_id = :userId', { userId })
+      .getOne();
 
     if (!draft) {
       throw new NotFoundException(`Draft ${draftNumber} not found or access denied`);
@@ -822,9 +828,11 @@ export class RfqService {
    * Delete a draft
    */
   async deleteDraft(draftId: number, userId: number): Promise<void> {
-    const draft = await this.rfqDraftRepository.findOne({
-      where: { id: draftId, createdBy: { id: userId } },
-    });
+    const draft = await this.rfqDraftRepository
+      .createQueryBuilder('draft')
+      .where('draft.id = :draftId', { draftId })
+      .andWhere('draft.created_by_user_id = :userId', { userId })
+      .getOne();
 
     if (!draft) {
       throw new NotFoundException(`Draft with ID ${draftId} not found or access denied`);

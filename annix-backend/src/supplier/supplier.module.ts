@@ -34,6 +34,7 @@ import { SupplierAuthGuard } from './guards/supplier-auth.guard';
 import { UserModule } from '../user/user.module';
 import { AuditModule } from '../audit/audit.module';
 import { EmailModule } from '../email/email.module';
+import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { EmailModule } from '../email/email.module';
     UserModule,
     AuditModule,
     EmailModule,
+    AdminModule,
   ],
   controllers: [
     SupplierAuthController,

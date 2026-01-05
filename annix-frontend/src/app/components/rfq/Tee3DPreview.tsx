@@ -33,6 +33,10 @@ interface Tee3DPreviewProps {
   branchFlangeType?: FlangeType;
   // Closure length for loose flanges (site weld extension)
   closureLengthMm?: number;
+  // Blank flange options
+  addBlankFlange?: boolean;
+  blankFlangeCount?: number;
+  blankFlangePositions?: string[]; // ['inlet', 'outlet', 'branch']
 }
 
 // Flange lookup table based on nominal bore (simplified PN16)
@@ -56,6 +60,49 @@ const getFlangeSpecs = (nb: number) => {
   };
   return flangeData[nb] || { flangeOD: nb * 1.5, pcd: nb * 1.3, thickness: 26, boltHoles: 12, holeID: 22 };
 };
+
+// Blank Flange component (solid disc with bolt holes, no center bore)
+function BlankFlangeComponent({
+  position,
+  rotation,
+  outerDiameter,
+  thickness,
+  pcd,
+  boltHoles,
+  holeID
+}: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  outerDiameter: number;
+  thickness: number;
+  pcd: number;
+  boltHoles: number;
+  holeID: number;
+}) {
+  const blankGeometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, outerDiameter / 2, 0, Math.PI * 2, false);
+
+    // Add bolt holes only (no center bore - it's a blank/blind flange)
+    for (let i = 0; i < boltHoles; i++) {
+      const angle = (i / boltHoles) * Math.PI * 2;
+      const x = Math.cos(angle) * (pcd / 2);
+      const y = Math.sin(angle) * (pcd / 2);
+      const boltHole = new THREE.Path();
+      boltHole.absarc(x, y, holeID / 2, 0, Math.PI * 2, true);
+      shape.holes.push(boltHole);
+    }
+
+    const extrudeSettings = { depth: thickness, bevelEnabled: false };
+    return new THREE.ExtrudeGeometry(shape, extrudeSettings);
+  }, [outerDiameter, thickness, pcd, boltHoles, holeID]);
+
+  return (
+    <mesh position={position} rotation={rotation || [0, 0, 0]} geometry={blankGeometry} castShadow receiveShadow>
+      <meshStandardMaterial color="#cc3300" metalness={0.6} roughness={0.4} />
+    </mesh>
+  );
+}
 
 // Flange component
 function FlangeComponent({
@@ -154,7 +201,14 @@ function TeeScene(props: Tee3DPreviewProps) {
     outletFlangeType = 'fixed',
     branchFlangeType = 'fixed',
     closureLengthMm = 150,
+    addBlankFlange = false,
+    blankFlangePositions = [],
   } = props;
+
+  // Determine which positions have blank flanges
+  const hasBlankInlet = addBlankFlange && blankFlangePositions.includes('inlet') && hasInletFlange && inletFlangeType === 'fixed';
+  const hasBlankOutlet = addBlankFlange && blankFlangePositions.includes('outlet') && hasOutletFlange && outletFlangeType === 'fixed';
+  const hasBlankBranch = addBlankFlange && blankFlangePositions.includes('branch') && hasBranchFlange && branchFlangeType === 'fixed';
 
   // Get dimensions from SABS 719 data
   const dims = getSabs719TeeDimensions(nominalBore);
@@ -457,6 +511,81 @@ function TeeScene(props: Tee3DPreviewProps) {
                 </Text>
               </>
             )}
+          </>
+        )}
+
+        {/* Blank Flanges - solid disc flanges positioned 50mm from fixed flanges */}
+        {/* Blank flange gap distance: 50mm = 0.5 in scene units (50/100) */}
+        {hasBlankInlet && (
+          <>
+            <BlankFlangeComponent
+              position={[-halfRunLength - (2 * runFlangeSpecs.thickness / scaleFactor) - 0.5, 0, 0]}
+              rotation={[0, Math.PI / 2, 0]}
+              outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
+              thickness={runFlangeSpecs.thickness / scaleFactor}
+              pcd={runFlangeSpecs.pcd / scaleFactor}
+              boltHoles={runFlangeSpecs.boltHoles}
+              holeID={runFlangeSpecs.holeID / scaleFactor}
+            />
+            <Text
+              position={[-halfRunLength - (2 * runFlangeSpecs.thickness / scaleFactor) - 0.25, -outerRadius - 0.2, 0]}
+              fontSize={0.12}
+              color="#cc3300"
+              anchorX="center"
+              anchorY="top"
+              outlineWidth={0.015}
+              outlineColor="white"
+            >
+              BLANK
+            </Text>
+          </>
+        )}
+        {hasBlankOutlet && (
+          <>
+            <BlankFlangeComponent
+              position={[halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor) + 0.5, 0, 0]}
+              rotation={[0, -Math.PI / 2, 0]}
+              outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
+              thickness={runFlangeSpecs.thickness / scaleFactor}
+              pcd={runFlangeSpecs.pcd / scaleFactor}
+              boltHoles={runFlangeSpecs.boltHoles}
+              holeID={runFlangeSpecs.holeID / scaleFactor}
+            />
+            <Text
+              position={[halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor) + 0.75, -outerRadius - 0.2, 0]}
+              fontSize={0.12}
+              color="#cc3300"
+              anchorX="center"
+              anchorY="top"
+              outlineWidth={0.015}
+              outlineColor="white"
+            >
+              BLANK
+            </Text>
+          </>
+        )}
+        {hasBlankBranch && (
+          <>
+            <BlankFlangeComponent
+              position={[branchOffsetX, height + (2 * branchFlangeSpecs.thickness / scaleFactor) + 0.5, 0]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
+              thickness={branchFlangeSpecs.thickness / scaleFactor}
+              pcd={branchFlangeSpecs.pcd / scaleFactor}
+              boltHoles={branchFlangeSpecs.boltHoles}
+              holeID={branchFlangeSpecs.holeID / scaleFactor}
+            />
+            <Text
+              position={[branchOffsetX - branchOuterRadius - 0.3, height + (2 * branchFlangeSpecs.thickness / scaleFactor) + 0.5, 0]}
+              fontSize={0.12}
+              color="#cc3300"
+              anchorX="right"
+              anchorY="middle"
+              outlineWidth={0.015}
+              outlineColor="white"
+            >
+              BLANK
+            </Text>
           </>
         )}
 

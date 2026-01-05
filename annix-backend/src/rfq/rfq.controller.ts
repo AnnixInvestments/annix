@@ -10,9 +10,11 @@ import {
   UploadedFile,
   Res,
   ParseIntPipe,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -20,6 +22,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RfqService } from './rfq.service';
 import { CreateStraightPipeRfqWithItemDto } from './dto/create-rfq-item.dto';
@@ -37,6 +40,7 @@ import {
   RfqDraftFullResponseDto,
 } from './dto/rfq-draft.dto';
 import { Rfq } from './entities/rfq.entity';
+import { CustomerAuthGuard } from '../customer/guards/customer-auth.guard';
 
 @ApiTags('RFQ')
 @Controller('rfq')
@@ -214,11 +218,13 @@ export class RfqController {
       },
     },
   })
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
   async createStraightPipeRfq(
     @Body() dto: CreateStraightPipeRfqWithItemDto,
+    @Req() req: Request,
   ): Promise<{ rfq: Rfq; calculation: StraightPipeCalculationResultDto }> {
-    // For demo purposes, use a default user ID (1) when auth is disabled
-    const userId = 1;
+    const userId = (req as any).customer?.userId;
     return this.rfqService.createStraightPipeRfq(dto, userId);
   }
 
@@ -315,11 +321,13 @@ export class RfqController {
       },
     },
   })
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
   async createBendRfq(
     @Body() dto: CreateBendRfqWithItemDto,
+    @Req() req: Request,
   ): Promise<{ rfq: Rfq; calculation: BendCalculationResultDto }> {
-    // For demo purposes, use a default user ID (1) when auth is disabled
-    const userId = 1;
+    const userId = (req as any).customer?.userId;
     return this.rfqService.createBendRfq(dto, userId);
   }
 
@@ -333,11 +341,172 @@ export class RfqController {
     description: 'RFQs retrieved successfully',
     type: [RfqResponseDto],
   })
-  async getAllRfqs(): Promise<RfqResponseDto[]> {
-    // For demo purposes, use a default user ID (1) when auth is disabled
-    const userId = 1;
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  async getAllRfqs(@Req() req: Request): Promise<RfqResponseDto[]> {
+    const userId = (req as any).customer?.userId;
     return this.rfqService.findAllRfqs(userId);
   }
+
+  // ==================== Draft Endpoints ====================
+  // NOTE: Draft routes must be defined BEFORE :id routes to avoid route conflicts
+
+  @Post('drafts')
+  @ApiOperation({
+    summary: 'Save RFQ draft',
+    description: 'Save or update an RFQ draft with form progress',
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Draft saved successfully',
+    type: RfqDraftResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'User or draft not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Cannot update converted draft',
+  })
+  @ApiBody({
+    description: 'RFQ draft data to save',
+    type: SaveRfqDraftDto,
+    examples: {
+      example1: {
+        summary: 'Save new draft',
+        value: {
+          projectName: 'Pipeline Extension Project',
+          currentStep: 2,
+          formData: {
+            projectName: 'Pipeline Extension Project',
+            customerName: 'Acme Corp',
+            requiredByDate: '2025-12-31',
+            deliveryLocation: 'Johannesburg',
+          },
+          globalSpecs: {
+            steelSpec: 'ASTM A106 Gr.B',
+            steelGrade: 'Grade B',
+            workingPressure: 10,
+            workingTemperature: 120,
+          },
+          requiredProducts: ['fabricated_steel', 'surface_protection'],
+          straightPipeEntries: [],
+        },
+      },
+    },
+  })
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  async saveDraft(
+    @Body() dto: SaveRfqDraftDto,
+    @Req() req: Request,
+  ): Promise<RfqDraftResponseDto> {
+    const userId = (req as any).customer?.userId;
+    return this.rfqService.saveDraft(dto, userId);
+  }
+
+  @Get('drafts')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get all drafts',
+    description: 'Get all RFQ drafts for the authenticated user',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Drafts retrieved successfully',
+    type: [RfqDraftResponseDto],
+  })
+  async getDrafts(@Req() req: Request): Promise<RfqDraftResponseDto[]> {
+    const userId = (req as any).customer?.userId;
+    return this.rfqService.getDrafts(userId);
+  }
+
+  @Get('drafts/number/:draftNumber')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get draft by draft number',
+    description: 'Get a specific RFQ draft by its draft number',
+  })
+  @ApiParam({
+    name: 'draftNumber',
+    description: 'Draft number (e.g., DRAFT-2025-0001)',
+    type: String,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Draft retrieved successfully',
+    type: RfqDraftFullResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Draft not found',
+  })
+  async getDraftByNumber(
+    @Param('draftNumber') draftNumber: string,
+    @Req() req: Request,
+  ): Promise<RfqDraftFullResponseDto> {
+    const userId = (req as any).customer?.userId;
+    return this.rfqService.getDraftByNumber(draftNumber, userId);
+  }
+
+  @Get('drafts/:id')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get draft by ID',
+    description: 'Get a specific RFQ draft with full form data',
+  })
+  @ApiParam({ name: 'id', description: 'Draft ID', type: Number })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Draft retrieved successfully',
+    type: RfqDraftFullResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Draft not found',
+  })
+  async getDraftById(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<RfqDraftFullResponseDto> {
+    const userId = (req as any).customer?.userId;
+    return this.rfqService.getDraftById(id, userId);
+  }
+
+  @Delete('drafts/:id')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Delete draft',
+    description: 'Delete an RFQ draft',
+  })
+  @ApiParam({ name: 'id', description: 'Draft ID', type: Number })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Draft deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Draft not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Cannot delete converted draft',
+  })
+  async deleteDraft(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<{ message: string }> {
+    const userId = (req as any).customer?.userId;
+    await this.rfqService.deleteDraft(id, userId);
+    return { message: 'Draft deleted successfully' };
+  }
+
+  // ==================== RFQ by ID (must come after /drafts routes) ====================
 
   @Get(':id')
   @ApiOperation({
@@ -485,151 +654,5 @@ export class RfqController {
   ): Promise<{ message: string }> {
     await this.rfqService.deleteDocument(documentId);
     return { message: 'Document deleted successfully' };
-  }
-
-  // ==================== Draft Endpoints ====================
-
-  @Post('drafts')
-  @ApiOperation({
-    summary: 'Save RFQ draft',
-    description: 'Save or update an RFQ draft with form progress',
-  })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Draft saved successfully',
-    type: RfqDraftResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'User or draft not found',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Cannot update converted draft',
-  })
-  @ApiBody({
-    description: 'RFQ draft data to save',
-    type: SaveRfqDraftDto,
-    examples: {
-      example1: {
-        summary: 'Save new draft',
-        value: {
-          projectName: 'Pipeline Extension Project',
-          currentStep: 2,
-          formData: {
-            projectName: 'Pipeline Extension Project',
-            customerName: 'Acme Corp',
-            requiredByDate: '2025-12-31',
-            deliveryLocation: 'Johannesburg',
-          },
-          globalSpecs: {
-            steelSpec: 'ASTM A106 Gr.B',
-            steelGrade: 'Grade B',
-            workingPressure: 10,
-            workingTemperature: 120,
-          },
-          requiredProducts: ['fabricated_steel', 'surface_protection'],
-          straightPipeEntries: [],
-        },
-      },
-    },
-  })
-  async saveDraft(@Body() dto: SaveRfqDraftDto): Promise<RfqDraftResponseDto> {
-    // For demo purposes, use a default user ID (1) when auth is disabled
-    const userId = 1;
-    return this.rfqService.saveDraft(dto, userId);
-  }
-
-  @Get('drafts')
-  @ApiOperation({
-    summary: 'Get all drafts',
-    description: 'Get all RFQ drafts for the authenticated user',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Drafts retrieved successfully',
-    type: [RfqDraftResponseDto],
-  })
-  async getDrafts(): Promise<RfqDraftResponseDto[]> {
-    // For demo purposes, use a default user ID (1) when auth is disabled
-    const userId = 1;
-    return this.rfqService.getDrafts(userId);
-  }
-
-  @Get('drafts/:id')
-  @ApiOperation({
-    summary: 'Get draft by ID',
-    description: 'Get a specific RFQ draft with full form data',
-  })
-  @ApiParam({ name: 'id', description: 'Draft ID', type: Number })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Draft retrieved successfully',
-    type: RfqDraftFullResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Draft not found',
-  })
-  async getDraftById(
-    @Param('id', ParseIntPipe) id: number,
-  ): Promise<RfqDraftFullResponseDto> {
-    // For demo purposes, use a default user ID (1) when auth is disabled
-    const userId = 1;
-    return this.rfqService.getDraftById(id, userId);
-  }
-
-  @Get('drafts/number/:draftNumber')
-  @ApiOperation({
-    summary: 'Get draft by draft number',
-    description: 'Get a specific RFQ draft by its draft number',
-  })
-  @ApiParam({
-    name: 'draftNumber',
-    description: 'Draft number (e.g., DRAFT-2025-0001)',
-    type: String,
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Draft retrieved successfully',
-    type: RfqDraftFullResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Draft not found',
-  })
-  async getDraftByNumber(
-    @Param('draftNumber') draftNumber: string,
-  ): Promise<RfqDraftFullResponseDto> {
-    // For demo purposes, use a default user ID (1) when auth is disabled
-    const userId = 1;
-    return this.rfqService.getDraftByNumber(draftNumber, userId);
-  }
-
-  @Delete('drafts/:id')
-  @ApiOperation({
-    summary: 'Delete draft',
-    description: 'Delete an RFQ draft',
-  })
-  @ApiParam({ name: 'id', description: 'Draft ID', type: Number })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Draft deleted successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Draft not found',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Cannot delete converted draft',
-  })
-  async deleteDraft(
-    @Param('id', ParseIntPipe) id: number,
-  ): Promise<{ message: string }> {
-    // For demo purposes, use a default user ID (1) when auth is disabled
-    const userId = 1;
-    await this.rfqService.deleteDraft(id, userId);
-    return { message: 'Draft deleted successfully' };
   }
 }

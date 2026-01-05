@@ -248,15 +248,15 @@ const DEFAULT_PIPE_SPECS: Partial<CreateStraightPipeRfqDto> = {
 export const useRfqForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [rfqData, setRfqData] = useState<RfqFormData>({
-    projectName: '500NB Pipeline Extension Project',
+    projectName: '',
     projectType: undefined, // Will be set by user selection
-    description: 'Extension of existing pipeline system with carbon steel pipe',
-    customerName: 'Acme Industrial Solutions',
-    customerEmail: 'procurement@acme-industrial.co.za',
-    customerPhone: '+27 11 555 0123',
+    description: '',
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
     requiredDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     requiredProducts: [], // Selected product/service types
-    notes: 'Urgent delivery required by month end',
+    notes: '',
     globalSpecs: {},
     items: [],
     straightPipeEntries: [],

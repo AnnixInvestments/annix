@@ -6,12 +6,33 @@ import { AdminSession } from './entities/admin-session.entity';
 import { User } from '../user/entities/user.entity';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminAuthController } from './admin-auth.controller';
+import { AdminDashboardService } from './admin-dashboard.service';
+import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminAuthGuard } from './guards/admin-auth.guard';
 import { AuditModule } from '../audit/audit.module';
+import { CustomerProfile } from '../customer/entities/customer-profile.entity';
+import { CustomerOnboarding } from '../customer/entities/customer-onboarding.entity';
+import { CustomerSession } from '../customer/entities/customer-session.entity';
+import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
+import { SupplierOnboarding } from '../supplier/entities/supplier-onboarding.entity';
+import { SupplierSession } from '../supplier/entities/supplier-session.entity';
+import { Rfq } from '../rfq/entities/rfq.entity';
+import { AuditLog } from '../audit/entities/audit-log.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AdminSession, User]),
+    TypeOrmModule.forFeature([
+      AdminSession,
+      User,
+      CustomerProfile,
+      CustomerOnboarding,
+      CustomerSession,
+      SupplierProfile,
+      SupplierOnboarding,
+      SupplierSession,
+      Rfq,
+      AuditLog,
+    ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -22,8 +43,8 @@ import { AuditModule } from '../audit/audit.module';
     }),
     AuditModule,
   ],
-  providers: [AdminAuthService, AdminAuthGuard],
-  controllers: [AdminAuthController],
+  providers: [AdminAuthService, AdminAuthGuard, AdminDashboardService],
+  controllers: [AdminAuthController, AdminDashboardController],
   exports: [AdminAuthService, AdminAuthGuard],
 })
 export class AdminModule {}

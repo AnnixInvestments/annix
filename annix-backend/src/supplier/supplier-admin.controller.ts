@@ -20,7 +20,7 @@ import {
 import { Request } from 'express';
 
 import { SupplierAdminService } from './supplier-admin.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import {
@@ -32,7 +32,7 @@ import { SupplierOnboardingStatus } from './entities';
 
 @ApiTags('Admin - Supplier Management')
 @Controller('admin/suppliers')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(AdminAuthGuard, RolesGuard)
 @Roles('admin', 'employee')
 @ApiBearerAuth()
 export class SupplierAdminController {

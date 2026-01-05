@@ -283,26 +283,38 @@ export interface CreateSaMineDto {
 
 class ApiClient {
   private baseURL: string;
-  private token: string | null = null;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
-    
-    // Try to get token from localStorage if available
-    if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('authToken');
-    }
+  }
+
+  // Get the current auth token - checks customer, supplier, and admin tokens
+  private getAuthToken(): string | null {
+    if (typeof window === 'undefined') return null;
+
+    // Check for customer token first (most common for RFQ)
+    const customerToken = localStorage.getItem('customerAccessToken');
+    if (customerToken) return customerToken;
+
+    // Check for supplier token
+    const supplierToken = localStorage.getItem('supplierAccessToken');
+    if (supplierToken) return supplierToken;
+
+    // Check for admin token
+    const adminToken = localStorage.getItem('adminAccessToken');
+    if (adminToken) return adminToken;
+
+    // Fallback to generic auth token
+    return localStorage.getItem('authToken');
   }
 
   setToken(token: string) {
-    this.token = token;
     if (typeof window !== 'undefined') {
       localStorage.setItem('authToken', token);
     }
   }
 
   clearToken() {
-    this.token = null;
     if (typeof window !== 'undefined') {
       localStorage.removeItem('authToken');
     }
@@ -319,10 +331,11 @@ class ApiClient {
       ...(options.headers as Record<string, string>),
     };
 
-    // Skip authentication for now
-    // if (this.token) {
-    //   headers['Authorization'] = `Bearer ${this.token}`;
-    // }
+    // Include auth token if available
+    const token = this.getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const config: RequestInit = {
       ...options,

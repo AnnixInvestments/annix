@@ -88,6 +88,6 @@ import { EmailModule } from '../email/email.module';
     CustomerSupplierService,
     DocumentOcrService,
   ],
-  exports: [CustomerAuthService, CustomerService, CustomerOnboardingService],
+  exports: [CustomerAuthService, CustomerService, CustomerOnboardingService, JwtModule],
 })
 export class CustomerModule {}
