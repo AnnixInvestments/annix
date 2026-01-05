@@ -28,6 +28,10 @@ interface Bend3DPreviewProps {
   numberOfStubs?: number;
   flangeConfig?: string; // PE, FOE, FBE, FOE_LF, FOE_RF, 2X_RF
   closureLengthMm?: number; // Closure length for L/F configurations
+  // Blank flange options
+  addBlankFlange?: boolean;
+  blankFlangeCount?: number;
+  blankFlangePositions?: string[]; // ['inlet', 'outlet']
 }
 
 const estimateWallThickness = (nb: number, schedule: string = "40", currentWt: number) => {
@@ -181,6 +185,74 @@ const Flange = ({ position, rotation, outerRadius, pipeRadius, nominalBore, mate
         </group>
       ))}
 
+    </group>
+  );
+};
+
+// Blank Flange component (solid disc with bolt holes, no center bore)
+const BlankFlange = ({ position, rotation, outerRadius, nominalBore }: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  outerRadius: number;
+  nominalBore: number;
+}) => {
+  const flangeRadius = outerRadius * 2.2;
+  const flangeThickness = outerRadius * 0.4;
+  const boltCircleRadius = outerRadius * 1.6;
+  const boltHoleRadius = outerRadius * 0.15;
+
+  const getBoltCount = (nb: number) => {
+    if (nb <= 25) return 4;
+    if (nb <= 50) return 4;
+    if (nb <= 80) return 4;
+    if (nb <= 100) return 8;
+    if (nb <= 150) return 8;
+    if (nb <= 200) return 8;
+    if (nb <= 250) return 12;
+    if (nb <= 300) return 12;
+    if (nb <= 350) return 12;
+    if (nb <= 400) return 16;
+    if (nb <= 450) return 16;
+    if (nb <= 500) return 20;
+    if (nb <= 600) return 20;
+    return 24;
+  };
+
+  const boltCount = getBoltCount(nominalBore);
+  const boltHoles = [];
+
+  for (let i = 0; i < boltCount; i++) {
+    const angle = (i / boltCount) * Math.PI * 2;
+    const x = Math.cos(angle) * boltCircleRadius;
+    const y = Math.sin(angle) * boltCircleRadius;
+    boltHoles.push({ x, y, angle });
+  }
+
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Blank flange face - solid cylinder (no center hole) */}
+      <mesh>
+        <cylinderGeometry args={[flangeRadius, flangeRadius, flangeThickness, 32]} />
+        <meshStandardMaterial color="#cc3300" metalness={0.6} roughness={0.4} />
+      </mesh>
+
+      {/* Bolt holes */}
+      {boltHoles.map((hole, i) => (
+        <group key={i} position={[hole.x, 0, hole.y]}>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[boltHoleRadius, boltHoleRadius, flangeThickness * 1.5, 16]} />
+            <meshStandardMaterial color="#111" />
+          </mesh>
+          <mesh position={[0, flangeThickness / 2 + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[boltHoleRadius * 1.2, 16]} />
+            <meshStandardMaterial color="#000" />
+          </mesh>
+          <mesh position={[0, -flangeThickness / 2 - 0.02, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[boltHoleRadius * 1.2, 16]} />
+            <meshStandardMaterial color="#000" />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 };
@@ -523,7 +595,8 @@ const BendScene = ({
   nominalBore, outerDiameter, wallThickness, bendAngle, bendType,
   tangent1 = 0, tangent2 = 0, materialName, schedule = "40",
   numberOfSegments = 0, isSegmented = false, stubs, numberOfStubs = 0,
-  flangeConfig = 'PE', closureLengthMm = 0
+  flangeConfig = 'PE', closureLengthMm = 0,
+  addBlankFlange = false, blankFlangePositions = []
 }: Bend3DPreviewProps) => {
   const scaleFactor = 100;
 
@@ -1096,6 +1169,61 @@ const BendScene = ({
                   material={matProps}
                 />
               )}
+            </>
+          );
+        })()}
+
+        {/* Blank Flanges - positioned 50mm from the main flange */}
+        {addBlankFlange && blankFlangePositions.includes('outlet') && showOutletFlange && (() => {
+          const angleRad = (bendAngle * Math.PI) / 180;
+          const flangeThickness = outerRadius * 0.4;
+          const pipeEndX = outletX + (-Math.sin(angleRad)) * horizontalTangent;
+          const pipeEndY = outletY + Math.cos(angleRad) * horizontalTangent;
+          const blankOffset = flangeThickness + 0.1; // 100mm gap in scene units
+          const blankX = pipeEndX + (-Math.sin(angleRad)) * blankOffset;
+          const blankY = pipeEndY + Math.cos(angleRad) * blankOffset;
+          return (
+            <>
+              <BlankFlange
+                position={[blankX, blankY, 0]}
+                rotation={[0, 0, angleRad]}
+                outerRadius={outerRadius}
+                nominalBore={nominalBore}
+              />
+              <Text
+                position={[blankX + 0.3, blankY, 0]}
+                fontSize={0.15}
+                color="#cc3300"
+                anchorX="left"
+                anchorY="middle"
+              >
+                BLANK
+              </Text>
+            </>
+          );
+        })()}
+        {addBlankFlange && blankFlangePositions.includes('inlet') && showInletFlange && (() => {
+          const flangeThickness = outerRadius * 0.4;
+          const pipeEndY = verticalTangent > 0 ? inletY - verticalTangent : inletY;
+          const blankOffset = flangeThickness + 0.1; // 100mm gap in scene units
+          const blankY = pipeEndY - blankOffset;
+          return (
+            <>
+              <BlankFlange
+                position={[inletX, blankY, 0]}
+                rotation={[0, 0, 0]}
+                outerRadius={outerRadius}
+                nominalBore={nominalBore}
+              />
+              <Text
+                position={[inletX + outerRadius * 2.5, blankY, 0]}
+                fontSize={0.15}
+                color="#cc3300"
+                anchorX="left"
+                anchorY="middle"
+              >
+                BLANK
+              </Text>
             </>
           );
         })()}

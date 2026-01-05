@@ -120,6 +120,49 @@ const RetainingRing = ({ position, pipeOuterRadius, pipeInnerRadius, wallThickne
   );
 };
 
+// Blank Flange component (solid disc with bolt holes, no center bore)
+const BlankFlange = ({ position, outerDiameter, thickness }: { position: [number, number, number], outerDiameter: number, thickness: number }) => {
+  const flangeOD = outerDiameter * 1.6;
+  const numHoles = outerDiameter < 0.1 ? 4 : outerDiameter < 0.25 ? 8 : 12;
+  const boltCircleRadius = (flangeOD + outerDiameter) / 4;
+  const boltHoleSize = thickness * 0.4;
+
+  const holes = useMemo(() => {
+    const holeMeshes = [];
+    for (let i = 0; i < numHoles; i++) {
+      const angle = (i / numHoles) * Math.PI * 2;
+      const x = Math.cos(angle) * boltCircleRadius;
+      const y = Math.sin(angle) * boltCircleRadius;
+      holeMeshes.push(
+        <mesh key={i} position={[x, y, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[boltHoleSize, boltHoleSize, thickness * 1.05, 8]} />
+          <meshBasicMaterial color="#222" />
+        </mesh>
+      );
+    }
+    return holeMeshes;
+  }, [numHoles, boltCircleRadius, boltHoleSize, thickness]);
+
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, flangeOD / 2, 0, Math.PI * 2, false);
+    // No center hole - it's a blank/blind flange
+    const extrudeSettings = { depth: thickness, bevelEnabled: true, bevelSize: 0.005, bevelThickness: 0.005, curveSegments: 32 };
+    const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geo.center();
+    return geo;
+  }, [flangeOD, thickness]);
+
+  return (
+    <group position={position} rotation={[0, Math.PI / 2, 0]}>
+      <mesh geometry={geometry}>
+        <meshStandardMaterial color="#cc3300" metalness={0.6} roughness={0.4} />
+      </mesh>
+      {holes}
+    </group>
+  );
+};
+
 const DimensionLine = ({ start, end, label }: { start: [number, number, number], end: [number, number, number], label: string }) => {
   const p1 = new THREE.Vector3(...start);
   const p2 = new THREE.Vector3(...end);
@@ -308,6 +351,32 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
               <WeldBead position={[halfLen - (flangeThickness/2) - 0.01, 0, 0]} diameter={odSceneUnits} />
             </>
           )}
+        </>
+      )}
+
+      {/* Blank Flanges - positioned 50mm from the main flange */}
+      {addBlankFlange && blankFlangePositions.includes('inlet') && hasLeftFlange && (
+        <>
+          <BlankFlange
+            position={[-halfLen - flangeThickness - 0.1, 0, 0]}
+            outerDiameter={odSceneUnits}
+            thickness={flangeThickness}
+          />
+          <Text position={[-halfLen - flangeThickness - 0.05, -radius - 0.15, 0]} fontSize={0.1} color="#cc3300" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+            BLANK
+          </Text>
+        </>
+      )}
+      {addBlankFlange && blankFlangePositions.includes('outlet') && hasRightFlange && (
+        <>
+          <BlankFlange
+            position={[halfLen + flangeThickness + 0.1, 0, 0]}
+            outerDiameter={odSceneUnits}
+            thickness={flangeThickness}
+          />
+          <Text position={[halfLen + flangeThickness + 0.15, -radius - 0.15, 0]} fontSize={0.1} color="#cc3300" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+            BLANK
+          </Text>
         </>
       )}
 

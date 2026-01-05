@@ -9476,69 +9476,58 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     })()}
 
 
-                    {/* Blank Flange Option for Bends - Only show if there are fixed flanges */}
+                    {/* Blank Flange Option for Bends - Position selector */}
                     {(() => {
                       const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                      const fixedFlangeInfo = getFixedFlangeCount(bendEndConfig);
-                      if (fixedFlangeInfo.count === 0) return null;
+                      const configUpper = bendEndConfig.toUpperCase();
+                      // Determine available flange positions based on config
+                      const hasInletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', 'LF_BE'].includes(configUpper);
+                      const hasOutletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', 'LF_BE'].includes(configUpper);
+
+                      const availablePositions: { key: string; label: string; hasFlange: boolean }[] = [
+                        { key: 'inlet', label: 'Inlet (Bottom)', hasFlange: hasInletFlange },
+                        { key: 'outlet', label: 'Outlet (Top)', hasFlange: hasOutletFlange },
+                      ].filter(p => p.hasFlange);
+
+                      if (availablePositions.length === 0) return null;
+
+                      const currentPositions = entry.specs?.blankFlangePositions || [];
 
                       return (
                         <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-3">
-                          <div className="flex items-center gap-3">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={entry.specs?.addBlankFlange || false}
-                                onChange={(e) => {
-                                  const addBlank = e.target.checked;
-                                  onUpdateEntry(entry.id, {
-                                    specs: {
-                                      ...entry.specs,
-                                      addBlankFlange: addBlank,
-                                      blankFlangeCount: addBlank ? 1 : 0,
-                                      blankFlangePositions: addBlank ? ['outlet'] : []
-                                    }
-                                  });
-                                }}
-                                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                              />
-                              <span className="text-sm font-semibold text-green-800">Add Blank Flange(s)</span>
-                            </label>
-                            <span className="text-xs text-slate-500">
-                              ({fixedFlangeInfo.count} fixed flange{fixedFlangeInfo.count > 1 ? 's' : ''} available)
-                            </span>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm font-semibold text-green-800">Add Blank Flange(s)</span>
+                            <span className="text-xs text-slate-500">({availablePositions.length} positions available)</span>
                           </div>
-
-                          {entry.specs?.addBlankFlange && fixedFlangeInfo.count > 1 && (
-                            <div className="mt-3 pl-6">
-                              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                How many blank flanges?
+                          <div className="flex flex-wrap gap-4">
+                            {availablePositions.map(pos => (
+                              <label key={pos.key} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={currentPositions.includes(pos.key)}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    let newPositions: string[];
+                                    if (checked) {
+                                      newPositions = [...currentPositions, pos.key];
+                                    } else {
+                                      newPositions = currentPositions.filter((p: string) => p !== pos.key);
+                                    }
+                                    onUpdateEntry(entry.id, {
+                                      specs: {
+                                        ...entry.specs,
+                                        addBlankFlange: newPositions.length > 0,
+                                        blankFlangeCount: newPositions.length,
+                                        blankFlangePositions: newPositions
+                                      }
+                                    });
+                                  }}
+                                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                />
+                                <span className="text-sm text-slate-700">{pos.label}</span>
                               </label>
-                              <select
-                                value={entry.specs?.blankFlangeCount || 1}
-                                onChange={(e) => {
-                                  const count = parseInt(e.target.value) || 1;
-                                  const positions: string[] = [];
-                                  if (count >= 1 && fixedFlangeInfo.positions.outlet) positions.push('outlet');
-                                  if (count >= 2 && fixedFlangeInfo.positions.inlet) positions.push('inlet');
-                                  onUpdateEntry(entry.id, {
-                                    specs: { ...entry.specs, blankFlangeCount: count, blankFlangePositions: positions.slice(0, count) }
-                                  });
-                                }}
-                                className="w-32 px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900"
-                              >
-                                {Array.from({ length: fixedFlangeInfo.count }, (_, i) => i + 1).map(n => (
-                                  <option key={n} value={n}>{n}</option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
-
-                          {entry.specs?.addBlankFlange && (
-                            <p className="mt-2 pl-6 text-xs text-slate-500">
-                              Blank flange(s) will be added to the project summary
-                            </p>
-                          )}
+                            ))}
+                          </div>
                         </div>
                       );
                     })()}
@@ -10459,6 +10448,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     numberOfStubs={entry.specs?.numberOfStubs || 0}
                     flangeConfig={entry.specs?.bendEndConfiguration || 'PE'}
                     closureLengthMm={entry.specs?.closureLengthMm || 0}
+                    addBlankFlange={entry.specs?.addBlankFlange}
+                    blankFlangePositions={entry.specs?.blankFlangePositions}
                   />
                 )}
               </div>
@@ -12508,69 +12499,58 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     </div>
                   )}
 
-                  {/* Blank Flange Option - Only show if there are fixed flanges */}
+                  {/* Blank Flange Option - Position selector for pipes */}
                   {(() => {
                     const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                    const fixedFlangeInfo = getFixedFlangeCount(pipeEndConfig);
-                    if (fixedFlangeInfo.count === 0) return null;
+                    const configUpper = pipeEndConfig.toUpperCase();
+                    // Determine available flange positions based on config
+                    const hasInletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', 'LF_BE'].includes(configUpper);
+                    const hasOutletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', 'LF_BE'].includes(configUpper);
+
+                    const availablePositions: { key: string; label: string; hasFlange: boolean }[] = [
+                      { key: 'inlet', label: 'End A (Inlet)', hasFlange: hasInletFlange },
+                      { key: 'outlet', label: 'End B (Outlet)', hasFlange: hasOutletFlange },
+                    ].filter(p => p.hasFlange);
+
+                    if (availablePositions.length === 0) return null;
+
+                    const currentPositions = entry.specs?.blankFlangePositions || [];
 
                     return (
                       <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                        <div className="flex items-center gap-3">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={entry.specs?.addBlankFlange || false}
-                              onChange={(e) => {
-                                const addBlank = e.target.checked;
-                                onUpdateEntry(entry.id, {
-                                  specs: {
-                                    ...entry.specs,
-                                    addBlankFlange: addBlank,
-                                    blankFlangeCount: addBlank ? 1 : 0,
-                                    blankFlangePositions: addBlank ? ['outlet'] : []
-                                  }
-                                });
-                              }}
-                              className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                            />
-                            <span className="text-sm font-semibold text-green-800">Add Blank Flange(s)</span>
-                          </label>
-                          <span className="text-xs text-slate-500">
-                            ({fixedFlangeInfo.count} fixed flange{fixedFlangeInfo.count > 1 ? 's' : ''} available)
-                          </span>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-semibold text-green-800">Add Blank Flange(s)</span>
+                          <span className="text-xs text-slate-500">({availablePositions.length} positions available)</span>
                         </div>
-
-                        {entry.specs?.addBlankFlange && fixedFlangeInfo.count > 1 && (
-                          <div className="mt-3 pl-6">
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                              How many blank flanges?
+                        <div className="flex flex-wrap gap-4">
+                          {availablePositions.map(pos => (
+                            <label key={pos.key} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={currentPositions.includes(pos.key)}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  let newPositions: string[];
+                                  if (checked) {
+                                    newPositions = [...currentPositions, pos.key];
+                                  } else {
+                                    newPositions = currentPositions.filter((p: string) => p !== pos.key);
+                                  }
+                                  onUpdateEntry(entry.id, {
+                                    specs: {
+                                      ...entry.specs,
+                                      addBlankFlange: newPositions.length > 0,
+                                      blankFlangeCount: newPositions.length,
+                                      blankFlangePositions: newPositions
+                                    }
+                                  });
+                                }}
+                                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                              />
+                              <span className="text-sm text-slate-700">{pos.label}</span>
                             </label>
-                            <select
-                              value={entry.specs?.blankFlangeCount || 1}
-                              onChange={(e) => {
-                                const count = parseInt(e.target.value) || 1;
-                                const positions: string[] = [];
-                                if (count >= 1 && fixedFlangeInfo.positions.outlet) positions.push('outlet');
-                                if (count >= 2 && fixedFlangeInfo.positions.inlet) positions.push('inlet');
-                                onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, blankFlangeCount: count, blankFlangePositions: positions.slice(0, count) }
-                                });
-                              }}
-                              className="w-32 px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900"
-                            >
-                              {Array.from({ length: fixedFlangeInfo.count }, (_, i) => i + 1).map(n => (
-                                <option key={n} value={n}>{n}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-
-                        {entry.specs?.addBlankFlange && (
-                          <p className="mt-2 pl-6 text-xs text-slate-500">
-                            Blank flange(s) will be added to the project summary
-                          </p>
-                        )}
+                          ))}
+                        </div>
                       </div>
                     );
                   })()}
@@ -12904,6 +12884,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
                       endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
                       materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                      addBlankFlange={entry.specs?.addBlankFlange}
+                      blankFlangePositions={entry.specs?.blankFlangePositions}
                     />
                   )}
                   <button
