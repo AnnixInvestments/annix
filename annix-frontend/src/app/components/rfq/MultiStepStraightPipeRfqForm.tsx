@@ -11904,7 +11904,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <option value="">Select steel spec...</option>
                         {masterData.steelSpecs?.map((spec: any) => (
                           <option key={spec.id} value={spec.id}>
-                            {spec.name}
+                            {spec.steelSpecName}
                           </option>
                         ))}
                       </select>
@@ -11927,7 +11927,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       {(() => {
                         const specId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
                         const spec = masterData.steelSpecs?.find((s: any) => s.id === specId);
-                        return spec ? `Material: ${spec.materialCode || spec.name}` : 'Select a steel specification';
+                        return spec ? `Material: ${spec.steelSpecName}` : 'Select a steel specification';
                       })()}
                     </p>
                   </div>
