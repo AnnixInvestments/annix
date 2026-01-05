@@ -11306,49 +11306,56 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </div>
                     )}
 
-                    {/* Blank Flange Option for Fittings */}
+                    {/* Blank Flange Option for Fittings - with position selection */}
                     {(() => {
                       const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                      const fixedFlangeInfo = getFixedFlangeCount(fittingEndConfig);
-                      if (fixedFlangeInfo.count === 0) return null;
+                      const fittingFlangeConfig = getFittingFlangeConfig(fittingEndConfig);
+                      // Get available flange positions (any type of flange can have a blank)
+                      const availablePositions: { key: string; label: string; hasFlange: boolean }[] = [
+                        { key: 'inlet', label: 'Inlet (Left)', hasFlange: fittingFlangeConfig.hasInlet },
+                        { key: 'outlet', label: 'Outlet (Right)', hasFlange: fittingFlangeConfig.hasOutlet },
+                        { key: 'branch', label: 'Branch (Top)', hasFlange: fittingFlangeConfig.hasBranch },
+                      ].filter(p => p.hasFlange);
+
+                      if (availablePositions.length === 0) return null;
+
+                      const currentPositions = entry.specs?.blankFlangePositions || [];
+
                       return (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-2 mt-2 flex items-center gap-3 flex-wrap">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={entry.specs?.addBlankFlange || false}
-                              onChange={(e) => {
-                                const addBlank = e.target.checked;
-                                onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, addBlankFlange: addBlank, blankFlangeCount: addBlank ? 1 : 0, blankFlangePositions: addBlank ? ['inlet'] : [] }
-                                });
-                              }}
-                              className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                            />
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-2 mt-2">
+                          <div className="flex items-center gap-2 mb-2">
                             <span className="text-xs font-semibold text-green-800">Add Blank Flange(s)</span>
-                          </label>
-                          <span className="text-xs text-green-600">({fixedFlangeInfo.count} available)</span>
-                          {entry.specs?.addBlankFlange && fixedFlangeInfo.count > 1 && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs text-green-700">Qty:</span>
-                              <select
-                                value={entry.specs?.blankFlangeCount || 1}
-                                onChange={(e) => {
-                                  const count = parseInt(e.target.value) || 1;
-                                  const positions: string[] = [];
-                                  if (count >= 1 && fixedFlangeInfo.positions.inlet) positions.push('inlet');
-                                  if (count >= 2 && fixedFlangeInfo.positions.outlet) positions.push('outlet');
-                                  if (count >= 3 && fixedFlangeInfo.positions.branch) positions.push('branch');
-                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, blankFlangeCount: count, blankFlangePositions: positions.slice(0, count) } });
-                                }}
-                                className="w-14 px-1 py-0.5 border border-green-300 rounded text-xs text-gray-900 bg-white"
-                              >
-                                {Array.from({ length: fixedFlangeInfo.count }, (_, i) => i + 1).map(n => (
-                                  <option key={n} value={n}>{n}</option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
+                            <span className="text-xs text-green-600">({availablePositions.length} positions available)</span>
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            {availablePositions.map(pos => (
+                              <label key={pos.key} className="flex items-center gap-1.5 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={currentPositions.includes(pos.key)}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    let newPositions: string[];
+                                    if (checked) {
+                                      newPositions = [...currentPositions, pos.key];
+                                    } else {
+                                      newPositions = currentPositions.filter((p: string) => p !== pos.key);
+                                    }
+                                    onUpdateEntry(entry.id, {
+                                      specs: {
+                                        ...entry.specs,
+                                        addBlankFlange: newPositions.length > 0,
+                                        blankFlangeCount: newPositions.length,
+                                        blankFlangePositions: newPositions
+                                      }
+                                    });
+                                  }}
+                                  className="w-3.5 h-3.5 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                />
+                                <span className="text-xs text-green-700">{pos.label}</span>
+                              </label>
+                            ))}
+                          </div>
                         </div>
                       );
                     })()}
