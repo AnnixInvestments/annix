@@ -290,10 +290,10 @@ function TeeScene(props: Tee3DPreviewProps) {
     blankFlangePositions = [],
   } = props;
 
-  // Determine which positions have blank flanges
-  const hasBlankInlet = addBlankFlange && blankFlangePositions.includes('inlet') && hasInletFlange && inletFlangeType === 'fixed';
-  const hasBlankOutlet = addBlankFlange && blankFlangePositions.includes('outlet') && hasOutletFlange && outletFlangeType === 'fixed';
-  const hasBlankBranch = addBlankFlange && blankFlangePositions.includes('branch') && hasBranchFlange && branchFlangeType === 'fixed';
+  // Determine which positions have blank flanges (can be used with any flange type: fixed, loose, or rotating)
+  const hasBlankInlet = addBlankFlange && blankFlangePositions.includes('inlet') && hasInletFlange;
+  const hasBlankOutlet = addBlankFlange && blankFlangePositions.includes('outlet') && hasOutletFlange;
+  const hasBlankBranch = addBlankFlange && blankFlangePositions.includes('branch') && hasBranchFlange;
 
   // Get dimensions from SABS 719 data
   const dims = getSabs719TeeDimensions(nominalBore);
