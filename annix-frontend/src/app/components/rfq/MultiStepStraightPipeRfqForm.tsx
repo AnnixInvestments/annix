@@ -2313,8 +2313,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
     }
   };
 
-  // Auto-generate RFQ number if field is empty
+  // Auto-generate RFQ number if field is empty (but not when loading a draft)
   useEffect(() => {
+    // Skip auto-generation if we're loading a draft - the draft will provide the projectName
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('draft')) return;
+
     if (!rfqData.projectName || rfqData.projectName.trim() === '') {
       const autoGenNumber = generateSystemReferenceNumber();
       onUpdate('projectName', autoGenNumber);
@@ -2412,8 +2416,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
     customerPhone: false,
   });
 
-  // Auto-fill customer fields when logged in
+  // Auto-fill customer fields when logged in (but not when loading a draft)
   useEffect(() => {
+    // Skip auto-fill if we're loading a draft - the draft will provide customer info
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('draft')) return;
+
     if (isAuthenticated && profile) {
       const updates: { customerName?: boolean; customerEmail?: boolean; customerPhone?: boolean } = {};
 
