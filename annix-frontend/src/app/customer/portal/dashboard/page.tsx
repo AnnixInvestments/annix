@@ -36,8 +36,8 @@ export default function CustomerDashboardPage() {
   }, []);
 
   const handleResumeDraft = (draft: RfqDraftResponse) => {
-    // Navigate to RFQ form with draft ID
-    router.push(`/rfq?draftId=${draft.id}`);
+    // Navigate to RFQ form with draft ID - use 'draft' param to match form component
+    router.push(`/rfq?draft=${draft.id}`);
   };
 
   const handleDeleteDraft = async (draftId: number) => {

@@ -465,6 +465,74 @@ export const useRfqForm = () => {
     });
   }, []);
 
+  // Bulk restore from draft - sets all fields at once to avoid React batching issues
+  const restoreFromDraft = useCallback((draft: {
+    formData?: Record<string, any>;
+    globalSpecs?: GlobalSpecs;
+    requiredProducts?: string[];
+    straightPipeEntries?: any[];
+    currentStep?: number;
+  }) => {
+    console.log('🔄 restoreFromDraft called');
+    console.log('🔄 Draft input:', JSON.stringify(draft, null, 2));
+    console.log('🔄 formData:', JSON.stringify(draft.formData, null, 2));
+    console.log('🔄 requiredProducts:', draft.requiredProducts);
+    console.log('🔄 globalSpecs keys:', draft.globalSpecs ? Object.keys(draft.globalSpecs) : 'none');
+
+    const formData = draft.formData || {};
+
+    // Build the restored state directly (not in setRfqData callback for better logging)
+    const restored: RfqFormData = {
+      // Start with defaults
+      projectName: formData.projectName ?? '',
+      projectType: formData.projectType,
+      description: formData.description ?? '',
+      customerName: formData.customerName ?? '',
+      customerEmail: formData.customerEmail ?? '',
+      customerPhone: formData.customerPhone ?? '',
+      requiredDate: formData.requiredDate ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      requiredProducts: draft.requiredProducts ?? [],
+      notes: formData.notes ?? '',
+
+      // Location fields - convert string numbers to numbers if needed
+      latitude: formData.latitude !== undefined ? Number(formData.latitude) : undefined,
+      longitude: formData.longitude !== undefined ? Number(formData.longitude) : undefined,
+      siteAddress: formData.siteAddress,
+      region: formData.region,
+      country: formData.country,
+
+      // Mine selection
+      mineId: formData.mineId,
+      mineName: formData.mineName,
+
+      // Document upload preference
+      skipDocuments: formData.skipDocuments,
+
+      // Restore globalSpecs
+      globalSpecs: draft.globalSpecs ?? {},
+
+      // Restore items/entries
+      items: draft.straightPipeEntries ?? [],
+      straightPipeEntries: (draft.straightPipeEntries ?? []).filter((e: any) => e.itemType === 'straight_pipe' || !e.itemType),
+    };
+
+    console.log('📦 Restored RfqFormData:', JSON.stringify(restored, null, 2));
+    console.log('📦 Restored projectType:', restored.projectType);
+    console.log('📦 Restored requiredProducts:', restored.requiredProducts);
+    console.log('📦 Restored globalSpecs.soilTexture:', restored.globalSpecs?.soilTexture);
+
+    // Set the state
+    setRfqData(restored);
+
+    // Set the step after form data is restored
+    if (draft.currentStep) {
+      console.log('📦 Setting currentStep to:', draft.currentStep);
+      setCurrentStep(draft.currentStep);
+    }
+
+    console.log('✅ restoreFromDraft complete');
+  }, []);
+
   return {
     currentStep,
     setCurrentStep,
@@ -487,5 +555,6 @@ export const useRfqForm = () => {
     nextStep,
     prevStep,
     resetForm,
+    restoreFromDraft,
   };
 };

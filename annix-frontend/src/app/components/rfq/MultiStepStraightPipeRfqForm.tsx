@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { StraightPipeEntry, useRfqForm } from '@/app/lib/hooks/useRfqForm';
+import { StraightPipeEntry, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
 import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, SaMine, MineWithEnvironmentalData, RfqDraftResponse } from '@/app/lib/api/client';
 import {
   validatePage1RequiredFields,
@@ -1778,6 +1778,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
   });
 
   // Section confirmation state - for locking data after user confirms
+  const [projectTypeConfirmed, setProjectTypeConfirmed] = useState(false);
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [environmentalConfirmed, setEnvironmentalConfirmed] = useState(false);
 
@@ -2317,7 +2318,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
   useEffect(() => {
     // Skip auto-generation if we're loading a draft - the draft will provide the projectName
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('draft')) return;
+    if (urlParams.get('draft') || urlParams.get('draftId')) return;
 
     if (!rfqData.projectName || rfqData.projectName.trim() === '') {
       const autoGenNumber = generateSystemReferenceNumber();
@@ -2341,6 +2342,18 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
     const updatedNotes = newNotes.length > 0 ? newNotes.map(note => `• ${note}`).join('\n') : '';
     onUpdate('notes', updatedNotes);
   };
+
+  // Helper to update environmental fields in globalSpecs (not rfqData)
+  // This ensures they get saved properly since save function saves globalSpecs
+  const updateEnvironmentalField = useCallback((field: string, value: any) => {
+    console.log(`🌍 Environmental field updated: ${field} =`, value);
+    if (onUpdateGlobalSpecs) {
+      onUpdateGlobalSpecs({
+        ...globalSpecs,
+        [field]: value,
+      });
+    }
+  }, [globalSpecs, onUpdateGlobalSpecs]);
 
   // Validation helper functions
   const hasRequiredLocationData = () => {
@@ -2420,7 +2433,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
   useEffect(() => {
     // Skip auto-fill if we're loading a draft - the draft will provide customer info
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('draft')) return;
+    if (urlParams.get('draft') || urlParams.get('draftId')) return;
 
     if (isAuthenticated && profile) {
       const updates: { customerName?: boolean; customerEmail?: boolean; customerPhone?: boolean } = {};
@@ -2576,11 +2589,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
         </div>
 
         {/* Project Type Selection - Compact */}
-        <div data-field="projectType">
+        <div data-field="projectType" className={projectTypeConfirmed ? 'opacity-75' : ''}>
           <label className={`block text-xs font-semibold mb-1 ${hasProjectTypeError ? 'text-red-700' : 'text-gray-900'}`}>
             Project Type <span className="text-red-600">*</span>
+            {projectTypeConfirmed && <span className="ml-2 text-green-600 text-xs font-normal">(Locked)</span>}
           </label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className={`grid grid-cols-4 gap-2 ${projectTypeConfirmed ? 'pointer-events-none' : ''}`}>
             {[
               { value: 'standard', label: 'Standard RFQ' },
               { value: 'phase1', label: 'Phase 1 Tender' },
@@ -2602,8 +2616,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                   name="projectType"
                   value={type.value}
                   checked={rfqData.projectType === type.value}
-                  onChange={(e) => onUpdate('projectType', e.target.value)}
+                  onChange={(e) => {
+                    console.log('🔘 Project type selected:', e.target.value);
+                    onUpdate('projectType', e.target.value);
+                  }}
                   className="sr-only"
+                  disabled={projectTypeConfirmed}
                 />
                 <div className={`w-3 h-3 border-2 rounded-full flex items-center justify-center ${
                   rfqData.projectType === type.value ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
@@ -2618,11 +2636,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
         </div>
 
         {/* Required Products/Services Selection - Compact */}
-        <div data-field="requiredProducts">
+        <div data-field="requiredProducts" className={projectTypeConfirmed ? 'opacity-75' : ''}>
           <label className="block text-xs font-semibold text-gray-900 mb-1">
             Required Products & Services <span className="text-red-600">*</span>
+            {projectTypeConfirmed && <span className="ml-2 text-green-600 text-xs font-normal">(Locked)</span>}
           </label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className={`grid grid-cols-4 gap-2 ${projectTypeConfirmed ? 'pointer-events-none' : ''}`}>
             {PRODUCTS_AND_SERVICES.map((product) => {
               const isSelected = rfqData.requiredProducts?.includes(product.value);
               return (
@@ -2637,13 +2656,17 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                     checked={isSelected}
                     onChange={(e) => {
                       const currentProducts = rfqData.requiredProducts || [];
+                      let newProducts: string[];
                       if (e.target.checked) {
-                        onUpdate('requiredProducts', [...currentProducts, product.value]);
+                        newProducts = [...currentProducts, product.value];
                       } else {
-                        onUpdate('requiredProducts', currentProducts.filter((p: string) => p !== product.value));
+                        newProducts = currentProducts.filter((p: string) => p !== product.value);
                       }
+                      console.log('☑️ Required products updated:', newProducts);
+                      onUpdate('requiredProducts', newProducts);
                     }}
                     className="sr-only"
+                    disabled={projectTypeConfirmed}
                   />
                   <div className={`w-4 h-4 border-2 rounded flex items-center justify-center flex-shrink-0 ${
                     isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
@@ -2657,6 +2680,50 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
             })}
           </div>
           {errors.requiredProducts && <p className="mt-1 text-xs text-red-600">{errors.requiredProducts}</p>}
+        </div>
+
+        {/* Project Type & Products Confirmation Button */}
+        <div className="flex justify-end">
+          {!projectTypeConfirmed ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (!rfqData.projectType) {
+                  alert('Please select a Project Type before confirming.');
+                  return;
+                }
+                if (!rfqData.requiredProducts || rfqData.requiredProducts.length === 0) {
+                  alert('Please select at least one Required Product/Service before confirming.');
+                  return;
+                }
+                console.log('✅ Project type & products confirmed:', {
+                  projectType: rfqData.projectType,
+                  requiredProducts: rfqData.requiredProducts
+                });
+                setProjectTypeConfirmed(true);
+              }}
+              disabled={!rfqData.projectType || !rfqData.requiredProducts || rfqData.requiredProducts.length === 0}
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 text-white hover:bg-green-700"
+            >
+              ✓ Confirm Project Type & Products
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                Project Type & Products Confirmed
+              </span>
+              <button
+                type="button"
+                onClick={() => setProjectTypeConfirmed(false)}
+                className="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Edit
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Additional Notes - Compact */}
@@ -3052,11 +3119,11 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               {/* Soil Row - All 4 columns */}
               <div className="grid grid-cols-4 gap-1 mb-1">
                 <div className="hidden">
-                  <AutoFilledInput type="text" value={globalSpecs?.soilType || rfqData.soilType || ''} onChange={(value) => onUpdate('soilType', value)} onOverride={() => markAsOverridden('soilType')} isAutoFilled={wasAutoFilled('soilType')} placeholder="Soil type" />
+                  <AutoFilledInput type="text" value={globalSpecs?.soilType || ''} onChange={(value) => updateEnvironmentalField('soilType', value)} onOverride={() => markAsOverridden('soilType')} isAutoFilled={wasAutoFilled('soilType')} placeholder="Soil type" />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600">Soil Texture</label>
-                  <AutoFilledSelect value={globalSpecs?.soilTexture || rfqData.soilTexture || ''} onChange={(value) => onUpdate('soilTexture', value)} onOverride={() => markAsOverridden('soilTexture')} isAutoFilled={wasAutoFilled('soilTexture')} disabled={isEnvironmentalLocked}>
+                  <AutoFilledSelect value={globalSpecs?.soilTexture || ''} onChange={(value) => updateEnvironmentalField('soilTexture', value)} onOverride={() => markAsOverridden('soilTexture')} isAutoFilled={wasAutoFilled('soilTexture')} disabled={isEnvironmentalLocked}>
                     <option value="">Select...</option>
                     <option value="Unknown">Unknown</option>
                     <option value="Sand">Sand</option>
@@ -3075,7 +3142,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600">Moisture</label>
-                  <AutoFilledSelect value={globalSpecs?.soilMoistureClass || rfqData.soilMoistureClass || ''} onChange={(value) => onUpdate('soilMoistureClass', value)} onOverride={() => markAsOverridden('soilMoistureClass')} isAutoFilled={wasAutoFilled('soilMoistureClass')} disabled={isEnvironmentalLocked}>
+                  <AutoFilledSelect value={globalSpecs?.soilMoistureClass || ''} onChange={(value) => updateEnvironmentalField('soilMoistureClass', value)} onOverride={() => markAsOverridden('soilMoistureClass')} isAutoFilled={wasAutoFilled('soilMoistureClass')} disabled={isEnvironmentalLocked}>
                     <option value="">Select...</option>
                     <option value="Unknown">Unknown</option>
                     <option value="Low">Low</option>
@@ -3085,7 +3152,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600">Drainage</label>
-                  <AutoFilledSelect value={globalSpecs?.soilDrainage || rfqData.soilDrainage || ''} onChange={(value) => onUpdate('soilDrainage', value)} onOverride={() => markAsOverridden('soilDrainage')} isAutoFilled={wasAutoFilled('soilDrainage')} disabled={isEnvironmentalLocked}>
+                  <AutoFilledSelect value={globalSpecs?.soilDrainage || ''} onChange={(value) => updateEnvironmentalField('soilDrainage', value)} onOverride={() => markAsOverridden('soilDrainage')} isAutoFilled={wasAutoFilled('soilDrainage')} disabled={isEnvironmentalLocked}>
                     <option value="">Select...</option>
                     <option value="Unknown">Unknown</option>
                     <option value="Poor">Poor</option>
@@ -3095,7 +3162,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600">Rainfall</label>
-                  <AutoFilledSelect value={globalSpecs?.annualRainfall || rfqData.rainfall || ''} onChange={(value) => onUpdate('rainfall', value)} onOverride={() => markAsOverridden('annualRainfall')} isAutoFilled={wasAutoFilled('annualRainfall')} disabled={isEnvironmentalLocked}>
+                  <AutoFilledSelect value={globalSpecs?.annualRainfall || ''} onChange={(value) => updateEnvironmentalField('annualRainfall', value)} onOverride={() => markAsOverridden('annualRainfall')} isAutoFilled={wasAutoFilled('annualRainfall')} disabled={isEnvironmentalLocked}>
                     <option value="">Select...</option>
                     <option value="Unknown">Unknown</option>
                     <option value="<250">&lt;250mm</option>
@@ -3111,15 +3178,15 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               <div className="grid grid-cols-5 gap-1 mb-1">
                 <div>
                   <label className="block text-xs text-gray-600">Temp Min °C</label>
-                  <AutoFilledInput type="number" step="0.1" value={globalSpecs?.tempMin ?? rfqData.tempMin ?? ''} onChange={(value) => onUpdate('tempMin', value)} onOverride={() => markAsOverridden('tempMin')} isAutoFilled={wasAutoFilled('tempMin')} placeholder="-5" disabled={isEnvironmentalLocked} />
+                  <AutoFilledInput type="number" step="0.1" value={globalSpecs?.tempMin ?? ''} onChange={(value) => updateEnvironmentalField('tempMin', value)} onOverride={() => markAsOverridden('tempMin')} isAutoFilled={wasAutoFilled('tempMin')} placeholder="-5" disabled={isEnvironmentalLocked} />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600">Temp Mean</label>
-                  <AutoFilledInput type="number" step="0.1" value={globalSpecs?.tempMean ?? rfqData.tempMean ?? ''} onChange={(value) => onUpdate('tempMean', value)} onOverride={() => markAsOverridden('tempMean')} isAutoFilled={wasAutoFilled('tempMean')} placeholder="18" disabled={isEnvironmentalLocked} />
+                  <AutoFilledInput type="number" step="0.1" value={globalSpecs?.tempMean ?? ''} onChange={(value) => updateEnvironmentalField('tempMean', value)} onOverride={() => markAsOverridden('tempMean')} isAutoFilled={wasAutoFilled('tempMean')} placeholder="18" disabled={isEnvironmentalLocked} />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600">Temp Max</label>
-                  <AutoFilledInput type="number" step="0.1" value={globalSpecs?.tempMax ?? rfqData.tempMax ?? ''} onChange={(value) => onUpdate('tempMax', value)} onOverride={() => markAsOverridden('tempMax')} isAutoFilled={wasAutoFilled('tempMax')} placeholder="38" disabled={isEnvironmentalLocked} />
+                  <AutoFilledInput type="number" step="0.1" value={globalSpecs?.tempMax ?? ''} onChange={(value) => updateEnvironmentalField('tempMax', value)} onOverride={() => markAsOverridden('tempMax')} isAutoFilled={wasAutoFilled('tempMax')} placeholder="38" disabled={isEnvironmentalLocked} />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600">Humidity %</label>
@@ -3146,7 +3213,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600">Marine Influence</label>
-                  <AutoFilledSelect value={globalSpecs?.detailedMarineInfluence || rfqData.marineInfluence || ''} onChange={(value) => onUpdate('marineInfluence', value)} onOverride={() => markAsOverridden('detailedMarineInfluence')} isAutoFilled={wasAutoFilled('detailedMarineInfluence')} disabled={isEnvironmentalLocked}>
+                  <AutoFilledSelect value={globalSpecs?.detailedMarineInfluence || ''} onChange={(value) => updateEnvironmentalField('detailedMarineInfluence', value)} onOverride={() => markAsOverridden('detailedMarineInfluence')} isAutoFilled={wasAutoFilled('detailedMarineInfluence')} disabled={isEnvironmentalLocked}>
                     <option value="">Select...</option>
                     <option value="Unknown">Unknown</option>
                     <option value="Extreme Marine">Extreme (≤0.5km)</option>
@@ -3165,7 +3232,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               <div className="grid grid-cols-3 gap-1">
                 <div>
                   <label className="block text-xs text-gray-600">Flood Risk</label>
-                  <AutoFilledSelect value={globalSpecs?.floodRisk || rfqData.floodingRisk || ''} onChange={(value) => onUpdate('floodingRisk', value)} onOverride={() => markAsOverridden('floodRisk')} isAutoFilled={wasAutoFilled('floodRisk')} disabled={isEnvironmentalLocked}>
+                  <AutoFilledSelect value={globalSpecs?.floodRisk || ''} onChange={(value) => updateEnvironmentalField('floodRisk', value)} onOverride={() => markAsOverridden('floodRisk')} isAutoFilled={wasAutoFilled('floodRisk')} disabled={isEnvironmentalLocked}>
                     <option value="">Select...</option>
                     <option value="Unknown">Unknown</option>
                     <option value="None">None</option>
@@ -3176,7 +3243,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600">Industrial Pollution</label>
-                  <AutoFilledSelect value={globalSpecs?.ecpIndustrialPollution || rfqData.industrialPollution || ''} onChange={(value) => onUpdate('industrialPollution', value)} onOverride={() => markAsOverridden('ecpIndustrialPollution')} isAutoFilled={wasAutoFilled('ecpIndustrialPollution')} disabled={isEnvironmentalLocked}>
+                  <AutoFilledSelect value={globalSpecs?.ecpIndustrialPollution || ''} onChange={(value) => updateEnvironmentalField('ecpIndustrialPollution', value)} onOverride={() => markAsOverridden('ecpIndustrialPollution')} isAutoFilled={wasAutoFilled('ecpIndustrialPollution')} disabled={isEnvironmentalLocked}>
                     <option value="">Select...</option>
                     <option value="Unknown">Unknown</option>
                     <option value="None">None</option>
@@ -3224,8 +3291,12 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                     ISO 12944 Corrosivity Category
                   </label>
                   <select
-                    value={rfqData.iso12944Category || ''}
-                    onChange={(e) => onUpdate('iso12944Category', e.target.value || undefined)}
+                    value={globalSpecs?.ecpIso12944Category || ''}
+                    onChange={(e) => {
+                      const value = e.target.value || undefined;
+                      console.log('🌍 ISO 12944 Category selected:', value);
+                      updateEnvironmentalField('ecpIso12944Category', value);
+                    }}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="">Select ISO 12944 category...</option>
@@ -3566,8 +3637,10 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               <button
                 type="button"
                 onClick={() => {
+                  console.log('📄 User confirmed: Skip documents');
                   setShowNoDocumentsPopup(false);
                   setDocumentsConfirmed(true);
+                  onUpdate('skipDocuments', true);
                 }}
                 className="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
               >
@@ -13983,7 +14056,7 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
 
 // BOQ (Bill of Quantities) Step - Shows after RFQ submission
 function BOQStep({ rfqData, entries, globalSpecs, requiredProducts }: {
-  rfqData: RfqData;
+  rfqData: RfqFormData;
   entries: any[];
   globalSpecs: GlobalSpecs;
   requiredProducts: string[];
@@ -14151,6 +14224,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     getTotalValue,
     nextStep: originalNextStep,
     prevStep,
+    restoreFromDraft,
   } = useRfqForm();
 
   // Draft management state
@@ -14352,67 +14426,37 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   }, []);
 
   // Load draft from URL parameter if present
+  // Support both 'draft' and 'draftId' parameter names for backward compatibility
   useEffect(() => {
-    const draftId = searchParams?.get('draft');
+    const draftId = searchParams?.get('draft') || searchParams?.get('draftId');
     if (!draftId) return;
+
+    console.log('📥 Draft parameter detected:', draftId);
 
     const loadDraft = async () => {
       setIsLoadingDraft(true);
       try {
         const draft = await draftsApi.getById(parseInt(draftId, 10));
         console.log('📦 Loading draft:', draft);
+        console.log('📦 Draft formData:', draft.formData);
+        console.log('📦 Draft requiredProducts:', draft.requiredProducts);
+        console.log('📦 Draft globalSpecs:', draft.globalSpecs);
 
-        // Restore form data from draft - set each field individually
-        if (draft.formData) {
-          const formData = draft.formData;
-          // Basic project info
-          if (formData.projectName) updateRfqField('projectName', formData.projectName);
-          if (formData.projectType) updateRfqField('projectType', formData.projectType);
-          if (formData.description) updateRfqField('description', formData.description);
-          // Customer info
-          if (formData.customerName) updateRfqField('customerName', formData.customerName);
-          if (formData.customerEmail) updateRfqField('customerEmail', formData.customerEmail);
-          if (formData.customerPhone) updateRfqField('customerPhone', formData.customerPhone);
-          if (formData.requiredDate) updateRfqField('requiredDate', formData.requiredDate);
-          if (formData.notes) updateRfqField('notes', formData.notes);
-          // Location fields
-          if (formData.latitude) updateRfqField('latitude', formData.latitude);
-          if (formData.longitude) updateRfqField('longitude', formData.longitude);
-          if (formData.siteAddress) updateRfqField('siteAddress', formData.siteAddress);
-          if (formData.region) updateRfqField('region', formData.region);
-          if (formData.country) updateRfqField('country', formData.country);
-          // Mine selection
-          if (formData.mineId) updateRfqField('mineId', formData.mineId);
-          if (formData.mineName) updateRfqField('mineName', formData.mineName);
-          // Document upload preference
-          if (formData.skipDocuments !== undefined) updateRfqField('skipDocuments', formData.skipDocuments);
-        }
-
-        // Restore global specs
-        if (draft.globalSpecs) {
-          updateGlobalSpecs(draft.globalSpecs);
-        }
-
-        // Restore required products
-        if (draft.requiredProducts && draft.requiredProducts.length > 0) {
-          updateRfqField('requiredProducts', draft.requiredProducts);
-        }
-
-        // Restore pipe/bend/fitting items directly
-        if (draft.straightPipeEntries && draft.straightPipeEntries.length > 0) {
-          updateRfqField('items', draft.straightPipeEntries as any);
-        }
-
-        // Set current step
-        if (draft.currentStep) {
-          setCurrentStep(draft.currentStep);
-        }
+        // Use the bulk restore function to set all form data at once
+        // This avoids React batching issues with multiple individual updates
+        restoreFromDraft({
+          formData: draft.formData,
+          globalSpecs: draft.globalSpecs,
+          requiredProducts: draft.requiredProducts,
+          straightPipeEntries: draft.straightPipeEntries,
+          currentStep: draft.currentStep,
+        });
 
         // Store draft info
         setCurrentDraftId(draft.id);
         setDraftNumber(draft.draftNumber);
 
-        console.log(`✅ Loaded draft ${draft.draftNumber}`, { formData: draft.formData });
+        console.log(`✅ Loaded draft ${draft.draftNumber}`);
       } catch (error) {
         console.error('Failed to load draft:', error);
         alert('Failed to load the saved draft. Starting with a new form.');
@@ -14422,7 +14466,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     };
 
     loadDraft();
-  }, [searchParams]);
+  }, [searchParams, restoreFromDraft]);
 
   // Temperature derating factors for flange pressure classes
   // SABS 1123 / EN 1092-1 / PN standards: No significant derating below 200°C for carbon steel
@@ -15580,6 +15624,14 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
   // Save progress handler - saves current RFQ data to server
   const handleSaveProgress = async () => {
+    console.log('💾 handleSaveProgress called');
+    console.log('💾 rfqData.projectType:', rfqData.projectType);
+    console.log('💾 rfqData.requiredProducts:', rfqData.requiredProducts);
+    console.log('💾 rfqData.skipDocuments:', rfqData.skipDocuments);
+    console.log('💾 rfqData.latitude:', rfqData.latitude);
+    console.log('💾 rfqData.longitude:', rfqData.longitude);
+    console.log('💾 rfqData.globalSpecs:', rfqData.globalSpecs);
+
     setIsSavingDraft(true);
     try {
       const saveData = {
@@ -15618,6 +15670,10 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           type: doc.type || doc.file?.type,
         })),
       };
+
+      console.log('💾 Complete saveData being sent to API:', saveData);
+      console.log('💾 saveData.formData:', saveData.formData);
+      console.log('💾 saveData.requiredProducts:', saveData.requiredProducts);
 
       const result = await draftsApi.save(saveData);
 
