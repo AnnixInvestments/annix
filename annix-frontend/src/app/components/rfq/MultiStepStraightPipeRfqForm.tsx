@@ -10810,6 +10810,150 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </div>
                     )}
 
+                    {/* Pipe Lengths - Auto-filled from fitting dimensions */}
+                    {(() => {
+                      const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                      const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                      const fittingType = entry.specs?.fittingType;
+                      const nb = entry.specs?.nominalDiameterMm;
+                      const hasRequiredData = fittingType && nb;
+                      const isAutoA = entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
+                      const isAutoB = entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
+
+                      // Equal tees use standard C/F from tables only - no length/location customization
+                      const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
+
+                      // Function to fetch and set dimensions
+                      const fetchDimensions = async () => {
+                        if (!fittingType || !nb) return;
+                        try {
+                          const dims = await masterDataApi.getFittingDimensions(effectiveStandard as 'SABS62' | 'SABS719', fittingType, nb, entry.specs?.angleRange);
+                          if (dims) {
+                            // Parse string values to numbers (API returns decimal strings)
+                            const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
+                            const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
+                            const updates: any = { specs: { ...entry.specs } };
+                            if (dimA && !entry.specs?.pipeLengthAOverride) {
+                              updates.specs.pipeLengthAMm = dimA;
+                              updates.specs.pipeLengthAMmAuto = dimA;
+                            }
+                            if (dimB && !entry.specs?.pipeLengthBOverride) {
+                              updates.specs.pipeLengthBMm = dimB;
+                              updates.specs.pipeLengthBMmAuto = dimB;
+                            }
+                            onUpdateEntry(entry.id, updates);
+                          }
+                        } catch (err) {
+                          console.log('Could not fetch fitting dimensions:', err);
+                        }
+                      };
+
+                      return (
+                        <>
+                          {/* Pipe Length A */}
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="block text-xs font-semibold text-gray-900">
+                                Pipe Length A (mm) *
+                                {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(Standard C/F)</span>}
+                                {!isEqualTee && isAutoA && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
+                                {!isEqualTee && entry.specs?.pipeLengthAOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
+                              </label>
+                              {!isEqualTee && hasRequiredData && !entry.specs?.pipeLengthAMmAuto && (
+                                <button
+                                  type="button"
+                                  onClick={fetchDimensions}
+                                  className="text-xs text-blue-600 hover:text-blue-800"
+                                >
+                                  Fetch
+                                </button>
+                              )}
+                              {!isEqualTee && entry.specs?.pipeLengthAOverride && entry.specs?.pipeLengthAMmAuto && (
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdateEntry(entry.id, {
+                                    specs: { ...entry.specs, pipeLengthAMm: entry.specs?.pipeLengthAMmAuto, pipeLengthAOverride: false }
+                                  })}
+                                  className="text-xs text-gray-500 hover:text-gray-700"
+                                >
+                                  Reset
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              type="number"
+                              value={entry.specs?.pipeLengthAMm || ''}
+                              onChange={(e) => {
+                                if (isEqualTee) return; // Don't allow changes for equal tees
+                                const newValue = Number(e.target.value);
+                                const isOverride = entry.specs?.pipeLengthAMmAuto && newValue !== entry.specs?.pipeLengthAMmAuto;
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, pipeLengthAMm: newValue, pipeLengthAOverride: isOverride }
+                                });
+                              }}
+                              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
+                                isEqualTee
+                                  ? 'bg-green-100 border-green-400 text-green-900 cursor-not-allowed font-medium'
+                                  : 'border-gray-300 focus:ring-green-500 text-gray-900'
+                              }`}
+                              placeholder="e.g., 1000"
+                              min="0"
+                              readOnly={isEqualTee}
+                            />
+                            {isEqualTee && entry.specs?.pipeLengthAMm && (
+                              <p className="mt-0.5 text-xs text-green-700">Standard C/F dimension from tables</p>
+                            )}
+                          </div>
+
+                          {/* Pipe Length B */}
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="block text-xs font-semibold text-gray-900">
+                                Pipe Length B (mm) *
+                                {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(Standard C/F)</span>}
+                                {!isEqualTee && isAutoB && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
+                                {!isEqualTee && entry.specs?.pipeLengthBOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
+                              </label>
+                              {!isEqualTee && entry.specs?.pipeLengthBOverride && entry.specs?.pipeLengthBMmAuto && (
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdateEntry(entry.id, {
+                                    specs: { ...entry.specs, pipeLengthBMm: entry.specs?.pipeLengthBMmAuto, pipeLengthBOverride: false }
+                                  })}
+                                  className="text-xs text-gray-500 hover:text-gray-700"
+                                >
+                                  Reset
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              type="number"
+                              value={entry.specs?.pipeLengthBMm || ''}
+                              onChange={(e) => {
+                                if (isEqualTee) return; // Don't allow changes for equal tees
+                                const newValue = Number(e.target.value);
+                                const isOverride = entry.specs?.pipeLengthBMmAuto && newValue !== entry.specs?.pipeLengthBMmAuto;
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, pipeLengthBMm: newValue, pipeLengthBOverride: isOverride }
+                                });
+                              }}
+                              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
+                                isEqualTee
+                                  ? 'bg-green-100 border-green-400 text-green-900 cursor-not-allowed font-medium'
+                                  : 'border-gray-300 focus:ring-green-500 text-gray-900'
+                              }`}
+                              placeholder="e.g., 1000"
+                              min="0"
+                              readOnly={isEqualTee}
+                            />
+                            {isEqualTee && entry.specs?.pipeLengthBMm && (
+                              <p className="mt-0.5 text-xs text-green-700">Standard C/F dimension from tables</p>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+
                     {/* Schedule - Required for SABS719 fabricated fittings */}
                     {(() => {
                       const isSABS719 = globalSpecs?.steelSpecificationId === 8;
@@ -11038,155 +11182,11 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                     </div>
                   </div>
 
-                  {/* Column 2 - Pipe Lengths & Location */}
+                  {/* Column 2 - Configuration & Ends */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
-                      📐 Pipe Lengths & Configuration
+                      📐 Configuration
                     </h4>
-
-                    {/* Pipe Lengths - Auto-filled from fitting dimensions */}
-                    {(() => {
-                      const isSABS719 = globalSpecs?.steelSpecificationId === 8;
-                      const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
-                      const fittingType = entry.specs?.fittingType;
-                      const nb = entry.specs?.nominalDiameterMm;
-                      const hasRequiredData = fittingType && nb;
-                      const isAutoA = entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
-                      const isAutoB = entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
-
-                      // Equal tees use standard C/F from tables only - no length/location customization
-                      const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
-
-                      // Function to fetch and set dimensions
-                      const fetchDimensions = async () => {
-                        if (!fittingType || !nb) return;
-                        try {
-                          const dims = await masterDataApi.getFittingDimensions(effectiveStandard as 'SABS62' | 'SABS719', fittingType, nb, entry.specs?.angleRange);
-                          if (dims) {
-                            // Parse string values to numbers (API returns decimal strings)
-                            const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
-                            const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
-                            const updates: any = { specs: { ...entry.specs } };
-                            if (dimA && !entry.specs?.pipeLengthAOverride) {
-                              updates.specs.pipeLengthAMm = dimA;
-                              updates.specs.pipeLengthAMmAuto = dimA;
-                            }
-                            if (dimB && !entry.specs?.pipeLengthBOverride) {
-                              updates.specs.pipeLengthBMm = dimB;
-                              updates.specs.pipeLengthBMmAuto = dimB;
-                            }
-                            onUpdateEntry(entry.id, updates);
-                          }
-                        } catch (err) {
-                          console.log('Could not fetch fitting dimensions:', err);
-                        }
-                      };
-
-                      return (
-                        <>
-                          {/* Pipe Length A */}
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <label className="block text-xs font-semibold text-gray-900">
-                                Pipe Length A (mm) *
-                                {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(Standard C/F)</span>}
-                                {!isEqualTee && isAutoA && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
-                                {!isEqualTee && entry.specs?.pipeLengthAOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
-                              </label>
-                              {!isEqualTee && hasRequiredData && !entry.specs?.pipeLengthAMmAuto && (
-                                <button
-                                  type="button"
-                                  onClick={fetchDimensions}
-                                  className="text-xs text-blue-600 hover:text-blue-800"
-                                >
-                                  Fetch
-                                </button>
-                              )}
-                              {!isEqualTee && entry.specs?.pipeLengthAOverride && entry.specs?.pipeLengthAMmAuto && (
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateEntry(entry.id, {
-                                    specs: { ...entry.specs, pipeLengthAMm: entry.specs?.pipeLengthAMmAuto, pipeLengthAOverride: false }
-                                  })}
-                                  className="text-xs text-gray-500 hover:text-gray-700"
-                                >
-                                  Reset
-                                </button>
-                              )}
-                            </div>
-                            <input
-                              type="number"
-                              value={entry.specs?.pipeLengthAMm || ''}
-                              onChange={(e) => {
-                                if (isEqualTee) return; // Don't allow changes for equal tees
-                                const newValue = Number(e.target.value);
-                                const isOverride = entry.specs?.pipeLengthAMmAuto && newValue !== entry.specs?.pipeLengthAMmAuto;
-                                onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, pipeLengthAMm: newValue, pipeLengthAOverride: isOverride }
-                                });
-                              }}
-                              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
-                                isEqualTee
-                                  ? 'bg-green-100 border-green-400 text-green-900 cursor-not-allowed font-medium'
-                                  : 'border-gray-300 focus:ring-green-500 text-gray-900'
-                              }`}
-                              placeholder="e.g., 1000"
-                              min="0"
-                              readOnly={isEqualTee}
-                            />
-                            {isEqualTee && entry.specs?.pipeLengthAMm && (
-                              <p className="mt-0.5 text-xs text-green-700">Standard C/F dimension from tables</p>
-                            )}
-                          </div>
-
-                          {/* Pipe Length B */}
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <label className="block text-xs font-semibold text-gray-900">
-                                Pipe Length B (mm) *
-                                {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(Standard C/F)</span>}
-                                {!isEqualTee && isAutoB && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
-                                {!isEqualTee && entry.specs?.pipeLengthBOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
-                              </label>
-                              {!isEqualTee && entry.specs?.pipeLengthBOverride && entry.specs?.pipeLengthBMmAuto && (
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateEntry(entry.id, {
-                                    specs: { ...entry.specs, pipeLengthBMm: entry.specs?.pipeLengthBMmAuto, pipeLengthBOverride: false }
-                                  })}
-                                  className="text-xs text-gray-500 hover:text-gray-700"
-                                >
-                                  Reset
-                                </button>
-                              )}
-                            </div>
-                            <input
-                              type="number"
-                              value={entry.specs?.pipeLengthBMm || ''}
-                              onChange={(e) => {
-                                if (isEqualTee) return; // Don't allow changes for equal tees
-                                const newValue = Number(e.target.value);
-                                const isOverride = entry.specs?.pipeLengthBMmAuto && newValue !== entry.specs?.pipeLengthBMmAuto;
-                                onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, pipeLengthBMm: newValue, pipeLengthBOverride: isOverride }
-                                });
-                              }}
-                              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
-                                isEqualTee
-                                  ? 'bg-green-100 border-green-400 text-green-900 cursor-not-allowed font-medium'
-                                  : 'border-gray-300 focus:ring-green-500 text-gray-900'
-                              }`}
-                              placeholder="e.g., 1000"
-                              min="0"
-                              readOnly={isEqualTee}
-                            />
-                            {isEqualTee && entry.specs?.pipeLengthBMm && (
-                              <p className="mt-0.5 text-xs text-green-700">Standard C/F dimension from tables</p>
-                            )}
-                          </div>
-                        </>
-                      );
-                    })()}
 
                     {/* Stub/Lateral Location - Only for Unequal and Reducing Tees */}
                     {!['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(entry.specs?.fittingType || '') && (
