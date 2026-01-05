@@ -14352,12 +14352,18 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
       setIsLoadingDraft(true);
       try {
         const draft = await draftsApi.getById(parseInt(draftId, 10));
+        console.log('📦 Loading draft:', draft);
 
-        // Restore form data from draft
+        // Restore form data from draft - set each field individually
         if (draft.formData) {
-          Object.entries(draft.formData).forEach(([key, value]) => {
-            updateRfqField(key as keyof typeof rfqData, value);
-          });
+          const formData = draft.formData;
+          if (formData.projectName) updateRfqField('projectName', formData.projectName);
+          if (formData.description) updateRfqField('description', formData.description);
+          if (formData.customerName) updateRfqField('customerName', formData.customerName);
+          if (formData.customerEmail) updateRfqField('customerEmail', formData.customerEmail);
+          if (formData.customerPhone) updateRfqField('customerPhone', formData.customerPhone);
+          if (formData.requiredDate) updateRfqField('requiredDate', formData.requiredDate);
+          if (formData.notes) updateRfqField('notes', formData.notes);
         }
 
         // Restore global specs
@@ -14366,15 +14372,13 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         }
 
         // Restore required products
-        if (draft.requiredProducts) {
+        if (draft.requiredProducts && draft.requiredProducts.length > 0) {
           updateRfqField('requiredProducts', draft.requiredProducts);
         }
 
-        // Restore straight pipe entries
+        // Restore pipe/bend/fitting items directly
         if (draft.straightPipeEntries && draft.straightPipeEntries.length > 0) {
-          draft.straightPipeEntries.forEach((entry: any) => {
-            addStraightPipeEntry(entry);
-          });
+          updateRfqField('items', draft.straightPipeEntries as any);
         }
 
         // Set current step
@@ -14386,7 +14390,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         setCurrentDraftId(draft.id);
         setDraftNumber(draft.draftNumber);
 
-        console.log(`✅ Loaded draft ${draft.draftNumber}`);
+        console.log(`✅ Loaded draft ${draft.draftNumber}`, { formData: draft.formData });
       } catch (error) {
         console.error('Failed to load draft:', error);
         alert('Failed to load the saved draft. Starting with a new form.');
@@ -15562,14 +15566,12 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         currentStep,
         formData: {
           projectName: rfqData.projectName,
+          description: rfqData.description,
           customerName: rfqData.customerName,
           customerEmail: rfqData.customerEmail,
           customerPhone: rfqData.customerPhone,
-          requiredByDate: rfqData.requiredByDate,
-          deliveryLocation: rfqData.deliveryLocation,
+          requiredDate: rfqData.requiredDate,
           notes: rfqData.notes,
-          mineId: rfqData.mineId,
-          mineName: rfqData.mineName,
         },
         globalSpecs: rfqData.globalSpecs,
         requiredProducts: rfqData.requiredProducts,

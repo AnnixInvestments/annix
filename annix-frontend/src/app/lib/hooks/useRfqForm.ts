@@ -262,7 +262,7 @@ export const useRfqForm = () => {
     straightPipeEntries: [],
   });
 
-  const updateRfqField = useCallback((field: keyof Omit<RfqFormData, 'straightPipeEntries'>, value: string) => {
+  const updateRfqField = useCallback(<K extends keyof Omit<RfqFormData, 'straightPipeEntries'>>(field: K, value: RfqFormData[K]) => {
     setRfqData(prev => ({
       ...prev,
       [field]: value,
