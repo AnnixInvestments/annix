@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supplierPortalApi, SupplierCompanyDto, OnboardingStatusResponse } from '@/app/lib/api/supplierApi';
 import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
+import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
 
 const initialCompanyData: SupplierCompanyDto = {
   legalName: '',
@@ -67,6 +68,7 @@ export default function SupplierOnboardingPage() {
   const { refreshDashboard } = useSupplierAuth();
   const [step, setStep] = useState(1);
   const [companyData, setCompanyData] = useState<SupplierCompanyDto>(initialCompanyData);
+  const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([]);
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatusResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -77,9 +79,10 @@ export default function SupplierOnboardingPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statusData, profileData] = await Promise.all([
+        const [statusData, profileData, capabilitiesData] = await Promise.all([
           supplierPortalApi.getOnboardingStatus(),
           supplierPortalApi.getProfile(),
+          supplierPortalApi.getCapabilities(),
         ]);
         setOnboardingStatus(statusData);
 
@@ -89,6 +92,11 @@ export default function SupplierOnboardingPage() {
             ...initialCompanyData,
             ...profileData.company,
           });
+        }
+
+        // Pre-fill capabilities if they exist
+        if (capabilitiesData.capabilities) {
+          setSelectedCapabilities(capabilitiesData.capabilities);
         }
       } catch (err) {
         console.error('Failed to fetch data:', err);
@@ -116,17 +124,32 @@ export default function SupplierOnboardingPage() {
     }));
   };
 
+  const handleCapabilityToggle = (capability: string) => {
+    setSelectedCapabilities((prev) =>
+      prev.includes(capability)
+        ? prev.filter((c) => c !== capability)
+        : [...prev, capability]
+    );
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setError(null);
     setSuccess(null);
 
     try {
+      // Save company details
       await supplierPortalApi.saveCompanyDetails(companyData);
-      setSuccess('Company details saved successfully');
+
+      // Save capabilities if on step 5 or if any are selected
+      if (selectedCapabilities.length > 0) {
+        await supplierPortalApi.saveCapabilities(selectedCapabilities);
+      }
+
+      setSuccess('Details saved successfully');
       await refreshDashboard();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save company details');
+      setError(err instanceof Error ? err.message : 'Failed to save details');
     } finally {
       setIsSaving(false);
     }
@@ -177,8 +200,8 @@ export default function SupplierOnboardingPage() {
       {/* Step Indicator */}
       <div className="bg-white rounded-lg shadow-sm p-4">
         <nav className="flex items-center justify-center" aria-label="Progress">
-          <ol className="flex items-center space-x-8">
-            {['Company Info', 'Address', 'Contact', 'Additional'].map((label, idx) => {
+          <ol className="flex items-center space-x-4 md:space-x-6">
+            {['Company Info', 'Address', 'Contact', 'Additional', 'Capabilities'].map((label, idx) => {
               const stepNum = idx + 1;
               const isCurrent = step === stepNum;
               const isComplete = step > stepNum;
@@ -208,8 +231,8 @@ export default function SupplierOnboardingPage() {
                     </span>
                     <span className="ml-2 text-sm text-gray-700 hidden sm:inline">{label}</span>
                   </button>
-                  {idx < 3 && (
-                    <div className="ml-8 w-12 h-0.5 bg-gray-200">
+                  {idx < 4 && (
+                    <div className="ml-4 md:ml-6 w-8 md:w-12 h-0.5 bg-gray-200">
                       <div
                         className={`h-full ${step > stepNum ? 'bg-blue-600' : 'bg-gray-200'}`}
                       />
@@ -549,6 +572,85 @@ export default function SupplierOnboardingPage() {
           </div>
         )}
 
+        {step === 5 && (
+          <div className="space-y-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Products & Services You Can Supply</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Select all the products and services your company can provide. This helps us match you with relevant RFQs.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {PRODUCTS_AND_SERVICES.map((item) => {
+                const isSelected = selectedCapabilities.includes(item.value);
+                return (
+                  <label
+                    key={item.value}
+                    className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      isSelected
+                        ? 'border-blue-600 bg-blue-50'
+                        : 'border-gray-200 hover:border-blue-300'
+                    } ${isReadOnly ? 'cursor-not-allowed opacity-75' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleCapabilityToggle(item.value)}
+                      disabled={isReadOnly}
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-5 h-5 mt-0.5 border-2 rounded flex items-center justify-center flex-shrink-0 ${
+                        isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
+                      }`}
+                    >
+                      {isSelected && (
+                        <svg
+                          className="w-3 h-3 text-white"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{item.icon}</span>
+                        <span className="font-medium text-gray-900">{item.label}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{item.description}</p>
+                      <span
+                        className={`inline-block mt-2 px-2 py-0.5 text-xs rounded ${
+                          item.category === 'product'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-purple-100 text-purple-700'
+                        }`}
+                      >
+                        {item.category === 'product' ? 'Product' : 'Service'}
+                      </span>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+            {selectedCapabilities.length === 0 && (
+              <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                Please select at least one product or service that your company can provide.
+              </p>
+            )}
+            {selectedCapabilities.length > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-sm text-green-700">
+                  <strong>{selectedCapabilities.length}</strong> capability{selectedCapabilities.length > 1 ? 'ies' : 'y'} selected
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Navigation */}
         <div className="flex justify-between mt-8 pt-6 border-t">
           <button
@@ -570,10 +672,10 @@ export default function SupplierOnboardingPage() {
                 {isSaving ? 'Saving...' : 'Save Draft'}
               </button>
             )}
-            {step < 4 ? (
+            {step < 5 ? (
               <button
                 type="button"
-                onClick={() => setStep((s) => Math.min(4, s + 1))}
+                onClick={() => setStep((s) => Math.min(5, s + 1))}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
               >
                 Next
@@ -584,7 +686,7 @@ export default function SupplierOnboardingPage() {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || selectedCapabilities.length === 0}
                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 disabled:opacity-50"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Application'}

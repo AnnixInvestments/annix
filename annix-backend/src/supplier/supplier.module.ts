@@ -12,6 +12,7 @@ import {
   SupplierDeviceBinding,
   SupplierLoginAttempt,
   SupplierSession,
+  SupplierCapability,
 } from './entities';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
@@ -44,6 +45,7 @@ import { EmailModule } from '../email/email.module';
       SupplierDeviceBinding,
       SupplierLoginAttempt,
       SupplierSession,
+      SupplierCapability,
       User,
       UserRole,
     ]),

@@ -38,6 +38,7 @@ import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
 import { AutoFilledInput, AutoFilledSelect, AutoFilledDisplay } from '@/app/components/rfq/AutoFilledField';
 import AddMineModal from '@/app/components/rfq/AddMineModal';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
+import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
 import dynamic from 'next/dynamic';
 
 // Dynamically import 3D components (client-side only, no SSR)
@@ -2576,15 +2577,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
             Required Products & Services <span className="text-red-600">*</span>
           </label>
           <div className="grid grid-cols-4 gap-2">
-            {[
-              { value: 'fabricated_steel', label: 'Steel Pipes', icon: '🔩' },
-              { value: 'fasteners_gaskets', label: 'Nuts, Bolts, Washers & Gaskets', icon: '⚙️' },
-              { value: 'surface_protection', label: 'Surface Protection', icon: '🛡️' },
-              { value: 'hdpe', label: 'HDPE Pipes', icon: '🔵' },
-              { value: 'pvc', label: 'PVC Pipes', icon: '⚪' },
-              { value: 'structural_steel', label: 'Structural Steel', icon: '🏗️' },
-              { value: 'transport_install', label: 'Transport/Install', icon: '🚚' },
-            ].map((product) => {
+            {PRODUCTS_AND_SERVICES.map((product) => {
               const isSelected = rfqData.requiredProducts?.includes(product.value);
               return (
                 <label

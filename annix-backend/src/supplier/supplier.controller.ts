@@ -29,6 +29,7 @@ import {
   SupplierCompanyDto,
   UpdateSupplierProfileDto,
   UploadSupplierDocumentDto,
+  SaveSupplierCapabilitiesDto,
 } from './dto';
 
 @ApiTags('Supplier Portal')
@@ -151,6 +152,26 @@ export class SupplierController {
     const supplierId = req['supplier'].supplierId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.submitOnboarding(supplierId, clientIp);
+  }
+
+  @Get('onboarding/capabilities')
+  @ApiOperation({ summary: 'Get supplier capabilities (products/services)' })
+  @ApiResponse({ status: 200, description: 'Capabilities retrieved' })
+  async getCapabilities(@Req() req: Request) {
+    const supplierId = req['supplier'].supplierId;
+    return this.supplierService.getCapabilities(supplierId);
+  }
+
+  @Post('onboarding/capabilities')
+  @ApiOperation({ summary: 'Save supplier capabilities (products/services)' })
+  @ApiResponse({ status: 200, description: 'Capabilities saved' })
+  async saveCapabilities(
+    @Body() dto: SaveSupplierCapabilitiesDto,
+    @Req() req: Request,
+  ) {
+    const supplierId = req['supplier'].supplierId;
+    const clientIp = this.getClientIp(req);
+    return this.supplierService.saveCapabilities(supplierId, dto, clientIp);
   }
 
   private getClientIp(req: Request): string {

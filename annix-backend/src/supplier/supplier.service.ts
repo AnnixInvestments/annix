@@ -16,12 +16,14 @@ import {
   SupplierDocument,
   SupplierDocumentType,
   SupplierDocumentValidationStatus,
+  SupplierCapability,
 } from './entities';
 import {
   SupplierCompanyDto,
   UpdateSupplierProfileDto,
   UploadSupplierDocumentDto,
   SupplierDocumentResponseDto,
+  SaveSupplierCapabilitiesDto,
 } from './dto';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
@@ -49,6 +51,8 @@ export class SupplierService {
     private readonly onboardingRepo: Repository<SupplierOnboarding>,
     @InjectRepository(SupplierDocument)
     private readonly documentRepo: Repository<SupplierDocument>,
+    @InjectRepository(SupplierCapability)
+    private readonly capabilityRepo: Repository<SupplierCapability>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly dataSource: DataSource,
@@ -601,5 +605,79 @@ export class SupplierService {
     const documentsComplete = missingDocuments.length === 0;
 
     await this.onboardingRepo.update({ supplierId }, { documentsComplete });
+  }
+
+  /**
+   * Get supplier capabilities (products/services they can offer)
+   */
+  async getCapabilities(supplierId: number): Promise<{ capabilities: string[] }> {
+    const capabilities = await this.capabilityRepo.find({
+      where: { supplierProfileId: supplierId, isActive: true },
+    });
+
+    return {
+      capabilities: capabilities.map((c) => c.productCategory as string),
+    };
+  }
+
+  /**
+   * Save supplier capabilities (products/services they can offer)
+   */
+  async saveCapabilities(
+    supplierId: number,
+    dto: SaveSupplierCapabilitiesDto,
+    clientIp: string,
+  ): Promise<{ capabilities: string[]; message: string }> {
+    const profile = await this.profileRepo.findOne({
+      where: { id: supplierId },
+      relations: ['onboarding'],
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Supplier profile not found');
+    }
+
+    // Get existing capabilities
+    const existingCapabilities = await this.capabilityRepo.find({
+      where: { supplierProfileId: supplierId },
+    });
+
+    const existingCategories = existingCapabilities.map((c) => c.productCategory as string);
+    const newCategories = dto.capabilities;
+
+    // Find categories to add and remove
+    const toAdd = newCategories.filter((c) => !existingCategories.includes(c));
+    const toRemove = existingCapabilities.filter(
+      (c) => !newCategories.includes(c.productCategory as string),
+    );
+
+    // Remove capabilities no longer selected
+    if (toRemove.length > 0) {
+      await this.capabilityRepo.remove(toRemove);
+    }
+
+    // Add new capabilities
+    for (const category of toAdd) {
+      const capability = this.capabilityRepo.create({
+        supplierProfileId: supplierId,
+        productCategory: category as any,
+        isActive: true,
+      });
+      await this.capabilityRepo.save(capability);
+    }
+
+    await this.auditService.log({
+      entityType: 'supplier_capabilities',
+      entityId: supplierId,
+      action: AuditAction.UPDATE,
+      oldValues: { capabilities: existingCategories },
+      newValues: { capabilities: newCategories },
+      ipAddress: clientIp,
+    });
+
+    return {
+      capabilities: newCategories,
+      message: 'Capabilities saved successfully',
+    };
   }
 }

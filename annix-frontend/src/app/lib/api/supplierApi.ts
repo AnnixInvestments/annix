@@ -387,6 +387,17 @@ class SupplierApiClient {
       method: 'POST',
     });
   }
+
+  async getCapabilities(): Promise<{ capabilities: string[] }> {
+    return this.request('/supplier/onboarding/capabilities');
+  }
+
+  async saveCapabilities(capabilities: string[]): Promise<{ capabilities: string[]; message: string }> {
+    return this.request('/supplier/onboarding/capabilities', {
+      method: 'POST',
+      body: JSON.stringify({ capabilities }),
+    });
+  }
 }
 
 export const supplierApiClient = new SupplierApiClient();
@@ -413,4 +424,6 @@ export const supplierPortalApi = {
     supplierApiClient.uploadDocument(file, documentType, expiryDate),
   deleteDocument: (documentId: number) => supplierApiClient.deleteDocument(documentId),
   submitOnboarding: () => supplierApiClient.submitOnboarding(),
+  getCapabilities: () => supplierApiClient.getCapabilities(),
+  saveCapabilities: (capabilities: string[]) => supplierApiClient.saveCapabilities(capabilities),
 };

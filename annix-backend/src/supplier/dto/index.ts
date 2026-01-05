@@ -4,3 +4,4 @@ export * from './supplier-company.dto';
 export * from './update-supplier-profile.dto';
 export * from './supplier-document.dto';
 export * from './admin-supplier.dto';
+export * from './supplier-capabilities.dto';
