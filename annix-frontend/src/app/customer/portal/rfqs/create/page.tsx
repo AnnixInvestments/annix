@@ -88,8 +88,8 @@ export default function CustomerCreateRfqPage() {
               <p className="text-gray-600">Bend RFQ form coming soon.</p>
               <p className="text-sm text-gray-500 mt-2">
                 Please contact{' '}
-                <a href="mailto:support@annix.co.za" className="text-blue-600 hover:underline">
-                  support@annix.co.za
+                <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">
+                  info@annix.co.za
                 </a>{' '}
                 for bend quotations.
               </p>
@@ -100,8 +100,8 @@ export default function CustomerCreateRfqPage() {
               <p className="text-gray-600">Fitting RFQ form coming soon.</p>
               <p className="text-sm text-gray-500 mt-2">
                 Please contact{' '}
-                <a href="mailto:support@annix.co.za" className="text-blue-600 hover:underline">
-                  support@annix.co.za
+                <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">
+                  info@annix.co.za
                 </a>{' '}
                 for fitting quotations.
               </p>
@@ -145,8 +145,8 @@ export default function CustomerCreateRfqPage() {
         <h3 className="text-sm font-medium text-gray-900">Need help with your RFQ?</h3>
         <p className="mt-1 text-sm text-gray-500">
           If you need assistance or have questions about the quotation process, please contact our sales team
-          at <a href="mailto:sales@annix.co.za" className="text-blue-600 hover:underline">sales@annix.co.za</a> or
-          call us at <a href="tel:+27123456789" className="text-blue-600 hover:underline">+27 12 345 6789</a>.
+          at <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">info@annix.co.za</a> or
+          call us at <a href="tel:+27720398429" className="text-blue-600 hover:underline">+27 72 039 8429</a>.
         </p>
       </div>
     </div>

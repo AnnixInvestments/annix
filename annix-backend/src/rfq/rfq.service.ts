@@ -17,6 +17,7 @@ import {
 } from './entities/straight-pipe-rfq.entity';
 import { BendRfq } from './entities/bend-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
+import { RfqDraft } from './entities/rfq-draft.entity';
 import { User } from '../user/entities/user.entity';
 import { SteelSpecification } from '../steel-specification/entities/steel-specification.entity';
 import { PipeDimension } from '../pipe-dimension/entities/pipe-dimension.entity';
@@ -34,6 +35,11 @@ import {
 } from './dto/rfq-response.dto';
 import { BendCalculationResultDto } from './dto/bend-calculation-result.dto';
 import { RfqDocumentResponseDto } from './dto/rfq-document.dto';
+import {
+  SaveRfqDraftDto,
+  RfqDraftResponseDto,
+  RfqDraftFullResponseDto,
+} from './dto/rfq-draft.dto';
 
 // Maximum number of documents allowed per RFQ
 const MAX_DOCUMENTS_PER_RFQ = 10;
@@ -53,6 +59,8 @@ export class RfqService {
     private bendRfqRepository: Repository<BendRfq>,
     @InjectRepository(RfqDocument)
     private rfqDocumentRepository: Repository<RfqDocument>,
+    @InjectRepository(RfqDraft)
+    private rfqDraftRepository: Repository<RfqDraft>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
     @InjectRepository(SteelSpecification)
@@ -667,6 +675,211 @@ export class RfqService {
       downloadUrl: `/api/rfq/documents/${document.id}/download`,
       uploadedBy: document.uploadedBy?.username,
       createdAt: document.createdAt,
+    };
+  }
+
+  // ============================================
+  // RFQ Draft Management Methods
+  // ============================================
+
+  /**
+   * Generate a unique draft number
+   */
+  private async generateDraftNumber(): Promise<string> {
+    const year = new Date().getFullYear();
+    const draftCount = await this.rfqDraftRepository.count();
+    return `DRAFT-${year}-${String(draftCount + 1).padStart(4, '0')}`;
+  }
+
+  /**
+   * Calculate completion percentage based on form data
+   */
+  private calculateCompletionPercentage(dto: SaveRfqDraftDto): number {
+    let totalFields = 0;
+    let filledFields = 0;
+
+    // Step 1: Project details (25%)
+    const step1Fields = ['projectName', 'customerName', 'requiredByDate', 'deliveryLocation'];
+    step1Fields.forEach(field => {
+      totalFields++;
+      if (dto.formData[field]) filledFields++;
+    });
+
+    // Step 2: Global specs (25%)
+    if (dto.globalSpecs) {
+      const step2Fields = ['steelSpec', 'steelGrade', 'workingPressure', 'workingTemperature'];
+      step2Fields.forEach(field => {
+        totalFields++;
+        if (dto.globalSpecs![field]) filledFields++;
+      });
+    } else {
+      totalFields += 4;
+    }
+
+    // Step 3: Items (25%)
+    totalFields++;
+    if (dto.straightPipeEntries && dto.straightPipeEntries.length > 0) {
+      filledFields++;
+    }
+
+    // Required products (25%)
+    totalFields++;
+    if (dto.requiredProducts && dto.requiredProducts.length > 0) {
+      filledFields++;
+    }
+
+    return Math.round((filledFields / totalFields) * 100);
+  }
+
+  /**
+   * Save or update an RFQ draft
+   */
+  async saveDraft(dto: SaveRfqDraftDto, userId: number): Promise<RfqDraftResponseDto> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    let draft: RfqDraft;
+
+    if (dto.draftId) {
+      // Update existing draft
+      const existingDraft = await this.rfqDraftRepository.findOne({
+        where: { id: dto.draftId, createdBy: { id: userId } },
+      });
+      if (!existingDraft) {
+        throw new NotFoundException(`Draft with ID ${dto.draftId} not found or access denied`);
+      }
+      if (existingDraft.isConverted) {
+        throw new BadRequestException('Cannot update a draft that has been converted to an RFQ');
+      }
+      draft = existingDraft;
+    } else {
+      // Create new draft
+      draft = new RfqDraft();
+      draft.draftNumber = await this.generateDraftNumber();
+      draft.createdBy = user;
+    }
+
+    // Update draft fields
+    draft.projectName = dto.projectName || dto.formData.projectName || 'Untitled Draft';
+    draft.currentStep = dto.currentStep;
+    draft.formData = dto.formData;
+    draft.globalSpecs = dto.globalSpecs;
+    draft.requiredProducts = dto.requiredProducts;
+    draft.straightPipeEntries = dto.straightPipeEntries;
+    draft.pendingDocuments = dto.pendingDocuments;
+    draft.completionPercentage = this.calculateCompletionPercentage(dto);
+
+    const savedDraft = await this.rfqDraftRepository.save(draft);
+
+    return this.mapDraftToResponse(savedDraft);
+  }
+
+  /**
+   * Get all drafts for a user
+   */
+  async getDrafts(userId: number): Promise<RfqDraftResponseDto[]> {
+    const drafts = await this.rfqDraftRepository.find({
+      where: { createdBy: { id: userId }, isConverted: false },
+      order: { updatedAt: 'DESC' },
+    });
+
+    return drafts.map(draft => this.mapDraftToResponse(draft));
+  }
+
+  /**
+   * Get a single draft with full data
+   */
+  async getDraftById(draftId: number, userId: number): Promise<RfqDraftFullResponseDto> {
+    const draft = await this.rfqDraftRepository.findOne({
+      where: { id: draftId, createdBy: { id: userId } },
+    });
+
+    if (!draft) {
+      throw new NotFoundException(`Draft with ID ${draftId} not found or access denied`);
+    }
+
+    return this.mapDraftToFullResponse(draft);
+  }
+
+  /**
+   * Get a draft by draft number
+   */
+  async getDraftByNumber(draftNumber: string, userId: number): Promise<RfqDraftFullResponseDto> {
+    const draft = await this.rfqDraftRepository.findOne({
+      where: { draftNumber, createdBy: { id: userId } },
+    });
+
+    if (!draft) {
+      throw new NotFoundException(`Draft ${draftNumber} not found or access denied`);
+    }
+
+    return this.mapDraftToFullResponse(draft);
+  }
+
+  /**
+   * Delete a draft
+   */
+  async deleteDraft(draftId: number, userId: number): Promise<void> {
+    const draft = await this.rfqDraftRepository.findOne({
+      where: { id: draftId, createdBy: { id: userId } },
+    });
+
+    if (!draft) {
+      throw new NotFoundException(`Draft with ID ${draftId} not found or access denied`);
+    }
+
+    if (draft.isConverted) {
+      throw new BadRequestException('Cannot delete a draft that has been converted to an RFQ');
+    }
+
+    await this.rfqDraftRepository.remove(draft);
+  }
+
+  /**
+   * Mark a draft as converted to RFQ
+   */
+  async markDraftAsConverted(draftId: number, rfqId: number, userId: number): Promise<void> {
+    const draft = await this.rfqDraftRepository.findOne({
+      where: { id: draftId, createdBy: { id: userId } },
+    });
+
+    if (draft) {
+      draft.isConverted = true;
+      draft.convertedRfqId = rfqId;
+      await this.rfqDraftRepository.save(draft);
+    }
+  }
+
+  /**
+   * Map draft entity to response DTO
+   */
+  private mapDraftToResponse(draft: RfqDraft): RfqDraftResponseDto {
+    return {
+      id: draft.id,
+      draftNumber: draft.draftNumber,
+      projectName: draft.projectName,
+      currentStep: draft.currentStep,
+      completionPercentage: draft.completionPercentage,
+      createdAt: draft.createdAt,
+      updatedAt: draft.updatedAt,
+      isConverted: draft.isConverted,
+      convertedRfqId: draft.convertedRfqId,
+    };
+  }
+
+  /**
+   * Map draft entity to full response DTO
+   */
+  private mapDraftToFullResponse(draft: RfqDraft): RfqDraftFullResponseDto {
+    return {
+      ...this.mapDraftToResponse(draft),
+      formData: draft.formData,
+      globalSpecs: draft.globalSpecs,
+      requiredProducts: draft.requiredProducts,
+      straightPipeEntries: draft.straightPipeEntries,
+      pendingDocuments: draft.pendingDocuments,
     };
   }
 }

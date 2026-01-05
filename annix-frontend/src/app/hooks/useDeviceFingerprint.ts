@@ -20,7 +20,7 @@ interface DeviceFingerprintData {
  * Generate a device fingerprint from browser characteristics
  * This is a custom implementation - in production, consider using FingerprintJS
  */
-async function generateFingerprint(): Promise<DeviceFingerprintData> {
+export async function generateFingerprint(): Promise<DeviceFingerprintData> {
   const components: string[] = [];
 
   // User Agent

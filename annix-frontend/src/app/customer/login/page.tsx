@@ -273,7 +273,7 @@ export default function CustomerLoginPage() {
               </p>
               <p className="mt-2 text-sm text-gray-500">
                 Need to change your registered device?{' '}
-                <a href="mailto:support@annix.co.za" className="text-blue-600 hover:underline">
+                <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">
                   Contact support
                 </a>
               </p>

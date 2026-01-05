@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { StraightPipeEntry, useRfqForm } from '@/app/lib/hooks/useRfqForm';
-import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, SaMine, MineWithEnvironmentalData } from '@/app/lib/api/client';
+import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, SaMine, MineWithEnvironmentalData, RfqDraftResponse } from '@/app/lib/api/client';
 import {
   validatePage1RequiredFields,
   validatePage2Specifications,
@@ -7131,6 +7132,35 @@ function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, erro
               )}
             </div>
           )}
+
+          {/* Fallback Edit Button for Internal Lining - Shows when confirmed but no specific type block is displaying */}
+          {globalSpecs?.internalLiningConfirmed && globalSpecs?.internalLiningType &&
+           globalSpecs?.externalCoatingType !== 'Galvanized' &&
+           !(globalSpecs?.internalLiningType === 'Rubber Lined' && globalSpecs?.internalRubberType) &&
+           !(globalSpecs?.internalLiningType === 'Ceramic Lined' && globalSpecs?.internalCeramicType) &&
+           !(globalSpecs?.internalLiningType === 'HDPE Lined' && globalSpecs?.internalHdpeMaterialGrade) &&
+           !(globalSpecs?.internalLiningType === 'PU Lined' && globalSpecs?.internalPuThickness) &&
+           !(globalSpecs?.internalLiningType === 'Paint' && globalSpecs?.internalPrimerType) &&
+           !(['None', 'Galvanized', 'Cement Mortar', 'Epoxy Lined', 'FBE Lined'].includes(globalSpecs?.internalLiningType)) && (
+            <div className="bg-amber-100 border border-amber-400 rounded-md p-2 flex items-center justify-between mt-2">
+              <div className="flex items-center gap-2 text-xs text-amber-800">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <span className="font-medium">{globalSpecs.internalLiningType} - Incomplete Configuration</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onUpdateGlobalSpecs({
+                  ...globalSpecs,
+                  internalLiningConfirmed: false
+                })}
+                className="px-2 py-1 bg-amber-600 text-white font-medium rounded text-xs hover:bg-amber-700"
+              >
+                Edit
+              </button>
+            </div>
+          )}
         </div>
 
             {/* Confirm Surface Protection Button - Only show when not all confirmed */}
@@ -13748,7 +13778,159 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
   );
 }
 
+// BOQ (Bill of Quantities) Step - Shows after RFQ submission
+function BOQStep({ rfqData, entries, globalSpecs, requiredProducts }: {
+  rfqData: RfqData;
+  entries: any[];
+  globalSpecs: GlobalSpecs;
+  requiredProducts: string[];
+}) {
+  const formatDate = (date: Date | string | undefined) => {
+    if (!date) return 'Not specified';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
+  return (
+    <div className="space-y-8 text-white">
+      {/* Header */}
+      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h2 className="text-2xl font-bold text-blue-400 mb-2">Bill of Quantities</h2>
+            <p className="text-slate-400">Project Summary and Material Requirements</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-slate-400">RFQ Number</p>
+            <p className="text-xl font-bold text-green-400">{rfqData.rfqNumber || 'Pending'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Project Details */}
+      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-blue-400 mb-4">Project Information</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <p className="text-sm text-slate-400">Project Name</p>
+            <p className="font-medium">{rfqData.projectName || '-'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-400">Customer</p>
+            <p className="font-medium">{rfqData.customerName || '-'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-400">Required Date</p>
+            <p className="font-medium">{formatDate(rfqData.requiredByDate)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-400">Delivery Location</p>
+            <p className="font-medium">{rfqData.deliveryLocation || '-'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Material Specifications */}
+      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-blue-400 mb-4">Material Specifications</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <p className="text-sm text-slate-400">Steel Specification</p>
+            <p className="font-medium">{globalSpecs.steelSpec || '-'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-400">Steel Grade</p>
+            <p className="font-medium">{globalSpecs.steelGrade || '-'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-400">Design Pressure</p>
+            <p className="font-medium">{globalSpecs.designPressure ? `${globalSpecs.designPressure} bar` : '-'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-400">Design Temperature</p>
+            <p className="font-medium">{globalSpecs.designTemperature ? `${globalSpecs.designTemperature}°C` : '-'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Items Table */}
+      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-blue-400 mb-4">Line Items ({entries.length})</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-600">
+                <th className="text-left py-3 px-2 text-slate-400">Item</th>
+                <th className="text-left py-3 px-2 text-slate-400">Type</th>
+                <th className="text-left py-3 px-2 text-slate-400">Size</th>
+                <th className="text-left py-3 px-2 text-slate-400">Description</th>
+                <th className="text-right py-3 px-2 text-slate-400">Qty</th>
+                <th className="text-left py-3 px-2 text-slate-400">Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry, idx) => (
+                <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                  <td className="py-3 px-2">{idx + 1}</td>
+                  <td className="py-3 px-2 capitalize">{entry.itemType || entry.type || 'Pipe'}</td>
+                  <td className="py-3 px-2">{entry.nominalDiameter || entry.size || '-'}</td>
+                  <td className="py-3 px-2">{entry.description || `${entry.wallThickness || ''} WT`}</td>
+                  <td className="py-3 px-2 text-right">{entry.quantity || entry.length || '-'}</td>
+                  <td className="py-3 px-2">{entry.unit || 'm'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Surface Protection Summary */}
+      {requiredProducts.includes('surface_protection') && (
+        <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
+          <h3 className="text-lg font-semibold text-blue-400 mb-4">Surface Protection</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-slate-400">External Coating</p>
+              <p className="font-medium">{globalSpecs.externalCoating || 'Not specified'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-slate-400">Internal Lining</p>
+              <p className="font-medium">{globalSpecs.internalLining || 'None'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-slate-400">Corrosion Allowance</p>
+              <p className="font-medium">{globalSpecs.corrosionAllowance ? `${globalSpecs.corrosionAllowance}mm` : 'Not specified'}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notes */}
+      {rfqData.notes && (
+        <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
+          <h3 className="text-lg font-semibold text-blue-400 mb-4">Additional Notes</h3>
+          <p className="text-slate-300 whitespace-pre-wrap">{rfqData.notes}</p>
+        </div>
+      )}
+
+      {/* Print/Export Actions */}
+      <div className="flex justify-end gap-4">
+        <button
+          onClick={() => window.print()}
+          className="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          Print BOQ
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Props) {
+  const searchParams = useSearchParams();
   const {
     currentStep,
     setCurrentStep,
@@ -13767,6 +13949,12 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     nextStep: originalNextStep,
     prevStep,
   } = useRfqForm();
+
+  // Draft management state
+  const [currentDraftId, setCurrentDraftId] = useState<number | null>(null);
+  const [draftNumber, setDraftNumber] = useState<string | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
 
   const [masterData, setMasterData] = useState<MasterData>({
     steelSpecs: [],
@@ -13959,6 +14147,61 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
     loadMasterData();
   }, []);
+
+  // Load draft from URL parameter if present
+  useEffect(() => {
+    const draftId = searchParams?.get('draftId');
+    if (!draftId) return;
+
+    const loadDraft = async () => {
+      setIsLoadingDraft(true);
+      try {
+        const draft = await draftsApi.getById(parseInt(draftId, 10));
+
+        // Restore form data from draft
+        if (draft.formData) {
+          Object.entries(draft.formData).forEach(([key, value]) => {
+            updateRfqField(key as keyof typeof rfqData, value);
+          });
+        }
+
+        // Restore global specs
+        if (draft.globalSpecs) {
+          updateGlobalSpecs(draft.globalSpecs);
+        }
+
+        // Restore required products
+        if (draft.requiredProducts) {
+          updateRfqField('requiredProducts', draft.requiredProducts);
+        }
+
+        // Restore straight pipe entries
+        if (draft.straightPipeEntries && draft.straightPipeEntries.length > 0) {
+          draft.straightPipeEntries.forEach((entry: any) => {
+            addStraightPipeEntry(entry);
+          });
+        }
+
+        // Set current step
+        if (draft.currentStep) {
+          setCurrentStep(draft.currentStep);
+        }
+
+        // Store draft info
+        setCurrentDraftId(draft.id);
+        setDraftNumber(draft.draftNumber);
+
+        console.log(`✅ Loaded draft ${draft.draftNumber}`);
+      } catch (error) {
+        console.error('Failed to load draft:', error);
+        alert('Failed to load the saved draft. Starting with a new form.');
+      } finally {
+        setIsLoadingDraft(false);
+      }
+    };
+
+    loadDraft();
+  }, [searchParams]);
 
   // Temperature derating factors for flange pressure classes
   // SABS 1123 / EN 1092-1 / PN standards: No significant derating below 200°C for carbon steel
@@ -15114,31 +15357,70 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   // State for save progress feedback
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
-  // Save progress handler - saves current RFQ data to localStorage
-  const handleSaveProgress = () => {
+  // Save progress handler - saves current RFQ data to server
+  const handleSaveProgress = async () => {
+    setIsSavingDraft(true);
     try {
       const saveData = {
-        rfqData,
+        draftId: currentDraftId || undefined,
+        projectName: rfqData.projectName,
+        currentStep,
+        formData: {
+          projectName: rfqData.projectName,
+          customerName: rfqData.customerName,
+          customerEmail: rfqData.customerEmail,
+          customerPhone: rfqData.customerPhone,
+          requiredByDate: rfqData.requiredByDate,
+          deliveryLocation: rfqData.deliveryLocation,
+          notes: rfqData.notes,
+          mineId: rfqData.mineId,
+          mineName: rfqData.mineName,
+        },
+        globalSpecs: rfqData.globalSpecs,
+        requiredProducts: rfqData.requiredProducts,
+        straightPipeEntries: rfqData.items?.length > 0 ? rfqData.items : rfqData.straightPipeEntries,
         pendingDocuments: pendingDocuments.map((doc: any) => ({
           name: doc.name || doc.file?.name,
           size: doc.size || doc.file?.size,
           type: doc.type || doc.file?.type,
-          // Note: Cannot save actual file objects to localStorage, only metadata
         })),
-        currentStep,
-        savedAt: new Date().toISOString(),
       };
 
-      localStorage.setItem('annix_rfq_draft', JSON.stringify(saveData));
+      const result = await draftsApi.save(saveData);
+
+      // Update draft info
+      setCurrentDraftId(result.id);
+      setDraftNumber(result.draftNumber);
+
+      // Also save to localStorage as backup
+      localStorage.setItem('annix_rfq_draft', JSON.stringify({
+        ...saveData,
+        draftNumber: result.draftNumber,
+        savedAt: new Date().toISOString(),
+      }));
 
       // Show confirmation
       setShowSaveConfirmation(true);
-      setTimeout(() => setShowSaveConfirmation(false), 3000);
+      setTimeout(() => setShowSaveConfirmation(false), 5000);
 
-      console.log('✅ RFQ progress saved to localStorage');
+      console.log(`✅ RFQ progress saved as ${result.draftNumber}`);
     } catch (error) {
       console.error('Failed to save progress:', error);
-      alert('Failed to save progress. Please try again.');
+      // Fallback to localStorage only
+      try {
+        localStorage.setItem('annix_rfq_draft', JSON.stringify({
+          rfqData,
+          currentStep,
+          savedAt: new Date().toISOString(),
+        }));
+        setShowSaveConfirmation(true);
+        setTimeout(() => setShowSaveConfirmation(false), 3000);
+        console.log('✅ RFQ progress saved to localStorage (server unavailable)');
+      } catch (e) {
+        alert('Failed to save progress. Please try again.');
+      }
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -15386,7 +15668,8 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     { number: 1, title: 'Project/RFQ Details', description: 'Basic project and customer information' },
     { number: 2, title: 'Specifications', description: 'Working conditions and material specs' },
     { number: 3, title: 'Items', description: 'Add pipes, bends, and fittings' },
-    { number: 4, title: 'Review & Submit', description: 'Final review and submission' }
+    { number: 4, title: 'Review & Submit', description: 'Final review and submission' },
+    { number: 5, title: 'BOQ', description: 'Bill of Quantities summary' }
   ];
 
   const renderCurrentStep = () => {
@@ -15456,6 +15739,15 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             loading={isSubmitting}
           />
         );
+      case 5:
+        return (
+          <BOQStep
+            rfqData={rfqData}
+            entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
+            globalSpecs={rfqData.globalSpecs}
+            requiredProducts={rfqData.requiredProducts || []}
+          />
+        );
       default:
         return null;
     }
@@ -15465,12 +15757,26 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex flex-col">
       {/* Save Progress Confirmation Toast */}
       {showSaveConfirmation && (
-        <div className="fixed top-4 right-4 z-50 animate-pulse">
-          <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="font-medium">Progress Saved!</span>
+        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+          <div className="bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <div>
+                <p className="font-medium">Progress Saved!</p>
+                {draftNumber && (
+                  <p className="text-sm text-green-100 mt-0.5">
+                    Draft Number: <span className="font-mono font-bold">{draftNumber}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+            {draftNumber && (
+              <p className="text-xs text-green-200 mt-2">
+                You can resume this RFQ from your dashboard at any time.
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -15486,6 +15792,11 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             </span>
           </div>
           <div className="flex items-center gap-3">
+            {draftNumber && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                {draftNumber}
+              </span>
+            )}
             <div className="text-sm text-gray-500">
               {rfqData?.projectName || 'New RFQ'}
             </div>
@@ -15601,17 +15912,30 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           <div className="flex items-center gap-3 justify-end">
             <button
               onClick={handleSaveProgress}
-              className="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all"
+              disabled={isSavingDraft}
+              className="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 backgroundColor: '#003366',
                 color: '#FFA500',
                 border: '1px solid #FFA500'
               }}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-              </svg>
-              Save Progress
+              {isSavingDraft ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                  </svg>
+                  {draftNumber ? 'Update Draft' : 'Save Progress'}
+                </>
+              )}
             </button>
             {currentStep < 4 ? (
               <button

@@ -282,7 +282,7 @@ export default function CustomerCompanyPage() {
             <h4 className="text-sm font-medium text-blue-800">Need to update company details?</h4>
             <p className="mt-1 text-sm text-blue-700">
               To update legal company information, registration numbers, or country, please contact our support team at{' '}
-              <a href="mailto:support@annix.co.za" className="underline">support@annix.co.za</a>
+              <a href="mailto:info@annix.co.za" className="underline">info@annix.co.za</a>
             </p>
           </div>
         </div>

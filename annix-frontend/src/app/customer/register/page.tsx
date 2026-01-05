@@ -361,7 +361,7 @@ export default function CustomerRegistrationPage() {
       await customerAuthApi.registerWithFormData(formData);
 
       // Redirect directly to dashboard (email verification disabled for development)
-      router.push('/customer/dashboard');
+      router.push('/customer/portal/dashboard');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed. Please try again.');
     } finally {
@@ -1056,7 +1056,7 @@ export default function CustomerRegistrationPage() {
         </button>
         <p className="text-sm text-gray-500">
           Need help?{' '}
-          <a href="mailto:support@annix.co.za" className="text-blue-600 hover:underline">
+          <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">
             Contact support
           </a>
         </p>

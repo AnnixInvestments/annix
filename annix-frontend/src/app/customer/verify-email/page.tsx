@@ -142,7 +142,7 @@ function VerifyEmailContent() {
 
         <p className="mt-6 text-sm text-gray-500">
           Need help?{' '}
-          <a href="mailto:support@annix.co.za" className="text-blue-600 hover:underline">
+          <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">
             Contact support
           </a>
         </p>

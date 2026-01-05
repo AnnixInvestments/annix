@@ -238,7 +238,7 @@ export default function SupplierRegistrationPage() {
       await supplierAuthApi.registerFull(formData);
 
       // Redirect directly to dashboard (email verification disabled for development)
-      router.push('/supplier/dashboard');
+      router.push('/supplier/portal/dashboard');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed. Please try again.');
     } finally {
@@ -1027,7 +1027,7 @@ export default function SupplierRegistrationPage() {
         </button>
         <p className="text-sm text-gray-500">
           Need help?{' '}
-          <a href="mailto:support@annix.co.za" className="text-blue-600 hover:underline">Contact support</a>
+          <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">Contact support</a>
         </p>
       </div>
     </div>

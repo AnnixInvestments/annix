@@ -127,6 +127,38 @@ export interface RfqResponse {
   itemCount: number;
 }
 
+// RFQ Draft Types
+export interface SaveRfqDraftDto {
+  draftId?: number;
+  projectName?: string;
+  currentStep: number;
+  formData: Record<string, any>;
+  globalSpecs?: Record<string, any>;
+  requiredProducts?: string[];
+  straightPipeEntries?: Record<string, any>[];
+  pendingDocuments?: Record<string, any>[];
+}
+
+export interface RfqDraftResponse {
+  id: number;
+  draftNumber: string;
+  projectName?: string;
+  currentStep: number;
+  completionPercentage: number;
+  createdAt: Date;
+  updatedAt: Date;
+  isConverted: boolean;
+  convertedRfqId?: number;
+}
+
+export interface RfqDraftFullResponse extends RfqDraftResponse {
+  formData: Record<string, any>;
+  globalSpecs?: Record<string, any>;
+  requiredProducts?: string[];
+  straightPipeEntries?: Record<string, any>[];
+  pendingDocuments?: Record<string, any>[];
+}
+
 export interface RfqDocument {
   id: number;
   rfqId: number;
@@ -792,6 +824,33 @@ class ApiClient {
   }>> {
     return this.request(`/pipe-schedules/by-nb?nbMm=${nbMm}`);
   }
+
+  // ==================== Draft Methods ====================
+
+  async saveDraft(dto: SaveRfqDraftDto): Promise<RfqDraftResponse> {
+    return this.request('/rfq/drafts', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async getDrafts(): Promise<RfqDraftResponse[]> {
+    return this.request('/rfq/drafts');
+  }
+
+  async getDraftById(id: number): Promise<RfqDraftFullResponse> {
+    return this.request(`/rfq/drafts/${id}`);
+  }
+
+  async getDraftByNumber(draftNumber: string): Promise<RfqDraftFullResponse> {
+    return this.request(`/rfq/drafts/number/${encodeURIComponent(draftNumber)}`);
+  }
+
+  async deleteDraft(id: number): Promise<void> {
+    return this.request(`/rfq/drafts/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 // Create and export the API client instance
@@ -882,4 +941,12 @@ export const minesApi = {
   getSlurryProfiles: () => apiClient.getSlurryProfiles(),
   getLiningRules: () => apiClient.getLiningRules(),
   createMine: (mineData: CreateSaMineDto) => apiClient.createMine(mineData),
+};
+
+export const draftsApi = {
+  save: (dto: SaveRfqDraftDto) => apiClient.saveDraft(dto),
+  getAll: () => apiClient.getDrafts(),
+  getById: (id: number) => apiClient.getDraftById(id),
+  getByNumber: (draftNumber: string) => apiClient.getDraftByNumber(draftNumber),
+  delete: (id: number) => apiClient.deleteDraft(id),
 };

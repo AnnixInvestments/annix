@@ -272,7 +272,7 @@ export default function DocumentIssueModal({
           <div className="mt-4 text-center text-sm text-gray-600">
             <p>
               Need help?{' '}
-              <a href="mailto:support@annix.co.za" className="text-blue-600 hover:text-blue-700 font-medium">
+              <a href="mailto:info@annix.co.za" className="text-blue-600 hover:text-blue-700 font-medium">
                 Contact Support
               </a>
             </p>
