@@ -233,13 +233,18 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
             </>
           ) : hasRotatingLeftFlange ? (
             <>
-              {/* Retaining ring welded to pipe end */}
+              {/* Retaining ring welded to pipe end - prevents flange from sliding off */}
               <RetainingRing position={[-halfLen, 0, 0]} pipeOuterRadius={radius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
-              {/* Rotating flange positioned 50mm back from ring (on the pipe) */}
-              <SimpleFlange position={[-halfLen + 0.05, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
-              {/* R/F label */}
-              <Text position={[-halfLen + 0.025, -radius - 0.15, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
-                R/F
+              {/* Rotating flange positioned 50mm back from ring (on the pipe)
+                  Hole diameter is slightly larger than pipe OD to allow rotation */}
+              <SimpleFlange position={[-halfLen + 0.05, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} />
+              {/* 50mm gap dimension line */}
+              <Line points={[[-halfLen, -radius - 0.1, 0], [-halfLen + 0.05, -radius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
+              <Line points={[[-halfLen, -radius - 0.05, 0], [-halfLen, -radius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
+              <Line points={[[-halfLen + 0.05, -radius - 0.05, 0], [-halfLen + 0.05, -radius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
+              {/* R/F label with gap dimension */}
+              <Text position={[-halfLen + 0.025, -radius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                R/F 50mm
               </Text>
             </>
           ) : (
@@ -283,13 +288,18 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
             </>
           ) : hasRotatingRightFlange ? (
             <>
-              {/* Retaining ring welded to pipe end */}
+              {/* Retaining ring welded to pipe end - prevents flange from sliding off */}
               <RetainingRing position={[halfLen, 0, 0]} pipeOuterRadius={radius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
-              {/* Rotating flange positioned 50mm back from ring (on the pipe) */}
-              <SimpleFlange position={[halfLen - 0.05, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
-              {/* R/F label */}
-              <Text position={[halfLen - 0.025, -radius - 0.15, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
-                R/F
+              {/* Rotating flange positioned 50mm back from ring (on the pipe)
+                  Hole diameter is slightly larger than pipe OD to allow rotation */}
+              <SimpleFlange position={[halfLen - 0.05, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} />
+              {/* 50mm gap dimension line */}
+              <Line points={[[halfLen - 0.05, -radius - 0.1, 0], [halfLen, -radius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
+              <Line points={[[halfLen - 0.05, -radius - 0.05, 0], [halfLen - 0.05, -radius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
+              <Line points={[[halfLen, -radius - 0.05, 0], [halfLen, -radius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
+              {/* R/F label with gap dimension */}
+              <Text position={[halfLen - 0.025, -radius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                R/F 50mm
               </Text>
             </>
           ) : (

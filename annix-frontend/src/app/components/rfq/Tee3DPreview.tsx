@@ -104,6 +104,91 @@ function BlankFlangeComponent({
   );
 }
 
+// Retaining Ring component for rotating flanges
+function RetainingRingComponent({
+  position,
+  rotation,
+  pipeOuterRadius,
+  pipeInnerRadius,
+  thickness
+}: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  pipeOuterRadius: number;
+  pipeInnerRadius: number;
+  thickness: number;
+}) {
+  // Ring OD should be larger than pipe OD but smaller than the flange
+  const ringOuterRadius = pipeOuterRadius * 1.15; // 15% larger than pipe OD
+
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, ringOuterRadius, 0, Math.PI * 2, false);
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, pipeInnerRadius, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+    const extrudeSettings = { depth: thickness, bevelEnabled: false, curveSegments: 32 };
+    return new THREE.ExtrudeGeometry(shape, extrudeSettings);
+  }, [ringOuterRadius, pipeInnerRadius, thickness]);
+
+  return (
+    <mesh position={position} rotation={rotation || [0, 0, 0]} geometry={geometry} castShadow receiveShadow>
+      <meshStandardMaterial color="#606060" metalness={0.6} roughness={0.4} />
+    </mesh>
+  );
+}
+
+// Rotating Flange component (hole larger than pipe OD to allow rotation)
+function RotatingFlangeComponent({
+  position,
+  rotation,
+  outerDiameter,
+  pipeOuterDiameter,
+  thickness,
+  pcd,
+  boltHoles,
+  holeID
+}: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  outerDiameter: number;
+  pipeOuterDiameter: number; // The flange hole must be larger than this
+  thickness: number;
+  pcd: number;
+  boltHoles: number;
+  holeID: number;
+}) {
+  // Hole is 5% larger than pipe OD to allow rotation
+  const holeDiameter = pipeOuterDiameter * 1.05;
+
+  const flangeGeometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, outerDiameter / 2, 0, Math.PI * 2, false);
+    const holePath = new THREE.Path();
+    holePath.absarc(0, 0, holeDiameter / 2, 0, Math.PI * 2, true);
+    shape.holes.push(holePath);
+
+    // Add bolt holes
+    for (let i = 0; i < boltHoles; i++) {
+      const angle = (i / boltHoles) * Math.PI * 2;
+      const x = Math.cos(angle) * (pcd / 2);
+      const y = Math.sin(angle) * (pcd / 2);
+      const boltHole = new THREE.Path();
+      boltHole.absarc(x, y, holeID / 2, 0, Math.PI * 2, true);
+      shape.holes.push(boltHole);
+    }
+
+    const extrudeSettings = { depth: thickness, bevelEnabled: false };
+    return new THREE.ExtrudeGeometry(shape, extrudeSettings);
+  }, [outerDiameter, holeDiameter, thickness, pcd, boltHoles, holeID]);
+
+  return (
+    <mesh position={position} rotation={rotation || [0, 0, 0]} geometry={flangeGeometry} castShadow receiveShadow>
+      <meshStandardMaterial color="#404040" metalness={0.7} roughness={0.3} />
+    </mesh>
+  );
+}
+
 // Flange component
 function FlangeComponent({
   position,
@@ -333,16 +418,57 @@ function TeeScene(props: Tee3DPreviewProps) {
         {/* Inlet flange (left side of run) */}
         {hasInletFlange && (
           <>
-            <FlangeComponent
-              position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor, 0, 0]}
-              rotation={[0, Math.PI / 2, 0]}
-              outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
-              innerDiameter={id / scaleFactor}
-              thickness={runFlangeSpecs.thickness / scaleFactor}
-              pcd={runFlangeSpecs.pcd / scaleFactor}
-              boltHoles={runFlangeSpecs.boltHoles}
-              holeID={runFlangeSpecs.holeID / scaleFactor}
-            />
+            {inletFlangeType === 'rotating' ? (
+              <>
+                {/* Retaining ring welded at pipe end */}
+                <RetainingRingComponent
+                  position={[-halfRunLength - 0.02, 0, 0]}
+                  rotation={[0, Math.PI / 2, 0]}
+                  pipeOuterRadius={outerRadius}
+                  pipeInnerRadius={innerRadius}
+                  thickness={0.02}
+                />
+                {/* Rotating flange positioned 50mm (0.5 scene units) back from ring */}
+                <RotatingFlangeComponent
+                  position={[-halfRunLength + 0.5, 0, 0]}
+                  rotation={[0, Math.PI / 2, 0]}
+                  outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
+                  pipeOuterDiameter={od / scaleFactor}
+                  thickness={runFlangeSpecs.thickness / scaleFactor}
+                  pcd={runFlangeSpecs.pcd / scaleFactor}
+                  boltHoles={runFlangeSpecs.boltHoles}
+                  holeID={runFlangeSpecs.holeID / scaleFactor}
+                />
+                {/* R/F dimension line */}
+                <Line
+                  points={[[-halfRunLength, -outerRadius - 0.15, 0], [-halfRunLength + 0.5, -outerRadius - 0.15, 0]]}
+                  color="#ea580c"
+                  lineWidth={2}
+                />
+                <Line points={[[-halfRunLength, -outerRadius - 0.1, 0], [-halfRunLength, -outerRadius - 0.2, 0]]} color="#ea580c" lineWidth={1} />
+                <Line points={[[-halfRunLength + 0.5, -outerRadius - 0.1, 0], [-halfRunLength + 0.5, -outerRadius - 0.2, 0]]} color="#ea580c" lineWidth={1} />
+                <Text
+                  position={[-halfRunLength + 0.25, -outerRadius - 0.35, 0]}
+                  fontSize={0.15}
+                  color="#ea580c"
+                  anchorX="center"
+                  anchorY="middle"
+                >
+                  R/F 50mm
+                </Text>
+              </>
+            ) : (
+              <FlangeComponent
+                position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor, 0, 0]}
+                rotation={[0, Math.PI / 2, 0]}
+                outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
+                innerDiameter={id / scaleFactor}
+                thickness={runFlangeSpecs.thickness / scaleFactor}
+                pcd={runFlangeSpecs.pcd / scaleFactor}
+                boltHoles={runFlangeSpecs.boltHoles}
+                holeID={runFlangeSpecs.holeID / scaleFactor}
+              />
+            )}
             {/* Loose flange: Extended pipe section past flange for site weld */}
             {inletFlangeType === 'loose' && (
               <>
@@ -400,16 +526,57 @@ function TeeScene(props: Tee3DPreviewProps) {
         {/* Outlet flange (right side of run) */}
         {hasOutletFlange && (
           <>
-            <FlangeComponent
-              position={[halfRunLength + runFlangeSpecs.thickness / scaleFactor, 0, 0]}
-              rotation={[0, -Math.PI / 2, 0]}
-              outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
-              innerDiameter={id / scaleFactor}
-              thickness={runFlangeSpecs.thickness / scaleFactor}
-              pcd={runFlangeSpecs.pcd / scaleFactor}
-              boltHoles={runFlangeSpecs.boltHoles}
-              holeID={runFlangeSpecs.holeID / scaleFactor}
-            />
+            {outletFlangeType === 'rotating' ? (
+              <>
+                {/* Retaining ring welded at pipe end */}
+                <RetainingRingComponent
+                  position={[halfRunLength + 0.02, 0, 0]}
+                  rotation={[0, -Math.PI / 2, 0]}
+                  pipeOuterRadius={outerRadius}
+                  pipeInnerRadius={innerRadius}
+                  thickness={0.02}
+                />
+                {/* Rotating flange positioned 50mm (0.5 scene units) back from ring */}
+                <RotatingFlangeComponent
+                  position={[halfRunLength - 0.5, 0, 0]}
+                  rotation={[0, -Math.PI / 2, 0]}
+                  outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
+                  pipeOuterDiameter={od / scaleFactor}
+                  thickness={runFlangeSpecs.thickness / scaleFactor}
+                  pcd={runFlangeSpecs.pcd / scaleFactor}
+                  boltHoles={runFlangeSpecs.boltHoles}
+                  holeID={runFlangeSpecs.holeID / scaleFactor}
+                />
+                {/* R/F dimension line */}
+                <Line
+                  points={[[halfRunLength - 0.5, -outerRadius - 0.15, 0], [halfRunLength, -outerRadius - 0.15, 0]]}
+                  color="#ea580c"
+                  lineWidth={2}
+                />
+                <Line points={[[halfRunLength - 0.5, -outerRadius - 0.1, 0], [halfRunLength - 0.5, -outerRadius - 0.2, 0]]} color="#ea580c" lineWidth={1} />
+                <Line points={[[halfRunLength, -outerRadius - 0.1, 0], [halfRunLength, -outerRadius - 0.2, 0]]} color="#ea580c" lineWidth={1} />
+                <Text
+                  position={[halfRunLength - 0.25, -outerRadius - 0.35, 0]}
+                  fontSize={0.15}
+                  color="#ea580c"
+                  anchorX="center"
+                  anchorY="middle"
+                >
+                  R/F 50mm
+                </Text>
+              </>
+            ) : (
+              <FlangeComponent
+                position={[halfRunLength + runFlangeSpecs.thickness / scaleFactor, 0, 0]}
+                rotation={[0, -Math.PI / 2, 0]}
+                outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
+                innerDiameter={id / scaleFactor}
+                thickness={runFlangeSpecs.thickness / scaleFactor}
+                pcd={runFlangeSpecs.pcd / scaleFactor}
+                boltHoles={runFlangeSpecs.boltHoles}
+                holeID={runFlangeSpecs.holeID / scaleFactor}
+              />
+            )}
             {/* Loose flange: Extended pipe section past flange for site weld */}
             {outletFlangeType === 'loose' && (
               <>
@@ -467,16 +634,57 @@ function TeeScene(props: Tee3DPreviewProps) {
         {/* Branch flange (top of branch) */}
         {hasBranchFlange && (
           <>
-            <FlangeComponent
-              position={[branchOffsetX, height, 0]}
-              rotation={[-Math.PI / 2, 0, 0]}
-              outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
-              innerDiameter={branchID / scaleFactor}
-              thickness={branchFlangeSpecs.thickness / scaleFactor}
-              pcd={branchFlangeSpecs.pcd / scaleFactor}
-              boltHoles={branchFlangeSpecs.boltHoles}
-              holeID={branchFlangeSpecs.holeID / scaleFactor}
-            />
+            {branchFlangeType === 'rotating' ? (
+              <>
+                {/* Retaining ring welded at pipe end (top of branch) */}
+                <RetainingRingComponent
+                  position={[branchOffsetX, height + 0.02, 0]}
+                  rotation={[-Math.PI / 2, 0, 0]}
+                  pipeOuterRadius={branchOuterRadius}
+                  pipeInnerRadius={branchInnerRadius}
+                  thickness={0.02}
+                />
+                {/* Rotating flange positioned 50mm (0.5 scene units) down from ring */}
+                <RotatingFlangeComponent
+                  position={[branchOffsetX, height - 0.5, 0]}
+                  rotation={[-Math.PI / 2, 0, 0]}
+                  outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
+                  pipeOuterDiameter={branchOD / scaleFactor}
+                  thickness={branchFlangeSpecs.thickness / scaleFactor}
+                  pcd={branchFlangeSpecs.pcd / scaleFactor}
+                  boltHoles={branchFlangeSpecs.boltHoles}
+                  holeID={branchFlangeSpecs.holeID / scaleFactor}
+                />
+                {/* R/F dimension line (vertical, on the side of branch) */}
+                <Line
+                  points={[[branchOffsetX + branchOuterRadius + 0.15, height - 0.5, 0], [branchOffsetX + branchOuterRadius + 0.15, height, 0]]}
+                  color="#ea580c"
+                  lineWidth={2}
+                />
+                <Line points={[[branchOffsetX + branchOuterRadius + 0.1, height - 0.5, 0], [branchOffsetX + branchOuterRadius + 0.2, height - 0.5, 0]]} color="#ea580c" lineWidth={1} />
+                <Line points={[[branchOffsetX + branchOuterRadius + 0.1, height, 0], [branchOffsetX + branchOuterRadius + 0.2, height, 0]]} color="#ea580c" lineWidth={1} />
+                <Text
+                  position={[branchOffsetX + branchOuterRadius + 0.35, height - 0.25, 0]}
+                  fontSize={0.15}
+                  color="#ea580c"
+                  anchorX="left"
+                  anchorY="middle"
+                >
+                  R/F 50mm
+                </Text>
+              </>
+            ) : (
+              <FlangeComponent
+                position={[branchOffsetX, height, 0]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
+                innerDiameter={branchID / scaleFactor}
+                thickness={branchFlangeSpecs.thickness / scaleFactor}
+                pcd={branchFlangeSpecs.pcd / scaleFactor}
+                boltHoles={branchFlangeSpecs.boltHoles}
+                holeID={branchFlangeSpecs.holeID / scaleFactor}
+              />
+            )}
             {/* Loose flange: Extended pipe section past flange for site weld */}
             {branchFlangeType === 'loose' && (
               <>
