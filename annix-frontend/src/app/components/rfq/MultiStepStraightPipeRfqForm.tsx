@@ -10954,6 +10954,119 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       );
                     })()}
 
+                    {/* Angle Range (for Laterals and Y-Pieces) */}
+                    {(entry.specs?.fittingType === 'LATERAL' || entry.specs?.fittingType === 'Y_PIECE') && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          Angle Range *
+                        </label>
+                        <select
+                          value={entry.specs?.angleRange || ''}
+                          onChange={async (e) => {
+                            const angleRange = e.target.value;
+                            const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                            const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+
+                            // Fetch fitting dimensions for pipe lengths with new angle
+                            let pipeLengthA = entry.specs?.pipeLengthAMm;
+                            let pipeLengthB = entry.specs?.pipeLengthBMm;
+                            let pipeLengthAMmAuto = entry.specs?.pipeLengthAMmAuto;
+                            let pipeLengthBMmAuto = entry.specs?.pipeLengthBMmAuto;
+
+                            if (entry.specs?.fittingType && entry.specs?.nominalDiameterMm && angleRange) {
+                              try {
+                                const dims = await masterDataApi.getFittingDimensions(
+                                  effectiveStandard as 'SABS62' | 'SABS719',
+                                  entry.specs.fittingType,
+                                  entry.specs.nominalDiameterMm,
+                                  angleRange
+                                );
+                                if (dims) {
+                                  // Parse string values to numbers (API returns decimal strings)
+                                  const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
+                                  const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
+                                  if (dimA && !entry.specs?.pipeLengthAOverride) {
+                                    pipeLengthA = dimA;
+                                    pipeLengthAMmAuto = dimA;
+                                  }
+                                  if (dimB && !entry.specs?.pipeLengthBOverride) {
+                                    pipeLengthB = dimB;
+                                    pipeLengthBMmAuto = dimB;
+                                  }
+                                }
+                              } catch (err) {
+                                console.log('Could not fetch fitting dimensions:', err);
+                              }
+                            }
+
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                angleRange,
+                                pipeLengthAMm: pipeLengthA,
+                                pipeLengthBMm: pipeLengthB,
+                                pipeLengthAMmAuto,
+                                pipeLengthBMmAuto
+                              }
+                            });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                        >
+                          <option value="">Select angle range...</option>
+                          <option value="60-90">60° - 90°</option>
+                          <option value="45-59">45° - 59°</option>
+                          <option value="30-44">30° - 44°</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Degrees (for Laterals) */}
+                    {entry.specs?.fittingType === 'LATERAL' && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          Degrees *
+                        </label>
+                        <input
+                          type="number"
+                          value={entry.specs?.degrees || ''}
+                          onChange={(e) => {
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, degrees: Number(e.target.value) }
+                            });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                          placeholder="e.g., 45, 60, 90"
+                          min="30"
+                          max="90"
+                        />
+                      </div>
+                    )}
+
+                    {/* Quantity */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Quantity *
+                      </label>
+                      <input
+                        type="number"
+                        value={entry.specs?.quantityValue || 1}
+                        onChange={(e) => {
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, quantityValue: Number(e.target.value) }
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Column 2 - Configuration & Ends */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
+                      📐 Configuration
+                    </h4>
+
                     {/* Schedule - Required for SABS719 fabricated fittings */}
                     {(() => {
                       const isSABS719 = globalSpecs?.steelSpecificationId === 8;
@@ -11074,119 +11187,6 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         </p>
                       </div>
                     )}
-
-                    {/* Angle Range (for Laterals and Y-Pieces) */}
-                    {(entry.specs?.fittingType === 'LATERAL' || entry.specs?.fittingType === 'Y_PIECE') && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Angle Range *
-                        </label>
-                        <select
-                          value={entry.specs?.angleRange || ''}
-                          onChange={async (e) => {
-                            const angleRange = e.target.value;
-                            const isSABS719 = globalSpecs?.steelSpecificationId === 8;
-                            const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
-
-                            // Fetch fitting dimensions for pipe lengths with new angle
-                            let pipeLengthA = entry.specs?.pipeLengthAMm;
-                            let pipeLengthB = entry.specs?.pipeLengthBMm;
-                            let pipeLengthAMmAuto = entry.specs?.pipeLengthAMmAuto;
-                            let pipeLengthBMmAuto = entry.specs?.pipeLengthBMmAuto;
-
-                            if (entry.specs?.fittingType && entry.specs?.nominalDiameterMm && angleRange) {
-                              try {
-                                const dims = await masterDataApi.getFittingDimensions(
-                                  effectiveStandard as 'SABS62' | 'SABS719',
-                                  entry.specs.fittingType,
-                                  entry.specs.nominalDiameterMm,
-                                  angleRange
-                                );
-                                if (dims) {
-                                  // Parse string values to numbers (API returns decimal strings)
-                                  const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
-                                  const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
-                                  if (dimA && !entry.specs?.pipeLengthAOverride) {
-                                    pipeLengthA = dimA;
-                                    pipeLengthAMmAuto = dimA;
-                                  }
-                                  if (dimB && !entry.specs?.pipeLengthBOverride) {
-                                    pipeLengthB = dimB;
-                                    pipeLengthBMmAuto = dimB;
-                                  }
-                                }
-                              } catch (err) {
-                                console.log('Could not fetch fitting dimensions:', err);
-                              }
-                            }
-
-                            onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                angleRange,
-                                pipeLengthAMm: pipeLengthA,
-                                pipeLengthBMm: pipeLengthB,
-                                pipeLengthAMmAuto,
-                                pipeLengthBMmAuto
-                              }
-                            });
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                        >
-                          <option value="">Select angle range...</option>
-                          <option value="60-90">60° - 90°</option>
-                          <option value="45-59">45° - 59°</option>
-                          <option value="30-44">30° - 44°</option>
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Degrees (for Laterals) */}
-                    {entry.specs?.fittingType === 'LATERAL' && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Degrees *
-                        </label>
-                        <input
-                          type="number"
-                          value={entry.specs?.degrees || ''}
-                          onChange={(e) => {
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, degrees: Number(e.target.value) }
-                            });
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                          placeholder="e.g., 45, 60, 90"
-                          min="30"
-                          max="90"
-                        />
-                      </div>
-                    )}
-
-                    {/* Quantity */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Quantity *
-                      </label>
-                      <input
-                        type="number"
-                        value={entry.specs?.quantityValue || 1}
-                        onChange={(e) => {
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, quantityValue: Number(e.target.value) }
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                        min="1"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Column 2 - Configuration & Ends */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
-                      📐 Configuration
-                    </h4>
 
                     {/* Stub/Lateral Location - Only for Unequal and Reducing Tees */}
                     {!['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(entry.specs?.fittingType || '') && (
@@ -11870,6 +11870,67 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   <h4 className="text-sm font-bold text-gray-900 border-b border-blue-500 pb-1.5">
                     Pipe Specifications
                   </h4>
+
+                  {/* Steel Specification - Auto from Global but can be overridden */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      Steel Specification *
+                      {(() => {
+                        const globalSpecId = globalSpecs?.steelSpecificationId;
+                        const entrySpecId = entry.specs?.steelSpecificationId;
+                        if (globalSpecId && (!entrySpecId || entrySpecId === globalSpecId)) {
+                          return <span className="text-green-600 text-xs ml-2 font-normal">(From Global Spec)</span>;
+                        }
+                        if (entrySpecId && entrySpecId !== globalSpecId) {
+                          return <span className="text-blue-600 text-xs ml-2 font-normal">(Override)</span>;
+                        }
+                        return null;
+                      })()}
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || ''}
+                        onChange={(e) => {
+                          const specId = e.target.value ? Number(e.target.value) : undefined;
+                          onUpdateEntry(entry.id, {
+                            specs: {
+                              ...entry.specs,
+                              steelSpecificationId: specId
+                            }
+                          });
+                        }}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select steel spec...</option>
+                        {masterData.steelSpecs?.map((spec: any) => (
+                          <option key={spec.id} value={spec.id}>
+                            {spec.name}
+                          </option>
+                        ))}
+                      </select>
+                      {entry.specs?.steelSpecificationId && entry.specs?.steelSpecificationId !== globalSpecs?.steelSpecificationId && (
+                        <button
+                          type="button"
+                          onClick={() => onUpdateEntry(entry.id, {
+                            specs: {
+                              ...entry.specs,
+                              steelSpecificationId: undefined
+                            }
+                          })}
+                          className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {(() => {
+                        const specId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                        const spec = masterData.steelSpecs?.find((s: any) => s.id === specId);
+                        return spec ? `Material: ${spec.materialCode || spec.name}` : 'Select a steel specification';
+                      })()}
+                    </p>
+                  </div>
 
                   {/* Nominal Bore */}
                   <div>
@@ -13466,8 +13527,47 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       return { external: externalArea, internal: internalArea };
                     }
 
-                    // Handle fittings - skip for now
-                    if (entry.itemType === 'fitting') return { external: null, internal: null };
+                    // Handle fittings (tees/laterals)
+                    if (entry.itemType === 'fitting') {
+                      const nb = entry.specs?.nominalDiameterMm;
+                      const branchNb = entry.specs?.branchNominalDiameterMm || nb; // Equal tee if no branch NB
+                      const wt = entry.specs?.wallThicknessMm || 10;
+                      const lengthA = entry.specs?.pipeLengthAMm || 0;
+                      const lengthB = entry.specs?.pipeLengthBMm || 0;
+
+                      if (!nb || (!lengthA && !lengthB)) return { external: null, internal: null };
+
+                      // Get OD from NB using lookup
+                      const mainOd = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                      const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.05);
+                      const mainId = mainOd - (2 * wt);
+                      const branchId = branchOd - (2 * wt);
+
+                      // Calculate lengths in meters
+                      const runLengthM = (lengthA + lengthB) / 1000;
+                      // Branch length = C/F value or estimate as 2× branch OD
+                      const branchLengthM = (branchOd * 2) / 1000;
+
+                      // External surface area (m²)
+                      // Run pipe: π × OD × length
+                      const runExternalArea = (mainOd / 1000) * Math.PI * runLengthM;
+                      // Branch pipe: π × OD × length
+                      const branchExternalArea = (branchOd / 1000) * Math.PI * branchLengthM;
+                      // Subtract overlap at intersection (approximation: branch OD × wt)
+                      const overlapExternal = (branchOd / 1000) * (wt / 1000) * Math.PI;
+                      const externalArea = runExternalArea + branchExternalArea - overlapExternal;
+
+                      // Internal surface area (m²)
+                      // Run pipe: π × ID × length
+                      const runInternalArea = (mainId / 1000) * Math.PI * runLengthM;
+                      // Branch pipe: π × ID × length
+                      const branchInternalArea = (branchId / 1000) * Math.PI * branchLengthM;
+                      // Subtract hole cut for branch (circular area): π × r²
+                      const holeCutArea = Math.PI * Math.pow((branchId / 1000) / 2, 2);
+                      const internalArea = runInternalArea + branchInternalArea - holeCutArea;
+
+                      return { external: externalArea, internal: internalArea };
+                    }
 
                     // Handle straight pipes
                     if (!entry.calculation?.outsideDiameterMm || !entry.specs?.wallThicknessMm) return { external: null, internal: null };
@@ -13876,6 +13976,91 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
     }, 0);
   };
 
+  // Calculate total surface areas for all items
+  const getTotalSurfaceAreas = () => {
+    let totalExternal = 0;
+    let totalInternal = 0;
+
+    allItems.forEach((entry: any) => {
+      const qty = entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 1;
+
+      if (entry.itemType === 'bend') {
+        // Bend surface area calculation
+        const nb = entry.specs?.nominalBoreMm;
+        const wt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
+        const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+        const id = od - (2 * wt);
+        const odM = od / 1000;
+        const idM = id / 1000;
+
+        const bendRadiusType = entry.specs?.bendType || '1.5D';
+        const radiusFactor = parseFloat(bendRadiusType.replace('D', '')) || 1.5;
+        const bendRadiusMm = nb * radiusFactor;
+        const bendAngleRad = ((entry.specs?.bendDegrees || 90) * Math.PI) / 180;
+        const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
+
+        let extArea = odM * Math.PI * arcLengthM;
+        let intArea = idM * Math.PI * arcLengthM;
+
+        // Add tangents
+        const tangents = entry.specs?.tangentLengths || [];
+        tangents.forEach((t: number) => {
+          if (t > 0) {
+            const tM = t / 1000;
+            extArea += odM * Math.PI * tM;
+            intArea += idM * Math.PI * tM;
+          }
+        });
+
+        totalExternal += extArea * qty;
+        totalInternal += intArea * qty;
+      } else if (entry.itemType === 'fitting') {
+        // Fitting (tee) surface area calculation
+        const nb = entry.specs?.nominalDiameterMm;
+        const branchNb = entry.specs?.branchNominalDiameterMm || nb;
+        const wt = entry.specs?.wallThicknessMm || 10;
+        const lengthA = entry.specs?.pipeLengthAMm || 0;
+        const lengthB = entry.specs?.pipeLengthBMm || 0;
+
+        if (nb && (lengthA || lengthB)) {
+          const mainOd = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+          const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.05);
+          const mainId = mainOd - (2 * wt);
+          const branchId = branchOd - (2 * wt);
+
+          const runLengthM = (lengthA + lengthB) / 1000;
+          const branchLengthM = (branchOd * 2) / 1000;
+
+          const runExt = (mainOd / 1000) * Math.PI * runLengthM;
+          const branchExt = (branchOd / 1000) * Math.PI * branchLengthM;
+          const overlapExt = (branchOd / 1000) * (wt / 1000) * Math.PI;
+
+          const runInt = (mainId / 1000) * Math.PI * runLengthM;
+          const branchInt = (branchId / 1000) * Math.PI * branchLengthM;
+          const holeCut = Math.PI * Math.pow((branchId / 1000) / 2, 2);
+
+          totalExternal += (runExt + branchExt - overlapExt) * qty;
+          totalInternal += (runInt + branchInt - holeCut) * qty;
+        }
+      } else {
+        // Straight pipe surface area
+        if (entry.calculation?.outsideDiameterMm && entry.specs?.wallThicknessMm) {
+          const od = entry.calculation.outsideDiameterMm;
+          const id = od - (2 * entry.specs.wallThicknessMm);
+          const lengthM = entry.specs.individualPipeLength || 0;
+          const pipeCount = entry.calculation?.calculatedPipeCount || qty;
+
+          totalExternal += (od / 1000) * Math.PI * lengthM * pipeCount;
+          totalInternal += (id / 1000) * Math.PI * lengthM * pipeCount;
+        }
+      }
+    });
+
+    return { external: totalExternal, internal: totalInternal };
+  };
+
+  const hasSurfaceProtection = rfqData.requiredProducts?.includes('surface_protection');
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900 mb-4">Review & Submit RFQ</h2>
@@ -13990,7 +14175,7 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
         {/* Total Summary */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="text-lg font-semibold text-blue-800 mb-4">Total Summary</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={`grid grid-cols-1 ${hasSurfaceProtection ? 'md:grid-cols-5' : 'md:grid-cols-3'} gap-4`}>
             <div className="text-center">
               <p className="text-sm font-medium text-blue-700">Total Entries</p>
               <p className="text-2xl font-bold text-blue-900">{allItems.length}</p>
@@ -14005,6 +14190,21 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                 {getTotalWeight().toFixed(2)} kg
               </p>
             </div>
+            {hasSurfaceProtection && (() => {
+              const surfaceAreas = getTotalSurfaceAreas();
+              return (
+                <>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-indigo-700">External Area</p>
+                    <p className="text-2xl font-bold text-indigo-900">{surfaceAreas.external.toFixed(2)} m²</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-indigo-700">Internal Area</p>
+                    <p className="text-2xl font-bold text-indigo-900">{surfaceAreas.internal.toFixed(2)} m²</p>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
