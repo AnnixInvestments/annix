@@ -229,7 +229,7 @@ export default function Navigation() {
   };
 
   const navItems = [
-    { label: 'Dashboard', path: getDashboardPath(), exact: false, requiresAuth: true },
+    { label: 'Dashboard', path: 'dashboard', exact: false, requiresAuth: true, isDashboard: true },
     { label: 'Create RFQ', path: '/rfq', exact: true },
     { label: 'View RFQs', path: '/rfq/list', exact: false },
     { label: 'Drawings', path: '/drawings', exact: false },
@@ -238,11 +238,23 @@ export default function Navigation() {
     { label: 'Reviews', path: '/reviews', exact: false },
   ];
 
-  const isActive = (item: { path: string; exact: boolean }) => {
+  const isActive = (item: { path: string; exact: boolean; isDashboard?: boolean }) => {
+    if (item.isDashboard) {
+      // Check if we're on any dashboard path
+      return pathname.includes('/dashboard');
+    }
     if (item.exact) {
       return pathname === item.path;
     }
     return pathname.startsWith(item.path);
+  };
+
+  const handleNavClick = (item: { path: string; isDashboard?: boolean }) => {
+    if (item.isDashboard) {
+      goToDashboard();
+    } else {
+      router.push(item.path);
+    }
   };
 
   return (
@@ -268,7 +280,7 @@ export default function Navigation() {
                 .map((item) => (
                 <button
                   key={item.label}
-                  onClick={() => router.push(item.path)}
+                  onClick={() => handleNavClick(item)}
                   className={`px-4 py-2 rounded-lg font-semibold transition-all ${
                     isActive(item)
                       ? 'bg-[#FFA500]'
