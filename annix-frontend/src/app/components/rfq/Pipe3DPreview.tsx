@@ -12,11 +12,48 @@ interface Pipe3DPreviewProps {
   endConfiguration?: string;
   materialName?: string;
   closureLengthMm?: number; // Closure length for L/F configurations
+  nominalBoreMm?: number; // Nominal bore for flange info
+  pressureClass?: string; // Flange pressure class (e.g., PN16)
   // Blank flange options
   addBlankFlange?: boolean;
   blankFlangeCount?: number;
   blankFlangePositions?: string[]; // ['inlet', 'outlet']
 }
+
+// Standard flange dimensions based on SABS 1123 Table 1000/3 (PN10)
+const getFlangeSpecs = (nominalBore: number) => {
+  const flangeData: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; thickness: number } } = {
+    15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, thickness: 14 },
+    20: { flangeOD: 105, pcd: 75, boltHoles: 4, holeID: 14, thickness: 16 },
+    25: { flangeOD: 115, pcd: 85, boltHoles: 4, holeID: 14, thickness: 16 },
+    32: { flangeOD: 140, pcd: 100, boltHoles: 4, holeID: 18, thickness: 18 },
+    40: { flangeOD: 150, pcd: 110, boltHoles: 4, holeID: 18, thickness: 18 },
+    50: { flangeOD: 165, pcd: 125, boltHoles: 4, holeID: 18, thickness: 20 },
+    65: { flangeOD: 185, pcd: 145, boltHoles: 4, holeID: 18, thickness: 20 },
+    80: { flangeOD: 200, pcd: 160, boltHoles: 8, holeID: 18, thickness: 22 },
+    100: { flangeOD: 220, pcd: 180, boltHoles: 8, holeID: 18, thickness: 24 },
+    125: { flangeOD: 250, pcd: 210, boltHoles: 8, holeID: 18, thickness: 26 },
+    150: { flangeOD: 285, pcd: 240, boltHoles: 8, holeID: 22, thickness: 26 },
+    200: { flangeOD: 340, pcd: 295, boltHoles: 8, holeID: 22, thickness: 28 },
+    250: { flangeOD: 395, pcd: 350, boltHoles: 12, holeID: 22, thickness: 30 },
+    300: { flangeOD: 445, pcd: 400, boltHoles: 12, holeID: 22, thickness: 30 },
+    350: { flangeOD: 505, pcd: 460, boltHoles: 12, holeID: 22, thickness: 32 },
+    400: { flangeOD: 565, pcd: 515, boltHoles: 16, holeID: 26, thickness: 34 },
+    450: { flangeOD: 615, pcd: 565, boltHoles: 16, holeID: 26, thickness: 36 },
+    500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, thickness: 38 },
+    600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, thickness: 42 },
+  };
+
+  // Find closest match
+  const sizes = Object.keys(flangeData).map(Number).sort((a, b) => a - b);
+  let closestSize = sizes[0];
+  for (const size of sizes) {
+    if (size <= nominalBore) closestSize = size;
+    else break;
+  }
+
+  return flangeData[closestSize] || flangeData[50];
+};
 
 const getMaterialProps = (name: string = '') => {
   const n = name.toLowerCase();
@@ -74,10 +111,28 @@ const SimpleFlange = ({ position, outerDiameter, holeDiameter, thickness }: { po
     return geo;
   }, [flangeOD, holeDiameter, thickness]);
 
+  // Inner bore radius for visible center hole
+  const boreRadius = holeDiameter / 2;
+
   return (
     <group position={position} rotation={[0, Math.PI / 2, 0]}>
       {/* The Flange Disk */}
       <mesh geometry={geometry}>
+        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} />
+      </mesh>
+      {/* Center bore - dark cylinder to show the through hole */}
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[boreRadius, boreRadius, thickness + 0.01, 32]} />
+        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+      </mesh>
+      {/* Top annular face ring */}
+      <mesh position={[0, 0, thickness / 2]} rotation={[0, 0, 0]}>
+        <ringGeometry args={[boreRadius, flangeOD / 2, 32]} />
+        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} />
+      </mesh>
+      {/* Bottom annular face ring */}
+      <mesh position={[0, 0, -thickness / 2]} rotation={[Math.PI, 0, 0]}>
+        <ringGeometry args={[boreRadius, flangeOD / 2, 32]} />
         <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} />
       </mesh>
       {/* The Simulated Bolt Holes */}
@@ -383,13 +438,6 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
       <DimensionLine start={[-halfLen, offsetDist, 0]} end={[halfLen, offsetDist, 0]} label={`${isInputMeters ? length : (length/1000).toFixed(2)}m`} />
       <Line points={[[-halfLen, 0, 0], [-halfLen, offsetDist, 0]]} color="#999" lineWidth={0.5} dashed dashScale={20} />
       <Line points={[[halfLen, 0, 0], [halfLen, offsetDist, 0]]} color="#999" lineWidth={0.5} dashed dashScale={20} />
-
-      <group position={[halfLen + 0.1, 0, 0]}>
-          <Text position={[0, radius + 0.05, 0]} fontSize={0.18} color="#444" anchorX="left" anchorY="bottom">{`OD: ${outerDiameter}mm`}</Text>
-          <Text position={[0, -radius - 0.05, 0]} fontSize={0.18} color="#444" anchorX="left" anchorY="top">{`ID: ${idMm.toFixed(1)}mm`}</Text>
-          <Text position={[0, -radius - 0.25, 0]} fontSize={0.15} color="#666" anchorX="left" anchorY="top">{`WT: ${wallThickness}mm`}</Text>
-          <Text position={[0, -radius - 0.45, 0]} fontSize={0.15} color="#0066cc" anchorX="left" anchorY="top">{matProps.name}</Text>
-      </group>
     </group>
   );
 };
@@ -513,8 +561,55 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           <CameraRig viewMode={viewMode} targets={cameraTargets} />
         </Canvas>
 
-        {/* Expand button, Drag hint, and Hide button - bottom right */}
-        <div className="absolute bottom-2 right-2 flex flex-col items-end gap-1">
+        {/* HTML Info Box - top right corner */}
+        {(() => {
+          const idMm = props.outerDiameter - (2 * props.wallThickness);
+          const matProps = getMaterialProps(props.materialName);
+          const configUpper = (props.endConfiguration || 'PE').toUpperCase();
+          const hasFlanges = configUpper !== 'PE';
+          const flangeSpecs = hasFlanges && props.nominalBoreMm ? getFlangeSpecs(props.nominalBoreMm) : null;
+
+          // Get flange config label
+          const getFlangeConfigLabel = (config: string) => {
+            switch (config) {
+              case 'FOE': return 'Fixed One End';
+              case 'FBE': return 'Flanged Both Ends';
+              case 'FOE_LF': return 'Fixed + Loose Flange';
+              case 'FOE_RF': return 'Fixed + Rotating Flange';
+              case '2X_RF': return '2x Rotating Flanges';
+              case 'LF_BE': return 'Loose Flanges Both Ends';
+              default: return 'Plain Ended';
+            }
+          };
+
+          return (
+            <div className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md leading-snug border border-gray-200">
+              <div className="font-bold text-blue-800 mb-0.5">PIPE</div>
+              <div className="text-gray-900 font-medium">OD: {props.outerDiameter.toFixed(0)}mm | ID: {idMm.toFixed(0)}mm</div>
+              <div className="text-gray-700">WT: {props.wallThickness}mm</div>
+              <div className="text-blue-600 font-medium">{matProps.name}</div>
+
+              {hasFlanges && (
+                <>
+                  <div className="font-bold text-blue-800 mt-1 mb-0.5">FLANGE ({configUpper})</div>
+                  <div className="text-gray-600 text-[9px]">{getFlangeConfigLabel(configUpper)}</div>
+                  {flangeSpecs && (
+                    <>
+                      <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
+                      <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.holeID - 2}</div>
+                      {props.pressureClass && (
+                        <div className="text-green-700 font-medium">{props.pressureClass}</div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Bottom toolbar - Expand, Drag hint, and Hide button in horizontal row */}
+        <div className="absolute bottom-2 right-2 flex flex-row items-center gap-2">
           <button
             onClick={() => setIsExpanded(true)}
             className="text-[10px] text-blue-600 bg-white/90 px-2 py-1 rounded shadow-sm hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-1"

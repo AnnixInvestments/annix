@@ -13438,6 +13438,8 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                       wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
                       endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
                       materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                      nominalBoreMm={entry.specs.nominalBoreMm}
+                      pressureClass={globalSpecs?.pressureClassDesignation || 'PN16'}
                       addBlankFlange={entry.specs?.addBlankFlange}
                       blankFlangePositions={entry.specs?.blankFlangePositions}
                     />
