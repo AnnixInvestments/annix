@@ -3039,13 +3039,13 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
                 value={selectedMineId || ''}
                 onChange={(e) => handleMineDropdownChange(e.target.value)}
                 disabled={isLoadingMines || mineDataLoading || isLocationLocked}
-                style={{ colorScheme: 'light', color: '#000000' }}
-                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm appearance-none bg-gradient-to-r from-amber-50 to-orange-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                style={{ colorScheme: 'light', color: '#000000', backgroundColor: '#fef3c7' }}
+                className="w-full px-2 py-1.5 border border-amber-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
-                <option value="" style={{ color: '#000000' }}>-- Select a mine (optional) --</option>
-                <option value="add-new" style={{ color: '#b45309' }} className="font-medium">+ Add a mine not listed</option>
+                <option value="" style={{ color: '#000000', backgroundColor: '#fef3c7' }}>-- Select a mine (optional) --</option>
+                <option value="add-new" style={{ color: '#b45309', backgroundColor: '#fef3c7' }} className="font-medium">+ Add a mine not listed</option>
                 {mines.map((mine) => (
-                  <option key={mine.id} value={mine.id} style={{ color: '#000000' }}>
+                  <option key={mine.id} value={mine.id} style={{ color: '#000000', backgroundColor: '#fef3c7' }}>
                     {mine.mineName} - {mine.operatingCompany} ({mine.commodityName || 'Unknown'}) - {mine.province}
                   </option>
                 ))}
