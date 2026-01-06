@@ -1277,6 +1277,159 @@ const FALLBACK_PIPE_SCHEDULES: Record<number, Array<{ id: number; scheduleDesign
   ],
 };
 
+// SABS 719 ERW wall thickness options for pipe dimensions (MODULE SCOPE)
+// These use "WT" prefix format (Wall Thickness in mm)
+const SABS719_PIPE_SCHEDULES_MODULE: Record<number, Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }>> = {
+  200: [
+    { id: 72004, scheduleDesignation: 'WT4.5', wallThicknessMm: 4.5 },
+    { id: 72006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 72008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 72010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 72012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+  ],
+  250: [
+    { id: 72504, scheduleDesignation: 'WT4.5', wallThicknessMm: 4.5 },
+    { id: 72506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 72508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 72510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 72512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 72514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+  ],
+  300: [
+    { id: 73006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 73008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 73010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 73012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 73014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 73016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+  ],
+  350: [
+    { id: 73506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 73508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 73510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 73512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 73514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 73516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+  ],
+  400: [
+    { id: 74004, scheduleDesignation: 'WT4.5', wallThicknessMm: 4.5 },
+    { id: 74006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 74008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 74010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 74012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 74014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 74016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+  ],
+  450: [
+    { id: 74504, scheduleDesignation: 'WT4.5', wallThicknessMm: 4.5 },
+    { id: 74506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 74508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 74510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 74512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 74514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 74516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 74520, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+  ],
+  500: [
+    { id: 75006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 75008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 75010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 75012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 75014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 75016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 75020, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+  ],
+  550: [
+    { id: 75506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 75508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 75510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 75512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 75514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 75516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 75520, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 75522, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  600: [
+    { id: 76006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 76008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 76010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 76012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 76014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 76016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 76020, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 76022, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  650: [
+    { id: 76506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 76508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 76510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 76512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 76514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 76516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 76520, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 76522, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  700: [
+    { id: 77006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 77008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 77010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 77012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 77014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 77016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 77020, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 77022, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  750: [
+    { id: 77506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 77508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 77510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 77512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 77514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 77516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 77520, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 77522, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  800: [
+    { id: 78006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 78008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 78010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 78012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 78014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 78016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 78020, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 78022, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  850: [
+    { id: 78506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 78508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 78510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 78512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 78514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 78516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 78520, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 78522, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  900: [
+    { id: 79008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 79010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 79012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 79014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 79016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 79020, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 79022, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+};
+
+// Helper function to get appropriate schedule list based on steel spec (MODULE SCOPE)
+const getScheduleListForSpec = (nominalDiameter: number, steelSpecId: number | undefined): Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }> => {
+  if (steelSpecId === 8) {
+    // SABS 719 - use wall thickness format
+    return SABS719_PIPE_SCHEDULES_MODULE[nominalDiameter] || [];
+  }
+  // Default to ASTM schedules
+  return FALLBACK_PIPE_SCHEDULES[nominalDiameter] || [];
+};
+
 function classifyDamageMechanisms(profile: MaterialTransferProfile): DamageMechanisms {
   const { material, chemistry, flow, equipment } = profile;
 
@@ -8206,7 +8359,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
         .replace(/_/g, ' ')
         .toLowerCase()
         .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
       // Add "Equal" before "Tee" for equal tees (SHORT_TEE, GUSSET_TEE, EQUAL_TEE)
@@ -11829,6 +11982,9 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                                 {pipeALength > 0 && (
                                   <p className="text-[10px] text-gray-700">Pipe A: {pipeALength}mm</p>
                                 )}
+                                {pipeBLength > 0 && (
+                                  <p className="text-[10px] text-gray-700">Pipe B: {pipeBLength}mm</p>
+                                )}
                                 {teeHeight > 0 && (
                                   <p className="text-[10px] text-gray-700">Height: {teeHeight}mm</p>
                                 )}
@@ -11928,8 +12084,8 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
 
                             {/* Surface Protection - Only show if surface_protection selected */}
                             {requiredProducts?.includes('surface_protection') && (
-                              <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
-                                <p className="text-xs text-purple-700 font-medium">🛡️ Surface Protection</p>
+                              <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded text-center border border-purple-200 dark:border-purple-700">
+                                <p className="text-xs text-purple-700 dark:text-purple-300 font-medium">🛡️ Surface Protection</p>
                                 {(() => {
                                   const odMm = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
                                   const wtMm = entry.calculation?.wallThicknessMm || 6;
@@ -11937,53 +12093,95 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                                   const odM = odMm / 1000;
                                   const idM = idMm / 1000;
 
-                                  // Calculate surface areas
-                                  let extArea = 0;
-                                  let intArea = 0;
+                                  // Count open ends and add 100mm allowance per end for surface protection
+                                  const FLANGE_ALLOWANCE_MM = 100; // 100mm per open end for coating/lining coverage
+                                  let mainEndCount = 0;
+                                  let branchEndCount = 0;
 
-                                  // Main run pipe
-                                  const runLength = (pipeALength + pipeBLength) / 1000;
+                                  // Main pipe ends (inlet and outlet)
+                                  if (flangeConfig.hasInlet) mainEndCount++;
+                                  if (flangeConfig.hasOutlet) mainEndCount++;
+                                  // Branch end
+                                  if (flangeConfig.hasBranch) branchEndCount++;
+
+                                  // Calculate surface areas for each component
+                                  let pipeRunExtArea = 0;
+                                  let pipeRunIntArea = 0;
+                                  let branchExtArea = 0;
+                                  let branchIntArea = 0;
+
+                                  // Main run pipe + 100mm allowance per main end
+                                  const mainEndAllowance = (mainEndCount * FLANGE_ALLOWANCE_MM) / 1000; // Convert to meters
+                                  const runLength = ((pipeALength + pipeBLength) / 1000) + mainEndAllowance;
                                   if (runLength > 0) {
-                                    extArea += odM * Math.PI * runLength;
-                                    intArea += idM * Math.PI * runLength;
+                                    pipeRunExtArea = odM * Math.PI * runLength;
+                                    pipeRunIntArea = idM * Math.PI * runLength;
                                   }
 
-                                  // Branch/tee section
+                                  // Branch/tee section + 100mm allowance for branch end
                                   if (teeHeight > 0) {
                                     const branchOdMm = branchNB * 1.1;
                                     const branchIdMm = branchOdMm - (2 * wtMm);
-                                    extArea += (branchOdMm / 1000) * Math.PI * (teeHeight / 1000);
-                                    intArea += (branchIdMm / 1000) * Math.PI * (teeHeight / 1000);
+                                    const branchEndAllowance = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
+                                    const branchLength = (teeHeight / 1000) + branchEndAllowance;
+                                    branchExtArea = (branchOdMm / 1000) * Math.PI * branchLength;
+                                    branchIntArea = (branchIdMm / 1000) * Math.PI * branchLength;
                                   }
 
+                                  // Per item totals
+                                  const itemExtArea = pipeRunExtArea + branchExtArea;
+                                  const itemIntArea = pipeRunIntArea + branchIntArea;
+
                                   // Total for quantity
-                                  const totalExtArea = extArea * quantity;
-                                  const totalIntArea = intArea * quantity;
+                                  const totalExtArea = itemExtArea * quantity;
+                                  const totalIntArea = itemIntArea * quantity;
 
                                   return (
-                                    <div className="text-left mt-1 space-y-0.5">
+                                    <div className="text-left mt-1 space-y-1">
                                       {globalSpecs?.externalCoatingConfirmed && (
                                         <>
-                                          <p className="text-[10px] text-purple-900">
-                                            <span className="font-medium">Ext:</span> {totalExtArea.toFixed(3)} m²
+                                          <p className="text-[10px] text-purple-800 dark:text-purple-200 font-semibold border-b border-purple-300 dark:border-purple-600 pb-0.5">External m² Breakdown:</p>
+                                          {runLength > 0 && (
+                                            <p className="text-[9px] text-purple-700 dark:text-purple-300 pl-1">
+                                              Pipe Run: {pipeRunExtArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(OD {odMm.toFixed(1)}mm × π × {runLength.toFixed(3)}m incl. {mainEndCount}×100mm)</span>
+                                            </p>
+                                          )}
+                                          {teeHeight > 0 && (
+                                            <p className="text-[9px] text-purple-700 dark:text-purple-300 pl-1">
+                                              Branch: {branchExtArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(incl. {branchEndCount}×100mm allowance)</span>
+                                            </p>
+                                          )}
+                                          <p className="text-[10px] text-purple-900 dark:text-purple-100 font-medium pl-1 pt-0.5">
+                                            Per Item: {itemExtArea.toFixed(4)} m² × {quantity} = <span className="font-bold">{totalExtArea.toFixed(3)} m²</span>
                                           </p>
                                           {globalSpecs?.coatingType && (
-                                            <p className="text-[9px] text-purple-600">{globalSpecs.coatingType}</p>
+                                            <p className="text-[9px] text-purple-600 dark:text-purple-400 italic">{globalSpecs.coatingType}</p>
                                           )}
                                         </>
                                       )}
                                       {globalSpecs?.internalLiningConfirmed && (
                                         <>
-                                          <p className="text-[10px] text-purple-900">
-                                            <span className="font-medium">Int:</span> {totalIntArea.toFixed(3)} m²
+                                          <p className="text-[10px] text-purple-800 dark:text-purple-200 font-semibold border-b border-purple-300 dark:border-purple-600 pb-0.5 mt-1">Internal m² Breakdown:</p>
+                                          {runLength > 0 && (
+                                            <p className="text-[9px] text-purple-700 dark:text-purple-300 pl-1">
+                                              Pipe Run: {pipeRunIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(ID {idMm.toFixed(1)}mm × π × {runLength.toFixed(3)}m incl. {mainEndCount}×100mm)</span>
+                                            </p>
+                                          )}
+                                          {teeHeight > 0 && (
+                                            <p className="text-[9px] text-purple-700 dark:text-purple-300 pl-1">
+                                              Branch: {branchIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(incl. {branchEndCount}×100mm allowance)</span>
+                                            </p>
+                                          )}
+                                          <p className="text-[10px] text-purple-900 dark:text-purple-100 font-medium pl-1 pt-0.5">
+                                            Per Item: {itemIntArea.toFixed(4)} m² × {quantity} = <span className="font-bold">{totalIntArea.toFixed(3)} m²</span>
                                           </p>
                                           {globalSpecs?.liningType && (
-                                            <p className="text-[9px] text-purple-600">{globalSpecs.liningType}</p>
+                                            <p className="text-[9px] text-purple-600 dark:text-purple-400 italic">{globalSpecs.liningType}</p>
                                           )}
                                         </>
                                       )}
                                       {!globalSpecs?.externalCoatingConfirmed && !globalSpecs?.internalLiningConfirmed && (
-                                        <p className="text-[10px] text-purple-500 italic">Not yet confirmed</p>
+                                        <p className="text-[10px] text-purple-500 dark:text-purple-400 italic">Not yet confirmed</p>
                                       )}
                                     </div>
                                   );

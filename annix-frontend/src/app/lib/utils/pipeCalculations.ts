@@ -1675,6 +1675,7 @@ export interface SurfaceAreaResult {
  * Includes:
  * - External: Pipe outer surface + flange back area (for external coating/painting)
  * - Internal: Pipe inner surface + flange face area (for internal lining)
+ * Note: Adds 100mm allowance per flange/end to account for surface protection overlap
  */
 export function calculateComprehensiveSurfaceArea(params: SurfaceAreaParams): SurfaceAreaResult {
   const {
@@ -1686,13 +1687,17 @@ export function calculateComprehensiveSurfaceArea(params: SurfaceAreaParams): Su
     pressureClass,
   } = params;
 
-  // External pipe surface area: π × OD × Length
-  const outsideDiameterM = outsideDiameterMm / 1000;
-  const externalPipeAreaM2 = Math.PI * outsideDiameterM * pipeLengthM;
+  // Add 100mm (0.1m) allowance per flange/end for surface protection overlap
+  const FLANGE_ALLOWANCE_M = 0.1; // 100mm per end
+  const effectivePipeLengthM = pipeLengthM + (numberOfFlanges * FLANGE_ALLOWANCE_M);
 
-  // Internal pipe surface area: π × ID × Length
+  // External pipe surface area: π × OD × Length (with flange allowance)
+  const outsideDiameterM = outsideDiameterMm / 1000;
+  const externalPipeAreaM2 = Math.PI * outsideDiameterM * effectivePipeLengthM;
+
+  // Internal pipe surface area: π × ID × Length (with flange allowance)
   const insideDiameterM = insideDiameterMm / 1000;
-  const internalPipeAreaM2 = Math.PI * insideDiameterM * pipeLengthM;
+  const internalPipeAreaM2 = Math.PI * insideDiameterM * effectivePipeLengthM;
 
   // Initialize flange areas
   let externalFlangeBackAreaM2 = 0;
