@@ -11674,7 +11674,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                   />
                 </div>
 
-                {/* 3D Fitting Preview */}
+                {/* 3D Fitting Preview - Collapsible */}
                 {entry.specs?.fittingType && entry.specs?.nominalDiameterMm && (
                   (() => {
                     // Determine tee type based on fitting type
@@ -11682,6 +11682,9 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                     const isTeeType = ['SHORT_TEE', 'GUSSET_TEE', 'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE', 'SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE', 'EQUAL_TEE', 'UNEQUAL_TEE', 'SWEEP_TEE', 'GUSSETTED_TEE'].includes(fittingType);
 
                     if (!isTeeType) return null;
+
+                    // Check if drawing is hidden for this entry
+                    const isDrawingHidden = hiddenDrawings[entry.id];
 
                     // Map fitting type to tee type for 3D preview
                     const teeType = ['GUSSET_TEE', 'UNEQUAL_GUSSET_TEE', 'GUSSET_REDUCING_TEE', 'GUSSETTED_TEE'].includes(fittingType)
@@ -11700,14 +11703,21 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
 
                     return (
                       <div className="border border-gray-200 rounded-lg overflow-hidden bg-slate-50">
-                        <div className="bg-gray-100 px-3 py-2 border-b border-gray-200">
+                        <div className="bg-gray-100 px-3 py-2 border-b border-gray-200 flex items-center justify-between">
                           <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                             <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
                             </svg>
                             3D Fitting Preview
                           </h4>
+                          <button
+                            onClick={() => setHiddenDrawings(prev => ({ ...prev, [entry.id]: !prev[entry.id] }))}
+                            className="px-3 py-1 text-xs font-medium bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-md transition-colors"
+                          >
+                            {isDrawingHidden ? 'Show Drawing' : 'Hide Drawing'}
+                          </button>
                         </div>
+                        {!isDrawingHidden && (
                         <div className="h-64">
                           <Tee3DPreview
                             nominalBore={nominalBore}
@@ -11744,6 +11754,8 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             {teeType === 'gusset' && ' (Gussetted)'}
                           </p>
                         </div>
+                        </>
+                        )}
                       </div>
                     );
                   })()
@@ -11821,56 +11833,6 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                                 )}
                               </div>
                             </div>
-
-                            {/* Surface Area - for coating calculations */}
-                            {(() => {
-                              const odMm = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
-                              const wtMm = entry.calculation?.wallThicknessMm || 6;
-                              if (!odMm || !wtMm) return null;
-
-                              const idMm = odMm - (2 * wtMm);
-                              const odM = odMm / 1000;
-                              const idM = idMm / 1000;
-
-                              // Calculate surface areas
-                              let extArea = 0;
-                              let intArea = 0;
-
-                              // Main run pipe (Pipe A + Pipe B)
-                              const runLengthM = (pipeALength + pipeBLength) / 1000;
-                              if (runLengthM > 0) {
-                                extArea += odM * Math.PI * runLengthM;
-                                intArea += idM * Math.PI * runLengthM;
-                              }
-
-                              // Branch/tee section
-                              if (teeHeight > 0) {
-                                const branchOdMm = branchNB * 1.1;
-                                const branchWtMm = wtMm;
-                                const branchIdMm = branchOdMm - (2 * branchWtMm);
-                                extArea += (branchOdMm / 1000) * Math.PI * (teeHeight / 1000);
-                                intArea += (branchIdMm / 1000) * Math.PI * (teeHeight / 1000);
-                              }
-
-                              // Add fitting body surface estimate (approximate based on NB)
-                              const fittingBodyArea = (nominalBore / 1000) * 0.3;
-                              extArea += fittingBodyArea;
-                              intArea += fittingBodyArea * 0.8;
-
-                              return (
-                                <div className="bg-indigo-50 p-2 rounded text-center border border-indigo-200">
-                                  <p className="text-xs text-indigo-700 font-medium">Surface Area</p>
-                                  <div className="mt-1 space-y-0.5">
-                                    <p className="text-xs text-indigo-900">
-                                      <span className="font-medium">Ext:</span> {extArea.toFixed(3)} m²
-                                    </p>
-                                    <p className="text-xs text-indigo-900">
-                                      <span className="font-medium">Int:</span> {intArea.toFixed(3)} m²
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            })()}
 
                             {/* Total Weight - Use API value directly */}
                             <div className="bg-white p-2 rounded text-center">
@@ -11961,46 +11923,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               </div>
                             </div>
 
-                            {/* Bolts, Nuts, Washers & Gaskets - Only show if fasteners_gaskets selected */}
-                            {requiredProducts?.includes('fasteners_gaskets') && numFlanges > 0 && (
-                              <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
-                                <p className="text-xs text-amber-700 font-medium">⚙️ BNW & Gaskets</p>
-                                <div className="text-left mt-1 space-y-0.5">
-                                  {(() => {
-                                    // Get bolt info based on flange size
-                                    const flangeDimension = masterData.flangeDimensions?.find((fd: any) =>
-                                      fd.nominalOutsideDiameter?.nominal_diameter_mm === nominalBore &&
-                                      fd.pressureClass?.id === (entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId)
-                                    );
-                                    const branchFlangeDimension = branchNB !== nominalBore ? masterData.flangeDimensions?.find((fd: any) =>
-                                      fd.nominalOutsideDiameter?.nominal_diameter_mm === branchNB &&
-                                      fd.pressureClass?.id === (entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId)
-                                    ) : null;
-
-                                    const mainBoltCount = flangeDimension?.num_holes || 8;
-                                    const branchBoltCount = branchFlangeDimension?.num_holes || mainBoltCount;
-                                    const totalBolts = ((flangeConfig.hasInlet ? mainBoltCount : 0) + (flangeConfig.hasOutlet ? mainBoltCount : 0) + (flangeConfig.hasBranch ? branchBoltCount : 0)) * quantity;
-                                    const totalNuts = totalBolts * 2;
-                                    const totalWashers = totalBolts * 2;
-                                    const totalGaskets = numFlanges * quantity;
-
-                                    return (
-                                      <>
-                                        <p className="text-[10px] text-amber-900">Bolts: {totalBolts} pcs</p>
-                                        <p className="text-[10px] text-amber-900">Nuts: {totalNuts} pcs</p>
-                                        <p className="text-[10px] text-amber-900">Washers: {totalWashers} pcs</p>
-                                        {globalSpecs?.gasketType && (
-                                          <p className="text-[10px] text-amber-900">Gaskets: {totalGaskets} pcs</p>
-                                        )}
-                                        {globalSpecs?.boltGrade && (
-                                          <p className="text-[9px] text-amber-600 mt-1">Grade: {globalSpecs.boltGrade}</p>
-                                        )}
-                                      </>
-                                    );
-                                  })()}
-                                </div>
-                              </div>
-                            )}
+                            
 
                             {/* Surface Protection - Only show if surface_protection selected */}
                             {requiredProducts?.includes('surface_protection') && (
