@@ -144,12 +144,21 @@ const Flange = ({ position, rotation, outerRadius, pipeRadius, nominalBore, mate
     boltHoles.push({ x, y, angle });
   }
 
+  // Center bore radius - slightly larger than pipe OD for slip-on flange
+  const centerBoreRadius = outerRadius * 1.05;
+
   return (
     <group position={position} rotation={rotation}>
-      {/* Flange face - solid cylinder */}
+      {/* Flange body - outer cylinder */}
       <mesh>
         <cylinderGeometry args={[flangeRadius, flangeRadius, flangeThickness, 32]} />
         <meshStandardMaterial {...material} />
+      </mesh>
+
+      {/* Center bore - inner cylinder (cut through flange) */}
+      <mesh>
+        <cylinderGeometry args={[centerBoreRadius, centerBoreRadius, flangeThickness + 0.02, 32]} />
+        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
       </mesh>
 
       {/* Raised face ring on outer face */}
@@ -158,9 +167,15 @@ const Flange = ({ position, rotation, outerRadius, pipeRadius, nominalBore, mate
         <meshStandardMaterial color="#888" metalness={0.6} roughness={0.4} />
       </mesh>
 
-      {/* Solid cap on pipe connection side to block view into bore */}
-      <mesh position={[0, -flangeThickness / 2 - 0.01, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[outerRadius * 1.05, 32]} />
+      {/* Top annular face of flange (ring showing wall thickness) */}
+      <mesh position={[0, flangeThickness / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[centerBoreRadius, flangeRadius, 32]} />
+        <meshStandardMaterial {...material} />
+      </mesh>
+
+      {/* Bottom annular face of flange (ring showing wall thickness) */}
+      <mesh position={[0, -flangeThickness / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[centerBoreRadius, flangeRadius, 32]} />
         <meshStandardMaterial {...material} />
       </mesh>
 
@@ -348,9 +363,24 @@ const StubPipe = ({
       {/* Stub flange at end - using proper SABS 1123 specs */}
       {hasFlange && (
         <group position={[0, stubLength / 2 + stubFlangeThickness / 2, 0]}>
-          {/* Flange body */}
+          {/* Flange body - outer cylinder */}
           <mesh>
             <cylinderGeometry args={[stubFlangeRadius, stubFlangeRadius, stubFlangeThickness, 32]} />
+            <meshStandardMaterial {...material} />
+          </mesh>
+          {/* Center bore - inner cylinder (slip-on flange hole) */}
+          <mesh>
+            <cylinderGeometry args={[stubOuterR * 1.05, stubOuterR * 1.05, stubFlangeThickness + 0.01, 32]} />
+            <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+          </mesh>
+          {/* Top annular face */}
+          <mesh position={[0, stubFlangeThickness / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[stubOuterR * 1.05, stubFlangeRadius, 32]} />
+            <meshStandardMaterial {...material} />
+          </mesh>
+          {/* Bottom annular face */}
+          <mesh position={[0, -stubFlangeThickness / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[stubOuterR * 1.05, stubFlangeRadius, 32]} />
             <meshStandardMaterial {...material} />
           </mesh>
           {/* Raised face */}
@@ -1779,10 +1809,10 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
         )}
 
         {/* Tangent lengths - below stubs */}
-        {(longerTangent > 0 || shorterTangent > 0) && (
+        {((props.tangent1 || 0) > 0 || (props.tangent2 || 0) > 0) && (
           <div className="text-[9px] bg-orange-50/95 px-2 py-1 rounded shadow-sm border border-orange-200">
-            {longerTangent > 0 && <div className="text-orange-700 font-medium">Horiz: {longerTangent}mm</div>}
-            {shorterTangent > 0 && <div className="text-orange-700 font-medium">Vert: {shorterTangent}mm</div>}
+            {(props.tangent1 || 0) > 0 && <div className="text-orange-700 font-medium">Tangent 1: {props.tangent1}mm</div>}
+            {(props.tangent2 || 0) > 0 && <div className="text-orange-700 font-medium">Tangent 2: {props.tangent2}mm</div>}
           </div>
         )}
       </div>
@@ -1846,9 +1876,11 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
               <div className="text-gray-600">
                 {props.bendAngle}° | {props.nominalBore}NB | OD: {odRaw.toFixed(0)}mm
               </div>
-              {(longerTangent > 0 || shorterTangent > 0) && (
+              {((props.tangent1 || 0) > 0 || (props.tangent2 || 0) > 0) && (
                 <div className="text-gray-600 mt-1">
-                  Tangents: {longerTangent > 0 ? `${longerTangent}mm` : ''}{longerTangent > 0 && shorterTangent > 0 ? ' / ' : ''}{shorterTangent > 0 ? `${shorterTangent}mm` : ''}
+                  {(props.tangent1 || 0) > 0 && <span>Tangent 1: {props.tangent1}mm</span>}
+                  {(props.tangent1 || 0) > 0 && (props.tangent2 || 0) > 0 && <span> | </span>}
+                  {(props.tangent2 || 0) > 0 && <span>Tangent 2: {props.tangent2}mm</span>}
                 </div>
               )}
             </div>
