@@ -11887,31 +11887,44 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               );
                             })()}
 
-                            {/* Total Weight */}
+                            {/* Total Weight - Use API value directly */}
                             <div className="bg-white p-2 rounded text-center">
                               <p className="text-xs text-gray-600 font-medium">Total Weight</p>
                               <p className="text-lg font-bold text-green-900">
-                                {((entry.calculation.fittingWeight || 0) + (entry.calculation.pipeWeight || 0) + totalFlangeWeight).toFixed(1)} kg
+                                {(entry.calculation.totalWeight || ((entry.calculation.fittingWeight || 0) + (entry.calculation.pipeWeight || 0) + (entry.calculation.flangeWeight || 0) + (entry.calculation.boltWeight || 0) + (entry.calculation.nutWeight || 0) + (entry.calculation.weldWeight || 0))).toFixed(1)} kg
                               </p>
+                              <p className="text-[10px] text-gray-500">per fitting</p>
                             </div>
 
-                            {/* Weight Breakdown */}
+                            {/* Weight Breakdown - Use API values directly */}
                             <div className="bg-white p-2 rounded text-center">
                               <p className="text-xs text-gray-600 font-medium">Weight Breakdown</p>
-                              <p className="text-xs text-gray-700 mt-1">Fitting: {entry.calculation.fittingWeight?.toFixed(1) || '0'}kg</p>
-                              {entry.calculation.pipeWeight > 0 && (
-                                <p className="text-xs text-gray-700">Pipe: {entry.calculation.pipeWeight?.toFixed(1)}kg</p>
-                              )}
-                              <p className="text-xs text-gray-700">Flanges: {totalFlangeWeight.toFixed(1)}kg</p>
-                              {flangeConfig.hasInlet && <p className="text-[10px] text-gray-500 ml-2">(inlet @ {inletFlangeWeight.toFixed(1)}kg)</p>}
-                              {flangeConfig.hasOutlet && <p className="text-[10px] text-gray-500 ml-2">(outlet @ {outletFlangeWeight.toFixed(1)}kg)</p>}
-                              {flangeConfig.hasBranch && <p className="text-[10px] text-gray-500 ml-2">(branch @ {branchFlangeWeight.toFixed(1)}kg)</p>}
+                              <div className="text-left mt-1 space-y-0.5">
+                                {(entry.calculation.fittingWeight || 0) > 0 && (
+                                  <p className="text-[10px] text-gray-700">Fitting Body: {entry.calculation.fittingWeight.toFixed(1)}kg</p>
+                                )}
+                                {(entry.calculation.pipeWeight || 0) > 0 && (
+                                  <p className="text-[10px] text-gray-700">Pipe Sections: {entry.calculation.pipeWeight.toFixed(1)}kg</p>
+                                )}
+                                {(entry.calculation.flangeWeight || 0) > 0 && (
+                                  <p className="text-[10px] text-gray-700">Flanges: {entry.calculation.flangeWeight.toFixed(1)}kg</p>
+                                )}
+                                {(entry.calculation.boltWeight || 0) > 0 && (
+                                  <p className="text-[10px] text-gray-700">Bolts: {entry.calculation.boltWeight.toFixed(1)}kg</p>
+                                )}
+                                {(entry.calculation.nutWeight || 0) > 0 && (
+                                  <p className="text-[10px] text-gray-700">Nuts: {entry.calculation.nutWeight.toFixed(1)}kg</p>
+                                )}
+                                {(entry.calculation.weldWeight || 0) > 0 && (
+                                  <p className="text-[10px] text-gray-700">Welds: {entry.calculation.weldWeight.toFixed(1)}kg</p>
+                                )}
+                              </div>
                             </div>
 
-                            {/* Total Flanges */}
+                            {/* Total Flanges - Use API value */}
                             <div className="bg-white p-2 rounded text-center">
                               <p className="text-xs text-gray-600 font-medium">Total Flanges</p>
-                              <p className="text-lg font-bold text-gray-900">{numFlanges}</p>
+                              <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfFlanges || numFlanges}</p>
                               <div className="text-left mt-1 space-y-0.5">
                                 {flangeConfig.hasInlet && (
                                   <p className="text-[10px] text-gray-700">1 x {nominalBore}NB {flangeConfig.inletType === 'loose' ? 'L/F' : flangeConfig.inletType === 'rotating' ? 'R/F' : 'Flange'}</p>
@@ -11925,10 +11938,22 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               </div>
                             </div>
 
-                            {/* Weld Summary */}
+                            {/* Weld Summary - Include API weld data */}
                             <div className="bg-white p-2 rounded text-center">
                               <p className="text-xs text-gray-600 font-medium">Weld Summary</p>
                               <div className="text-left mt-1 space-y-0.5">
+                                {/* Tee welds from API */}
+                                {entry.calculation.numberOfTeeWelds > 0 && (
+                                  <p className="text-[10px] text-blue-700">Tee Welds: {entry.calculation.numberOfTeeWelds} ({(entry.calculation.totalTeeWeldLength || 0).toFixed(2)}m)</p>
+                                )}
+                                {/* Flange welds from API */}
+                                {entry.calculation.numberOfFlangeWelds > 0 && (
+                                  <p className="text-[10px] text-green-700">Flange Welds: {entry.calculation.numberOfFlangeWelds} ({(entry.calculation.totalFlangeWeldLength || 0).toFixed(2)}m)</p>
+                                )}
+                                {/* Show wall thickness from API */}
+                                {entry.calculation.wallThicknessMm && (
+                                  <p className="text-[10px] text-purple-700">Wall Thickness: {entry.calculation.wallThicknessMm}mm</p>
+                                )}
                                 <p className="text-[10px] text-blue-700">Tee Junction: {teeWeldCount} @ {branchWeldThickness?.toFixed(1)}mm</p>
                                 {flangeConfig.hasInlet && flangeConfig.inletType !== 'loose' && (
                                   <p className="text-[10px] text-green-700">Inlet Flange: 2 welds @ {fittingWeldThickness?.toFixed(1)}mm</p>
