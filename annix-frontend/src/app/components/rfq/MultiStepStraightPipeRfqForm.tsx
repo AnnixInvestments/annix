@@ -13968,11 +13968,18 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
   const getTotalLength = () => {
     return allItems.reduce((total: number, entry: any) => {
       // For bends and fittings, we don't have a total length concept, just count quantity
-      // For straight pipes, use quantityValue (meters)
       if (entry.itemType === 'bend' || entry.itemType === 'fitting') {
         return total; // Bends and fittings don't add to total pipeline length
       }
-      return total + (entry.specs.quantityValue || 0);
+      // For straight pipes, calculate total length based on quantityType
+      if (entry.specs.quantityType === 'total_length') {
+        return total + (entry.specs.quantityValue || 0);
+      } else {
+        // number_of_pipes: multiply by individual pipe length
+        const numPipes = entry.specs.quantityValue || 1;
+        const pipeLength = entry.specs.individualPipeLength || 0;
+        return total + (numPipes * pipeLength);
+      }
     }, 0);
   };
 
@@ -14142,6 +14149,7 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                     {entry.specs.numberOfStubs > 0 && (
                       <div className="col-span-2">Stubs: {entry.specs.numberOfStubs}</div>
                     )}
+                    <div>Weight: {entry.calculation?.totalWeight?.toFixed(2) || '-'} kg</div>
                   </div>
                 ) : entry.itemType === 'fitting' ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
@@ -14149,22 +14157,31 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                     <div>Standard: {entry.specs.fittingStandard || 'N/A'}</div>
                     <div>NB: {entry.specs.nominalDiameterMm}mm</div>
                     <div>Qty: {entry.specs.quantityValue || 1}</div>
-                    {entry.specs.angleRange && (
-                      <div className="col-span-2">Angle Range: {entry.specs.angleRange}</div>
-                    )}
                     {entry.specs.pipeLengthAMm && (
                       <div>Length A: {entry.specs.pipeLengthAMm}mm</div>
                     )}
                     {entry.specs.pipeLengthBMm && (
                       <div>Length B: {entry.specs.pipeLengthBMm}mm</div>
                     )}
+                    <div>Weight: {entry.calculation?.totalWeight?.toFixed(2) || entry.calculation?.weightPerItem?.toFixed(2) || '-'} kg</div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
                     <div>NB: {entry.specs.nominalBoreMm}mm</div>
-                    <div>Pressure: {entry.specs.workingPressureBar} bar</div>
+                    <div>Pressure: {entry.specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar} bar</div>
                     <div>Schedule: {entry.specs.scheduleNumber || `${entry.specs.wallThicknessMm}mm WT`}</div>
-                    <div>Length: {Number(entry.specs.quantityValue || 0).toFixed(3)}m</div>
+                    <div>Length: {(() => {
+                      // Calculate total length based on quantityType
+                      if (entry.specs.quantityType === 'total_length') {
+                        return Number(entry.specs.quantityValue || 0).toFixed(3);
+                      } else {
+                        // number_of_pipes: multiply by individual pipe length
+                        const numPipes = entry.specs.quantityValue || 1;
+                        const pipeLength = entry.specs.individualPipeLength || 0;
+                        return (numPipes * pipeLength).toFixed(3);
+                      }
+                    })()}m</div>
+                    <div>Weight: {entry.calculation?.totalSystemWeight?.toFixed(2) || '-'} kg</div>
                   </div>
                 )}
               </div>
