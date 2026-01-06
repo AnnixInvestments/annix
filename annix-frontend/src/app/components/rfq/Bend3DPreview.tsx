@@ -1722,15 +1722,28 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
       </div>
 
       {/* Pipe & Flange Info - top right */}
-      <div className="absolute top-2 right-2 text-[9px] bg-white/95 px-2 py-1.5 rounded shadow-sm leading-tight">
-        <div className="font-semibold text-blue-700 mb-0.5">PIPE</div>
-        <div className="text-gray-700">OD: {odRaw.toFixed(0)}mm | ID: {idRaw.toFixed(0)}mm</div>
+      <div className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md leading-snug border border-gray-200">
+        <div className="font-bold text-blue-800 mb-0.5">PIPE</div>
+        <div className="text-gray-900 font-medium">OD: {odRaw.toFixed(0)}mm | ID: {idRaw.toFixed(0)}mm</div>
         {/* Only show flange info if flanges have been allocated (not PE - Plain End) */}
         {(props.flangeConfig || 'PE').toUpperCase() !== 'PE' && (
           <>
-            <div className="font-semibold text-blue-700 mt-1 mb-0.5">FLANGE</div>
-            <div className="text-gray-700">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
-            <div className="text-gray-700">THK: {flangeSpecs.thickness}mm | {flangeSpecs.boltHoles} x Ø{flangeSpecs.holeID}mm</div>
+            <div className="font-bold text-blue-800 mt-1 mb-0.5">FLANGE ({(props.flangeConfig || 'PE').toUpperCase()})</div>
+            <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
+            <div className="text-gray-900 font-medium">THK: {flangeSpecs.thickness}mm | {flangeSpecs.boltHoles} x Ø{flangeSpecs.holeID}mm</div>
+            {/* Show flange type description */}
+            {(props.flangeConfig || '').toUpperCase() === 'FOE_LF' && (
+              <div className="text-blue-600 font-semibold mt-0.5">L/F = Loose Flange</div>
+            )}
+            {(props.flangeConfig || '').toUpperCase() === 'FOE_RF' && (
+              <div className="text-orange-600 font-semibold mt-0.5">R/F = Rotating Flange</div>
+            )}
+            {(props.flangeConfig || '').toUpperCase() === '2X_RF' && (
+              <div className="text-orange-600 font-semibold mt-0.5">2x R/F = Both Rotating</div>
+            )}
+            {(props.flangeConfig || '').toUpperCase() === 'LF_BE' && (
+              <div className="text-blue-600 font-semibold mt-0.5">L/F BE = Loose Both Ends</div>
+            )}
           </>
         )}
       </div>
