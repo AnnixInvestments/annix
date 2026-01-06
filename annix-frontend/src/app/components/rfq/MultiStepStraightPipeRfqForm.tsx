@@ -11749,22 +11749,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                   })()
                 )}
 
-                {/* Calculate/Recalculate Button - always visible */}
-                <div className="text-center mt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      console.log('Calculate Fitting clicked:', entry.id);
-                      onCalculateFitting && onCalculateFitting(entry.id);
-                    }}
-                    className="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-colors"
-                  >
-                    {entry.calculation ? 'Recalculate Fitting' : 'Calculate Fitting'}
-                  </button>
-                  {!entry.calculation && (
-                    <p className="text-xs text-gray-500 mt-1">Select fitting type and diameter, then click to calculate</p>
-                  )}
-                </div>
+                {/* Calculate button removed - calculation happens automatically on spec changes */}
 
                 {/* Calculation Results - Compact Layout matching Bend style */}
                 {entry.calculation && (
@@ -16949,32 +16934,32 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
       // Validation for required fields
       if (!fittingEntry.specs?.fittingType) {
-        alert('Please select a fitting type');
+        console.log('Fitting calculation skipped: No fitting type selected');
         return;
       }
 
       // Validate fitting type is compatible with the effective standard
       const validTypes = effectiveFittingStandard === 'SABS719' ? SABS719_FITTING_TYPES : SABS62_FITTING_TYPES;
       if (!validTypes.includes(fittingEntry.specs.fittingType)) {
-        alert(`The fitting type "${fittingEntry.specs.fittingType}" is not available for ${effectiveFittingStandard} standard.\n\nPlease select a valid fitting type from the dropdown. The standard is derived from your Steel Specification selection (ID 8 = SABS719, others = SABS62).`);
+        console.log(`Fitting type "${fittingEntry.specs.fittingType}" not valid for ${effectiveFittingStandard}, clearing`);
         // Clear the invalid fitting type
         updateItem(entryId, { specs: { ...fittingEntry.specs, fittingType: undefined } });
         return;
       }
 
       if (!fittingEntry.specs?.nominalDiameterMm) {
-        alert('Please select a nominal diameter');
+        console.log('Fitting calculation skipped: No nominal diameter selected');
         return;
       }
 
       // Additional validation for SABS719
       if (effectiveFittingStandard === 'SABS719') {
         if (!fittingEntry.specs.scheduleNumber) {
-          alert('Please select a schedule number for SABS719 fittings');
+          console.log('Fitting calculation skipped: No schedule number for SABS719');
           return;
         }
         if (fittingEntry.specs.pipeLengthAMm === undefined || fittingEntry.specs.pipeLengthBMm === undefined) {
-          alert('Please enter pipe lengths A and B for SABS719 fittings');
+          console.log('Fitting calculation skipped: Missing pipe lengths for SABS719');
           return;
         }
       }
