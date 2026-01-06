@@ -34,15 +34,79 @@ interface Bend3DPreviewProps {
   blankFlangePositions?: string[]; // ['inlet', 'outlet']
 }
 
-const estimateWallThickness = (nb: number, schedule: string = "40", currentWt: number) => {
+// SABS 719 ERW Pipe Wall Thickness Table (Class B - Standard)
+// Based on SABS 719:2008 standard
+const SABS_719_WALL_THICKNESS: { [key: number]: number } = {
+  200: 5.2,
+  250: 5.2,
+  300: 6.4,
+  350: 6.4,
+  400: 6.4,
+  450: 6.4,
+  500: 6.4,
+  550: 6.4,
+  600: 6.4,
+  650: 8.0,
+  700: 8.0,
+  750: 8.0,
+  800: 8.0,
+  850: 9.5,
+  900: 9.5,
+  1000: 9.5,
+  1050: 9.5,
+  1200: 12.7,
+};
+
+// ASTM/ASME Schedule-based Wall Thickness Table
+// Based on ASME B36.10M
+const SCHEDULE_WALL_THICKNESS: { [key: number]: { [key: string]: number } } = {
+  200: { '10': 3.76, '20': 6.35, 'STD': 8.18, '40': 8.18, '60': 10.31, '80': 12.70, 'XS': 12.70 },
+  250: { '10': 4.19, '20': 6.35, 'STD': 9.27, '30': 7.80, '40': 9.27, '60': 12.70, '80': 15.09, 'XS': 12.70 },
+  300: { '10': 4.57, '20': 6.35, 'STD': 9.53, '30': 8.38, '40': 10.31, '60': 14.27, '80': 17.48, 'XS': 12.70 },
+  350: { '10': 4.78, '20': 7.92, 'STD': 9.53, '30': 9.53, '40': 11.13, '60': 15.09, '80': 19.05, 'XS': 12.70 },
+  400: { '10': 4.78, '20': 7.92, 'STD': 9.53, '30': 9.53, '40': 12.70, '60': 16.66, '80': 21.44, 'XS': 12.70 },
+  450: { '10': 4.78, '20': 7.92, 'STD': 9.53, '30': 11.13, '40': 14.27, '60': 19.05, '80': 23.83, 'XS': 12.70 },
+  500: { '10': 6.35, '20': 9.53, 'STD': 9.53, '30': 12.70, '40': 15.09, '60': 20.62, '80': 26.19, 'XS': 12.70 },
+  600: { '10': 6.35, '20': 9.53, 'STD': 9.53, '30': 14.27, '40': 17.48, '60': 24.61, '80': 30.96, 'XS': 12.70 },
+};
+
+// Get wall thickness based on steel specification, NB, and schedule
+const getWallThickness = (nb: number, schedule: string = "STD", materialName: string = "", currentWt: number = 0): number => {
+  // If a valid wall thickness is already provided, use it
   if (currentWt && currentWt > 1) return currentWt;
-  const s = schedule.toUpperCase();
-  const isSch80 = s.includes("80") || s.includes("XS");
-  const isSch160 = s.includes("160") || s.includes("XXS");
-  let factor = 0.055;
+
+  const material = materialName.toLowerCase();
+  const sched = schedule.toUpperCase().replace(/SCH\s*/i, '').trim();
+
+  // Check if SABS 719 ERW pipe
+  if (material.includes('sabs 719') || material.includes('erw') || material.includes('719')) {
+    // Use SABS 719 wall thickness table
+    const sizes = Object.keys(SABS_719_WALL_THICKNESS).map(Number).sort((a, b) => a - b);
+    let closestSize = sizes[0];
+    for (const size of sizes) {
+      if (size <= nb) closestSize = size;
+      else break;
+    }
+    return SABS_719_WALL_THICKNESS[closestSize] || 6.4; // Default to 6.4mm for SABS 719
+  }
+
+  // For ASTM/ASME pipes, use schedule-based lookup
+  if (SCHEDULE_WALL_THICKNESS[nb] && SCHEDULE_WALL_THICKNESS[nb][sched]) {
+    return SCHEDULE_WALL_THICKNESS[nb][sched];
+  }
+
+  // Fallback estimation based on schedule
+  const isSch80 = sched.includes("80") || sched.includes("XS");
+  const isSch160 = sched.includes("160") || sched.includes("XXS");
+  let factor = 0.055; // ~STD/Sch40
   if (isSch80) factor = 0.085;
   if (isSch160) factor = 0.12;
   return Math.max(2, nb * factor);
+};
+
+// Legacy function for backward compatibility
+const estimateWallThickness = (nb: number, schedule: string = "40", currentWt: number) => {
+  return getWallThickness(nb, schedule, "", currentWt);
 };
 
 const getMaterialProps = (name: string = "", isSegmented: boolean = false) => {
@@ -664,11 +728,11 @@ const BendScene = ({
     (numberOfSegments && numberOfSegments >= 2));
 
   const nb = (nominalBore || 50) / scaleFactor;
-  const estimatedWt = estimateWallThickness(nominalBore, schedule, wallThickness);
+  const calculatedWt = getWallThickness(nominalBore, schedule || 'STD', materialName || '', wallThickness || 0);
   const odRaw = outerDiameter || (nominalBore * 1.1) || 60;
   const od = odRaw / scaleFactor;
-  const wt = estimatedWt / scaleFactor;
-  const idRaw = odRaw - 2 * estimatedWt;
+  const wt = calculatedWt / scaleFactor;
+  const idRaw = odRaw - 2 * calculatedWt;
 
   const outerRadius = od / 2;
   const innerRadius = Math.max(0.01, (od - 2 * wt) / 2);
@@ -1690,10 +1754,15 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
   const maxExtent = Math.max(t1, t2, bendSize, 1);
   const cameraZ = Math.max(12, maxExtent * 3 + 8);
 
-  // Calculate pipe dimensions for info display
+  // Calculate pipe dimensions for info display using proper wall thickness lookup
   const odRaw = props.outerDiameter || (props.nominalBore * 1.1) || 60;
-  const estimatedWt = props.wallThickness && props.wallThickness > 1 ? props.wallThickness : Math.max(2, props.nominalBore * 0.055);
-  const idRaw = odRaw - 2 * estimatedWt;
+  const wallThicknessDisplay = getWallThickness(
+    props.nominalBore,
+    props.schedule || 'STD',
+    props.materialName || '',
+    props.wallThickness || 0
+  );
+  const idRaw = odRaw - 2 * wallThicknessDisplay;
   const flangeSpecs = getFlangeSpecs(props.nominalBore);
 
   // Tangent labels (longer one horizontal, shorter vertical)
@@ -1755,6 +1824,7 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
       <div className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md leading-snug border border-gray-200">
         <div className="font-bold text-blue-800 mb-0.5">PIPE</div>
         <div className="text-gray-900 font-medium">OD: {odRaw.toFixed(0)}mm | ID: {idRaw.toFixed(0)}mm</div>
+        <div className="text-gray-700">WT: {wallThicknessDisplay.toFixed(1)}mm</div>
         {/* Only show flange info if flanges have been allocated (not PE - Plain End) */}
         {(props.flangeConfig || 'PE').toUpperCase() !== 'PE' && (
           <>
