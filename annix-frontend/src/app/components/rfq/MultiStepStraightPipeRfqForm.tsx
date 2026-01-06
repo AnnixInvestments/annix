@@ -14768,8 +14768,8 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                       });
                       return (
                         <>
-                          <div className="text-indigo-600">Ext/item: {extArea.toFixed(3)} m²</div>
-                          <div className="text-indigo-600">Int/item: {intArea.toFixed(3)} m²</div>
+                          <div className="text-indigo-700 font-medium">Ext/item: {extArea.toFixed(3)} m² <span className="text-indigo-500 font-normal text-[10px]">(arc + tangents)</span></div>
+                          <div className="text-purple-700 font-medium">Int/item: {intArea.toFixed(3)} m² <span className="text-purple-500 font-normal text-[10px]">(arc + tangents)</span></div>
                         </>
                       );
                     })()}
@@ -14778,14 +14778,17 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                       const nb = entry.specs?.nominalBoreMm;
                       const wt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
                       const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                      const weldCount = getWeldCountPerBend(bendEndConfig);
-                      if (!nb || !wt || weldCount === 0) return null;
+                      const flangeConnections = getWeldCountPerBend(bendEndConfig);
+                      if (!nb || !wt || flangeConnections === 0) return null;
                       const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
                       const circumferenceMm = Math.PI * od;
-                      const linearWeldMm = weldCount * circumferenceMm;
+                      // x2 because each flanged connection requires 2 welds (inside + outside)
+                      const weldsPerConnection = 2;
+                      const totalWelds = flangeConnections * weldsPerConnection;
+                      const linearWeldMm = totalWelds * circumferenceMm;
                       return (
-                        <div className="text-purple-600 col-span-2">
-                          Welds/item: {weldCount} @ {circumferenceMm.toFixed(0)}mm circ = {(linearWeldMm / 1000).toFixed(2)}m ({wt.toFixed(1)}mm WT)
+                        <div className="text-purple-700 col-span-2 font-medium">
+                          Welds/item: {totalWelds} ({flangeConnections} flange × 2) @ {circumferenceMm.toFixed(0)}mm circ = {(linearWeldMm / 1000).toFixed(2)}m ({wt.toFixed(1)}mm WT)
                         </div>
                       );
                     })()}
@@ -14843,8 +14846,8 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                       const intArea = runInt + branchInt - holeCut;
                       return (
                         <>
-                          <div className="text-indigo-600">Ext/item: {extArea.toFixed(3)} m²</div>
-                          <div className="text-indigo-600">Int/item: {intArea.toFixed(3)} m²</div>
+                          <div className="text-indigo-700 font-medium">Ext/item: {extArea.toFixed(3)} m² <span className="text-indigo-500 font-normal text-[10px]">(run + branch - overlap)</span></div>
+                          <div className="text-purple-700 font-medium">Int/item: {intArea.toFixed(3)} m² <span className="text-purple-500 font-normal text-[10px]">(run + branch - hole)</span></div>
                         </>
                       );
                     })()}
@@ -14925,7 +14928,7 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                       const qty = entry.specs.quantityValue || 1;
                       return (totalWt / qty).toFixed(2);
                     })()} kg</div>
-                    {/* Surface areas for straight pipe - PER PIPE */}
+                    {/* Surface areas for straight pipe - PER PIPE with calculation breakdown */}
                     {(() => {
                       const od = entry.calculation?.outsideDiameterMm;
                       const wt = entry.specs?.wallThicknessMm;
@@ -14942,24 +14945,27 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                       const intArea = (id / 1000) * Math.PI * perPipeLengthM;
                       return (
                         <>
-                          <div className="text-indigo-600">Ext/pipe: {extArea.toFixed(3)} m²</div>
-                          <div className="text-indigo-600">Int/pipe: {intArea.toFixed(3)} m²</div>
+                          <div className="text-indigo-700 font-medium">Ext/pipe: {extArea.toFixed(3)} m² <span className="text-indigo-500 font-normal text-[10px]">({od.toFixed(0)}mm × π × {perPipeLengthM.toFixed(2)}m)</span></div>
+                          <div className="text-purple-700 font-medium">Int/pipe: {intArea.toFixed(3)} m² <span className="text-purple-500 font-normal text-[10px]">({id.toFixed(0)}mm × π × {perPipeLengthM.toFixed(2)}m)</span></div>
                         </>
                       );
                     })()}
-                    {/* Weld info for pipe - PER PIPE */}
+                    {/* Weld info for pipe - PER PIPE (x2 for inside + outside welds per flange) */}
                     {(() => {
                       const nb = entry.specs?.nominalBoreMm;
                       const wt = entry.specs?.wallThicknessMm;
                       const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                      const weldCount = getWeldCountPerPipe(pipeEndConfig);
-                      if (!nb || !wt || weldCount === 0) return null;
+                      const flangeConnections = getWeldCountPerPipe(pipeEndConfig); // Number of flanged connections
+                      if (!nb || !wt || flangeConnections === 0) return null;
                       const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
                       const circumferenceMm = Math.PI * od;
-                      const linearWeldMm = weldCount * circumferenceMm;
+                      // x2 because each flanged connection requires 2 welds (inside + outside)
+                      const weldsPerConnection = 2;
+                      const totalWelds = flangeConnections * weldsPerConnection;
+                      const linearWeldMm = totalWelds * circumferenceMm;
                       return (
-                        <div className="text-purple-600 col-span-2">
-                          Welds/pipe: {weldCount} @ {circumferenceMm.toFixed(0)}mm circ = {(linearWeldMm / 1000).toFixed(2)}m ({wt.toFixed(1)}mm WT)
+                        <div className="text-purple-700 col-span-2 font-medium">
+                          Welds/pipe: {totalWelds} ({flangeConnections} flange × 2) @ {circumferenceMm.toFixed(0)}mm circ = {(linearWeldMm / 1000).toFixed(2)}m ({wt.toFixed(1)}mm WT)
                         </div>
                       );
                     })()}
