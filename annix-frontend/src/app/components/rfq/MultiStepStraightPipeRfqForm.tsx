@@ -10807,7 +10807,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                 {entry.specs?.nominalBoreMm && entry.specs?.bendDegrees && (
                   <Bend3DPreview
                     nominalBore={entry.specs.nominalBoreMm}
-                    outerDiameter={entry.calculation?.outsideDiameterMm || entry.specs.nominalBoreMm * 1.1}
+                    outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}
                     wallThickness={entry.calculation?.wallThicknessMm || 5}
                     bendAngle={entry.specs.bendDegrees}
                     bendType={entry.specs.bendType || '1.5D'}

@@ -1784,24 +1784,24 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
         {/* Stub info with flange details - yellow background like in image */}
         {props.numberOfStubs && props.numberOfStubs > 0 && props.stubs && (
           <div className="text-[10px] bg-yellow-100 px-2 py-1.5 rounded shadow-md border border-yellow-400">
-            <div className="font-bold text-yellow-900 mb-1">STUBS</div>
+            <div className="font-bold text-black mb-1">STUBS</div>
             {props.stubs[0] && props.stubs[0].nominalBoreMm && (() => {
               const stub1Flange = getFlangeSpecs(props.stubs[0].nominalBoreMm);
               return (
-                <div className="text-gray-900 mb-1">
+                <div className="text-black mb-1">
                   <div className="font-bold">S1: {props.stubs[0].nominalBoreMm}NB x {props.stubs[0].length || 0}mm @ {props.stubs[0].locationFromFlange || 0}mm</div>
-                  <div className="text-gray-800 font-medium pl-2">OD: {stub1Flange.flangeOD}mm | THK: {stub1Flange.thickness}mm</div>
-                  <div className="text-gray-800 font-medium pl-2">PCD: {stub1Flange.pcd}mm | {stub1Flange.boltHoles} x Ø{stub1Flange.holeID}mm</div>
+                  <div className="font-medium pl-2">OD: {stub1Flange.flangeOD}mm | THK: {stub1Flange.thickness}mm</div>
+                  <div className="font-medium pl-2">PCD: {stub1Flange.pcd}mm | {stub1Flange.boltHoles} x Ø{stub1Flange.holeID}mm</div>
                 </div>
               );
             })()}
             {props.stubs[1] && props.stubs[1].nominalBoreMm && (() => {
               const stub2Flange = getFlangeSpecs(props.stubs[1].nominalBoreMm);
               return (
-                <div className="text-gray-900">
+                <div className="text-black">
                   <div className="font-bold">S2: {props.stubs[1].nominalBoreMm}NB x {props.stubs[1].length || 0}mm @ {props.stubs[1].locationFromFlange || 0}mm</div>
-                  <div className="text-gray-800 font-medium pl-2">OD: {stub2Flange.flangeOD}mm | THK: {stub2Flange.thickness}mm</div>
-                  <div className="text-gray-800 font-medium pl-2">PCD: {stub2Flange.pcd}mm | {stub2Flange.boltHoles} x Ø{stub2Flange.holeID}mm</div>
+                  <div className="font-medium pl-2">OD: {stub2Flange.flangeOD}mm | THK: {stub2Flange.thickness}mm</div>
+                  <div className="font-medium pl-2">PCD: {stub2Flange.pcd}mm | {stub2Flange.boltHoles} x Ø{stub2Flange.holeID}mm</div>
                 </div>
               );
             })()}
