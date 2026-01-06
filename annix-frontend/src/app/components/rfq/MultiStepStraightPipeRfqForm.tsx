@@ -11718,6 +11718,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           </button>
                         </div>
                         {!isDrawingHidden && (
+                        <>
                         <div className="h-64">
                           <Tee3DPreview
                             nominalBore={nominalBore}
