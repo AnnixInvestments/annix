@@ -20,7 +20,7 @@ interface Pipe3DPreviewProps {
   blankFlangePositions?: string[]; // ['inlet', 'outlet']
 }
 
-// Standard flange dimensions based on SABS 1123 Table 1000/3 (PN10)
+// Standard flange dimensions based on SABS 1123 Table 1000/4 (PN16 - most common)
 const getFlangeSpecs = (nominalBore: number) => {
   const flangeData: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; thickness: number } } = {
     15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, thickness: 14 },
@@ -28,20 +28,20 @@ const getFlangeSpecs = (nominalBore: number) => {
     25: { flangeOD: 115, pcd: 85, boltHoles: 4, holeID: 14, thickness: 16 },
     32: { flangeOD: 140, pcd: 100, boltHoles: 4, holeID: 18, thickness: 18 },
     40: { flangeOD: 150, pcd: 110, boltHoles: 4, holeID: 18, thickness: 18 },
-    50: { flangeOD: 165, pcd: 125, boltHoles: 4, holeID: 18, thickness: 20 },
-    65: { flangeOD: 185, pcd: 145, boltHoles: 4, holeID: 18, thickness: 20 },
-    80: { flangeOD: 200, pcd: 160, boltHoles: 8, holeID: 18, thickness: 22 },
-    100: { flangeOD: 220, pcd: 180, boltHoles: 8, holeID: 18, thickness: 24 },
-    125: { flangeOD: 250, pcd: 210, boltHoles: 8, holeID: 18, thickness: 26 },
-    150: { flangeOD: 285, pcd: 240, boltHoles: 8, holeID: 22, thickness: 26 },
-    200: { flangeOD: 340, pcd: 295, boltHoles: 8, holeID: 22, thickness: 28 },
-    250: { flangeOD: 395, pcd: 350, boltHoles: 12, holeID: 22, thickness: 30 },
-    300: { flangeOD: 445, pcd: 400, boltHoles: 12, holeID: 22, thickness: 30 },
-    350: { flangeOD: 505, pcd: 460, boltHoles: 12, holeID: 22, thickness: 32 },
-    400: { flangeOD: 565, pcd: 515, boltHoles: 16, holeID: 26, thickness: 34 },
-    450: { flangeOD: 615, pcd: 565, boltHoles: 16, holeID: 26, thickness: 36 },
-    500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, thickness: 38 },
-    600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, thickness: 42 },
+    50: { flangeOD: 165, pcd: 125, boltHoles: 4, holeID: 18, thickness: 18 },
+    65: { flangeOD: 185, pcd: 145, boltHoles: 8, holeID: 18, thickness: 18 },
+    80: { flangeOD: 200, pcd: 160, boltHoles: 8, holeID: 18, thickness: 20 },
+    100: { flangeOD: 235, pcd: 190, boltHoles: 8, holeID: 22, thickness: 22 },
+    125: { flangeOD: 270, pcd: 220, boltHoles: 8, holeID: 26, thickness: 22 },
+    150: { flangeOD: 300, pcd: 250, boltHoles: 8, holeID: 26, thickness: 24 },
+    200: { flangeOD: 360, pcd: 310, boltHoles: 12, holeID: 26, thickness: 26 },
+    250: { flangeOD: 425, pcd: 370, boltHoles: 12, holeID: 30, thickness: 28 },
+    300: { flangeOD: 485, pcd: 430, boltHoles: 12, holeID: 30, thickness: 28 },
+    350: { flangeOD: 555, pcd: 490, boltHoles: 16, holeID: 33, thickness: 30 },
+    400: { flangeOD: 620, pcd: 550, boltHoles: 16, holeID: 36, thickness: 32 },
+    450: { flangeOD: 670, pcd: 600, boltHoles: 20, holeID: 33, thickness: 32 },
+    500: { flangeOD: 715, pcd: 650, boltHoles: 20, holeID: 33, thickness: 32 },
+    600: { flangeOD: 840, pcd: 770, boltHoles: 20, holeID: 36, thickness: 36 },
   };
 
   // Find closest match
