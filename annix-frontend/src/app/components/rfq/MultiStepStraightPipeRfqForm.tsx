@@ -14205,6 +14205,75 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                     <div>Weight: {entry.calculation?.totalSystemWeight?.toFixed(2) || '-'} kg</div>
                   </div>
                 )}
+
+                {/* Bolt Sets & Gaskets Information */}
+                {rfqData.requiredProducts?.includes('fasteners_gaskets') && (() => {
+                  // Determine if item has flanges and get flange count
+                  let hasFlanges = false;
+                  let flangeCount = 0;
+                  let nbMm = 0;
+                  let branchNbMm = 0;
+                  let branchFlangeCount = 0;
+
+                  if (entry.itemType === 'bend') {
+                    const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                    hasFlanges = bendEndConfig !== 'PE';
+                    flangeCount = bendEndConfig === 'FBE' ? 2 : (bendEndConfig !== 'PE' ? 1 : 0);
+                    nbMm = entry.specs?.nominalBoreMm || 100;
+                  } else if (entry.itemType === 'fitting') {
+                    const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                    hasFlanges = fittingEndConfig !== 'PE';
+                    nbMm = entry.specs?.nominalDiameterMm || 100;
+                    branchNbMm = entry.specs?.branchNominalDiameterMm || nbMm;
+                    // Count flanges based on configuration
+                    const config = fittingEndConfig;
+                    if (config.includes('F')) {
+                      // Count F's in config for main flanges
+                      const mainFlanges = (config.match(/F/g) || []).length;
+                      flangeCount = Math.min(mainFlanges, 2); // inlet/outlet
+                      // Check if branch has flange
+                      if (config.length >= 3 && config[2] === 'F') {
+                        branchFlangeCount = 1;
+                      }
+                    }
+                  } else {
+                    // Straight pipe
+                    const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                    hasFlanges = pipeEndConfig !== 'PE';
+                    flangeCount = pipeEndConfig === 'FBE' ? 2 : (pipeEndConfig !== 'PE' ? 1 : 0);
+                    nbMm = entry.specs?.nominalBoreMm || 100;
+                  }
+
+                  if (!hasFlanges) return null;
+
+                  const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
+                  const bnwInfo = getBnwSetInfo(nbMm, pressureClass);
+                  const branchBnwInfo = branchFlangeCount > 0 ? getBnwSetInfo(branchNbMm, pressureClass) : null;
+                  const gasketType = rfqData.globalSpecs?.gasketType;
+                  const qty = entry.specs?.quantityValue || 1;
+                  const totalBoltSets = (flangeCount + branchFlangeCount) * qty;
+
+                  return (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                        <div className="text-orange-700">
+                          <span className="font-medium">Bolt Sets:</span> {totalBoltSets} sets @ {bnwInfo.boltSize} × {bnwInfo.holesPerFlange} holes ({nbMm}NB)
+                          {branchFlangeCount > 0 && branchBnwInfo && (
+                            <span className="ml-2">+ Branch: {branchBnwInfo.boltSize} × {branchBnwInfo.holesPerFlange} holes ({branchNbMm}NB)</span>
+                          )}
+                        </div>
+                        {gasketType && (
+                          <div className="text-green-700">
+                            <span className="font-medium">Gaskets:</span> {totalBoltSets} × {gasketType} ({nbMm}NB)
+                            {branchFlangeCount > 0 && (
+                              <span className="ml-2">+ Branch: {branchFlangeCount * qty} × ({branchNbMm}NB)</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>
