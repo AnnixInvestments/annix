@@ -11963,17 +11963,10 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
 
                         return (
                           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
-                            {/* Quantity */}
+                            {/* Qty & Dimensions Combined */}
                             <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Qty Fittings</p>
-                              <p className="text-lg font-bold text-gray-900">{quantity}</p>
-                              <p className="text-xs text-gray-500">pieces</p>
-                            </div>
-
-                            {/* Dimensions */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Dimensions</p>
-                              <p className="text-sm font-bold text-green-900">{fittingType}</p>
+                              <p className="text-xs text-gray-600 font-medium">Qty & Dimensions</p>
+                              <p className="text-lg font-bold text-gray-900">{quantity} × {fittingType}</p>
                               <div className="mt-1 space-y-0.5 text-left">
                                 <p className="text-[10px] text-gray-700">Main: {nominalBore}NB</p>
                                 {branchNB !== nominalBore && (
@@ -12082,112 +12075,126 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
 
                             
 
-                            {/* Surface Protection - Only show if surface_protection selected */}
-                            {requiredProducts?.includes('surface_protection') && (
-                              <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded text-center border border-purple-200 dark:border-purple-700">
-                                <p className="text-xs text-purple-700 dark:text-purple-300 font-medium">🛡️ Surface Protection</p>
-                                {(() => {
-                                  const odMm = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
-                                  const wtMm = entry.calculation?.wallThicknessMm || 6;
-                                  const idMm = odMm - (2 * wtMm);
-                                  const odM = odMm / 1000;
-                                  const idM = idMm / 1000;
+                            {/* External m² - Separate box */}
+                            {requiredProducts?.includes('surface_protection') && globalSpecs?.externalCoatingConfirmed && (() => {
+                              const odMm = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
+                              const wtMm = entry.calculation?.wallThicknessMm || 6;
+                              const odM = odMm / 1000;
 
-                                  // Count open ends and add 100mm allowance per end for surface protection
-                                  const FLANGE_ALLOWANCE_MM = 100; // 100mm per open end for coating/lining coverage
-                                  let mainEndCount = 0;
-                                  let branchEndCount = 0;
+                              // Count open ends and add 100mm allowance per end
+                              const FLANGE_ALLOWANCE_MM = 100;
+                              let mainEndCount = 0;
+                              let branchEndCount = 0;
+                              if (flangeConfig.hasInlet) mainEndCount++;
+                              if (flangeConfig.hasOutlet) mainEndCount++;
+                              if (flangeConfig.hasBranch) branchEndCount++;
 
-                                  // Main pipe ends (inlet and outlet)
-                                  if (flangeConfig.hasInlet) mainEndCount++;
-                                  if (flangeConfig.hasOutlet) mainEndCount++;
-                                  // Branch end
-                                  if (flangeConfig.hasBranch) branchEndCount++;
+                              // Calculate external surface areas
+                              let pipeRunExtArea = 0;
+                              let branchExtArea = 0;
 
-                                  // Calculate surface areas for each component
-                                  let pipeRunExtArea = 0;
-                                  let pipeRunIntArea = 0;
-                                  let branchExtArea = 0;
-                                  let branchIntArea = 0;
+                              const mainEndAllowance = (mainEndCount * FLANGE_ALLOWANCE_MM) / 1000;
+                              const runLength = ((pipeALength + pipeBLength) / 1000) + mainEndAllowance;
+                              if (runLength > 0) {
+                                pipeRunExtArea = odM * Math.PI * runLength;
+                              }
 
-                                  // Main run pipe + 100mm allowance per main end
-                                  const mainEndAllowance = (mainEndCount * FLANGE_ALLOWANCE_MM) / 1000; // Convert to meters
-                                  const runLength = ((pipeALength + pipeBLength) / 1000) + mainEndAllowance;
-                                  if (runLength > 0) {
-                                    pipeRunExtArea = odM * Math.PI * runLength;
-                                    pipeRunIntArea = idM * Math.PI * runLength;
-                                  }
+                              if (teeHeight > 0) {
+                                const branchOdMm = branchNB * 1.1;
+                                const branchEndAllowance = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
+                                const branchLength = (teeHeight / 1000) + branchEndAllowance;
+                                branchExtArea = (branchOdMm / 1000) * Math.PI * branchLength;
+                              }
 
-                                  // Branch/tee section + 100mm allowance for branch end
-                                  if (teeHeight > 0) {
-                                    const branchOdMm = branchNB * 1.1;
-                                    const branchIdMm = branchOdMm - (2 * wtMm);
-                                    const branchEndAllowance = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
-                                    const branchLength = (teeHeight / 1000) + branchEndAllowance;
-                                    branchExtArea = (branchOdMm / 1000) * Math.PI * branchLength;
-                                    branchIntArea = (branchIdMm / 1000) * Math.PI * branchLength;
-                                  }
+                              const itemExtArea = pipeRunExtArea + branchExtArea;
+                              const totalExtArea = itemExtArea * quantity;
 
-                                  // Per item totals
-                                  const itemExtArea = pipeRunExtArea + branchExtArea;
-                                  const itemIntArea = pipeRunIntArea + branchIntArea;
+                              return (
+                                <div className="bg-indigo-50 dark:bg-indigo-900/30 p-2 rounded text-center border border-indigo-200 dark:border-indigo-700">
+                                  <p className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">🛡️ External m²</p>
+                                  <p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">{totalExtArea.toFixed(3)} m²</p>
+                                  <div className="text-left mt-1 space-y-0.5">
+                                    {runLength > 0 && (
+                                      <p className="text-[9px] text-indigo-700 dark:text-indigo-300">
+                                        Run: {pipeRunExtArea.toFixed(4)} m² <span className="text-indigo-500 dark:text-indigo-400">(+{mainEndCount}×100mm)</span>
+                                      </p>
+                                    )}
+                                    {teeHeight > 0 && (
+                                      <p className="text-[9px] text-indigo-700 dark:text-indigo-300">
+                                        Branch: {branchExtArea.toFixed(4)} m² <span className="text-indigo-500 dark:text-indigo-400">(+{branchEndCount}×100mm)</span>
+                                      </p>
+                                    )}
+                                    <p className="text-[9px] text-indigo-600 dark:text-indigo-400">
+                                      {itemExtArea.toFixed(4)} m² × {quantity}
+                                    </p>
+                                    {globalSpecs?.coatingType && (
+                                      <p className="text-[9px] text-indigo-500 dark:text-indigo-400 italic">{globalSpecs.coatingType}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
-                                  // Total for quantity
-                                  const totalExtArea = itemExtArea * quantity;
-                                  const totalIntArea = itemIntArea * quantity;
+                            {/* Internal m² - Separate box */}
+                            {requiredProducts?.includes('surface_protection') && globalSpecs?.internalLiningConfirmed && (() => {
+                              const odMm = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
+                              const wtMm = entry.calculation?.wallThicknessMm || 6;
+                              const idMm = odMm - (2 * wtMm);
+                              const idM = idMm / 1000;
 
-                                  return (
-                                    <div className="text-left mt-1 space-y-1">
-                                      {globalSpecs?.externalCoatingConfirmed && (
-                                        <>
-                                          <p className="text-[10px] text-purple-800 dark:text-purple-200 font-semibold border-b border-purple-300 dark:border-purple-600 pb-0.5">External m² Breakdown:</p>
-                                          {runLength > 0 && (
-                                            <p className="text-[9px] text-purple-700 dark:text-purple-300 pl-1">
-                                              Pipe Run: {pipeRunExtArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(OD {odMm.toFixed(1)}mm × π × {runLength.toFixed(3)}m incl. {mainEndCount}×100mm)</span>
-                                            </p>
-                                          )}
-                                          {teeHeight > 0 && (
-                                            <p className="text-[9px] text-purple-700 dark:text-purple-300 pl-1">
-                                              Branch: {branchExtArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(incl. {branchEndCount}×100mm allowance)</span>
-                                            </p>
-                                          )}
-                                          <p className="text-[10px] text-purple-900 dark:text-purple-100 font-medium pl-1 pt-0.5">
-                                            Per Item: {itemExtArea.toFixed(4)} m² × {quantity} = <span className="font-bold">{totalExtArea.toFixed(3)} m²</span>
-                                          </p>
-                                          {globalSpecs?.coatingType && (
-                                            <p className="text-[9px] text-purple-600 dark:text-purple-400 italic">{globalSpecs.coatingType}</p>
-                                          )}
-                                        </>
-                                      )}
-                                      {globalSpecs?.internalLiningConfirmed && (
-                                        <>
-                                          <p className="text-[10px] text-purple-800 dark:text-purple-200 font-semibold border-b border-purple-300 dark:border-purple-600 pb-0.5 mt-1">Internal m² Breakdown:</p>
-                                          {runLength > 0 && (
-                                            <p className="text-[9px] text-purple-700 dark:text-purple-300 pl-1">
-                                              Pipe Run: {pipeRunIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(ID {idMm.toFixed(1)}mm × π × {runLength.toFixed(3)}m incl. {mainEndCount}×100mm)</span>
-                                            </p>
-                                          )}
-                                          {teeHeight > 0 && (
-                                            <p className="text-[9px] text-purple-700 dark:text-purple-300 pl-1">
-                                              Branch: {branchIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(incl. {branchEndCount}×100mm allowance)</span>
-                                            </p>
-                                          )}
-                                          <p className="text-[10px] text-purple-900 dark:text-purple-100 font-medium pl-1 pt-0.5">
-                                            Per Item: {itemIntArea.toFixed(4)} m² × {quantity} = <span className="font-bold">{totalIntArea.toFixed(3)} m²</span>
-                                          </p>
-                                          {globalSpecs?.liningType && (
-                                            <p className="text-[9px] text-purple-600 dark:text-purple-400 italic">{globalSpecs.liningType}</p>
-                                          )}
-                                        </>
-                                      )}
-                                      {!globalSpecs?.externalCoatingConfirmed && !globalSpecs?.internalLiningConfirmed && (
-                                        <p className="text-[10px] text-purple-500 dark:text-purple-400 italic">Not yet confirmed</p>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            )}
+                              // Count open ends and add 100mm allowance per end
+                              const FLANGE_ALLOWANCE_MM = 100;
+                              let mainEndCount = 0;
+                              let branchEndCount = 0;
+                              if (flangeConfig.hasInlet) mainEndCount++;
+                              if (flangeConfig.hasOutlet) mainEndCount++;
+                              if (flangeConfig.hasBranch) branchEndCount++;
+
+                              // Calculate internal surface areas
+                              let pipeRunIntArea = 0;
+                              let branchIntArea = 0;
+
+                              const mainEndAllowance = (mainEndCount * FLANGE_ALLOWANCE_MM) / 1000;
+                              const runLength = ((pipeALength + pipeBLength) / 1000) + mainEndAllowance;
+                              if (runLength > 0) {
+                                pipeRunIntArea = idM * Math.PI * runLength;
+                              }
+
+                              if (teeHeight > 0) {
+                                const branchIdMm = (branchNB * 1.1) - (2 * wtMm);
+                                const branchEndAllowance = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
+                                const branchLength = (teeHeight / 1000) + branchEndAllowance;
+                                branchIntArea = (branchIdMm / 1000) * Math.PI * branchLength;
+                              }
+
+                              const itemIntArea = pipeRunIntArea + branchIntArea;
+                              const totalIntArea = itemIntArea * quantity;
+
+                              return (
+                                <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded text-center border border-purple-200 dark:border-purple-700">
+                                  <p className="text-xs text-purple-700 dark:text-purple-300 font-medium">🛡️ Internal m²</p>
+                                  <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{totalIntArea.toFixed(3)} m²</p>
+                                  <div className="text-left mt-1 space-y-0.5">
+                                    {runLength > 0 && (
+                                      <p className="text-[9px] text-purple-700 dark:text-purple-300">
+                                        Run: {pipeRunIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(+{mainEndCount}×100mm)</span>
+                                      </p>
+                                    )}
+                                    {teeHeight > 0 && (
+                                      <p className="text-[9px] text-purple-700 dark:text-purple-300">
+                                        Branch: {branchIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(+{branchEndCount}×100mm)</span>
+                                      </p>
+                                    )}
+                                    <p className="text-[9px] text-purple-600 dark:text-purple-400">
+                                      {itemIntArea.toFixed(4)} m² × {quantity}
+                                    </p>
+                                    {globalSpecs?.liningType && (
+                                      <p className="text-[9px] text-purple-500 dark:text-purple-400 italic">{globalSpecs.liningType}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })()}
