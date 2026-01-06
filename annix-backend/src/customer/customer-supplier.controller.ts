@@ -35,7 +35,7 @@ export class CustomerSupplierController {
   @ApiOperation({ summary: 'Get preferred supplier list' })
   @ApiResponse({ status: 200, description: 'Preferred suppliers retrieved' })
   async getPreferredSuppliers(@Req() req: Request) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     return this.supplierService.getPreferredSuppliers(customerId);
   }
 
@@ -79,7 +79,7 @@ export class CustomerSupplierController {
     },
     @Req() req: Request,
   ) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.addPreferredSupplier(
       customerId,
@@ -97,7 +97,7 @@ export class CustomerSupplierController {
     @Body() data: { priority?: number; notes?: string },
     @Req() req: Request,
   ) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.updatePreferredSupplier(
       customerId,
@@ -115,7 +115,7 @@ export class CustomerSupplierController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req: Request,
   ) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.removePreferredSupplier(
       customerId,
@@ -130,7 +130,7 @@ export class CustomerSupplierController {
   @ApiOperation({ summary: 'Get all supplier invitations' })
   @ApiResponse({ status: 200, description: 'Invitations retrieved' })
   async getInvitations(@Req() req: Request) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     return this.supplierService.getInvitations(customerId);
   }
 
@@ -155,7 +155,7 @@ export class CustomerSupplierController {
     data: { email: string; supplierCompanyName?: string; message?: string },
     @Req() req: Request,
   ) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.createInvitation(customerId, data, clientIp);
   }
@@ -171,7 +171,7 @@ export class CustomerSupplierController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req: Request,
   ) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.cancelInvitation(customerId, id, clientIp);
   }
@@ -183,7 +183,7 @@ export class CustomerSupplierController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req: Request,
   ) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.resendInvitation(customerId, id, clientIp);
   }

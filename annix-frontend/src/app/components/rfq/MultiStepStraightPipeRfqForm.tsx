@@ -1903,9 +1903,9 @@ function hasCompleteExternalProfile(profile: ExternalEnvironmentProfile): boolea
 function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGlobalSpecs, pendingDocuments, onAddDocument, onRemoveDocument }: any) {
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);
-  const [mapViewConfig, setMapViewConfig] = useState<'default' | 'responsive' | 'compact'>('responsive');
-  const [showViewDropdown, setShowViewDropdown] = useState(false);
   const hasProjectTypeError = Boolean(errors.projectType);
+
+  const getMapConfig = () => typeof window !== 'undefined' && window.innerWidth < 768 ? 'responsive' : 'default';
 
   // Document upload confirmation state
   const [documentsConfirmed, setDocumentsConfirmed] = useState(false);
@@ -2939,91 +2939,19 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
               </svg>
               Project Location
             </h4>
-            <div className="relative">
-              <div className="flex items-center shadow-sm rounded-lg overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowMapPicker(true)}
-                  disabled={isLocationLocked}
-                  className={`flex items-center gap-1 px-3 py-1.5 text-white transition-colors text-xs font-medium ${
-                    isLocationLocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  </svg>
-                  Pick on Map
-                </button>
-                <div className={`w-px h-5 ${isLocationLocked ? 'bg-gray-300' : 'bg-blue-500'}`}></div>
-                <button
-                  type="button"
-                  onClick={() => setShowViewDropdown(!showViewDropdown)}
-                  disabled={isLocationLocked}
-                  className={`px-1.5 py-1.5 text-white transition-colors ${
-                    isLocationLocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-              {showViewDropdown && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setShowViewDropdown(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-20 py-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMapViewConfig('default');
-                        setShowViewDropdown(false);
-                        setShowMapPicker(true);
-                      }}
-                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                        mapViewConfig === 'default'
-                          ? 'bg-blue-50 text-blue-700 font-medium'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      Desktop
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMapViewConfig('responsive');
-                        setShowViewDropdown(false);
-                        setShowMapPicker(true);
-                      }}
-                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                        mapViewConfig === 'responsive'
-                          ? 'bg-blue-50 text-blue-700 font-medium'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      Mobile
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMapViewConfig('compact');
-                        setShowViewDropdown(false);
-                        setShowMapPicker(true);
-                      }}
-                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                        mapViewConfig === 'compact'
-                          ? 'bg-blue-50 text-blue-700 font-medium'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      Compact
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowMapPicker(true)}
+              disabled={isLocationLocked}
+              className={`flex items-center gap-1 px-3 py-1.5 text-white transition-colors text-xs font-medium shadow-sm rounded-lg ${
+                isLocationLocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              Pick on Map
+            </button>
           </div>
 
           {/* SA Mines Dropdown - Compact */}
@@ -3211,7 +3139,7 @@ function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGl
           {showMapPicker && (
             <GoogleMapLocationPicker
               apiKey={GOOGLE_MAPS_API_KEY}
-              config={mapViewConfig}
+              config={getMapConfig()}
               initialLocation={
                 rfqData.latitude && rfqData.longitude
                   ? { lat: rfqData.latitude, lng: rfqData.longitude }

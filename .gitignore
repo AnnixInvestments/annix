@@ -38,3 +38,9 @@ annix-backend/uploads/
 
 # OCR training data (auto-downloaded by tesseract.js)
 *.traineddata
+
+# Prevent accidental .js file commits (use .ts instead)
+# This excludes node_modules which is already ignored
+*.js
+!*.config.js
+!*.config.mjs

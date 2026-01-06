@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -6,18 +11,23 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  HeadBucketCommand,
+  CreateBucketCommand,
+  PutBucketCorsCommand,
+  BucketLocationConstraint,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import { IStorageService, StorageResult } from './storage.interface';
 
 @Injectable()
-export class S3StorageService implements IStorageService {
+export class S3StorageService implements IStorageService, OnModuleInit {
   private readonly logger = new Logger(S3StorageService.name);
   private readonly s3Client: S3Client;
   private readonly bucket: string;
   private readonly region: string;
   private readonly presignedUrlExpiration: number;
+  private initialized = false;
 
   constructor(private configService: ConfigService) {
     this.region = this.configService.get<string>('AWS_REGION') || 'af-south-1';
@@ -38,6 +48,118 @@ export class S3StorageService implements IStorageService {
     this.logger.log(
       `S3 Storage Service initialized for bucket: ${this.bucket} in region: ${this.region}`,
     );
+  }
+
+  async onModuleInit(): Promise<void> {
+    await this.ensureBucketExists();
+  }
+
+  private async ensureBucketExists(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      await this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      this.logger.log(`S3 bucket '${this.bucket}' exists and is accessible`);
+      this.initialized = true;
+    } catch (error: unknown) {
+      const s3Error = this.parseS3Error(error);
+      if (
+        s3Error.name === 'NotFound' ||
+        s3Error.httpStatusCode === 404 ||
+        s3Error.name === 'NoSuchBucket'
+      ) {
+        this.logger.log(`S3 bucket '${this.bucket}' not found, creating...`);
+        await this.createBucket();
+      } else {
+        this.logger.warn(
+          `Could not verify S3 bucket: ${s3Error.message}. Will attempt operations anyway.`,
+        );
+        this.initialized = true;
+      }
+    }
+  }
+
+  private async createBucket(): Promise<void> {
+    try {
+      await this.s3Client.send(
+        new CreateBucketCommand({
+          Bucket: this.bucket,
+          ...(this.region !== 'us-east-1' && {
+            CreateBucketConfiguration: {
+              LocationConstraint: this.region as BucketLocationConstraint,
+            },
+          }),
+        }),
+      );
+      this.logger.log(`S3 bucket '${this.bucket}' created successfully`);
+
+      await this.configureCors();
+      this.initialized = true;
+    } catch (error: unknown) {
+      const s3Error = this.parseS3Error(error);
+      if (s3Error.name === 'BucketAlreadyOwnedByYou') {
+        this.logger.log(
+          `S3 bucket '${this.bucket}' already exists (owned by you)`,
+        );
+        await this.configureCors();
+        this.initialized = true;
+      } else if (s3Error.name === 'BucketAlreadyExists') {
+        this.logger.error(
+          `S3 bucket name '${this.bucket}' is already taken globally. Choose a different name.`,
+        );
+        throw error;
+      } else {
+        this.logger.error(`Failed to create S3 bucket: ${s3Error.message}`);
+        throw error;
+      }
+    }
+  }
+
+  private async configureCors(): Promise<void> {
+    try {
+      await this.s3Client.send(
+        new PutBucketCorsCommand({
+          Bucket: this.bucket,
+          CORSConfiguration: {
+            CORSRules: [
+              {
+                AllowedHeaders: ['*'],
+                AllowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
+                AllowedOrigins: [
+                  'http://localhost:3000',
+                  'http://localhost:3001',
+                  'https://*.annix.co.za',
+                ],
+                ExposeHeaders: ['ETag', 'x-amz-meta-custom-header'],
+                MaxAgeSeconds: 3600,
+              },
+            ],
+          },
+        }),
+      );
+      this.logger.log(`CORS configured for bucket '${this.bucket}'`);
+    } catch (error: unknown) {
+      const s3Error = this.parseS3Error(error);
+      this.logger.warn(`Could not configure CORS: ${s3Error.message}`);
+    }
+  }
+
+  private parseS3Error(error: unknown): {
+    name: string;
+    message: string;
+    httpStatusCode?: number;
+  } {
+    if (error instanceof Error) {
+      const s3Error = error as Error & {
+        $metadata?: { httpStatusCode?: number };
+      };
+      return {
+        name: error.name,
+        message: error.message,
+        httpStatusCode: s3Error.$metadata?.httpStatusCode,
+      };
+    }
+    return { name: 'Unknown', message: String(error) };
   }
 
   async upload(
@@ -73,11 +195,9 @@ export class S3StorageService implements IStorageService {
         mimeType: file.mimetype,
         originalFilename: file.originalname,
       };
-    } catch (error) {
-      this.logger.error(
-        `Failed to upload file to S3: ${error.message}`,
-        error.stack,
-      );
+    } catch (error: unknown) {
+      const s3Error = this.parseS3Error(error);
+      this.logger.error(`Failed to upload file to S3: ${s3Error.message}`);
       throw error;
     }
   }
@@ -97,7 +217,6 @@ export class S3StorageService implements IStorageService {
         throw new NotFoundException(`File not found: ${path}`);
       }
 
-      // Convert stream to buffer
       const chunks: Uint8Array[] = [];
       const stream = response.Body as AsyncIterable<Uint8Array>;
       for await (const chunk of stream) {
@@ -105,17 +224,15 @@ export class S3StorageService implements IStorageService {
       }
 
       return Buffer.concat(chunks);
-    } catch (error) {
-      if (
-        error.name === 'NoSuchKey' ||
-        error.$metadata?.httpStatusCode === 404
-      ) {
+    } catch (error: unknown) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      const s3Error = this.parseS3Error(error);
+      if (s3Error.name === 'NoSuchKey' || s3Error.httpStatusCode === 404) {
         throw new NotFoundException(`File not found: ${path}`);
       }
-      this.logger.error(
-        `Failed to download file from S3: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to download file from S3: ${s3Error.message}`);
       throw error;
     }
   }
@@ -131,11 +248,9 @@ export class S3StorageService implements IStorageService {
 
       await this.s3Client.send(command);
       this.logger.log(`File deleted from S3: ${key}`);
-    } catch (error) {
-      this.logger.error(
-        `Failed to delete file from S3: ${error.message}`,
-        error.stack,
-      );
+    } catch (error: unknown) {
+      const s3Error = this.parseS3Error(error);
+      this.logger.error(`Failed to delete file from S3: ${s3Error.message}`);
       throw error;
     }
   }
@@ -151,16 +266,13 @@ export class S3StorageService implements IStorageService {
 
       await this.s3Client.send(command);
       return true;
-    } catch (error) {
-      if (
-        error.name === 'NotFound' ||
-        error.$metadata?.httpStatusCode === 404
-      ) {
+    } catch (error: unknown) {
+      const s3Error = this.parseS3Error(error);
+      if (s3Error.name === 'NotFound' || s3Error.httpStatusCode === 404) {
         return false;
       }
       this.logger.error(
-        `Failed to check file existence in S3: ${error.message}`,
-        error.stack,
+        `Failed to check file existence in S3: ${s3Error.message}`,
       );
       throw error;
     }
@@ -192,11 +304,9 @@ export class S3StorageService implements IStorageService {
       });
 
       return url;
-    } catch (error) {
-      this.logger.error(
-        `Failed to generate presigned URL: ${error.message}`,
-        error.stack,
-      );
+    } catch (error: unknown) {
+      const s3Error = this.parseS3Error(error);
+      this.logger.error(`Failed to generate presigned URL: ${s3Error.message}`);
       throw error;
     }
   }

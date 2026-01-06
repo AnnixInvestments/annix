@@ -44,6 +44,32 @@ function Use-NodeVersion {
     Write-Info "Using system Node $current"
 }
 
+function Ensure-Pnpm {
+    if (Get-Command pnpm -ErrorAction SilentlyContinue) {
+        return
+    }
+
+    Write-Info "pnpm not found, installing..."
+    try {
+        if (Get-Command corepack -ErrorAction SilentlyContinue) {
+            corepack enable pnpm 2>$null
+            if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
+                npm install -g pnpm | Out-Null
+            }
+        } else {
+            npm install -g pnpm | Out-Null
+        }
+
+        if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
+            Throw-Error "Failed to install pnpm. Please install it manually: npm install -g pnpm"
+        }
+        Write-Info "pnpm installed successfully"
+    }
+    catch {
+        Throw-Error "Failed to install pnpm: $_"
+    }
+}
+
 function Ensure-EnvFile {
     $envPath = Join-Path $BackendDir ".env"
     if (-not (Test-Path $envPath)) {
@@ -265,9 +291,9 @@ function Install-Backend {
     Push-Location $BackendDir
     try {
         Write-Info "Installing backend dependencies..."
-        yarn install | Out-Null
+        pnpm install | Out-Null
         Write-Info "Running backend migrations..."
-        yarn migration:run
+        pnpm migration:run
         if ($LASTEXITCODE -ne 0) {
             Throw-Error "Migration failed. Please check the error above and fix any issues before restarting."
         }
@@ -282,7 +308,7 @@ function Install-Frontend {
     Push-Location $FrontendDir
     try {
         Write-Info "Installing frontend dependencies..."
-        npm install | Out-Null
+        pnpm install | Out-Null
     }
     finally {
         Pop-Location
@@ -297,8 +323,8 @@ function Start-ServiceJobs {
     }
 
     foreach ($definition in @(
-        @{ Name = "backend"; WorkingDir = $BackendDir; Command = "yarn start:dev"; Log = Join-Path $RepoRoot $BackendLog },
-        @{ Name = "frontend"; WorkingDir = $FrontendDir; Command = "npm run dev"; Log = Join-Path $RepoRoot $FrontendLog }
+        @{ Name = "backend"; WorkingDir = $BackendDir; Command = "pnpm start:dev"; Log = Join-Path $RepoRoot $BackendLog },
+        @{ Name = "frontend"; WorkingDir = $FrontendDir; Command = "pnpm dev"; Log = Join-Path $RepoRoot $FrontendLog }
     )) {
         if (Test-Path $definition.Log) {
             Remove-Item $definition.Log
@@ -482,6 +508,7 @@ END $$;
 }
 
 Use-NodeVersion
+Ensure-Pnpm
 Ensure-EnvFile
 Load-EnvFile
 Ensure-DockerPostgres

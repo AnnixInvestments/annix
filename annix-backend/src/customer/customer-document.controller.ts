@@ -22,11 +22,10 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import * as fs from 'fs';
 
 import { CustomerDocumentService } from './customer-document.service';
-import { CustomerAuthGuard } from './guards/customer-auth.guard';
-import { CustomerDocumentType } from './entities/customer-document.entity';
+import { CustomerAuthGuard } from './guards';
+import { CustomerDocumentType } from './entities';
 
 @ApiTags('Customer Documents')
 @Controller('customer/documents')
@@ -39,7 +38,7 @@ export class CustomerDocumentController {
   @ApiOperation({ summary: 'Get all customer documents' })
   @ApiResponse({ status: 200, description: 'Documents retrieved' })
   async getDocuments(@Req() req: Request) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     return this.documentService.getDocuments(customerId);
   }
 
@@ -67,7 +66,7 @@ export class CustomerDocumentController {
     @Body() body: { documentType: CustomerDocumentType; expiryDate?: string },
     @Req() req: Request,
   ) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     const expiryDate = body.expiryDate ? new Date(body.expiryDate) : null;
 
@@ -88,7 +87,7 @@ export class CustomerDocumentController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req: Request,
   ) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.documentService.deleteDocument(customerId, id, clientIp);
   }
@@ -102,15 +101,13 @@ export class CustomerDocumentController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    const customerId = (req as any).customer.id;
-    const { filePath, fileName, mimeType } =
+    const customerId = (req as any).customer.customerId;
+    const { buffer, fileName, mimeType } =
       await this.documentService.getDocumentFile(customerId, id);
 
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    res.send(buffer);
   }
 
   private getClientIp(req: Request): string {

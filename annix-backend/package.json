@@ -19,11 +19,11 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "ts-node ./node_modules/typeorm/cli",
-    "migration:run": "yarn typeorm -d ./src/config/data-source.ts migration:run",
-    "migration:generate": "yarn typeorm -d ./src/config/data-source.ts migration:generate ./src/migrations/InitialSchema",
-    "migration:create": "yarn typeorm migration:create ./src/migrations/",
-    "migration:create:named": "yarn typeorm migration:create ./src/migrations/",
-    "migration:revert": "yarn typeorm -d ./src/config/data-source.ts migration:revert",
+    "migration:run": "pnpm typeorm -d ./src/config/data-source.ts migration:run",
+    "migration:generate": "pnpm typeorm -d ./src/config/data-source.ts migration:generate ./src/migrations/InitialSchema",
+    "migration:create": "pnpm typeorm migration:create ./src/migrations/",
+    "migration:create:named": "pnpm typeorm migration:create ./src/migrations/",
+    "migration:revert": "pnpm typeorm -d ./src/config/data-source.ts migration:revert",
     "migrate:s3": "ts-node -r tsconfig-paths/register scripts/migrate-to-s3.ts",
     "migrate:s3:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-to-s3.ts --dry-run"
   },
@@ -100,6 +100,5 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  }
 }

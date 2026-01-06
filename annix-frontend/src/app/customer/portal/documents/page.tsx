@@ -149,7 +149,7 @@ export default function CustomerDocumentsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
@@ -193,7 +193,7 @@ export default function CustomerDocumentsPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white shadow rounded-lg overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -217,9 +217,9 @@ export default function CustomerDocumentsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {documents.map((doc) => (
                 <tr key={doc.id}>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 max-w-xs">
                     <div>
-                      <div className="font-medium text-gray-900">{doc.fileName}</div>
+                      <div className="font-medium text-gray-900 truncate" title={doc.fileName}>{doc.fileName}</div>
                       <div className="text-sm text-gray-500">{formatFileSize(doc.fileSize)}</div>
                     </div>
                   </td>

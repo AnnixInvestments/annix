@@ -1,7 +1,7 @@
-const fs = require('fs');
+import * as fs from 'fs';
 
 const filePath = 'src/app/components/rfq/MultiStepStraightPipeRfqForm.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+let content: string = fs.readFileSync(filePath, 'utf8');
 
 // Fix the Surface Protection confirmed summary condition
 // Old: requires externalCoatingRecommendation || externalCoatingType (fails for internal lining only)

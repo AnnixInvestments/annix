@@ -278,7 +278,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
   // Show manual entry form when requested or when API key is missing
   if (showManualEntry || isApiKeyMissing) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
           <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
             <h3 className="text-lg font-semibold text-gray-900">
@@ -373,7 +373,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
 
   if (loadError) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
         <div className="bg-white rounded-xl p-6 max-w-md">
           <h3 className="text-lg font-semibold text-red-600 mb-2">Google Maps Loading Error</h3>
           <p className="text-gray-600 mb-2">Unable to load Google Maps. This could be due to:</p>
@@ -417,7 +417,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
 
   if (!isLoaded) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
         <div className="bg-white rounded-xl p-6">
           <div className="flex items-center gap-3">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
@@ -441,7 +441,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
     : "relative";
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className={displayConfig.containerClassName || outerContainerClass}>
         <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
           <div>

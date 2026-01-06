@@ -1,7 +1,7 @@
-const fs = require('fs');
+import * as fs from 'fs';
 
 const filePath = 'src/app/components/rfq/MultiStepStraightPipeRfqForm.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+let content: string = fs.readFileSync(filePath, 'utf8');
 
 // Fix Band 1 and Band 2 to appear next to each other (not justify-between)
 const oldBandRow = `                  <div className="flex justify-between items-center">

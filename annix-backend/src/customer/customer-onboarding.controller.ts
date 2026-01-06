@@ -29,7 +29,7 @@ export class CustomerOnboardingController {
   @ApiOperation({ summary: 'Get onboarding status and checklist' })
   @ApiResponse({ status: 200, description: 'Onboarding status retrieved' })
   async getStatus(@Req() req: Request) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     return this.onboardingService.getOnboardingStatus(customerId);
   }
 
@@ -41,7 +41,7 @@ export class CustomerOnboardingController {
     @Body() data: Record<string, any>,
     @Req() req: Request,
   ) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.onboardingService.updateCompanyDetails(
       customerId,
@@ -54,7 +54,7 @@ export class CustomerOnboardingController {
   @ApiOperation({ summary: 'Save onboarding progress as draft' })
   @ApiResponse({ status: 200, description: 'Draft saved' })
   async saveDraft(@Body() data: Record<string, any>, @Req() req: Request) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.onboardingService.saveDraft(customerId, data, clientIp);
   }
@@ -64,7 +64,7 @@ export class CustomerOnboardingController {
   @ApiResponse({ status: 200, description: 'Onboarding submitted' })
   @ApiResponse({ status: 400, description: 'Incomplete details or documents' })
   async submit(@Req() req: Request) {
-    const customerId = (req as any).customer.id;
+    const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.onboardingService.submitOnboarding(customerId, clientIp);
   }

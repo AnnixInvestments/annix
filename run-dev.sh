@@ -62,6 +62,24 @@ ensure_node() {
   info "Using system Node $current"
 }
 
+ensure_pnpm() {
+  if command -v pnpm >/dev/null 2>&1; then
+    return
+  fi
+
+  info "pnpm not found, installing..."
+  if command -v corepack >/dev/null 2>&1; then
+    corepack enable pnpm >/dev/null 2>&1 || npm install -g pnpm >/dev/null
+  else
+    npm install -g pnpm >/dev/null
+  fi
+
+  if ! command -v pnpm >/dev/null 2>&1; then
+    fail "Failed to install pnpm. Please install it manually: npm install -g pnpm"
+  fi
+  info "pnpm installed successfully"
+}
+
 ensure_env_file() {
   if [ ! -f "$BACKEND_DIR/.env" ]; then
     fail "Missing $BACKEND_DIR/.env. Copy .env.example and update the secrets before running this script."
@@ -310,9 +328,9 @@ SQL
 install_backend() {
   pushd "$BACKEND_DIR" >/dev/null
   info "Installing backend dependencies..."
-  yarn install >/dev/null
+  pnpm install >/dev/null
   info "Running backend migrations..."
-  if ! yarn migration:run; then
+  if ! pnpm migration:run; then
     fail "Migration failed. Please check the error above and fix any issues before restarting."
   fi
   info "Migrations completed successfully."
@@ -322,7 +340,7 @@ install_backend() {
 install_frontend() {
   pushd "$FRONTEND_DIR" >/dev/null
   info "Installing frontend dependencies..."
-  npm install >/dev/null
+  pnpm install >/dev/null
   popd >/dev/null
 }
 
@@ -333,14 +351,14 @@ start_services() {
   info "Starting backend (logs: $BACKEND_LOG)..."
   (
     cd "$BACKEND_DIR"
-    yarn start:dev
+    pnpm start:dev
   ) | tee -a "$BACKEND_LOG" &
   BACKEND_PID=$!
 
   info "Starting frontend (logs: $FRONTEND_LOG)..."
   (
     cd "$FRONTEND_DIR"
-    NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:4001}" npm run dev
+    NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:4001}" pnpm dev
   ) | tee -a "$FRONTEND_LOG" &
   FRONTEND_PID=$!
 }
@@ -359,6 +377,7 @@ cleanup() {
 
 main() {
   ensure_node
+  ensure_pnpm
   ensure_env_file
   load_env_file
   ensure_docker_postgres

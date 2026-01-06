@@ -1,7 +1,7 @@
-const fs = require('fs');
+import * as fs from 'fs';
 
 const filePath = 'src/app/components/rfq/MultiStepStraightPipeRfqForm.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+let content: string = fs.readFileSync(filePath, 'utf8');
 
 // Problem: Surface Protection is nested inside !steelPipesSpecsConfirmed block
 // The closures at lines 6969-6972 should be BEFORE Surface Protection at line 3865
