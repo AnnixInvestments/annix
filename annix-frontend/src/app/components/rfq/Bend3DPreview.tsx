@@ -70,6 +70,34 @@ const SCHEDULE_WALL_THICKNESS: { [key: number]: { [key: string]: number } } = {
   600: { '10': 6.35, '20': 9.53, 'STD': 9.53, '30': 14.27, '40': 17.48, '60': 24.61, '80': 30.96, 'XS': 12.70 },
 };
 
+// Standard Pipe OD Lookup Table (NB to OD in mm)
+// Based on ASME B36.10M / ISO 4200 / SABS 719
+const NB_TO_OD: { [key: number]: number } = {
+  15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9,
+  100: 114.3, 125: 139.7, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
+  350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 550: 559.0, 600: 609.6,
+  650: 660.4, 700: 711.2, 750: 762.0, 800: 812.8, 850: 863.6, 900: 914.4,
+  1000: 1016.0, 1050: 1066.8, 1200: 1219.2
+};
+
+// Get pipe OD from NB using lookup table
+const getOuterDiameter = (nb: number, providedOD: number = 0): number => {
+  // If a valid OD is provided, use it
+  if (providedOD && providedOD > 0) return providedOD;
+
+  // Look up from table
+  if (NB_TO_OD[nb]) return NB_TO_OD[nb];
+
+  // Find closest size for non-standard NB
+  const sizes = Object.keys(NB_TO_OD).map(Number).sort((a, b) => a - b);
+  let closestSize = sizes[0];
+  for (const size of sizes) {
+    if (size <= nb) closestSize = size;
+    else break;
+  }
+  return NB_TO_OD[closestSize] || nb * 1.05; // Fallback to 1.05x NB
+};
+
 // Get wall thickness based on steel specification, NB, and schedule
 const getWallThickness = (nb: number, schedule: string = "STD", materialName: string = "", currentWt: number = 0): number => {
   // If a valid wall thickness is already provided, use it
@@ -729,7 +757,7 @@ const BendScene = ({
 
   const nb = (nominalBore || 50) / scaleFactor;
   const calculatedWt = getWallThickness(nominalBore, schedule || 'STD', materialName || '', wallThickness || 0);
-  const odRaw = outerDiameter || (nominalBore * 1.1) || 60;
+  const odRaw = getOuterDiameter(nominalBore, outerDiameter);
   const od = odRaw / scaleFactor;
   const wt = calculatedWt / scaleFactor;
   const idRaw = odRaw - 2 * calculatedWt;
@@ -1755,7 +1783,7 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
   const cameraZ = Math.max(12, maxExtent * 3 + 8);
 
   // Calculate pipe dimensions for info display using proper wall thickness lookup
-  const odRaw = props.outerDiameter || (props.nominalBore * 1.1) || 60;
+  const odRaw = getOuterDiameter(props.nominalBore, props.outerDiameter);
   const wallThicknessDisplay = getWallThickness(
     props.nominalBore,
     props.schedule || 'STD',
