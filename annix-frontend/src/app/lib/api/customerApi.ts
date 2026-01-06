@@ -171,8 +171,18 @@ class CustomerApiClient {
       'Content-Type': 'application/json',
     };
 
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    // Always get fresh token from localStorage to handle race conditions
+    let token = this.accessToken;
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('customerAccessToken');
+      if (storedToken) {
+        token = storedToken;
+        this.accessToken = storedToken; // Sync instance
+      }
+    }
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     // Include device fingerprint on all authenticated requests
@@ -203,6 +213,17 @@ class CustomerApiClient {
   }
 
   isAuthenticated(): boolean {
+    // Always check localStorage directly to avoid stale token issues
+    // This handles race conditions where the singleton was created before tokens were stored
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('customerAccessToken');
+      if (token && !this.accessToken) {
+        // Sync the instance with localStorage
+        this.accessToken = token;
+        this.refreshToken = localStorage.getItem('customerRefreshToken');
+      }
+      return !!token;
+    }
     return !!this.accessToken;
   }
 
@@ -316,13 +337,19 @@ class CustomerApiClient {
   }
 
   async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
+    // Get refresh token from localStorage to avoid stale instance value
+    let refreshToken = this.refreshToken;
+    if (typeof window !== 'undefined') {
+      refreshToken = localStorage.getItem('customerRefreshToken');
+    }
+
+    if (!refreshToken) return false;
 
     try {
       const result = await fetch(`${this.baseURL}/customer/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
+        body: JSON.stringify({ refreshToken }),
       });
 
       if (!result.ok) {
@@ -331,8 +358,17 @@ class CustomerApiClient {
       }
 
       const data = await result.json();
-      this.setTokens(data.access_token, data.refresh_token);
-      return true;
+      // Handle both snake_case and camelCase response formats
+      const accessToken = data.access_token || data.accessToken;
+      const newRefreshToken = data.refresh_token || data.refreshToken;
+
+      if (accessToken && newRefreshToken) {
+        this.setTokens(accessToken, newRefreshToken);
+        return true;
+      }
+
+      this.clearTokens();
+      return false;
     } catch {
       this.clearTokens();
       return false;

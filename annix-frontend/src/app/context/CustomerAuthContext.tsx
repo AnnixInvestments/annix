@@ -46,8 +46,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    try {
-      const profile = await customerApiClient.getProfile();
+    const setAuthenticatedWithProfile = (profile: CustomerProfileResponse) => {
       setState({
         isAuthenticated: true,
         isLoading: false,
@@ -61,7 +60,31 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         },
         profile,
       });
-    } catch {
+    };
+
+    try {
+      const profile = await customerApiClient.getProfile();
+      setAuthenticatedWithProfile(profile);
+    } catch (error) {
+      // Profile fetch failed - try refreshing the token before giving up
+      console.log('[CustomerAuth] Profile fetch failed, attempting token refresh...');
+      const refreshed = await customerApiClient.refreshAccessToken();
+
+      if (refreshed) {
+        // Token refreshed successfully - retry profile fetch
+        try {
+          const profile = await customerApiClient.getProfile();
+          setAuthenticatedWithProfile(profile);
+          return;
+        } catch {
+          // Still failed after refresh - clear tokens
+          console.log('[CustomerAuth] Profile fetch failed even after token refresh');
+        }
+      } else {
+        console.log('[CustomerAuth] Token refresh failed');
+      }
+
+      // Both attempts failed - user is not authenticated
       customerApiClient.clearTokens();
       setState({
         isAuthenticated: false,

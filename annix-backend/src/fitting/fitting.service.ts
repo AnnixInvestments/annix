@@ -401,16 +401,17 @@ export class FittingService {
     // Calculate fitting body weight based on standard dimensions
     // Using a simplified formula based on fitting dimensions from the table
     // Mass estimation: use density and approximate volume
-    const steelDensity = 7.85; // kg/dm³
+    const steelDensityKgM3 = 7850; // kg/m³ (7.85 kg/dm³ = 7850 kg/m³)
 
     // Estimate fitting weight based on center-to-face and nominal diameter
     // This is a simplified calculation - in reality, exact volumes would be used
-    const estimatedVolumeDm3 =
-      (fittingDimensions.centreToFaceCMm / 1000) *
+    // Formula: C/F length × cross-section area × shape factor
+    const estimatedVolumeM3 =
+      (fittingDimensions.centreToFaceCMm / 1000) * // mm to m
       Math.PI *
-      Math.pow(outsideDiameterMm / 1000, 2) *
+      Math.pow(outsideDiameterMm / 1000, 2) * // (mm to m)²
       0.5; // factor for tee/cross/lateral shape
-    const fittingWeight = estimatedVolumeDm3 * steelDensity * dto.quantityValue;
+    const fittingWeight = estimatedVolumeM3 * steelDensityKgM3 * dto.quantityValue;
 
     // For SABS62, typically 3 flanges for tees/crosses/laterals
     const numberOfFlangesPerFitting = 3;
@@ -467,6 +468,7 @@ export class FittingService {
         if (pipeDimension.mass_kgm && pipeDimension.mass_kgm > 0) {
           pipeWeightPerMeter = pipeDimension.mass_kgm;
         } else {
+          const steelDensity = 7.85; // kg/dm³ - used with /1000 for pipe weight formula
           pipeWeightPerMeter =
             (Math.PI *
               pipeDimension.wall_thickness_mm *

@@ -294,9 +294,10 @@ const getBlankFlangeSurfaceArea = (nbMm: number): { external: number; internal: 
   const FLANGE_OD: Record<number, number> = { 50: 165, 65: 185, 80: 200, 100: 220, 125: 250, 150: 285, 200: 340, 250: 395, 300: 445, 350: 505, 400: 565, 450: 615, 500: 670, 600: 780, 700: 885, 750: 940, 800: 1015, 900: 1115 };
   const flangeOdMm = FLANGE_OD[nbMm] || nbMm * 1.7;
   const flangeThicknessMm = Math.max(20, nbMm * 0.08);
-  const faceAreaM2 = 2 * Math.PI * Math.pow(flangeOdMm / 2000, 2);
+  // One face area - blank flange has 2 faces (one internal, one external)
+  const singleFaceAreaM2 = Math.PI * Math.pow(flangeOdMm / 2000, 2);
   const edgeAreaM2 = Math.PI * (flangeOdMm / 1000) * (flangeThicknessMm / 1000);
-  return { external: faceAreaM2 + edgeAreaM2, internal: 0 };
+  return { external: singleFaceAreaM2 + edgeAreaM2, internal: singleFaceAreaM2 };
 };
 
 // Helper function to get weld count per pipe based on pipe end configuration
@@ -10620,6 +10621,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           // Regenerate description with new specs
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
+                          // Auto-calculate fitting
+                          setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                       >
@@ -10744,6 +10747,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           // Regenerate description with new specs
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
+                          // Auto-calculate fitting
+                          setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                       >
@@ -10790,6 +10795,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 branchNominalDiameterMm: branchDiameter
                               }
                             });
+                            // Auto-calculate fitting
+                            setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
@@ -11054,6 +11061,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           onUpdateEntry(entry.id, {
                             specs: { ...entry.specs, quantityValue: Number(e.target.value) }
                           });
+                          // Auto-calculate fitting
+                          setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                         min="1"
@@ -11102,6 +11111,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                     wallThicknessMm: selectedDim?.wallThicknessMm || entry.specs?.wallThicknessMm
                                   }
                                 });
+                                // Auto-calculate fitting
+                                setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                               }}
                               className="w-full px-2 py-1.5 text-black border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
                             >
@@ -11154,6 +11165,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               // Regenerate description
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
+                              // Auto-calculate fitting
+                              setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                           >
@@ -11239,6 +11252,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
 
                           onUpdateEntry(entry.id, updatedEntry);
+                          // Auto-calculate fitting
+                          setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                         required
@@ -11561,16 +11576,19 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   })()
                 )}
 
-                {/* Calculate Button */}
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => onCalculateFitting && onCalculateFitting(entry.id)}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow-sm transition-colors"
-                  >
-                    Calculate Fitting Weight & Requirements
-                  </button>
-                </div>
+                {/* Recalculate Button - smaller since auto-calculation is enabled */}
+                {!entry.calculation && (
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => onCalculateFitting && onCalculateFitting(entry.id)}
+                      className="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-colors"
+                    >
+                      Calculate Fitting
+                    </button>
+                    <p className="text-xs text-gray-500 mt-1">Complete specs above for auto-calculation</p>
+                  </div>
+                )}
 
                 {/* Calculation Results - Compact Layout matching Bend style */}
                 {entry.calculation && (
@@ -11582,8 +11600,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       {(() => {
                         // Get fitting configuration values
                         const fittingType = entry.specs?.fittingType || 'Tee';
-                        const nominalBore = entry.specs?.nominalBoreMm || 0;
-                        const branchNB = entry.specs?.branchNominalBoreMm || nominalBore;
+                        const nominalBore = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 0;
+                        const branchNB = entry.specs?.branchNominalDiameterMm || entry.specs?.branchNominalBoreMm || nominalBore;
                         const pipeALength = entry.specs?.pipeLengthAMm || 0;
                         const pipeBLength = entry.specs?.pipeLengthBMm || 0;
                         const teeHeight = entry.specs?.teeHeightMm || 0;
@@ -13434,6 +13452,16 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   const pressureClass = pressureClassId
                     ? masterData.pressureClasses?.find((p: any) => p.id === pressureClassId)?.designation
                     : 'PN16';
+
+                  // Get flange standard for dynamic spec display (e.g., "SANS 1123 1000/3")
+                  const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                  const flangeStandardCode = flangeStandardId
+                    ? masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code
+                    : null;
+                  const flangeSpec = flangeStandardCode && pressureClass
+                    ? `${flangeStandardCode} ${pressureClass}`
+                    : (pressureClass || 'PN16');
+
                   const nbMm = entry.specs?.nominalBoreMm || 100;
 
                   // Get BNW set info
@@ -13627,7 +13655,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         <tr className="border-b border-orange-100 bg-orange-50/50 hover:bg-orange-100/50">
                           <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                           <td className="py-2 px-2 text-orange-700 text-xs">
-                            {entry.itemType === 'bend' ? `Main Flange: ` : ''}{bnwInfo.boltSize} BNW Set x{bnwInfo.holesPerFlange} (1 each){entry.itemType === 'bend' ? ` - ${nbMm}NB` : ''}
+                            {entry.itemType === 'bend' ? `Main Flange: ` : ''}{bnwInfo.boltSize} BNW Set x{bnwInfo.holesPerFlange} (1 each) - {nbMm}NB {flangeSpec}
                           </td>
                           <td className="py-2 px-2 text-center text-orange-600">-</td>
                           {requiredProducts.includes('surface_protection') && (
@@ -13636,20 +13664,20 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           {requiredProducts.includes('surface_protection') && (
                             <td className="py-2 px-2 text-center text-orange-600">-</td>
                           )}
-                          <td className="py-2 px-2 text-center font-medium text-orange-800">{qty}</td>
+                          <td className="py-2 px-2 text-center font-medium text-orange-800">{totalFlanges}</td>
                           <td className="py-2 px-2 text-right text-orange-700">{formatWeight(bnwWeightPerSet)}</td>
-                          <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwWeightPerSet * qty)}</td>
+                          <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwWeightPerSet * totalFlanges)}</td>
                         </tr>
                       )}
                       {/* Gasket Line Item - only show if fasteners selected and item has flanges (not for fittings - handled separately) */}
                       {showBnw && totalFlanges > 0 && globalSpecs?.gasketType && entry.itemType !== 'fitting' && (() => {
                         const gasketWeight = getGasketWeight(globalSpecs.gasketType, entry.specs?.nominalBoreMm || 100);
-                        const gasketTotalWeight = gasketWeight * qty;
+                        const gasketTotalWeight = gasketWeight * totalFlanges;
                         return (
                           <tr className="border-b border-green-100 bg-green-50/50 hover:bg-green-100/50">
                             <td className="py-2 px-2 font-medium text-green-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                             <td className="py-2 px-2 text-green-700 text-xs">
-                              {globalSpecs.gasketType} Gasket (1 each){entry.itemType === 'bend' ? ` - ${entry.specs?.nominalBoreMm || 100}NB` : ''}
+                              {globalSpecs.gasketType} Gasket (1 each) - {entry.specs?.nominalBoreMm || 100}NB {flangeSpec}
                             </td>
                             <td className="py-2 px-2 text-center text-green-600">-</td>
                             {requiredProducts.includes('surface_protection') && (
@@ -13658,7 +13686,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             {requiredProducts.includes('surface_protection') && (
                               <td className="py-2 px-2 text-center text-green-600">-</td>
                             )}
-                            <td className="py-2 px-2 text-center font-medium text-green-800">{qty}</td>
+                            <td className="py-2 px-2 text-center font-medium text-green-800">{totalFlanges}</td>
                             <td className="py-2 px-2 text-right text-green-700">{gasketWeight.toFixed(2)} kg</td>
                             <td className="py-2 px-2 text-right font-semibold text-green-800">{gasketTotalWeight.toFixed(2)} kg</td>
                           </tr>
@@ -13705,8 +13733,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                                 <td className="py-2 px-2 text-orange-700 text-xs">
                                   {isEqualTee && branchFlangeCount === 0
-                                    ? `${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (${mainFlangeCount} sets) - ${mainNb}NB`
-                                    : `Main: ${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (${mainFlangeCount} ${mainFlangeCount === 1 ? 'set' : 'sets'}) - ${mainNb}NB`}
+                                    ? `${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (${mainFlangeCount} sets) - ${mainNb}NB ${flangeSpec}`
+                                    : `Main: ${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (${mainFlangeCount} ${mainFlangeCount === 1 ? 'set' : 'sets'}) - ${mainNb}NB ${flangeSpec}`}
                                 </td>
                                 <td className="py-2 px-2 text-center text-orange-600">-</td>
                                 {requiredProducts.includes('surface_protection') && (
@@ -13725,7 +13753,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               <tr className="border-b border-purple-100 bg-purple-50/50 hover:bg-purple-100/50">
                                 <td className="py-2 px-2 font-medium text-purple-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}-B</td>
                                 <td className="py-2 px-2 text-purple-700 text-xs">
-                                  Branch: {branchBnwInfo?.boltSize} BNW Set x{branchBnwInfo?.holesPerFlange} ({branchFlangeCount} {branchFlangeCount === 1 ? 'set' : 'sets'}) - {branchNb}NB
+                                  Branch: {branchBnwInfo?.boltSize} BNW Set x{branchBnwInfo?.holesPerFlange} ({branchFlangeCount} {branchFlangeCount === 1 ? 'set' : 'sets'}) - {branchNb}NB {flangeSpec}
                                 </td>
                                 <td className="py-2 px-2 text-center text-purple-600">-</td>
                                 {requiredProducts.includes('surface_protection') && (
@@ -13745,8 +13773,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 <td className="py-2 px-2 font-medium text-green-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                                 <td className="py-2 px-2 text-green-700 text-xs">
                                   {isEqualTee && branchFlangeCount === 0
-                                    ? `${globalSpecs.gasketType} Gasket (${mainFlangeCount} pcs) - ${mainNb}NB`
-                                    : `Main: ${globalSpecs.gasketType} Gasket (${mainFlangeCount} ${mainFlangeCount === 1 ? 'pc' : 'pcs'}) - ${mainNb}NB`}
+                                    ? `${globalSpecs.gasketType} Gasket (${mainFlangeCount} pcs) - ${mainNb}NB ${flangeSpec}`
+                                    : `Main: ${globalSpecs.gasketType} Gasket (${mainFlangeCount} ${mainFlangeCount === 1 ? 'pc' : 'pcs'}) - ${mainNb}NB ${flangeSpec}`}
                                 </td>
                                 <td className="py-2 px-2 text-center text-green-600">-</td>
                                 {requiredProducts.includes('surface_protection') && (
@@ -13765,7 +13793,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               <tr className="border-b border-teal-100 bg-teal-50/50 hover:bg-teal-100/50">
                                 <td className="py-2 px-2 font-medium text-teal-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}-B</td>
                                 <td className="py-2 px-2 text-teal-700 text-xs">
-                                  Branch: {globalSpecs.gasketType} Gasket ({branchFlangeCount} {branchFlangeCount === 1 ? 'pc' : 'pcs'}) - {branchNb}NB
+                                  Branch: {globalSpecs.gasketType} Gasket ({branchFlangeCount} {branchFlangeCount === 1 ? 'pc' : 'pcs'}) - {branchNb}NB {flangeSpec}
                                 </td>
                                 <td className="py-2 px-2 text-center text-teal-600">-</td>
                                 {requiredProducts.includes('surface_protection') && (
@@ -13793,7 +13821,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <tr key={`stub-bnw-${stubIndex}`} className="border-b border-purple-100 bg-purple-50/50 hover:bg-purple-100/50">
                             <td className="py-2 px-2 font-medium text-purple-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}-S{stubIndex + 1}</td>
                             <td className="py-2 px-2 text-purple-700 text-xs">
-                              Stub {stubIndex + 1}: {stubBnwInfo.boltSize} BNW Set x{stubBnwInfo.holesPerFlange} (1 each) - {stubNb}NB
+                              Stub {stubIndex + 1}: {stubBnwInfo.boltSize} BNW Set x{stubBnwInfo.holesPerFlange} (1 each) - {stubNb}NB {flangeSpec}
                             </td>
                             <td className="py-2 px-2 text-center text-purple-600">-</td>
                             {requiredProducts.includes('surface_protection') && (
@@ -13818,7 +13846,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <tr key={`stub-gas-${stubIndex}`} className="border-b border-teal-100 bg-teal-50/50 hover:bg-teal-100/50">
                             <td className="py-2 px-2 font-medium text-teal-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}-S{stubIndex + 1}</td>
                             <td className="py-2 px-2 text-teal-700 text-xs">
-                              Stub {stubIndex + 1}: {globalSpecs.gasketType} Gasket (1 each) - {stubNb}NB
+                              Stub {stubIndex + 1}: {globalSpecs.gasketType} Gasket (1 each) - {stubNb}NB {flangeSpec}
                             </td>
                             <td className="py-2 px-2 text-center text-teal-600">-</td>
                             {requiredProducts.includes('surface_protection') && (
@@ -13849,7 +13877,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <tr className="border-b border-red-100 bg-red-50/50 hover:bg-red-100/50">
                             <td className="py-2 px-2 font-medium text-red-800">BKF-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                             <td className="py-2 px-2 text-red-700 text-xs">
-                              Blank Flange ({blankFlangeCount} per item) - {blankNb}NB {pressureClass || 'PN16'}
+                              Blank Flange ({blankFlangeCount} per item) - {blankNb}NB {flangeSpec}
                             </td>
                             <td className="py-2 px-2 text-center text-red-600">-</td>
                             {requiredProducts.includes('surface_protection') && (
@@ -13909,14 +13937,40 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           hasFlanges = flangeCount > 0;
                         }
 
-                        // Add BNW set (1 per item with flanges)
+                        // Add BNW set (1 per flange connection)
                         if (showBnw && hasFlanges) {
-                          totalQty += qty; // 1 BNW set per item
+                          // Calculate actual flange count for this item type
+                          let itemFlangeCount = 0;
+                          if (entry.itemType === 'straight_pipe' || !entry.itemType) {
+                            const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                            if (pipeEndConfig === 'FBE' || pipeEndConfig === '2X_RF') itemFlangeCount = 2;
+                            else if (pipeEndConfig !== 'PE') itemFlangeCount = 1;
+                          } else if (entry.itemType === 'bend') {
+                            const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF') itemFlangeCount = 2;
+                            else if (bendEndConfig !== 'PE') itemFlangeCount = 1;
+                          } else if (entry.itemType === 'fitting') {
+                            itemFlangeCount = flangeCount; // Already calculated above
+                          }
+                          totalQty += itemFlangeCount * qty; // BNW sets = flanges × items
                         }
 
-                        // Add Gasket (1 per item with flanges, if gasket type selected)
+                        // Add Gasket (1 per flange connection, if gasket type selected)
                         if (showBnw && hasFlanges && globalSpecs?.gasketType) {
-                          totalQty += qty; // 1 gasket per item
+                          // Use same itemFlangeCount calculated above for BNW
+                          let itemFlangeCount = 0;
+                          if (entry.itemType === 'straight_pipe' || !entry.itemType) {
+                            const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                            if (pipeEndConfig === 'FBE' || pipeEndConfig === '2X_RF') itemFlangeCount = 2;
+                            else if (pipeEndConfig !== 'PE') itemFlangeCount = 1;
+                          } else if (entry.itemType === 'bend') {
+                            const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF') itemFlangeCount = 2;
+                            else if (bendEndConfig !== 'PE') itemFlangeCount = 1;
+                          } else if (entry.itemType === 'fitting') {
+                            itemFlangeCount = flangeCount; // Already calculated above
+                          }
+                          totalQty += itemFlangeCount * qty; // Gaskets = flanges × items
                         }
 
                         // Add stub BNW and gaskets for bends
@@ -14171,10 +14225,13 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                     {entry.specs.numberOfStubs > 0 && (
                       <div className="col-span-2">Stubs: {entry.specs.numberOfStubs}</div>
                     )}
-                    <div>Weight: {entry.calculation?.totalWeight?.toFixed(2) || '-'} kg</div>
-                    {/* Surface areas for bend */}
-                    {(() => {
+                    <div>Weight/item: {(() => {
+                      const totalWt = entry.calculation?.totalWeight || 0;
                       const qty = entry.specs?.quantityValue || 1;
+                      return (totalWt / qty).toFixed(2);
+                    })()} kg</div>
+                    {/* Surface areas for bend - PER ITEM */}
+                    {(() => {
                       const nb = entry.specs?.nominalBoreMm;
                       const wt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
                       if (!nb || !wt) return null;
@@ -14197,9 +14254,41 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                       });
                       return (
                         <>
-                          <div className="text-indigo-600">Ext: {(extArea * qty).toFixed(3)} m²</div>
-                          <div className="text-indigo-600">Int: {(intArea * qty).toFixed(3)} m²</div>
+                          <div className="text-indigo-600">Ext/item: {extArea.toFixed(3)} m²</div>
+                          <div className="text-indigo-600">Int/item: {intArea.toFixed(3)} m²</div>
                         </>
+                      );
+                    })()}
+                    {/* Weld info for bend - PER ITEM */}
+                    {(() => {
+                      const nb = entry.specs?.nominalBoreMm;
+                      const wt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
+                      const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                      const weldCount = getWeldCountPerBend(bendEndConfig);
+                      if (!nb || !wt || weldCount === 0) return null;
+                      const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                      const circumferenceMm = Math.PI * od;
+                      const linearWeldMm = weldCount * circumferenceMm;
+                      return (
+                        <div className="text-purple-600 col-span-2">
+                          Welds/item: {weldCount} @ {circumferenceMm.toFixed(0)}mm circ = {(linearWeldMm / 1000).toFixed(2)}m ({wt.toFixed(1)}mm WT)
+                        </div>
+                      );
+                    })()}
+                    {/* Flange breakdown for bend */}
+                    {(() => {
+                      const nb = entry.specs?.nominalBoreMm;
+                      const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                      const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
+                      if (bendEndConfig === 'PE') return null;
+                      const flangeCount = bendEndConfig === 'FBE' ? 2 :
+                        ['FOE', 'FOE_LF', 'FOE_RF', 'LF_BE', '2X_RF'].includes(bendEndConfig) ?
+                          (bendEndConfig === 'LF_BE' || bendEndConfig === '2X_RF' ? 2 :
+                           bendEndConfig === 'FOE_LF' || bendEndConfig === 'FOE_RF' ? 2 : 1) : 1;
+                      return (
+                        <div className="text-blue-600 col-span-2">
+                          Flanges/item: {flangeCount}x {nb}NB {pressureClass}
+                        </div>
                       );
                     })()}
                   </div>
@@ -14207,7 +14296,7 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
                     <div>Type: {entry.specs.fittingType || 'N/A'}</div>
                     <div>Standard: {entry.specs.fittingStandard || 'N/A'}</div>
-                    <div>NB: {entry.specs.nominalDiameterMm}mm</div>
+                    <div>NB: {entry.specs.nominalDiameterMm}mm{entry.specs.branchNominalDiameterMm && entry.specs.branchNominalDiameterMm !== entry.specs.nominalDiameterMm ? ` x ${entry.specs.branchNominalDiameterMm}mm` : ''}</div>
                     <div>Qty: {entry.specs.quantityValue || 1}</div>
                     {entry.specs.pipeLengthAMm && (
                       <div>Length A: {entry.specs.pipeLengthAMm}mm</div>
@@ -14215,10 +14304,9 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                     {entry.specs.pipeLengthBMm && (
                       <div>Length B: {entry.specs.pipeLengthBMm}mm</div>
                     )}
-                    <div>Weight: {entry.calculation?.totalWeight?.toFixed(2) || entry.calculation?.weightPerItem?.toFixed(2) || '-'} kg</div>
-                    {/* Surface areas for fitting */}
+                    <div>Weight/item: {entry.calculation?.weightPerItem?.toFixed(2) || ((entry.calculation?.totalWeight || 0) / (entry.specs?.quantityValue || 1)).toFixed(2) || '-'} kg</div>
+                    {/* Surface areas for fitting - PER ITEM */}
                     {(() => {
-                      const qty = entry.specs?.quantityValue || 1;
                       const nb = entry.specs?.nominalDiameterMm;
                       const branchNb = entry.specs?.branchNominalDiameterMm || nb;
                       const wt = entry.specs?.wallThicknessMm || 10;
@@ -14241,9 +14329,63 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                       const intArea = runInt + branchInt - holeCut;
                       return (
                         <>
-                          <div className="text-indigo-600">Ext: {(extArea * qty).toFixed(3)} m²</div>
-                          <div className="text-indigo-600">Int: {(intArea * qty).toFixed(3)} m²</div>
+                          <div className="text-indigo-600">Ext/item: {extArea.toFixed(3)} m²</div>
+                          <div className="text-indigo-600">Int/item: {intArea.toFixed(3)} m²</div>
                         </>
+                      );
+                    })()}
+                    {/* Weld info for fitting - PER ITEM */}
+                    {(() => {
+                      const nb = entry.specs?.nominalDiameterMm;
+                      const branchNb = entry.specs?.branchNominalDiameterMm || nb;
+                      const wt = entry.specs?.wallThicknessMm || 10;
+                      const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                      const weldCount = getWeldCountPerFitting(fittingEndConfig);
+                      if (!nb || weldCount === 0) return null;
+                      const mainOd = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                      const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.05);
+                      // For tees: 2 welds on main run + 1 weld on branch
+                      // Total linear = 2 × main circ + 1 × branch circ
+                      const mainCirc = Math.PI * mainOd;
+                      const branchCirc = Math.PI * branchOd;
+                      // Estimate: for FFF (3 flanges) = 3 welds, distribute proportionally
+                      let linearWeldMm = 0;
+                      if (weldCount >= 3) {
+                        linearWeldMm = (2 * mainCirc) + branchCirc; // 2 main + 1 branch
+                      } else if (weldCount === 2) {
+                        linearWeldMm = 2 * mainCirc; // 2 main welds
+                      } else {
+                        linearWeldMm = mainCirc; // 1 main weld
+                      }
+                      return (
+                        <div className="text-purple-600 col-span-2">
+                          Welds/item: {weldCount} = {(linearWeldMm / 1000).toFixed(2)}m ({wt.toFixed(1)}mm WT)
+                        </div>
+                      );
+                    })()}
+                    {/* Flange breakdown for fitting */}
+                    {(() => {
+                      const nb = entry.specs?.nominalDiameterMm;
+                      const branchNb = entry.specs?.branchNominalDiameterMm || nb;
+                      const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                      const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
+                      if (fittingEndConfig === 'PE') return null;
+                      // Parse fitting config for flanges
+                      const config = fittingEndConfig.split('');
+                      let mainFlanges = 0;
+                      let branchFlanges = 0;
+                      // Inlet (pos 0), Outlet (pos 1), Branch (pos 2)
+                      if (config[0] === 'F') mainFlanges++;
+                      if (config[1] === 'F') mainFlanges++;
+                      if (config[2] === 'F') branchFlanges++;
+                      const flangeText = [];
+                      if (mainFlanges > 0) flangeText.push(`${mainFlanges}x ${nb}NB ${pressureClass}`);
+                      if (branchFlanges > 0) flangeText.push(`${branchFlanges}x ${branchNb}NB ${pressureClass}`);
+                      if (flangeText.length === 0) return null;
+                      return (
+                        <div className="text-blue-600 col-span-2">
+                          Flanges/item: {flangeText.join(' + ')}
+                        </div>
                       );
                     })()}
                   </div>
@@ -14251,39 +14393,75 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
                     <div>NB: {entry.specs.nominalBoreMm}mm</div>
                     <div>Schedule: {entry.specs.scheduleNumber || `${entry.specs.wallThicknessMm}mm WT`}</div>
-                    <div>Length: {(() => {
-                      // Calculate total length based on quantityType
+                    <div>Length/pipe: {(() => {
+                      // Show per-pipe length
                       if (entry.specs.quantityType === 'total_length') {
                         return Number(entry.specs.quantityValue || 0).toFixed(3);
                       } else {
-                        // number_of_pipes: multiply by individual pipe length
-                        const numPipes = entry.specs.quantityValue || 1;
-                        const pipeLength = entry.specs.individualPipeLength || 0;
-                        return (numPipes * pipeLength).toFixed(3);
+                        return (entry.specs.individualPipeLength || 0).toFixed(3);
                       }
                     })()}m</div>
-                    <div>Weight: {entry.calculation?.totalSystemWeight?.toFixed(2) || '-'} kg</div>
-                    {/* Surface areas for straight pipe */}
+                    <div>Qty: {(() => {
+                      if (entry.specs.quantityType === 'total_length') return '1';
+                      return entry.specs.quantityValue || 1;
+                    })()}</div>
+                    <div>Weight/pipe: {(() => {
+                      const totalWt = entry.calculation?.totalSystemWeight || 0;
+                      if (entry.specs.quantityType === 'total_length') return totalWt.toFixed(2);
+                      const qty = entry.specs.quantityValue || 1;
+                      return (totalWt / qty).toFixed(2);
+                    })()} kg</div>
+                    {/* Surface areas for straight pipe - PER PIPE */}
                     {(() => {
                       const od = entry.calculation?.outsideDiameterMm;
                       const wt = entry.specs?.wallThicknessMm;
                       if (!od || !wt) return null;
                       const id = od - (2 * wt);
-                      let totalLengthM = 0;
+                      // Per-pipe length
+                      let perPipeLengthM = 0;
                       if (entry.specs.quantityType === 'total_length') {
-                        totalLengthM = entry.specs.quantityValue || 0;
+                        perPipeLengthM = entry.specs.quantityValue || 0;
                       } else {
-                        const numPipes = entry.specs.quantityValue || 1;
-                        const pipeLength = entry.specs.individualPipeLength || 0;
-                        totalLengthM = numPipes * pipeLength;
+                        perPipeLengthM = entry.specs.individualPipeLength || 0;
                       }
-                      const extArea = (od / 1000) * Math.PI * totalLengthM;
-                      const intArea = (id / 1000) * Math.PI * totalLengthM;
+                      const extArea = (od / 1000) * Math.PI * perPipeLengthM;
+                      const intArea = (id / 1000) * Math.PI * perPipeLengthM;
                       return (
                         <>
-                          <div className="text-indigo-600">Ext: {extArea.toFixed(3)} m²</div>
-                          <div className="text-indigo-600">Int: {intArea.toFixed(3)} m²</div>
+                          <div className="text-indigo-600">Ext/pipe: {extArea.toFixed(3)} m²</div>
+                          <div className="text-indigo-600">Int/pipe: {intArea.toFixed(3)} m²</div>
                         </>
+                      );
+                    })()}
+                    {/* Weld info for pipe - PER PIPE */}
+                    {(() => {
+                      const nb = entry.specs?.nominalBoreMm;
+                      const wt = entry.specs?.wallThicknessMm;
+                      const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                      const weldCount = getWeldCountPerPipe(pipeEndConfig);
+                      if (!nb || !wt || weldCount === 0) return null;
+                      const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                      const circumferenceMm = Math.PI * od;
+                      const linearWeldMm = weldCount * circumferenceMm;
+                      return (
+                        <div className="text-purple-600 col-span-2">
+                          Welds/pipe: {weldCount} @ {circumferenceMm.toFixed(0)}mm circ = {(linearWeldMm / 1000).toFixed(2)}m ({wt.toFixed(1)}mm WT)
+                        </div>
+                      );
+                    })()}
+                    {/* Flange breakdown for pipe */}
+                    {(() => {
+                      const nb = entry.specs?.nominalBoreMm;
+                      const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                      const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
+                      if (pipeEndConfig === 'PE') return null;
+                      const flangeCount = pipeEndConfig === 'FBE' ? 2 :
+                        ['FOE', 'FOE_LF', 'FOE_RF', 'LF_BE', '2X_RF'].includes(pipeEndConfig) ?
+                          (pipeEndConfig === 'LF_BE' || pipeEndConfig === '2X_RF' || pipeEndConfig === 'FOE_LF' || pipeEndConfig === 'FOE_RF' ? 2 : 1) : 1;
+                      return (
+                        <div className="text-blue-600 col-span-2">
+                          Flanges/pipe: {flangeCount}x {nb}NB {pressureClass}
+                        </div>
                       );
                     })()}
                   </div>
@@ -14364,8 +14542,8 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
 
         {/* Total Summary */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-blue-800 mb-4">Total Summary</h3>
-          <div className={`grid grid-cols-1 ${hasSurfaceProtection ? 'md:grid-cols-5' : 'md:grid-cols-3'} gap-4`}>
+          <h3 className="text-lg font-semibold text-blue-800 mb-4">Total Summary (All Items Combined)</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             <div className="text-center">
               <p className="text-sm font-medium text-blue-700">Total Entries</p>
               <p className="text-2xl font-bold text-blue-900">{allItems.length}</p>
@@ -14380,6 +14558,119 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                 {getTotalWeight().toFixed(2)} kg
               </p>
             </div>
+            {/* Total Weld Length */}
+            {(() => {
+              let totalWeldLengthM = 0;
+              let totalWeldCount = 0;
+              allItems.forEach((entry: any) => {
+                const qty = entry.specs?.quantityValue || 1;
+                let itemQty = qty;
+                if (entry.itemType !== 'bend' && entry.itemType !== 'fitting' && entry.specs?.quantityType === 'total_length') {
+                  itemQty = 1;
+                }
+                if (entry.itemType === 'bend') {
+                  const nb = entry.specs?.nominalBoreMm;
+                  const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                  const weldCount = getWeldCountPerBend(bendEndConfig);
+                  if (nb && weldCount > 0) {
+                    const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                    totalWeldLengthM += (weldCount * Math.PI * od / 1000) * itemQty;
+                    totalWeldCount += weldCount * itemQty;
+                  }
+                } else if (entry.itemType === 'fitting') {
+                  const nb = entry.specs?.nominalDiameterMm;
+                  const branchNb = entry.specs?.branchNominalDiameterMm || nb;
+                  const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                  const weldCount = getWeldCountPerFitting(fittingEndConfig);
+                  if (nb && weldCount > 0) {
+                    const mainOd = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                    const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.05);
+                    let linearMm = 0;
+                    if (weldCount >= 3) linearMm = (2 * Math.PI * mainOd) + (Math.PI * branchOd);
+                    else if (weldCount === 2) linearMm = 2 * Math.PI * mainOd;
+                    else linearMm = Math.PI * mainOd;
+                    totalWeldLengthM += (linearMm / 1000) * itemQty;
+                    totalWeldCount += weldCount * itemQty;
+                  }
+                } else {
+                  const nb = entry.specs?.nominalBoreMm;
+                  const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                  const weldCount = getWeldCountPerPipe(pipeEndConfig);
+                  if (nb && weldCount > 0) {
+                    const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                    totalWeldLengthM += (weldCount * Math.PI * od / 1000) * itemQty;
+                    totalWeldCount += weldCount * itemQty;
+                  }
+                }
+              });
+              if (totalWeldCount === 0) return null;
+              return (
+                <div className="text-center">
+                  <p className="text-sm font-medium text-purple-700">Total Welds</p>
+                  <p className="text-2xl font-bold text-purple-900">{totalWeldLengthM.toFixed(1)} m</p>
+                  <p className="text-xs text-purple-600">({totalWeldCount} welds)</p>
+                </div>
+              );
+            })()}
+            {/* Total Flanges */}
+            {(() => {
+              const flangesBySize: Record<string, number> = {};
+              allItems.forEach((entry: any) => {
+                const qty = entry.specs?.quantityValue || 1;
+                let itemQty = qty;
+                if (entry.itemType !== 'bend' && entry.itemType !== 'fitting' && entry.specs?.quantityType === 'total_length') {
+                  itemQty = 1;
+                }
+                if (entry.itemType === 'bend') {
+                  const nb = entry.specs?.nominalBoreMm;
+                  const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                  if (bendEndConfig !== 'PE') {
+                    const flangeCount = bendEndConfig === 'FBE' ? 2 :
+                      (bendEndConfig === 'LF_BE' || bendEndConfig === '2X_RF' || bendEndConfig === 'FOE_LF' || bendEndConfig === 'FOE_RF' ? 2 : 1);
+                    const key = `${nb}NB`;
+                    flangesBySize[key] = (flangesBySize[key] || 0) + (flangeCount * itemQty);
+                  }
+                } else if (entry.itemType === 'fitting') {
+                  const nb = entry.specs?.nominalDiameterMm;
+                  const branchNb = entry.specs?.branchNominalDiameterMm || nb;
+                  const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                  if (fittingEndConfig !== 'PE') {
+                    const config = fittingEndConfig.split('');
+                    let mainFlanges = 0, branchFlanges = 0;
+                    if (config[0] === 'F') mainFlanges++;
+                    if (config[1] === 'F') mainFlanges++;
+                    if (config[2] === 'F') branchFlanges++;
+                    if (mainFlanges > 0) {
+                      const key = `${nb}NB`;
+                      flangesBySize[key] = (flangesBySize[key] || 0) + (mainFlanges * itemQty);
+                    }
+                    if (branchFlanges > 0) {
+                      const key = `${branchNb}NB`;
+                      flangesBySize[key] = (flangesBySize[key] || 0) + (branchFlanges * itemQty);
+                    }
+                  }
+                } else {
+                  const nb = entry.specs?.nominalBoreMm;
+                  const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                  if (pipeEndConfig !== 'PE') {
+                    const flangeCount = pipeEndConfig === 'FBE' ? 2 :
+                      (pipeEndConfig === 'LF_BE' || pipeEndConfig === '2X_RF' || pipeEndConfig === 'FOE_LF' || pipeEndConfig === 'FOE_RF' ? 2 : 1);
+                    const key = `${nb}NB`;
+                    flangesBySize[key] = (flangesBySize[key] || 0) + (flangeCount * itemQty);
+                  }
+                }
+              });
+              const totalFlanges = Object.values(flangesBySize).reduce((sum, count) => sum + count, 0);
+              if (totalFlanges === 0) return null;
+              const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
+              return (
+                <div className="text-center">
+                  <p className="text-sm font-medium text-blue-700">Total Flanges</p>
+                  <p className="text-2xl font-bold text-blue-900">{totalFlanges}</p>
+                  <p className="text-xs text-blue-600">{pressureClass}</p>
+                </div>
+              );
+            })()}
             {hasSurfaceProtection && (() => {
               const surfaceAreas = getTotalSurfaceAreas();
               return (
@@ -15934,11 +16225,11 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
       const fittingEntry = entry;
       
+      // Get effective fitting standard (use derived value if not explicitly set)
+      const isSABS719 = rfqData.globalSpecs?.steelSpecificationId === 8;
+      const effectiveFittingStandard = fittingEntry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+
       // Validation for required fields
-      if (!fittingEntry.specs?.fittingStandard) {
-        alert('Please select a fitting standard (SABS62 or SABS719)');
-        return;
-      }
       if (!fittingEntry.specs?.fittingType) {
         alert('Please select a fitting type');
         return;
@@ -15949,7 +16240,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
       }
 
       // Additional validation for SABS719
-      if (fittingEntry.specs.fittingStandard === 'SABS719') {
+      if (effectiveFittingStandard === 'SABS719') {
         if (!fittingEntry.specs.scheduleNumber) {
           alert('Please select a schedule number for SABS719 fittings');
           return;
@@ -15961,7 +16252,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
       }
 
       const calculationData = {
-        fittingStandard: fittingEntry.specs.fittingStandard,
+        fittingStandard: effectiveFittingStandard,
         fittingType: fittingEntry.specs.fittingType,
         nominalDiameterMm: fittingEntry.specs.nominalDiameterMm,
         angleRange: fittingEntry.specs.angleRange,

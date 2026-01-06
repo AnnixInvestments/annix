@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { CustomerAuthProvider, useCustomerAuth } from '@/app/context/CustomerAuthContext';
+import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
 
 function CustomerNavigation() {
   const pathname = usePathname();
@@ -225,9 +225,7 @@ export default function CustomerPortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <CustomerAuthProvider>
-      <ProtectedLayout>{children}</ProtectedLayout>
-    </CustomerAuthProvider>
-  );
+  // Note: CustomerAuthProvider is already provided by customer/layout.tsx
+  // Do not wrap again to avoid duplicate/conflicting auth states
+  return <ProtectedLayout>{children}</ProtectedLayout>;
 }

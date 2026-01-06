@@ -320,6 +320,39 @@ class ApiClient {
     }
   }
 
+  // Attempt to refresh the customer access token using the refresh token
+  private async refreshCustomerToken(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+
+    const refreshToken = localStorage.getItem('customerRefreshToken');
+    if (!refreshToken) return false;
+
+    try {
+      const response = await fetch(`${this.baseURL}/customer/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        // Refresh failed - clear tokens
+        localStorage.removeItem('customerAccessToken');
+        localStorage.removeItem('customerRefreshToken');
+        return false;
+      }
+
+      const data = await response.json();
+      if (data.access_token && data.refresh_token) {
+        localStorage.setItem('customerAccessToken', data.access_token);
+        localStorage.setItem('customerRefreshToken', data.refresh_token);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -343,7 +376,23 @@ class ApiClient {
     };
 
     try {
-      const response = await fetch(url, config);
+      let response = await fetch(url, config);
+
+      // Handle 401 by attempting token refresh
+      if (response.status === 401) {
+        const refreshed = await this.refreshCustomerToken();
+        if (refreshed) {
+          // Retry with new token
+          const newToken = this.getAuthToken();
+          if (newToken) {
+            config.headers = {
+              ...config.headers,
+              Authorization: `Bearer ${newToken}`,
+            } as Record<string, string>;
+          }
+          response = await fetch(url, config);
+        }
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
