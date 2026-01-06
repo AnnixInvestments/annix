@@ -14545,7 +14545,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
   );
 }
 
-function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, loading }: any) {
+function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevStep, errors, loading }: any) {
   // Use unified items array that includes both straight pipes and bends
   const allItems = rfqData.items || entries || [];
   
@@ -15272,11 +15272,11 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
               ← Previous Step
             </button>
             <button
-              onClick={onSubmit}
+              onClick={onNextStep}
               disabled={loading}
-              className="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Submitting RFQ...' : 'Submit RFQ for Quotation'}
+              Review BOQ →
             </button>
           </div>
           
@@ -15297,12 +15297,15 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
 }
 
 // BOQ (Bill of Quantities) Step - Consolidated view pooling similar items
-function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData }: {
+function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, onPrevStep, onSubmit, loading }: {
   rfqData: RfqFormData;
   entries: any[];
   globalSpecs: GlobalSpecs;
   requiredProducts: string[];
   masterData?: any;
+  onPrevStep?: () => void;
+  onSubmit?: () => void;
+  loading?: boolean;
 }) {
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return 'Not specified';
@@ -15886,17 +15889,54 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData }
         <p><strong>Note:</strong> This BOQ consolidates similar items across all line items. The "From Items" column shows which original line items contribute to each consolidated entry. Weights are estimates based on standard dimensions.</p>
       </div>
 
-      {/* Print/Export Actions */}
-      <div className="flex justify-end gap-4">
-        <button
-          onClick={() => window.print()}
-          className="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-          </svg>
-          Print BOQ
-        </button>
+      {/* Navigation & Actions */}
+      <div className="flex justify-between items-center gap-4 pt-4 border-t border-slate-600">
+        <div className="flex gap-4">
+          {onPrevStep && (
+            <button
+              onClick={onPrevStep}
+              disabled={loading}
+              className="px-6 py-3 text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors font-semibold disabled:opacity-50"
+            >
+              ← Back to Review
+            </button>
+          )}
+        </div>
+        <div className="flex gap-4">
+          <button
+            onClick={() => window.print()}
+            className="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors flex items-center gap-2 text-slate-300"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Print BOQ
+          </button>
+          {onSubmit && (
+            <button
+              onClick={onSubmit}
+              disabled={loading}
+              className="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  Submit RFQ for Quotation
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -17082,6 +17122,12 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
     scrollToTop();
   };
 
+  // Next step function (no validation) - used to go from Review to BOQ
+  const handleNextStep = () => {
+    setCurrentStep(currentStep + 1);
+    scrollToTop();
+  };
+
   // Step click handler with scroll to top
   const handleStepClick = (stepNumber: number) => {
     setCurrentStep(stepNumber);
@@ -17740,7 +17786,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
           <ReviewSubmitStep
             entries={rfqData.straightPipeEntries}
             rfqData={rfqData}
-            onSubmit={handleSubmit}
+            onNextStep={handleNextStep}
             onPrevStep={handlePrevStep}
             errors={validationErrors}
             loading={isSubmitting}
@@ -17753,6 +17799,9 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
             entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
             globalSpecs={rfqData.globalSpecs}
             requiredProducts={rfqData.requiredProducts || []}
+            onPrevStep={handlePrevStep}
+            onSubmit={handleSubmit}
+            loading={isSubmitting}
           />
         );
       default:
