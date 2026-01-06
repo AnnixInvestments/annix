@@ -9481,24 +9481,34 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             const schedule = entry.specs?.scheduleNumber || '';
                             const pipeWallThickness = entry.specs?.wallThicknessMm;
                             const numTangents = entry.specs?.numberOfTangents || 0;
+                            const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                            const isSABS719 = steelSpecId === 8;
 
-                            // Weld thickness lookup
+                            // Weld thickness lookup (ASTM/ASME only - SABS 719 uses pipe WT directly)
                             const FITTING_WALL_THICKNESS: Record<string, Record<number, number>> = {
                               'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
                               'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
                               'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
                             };
 
-                            const scheduleUpper = schedule.toUpperCase();
-                            const fittingClass =
-                              scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
-                                ? 'XXH'
-                                : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
-                                  ? 'XH'
-                                  : 'STD';
+                            let effectiveThickness: number | null = null;
+                            let fittingClass = 'STD';
+                            let weldThickness: number | null = null;
 
-                            const weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
-                            const effectiveThickness = weldThickness || pipeWallThickness;
+                            if (isSABS719) {
+                              // SABS 719: Use pipe wall thickness directly
+                              effectiveThickness = pipeWallThickness;
+                            } else {
+                              const scheduleUpper = schedule.toUpperCase();
+                              fittingClass =
+                                scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
+                                  ? 'XXH'
+                                  : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
+                                    ? 'XH'
+                                    : 'STD';
+                              weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
+                              effectiveThickness = weldThickness || pipeWallThickness;
+                            }
 
                             // Calculate circumference
                             const od = dn ? (NB_TO_OD_LOOKUP[dn] || (dn * 1.05)) : 0;
@@ -9519,7 +9529,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                                   <span className="font-medium">{numTangents} full penetration weld{numTangents > 1 ? 's' : ''}</span>
                                 </p>
                                 <p className="text-xs text-orange-700">
-                                  Weld thickness: {effectiveThickness.toFixed(2)}mm ({weldThickness ? fittingClass : 'from schedule'})
+                                  Weld thickness: {effectiveThickness.toFixed(2)}mm ({isSABS719 ? 'SABS 719 WT' : weldThickness ? fittingClass : 'from schedule'})
                                 </p>
                                 <p className="text-xs text-orange-700">
                                   Linear meterage: {totalWeldLength.toFixed(0)}mm ({numTangents} x {circumference.toFixed(0)}mm circ)
@@ -12863,29 +12873,21 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         </span>
                       )}
                     </p>
-                    {/* Weld Thickness Display - from fitting wall thickness tables (ASME B31.1) */}
+                    {/* Weld Thickness Display - from fitting wall thickness tables (ASME B31.1) or pipe WT for SABS 719 */}
                     {(() => {
                       const weldCount = getWeldCountPerPipe(entry.specs.pipeEndConfiguration || 'PE');
                       const dn = entry.specs.nominalBoreMm;
                       const schedule = entry.specs.scheduleNumber || '';
+                      const steelSpecId = entry.specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const isSABS719 = steelSpecId === 8; // SABS 719 ERW uses WT schedules
 
                       // Carbon Steel Weld Fittings wall thickness lookup (WPB Grade, ASME B31.1)
+                      // Only used for ASTM/ASME pipes, not SABS 719
                       const FITTING_WALL_THICKNESS: Record<string, Record<number, number>> = {
                         'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
                         'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
                         'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
                       };
-
-                      // Determine fitting class from schedule (STD, XH, or XXH)
-                      const scheduleUpper = schedule.toUpperCase();
-                      const fittingClass =
-                        scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
-                          ? 'XXH'
-                          : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
-                            ? 'XH'
-                            : 'STD';
-
-                      const weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
 
                       // Show weld thickness if pipe has welds and DN is set
                       if (weldCount === 0) {
@@ -12902,10 +12904,32 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         );
                       }
 
-                      // Fallback to pipe wall thickness if no fitting data available
+                      // For SABS 719, always use the actual pipe wall thickness (WT schedules)
+                      // SABS 719 specifies wall thickness directly (WT6 = 6mm, WT8 = 8mm, etc.)
                       const pipeWallThickness = entry.specs.wallThicknessMm;
-                      const effectiveWeldThickness = weldThickness || pipeWallThickness;
-                      const usingPipeThickness = !weldThickness && pipeWallThickness;
+
+                      let effectiveWeldThickness: number | null = null;
+                      let usingPipeThickness = false;
+                      let fittingClass = 'STD';
+
+                      if (isSABS719) {
+                        // SABS 719: Use pipe wall thickness directly - this IS the weld thickness
+                        effectiveWeldThickness = pipeWallThickness;
+                        usingPipeThickness = true;
+                      } else {
+                        // ASTM/ASME: Look up from fitting class tables
+                        const scheduleUpper = schedule.toUpperCase();
+                        fittingClass =
+                          scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
+                            ? 'XXH'
+                            : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
+                              ? 'XH'
+                              : 'STD';
+
+                        const weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
+                        effectiveWeldThickness = weldThickness || pipeWallThickness;
+                        usingPipeThickness = !weldThickness && !!pipeWallThickness;
+                      }
 
                       if (!effectiveWeldThickness) {
                         return (
@@ -12918,14 +12942,16 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                       }
 
                       return (
-                        <div className={`mt-2 p-2 ${usingPipeThickness ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'} rounded-md`}>
-                          <p className={`text-xs font-bold ${usingPipeThickness ? 'text-blue-800' : 'text-green-800'}`}>
+                        <div className={`mt-2 p-2 ${isSABS719 ? 'bg-amber-50 border border-amber-200' : usingPipeThickness ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'} rounded-md`}>
+                          <p className={`text-xs font-bold ${isSABS719 ? 'text-amber-800' : usingPipeThickness ? 'text-blue-800' : 'text-green-800'}`}>
                             Flange Weld Thickness: {effectiveWeldThickness.toFixed(2)} mm
                           </p>
-                          <p className={`text-xs ${usingPipeThickness ? 'text-blue-700' : 'text-green-700'}`}>
-                            {usingPipeThickness
-                              ? 'Using pipe wall thickness (no fitting data for this DN)'
-                              : `Based on ${fittingClass} fitting class (ASME B31.1)`}
+                          <p className={`text-xs ${isSABS719 ? 'text-amber-700' : usingPipeThickness ? 'text-blue-700' : 'text-green-700'}`}>
+                            {isSABS719
+                              ? `SABS 719 ERW - using pipe wall thickness (${schedule || 'WT'})`
+                              : usingPipeThickness
+                                ? 'Using pipe wall thickness (no fitting data for this DN)'
+                                : `Based on ${fittingClass} fitting class (ASME B31.1)`}
                           </p>
                           <p className="text-xs text-gray-600 mt-1">
                             2 welds per flange (inside + outside)
