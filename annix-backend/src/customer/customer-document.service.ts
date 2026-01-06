@@ -1,4 +1,4 @@
-﻿import {
+import {
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -6,9 +6,6 @@
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
-import * as path from 'path';
-import * as fs from 'fs';
 
 import {
   CustomerProfile,
@@ -23,6 +20,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { EmailService } from '../email/email.service';
+import { S3StorageService } from '../storage/s3-storage.service';
 
 // File constraints
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -35,8 +33,6 @@ const ALLOWED_MIME_TYPES = [
 
 @Injectable()
 export class CustomerDocumentService {
-  private readonly uploadDir: string;
-
   constructor(
     @InjectRepository(CustomerDocument)
     private readonly documentRepo: Repository<CustomerDocument>,
@@ -44,13 +40,10 @@ export class CustomerDocumentService {
     private readonly profileRepo: Repository<CustomerProfile>,
     @InjectRepository(CustomerOnboarding)
     private readonly onboardingRepo: Repository<CustomerOnboarding>,
-    private readonly configService: ConfigService,
+    private readonly storageService: S3StorageService,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
-  ) {
-    this.uploadDir =
-      this.configService.get<string>('UPLOAD_DIR') || './uploads';
-  }
+  ) {}
 
   async getDocuments(customerId: number) {
     const documents = await this.documentRepo.find({
@@ -115,39 +108,26 @@ export class CustomerDocumentService {
       );
     }
 
-    // Create upload directory if it doesn't exist
-    const customerDir = path.join(
-      this.uploadDir,
-      'customers',
-      customerId.toString(),
-      'documents',
-    );
-    if (!fs.existsSync(customerDir)) {
-      fs.mkdirSync(customerDir, { recursive: true });
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now();
-    const ext = path.extname(file.originalname);
-    const safeFileName = `${documentType}_${timestamp}${ext}`;
-    const filePath = path.join(customerDir, safeFileName);
-
-    // Save file
-    fs.writeFileSync(filePath, file.buffer);
-
     // Check if document of same type already exists
     const existingDoc = await this.documentRepo.findOne({
       where: { customerId, documentType },
     });
 
+    // Upload file to storage (S3 or local based on STORAGE_TYPE env var)
+    const subPath = `customers/${customerId}/documents`;
+    const storageResult = await this.storageService.upload(file, subPath);
+
     if (existingDoc) {
-      // Delete old file
-      if (fs.existsSync(existingDoc.filePath)) {
-        fs.unlinkSync(existingDoc.filePath);
+      // Delete old file from storage
+      try {
+        await this.storageService.delete(existingDoc.filePath);
+      } catch {
+        // Ignore if old file doesn't exist
       }
+
       // Update existing record
       existingDoc.fileName = file.originalname;
-      existingDoc.filePath = filePath;
+      existingDoc.filePath = storageResult.path;
       existingDoc.fileSize = file.size;
       existingDoc.mimeType = file.mimetype;
       existingDoc.uploadedAt = new Date();
@@ -186,7 +166,7 @@ export class CustomerDocumentService {
       customerId,
       documentType,
       fileName: file.originalname,
-      filePath,
+      filePath: storageResult.path,
       fileSize: file.size,
       mimeType: file.mimetype,
       expiryDate,
@@ -246,9 +226,11 @@ export class CustomerDocumentService {
       throw new ForbiddenException('Cannot delete documents at this stage');
     }
 
-    // Delete file
-    if (fs.existsSync(document.filePath)) {
-      fs.unlinkSync(document.filePath);
+    // Delete file from storage
+    try {
+      await this.storageService.delete(document.filePath);
+    } catch {
+      // Ignore if file doesn't exist
     }
 
     await this.documentRepo.remove(document);
@@ -276,12 +258,15 @@ export class CustomerDocumentService {
       throw new NotFoundException('Document not found');
     }
 
-    if (!fs.existsSync(document.filePath)) {
+    const exists = await this.storageService.exists(document.filePath);
+    if (!exists) {
       throw new NotFoundException('Document file not found');
     }
 
+    const buffer = await this.storageService.download(document.filePath);
+
     return {
-      filePath: document.filePath,
+      buffer,
       fileName: document.fileName,
       mimeType: document.mimeType,
     };
