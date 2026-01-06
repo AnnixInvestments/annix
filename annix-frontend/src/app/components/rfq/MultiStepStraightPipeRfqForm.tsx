@@ -12006,17 +12006,38 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
 
                         const scheduleUpper = schedule.toUpperCase();
                         const fittingClass = scheduleUpper.includes('160') || scheduleUpper.includes('XXS') ? 'XXH' : scheduleUpper.includes('80') || scheduleUpper.includes('XS') ? 'XH' : 'STD';
+
+                        // SABS 719 ERW Pipe Wall Thickness Table (Class B - Standard)
+                        const SABS_719_WT: Record<number, number> = {
+                          200: 5.2, 250: 5.2, 300: 6.4, 350: 6.4, 400: 6.4, 450: 6.4, 500: 6.4,
+                          550: 6.4, 600: 6.4, 650: 8.0, 700: 8.0, 750: 8.0, 800: 8.0, 850: 9.5,
+                          900: 9.5, 1000: 9.5, 1050: 9.5, 1200: 12.7
+                        };
+
+                        // ASTM/ASME Carbon Steel Weld Fittings wall thickness (WPB Grade)
                         const FITTING_WT: Record<string, Record<number, number>> = {
                           'STD': { 50: 3.91, 65: 5.16, 80: 5.49, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53 },
                           'XH': { 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70 },
                           'XXH': { 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
                         };
-                        // For SABS 719: use pipe WT directly; for ASTM/ASME: use fitting lookup
+
+                        // Get SABS 719 wall thickness with closest size lookup
+                        const getSabs719Wt = (nb: number): number => {
+                          const sizes = Object.keys(SABS_719_WT).map(Number).sort((a, b) => a - b);
+                          let closest = sizes[0];
+                          for (const size of sizes) {
+                            if (size <= nb) closest = size;
+                            else break;
+                          }
+                          return SABS_719_WT[closest] || 6.4;
+                        };
+
+                        // For SABS 719: use SABS 719 WT table; for ASTM/ASME: use fitting lookup
                         const fittingWeldThickness = isSABS719
-                          ? (pipeWallThickness || 6)
+                          ? getSabs719Wt(nominalBore)
                           : (FITTING_WT[fittingClass]?.[nominalBore] || pipeWallThickness || 6);
                         const branchWeldThickness = isSABS719
-                          ? (pipeWallThickness || fittingWeldThickness)
+                          ? getSabs719Wt(branchNB)
                           : (FITTING_WT[fittingClass]?.[branchNB] || fittingWeldThickness);
 
                         // Weld count calculation
@@ -12097,42 +12118,65 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               </div>
                             </div>
 
-                            {/* Weld Summary - Include API weld data */}
+                            {/* Weld Summary - Consolidated display */}
                             <div className="bg-white p-2 rounded text-center">
                               <p className="text-xs text-gray-600 font-medium">Weld Summary</p>
-                              <div className="text-left mt-1 space-y-0.5">
-                                {/* Tee welds from API */}
-                                {entry.calculation.numberOfTeeWelds > 0 && (
-                                  <p className="text-[10px] text-blue-700">Tee Welds: {entry.calculation.numberOfTeeWelds} ({(entry.calculation.totalTeeWeldLength || 0).toFixed(2)}m)</p>
-                                )}
-                                {/* Flange welds from API */}
-                                {entry.calculation.numberOfFlangeWelds > 0 && (
-                                  <p className="text-[10px] text-green-700">Flange Welds: {entry.calculation.numberOfFlangeWelds} ({(entry.calculation.totalFlangeWeldLength || 0).toFixed(2)}m)</p>
-                                )}
-                                {/* Show wall thickness from API */}
-                                {entry.calculation.wallThicknessMm && (
-                                  <p className="text-[10px] text-purple-700">Wall Thickness: {entry.calculation.wallThicknessMm}mm</p>
-                                )}
-                                <p className="text-[10px] text-blue-700">Tee Junction: {teeWeldCount} @ {branchWeldThickness?.toFixed(1)}mm</p>
-                                {flangeConfig.hasInlet && flangeConfig.inletType !== 'loose' && (
-                                  <p className="text-[10px] text-green-700">Inlet Flange: 2 welds @ {fittingWeldThickness?.toFixed(1)}mm</p>
-                                )}
-                                {flangeConfig.hasInlet && flangeConfig.inletType === 'loose' && (
-                                  <p className="text-[10px] text-purple-700">Inlet L/F: 8 tack welds</p>
-                                )}
-                                {flangeConfig.hasOutlet && flangeConfig.outletType !== 'loose' && (
-                                  <p className="text-[10px] text-green-700">Outlet Flange: 2 welds @ {fittingWeldThickness?.toFixed(1)}mm</p>
-                                )}
-                                {flangeConfig.hasOutlet && flangeConfig.outletType === 'loose' && (
-                                  <p className="text-[10px] text-purple-700">Outlet L/F: 8 tack welds</p>
-                                )}
-                                {flangeConfig.hasBranch && flangeConfig.branchType !== 'loose' && (
-                                  <p className="text-[10px] text-green-700">Branch Flange: 2 welds @ {branchWeldThickness?.toFixed(1)}mm</p>
-                                )}
-                                {flangeConfig.hasBranch && flangeConfig.branchType === 'loose' && (
-                                  <p className="text-[10px] text-purple-700">Branch L/F: 8 tack welds</p>
-                                )}
-                              </div>
+                              {(() => {
+                                // Calculate tee junction weld (always 1 for tees)
+                                const teeOd = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
+                                const teeWeldLengthM = (Math.PI * teeOd / 1000); // Circumference in meters
+
+                                // Count fixed flanges (not loose) for weld calculations
+                                const mainFixedFlanges = (flangeConfig.hasInlet && flangeConfig.inletType !== 'loose' ? 1 : 0)
+                                                       + (flangeConfig.hasOutlet && flangeConfig.outletType !== 'loose' ? 1 : 0);
+                                const branchFixedFlanges = flangeConfig.hasBranch && flangeConfig.branchType !== 'loose' ? 1 : 0;
+                                const totalFixedFlanges = mainFixedFlanges + branchFixedFlanges;
+
+                                // Flange weld calculations (x2 for inside + outside welds)
+                                const mainFlangeOd = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
+                                const branchFlangeOd = branchNB * 1.1; // Approximate branch OD
+                                const mainFlangeWeldLengthPerFlange = Math.PI * mainFlangeOd / 1000; // Circumference in m
+                                const branchFlangeWeldLengthPerFlange = Math.PI * branchFlangeOd / 1000;
+
+                                // Total flange weld length = (count x circumference x 2) for inside + outside
+                                const totalMainFlangeWeldLength = mainFixedFlanges * mainFlangeWeldLengthPerFlange * 2;
+                                const totalBranchFlangeWeldLength = branchFixedFlanges * branchFlangeWeldLengthPerFlange * 2;
+                                const totalFlangeWeldLength = totalMainFlangeWeldLength + totalBranchFlangeWeldLength;
+                                const totalFlangeWeldCount = totalFixedFlanges * 2; // x2 for inside + outside
+
+                                // Count loose flanges
+                                const looseFlangeCount = (flangeConfig.hasInlet && flangeConfig.inletType === 'loose' ? 1 : 0)
+                                                       + (flangeConfig.hasOutlet && flangeConfig.outletType === 'loose' ? 1 : 0)
+                                                       + (flangeConfig.hasBranch && flangeConfig.branchType === 'loose' ? 1 : 0);
+
+                                return (
+                                  <div className="text-left mt-1 space-y-0.5">
+                                    {/* Tee Junction Weld */}
+                                    <p className="text-[10px] text-blue-700 font-medium">
+                                      Tee Junction: 1 weld @ {branchWeldThickness?.toFixed(1)}mm ({teeWeldLengthM.toFixed(2)}m)
+                                    </p>
+
+                                    {/* Combined Flange Welds (inside + outside) */}
+                                    {totalFixedFlanges > 0 && (
+                                      <p className="text-[10px] text-green-700 font-medium">
+                                        Flange Welds: {totalFlangeWeldCount} @ {fittingWeldThickness?.toFixed(1)}mm ({totalFlangeWeldLength.toFixed(2)}m)
+                                      </p>
+                                    )}
+                                    {totalFixedFlanges > 0 && (
+                                      <p className="text-[9px] text-gray-500 pl-2">
+                                        ({totalFixedFlanges} flange{totalFixedFlanges > 1 ? 's' : ''} × 2 welds for inside+outside)
+                                      </p>
+                                    )}
+
+                                    {/* Loose flanges - tack welds only */}
+                                    {looseFlangeCount > 0 && (
+                                      <p className="text-[10px] text-purple-700">
+                                        Loose Flanges: {looseFlangeCount} × 8 tack welds
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
 
                             
