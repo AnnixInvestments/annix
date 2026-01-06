@@ -14172,6 +14172,36 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                       <div className="col-span-2">Stubs: {entry.specs.numberOfStubs}</div>
                     )}
                     <div>Weight: {entry.calculation?.totalWeight?.toFixed(2) || '-'} kg</div>
+                    {/* Surface areas for bend */}
+                    {(() => {
+                      const qty = entry.specs?.quantityValue || 1;
+                      const nb = entry.specs?.nominalBoreMm;
+                      const wt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
+                      if (!nb || !wt) return null;
+                      const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                      const id = od - (2 * wt);
+                      const bendRadiusType = entry.specs?.bendType || '1.5D';
+                      const radiusFactor = parseFloat(bendRadiusType.replace('D', '')) || 1.5;
+                      const bendRadiusMm = nb * radiusFactor;
+                      const bendAngleRad = ((entry.specs?.bendDegrees || 90) * Math.PI) / 180;
+                      const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
+                      let extArea = (od / 1000) * Math.PI * arcLengthM;
+                      let intArea = (id / 1000) * Math.PI * arcLengthM;
+                      const tangents = entry.specs?.tangentLengths || [];
+                      tangents.forEach((t: number) => {
+                        if (t > 0) {
+                          const tM = t / 1000;
+                          extArea += (od / 1000) * Math.PI * tM;
+                          intArea += (id / 1000) * Math.PI * tM;
+                        }
+                      });
+                      return (
+                        <>
+                          <div className="text-indigo-600">Ext: {(extArea * qty).toFixed(3)} m²</div>
+                          <div className="text-indigo-600">Int: {(intArea * qty).toFixed(3)} m²</div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : entry.itemType === 'fitting' ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
@@ -14186,6 +14216,36 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                       <div>Length B: {entry.specs.pipeLengthBMm}mm</div>
                     )}
                     <div>Weight: {entry.calculation?.totalWeight?.toFixed(2) || entry.calculation?.weightPerItem?.toFixed(2) || '-'} kg</div>
+                    {/* Surface areas for fitting */}
+                    {(() => {
+                      const qty = entry.specs?.quantityValue || 1;
+                      const nb = entry.specs?.nominalDiameterMm;
+                      const branchNb = entry.specs?.branchNominalDiameterMm || nb;
+                      const wt = entry.specs?.wallThicknessMm || 10;
+                      const lengthA = entry.specs?.pipeLengthAMm || 0;
+                      const lengthB = entry.specs?.pipeLengthBMm || 0;
+                      if (!nb || (!lengthA && !lengthB)) return null;
+                      const mainOd = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                      const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.05);
+                      const mainId = mainOd - (2 * wt);
+                      const branchId = branchOd - (2 * wt);
+                      const runLengthM = (lengthA + lengthB) / 1000;
+                      const branchLengthM = (branchOd * 2) / 1000;
+                      const runExt = (mainOd / 1000) * Math.PI * runLengthM;
+                      const branchExt = (branchOd / 1000) * Math.PI * branchLengthM;
+                      const overlapExt = (branchOd / 1000) * (wt / 1000) * Math.PI;
+                      const runInt = (mainId / 1000) * Math.PI * runLengthM;
+                      const branchInt = (branchId / 1000) * Math.PI * branchLengthM;
+                      const holeCut = Math.PI * Math.pow((branchId / 1000) / 2, 2);
+                      const extArea = runExt + branchExt - overlapExt;
+                      const intArea = runInt + branchInt - holeCut;
+                      return (
+                        <>
+                          <div className="text-indigo-600">Ext: {(extArea * qty).toFixed(3)} m²</div>
+                          <div className="text-indigo-600">Int: {(intArea * qty).toFixed(3)} m²</div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
@@ -14203,6 +14263,29 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                       }
                     })()}m</div>
                     <div>Weight: {entry.calculation?.totalSystemWeight?.toFixed(2) || '-'} kg</div>
+                    {/* Surface areas for straight pipe */}
+                    {(() => {
+                      const od = entry.calculation?.outsideDiameterMm;
+                      const wt = entry.specs?.wallThicknessMm;
+                      if (!od || !wt) return null;
+                      const id = od - (2 * wt);
+                      let totalLengthM = 0;
+                      if (entry.specs.quantityType === 'total_length') {
+                        totalLengthM = entry.specs.quantityValue || 0;
+                      } else {
+                        const numPipes = entry.specs.quantityValue || 1;
+                        const pipeLength = entry.specs.individualPipeLength || 0;
+                        totalLengthM = numPipes * pipeLength;
+                      }
+                      const extArea = (od / 1000) * Math.PI * totalLengthM;
+                      const intArea = (id / 1000) * Math.PI * totalLengthM;
+                      return (
+                        <>
+                          <div className="text-indigo-600">Ext: {extArea.toFixed(3)} m²</div>
+                          <div className="text-indigo-600">Int: {intArea.toFixed(3)} m²</div>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
 
