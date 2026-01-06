@@ -14495,32 +14495,52 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
         totalExternal += extArea * qty;
         totalInternal += intArea * qty;
       } else if (entry.itemType === 'fitting') {
-        // Fitting (tee) surface area calculation
+        // Fitting (tee) surface area calculation - match calc results logic
         const nb = entry.specs?.nominalDiameterMm;
         const branchNb = entry.specs?.branchNominalDiameterMm || nb;
-        const wt = entry.specs?.wallThicknessMm || 10;
+        const wt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 6;
         const lengthA = entry.specs?.pipeLengthAMm || 0;
         const lengthB = entry.specs?.pipeLengthBMm || 0;
+        const teeHeight = entry.specs?.teeHeightMm || 0;
+        const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
 
-        if (nb && (lengthA || lengthB)) {
-          const mainOd = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
-          const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.05);
+        // Determine flange configuration for 100mm allowance
+        const FLANGE_ALLOWANCE_MM = 100;
+        let mainEndCount = 0;
+        let branchEndCount = 0;
+
+        // Count main pipe ends (inlet/outlet)
+        if (['FBE', 'FOE_RF', '2X_RF'].includes(pipeEndConfig)) {
+          mainEndCount = 2;
+        } else if (pipeEndConfig !== 'PE') {
+          mainEndCount = 1;
+        }
+        // Count branch end
+        if (entry.specs?.branchFlangeType && entry.specs?.branchFlangeType !== 'none') {
+          branchEndCount = 1;
+        }
+
+        if (nb && (lengthA || lengthB || teeHeight)) {
+          const mainOd = entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[nb] || (nb * 1.1);
+          const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.1);
           const mainId = mainOd - (2 * wt);
           const branchId = branchOd - (2 * wt);
 
-          const runLengthM = (lengthA + lengthB) / 1000;
-          const branchLengthM = (branchOd * 2) / 1000;
+          // Add 100mm allowance per end
+          const mainEndAllowance = (mainEndCount * FLANGE_ALLOWANCE_MM) / 1000;
+          const branchEndAllowance = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
+
+          const runLengthM = ((lengthA + lengthB) / 1000) + mainEndAllowance;
+          const branchLengthM = (teeHeight / 1000) + branchEndAllowance;
 
           const runExt = (mainOd / 1000) * Math.PI * runLengthM;
-          const branchExt = (branchOd / 1000) * Math.PI * branchLengthM;
-          const overlapExt = (branchOd / 1000) * (wt / 1000) * Math.PI;
+          const branchExt = branchLengthM > 0 ? (branchOd / 1000) * Math.PI * branchLengthM : 0;
 
           const runInt = (mainId / 1000) * Math.PI * runLengthM;
-          const branchInt = (branchId / 1000) * Math.PI * branchLengthM;
-          const holeCut = Math.PI * Math.pow((branchId / 1000) / 2, 2);
+          const branchInt = branchLengthM > 0 ? (branchId / 1000) * Math.PI * branchLengthM : 0;
 
-          totalExternal += (runExt + branchExt - overlapExt) * qty;
-          totalInternal += (runInt + branchInt - holeCut) * qty;
+          totalExternal += (runExt + branchExt) * qty;
+          totalInternal += (runInt + branchInt) * qty;
         }
       } else {
         // Straight pipe surface area
