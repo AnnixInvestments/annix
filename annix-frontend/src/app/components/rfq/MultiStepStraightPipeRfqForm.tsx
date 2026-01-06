@@ -14190,7 +14190,6 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
                     <div>NB: {entry.specs.nominalBoreMm}mm</div>
-                    <div>Pressure: {entry.specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar} bar</div>
                     <div>Schedule: {entry.specs.scheduleNumber || `${entry.specs.wallThicknessMm}mm WT`}</div>
                     <div>Length: {(() => {
                       // Calculate total length based on quantityType
