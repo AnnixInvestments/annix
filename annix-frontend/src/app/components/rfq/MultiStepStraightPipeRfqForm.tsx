@@ -14999,7 +14999,7 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                   if (entry.itemType === 'bend') {
                     const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
                     hasFlanges = bendEndConfig !== 'PE';
-                    flangeCount = bendEndConfig === 'FBE' ? 2 : (bendEndConfig !== 'PE' ? 1 : 0);
+                    flangeCount = getWeldCountPerBend(bendEndConfig); // Use correct function for bolt set connections
                     nbMm = entry.specs?.nominalBoreMm || 100;
                   } else if (entry.itemType === 'fitting') {
                     const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
@@ -15018,10 +15018,10 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                       }
                     }
                   } else {
-                    // Straight pipe
+                    // Straight pipe - use getFlangesPerPipe for correct bolt set connection count
                     const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
                     hasFlanges = pipeEndConfig !== 'PE';
-                    flangeCount = pipeEndConfig === 'FBE' ? 2 : (pipeEndConfig !== 'PE' ? 1 : 0);
+                    flangeCount = getFlangesPerPipe(pipeEndConfig); // Use correct function
                     nbMm = entry.specs?.nominalBoreMm || 100;
                   }
 
@@ -15091,35 +15091,41 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
                 if (entry.itemType === 'bend') {
                   const nb = entry.specs?.nominalBoreMm;
                   const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                  const weldCount = getWeldCountPerBend(bendEndConfig);
-                  if (nb && weldCount > 0) {
+                  const flangeConnections = getWeldCountPerBend(bendEndConfig);
+                  if (nb && flangeConnections > 0) {
                     const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
-                    totalWeldLengthM += (weldCount * Math.PI * od / 1000) * itemQty;
-                    totalWeldCount += weldCount * itemQty;
+                    // Each flange connection has 2 welds (inside + outside), so x2
+                    const weldsPerFlange = 2;
+                    totalWeldLengthM += (flangeConnections * weldsPerFlange * Math.PI * od / 1000) * itemQty;
+                    totalWeldCount += (flangeConnections * weldsPerFlange) * itemQty;
                   }
                 } else if (entry.itemType === 'fitting') {
                   const nb = entry.specs?.nominalDiameterMm;
                   const branchNb = entry.specs?.branchNominalDiameterMm || nb;
                   const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                  const weldCount = getWeldCountPerFitting(fittingEndConfig);
-                  if (nb && weldCount > 0) {
+                  const flangeConnections = getWeldCountPerFitting(fittingEndConfig);
+                  if (nb && flangeConnections > 0) {
                     const mainOd = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
                     const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.05);
+                    // Each flange connection has 2 welds (inside + outside), so x2
+                    const weldsPerFlange = 2;
                     let linearMm = 0;
-                    if (weldCount >= 3) linearMm = (2 * Math.PI * mainOd) + (Math.PI * branchOd);
-                    else if (weldCount === 2) linearMm = 2 * Math.PI * mainOd;
-                    else linearMm = Math.PI * mainOd;
+                    if (flangeConnections >= 3) linearMm = ((2 * Math.PI * mainOd) + (Math.PI * branchOd)) * weldsPerFlange;
+                    else if (flangeConnections === 2) linearMm = 2 * Math.PI * mainOd * weldsPerFlange;
+                    else linearMm = Math.PI * mainOd * weldsPerFlange;
                     totalWeldLengthM += (linearMm / 1000) * itemQty;
-                    totalWeldCount += weldCount * itemQty;
+                    totalWeldCount += (flangeConnections * weldsPerFlange) * itemQty;
                   }
                 } else {
                   const nb = entry.specs?.nominalBoreMm;
                   const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                  const weldCount = getWeldCountPerPipe(pipeEndConfig);
-                  if (nb && weldCount > 0) {
+                  const flangeConnections = getWeldCountPerPipe(pipeEndConfig);
+                  if (nb && flangeConnections > 0) {
                     const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
-                    totalWeldLengthM += (weldCount * Math.PI * od / 1000) * itemQty;
-                    totalWeldCount += weldCount * itemQty;
+                    // Each flange connection has 2 welds (inside + outside), so x2
+                    const weldsPerFlange = 2;
+                    totalWeldLengthM += (flangeConnections * weldsPerFlange * Math.PI * od / 1000) * itemQty;
+                    totalWeldCount += (flangeConnections * weldsPerFlange) * itemQty;
                   }
                 }
               });

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { CustomerAuthProvider } from '@/app/context/CustomerAuthContext';
+import SessionExpiredModal from '@/app/components/SessionExpiredModal';
 
 export default function CustomerLayout({
   children,
@@ -17,6 +18,7 @@ export default function CustomerLayout({
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
         {children}
       </div>
+      <SessionExpiredModal />
     </CustomerAuthProvider>
   );
 }

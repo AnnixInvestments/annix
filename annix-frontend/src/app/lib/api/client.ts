@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/lib/api-config';
+import { sessionExpiredEvent } from '@/app/components/SessionExpiredModal';
   
 // Types based on our backend DTOs
 export interface CreateRfqDto {
@@ -391,10 +392,19 @@ class ApiClient {
             } as Record<string, string>;
           }
           response = await fetch(url, config);
+        } else {
+          // Refresh failed - show session expired modal
+          sessionExpiredEvent.emit();
+          throw new Error('Session expired');
         }
       }
 
       if (!response.ok) {
+        // Check if still 401 after retry (shouldn't happen but just in case)
+        if (response.status === 401) {
+          sessionExpiredEvent.emit();
+          throw new Error('Session expired');
+        }
         const errorText = await response.text();
         throw new Error(`API Error (${response.status}): ${errorText}`);
       }
