@@ -12109,6 +12109,10 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               const itemExtArea = pipeRunExtArea + branchExtArea;
                               const totalExtArea = itemExtArea * quantity;
 
+                              const branchOdMm = branchNB * 1.1;
+                              const branchEndAllowanceCalc = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
+                              const branchLengthCalc = (teeHeight / 1000) + branchEndAllowanceCalc;
+
                               return (
                                 <div className="bg-indigo-50 dark:bg-indigo-900/30 p-2 rounded text-center border border-indigo-200 dark:border-indigo-700">
                                   <p className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">🛡️ External m²</p>
@@ -12116,16 +12120,26 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                                   <div className="text-left mt-1 space-y-0.5">
                                     {runLength > 0 && (
                                       <p className="text-[9px] text-indigo-700 dark:text-indigo-300">
-                                        Run: {pipeRunExtArea.toFixed(4)} m² <span className="text-indigo-500 dark:text-indigo-400">(+{mainEndCount}×100mm)</span>
+                                        Run: {pipeRunExtArea.toFixed(4)} m² <span className="text-indigo-500 dark:text-indigo-400">(OD {odMm.toFixed(1)}mm × π × {runLength.toFixed(3)}m)</span>
+                                      </p>
+                                    )}
+                                    {mainEndCount > 0 && (
+                                      <p className="text-[8px] text-indigo-500 dark:text-indigo-400 pl-2">
+                                        Length: {((pipeALength + pipeBLength) / 1000).toFixed(3)}m + {mainEndCount}×0.1m allowance
                                       </p>
                                     )}
                                     {teeHeight > 0 && (
                                       <p className="text-[9px] text-indigo-700 dark:text-indigo-300">
-                                        Branch: {branchExtArea.toFixed(4)} m² <span className="text-indigo-500 dark:text-indigo-400">(+{branchEndCount}×100mm)</span>
+                                        Branch: {branchExtArea.toFixed(4)} m² <span className="text-indigo-500 dark:text-indigo-400">(OD {branchOdMm.toFixed(1)}mm × π × {branchLengthCalc.toFixed(3)}m)</span>
                                       </p>
                                     )}
-                                    <p className="text-[9px] text-indigo-600 dark:text-indigo-400">
-                                      {itemExtArea.toFixed(4)} m² × {quantity}
+                                    {teeHeight > 0 && branchEndCount > 0 && (
+                                      <p className="text-[8px] text-indigo-500 dark:text-indigo-400 pl-2">
+                                        Length: {(teeHeight / 1000).toFixed(3)}m + {branchEndCount}×0.1m allowance
+                                      </p>
+                                    )}
+                                    <p className="text-[9px] text-indigo-600 dark:text-indigo-400 font-medium pt-0.5 border-t border-indigo-200 dark:border-indigo-600 mt-1">
+                                      Per item: {itemExtArea.toFixed(4)} m² × {quantity} = {totalExtArea.toFixed(3)} m²
                                     </p>
                                     {globalSpecs?.coatingType && (
                                       <p className="text-[9px] text-indigo-500 dark:text-indigo-400 italic">{globalSpecs.coatingType}</p>
@@ -12170,6 +12184,10 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               const itemIntArea = pipeRunIntArea + branchIntArea;
                               const totalIntArea = itemIntArea * quantity;
 
+                              const branchIdMmCalc = (branchNB * 1.1) - (2 * wtMm);
+                              const branchEndAllowanceCalc = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
+                              const branchLengthCalc = (teeHeight / 1000) + branchEndAllowanceCalc;
+
                               return (
                                 <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded text-center border border-purple-200 dark:border-purple-700">
                                   <p className="text-xs text-purple-700 dark:text-purple-300 font-medium">🛡️ Internal m²</p>
@@ -12177,16 +12195,26 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                                   <div className="text-left mt-1 space-y-0.5">
                                     {runLength > 0 && (
                                       <p className="text-[9px] text-purple-700 dark:text-purple-300">
-                                        Run: {pipeRunIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(+{mainEndCount}×100mm)</span>
+                                        Run: {pipeRunIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(ID {idMm.toFixed(1)}mm × π × {runLength.toFixed(3)}m)</span>
+                                      </p>
+                                    )}
+                                    {mainEndCount > 0 && (
+                                      <p className="text-[8px] text-purple-500 dark:text-purple-400 pl-2">
+                                        Length: {((pipeALength + pipeBLength) / 1000).toFixed(3)}m + {mainEndCount}×0.1m allowance
                                       </p>
                                     )}
                                     {teeHeight > 0 && (
                                       <p className="text-[9px] text-purple-700 dark:text-purple-300">
-                                        Branch: {branchIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(+{branchEndCount}×100mm)</span>
+                                        Branch: {branchIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(ID {branchIdMmCalc.toFixed(1)}mm × π × {branchLengthCalc.toFixed(3)}m)</span>
                                       </p>
                                     )}
-                                    <p className="text-[9px] text-purple-600 dark:text-purple-400">
-                                      {itemIntArea.toFixed(4)} m² × {quantity}
+                                    {teeHeight > 0 && branchEndCount > 0 && (
+                                      <p className="text-[8px] text-purple-500 dark:text-purple-400 pl-2">
+                                        Length: {(teeHeight / 1000).toFixed(3)}m + {branchEndCount}×0.1m allowance
+                                      </p>
+                                    )}
+                                    <p className="text-[9px] text-purple-600 dark:text-purple-400 font-medium pt-0.5 border-t border-purple-200 dark:border-purple-600 mt-1">
+                                      Per item: {itemIntArea.toFixed(4)} m² × {quantity} = {totalIntArea.toFixed(3)} m²
                                     </p>
                                     {globalSpecs?.liningType && (
                                       <p className="text-[9px] text-purple-500 dark:text-purple-400 italic">{globalSpecs.liningType}</p>
