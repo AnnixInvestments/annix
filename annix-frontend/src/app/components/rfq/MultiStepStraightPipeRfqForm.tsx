@@ -9549,8 +9549,8 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                       const pipeWallThickness = entry.specs?.wallThicknessMm;
                       const numStubs = entry.specs?.numberOfStubs || 0;
                       const stubs = entry.specs?.stubs || [];
-                      // Use item-level steel spec, NOT global
-                      const steelSpecId = entry.specs?.steelSpecificationId;
+                      // Use item-level steel spec with global fallback
+                      const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
                       const isSABS719 = steelSpecId === 8;
 
                       // Weld thickness lookup table (ASTM/ASME only)
@@ -10455,8 +10455,8 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             const numStubs = entry.specs?.numberOfStubs || 0;
                             const stubs = entry.specs?.stubs || [];
 
-                            // Check for SABS 719 - use item-level steel spec
-                            const steelSpecId = entry.specs?.steelSpecificationId;
+                            // Check for SABS 719 - use item-level steel spec with global fallback
+                            const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
                             const isSABS719 = steelSpecId === 8;
 
                             // Weld thickness lookup (for ASTM/ASME only)
@@ -10588,8 +10588,8 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         const schedule = entry.specs?.scheduleNumber || '';
                         const pipeWallThickness = entry.calculation?.wallThicknessMm;
 
-                        // Check for SABS 719 - use item-level steel spec
-                        const steelSpecId = entry.specs?.steelSpecificationId;
+                        // Check for SABS 719 - use item-level steel spec with global fallback
+                        const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
                         const isSABS719 = steelSpecId === 8;
 
                         const scheduleUpper = schedule.toUpperCase();
@@ -11998,8 +11998,8 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         const schedule = entry.specs?.scheduleNumber || '';
                         const pipeWallThickness = entry.calculation?.wallThicknessMm;
 
-                        // Check for SABS 719 - use item-level steel spec
-                        const steelSpecId = entry.specs?.steelSpecificationId;
+                        // Check for SABS 719 - use item-level steel spec with global fallback
+                        const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
                         const isSABS719 = steelSpecId === 8;
 
                         const scheduleUpper = schedule.toUpperCase();
@@ -13517,8 +13517,8 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           const pipeWallThickness = entry.specs.wallThicknessMm;
                           if (!dn && !pipeWallThickness) return null;
 
-                          // Check for SABS 719 - use item-level steel spec
-                          const steelSpecId = entry.specs?.steelSpecificationId;
+                          // Check for SABS 719 - use item-level steel spec with global fallback
+                          const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
                           const isSABS719 = steelSpecId === 8;
 
                           // Determine fitting class from schedule
@@ -13958,8 +13958,8 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                     const pipeWallThickness = entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm;
                     if (!dn && !pipeWallThickness) return null;
 
-                    // Check for SABS 719 - use item-level steel spec
-                    const steelSpecId = entry.specs?.steelSpecificationId;
+                    // Check for SABS 719 - use item-level steel spec with global fallback
+                    const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
                     const isSABS719 = steelSpecId === 8;
 
                     // For SABS 719: use pipe WT directly
