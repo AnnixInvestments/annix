@@ -308,18 +308,20 @@ const getWeldCountPerPipe = (pipeEndConfig: string): number => {
 
 // Helper function to calculate number of flanges required based on pipe end configuration
 const getFlangesPerPipe = (pipeEndConfig: string): number => {
+  // Returns number of bolt set connections (not physical flange pieces)
+  // FOE_LF/FOE_RF are single connections with 2-piece flanges, so count as 1
   switch (pipeEndConfig) {
     case 'PE':  // Plain ended - no flanges
       return 0;
-    case 'FOE': // Flanged one end - 1 flange
+    case 'FOE': // Flanged one end - 1 connection
       return 1;
-    case 'FBE': // Flanged both ends - 2 flanges
+    case 'FBE': // Flanged both ends - 2 connections
       return 2;
-    case 'FOE_LF': // Flanged one end + loose flange - 2 flanges (1 fixed + 1 loose)
-      return 2;
-    case 'FOE_RF': // Flanged one end + rotating flange - 2 flanges
-      return 2;
-    case '2X_RF': // 2 rotating flanges - 2 flanges
+    case 'FOE_LF': // Flanged one end with loose flange - 1 connection (2-piece flange)
+      return 1;
+    case 'FOE_RF': // Flanged one end with rotating flange - 1 connection (2-piece flange)
+      return 1;
+    case '2X_RF': // 2 rotating flanges - 2 connections
       return 2;
     default:
       return 0;
@@ -14430,38 +14432,39 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
 
                         // Add BNW set (1 per flange connection)
                         if (showBnw && hasFlanges) {
-                          // Calculate actual flange count for this item type
-                          let itemFlangeCount = 0;
+                          // Calculate actual connection count for this item type
+                          // FOE_LF/FOE_RF are single connections with 2-piece flanges
+                          let itemConnectionCount = 0;
                           if (entry.itemType === 'straight_pipe' || !entry.itemType) {
                             const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                            if (pipeEndConfig === 'FBE' || pipeEndConfig === '2X_RF') itemFlangeCount = 2;
-                            else if (pipeEndConfig !== 'PE') itemFlangeCount = 1;
+                            if (pipeEndConfig === 'FBE' || pipeEndConfig === '2X_RF') itemConnectionCount = 2;
+                            else if (pipeEndConfig !== 'PE') itemConnectionCount = 1; // FOE, FOE_LF, FOE_RF all = 1 connection
                           } else if (entry.itemType === 'bend') {
                             const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF') itemFlangeCount = 2;
-                            else if (bendEndConfig !== 'PE') itemFlangeCount = 1;
+                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF') itemConnectionCount = 2;
+                            else if (bendEndConfig !== 'PE') itemConnectionCount = 1;
                           } else if (entry.itemType === 'fitting') {
-                            itemFlangeCount = flangeCount; // Already calculated above
+                            itemConnectionCount = flangeCount; // Already calculated above
                           }
-                          totalQty += itemFlangeCount * qty; // BNW sets = flanges × items
+                          totalQty += itemConnectionCount * qty; // BNW sets = connections × items
                         }
 
                         // Add Gasket (1 per flange connection, if gasket type selected)
                         if (showBnw && hasFlanges && globalSpecs?.gasketType) {
-                          // Use same itemFlangeCount calculated above for BNW
-                          let itemFlangeCount = 0;
+                          // Use same connection count for gaskets
+                          let itemConnectionCount = 0;
                           if (entry.itemType === 'straight_pipe' || !entry.itemType) {
                             const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                            if (pipeEndConfig === 'FBE' || pipeEndConfig === '2X_RF') itemFlangeCount = 2;
-                            else if (pipeEndConfig !== 'PE') itemFlangeCount = 1;
+                            if (pipeEndConfig === 'FBE' || pipeEndConfig === '2X_RF') itemConnectionCount = 2;
+                            else if (pipeEndConfig !== 'PE') itemConnectionCount = 1; // FOE, FOE_LF, FOE_RF all = 1 connection
                           } else if (entry.itemType === 'bend') {
                             const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF') itemFlangeCount = 2;
-                            else if (bendEndConfig !== 'PE') itemFlangeCount = 1;
+                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF') itemConnectionCount = 2;
+                            else if (bendEndConfig !== 'PE') itemConnectionCount = 1;
                           } else if (entry.itemType === 'fitting') {
-                            itemFlangeCount = flangeCount; // Already calculated above
+                            itemConnectionCount = flangeCount; // Already calculated above
                           }
-                          totalQty += itemFlangeCount * qty; // Gaskets = flanges × items
+                          totalQty += itemConnectionCount * qty; // Gaskets = connections × items
                         }
 
                         // Add stub BNW and gaskets for bends
