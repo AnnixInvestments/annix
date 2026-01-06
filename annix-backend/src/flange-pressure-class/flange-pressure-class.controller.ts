@@ -36,6 +36,18 @@ export class FlangePressureClassController {
     return this.flangePressureClassService.findAll();
   }
 
+  @Get('standard/:standardId')
+  @ApiOperation({ summary: 'Get all flange pressure classes by standard ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of flange pressure classes retrieved successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Flange standard not found' })
+  @ApiResponse({ status: 400, description: 'Invalid standard ID parameter' })
+  getAllByStandard(@Param('standardId') standardId: string) {
+    return this.flangePressureClassService.getAllByStandard(+standardId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a flange pressure class by ID' })
   @ApiResponse({
@@ -79,17 +91,5 @@ export class FlangePressureClassController {
   @ApiResponse({ status: 400, description: 'Invalid ID parameter' })
   remove(@Param('id') id: string) {
     return this.flangePressureClassService.remove(+id);
-  }
-
-  @Get('standard/:standardId')
-  @ApiOperation({ summary: 'Get all flange pressure classes by standard ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of flange pressure classes retrieved successfully',
-  })
-  @ApiResponse({ status: 404, description: 'Flange standard not found' })
-  @ApiResponse({ status: 400, description: 'Invalid standard ID parameter' })
-  getAllByStandard(@Param('standardId') standardId: string) {
-    return this.flangePressureClassService.getAllByStandard(+standardId);
   }
 }
