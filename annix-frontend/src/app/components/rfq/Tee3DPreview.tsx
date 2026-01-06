@@ -39,7 +39,50 @@ interface Tee3DPreviewProps {
   blankFlangePositions?: string[]; // ['inlet', 'outlet', 'branch']
 }
 
-// Flange lookup table based on nominal bore (simplified PN16)
+// Standard Pipe OD Lookup Table (NB to OD in mm)
+// Based on ASME B36.10M / ISO 4200 / SABS 719
+const NB_TO_OD: { [key: number]: number } = {
+  15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9,
+  100: 114.3, 125: 139.7, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
+  350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 550: 559.0, 600: 609.6,
+  650: 660.4, 700: 711.2, 750: 762.0, 800: 812.8, 850: 863.6, 900: 914.4,
+  1000: 1016.0, 1050: 1066.8, 1200: 1219.2
+};
+
+// Get pipe OD from NB using lookup table
+const getOuterDiameter = (nb: number, providedOD: number = 0): number => {
+  if (providedOD && providedOD > 0) return providedOD;
+  if (NB_TO_OD[nb]) return NB_TO_OD[nb];
+  const sizes = Object.keys(NB_TO_OD).map(Number).sort((a, b) => a - b);
+  let closestSize = sizes[0];
+  for (const size of sizes) {
+    if (size <= nb) closestSize = size;
+    else break;
+  }
+  return NB_TO_OD[closestSize] || nb * 1.05;
+};
+
+// SABS 719 ERW Pipe Wall Thickness Table (Class B - Standard)
+const SABS_719_WALL_THICKNESS: { [key: number]: number } = {
+  200: 5.2, 250: 5.2, 300: 6.4, 350: 6.4, 400: 6.4, 450: 6.4, 500: 6.4,
+  550: 6.4, 600: 6.4, 650: 8.0, 700: 8.0, 750: 8.0, 800: 8.0, 850: 9.5,
+  900: 9.5, 1000: 9.5, 1050: 9.5, 1200: 12.7
+};
+
+// Get wall thickness for SABS 719 pipes
+const getWallThickness = (nb: number, providedWT: number = 0): number => {
+  if (providedWT && providedWT > 1) return providedWT;
+  if (SABS_719_WALL_THICKNESS[nb]) return SABS_719_WALL_THICKNESS[nb];
+  const sizes = Object.keys(SABS_719_WALL_THICKNESS).map(Number).sort((a, b) => a - b);
+  let closestSize = sizes[0];
+  for (const size of sizes) {
+    if (size <= nb) closestSize = size;
+    else break;
+  }
+  return SABS_719_WALL_THICKNESS[closestSize] || 6.4;
+};
+
+// Flange lookup table based on nominal bore - SABS 1123 Table 1000/4 (PN16) Slip-on flanges
 const getFlangeSpecs = (nb: number) => {
   const flangeData: Record<number, { flangeOD: number; pcd: number; thickness: number; boltHoles: number; holeID: number }> = {
     200: { flangeOD: 340, pcd: 295, thickness: 24, boltHoles: 8, holeID: 22 },
@@ -301,15 +344,15 @@ function TeeScene(props: Tee3DPreviewProps) {
   const teeHeight = getTeeHeight(nominalBore, teeType);
   const gussetSection = teeType === 'gusset' ? getGussetSection(nominalBore) : 0;
 
-  // Calculate dimensions
-  const od = outerDiameter || dims?.outsideDiameterMm || nominalBore * 1.1;
-  const wt = wallThickness || Math.max(6, od * 0.03);
+  // Calculate dimensions using proper lookup tables
+  const od = getOuterDiameter(nominalBore, outerDiameter || dims?.outsideDiameterMm || 0);
+  const wt = getWallThickness(nominalBore, wallThickness || 0);
   const id = od - (2 * wt);
   // For reducing tees, use the branch NB dimensions; otherwise use same as run
   const branchOD = branchNominalBore
-    ? (branchOuterDiameter || branchDims?.outsideDiameterMm || branchNominalBore * 1.1)
+    ? getOuterDiameter(branchNominalBore, branchOuterDiameter || branchDims?.outsideDiameterMm || 0)
     : od; // Same as run for equal tee
-  const branchWT = branchNominalBore ? Math.max(6, branchOD * 0.03) : wt;
+  const branchWT = branchNominalBore ? getWallThickness(branchNominalBore) : wt;
   const branchID = branchOD - (2 * branchWT);
 
   // Scale factor for 3D scene (convert mm to scene units)
@@ -954,20 +997,23 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   const [isHidden, setIsHidden] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Get dimensions
+  // Get dimensions using proper lookup tables
   const dims = getSabs719TeeDimensions(props.nominalBore);
   const branchDims = props.branchNominalBore ? getSabs719TeeDimensions(props.branchNominalBore) : null;
-  const od = props.outerDiameter || dims?.outsideDiameterMm || props.nominalBore * 1.1;
-  const wt = props.wallThickness || Math.max(6, od * 0.03);
+  const od = getOuterDiameter(props.nominalBore, props.outerDiameter || dims?.outsideDiameterMm || 0);
+  const wt = getWallThickness(props.nominalBore, props.wallThickness || 0);
   const id = od - (2 * wt);
   // Branch dimensions for reducing tees
   const branchOD = props.branchNominalBore
-    ? (props.branchOuterDiameter || branchDims?.outsideDiameterMm || props.branchNominalBore * 1.1)
+    ? getOuterDiameter(props.branchNominalBore, props.branchOuterDiameter || branchDims?.outsideDiameterMm || 0)
     : od;
-  const branchWT = props.branchNominalBore ? Math.max(6, branchOD * 0.03) : wt;
+  const branchWT = props.branchNominalBore ? getWallThickness(props.branchNominalBore) : wt;
   const branchID = branchOD - (2 * branchWT);
   const teeHeight = getTeeHeight(props.nominalBore, props.teeType);
   const gussetSection = props.teeType === 'gusset' ? getGussetSection(props.nominalBore) : 0;
+  // Get flange specs for display
+  const runFlangeSpecs = getFlangeSpecs(props.nominalBore);
+  const branchFlangeSpecs = getFlangeSpecs(props.branchNominalBore || props.nominalBore);
 
   // Camera position based on size
   const cameraZ = Math.max(8, props.nominalBore / 80);
@@ -1014,17 +1060,36 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
       </div>
 
       {/* Pipe & Tee Info - top right */}
-      <div className="absolute top-2 right-2 text-[9px] bg-white/95 px-2 py-1.5 rounded shadow-sm leading-tight">
-        <div className="font-semibold text-purple-700 mb-0.5">
-          {props.branchNominalBore ? 'REDUCING TEE' : 'TEE'}
-        </div>
-        <div className="text-gray-700">Run: OD {od.toFixed(0)}mm | ID {id.toFixed(0)}mm</div>
+      <div className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md leading-snug border border-gray-200">
+        <div className="font-bold text-blue-800 mb-0.5">RUN PIPE ({props.nominalBore}NB)</div>
+        <div className="text-gray-900 font-medium">OD: {od.toFixed(0)}mm | ID: {id.toFixed(0)}mm</div>
+        <div className="text-gray-700">WT: {wt.toFixed(1)}mm</div>
         {props.branchNominalBore && (
-          <div className="text-blue-700">Branch: OD {branchOD.toFixed(0)}mm | ID {branchID.toFixed(0)}mm</div>
+          <>
+            <div className="font-bold text-blue-800 mt-1 mb-0.5">BRANCH ({props.branchNominalBore}NB)</div>
+            <div className="text-gray-900 font-medium">OD: {branchOD.toFixed(0)}mm | ID: {branchID.toFixed(0)}mm</div>
+            <div className="text-gray-700">WT: {branchWT.toFixed(1)}mm</div>
+          </>
         )}
-        <div className="text-gray-700">Height: {teeHeight}mm</div>
+        <div className="text-gray-700 mt-1">Height: {teeHeight}mm</div>
         {props.teeType === 'gusset' && (
           <div className="text-gray-700">Gusset: {gussetSection}mm</div>
+        )}
+        {/* Run Flange details */}
+        {(props.hasInletFlange || props.hasOutletFlange) && (
+          <>
+            <div className="font-bold text-blue-800 mt-1 mb-0.5">RUN FLANGE</div>
+            <div className="text-gray-900 font-medium">OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm</div>
+            <div className="text-gray-900 font-medium">THK: {runFlangeSpecs.thickness}mm | {runFlangeSpecs.boltHoles} x Ø{runFlangeSpecs.holeID}mm</div>
+          </>
+        )}
+        {/* Branch Flange details */}
+        {props.hasBranchFlange && (
+          <>
+            <div className="font-bold text-blue-800 mt-1 mb-0.5">BRANCH FLANGE</div>
+            <div className="text-gray-900 font-medium">OD: {branchFlangeSpecs.flangeOD}mm | PCD: {branchFlangeSpecs.pcd}mm</div>
+            <div className="text-gray-900 font-medium">THK: {branchFlangeSpecs.thickness}mm | {branchFlangeSpecs.boltHoles} x Ø{branchFlangeSpecs.holeID}mm</div>
+          </>
         )}
       </div>
 
@@ -1080,16 +1145,26 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
             </Canvas>
 
             {/* Info overlay in expanded view */}
-            <div className="absolute top-4 left-4 text-sm bg-white/95 px-3 py-2 rounded-lg shadow-lg">
+            <div className="absolute top-4 left-4 text-sm bg-white px-3 py-2 rounded-lg shadow-lg border border-gray-200">
               <div className="font-semibold text-gray-800 mb-1">
                 SABS 719 {props.teeType === 'gusset' ? 'Gusset' : 'Short'} Tee
               </div>
-              <div className="text-gray-600">
-                {props.nominalBore}NB | OD: {od.toFixed(0)}mm | Height: {teeHeight}mm
+              <div className="text-gray-800">
+                {props.nominalBore}NB | OD: {od.toFixed(0)}mm | WT: {wt.toFixed(1)}mm | Height: {teeHeight}mm
               </div>
+              {props.branchNominalBore && (
+                <div className="text-gray-800 mt-1">
+                  Branch: {props.branchNominalBore}NB | OD: {branchOD.toFixed(0)}mm | WT: {branchWT.toFixed(1)}mm
+                </div>
+              )}
               {props.teeType === 'gusset' && (
-                <div className="text-gray-600 mt-1">
+                <div className="text-gray-800 mt-1">
                   Gusset Section: {gussetSection}mm
+                </div>
+              )}
+              {(props.hasInletFlange || props.hasOutletFlange) && (
+                <div className="text-gray-800 mt-1">
+                  Run Flange: OD {runFlangeSpecs.flangeOD}mm | THK {runFlangeSpecs.thickness}mm
                 </div>
               )}
             </div>
