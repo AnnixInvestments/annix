@@ -13967,10 +13967,32 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
 
   const getTotalLength = () => {
     return allItems.reduce((total: number, entry: any) => {
-      // For bends and fittings, we don't have a total length concept, just count quantity
-      if (entry.itemType === 'bend' || entry.itemType === 'fitting') {
-        return total; // Bends and fittings don't add to total pipeline length
+      const qty = entry.specs?.quantityValue || 1;
+
+      if (entry.itemType === 'bend') {
+        // For bends: include arc length and tangent lengths, but NOT stub lengths
+        const nb = entry.specs?.nominalBoreMm || 0;
+        const bendRadiusType = entry.specs?.bendType || '1.5D';
+        const radiusFactor = parseFloat(bendRadiusType.replace('D', '')) || 1.5;
+        const bendRadiusMm = nb * radiusFactor;
+        const bendAngleRad = ((entry.specs?.bendDegrees || 90) * Math.PI) / 180;
+        const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
+
+        // Add tangent lengths (but not stubs)
+        const tangents = entry.specs?.tangentLengths || [];
+        const tangentLengthM = tangents.reduce((sum: number, t: number) => sum + (t || 0), 0) / 1000;
+
+        return total + ((arcLengthM + tangentLengthM) * qty);
       }
+
+      if (entry.itemType === 'fitting') {
+        // For fittings (tees/laterals): include pipeLengthA + pipeLengthB
+        const lengthAMm = entry.specs?.pipeLengthAMm || 0;
+        const lengthBMm = entry.specs?.pipeLengthBMm || 0;
+        const totalLengthM = (lengthAMm + lengthBMm) / 1000;
+        return total + (totalLengthM * qty);
+      }
+
       // For straight pipes, calculate total length based on quantityType
       if (entry.specs.quantityType === 'total_length') {
         return total + (entry.specs.quantityValue || 0);
