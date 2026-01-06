@@ -7684,7 +7684,162 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
   }, [entries, globalSpecs?.flangeStandardId, pressureClassesByStandard, getFilteredPressureClasses]);
 
   // Helper function to calculate minimum wall thickness using Barlow formula
-  const getMinimumWallThickness = (nominalBore: number, pressure: number): number => {
+  
+
+// SABS 719 ERW wall thickness options for pipe dimensions
+// These use "WT" prefix format (Wall Thickness in mm)
+const SABS719_PIPE_SCHEDULES: Record<number, Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }>> = {
+  200: [
+    { id: 72004, scheduleDesignation: 'WT4.5', wallThicknessMm: 4.5 },
+    { id: 72006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 72008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 72010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 72012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+  ],
+  250: [
+    { id: 72504, scheduleDesignation: 'WT4.5', wallThicknessMm: 4.5 },
+    { id: 72506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 72508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 72510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 72512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 72514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+  ],
+  300: [
+    { id: 73006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 73008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 73010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 73012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 73014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 73016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+  ],
+  350: [
+    { id: 73506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 73508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 73510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 73512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 73514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 73516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+  ],
+  400: [
+    { id: 74004, scheduleDesignation: 'WT4.5', wallThicknessMm: 4.5 },
+    { id: 74006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 74008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 74010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 74012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 74014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 74016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+  ],
+  450: [
+    { id: 74504, scheduleDesignation: 'WT4.5', wallThicknessMm: 4.5 },
+    { id: 74506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 74508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 74510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 74512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 74514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 74516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 74520, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+  ],
+  500: [
+    { id: 75006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 75008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 75010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 75012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 75014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 75016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 75020, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+  ],
+  550: [
+    { id: 75506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 75508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 75510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 75512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 75514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 75516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 75520, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 75522, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  600: [
+    { id: 76006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 76008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 76010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 76012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 76014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 76016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 76020, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 76022, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  650: [
+    { id: 76506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 76508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 76510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 76512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 76514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 76516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 76520, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 76522, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  700: [
+    { id: 77006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 77008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 77010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 77012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 77014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 77016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 77020, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 77022, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  750: [
+    { id: 77506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 77508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 77510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 77512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 77514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 77516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 77520, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 77522, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  800: [
+    { id: 78006, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 78008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 78010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 78012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 78014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 78016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 78020, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 78022, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  850: [
+    { id: 78506, scheduleDesignation: 'WT6', wallThicknessMm: 6 },
+    { id: 78508, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 78510, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 78512, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 78514, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 78516, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 78520, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 78522, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+  900: [
+    { id: 79008, scheduleDesignation: 'WT8', wallThicknessMm: 8 },
+    { id: 79010, scheduleDesignation: 'WT10', wallThicknessMm: 10 },
+    { id: 79012, scheduleDesignation: 'WT12', wallThicknessMm: 12 },
+    { id: 79014, scheduleDesignation: 'WT14', wallThicknessMm: 14 },
+    { id: 79016, scheduleDesignation: 'WT16', wallThicknessMm: 16 },
+    { id: 79020, scheduleDesignation: 'WT20', wallThicknessMm: 20 },
+    { id: 79022, scheduleDesignation: 'WT22', wallThicknessMm: 22 },
+  ],
+};
+
+// Helper function to get appropriate schedule list based on steel spec
+const getScheduleListForSpec = (nominalDiameter: number, steelSpecId: number | undefined): Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }> => {
+  if (steelSpecId === 8) {
+    // SABS 719 - use wall thickness format
+    return SABS719_PIPE_SCHEDULES[nominalDiameter] || [];
+  }
+  // Default to ASTM schedules
+  return FALLBACK_PIPE_SCHEDULES[nominalDiameter] || [];
+};
+
+const getMinimumWallThickness = (nominalBore: number, pressure: number): number => {
     const odLookup: Record<number, number> = {
       15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9,
       100: 114.3, 125: 141.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
@@ -8045,12 +8200,20 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         ? masterData.steelSpecs.find((s: any) => s.id === fittingSteelSpecId)?.steelSpecName
         : undefined;
 
-      // Format fitting type: remove underscores, add "Equal" for Tees
-      // e.g., "Short_Tee" → "Short Equal Tee", "Long_Tee" → "Long Equal Tee"
-      let fittingType = fittingTypeRaw.replace(/_/g, ' ');
-      if (fittingType.includes('Tee') && !fittingType.includes('Equal')) {
-        // Insert "Equal" before "Tee" for equal tees
-        fittingType = fittingType.replace(/\bTee\b/, 'Equal Tee');
+      // Format fitting type: remove underscores, proper case, add "Equal" for equal Tees
+      // e.g., "SHORT_TEE" → "Short Equal Tee", "GUSSET_TEE" → "Gusset Equal Tee"
+      let fittingType = fittingTypeRaw
+        .replace(/_/g, ' ')
+        .toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      // Add "Equal" before "Tee" for equal tees (SHORT_TEE, GUSSET_TEE, EQUAL_TEE)
+      // But NOT for UNEQUAL_TEE, UNEQUAL_SHORT_TEE, etc.
+      const isEqualTeeType = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingTypeRaw);
+      if (isEqualTeeType && !fittingType.includes('Equal')) {
+        fittingType = fittingType.replace(/\bTee\b/i, 'Equal Tee');
       }
 
       let fittingDesc = `${fittingNb}NB ${fittingType}`;
@@ -8243,7 +8406,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
         // CRITICAL FIX: Always use fallback schedule data for the schedule name
         // Find the lightest schedule that meets the minimum wall thickness requirement
-        const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
+        const fbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+        const fallbackSchedules = getScheduleListForSpec(nominalBore, fbEffectiveSpecId);
         const minWT = recommended.minRequiredThicknessMm;
 
         const eligibleSchedules = fallbackSchedules
@@ -8308,7 +8472,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
         console.log(`🔧 Barlow calculation: ${minWallThickness.toFixed(2)}mm min WT for ${nominalBore}NB (OD=${od}mm) at ${pressure} bar`);
 
         // Find the best matching schedule from fallback data
-        const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
+        const fbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+        const fallbackSchedules = getScheduleListForSpec(nominalBore, fbEffectiveSpecId);
         let matchedSchedule = null;
         let matchedWT = minWallThickness;
 
@@ -8578,7 +8743,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           if (!nominalBore) return;
 
                           const pressure = globalSpecs?.workingPressureBar || 0;
-                          const schedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
+                          const nbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                        const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId);
 
                           let matchedSchedule: string | null = null;
                           let matchedWT = 0;
@@ -8694,7 +8860,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         value={entry.specs?.scheduleNumber || ''}
                         onChange={(e) => {
                           const schedule = e.target.value;
-                          const schedules = FALLBACK_PIPE_SCHEDULES[entry.specs?.nominalBoreMm || 0] || [];
+                          const effectiveSteelSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                          const schedules = getScheduleListForSpec(entry.specs?.nominalBoreMm || 0, effectiveSteelSpecId);
                           const scheduleData = schedules.find((s: any) => s.scheduleDesignation === schedule);
                           const updatedEntry: any = {
                             ...entry,
@@ -8708,7 +8875,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       >
                         <option value="">{entry.specs?.nominalBoreMm ? 'Select Schedule' : 'Select NB first'}</option>
                         {(() => {
-                          const schedules = FALLBACK_PIPE_SCHEDULES[entry.specs?.nominalBoreMm || 0] || [];
+                          const effectiveSteelSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                          const schedules = getScheduleListForSpec(entry.specs?.nominalBoreMm || 0, effectiveSteelSpecId);
                           return schedules.map((s: any) => (
                             <option key={s.scheduleDesignation} value={s.scheduleDesignation}>
                               {s.scheduleDesignation} ({s.wallThicknessMm}mm)
@@ -10499,7 +10667,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Fitting Standard *
                         {(() => {
-                          const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                          const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                           const derived = isSABS719 ? 'SABS719' : 'SABS62';
                           const hasGlobal = !!globalSpecs?.steelSpecificationId;
                           const current = entry.specs?.fittingStandard || derived;
@@ -10510,7 +10678,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       </label>
                       <div className="flex gap-2">
                         <select
-                          value={entry.specs?.fittingStandard || (globalSpecs?.steelSpecificationId === 8 ? 'SABS719' : 'SABS62')}
+                          value={entry.specs?.fittingStandard || ((entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8 ? 'SABS719' : 'SABS62')}
                           onChange={(e) => {
                             const updatedEntry = {
                               ...entry,
@@ -10525,7 +10693,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <option value="SABS719">SABS719 (Fabricated Fittings)</option>
                         </select>
                         {(() => {
-                          const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                          const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                           const derived = isSABS719 ? 'SABS719' : 'SABS62';
                           const hasGlobal = !!globalSpecs?.steelSpecificationId;
                           const current = entry.specs?.fittingStandard;
@@ -10544,7 +10712,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         })()}
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        {(entry.specs?.fittingStandard || (globalSpecs?.steelSpecificationId === 8 ? 'SABS719' : 'SABS62')) === 'SABS719'
+                        {(entry.specs?.fittingStandard || ((entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8 ? 'SABS719' : 'SABS62')) === 'SABS719'
                           ? 'Uses pipe table for cut lengths, tee/lateral weld + flange welds'
                           : 'Uses standard fitting dimensions from tables'}
                       </p>
@@ -10559,7 +10727,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         value={entry.specs?.fittingType || ''}
                         onChange={async (e) => {
                           const fittingType = e.target.value;
-                          const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                          const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                           const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
 
                           // Check if switching to equal tee or reducing tee
@@ -10627,7 +10795,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                       >
                         <option value="">Select fitting type...</option>
-                        {(entry.specs?.fittingStandard || (globalSpecs?.steelSpecificationId === 8 ? 'SABS719' : 'SABS62')) === 'SABS62' ? (
+                        {(entry.specs?.fittingStandard || ((entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8 ? 'SABS719' : 'SABS62')) === 'SABS62' ? (
                           <>
                             <option value="EQUAL_TEE">Equal Tee</option>
                             <option value="UNEQUAL_TEE">Unequal Tee</option>
@@ -10673,7 +10841,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           const nominalDiameter = Number(e.target.value);
 
                           // Get effective fitting standard (ID 8 = SABS 719)
-                          const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                          const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                           const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
 
                           // Auto-populate schedule for SABS719 fittings
@@ -10681,7 +10849,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           let matchedWT = entry.specs?.wallThicknessMm;
 
                           if (effectiveStandard === 'SABS719' && globalSpecs?.workingPressureBar) {
-                            const availableSchedules = FALLBACK_PIPE_SCHEDULES[nominalDiameter] || [];
+                            const effectiveSpecId2 = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                            const availableSchedules = getScheduleListForSpec(nominalDiameter, effectiveSpecId2);
                             if (availableSchedules.length > 0) {
                               const minWT = getMinimumWallThickness(nominalDiameter, globalSpecs.workingPressureBar);
                               const sorted = [...availableSchedules].sort((a: any, b: any) =>
@@ -10754,7 +10923,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                       >
                         <option value="">Select diameter...</option>
                         {(() => {
-                          const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                          const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                           const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
                           const sizes = effectiveStandard === 'SABS719'
                             ? [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900]
@@ -10765,7 +10934,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         })()}
                       </select>
                       {(() => {
-                        const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                        const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                         const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
                         const sizes = effectiveStandard === 'SABS719'
                           ? [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900]
@@ -10819,7 +10988,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                     {/* Pipe Lengths - Auto-filled from fitting dimensions */}
                     {(() => {
-                      const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                      const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                       const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
                       const fittingType = entry.specs?.fittingType;
                       const nb = entry.specs?.nominalDiameterMm;
@@ -10971,7 +11140,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           value={entry.specs?.angleRange || ''}
                           onChange={async (e) => {
                             const angleRange = e.target.value;
-                            const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                            const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                             const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
 
                             // Fetch fitting dimensions for pipe lengths with new angle
@@ -11078,7 +11247,7 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                     {/* Schedule - Required for SABS719 fabricated fittings */}
                     {(() => {
-                      const isSABS719 = globalSpecs?.steelSpecificationId === 8;
+                      const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                       const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
                       return effectiveStandard === 'SABS719';
                     })() && (
@@ -11100,7 +11269,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               value={entry.specs?.scheduleNumber || ''}
                               onChange={(e) => {
                                 const schedule = e.target.value;
-                                const availableSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs?.nominalDiameterMm || 0] || [];
+                                const effectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                                const availableSchedules = getScheduleListForSpec(entry.specs?.nominalDiameterMm || 0, effectiveSpecId);
                                 const selectedDim = availableSchedules.find((dim: any) =>
                                   (dim.scheduleDesignation || dim.scheduleNumber?.toString()) === schedule
                                 );
@@ -11119,7 +11289,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               <option value="">Select schedule...</option>
                               {(() => {
                                 const nbValue = entry.specs?.nominalDiameterMm || 0;
-                                const allSchedules = FALLBACK_PIPE_SCHEDULES[nbValue] || [];
+                                const fitEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                                const allSchedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
                                 const minWT = getMinimumWallThickness(nbValue, globalSpecs?.workingPressureBar || 0);
                                 const eligibleSchedules = allSchedules
                                   .filter((dim: any) => (dim.wallThicknessMm || 0) >= minWT)
@@ -11148,7 +11319,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               const scheduleNumber = e.target.value;
                               // Get wall thickness from schedule
                               const nbValue = entry.specs?.nominalDiameterMm || 0;
-                              const schedules = FALLBACK_PIPE_SCHEDULES[nbValue] || [];
+                              const fitEffectiveSpecId2 = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                              const schedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId2);
                               const matchingSchedule = schedules.find((s: any) =>
                                 (s.scheduleDesignation || s.scheduleNumber?.toString()) === scheduleNumber
                               );
@@ -11173,7 +11345,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                             <option value="">Select Schedule</option>
                             {(() => {
                               const nbValue = entry.specs?.nominalDiameterMm || 0;
-                              const allSchedules = FALLBACK_PIPE_SCHEDULES[nbValue] || [];
+                              const fitEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                                const allSchedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
                               if (allSchedules.length > 0) {
                                 return allSchedules.map((dim: any) => {
                                   const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString();
@@ -11576,19 +11749,22 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                   })()
                 )}
 
-                {/* Recalculate Button - smaller since auto-calculation is enabled */}
-                {!entry.calculation && (
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={() => onCalculateFitting && onCalculateFitting(entry.id)}
-                      className="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-colors"
-                    >
-                      Calculate Fitting
-                    </button>
-                    <p className="text-xs text-gray-500 mt-1">Complete specs above for auto-calculation</p>
-                  </div>
-                )}
+                {/* Calculate/Recalculate Button - always visible */}
+                <div className="text-center mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      console.log('Calculate Fitting clicked:', entry.id);
+                      onCalculateFitting && onCalculateFitting(entry.id);
+                    }}
+                    className="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-colors"
+                  >
+                    {entry.calculation ? 'Recalculate Fitting' : 'Calculate Fitting'}
+                  </button>
+                  {!entry.calculation && (
+                    <p className="text-xs text-gray-500 mt-1">Select fitting type and diameter, then click to calculate</p>
+                  )}
+                </div>
 
                 {/* Calculation Results - Compact Layout matching Bend style */}
                 {entry.calculation && (
@@ -11661,6 +11837,55 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               </div>
                             </div>
 
+                            {/* Surface Area - for coating calculations */}
+                            {(() => {
+                              const odMm = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
+                              const wtMm = entry.calculation?.wallThicknessMm || 6;
+                              if (!odMm || !wtMm) return null;
+
+                              const idMm = odMm - (2 * wtMm);
+                              const odM = odMm / 1000;
+                              const idM = idMm / 1000;
+
+                              // Calculate surface areas
+                              let extArea = 0;
+                              let intArea = 0;
+
+                              // Main run pipe (Pipe A + Pipe B)
+                              const runLengthM = (pipeALength + pipeBLength) / 1000;
+                              if (runLengthM > 0) {
+                                extArea += odM * Math.PI * runLengthM;
+                                intArea += idM * Math.PI * runLengthM;
+                              }
+
+                              // Branch/tee section
+                              if (teeHeight > 0) {
+                                const branchOdMm = branchNB * 1.1;
+                                const branchWtMm = wtMm;
+                                const branchIdMm = branchOdMm - (2 * branchWtMm);
+                                extArea += (branchOdMm / 1000) * Math.PI * (teeHeight / 1000);
+                                intArea += (branchIdMm / 1000) * Math.PI * (teeHeight / 1000);
+                              }
+
+                              // Add fitting body surface estimate (approximate based on NB)
+                              const fittingBodyArea = (nominalBore / 1000) * 0.3;
+                              extArea += fittingBodyArea;
+                              intArea += fittingBodyArea * 0.8;
+
+                              return (
+                                <div className="bg-indigo-50 p-2 rounded text-center border border-indigo-200">
+                                  <p className="text-xs text-indigo-700 font-medium">Surface Area</p>
+                                  <div className="mt-1 space-y-0.5">
+                                    <p className="text-xs text-indigo-900">
+                                      <span className="font-medium">Ext:</span> {extArea.toFixed(3)} m²
+                                    </p>
+                                    <p className="text-xs text-indigo-900">
+                                      <span className="font-medium">Int:</span> {intArea.toFixed(3)} m²
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                             {/* Total Weight */}
                             <div className="bg-white p-2 rounded text-center">
@@ -11969,7 +12194,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                         const temperature = globalSpecs?.workingTemperatureC || 20;
 
                         // Get schedules from fallback data directly for synchronous dropdown update
-                        const schedules = FALLBACK_PIPE_SCHEDULES[nominalBore] || [];
+                        const nbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                        const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId);
                         console.log(`[NB onChange] Using ${schedules.length} fallback schedules for ${nominalBore}mm`);
 
                         // CRITICAL: Set the availableSchedulesMap SYNCHRONOUSLY before updating entry
@@ -12182,7 +12408,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               {(() => {
                                 // ALWAYS prefer FALLBACK_PIPE_SCHEDULES to ensure consistent schedule names
                                 // API data may have different designations (e.g. "5S" for stainless) that break calculations
-                                const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs.nominalBoreMm] || [];
+                                const fallbackEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                                const fallbackSchedules = getScheduleListForSpec(entry.specs.nominalBoreMm, fallbackEffectiveSpecId);
                                 const mapSchedules = availableSchedulesMap[entry.id] || [];
                                 // Only use API data if no fallback exists
                                 const allSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
@@ -12224,7 +12451,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                               })()}
                               {(() => {
                                 // ALWAYS prefer FALLBACK_PIPE_SCHEDULES for consistent schedule names
-                                const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs.nominalBoreMm] || [];
+                                const fallbackEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                                const fallbackSchedules = getScheduleListForSpec(entry.specs.nominalBoreMm, fallbackEffectiveSpecId);
                                 const mapSchedules = availableSchedulesMap[entry.id] || [];
                                 const allSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
                                 const minimumWT = entry.minimumWallThickness || 0;
@@ -12268,7 +12496,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
 
                             // Find the selected dimension to get wall thickness
                             // ALWAYS prefer FALLBACK_PIPE_SCHEDULES for consistent schedule names
-                            const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs.nominalBoreMm] || [];
+                            const fallbackEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                                const fallbackSchedules = getScheduleListForSpec(entry.specs.nominalBoreMm, fallbackEffectiveSpecId);
                             const mapSchedules = availableSchedulesMap[entry.id] || [];
                             const availableSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
                             const selectedDimension = availableSchedules.find((dim: any) => {
@@ -12297,7 +12526,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                           <option value="">Select schedule...</option>
                           {(() => {
                             // ALWAYS prefer FALLBACK_PIPE_SCHEDULES for consistent schedule names
-                            const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[entry.specs.nominalBoreMm] || [];
+                            const fallbackEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                                const fallbackSchedules = getScheduleListForSpec(entry.specs.nominalBoreMm, fallbackEffectiveSpecId);
                             const mapSchedules = availableSchedulesMap[entry.id] || [];
                             const allSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
 
@@ -13733,8 +13963,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                                 <td className="py-2 px-2 text-orange-700 text-xs">
                                   {isEqualTee && branchFlangeCount === 0
-                                    ? `${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (${mainFlangeCount} sets) - ${mainNb}NB ${flangeSpec}`
-                                    : `Main: ${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (${mainFlangeCount} ${mainFlangeCount === 1 ? 'set' : 'sets'}) - ${mainNb}NB ${flangeSpec}`}
+                                    ? `${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (1 set per pipe end × ${mainFlangeCount} ends) - ${mainNb}NB ${flangeSpec}`
+                                    : `Main: ${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (1 set per end × ${mainFlangeCount}) - ${mainNb}NB ${flangeSpec}`}
                                 </td>
                                 <td className="py-2 px-2 text-center text-orange-600">-</td>
                                 {requiredProducts.includes('surface_protection') && (
@@ -13773,8 +14003,8 @@ function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBen
                                 <td className="py-2 px-2 font-medium text-green-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                                 <td className="py-2 px-2 text-green-700 text-xs">
                                   {isEqualTee && branchFlangeCount === 0
-                                    ? `${globalSpecs.gasketType} Gasket (${mainFlangeCount} pcs) - ${mainNb}NB ${flangeSpec}`
-                                    : `Main: ${globalSpecs.gasketType} Gasket (${mainFlangeCount} ${mainFlangeCount === 1 ? 'pc' : 'pcs'}) - ${mainNb}NB ${flangeSpec}`}
+                                    ? `${globalSpecs.gasketType} Gasket (1 per pipe end × ${mainFlangeCount} ends) - ${mainNb}NB ${flangeSpec}`
+                                    : `Main: ${globalSpecs.gasketType} Gasket (1 per end × ${mainFlangeCount}) - ${mainNb}NB ${flangeSpec}`}
                                 </td>
                                 <td className="py-2 px-2 text-center text-green-600">-</td>
                                 {requiredProducts.includes('surface_protection') && (
@@ -14724,12 +14954,13 @@ function ReviewSubmitStep({ entries, rfqData, onSubmit, onPrevStep, errors, load
   );
 }
 
-// BOQ (Bill of Quantities) Step - Shows after RFQ submission
-function BOQStep({ rfqData, entries, globalSpecs, requiredProducts }: {
+// BOQ (Bill of Quantities) Step - Consolidated view pooling similar items
+function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData }: {
   rfqData: RfqFormData;
   entries: any[];
   globalSpecs: GlobalSpecs;
   requiredProducts: string[];
+  masterData?: any;
 }) {
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return 'Not specified';
@@ -14737,127 +14968,581 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts }: {
     return d.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  return (
-    <div className="space-y-8 text-white">
-      {/* Header */}
-      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h2 className="text-2xl font-bold text-blue-400 mb-2">Bill of Quantities</h2>
-            <p className="text-slate-400">Project Summary and Material Requirements</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-slate-400">RFQ Number</p>
-            <p className="text-xl font-bold text-green-400">{rfqData.rfqNumber || 'Pending'}</p>
-          </div>
-        </div>
-      </div>
+  const formatWeight = (weight: number | undefined) => {
+    if (!weight || isNaN(weight)) return '0.00 kg';
+    return `${weight.toFixed(2)} kg`;
+  };
 
-      {/* Project Details */}
-      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-blue-400 mb-4">Project Information</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <p className="text-sm text-slate-400">Project Name</p>
-            <p className="font-medium">{rfqData.projectName || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-400">Customer</p>
-            <p className="font-medium">{rfqData.customerName || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-400">Required Date</p>
-            <p className="font-medium">{formatDate(rfqData.requiredByDate)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-400">Delivery Location</p>
-            <p className="font-medium">{rfqData.deliveryLocation || '-'}</p>
-          </div>
-        </div>
-      </div>
+  // Get flange spec string
+  const getFlangeSpec = (entry: any) => {
+    const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+    const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+    const flangeStandard = flangeStandardId && masterData?.flangeStandards
+      ? masterData.flangeStandards.find((s: any) => s.id === flangeStandardId)?.code
+      : '';
+    const pressureClass = flangePressureClassId && masterData?.pressureClasses
+      ? masterData.pressureClasses.find((p: any) => p.id === flangePressureClassId)?.designation
+      : '';
+    return flangeStandard && pressureClass ? `${flangeStandard} ${pressureClass}` : 'PN16';
+  };
 
-      {/* Material Specifications */}
-      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-blue-400 mb-4">Material Specifications</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <p className="text-sm text-slate-400">Steel Specification</p>
-            <p className="font-medium">{globalSpecs.steelSpec || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-400">Steel Grade</p>
-            <p className="font-medium">{globalSpecs.steelGrade || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-400">Design Pressure</p>
-            <p className="font-medium">{globalSpecs.designPressure ? `${globalSpecs.designPressure} bar` : '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-400">Design Temperature</p>
-            <p className="font-medium">{globalSpecs.designTemperature ? `${globalSpecs.designTemperature}°C` : '-'}</p>
-          </div>
-        </div>
-      </div>
+  // Get steel spec name
+  const getSteelSpecName = (entry: any) => {
+    const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+    return steelSpecId && masterData?.steelSpecs
+      ? masterData.steelSpecs.find((s: any) => s.id === steelSpecId)?.steelSpecName || 'Steel'
+      : 'Steel';
+  };
 
-      {/* Items Table */}
-      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-blue-400 mb-4">Line Items ({entries.length})</h3>
+  // ======================
+  // CONSOLIDATION LOGIC
+  // ======================
+
+  // Maps to store consolidated items
+  const consolidatedPipes: Map<string, { description: string; qty: number; unit: string; weight: number; entries: string[] }> = new Map();
+  const consolidatedBends: Map<string, { description: string; qty: number; unit: string; weight: number; entries: string[] }> = new Map();
+  const consolidatedFittings: Map<string, { description: string; qty: number; unit: string; weight: number; entries: string[] }> = new Map();
+  const consolidatedFlanges: Map<string, { description: string; qty: number; unit: string; weight: number; entries: string[] }> = new Map();
+  const consolidatedBnwSets: Map<string, { description: string; qty: number; unit: string; weight: number; entries: string[] }> = new Map();
+  const consolidatedGaskets: Map<string, { description: string; qty: number; unit: string; weight: number; entries: string[] }> = new Map();
+  const consolidatedBlankFlanges: Map<string, { description: string; qty: number; unit: string; weight: number; entries: string[] }> = new Map();
+
+  // Helper to get flange count from end configuration
+  const getFlangeCountFromConfig = (config: string, itemType: string): { main: number; branch: number } => {
+    if (itemType === 'fitting') {
+      if (config === 'F2E' || config === 'F2E_LF' || config === 'F2E_RF') return { main: 2, branch: 0 };
+      if (config === '3X_RF' || config === '2X_RF_FOE') return { main: 2, branch: 1 };
+      if (config !== 'PE') return { main: 1, branch: 0 };
+      return { main: 0, branch: 0 };
+    } else if (itemType === 'bend') {
+      if (config === 'FBE') return { main: 2, branch: 0 };
+      if (config === 'FOE' || config === 'FOE_LF' || config === 'FOE_RF') return { main: 1, branch: 0 };
+      if (config === '2X_RF') return { main: 2, branch: 0 };
+      return { main: 0, branch: 0 };
+    } else {
+      // Straight pipe
+      if (config === 'FBE' || config === '2X_RF') return { main: 2, branch: 0 };
+      if (config === 'FOE' || config === 'FOE_LF' || config === 'FOE_RF') return { main: 1, branch: 0 };
+      return { main: 0, branch: 0 };
+    }
+  };
+
+  // Process each entry
+  entries.forEach((entry) => {
+    const itemNumber = entry.clientItemNumber || entry.id;
+    const qty = entry.specs?.quantityValue || entry.calculation?.calculatedPipeCount || 1;
+    const steelSpec = getSteelSpecName(entry);
+    const flangeSpec = getFlangeSpec(entry);
+
+    if (entry.itemType === 'bend') {
+      // BEND
+      const nb = entry.specs?.nominalBoreMm || 100;
+      const angle = entry.specs?.bendDegrees || 90;
+      const bendType = entry.specs?.bendRadiusType || entry.specs?.bendType || '1.5D';
+      const schedule = entry.specs?.scheduleNumber || '';
+
+      const key = `BEND_${nb}_${angle}_${bendType}_${steelSpec}_${schedule}`;
+      const existing = consolidatedBends.get(key);
+      const bendWeight = (entry.calculation?.bendWeight || 0) + (entry.calculation?.tangentWeight || 0);
+
+      if (existing) {
+        existing.qty += qty;
+        existing.weight += bendWeight * qty;
+        existing.entries.push(itemNumber);
+      } else {
+        consolidatedBends.set(key, {
+          description: `${nb}NB ${angle}° ${bendType} Bend ${steelSpec} ${schedule ? 'Sch' + schedule.replace('Sch', '') : ''}`.trim(),
+          qty: qty,
+          unit: 'pcs',
+          weight: bendWeight * qty,
+          entries: [itemNumber]
+        });
+      }
+
+      // Flanges for bends
+      const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+      const flangeCount = getFlangeCountFromConfig(bendEndConfig, 'bend');
+      if (flangeCount.main > 0) {
+        const flangeKey = `FLANGE_${nb}_${flangeSpec}_WN`;
+        const existingFlange = consolidatedFlanges.get(flangeKey);
+        const flangeQty = flangeCount.main * qty;
+        const flangeWeight = getFlangeWeight(nb, flangeSpec.split(' ').pop() || 'PN16');
+
+        if (existingFlange) {
+          existingFlange.qty += flangeQty;
+          existingFlange.weight += flangeWeight * flangeQty;
+          existingFlange.entries.push(itemNumber);
+        } else {
+          consolidatedFlanges.set(flangeKey, {
+            description: `${nb}NB Weld Neck Flange ${flangeSpec}`,
+            qty: flangeQty,
+            unit: 'pcs',
+            weight: flangeWeight * flangeQty,
+            entries: [itemNumber]
+          });
+        }
+
+        // BNW for bend flanges
+        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(' ').pop() || 'PN16');
+        const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
+        const existingBnw = consolidatedBnwSets.get(bnwKey);
+        const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
+
+        if (existingBnw) {
+          existingBnw.qty += flangeQty;
+          existingBnw.weight += bnwWeight * flangeQty;
+          existingBnw.entries.push(itemNumber);
+        } else {
+          consolidatedBnwSets.set(bnwKey, {
+            description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
+            qty: flangeQty,
+            unit: 'sets',
+            weight: bnwWeight * flangeQty,
+            entries: [itemNumber]
+          });
+        }
+
+        // Gaskets for bend flanges
+        if (globalSpecs?.gasketType) {
+          const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpec}`;
+          const existingGasket = consolidatedGaskets.get(gasketKey);
+          const gasketWeight = getGasketWeight(globalSpecs.gasketType, nb);
+
+          if (existingGasket) {
+            existingGasket.qty += flangeQty;
+            existingGasket.weight += gasketWeight * flangeQty;
+            existingGasket.entries.push(itemNumber);
+          } else {
+            consolidatedGaskets.set(gasketKey, {
+              description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
+              qty: flangeQty,
+              unit: 'pcs',
+              weight: gasketWeight * flangeQty,
+              entries: [itemNumber]
+            });
+          }
+        }
+      }
+
+    } else if (entry.itemType === 'fitting') {
+      // FITTING
+      const nb = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 100;
+      const branchNb = entry.specs?.branchNominalDiameterMm || entry.specs?.branchNominalBoreMm || nb;
+      const fittingType = entry.specs?.fittingType || 'TEE';
+      const schedule = entry.specs?.scheduleNumber || '';
+
+      const key = `FITTING_${fittingType}_${nb}_${branchNb}_${steelSpec}_${schedule}`;
+      const existing = consolidatedFittings.get(key);
+      const fittingWeight = entry.calculation?.fittingWeight || 0;
+
+      // Format fitting type for display
+      let displayType = fittingType.replace(/_/g, ' ').toLowerCase()
+        .split(' ')
+        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+      if (['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType)) {
+        displayType = displayType.replace(/Tee/i, 'Equal Tee');
+      }
+
+      if (existing) {
+        existing.qty += qty;
+        existing.weight += fittingWeight * qty;
+        existing.entries.push(itemNumber);
+      } else {
+        consolidatedFittings.set(key, {
+          description: `${nb}NB${branchNb !== nb ? 'x' + branchNb + 'NB' : ''} ${displayType} ${steelSpec} ${schedule ? 'Sch' + schedule.replace('Sch', '') : ''}`.trim(),
+          qty: qty,
+          unit: 'pcs',
+          weight: fittingWeight * qty,
+          entries: [itemNumber]
+        });
+      }
+
+      // Flanges for fittings
+      const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+      const flangeCount = getFlangeCountFromConfig(fittingEndConfig, 'fitting');
+
+      // Main flanges
+      if (flangeCount.main > 0) {
+        const flangeKey = `FLANGE_${nb}_${flangeSpec}_WN`;
+        const existingFlange = consolidatedFlanges.get(flangeKey);
+        const flangeQty = flangeCount.main * qty;
+        const flangeWeight = getFlangeWeight(nb, flangeSpec.split(' ').pop() || 'PN16');
+
+        if (existingFlange) {
+          existingFlange.qty += flangeQty;
+          existingFlange.weight += flangeWeight * flangeQty;
+          existingFlange.entries.push(itemNumber);
+        } else {
+          consolidatedFlanges.set(flangeKey, {
+            description: `${nb}NB Weld Neck Flange ${flangeSpec}`,
+            qty: flangeQty,
+            unit: 'pcs',
+            weight: flangeWeight * flangeQty,
+            entries: [itemNumber]
+          });
+        }
+
+        // BNW for main flanges
+        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(' ').pop() || 'PN16');
+        const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
+        const existingBnw = consolidatedBnwSets.get(bnwKey);
+        const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
+
+        if (existingBnw) {
+          existingBnw.qty += flangeQty;
+          existingBnw.weight += bnwWeight * flangeQty;
+          existingBnw.entries.push(itemNumber);
+        } else {
+          consolidatedBnwSets.set(bnwKey, {
+            description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
+            qty: flangeQty,
+            unit: 'sets',
+            weight: bnwWeight * flangeQty,
+            entries: [itemNumber]
+          });
+        }
+
+        // Gaskets for main flanges
+        if (globalSpecs?.gasketType) {
+          const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpec}`;
+          const existingGasket = consolidatedGaskets.get(gasketKey);
+          const gasketWeight = getGasketWeight(globalSpecs.gasketType, nb);
+
+          if (existingGasket) {
+            existingGasket.qty += flangeQty;
+            existingGasket.weight += gasketWeight * flangeQty;
+            existingGasket.entries.push(itemNumber);
+          } else {
+            consolidatedGaskets.set(gasketKey, {
+              description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
+              qty: flangeQty,
+              unit: 'pcs',
+              weight: gasketWeight * flangeQty,
+              entries: [itemNumber]
+            });
+          }
+        }
+      }
+
+      // Branch flanges (if different NB)
+      if (flangeCount.branch > 0) {
+        const branchFlangeKey = `FLANGE_${branchNb}_${flangeSpec}_WN`;
+        const existingBranchFlange = consolidatedFlanges.get(branchFlangeKey);
+        const branchFlangeQty = flangeCount.branch * qty;
+        const branchFlangeWeight = getFlangeWeight(branchNb, flangeSpec.split(' ').pop() || 'PN16');
+
+        if (existingBranchFlange) {
+          existingBranchFlange.qty += branchFlangeQty;
+          existingBranchFlange.weight += branchFlangeWeight * branchFlangeQty;
+          existingBranchFlange.entries.push(itemNumber);
+        } else {
+          consolidatedFlanges.set(branchFlangeKey, {
+            description: `${branchNb}NB Weld Neck Flange ${flangeSpec}`,
+            qty: branchFlangeQty,
+            unit: 'pcs',
+            weight: branchFlangeWeight * branchFlangeQty,
+            entries: [itemNumber]
+          });
+        }
+
+        // BNW for branch flanges
+        const branchBnwInfo = getBnwSetInfo(branchNb, flangeSpec.split(' ').pop() || 'PN16');
+        const branchBnwKey = `BNW_${branchBnwInfo.boltSize}_x${branchBnwInfo.holesPerFlange}_${branchNb}NB_${flangeSpec}`;
+        const existingBranchBnw = consolidatedBnwSets.get(branchBnwKey);
+        const branchBnwWeight = branchBnwInfo.weightPerHole * branchBnwInfo.holesPerFlange;
+
+        if (existingBranchBnw) {
+          existingBranchBnw.qty += branchFlangeQty;
+          existingBranchBnw.weight += branchBnwWeight * branchFlangeQty;
+          existingBranchBnw.entries.push(itemNumber);
+        } else {
+          consolidatedBnwSets.set(branchBnwKey, {
+            description: `${branchBnwInfo.boltSize} BNW Set x${branchBnwInfo.holesPerFlange} for ${branchNb}NB ${flangeSpec}`,
+            qty: branchFlangeQty,
+            unit: 'sets',
+            weight: branchBnwWeight * branchFlangeQty,
+            entries: [itemNumber]
+          });
+        }
+
+        // Gaskets for branch flanges
+        if (globalSpecs?.gasketType) {
+          const branchGasketKey = `GASKET_${globalSpecs.gasketType}_${branchNb}NB_${flangeSpec}`;
+          const existingBranchGasket = consolidatedGaskets.get(branchGasketKey);
+          const branchGasketWeight = getGasketWeight(globalSpecs.gasketType, branchNb);
+
+          if (existingBranchGasket) {
+            existingBranchGasket.qty += branchFlangeQty;
+            existingBranchGasket.weight += branchGasketWeight * branchFlangeQty;
+            existingBranchGasket.entries.push(itemNumber);
+          } else {
+            consolidatedGaskets.set(branchGasketKey, {
+              description: `${globalSpecs.gasketType} Gasket ${branchNb}NB ${flangeSpec}`,
+              qty: branchFlangeQty,
+              unit: 'pcs',
+              weight: branchGasketWeight * branchFlangeQty,
+              entries: [itemNumber]
+            });
+          }
+        }
+      }
+
+    } else {
+      // STRAIGHT PIPE
+      const nb = entry.specs?.nominalBoreMm || 100;
+      const schedule = entry.specs?.scheduleNumber || '';
+      const pipeLength = entry.specs?.individualPipeLength || 12.192;
+      const pipeQty = entry.calculation?.calculatedPipeCount || qty;
+
+      const key = `PIPE_${nb}_${schedule}_${steelSpec}_${pipeLength}`;
+      const existing = consolidatedPipes.get(key);
+      const pipeWeight = entry.calculation?.totalPipeWeight || 0;
+
+      if (existing) {
+        existing.qty += pipeQty;
+        existing.weight += pipeWeight;
+        existing.entries.push(itemNumber);
+      } else {
+        consolidatedPipes.set(key, {
+          description: `${nb}NB ${schedule ? 'Sch' + schedule.replace('Sch', '') : ''} ${steelSpec} Pipe x${pipeLength}m`.trim(),
+          qty: pipeQty,
+          unit: 'pcs',
+          weight: pipeWeight,
+          entries: [itemNumber]
+        });
+      }
+
+      // Flanges for pipes
+      const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+      const flangeCount = getFlangeCountFromConfig(pipeEndConfig, 'pipe');
+      if (flangeCount.main > 0) {
+        const flangeKey = `FLANGE_${nb}_${flangeSpec}_WN`;
+        const existingFlange = consolidatedFlanges.get(flangeKey);
+        const flangeQty = flangeCount.main * pipeQty;
+        const flangeWeight = getFlangeWeight(nb, flangeSpec.split(' ').pop() || 'PN16');
+
+        if (existingFlange) {
+          existingFlange.qty += flangeQty;
+          existingFlange.weight += flangeWeight * flangeQty;
+          existingFlange.entries.push(itemNumber);
+        } else {
+          consolidatedFlanges.set(flangeKey, {
+            description: `${nb}NB Weld Neck Flange ${flangeSpec}`,
+            qty: flangeQty,
+            unit: 'pcs',
+            weight: flangeWeight * flangeQty,
+            entries: [itemNumber]
+          });
+        }
+
+        // BNW for pipe flanges
+        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(' ').pop() || 'PN16');
+        const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
+        const existingBnw = consolidatedBnwSets.get(bnwKey);
+        const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
+
+        if (existingBnw) {
+          existingBnw.qty += flangeQty;
+          existingBnw.weight += bnwWeight * flangeQty;
+          existingBnw.entries.push(itemNumber);
+        } else {
+          consolidatedBnwSets.set(bnwKey, {
+            description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
+            qty: flangeQty,
+            unit: 'sets',
+            weight: bnwWeight * flangeQty,
+            entries: [itemNumber]
+          });
+        }
+
+        // Gaskets for pipe flanges
+        if (globalSpecs?.gasketType) {
+          const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpec}`;
+          const existingGasket = consolidatedGaskets.get(gasketKey);
+          const gasketWeight = getGasketWeight(globalSpecs.gasketType, nb);
+
+          if (existingGasket) {
+            existingGasket.qty += flangeQty;
+            existingGasket.weight += gasketWeight * flangeQty;
+            existingGasket.entries.push(itemNumber);
+          } else {
+            consolidatedGaskets.set(gasketKey, {
+              description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
+              qty: flangeQty,
+              unit: 'pcs',
+              weight: gasketWeight * flangeQty,
+              entries: [itemNumber]
+            });
+          }
+        }
+      }
+
+      // Blank flanges
+      if (entry.specs?.addBlankFlange && entry.specs?.blankFlangeCount > 0) {
+        const blankNb = entry.specs?.blankFlangeNominalBoreMm || nb;
+        const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpec}`;
+        const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
+        const blankQty = entry.specs.blankFlangeCount * pipeQty;
+        const blankWeight = getFlangeWeight(blankNb, flangeSpec.split(' ').pop() || 'PN16') * 0.6; // Blank flange is ~60% of WN
+
+        if (existingBlank) {
+          existingBlank.qty += blankQty;
+          existingBlank.weight += blankWeight * blankQty;
+          existingBlank.entries.push(itemNumber);
+        } else {
+          consolidatedBlankFlanges.set(blankFlangeKey, {
+            description: `${blankNb}NB Blank Flange ${flangeSpec}`,
+            qty: blankQty,
+            unit: 'pcs',
+            weight: blankWeight * blankQty,
+            entries: [itemNumber]
+          });
+        }
+      }
+    }
+  });
+
+  // Calculate totals
+  let totalWeight = 0;
+  consolidatedPipes.forEach(item => totalWeight += item.weight);
+  consolidatedBends.forEach(item => totalWeight += item.weight);
+  consolidatedFittings.forEach(item => totalWeight += item.weight);
+  consolidatedFlanges.forEach(item => totalWeight += item.weight);
+  consolidatedBnwSets.forEach(item => totalWeight += item.weight);
+  consolidatedGaskets.forEach(item => totalWeight += item.weight);
+  consolidatedBlankFlanges.forEach(item => totalWeight += item.weight);
+
+  // Render consolidated BOQ table
+  const renderConsolidatedTable = (
+    title: string,
+    items: Map<string, { description: string; qty: number; unit: string; weight: number; entries: string[] }>,
+    bgColor: string,
+    textColor: string
+  ) => {
+    if (items.size === 0) return null;
+
+    const itemsArray = Array.from(items.values());
+    const sectionWeight = itemsArray.reduce((sum, item) => sum + item.weight, 0);
+
+    return (
+      <div className="mb-6">
+        <h4 className={`text-md font-semibold ${textColor} mb-2 flex items-center justify-between`}>
+          <span>{title} ({items.size} {items.size === 1 ? 'item' : 'items'})</span>
+          <span className="text-sm font-normal">Section Weight: {formatWeight(sectionWeight)}</span>
+        </h4>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="border-b border-slate-600">
-                <th className="text-left py-3 px-2 text-slate-400">Item</th>
-                <th className="text-left py-3 px-2 text-slate-400">Type</th>
-                <th className="text-left py-3 px-2 text-slate-400">Size</th>
-                <th className="text-left py-3 px-2 text-slate-400">Description</th>
-                <th className="text-right py-3 px-2 text-slate-400">Qty</th>
-                <th className="text-left py-3 px-2 text-slate-400">Unit</th>
+              <tr className={`${bgColor} border-b border-slate-600`}>
+                <th className="text-left py-2 px-3 font-semibold">#</th>
+                <th className="text-left py-2 px-3 font-semibold">Description</th>
+                <th className="text-right py-2 px-3 font-semibold">Qty</th>
+                <th className="text-left py-2 px-3 font-semibold">Unit</th>
+                <th className="text-right py-2 px-3 font-semibold">Weight</th>
+                <th className="text-left py-2 px-3 font-semibold text-xs">From Items</th>
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry, idx) => (
+              {itemsArray.map((item, idx) => (
                 <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                  <td className="py-3 px-2">{idx + 1}</td>
-                  <td className="py-3 px-2 capitalize">{entry.itemType || entry.type || 'Pipe'}</td>
-                  <td className="py-3 px-2">{entry.nominalDiameter || entry.size || '-'}</td>
-                  <td className="py-3 px-2">{entry.description || `${entry.wallThickness || ''} WT`}</td>
-                  <td className="py-3 px-2 text-right">{entry.quantity || entry.length || '-'}</td>
-                  <td className="py-3 px-2">{entry.unit || 'm'}</td>
+                  <td className="py-2 px-3">{idx + 1}</td>
+                  <td className="py-2 px-3">{item.description}</td>
+                  <td className="py-2 px-3 text-right font-medium">{item.qty}</td>
+                  <td className="py-2 px-3">{item.unit}</td>
+                  <td className="py-2 px-3 text-right">{formatWeight(item.weight)}</td>
+                  <td className="py-2 px-3 text-xs text-slate-400">{item.entries.join(', ')}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+    );
+  };
 
-      {/* Surface Protection Summary */}
-      {requiredProducts.includes('surface_protection') && (
-        <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-blue-400 mb-4">Surface Protection</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-slate-400">External Coating</p>
-              <p className="font-medium">{globalSpecs.externalCoating || 'Not specified'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-400">Internal Lining</p>
-              <p className="font-medium">{globalSpecs.internalLining || 'None'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-400">Corrosion Allowance</p>
-              <p className="font-medium">{globalSpecs.corrosionAllowance ? `${globalSpecs.corrosionAllowance}mm` : 'Not specified'}</p>
-            </div>
+  return (
+    <div className="space-y-6 text-white">
+      {/* Header */}
+      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h2 className="text-2xl font-bold text-blue-400 mb-2">Bill of Quantities (BOQ)</h2>
+            <p className="text-slate-400">Consolidated Material Requirements - Similar items pooled together</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-slate-400">Project</p>
+            <p className="text-xl font-bold text-green-400">{rfqData.projectName || 'Untitled'}</p>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Project Info Summary */}
+      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+          <div>
+            <p className="text-slate-400">Customer</p>
+            <p className="font-medium">{rfqData.customerName || '-'}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Steel Spec</p>
+            <p className="font-medium">{masterData?.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId)?.steelSpecName || '-'}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Flange Standard</p>
+            <p className="font-medium">{masterData?.flangeStandards?.find((s: any) => s.id === globalSpecs?.flangeStandardId)?.code || '-'} {masterData?.pressureClasses?.find((p: any) => p.id === globalSpecs?.flangePressureClassId)?.designation || ''}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Gasket Type</p>
+            <p className="font-medium">{globalSpecs?.gasketType || '-'}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Total Items</p>
+            <p className="font-medium">{entries.length} line items</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Consolidated BOQ Tables */}
+      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-blue-400 mb-4 border-b border-slate-600 pb-2">
+          Consolidated Bill of Quantities
+        </h3>
+
+        {/* Pipes */}
+        {renderConsolidatedTable('Straight Pipes', consolidatedPipes, 'bg-blue-900/30', 'text-blue-400')}
+
+        {/* Bends */}
+        {renderConsolidatedTable('Bends', consolidatedBends, 'bg-purple-900/30', 'text-purple-400')}
+
+        {/* Fittings */}
+        {renderConsolidatedTable('Fittings (Tees, Laterals, Reducers)', consolidatedFittings, 'bg-green-900/30', 'text-green-400')}
+
+        {/* Flanges */}
+        {renderConsolidatedTable('Flanges', consolidatedFlanges, 'bg-cyan-900/30', 'text-cyan-400')}
+
+        {/* Blank Flanges */}
+        {renderConsolidatedTable('Blank Flanges', consolidatedBlankFlanges, 'bg-slate-700/30', 'text-slate-300')}
+
+        {/* BNW Sets */}
+        {requiredProducts.includes('fasteners_gaskets') && renderConsolidatedTable('Bolt, Nut & Washer Sets', consolidatedBnwSets, 'bg-orange-900/30', 'text-orange-400')}
+
+        {/* Gaskets */}
+        {requiredProducts.includes('fasteners_gaskets') && renderConsolidatedTable('Gaskets', consolidatedGaskets, 'bg-teal-900/30', 'text-teal-400')}
+
+        {/* Total Weight Summary */}
+        <div className="mt-6 pt-4 border-t border-slate-600">
+          <div className="flex justify-between items-center text-lg">
+            <span className="font-semibold text-slate-300">Total Estimated Weight:</span>
+            <span className="font-bold text-green-400">{formatWeight(totalWeight)}</span>
+          </div>
+        </div>
+      </div>
 
       {/* Notes */}
-      {rfqData.notes && (
-        <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-blue-400 mb-4">Additional Notes</h3>
-          <p className="text-slate-300 whitespace-pre-wrap">{rfqData.notes}</p>
-        </div>
-      )}
+      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 text-sm text-slate-400">
+        <p><strong>Note:</strong> This BOQ consolidates similar items across all line items. The "From Items" column shows which original line items contribute to each consolidated entry. Weights are estimates based on standard dimensions.</p>
+      </div>
 
       {/* Print/Export Actions */}
       <div className="flex justify-end gap-4">
@@ -15539,8 +16224,8 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   // IMPORTANT: This function should NOT replace working fallback data with API data
   // because API schedule names may differ from fallback names, breaking the selected value
   const fetchAvailableSchedules = async (entryId: string, steelSpecId: number, nominalBoreMm: number) => {
-    // Check for fallback data first to provide immediate response
-    const fallbackSchedules = FALLBACK_PIPE_SCHEDULES[nominalBoreMm] || [];
+    // Check for fallback data first to provide immediate response - use correct schedule list based on steel spec
+    const fallbackSchedules = getScheduleListForSpec(nominalBoreMm, steelSpecId);
 
     // If we already have schedules for this entry, don't fetch from API
     // This prevents API data with different schedule names from breaking the selection
@@ -16153,8 +16838,9 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         const quantity = bendEntry.specs?.quantityValue || 1;
         const centerToFace = bendEntry.specs?.centerToFaceMm || 100;
 
-        // Get wall thickness from fallback schedules
-        const schedules = FALLBACK_PIPE_SCHEDULES[nominalBoreMm] || [];
+        // Get wall thickness from fallback schedules - use correct schedule list based on steel spec
+        const bendEffectiveSpecId = bendEntry.specs?.steelSpecificationId ?? rfqData.globalSpecs?.steelSpecificationId;
+        const schedules = getScheduleListForSpec(nominalBoreMm, bendEffectiveSpecId);
         const scheduleData = schedules.find((s: any) => s.scheduleDesignation === scheduleNumber);
         const wallThickness = scheduleData?.wallThicknessMm || 6.35;
 
@@ -16217,6 +16903,7 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
   };
 
   const handleCalculateFitting = async (entryId: string) => {
+    console.log('handleCalculateFitting called with entryId:', entryId);
     try {
       const { masterDataApi } = await import('@/app/lib/api/client');
       
@@ -16225,15 +16912,31 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
 
       const fittingEntry = entry;
       
-      // Get effective fitting standard (use derived value if not explicitly set)
-      const isSABS719 = rfqData.globalSpecs?.steelSpecificationId === 8;
+      // Get effective fitting standard (use item-level override first, then global spec)
+      // Item-level steelSpecificationId takes precedence over global
+      const effectiveSteelSpecId = fittingEntry.specs?.steelSpecificationId ?? rfqData.globalSpecs?.steelSpecificationId;
+      const isSABS719 = effectiveSteelSpecId === 8;
       const effectiveFittingStandard = fittingEntry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+
+      // Valid fitting types for each standard (must match dropdown options)
+      const SABS62_FITTING_TYPES = ['EQUAL_TEE', 'UNEQUAL_TEE', 'LATERAL', 'SWEEP_TEE', 'Y_PIECE', 'GUSSETTED_TEE', 'EQUAL_CROSS', 'UNEQUAL_CROSS', 'CON_REDUCER', 'ECCENTRIC_REDUCER'];
+      const SABS719_FITTING_TYPES = ['SHORT_TEE', 'UNEQUAL_SHORT_TEE', 'SHORT_REDUCING_TEE', 'GUSSET_TEE', 'UNEQUAL_GUSSET_TEE', 'GUSSET_REDUCING_TEE', 'LATERAL', 'DUCKFOOT_SHORT', 'DUCKFOOT_GUSSETTED', 'SWEEP_LONG_RADIUS', 'SWEEP_MEDIUM_RADIUS', 'SWEEP_ELBOW', 'CON_REDUCER', 'ECCENTRIC_REDUCER'];
 
       // Validation for required fields
       if (!fittingEntry.specs?.fittingType) {
         alert('Please select a fitting type');
         return;
       }
+
+      // Validate fitting type is compatible with the effective standard
+      const validTypes = effectiveFittingStandard === 'SABS719' ? SABS719_FITTING_TYPES : SABS62_FITTING_TYPES;
+      if (!validTypes.includes(fittingEntry.specs.fittingType)) {
+        alert(`The fitting type "${fittingEntry.specs.fittingType}" is not available for ${effectiveFittingStandard} standard.\n\nPlease select a valid fitting type from the dropdown. The standard is derived from your Steel Specification selection (ID 8 = SABS719, others = SABS62).`);
+        // Clear the invalid fitting type
+        updateItem(entryId, { specs: { ...fittingEntry.specs, fittingType: undefined } });
+        return;
+      }
+
       if (!fittingEntry.specs?.nominalDiameterMm) {
         alert('Please select a nominal diameter');
         return;
@@ -16267,11 +16970,14 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
         flangePressureClassId: fittingEntry.specs.flangePressureClassId || rfqData.globalSpecs.flangePressureClassId,
       };
 
+      console.log('Calling API with:', calculationData);
       const result = await masterDataApi.calculateFitting(calculationData);
+      console.log('API result:', result);
 
       updateItem(entryId, {
         calculation: result,
       });
+      console.log('Updated entry with calculation');
 
     } catch (error: any) {
       console.error('Fitting calculation failed:', error);
