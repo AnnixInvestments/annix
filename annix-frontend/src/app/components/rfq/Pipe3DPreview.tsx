@@ -572,8 +572,8 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
 
           // Check for R/F (rotating flange) or L/F (loose flange) configurations
           // These require longer bolts to accommodate the backing ring
-          // Only these specific configurations have backing rings: FOE_RF, FOE_LF, 2X_RF, LF_BE
-          const hasRotatingFlange = ['FOE_RF', 'FOE_LF', '2X_RF', 'LF_BE'].includes(configUpper);
+          // Only R/F (rotating flange) configurations require backing rings
+          const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(configUpper);
           const backingRingThickness = 10; // Standard backing ring thickness in mm
           const adjustedBoltLength = flangeSpecs ? flangeSpecs.boltLength + (hasRotatingFlange ? backingRingThickness : 0) : 0;
 
@@ -593,8 +593,8 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
 
           // Count number of backing rings based on configuration
           const getBackingRingCount = () => {
-            if (configUpper === 'FOE_RF' || configUpper === 'FOE_LF') return 1;
-            if (configUpper === '2X_RF' || configUpper === 'LF_BE') return 2;
+            if (configUpper === 'FOE_RF') return 1;
+            if (configUpper === '2X_RF') return 2;
             return 0;
           };
           const backingRingCount = getBackingRingCount();

@@ -10763,14 +10763,14 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             {/* Total Weight - calculated from all components including backing rings */}
                             {(() => {
                               const bendConfig = (entry.specs?.bendEndConfiguration || 'PE').toUpperCase();
-                              // Only these specific configurations have backing rings: FOE_RF, FOE_LF, 2X_RF, LF_BE
-                              const hasRotatingFlange = ['FOE_RF', 'FOE_LF', '2X_RF', 'LF_BE'].includes(bendConfig);
+                              // Only R/F (rotating flange) configurations require backing rings
+                              const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(bendConfig);
 
                               let backingRingWeight = 0;
                               if (hasRotatingFlange) {
                                 const getBackingRingCountBend = () => {
-                                  if (bendConfig === 'FOE_RF' || bendConfig === 'FOE_LF') return 1;
-                                  if (bendConfig === '2X_RF' || bendConfig === 'LF_BE') return 2;
+                                  if (bendConfig === 'FOE_RF') return 1;
+                                  if (bendConfig === '2X_RF') return 2;
                                   return 0;
                                 };
                                 const backingRingCount = getBackingRingCountBend();
@@ -10828,15 +10828,15 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             {/* Flanges & Backing Rings - Combined field */}
                             {(() => {
                               const bendConfig = (entry.specs?.bendEndConfiguration || 'PE').toUpperCase();
-                              // Only these specific configurations have backing rings: FOE_RF, FOE_LF, 2X_RF, LF_BE
-                              const hasRotatingFlange = ['FOE_RF', 'FOE_LF', '2X_RF', 'LF_BE'].includes(bendConfig);
+                              // Only R/F (rotating flange) configurations require backing rings
+                              const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(bendConfig);
 
                               // Get backing ring count and weight if applicable
                               let backingRingCount = 0;
                               let backingRingWeight = 0;
                               if (hasRotatingFlange) {
-                                if (bendConfig === 'FOE_RF' || bendConfig === 'FOE_LF') backingRingCount = 1;
-                                else if (bendConfig === '2X_RF' || bendConfig === 'LF_BE') backingRingCount = 2;
+                                if (bendConfig === 'FOE_RF') backingRingCount = 1;
+                                else if (bendConfig === '2X_RF') backingRingCount = 2;
 
                                 if (backingRingCount > 0) {
                                   const getFlangeOD = (nb: number) => {
@@ -13653,15 +13653,15 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                       {/* Total System Weight - includes backing ring weight for R/F configs */}
                       {(() => {
                         const configUpper = (entry.specs.pipeEndConfiguration || 'PE').toUpperCase();
-                        // Only these specific configurations have backing rings: FOE_RF, FOE_LF, 2X_RF, LF_BE
-                        const hasRotatingFlange = ['FOE_RF', 'FOE_LF', '2X_RF', 'LF_BE'].includes(configUpper);
+                        // Only R/F (rotating flange) configurations require backing rings
+                        const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(configUpper);
 
                         // Calculate backing ring weight if R/F or L/F
                         let backingRingTotalWeight = 0;
                         if (hasRotatingFlange) {
                           const getBackingRingCountForTotal = () => {
-                            if (configUpper === 'FOE_RF' || configUpper === 'FOE_LF') return 1;
-                            if (configUpper === '2X_RF' || configUpper === 'LF_BE') return 2;
+                            if (configUpper === 'FOE_RF') return 1;
+                            if (configUpper === '2X_RF') return 2;
                             return 0;
                           };
                           const backingRingCountPerPipe = getBackingRingCountForTotal();
@@ -13722,14 +13722,14 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                       {/* Backing Ring Weight - only for R/F and L/F configurations */}
                       {(() => {
                         const configUpper = (entry.specs.pipeEndConfiguration || 'PE').toUpperCase();
-                        // Only these specific configurations have backing rings: FOE_RF, FOE_LF, 2X_RF, LF_BE
-                        const hasRotatingFlange = ['FOE_RF', 'FOE_LF', '2X_RF', 'LF_BE'].includes(configUpper);
+                        // Only R/F (rotating flange) configurations require backing rings
+                        const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(configUpper);
                         if (!hasRotatingFlange) return null;
 
                         // Get backing ring count based on configuration
                         const getBackingRingCount = () => {
-                          if (configUpper === 'FOE_RF' || configUpper === 'FOE_LF') return 1;
-                          if (configUpper === '2X_RF' || configUpper === 'LF_BE') return 2;
+                          if (configUpper === 'FOE_RF') return 1;
+                          if (configUpper === '2X_RF') return 2;
                           return 0;
                         };
                         const backingRingCountPerPipe = getBackingRingCount();
