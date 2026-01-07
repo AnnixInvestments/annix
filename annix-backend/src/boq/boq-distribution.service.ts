@@ -350,7 +350,7 @@ export class BoqDistributionService {
 
         const success = await this.emailService.sendSupplierBoqNotification(
           supplierProfile.user.email,
-          supplierProfile.company?.companyName ||
+          supplierProfile.company?.tradingName || supplierProfile.company?.legalName ||
             `${supplierProfile.firstName} ${supplierProfile.lastName}`,
           access.projectInfo?.name || boq.title || 'New Project',
           boq.boqNumber,
@@ -490,7 +490,11 @@ export class BoqDistributionService {
       order: { createdAt: 'DESC' },
     });
 
-    const results = [];
+    const results: {
+      access: BoqSupplierAccess;
+      boq: Boq;
+      sectionSummary: { type: string; title: string; itemCount: number }[];
+    }[] = [];
 
     for (const access of accessRecords) {
       // Get section summaries for allowed sections
@@ -600,7 +604,7 @@ export class BoqDistributionService {
 
         const success = await this.emailService.sendBoqUpdateNotification(
           supplierProfile.user.email,
-          supplierProfile.company?.companyName ||
+          supplierProfile.company?.tradingName || supplierProfile.company?.legalName ||
             `${supplierProfile.firstName} ${supplierProfile.lastName}`,
           access.projectInfo?.name || boq.title || 'Project',
           boq.boqNumber,
