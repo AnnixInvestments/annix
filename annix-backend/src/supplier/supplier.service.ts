@@ -662,6 +662,10 @@ export class SupplierService {
         supplierProfileId: supplierId,
         productCategory: category as any,
         isActive: true,
+        // Initialize array fields to avoid TypeORM hydration issues
+        materialSpecializations: [],
+        operationalRegions: [],
+        certifications: [],
       });
       await this.capabilityRepo.save(capability);
     }
