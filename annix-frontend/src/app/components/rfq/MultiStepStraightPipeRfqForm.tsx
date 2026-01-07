@@ -16144,47 +16144,47 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, 
       <div className="mb-6">
         <h4 className={`text-md font-semibold ${textColor} mb-2 flex items-center justify-between`}>
           <span>{title} ({items.size} {items.size === 1 ? 'item' : 'items'})</span>
-          <span className="text-sm font-normal">Section Weight: {formatWeight(sectionWeight)}</span>
+          <span className="text-sm font-normal text-gray-500">Section Weight: {formatWeight(sectionWeight)}</span>
         </h4>
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className={`${bgColor} border-b border-slate-600`}>
-                <th className="text-left py-2 px-3 font-semibold text-xs">From Items</th>
-                <th className="text-left py-2 px-3 font-semibold">#</th>
-                <th className="text-left py-2 px-3 font-semibold">Description</th>
-                <th className="text-right py-2 px-3 font-semibold">Qty</th>
-                <th className="text-left py-2 px-3 font-semibold">Unit</th>
+              <tr className={`${bgColor} border-b border-gray-200`}>
+                <th className="text-left py-2 px-3 font-semibold text-xs text-gray-700">From Items</th>
+                <th className="text-left py-2 px-3 font-semibold text-gray-700">#</th>
+                <th className="text-left py-2 px-3 font-semibold text-gray-700">Description</th>
+                <th className="text-right py-2 px-3 font-semibold text-gray-700">Qty</th>
+                <th className="text-left py-2 px-3 font-semibold text-gray-700">Unit</th>
                 {weldTypesList.map(wt => (
-                  <th key={wt} className="text-right py-2 px-3 font-semibold text-xs">{wt} (m)</th>
+                  <th key={wt} className="text-right py-2 px-3 font-semibold text-xs text-gray-700">{wt} (m)</th>
                 ))}
                 {hasAreaData && (
                   <>
-                    <th className="text-right py-2 px-3 font-semibold text-xs">Int m²</th>
-                    <th className="text-right py-2 px-3 font-semibold text-xs">Ext m²</th>
+                    <th className="text-right py-2 px-3 font-semibold text-xs text-gray-700">Int m²</th>
+                    <th className="text-right py-2 px-3 font-semibold text-xs text-gray-700">Ext m²</th>
                   </>
                 )}
-                <th className="text-right py-2 px-3 font-semibold">Weight</th>
+                <th className="text-right py-2 px-3 font-semibold text-gray-700">Weight</th>
               </tr>
             </thead>
             <tbody>
               {itemsArray.map((item, idx) => (
-                <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                  <td className="py-2 px-3 text-xs text-slate-400">{item.entries.join(', ')}</td>
-                  <td className="py-2 px-3">{idx + 1}</td>
-                  <td className="py-2 px-3">{item.description}</td>
-                  <td className="py-2 px-3 text-right font-medium">{item.qty}</td>
-                  <td className="py-2 px-3">{item.unit}</td>
+                <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="py-2 px-3 text-xs text-gray-500">{item.entries.join(', ')}</td>
+                  <td className="py-2 px-3 text-gray-900">{idx + 1}</td>
+                  <td className="py-2 px-3 text-gray-900">{item.description}</td>
+                  <td className="py-2 px-3 text-right font-medium text-gray-900">{item.qty}</td>
+                  <td className="py-2 px-3 text-gray-700">{item.unit}</td>
                   {weldTypesList.map(wt => (
-                    <td key={wt} className="py-2 px-3 text-right text-xs">{item.welds?.[wt] ? item.welds[wt].toFixed(2) : '-'}</td>
+                    <td key={wt} className="py-2 px-3 text-right text-xs text-gray-600">{item.welds?.[wt] ? item.welds[wt].toFixed(2) : '-'}</td>
                   ))}
                   {hasAreaData && (
                     <>
-                      <td className="py-2 px-3 text-right text-xs">{item.intAreaM2 ? item.intAreaM2.toFixed(2) : '-'}</td>
-                      <td className="py-2 px-3 text-right text-xs">{item.extAreaM2 ? item.extAreaM2.toFixed(2) : '-'}</td>
+                      <td className="py-2 px-3 text-right text-xs text-gray-600">{item.intAreaM2 ? item.intAreaM2.toFixed(2) : '-'}</td>
+                      <td className="py-2 px-3 text-right text-xs text-gray-600">{item.extAreaM2 ? item.extAreaM2.toFixed(2) : '-'}</td>
                     </>
                   )}
-                  <td className="py-2 px-3 text-right">{formatWeight(item.weight)}</td>
+                  <td className="py-2 px-3 text-right text-gray-900">{formatWeight(item.weight)}</td>
                 </tr>
               ))}
             </tbody>
@@ -16320,30 +16320,30 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, 
   };
 
   return (
-    <div className="space-y-6 text-white">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <div className="flex justify-between items-start">
           <div>
-            <h2 className="text-2xl font-bold text-blue-400 mb-2">Bill of Quantities (BOQ)</h2>
-            <p className="text-slate-400">Consolidated Material Requirements - Similar items pooled together</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Bill of Quantities (BOQ)</h2>
+            <p className="text-gray-600">Consolidated Material Requirements - Similar items pooled together</p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-slate-400">Project</p>
-            <p className="text-xl font-bold text-green-400">{rfqData.projectName || 'Untitled'}</p>
+            <p className="text-sm text-gray-500">Project</p>
+            <p className="text-xl font-bold text-blue-600">{rfqData.projectName || 'Untitled'}</p>
           </div>
         </div>
       </div>
 
       {/* Project Info Summary */}
-      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
           <div>
-            <p className="text-slate-400">Customer</p>
-            <p className="font-medium">{rfqData.customerName || '-'}</p>
+            <p className="text-gray-500 font-medium">Customer</p>
+            <p className="text-gray-900">{rfqData.customerName || '-'}</p>
           </div>
           <div>
-            <p className="text-slate-400">Steel Spec</p>
+            <p className="text-gray-500 font-medium">Steel Spec</p>
             <p className="font-medium">{(() => {
               // Get effective steel spec for each item (item override or global fallback)
               const getEffectiveSteelSpecId = (entry: any) => entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
@@ -16358,8 +16358,8 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, 
             })()}</p>
           </div>
           <div>
-            <p className="text-slate-400">Flange Standard</p>
-            <p className="font-medium">{(() => {
+            <p className="text-gray-500 font-medium">Flange Standard</p>
+            <p className="text-gray-900">{(() => {
               // Get effective flange standard for each item
               const getEffectiveFlangeStdId = (entry: any) => entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
               const getEffectivePressureClassId = (entry: any) => entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
@@ -16379,69 +16379,69 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, 
             })()}</p>
           </div>
           <div>
-            <p className="text-slate-400">Bolts & Nuts</p>
-            <p className="font-medium">ISO 4014/4032 Gr 8.8 HDG</p>
+            <p className="text-gray-500 font-medium">Bolts & Nuts</p>
+            <p className="text-gray-900">ISO 4014/4032 Gr 8.8 HDG</p>
           </div>
           <div>
-            <p className="text-slate-400">Gasket Type</p>
-            <p className="font-medium">{globalSpecs?.gasketType || '-'}</p>
+            <p className="text-gray-500 font-medium">Gasket Type</p>
+            <p className="text-gray-900">{globalSpecs?.gasketType || '-'}</p>
           </div>
           <div>
-            <p className="text-slate-400">Total Items</p>
-            <p className="font-medium">{entries.length} line items</p>
+            <p className="text-gray-500 font-medium">Total Items</p>
+            <p className="text-gray-900">{entries.length} line items</p>
           </div>
         </div>
       </div>
 
       {/* Consolidated BOQ Tables */}
-      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-blue-400 mb-4 border-b border-slate-600 pb-2">
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">
           Consolidated Bill of Quantities
         </h3>
 
         {/* Pipes - show weld and area columns */}
-        {renderConsolidatedTable('Straight Pipes', consolidatedPipes, 'bg-blue-900/30', 'text-blue-400', true, true)}
+        {renderConsolidatedTable('Straight Pipes', consolidatedPipes, 'bg-blue-50', 'text-blue-700', true, true)}
 
         {/* Bends - show weld and area columns */}
-        {renderConsolidatedTable('Bends', consolidatedBends, 'bg-purple-900/30', 'text-purple-400', true, true)}
+        {renderConsolidatedTable('Bends', consolidatedBends, 'bg-purple-50', 'text-purple-700', true, true)}
 
         {/* Fittings - show weld and area columns */}
-        {renderConsolidatedTable('Fittings (Tees, Laterals, Reducers)', consolidatedFittings, 'bg-green-900/30', 'text-green-400', true, true)}
+        {renderConsolidatedTable('Fittings (Tees, Laterals, Reducers)', consolidatedFittings, 'bg-green-50', 'text-green-700', true, true)}
 
         {/* Flanges */}
-        {renderConsolidatedTable('Flanges', consolidatedFlanges, 'bg-cyan-900/30', 'text-cyan-400', false, false)}
+        {renderConsolidatedTable('Flanges', consolidatedFlanges, 'bg-cyan-50', 'text-cyan-700', false, false)}
 
         {/* Blank Flanges */}
-        {renderConsolidatedTable('Blank Flanges', consolidatedBlankFlanges, 'bg-slate-700/30', 'text-slate-300', false, false)}
+        {renderConsolidatedTable('Blank Flanges', consolidatedBlankFlanges, 'bg-gray-50', 'text-gray-700', false, false)}
 
         {/* BNW Sets */}
-        {requiredProducts.includes('fasteners_gaskets') && renderConsolidatedTable('Bolt, Nut & Washer Sets', consolidatedBnwSets, 'bg-orange-900/30', 'text-orange-400', false, false)}
+        {requiredProducts.includes('fasteners_gaskets') && renderConsolidatedTable('Bolt, Nut & Washer Sets', consolidatedBnwSets, 'bg-orange-50', 'text-orange-700', false, false)}
 
         {/* Gaskets */}
-        {requiredProducts.includes('fasteners_gaskets') && renderConsolidatedTable('Gaskets', consolidatedGaskets, 'bg-teal-900/30', 'text-teal-400', false, false)}
+        {requiredProducts.includes('fasteners_gaskets') && renderConsolidatedTable('Gaskets', consolidatedGaskets, 'bg-teal-50', 'text-teal-700', false, false)}
 
         {/* Total Weight Summary */}
-        <div className="mt-6 pt-4 border-t border-slate-600">
+        <div className="mt-6 pt-4 border-t border-gray-200">
           <div className="flex justify-between items-center text-lg">
-            <span className="font-semibold text-slate-300">Total Estimated Weight:</span>
-            <span className="font-bold text-green-400">{formatWeight(totalWeight)}</span>
+            <span className="font-semibold text-gray-700">Total Estimated Weight:</span>
+            <span className="font-bold text-green-600">{formatWeight(totalWeight)}</span>
           </div>
         </div>
       </div>
 
       {/* Notes */}
-      <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 text-sm text-slate-400">
-        <p><strong>Note:</strong> This BOQ consolidates similar items across all line items. The "From Items" column shows which original line items contribute to each consolidated entry. Weights are estimates based on standard dimensions.</p>
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-600">
+        <p><strong className="text-gray-700">Note:</strong> This BOQ consolidates similar items across all line items. The "From Items" column shows which original line items contribute to each consolidated entry. Weights are estimates based on standard dimensions.</p>
       </div>
 
       {/* Navigation & Actions */}
-      <div className="flex justify-between items-center gap-4 pt-4 border-t border-slate-600">
+      <div className="flex justify-between items-center gap-4 pt-4 border-t border-gray-200">
         <div className="flex gap-4">
           {onPrevStep && (
             <button
               onClick={onPrevStep}
               disabled={loading}
-              className="px-6 py-3 text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors font-semibold disabled:opacity-50"
+              className="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition-colors font-semibold disabled:opacity-50"
             >
               ← Back to Review
             </button>
@@ -16450,7 +16450,7 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, 
         <div className="flex gap-4">
           <button
             onClick={exportToExcel}
-            className="px-6 py-2 bg-green-700 hover:bg-green-600 rounded-lg transition-colors flex items-center gap-2 text-white"
+            className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center gap-2 text-white"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -16459,7 +16459,7 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, 
           </button>
           <button
             onClick={() => window.print()}
-            className="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors flex items-center gap-2 text-slate-300"
+            className="px-6 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition-colors flex items-center gap-2 text-gray-700"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
