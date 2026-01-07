@@ -10692,10 +10692,10 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               {numStubs > 0 && (
                                 <div className="mt-1 pt-1 border-t border-gray-200">
                                   {stub1NB && (
-                                    <p className="text-[10px] text-gray-700">Stub 1: {stub1NB}NB x {stubs[0]?.length || 0}mm</p>
+                                    <p className="text-[10px] text-gray-700">Stub 1 Length: {stubs[0]?.length || 0}mm</p>
                                   )}
                                   {stub2NB && (
-                                    <p className="text-[10px] text-gray-700">Stub 2: {stub2NB}NB x {stubs[1]?.length || 0}mm</p>
+                                    <p className="text-[10px] text-gray-700">Stub 2 Length: {stubs[1]?.length || 0}mm</p>
                                   )}
                                 </div>
                               )}
