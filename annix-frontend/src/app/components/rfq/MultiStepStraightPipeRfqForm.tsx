@@ -16061,7 +16061,7 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, 
 
       {/* Project Info Summary */}
       <div className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-4">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
           <div>
             <p className="text-slate-400">Customer</p>
             <p className="font-medium">{rfqData.customerName || '-'}</p>
@@ -16069,15 +16069,14 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, 
           <div>
             <p className="text-slate-400">Steel Spec</p>
             <p className="font-medium">{(() => {
-              // Check if all items use the same steel spec as global
-              const globalSteelSpecId = globalSpecs?.steelSpecificationId;
-              const allSameSteel = entries.every((entry: any) => {
-                const itemSteelSpecId = entry.specs?.steelSpecificationId;
-                // Item uses global if no override OR override matches global
-                return !itemSteelSpecId || itemSteelSpecId === globalSteelSpecId;
-              });
-              if (allSameSteel && globalSteelSpecId) {
-                return masterData?.steelSpecs?.find((s: any) => s.id === globalSteelSpecId)?.steelSpecName || '-';
+              // Get effective steel spec for each item (item override or global fallback)
+              const getEffectiveSteelSpecId = (entry: any) => entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+              const effectiveSpecs = entries.map((entry: any) => getEffectiveSteelSpecId(entry)).filter(Boolean);
+              if (effectiveSpecs.length === 0) return '-';
+              const firstSpec = effectiveSpecs[0];
+              const allSame = effectiveSpecs.every((id: number) => id === firstSpec);
+              if (allSame) {
+                return masterData?.steelSpecs?.find((s: any) => s.id === firstSpec)?.steelSpecName || '-';
               }
               return 'SEE IN ITEM';
             })()}</p>
@@ -16085,24 +16084,27 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, 
           <div>
             <p className="text-slate-400">Flange Standard</p>
             <p className="font-medium">{(() => {
-              // Check if all items use the same flange standard as global
-              const globalFlangeStdId = globalSpecs?.flangeStandardId;
-              const globalPressureClassId = globalSpecs?.flangePressureClassId;
-              const allSameFlange = entries.every((entry: any) => {
-                const itemFlangeStdId = entry.specs?.flangeStandardId;
-                const itemPressureClassId = entry.specs?.flangePressureClassId;
-                // Item uses global if no override OR override matches global
-                const flangeMatch = !itemFlangeStdId || itemFlangeStdId === globalFlangeStdId;
-                const pressureMatch = !itemPressureClassId || itemPressureClassId === globalPressureClassId;
-                return flangeMatch && pressureMatch;
-              });
-              if (allSameFlange && globalFlangeStdId) {
-                const flangeCode = masterData?.flangeStandards?.find((s: any) => s.id === globalFlangeStdId)?.code || '';
-                const pressureClass = masterData?.pressureClasses?.find((p: any) => p.id === globalPressureClassId)?.designation || '';
-                return flangeCode + (pressureClass ? ' ' + pressureClass : '') || '-';
+              // Get effective flange standard for each item
+              const getEffectiveFlangeStdId = (entry: any) => entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+              const getEffectivePressureClassId = (entry: any) => entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+              const effectiveFlanges = entries.map((entry: any) => ({
+                stdId: getEffectiveFlangeStdId(entry),
+                pcId: getEffectivePressureClassId(entry)
+              })).filter((f: any) => f.stdId);
+              if (effectiveFlanges.length === 0) return '-';
+              const firstFlange = effectiveFlanges[0];
+              const allSame = effectiveFlanges.every((f: any) => f.stdId === firstFlange.stdId && f.pcId === firstFlange.pcId);
+              if (allSame) {
+                const flangeCode = masterData?.flangeStandards?.find((s: any) => s.id === firstFlange.stdId)?.code || '';
+                const pressureClass = masterData?.pressureClasses?.find((p: any) => p.id === firstFlange.pcId)?.designation || '';
+                return (flangeCode + (pressureClass ? ' ' + pressureClass : '')).trim() || '-';
               }
               return 'SEE IN ITEM';
             })()}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Bolts & Nuts</p>
+            <p className="font-medium">ISO 4014/4032 Gr 8.8 HDG</p>
           </div>
           <div>
             <p className="text-slate-400">Gasket Type</p>
