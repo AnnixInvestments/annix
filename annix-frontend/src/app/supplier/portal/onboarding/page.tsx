@@ -177,6 +177,28 @@ export default function SupplierOnboardingPage() {
     onboardingStatus?.status === 'under_review' ||
     onboardingStatus?.status === 'approved';
 
+  // Capabilities can always be updated by approved suppliers
+  const canEditCapabilities =
+    !isReadOnly || onboardingStatus?.status === 'approved';
+
+  const [isSavingCapabilities, setIsSavingCapabilities] = useState(false);
+
+  const handleSaveCapabilities = async () => {
+    setIsSavingCapabilities(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await supplierPortalApi.saveCapabilities(selectedCapabilities);
+      setSuccess('Products & Services updated successfully');
+      await refreshDashboard();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update capabilities');
+    } finally {
+      setIsSavingCapabilities(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-8 flex justify-center">
@@ -578,6 +600,21 @@ export default function SupplierOnboardingPage() {
             <p className="text-sm text-gray-600 mb-4">
               Select all the products and services your company can provide. This helps us match you with relevant RFQs.
             </p>
+            {onboardingStatus?.status === 'approved' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-blue-800 font-medium">Update Your Capabilities</p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      You can update the products and services you offer at any time. Changes will affect which BOQ requests you receive.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {PRODUCTS_AND_SERVICES.map((item) => {
                 const isSelected = selectedCapabilities.includes(item.value);
@@ -588,13 +625,13 @@ export default function SupplierOnboardingPage() {
                       isSelected
                         ? 'border-blue-600 bg-blue-50'
                         : 'border-gray-200 hover:border-blue-300'
-                    } ${isReadOnly ? 'cursor-not-allowed opacity-75' : ''}`}
+                    } ${!canEditCapabilities ? 'cursor-not-allowed opacity-75' : ''}`}
                   >
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => handleCapabilityToggle(item.value)}
-                      disabled={isReadOnly}
+                      disabled={!canEditCapabilities}
                       className="sr-only"
                     />
                     <div
@@ -646,6 +683,33 @@ export default function SupplierOnboardingPage() {
                 <p className="text-sm text-green-700">
                   <strong>{selectedCapabilities.length}</strong> capability{selectedCapabilities.length > 1 ? 'ies' : 'y'} selected
                 </p>
+              </div>
+            )}
+            {onboardingStatus?.status === 'approved' && (
+              <div className="flex justify-end pt-4">
+                <button
+                  type="button"
+                  onClick={handleSaveCapabilities}
+                  disabled={isSavingCapabilities || selectedCapabilities.length === 0}
+                  className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isSavingCapabilities ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      Update Capabilities
+                    </>
+                  )}
+                </button>
               </div>
             )}
           </div>
