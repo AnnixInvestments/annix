@@ -96,6 +96,15 @@ export default function CustomerDocumentsPage() {
     }
   };
 
+  const handleDownload = async (id: number) => {
+    try {
+      setError(null);
+      await customerDocumentApi.downloadDocument(id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to download document');
+    }
+  };
+
   const resetUploadForm = () => {
     setSelectedFile(null);
     setSelectedType('');
@@ -241,14 +250,12 @@ export default function CustomerDocumentsPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
-                    <a
-                      href={customerDocumentApi.getDownloadUrl(doc.id)}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => handleDownload(doc.id)}
                       className="text-blue-600 hover:text-blue-800 text-sm"
                     >
                       Download
-                    </a>
+                    </button>
                     <button
                       onClick={() => handleDelete(doc.id)}
                       className="text-red-600 hover:text-red-800 text-sm"

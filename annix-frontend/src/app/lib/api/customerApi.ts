@@ -605,6 +605,48 @@ class CustomerDocumentApi {
   getDownloadUrl(id: number): string {
     return `${this.client['baseURL']}/customer/documents/${id}/download`;
   }
+
+  async downloadDocument(id: number): Promise<void> {
+    const token = this.client['getToken']();
+    const url = `${this.client['baseURL']}/customer/documents/${id}/download`;
+
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Please log in to download this document');
+      }
+      if (response.status === 404) {
+        throw new Error('Document not found');
+      }
+      throw new Error('Failed to download document. Please try again.');
+    }
+
+    // Get filename from Content-Disposition header or use default
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = 'document';
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
+      if (match) {
+        filename = match[1];
+      }
+    }
+
+    // Create blob and trigger download
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 class CustomerSupplierApi {
