@@ -212,8 +212,8 @@ export class SeedBnwAndStainlessSteelData1767700000000
 
     // First, insert the stainless steel specification if it doesn't exist
     await queryRunner.query(`
-      INSERT INTO steel_specifications (steel_spec_name, density_kg_m3, description, grade_standard)
-      VALUES ('ASTM A312 TP304/316', 8000, 'Austenitic Stainless Steel Welded and Seamless Pipe', 'ASTM A312')
+      INSERT INTO steel_specifications (steel_spec_name)
+      VALUES ('ASTM A312 TP304/316')
       ON CONFLICT (steel_spec_name) DO NOTHING
     `);
 

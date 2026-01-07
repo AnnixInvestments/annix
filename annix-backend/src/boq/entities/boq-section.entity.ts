@@ -54,7 +54,8 @@ export class BoqSection {
 
   @ApiProperty({
     description: 'Consolidated items for this section',
-    type: 'object',
+    type: 'array',
+    items: { type: 'object', additionalProperties: true },
   })
   @Column({ type: 'jsonb', name: 'items' })
   items: any[]; // Array of consolidated items with description, qty, unit, weight, entries, welds, areas
