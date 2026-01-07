@@ -15299,7 +15299,7 @@ function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevStep, errors, lo
                     nbMm = entry.specs?.nominalBoreMm || 100;
                   }
 
-                  if (!hasFlanges) return null;
+                  if (!hasFlanges && stubFlanges.length === 0) return null;
 
                   const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
                   const bnwInfo = getBnwSetInfo(nbMm, pressureClass);
