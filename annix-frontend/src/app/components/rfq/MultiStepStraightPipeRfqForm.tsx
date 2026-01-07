@@ -14169,7 +14169,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                   } else if (entry.itemType === 'bend') {
                     // Calculate main bend flanges based on bendEndConfiguration
                     const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                    if (bendEndConfig === 'FBE' || bendEndConfig === 'FOE_RF' || bendEndConfig === '2X_RF') {
+                    if (bendEndConfig === 'FBE' || bendEndConfig === 'FOE_RF' || bendEndConfig === '2X_RF' || bendEndConfig === 'LF_BE') {
                       flangesPerPipe = 2;
                     } else if (bendEndConfig === 'FOE' || bendEndConfig === 'FOE_LF') {
                       flangesPerPipe = 1;
@@ -14704,7 +14704,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             else if (pipeEndConfig !== 'PE') itemConnectionCount = 1; // FOE, FOE_LF, FOE_RF all = 1 connection
                           } else if (entry.itemType === 'bend') {
                             const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF') itemConnectionCount = 2;
+                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF' || bendEndConfig === 'LF_BE') itemConnectionCount = 2;
                             else if (bendEndConfig !== 'PE') itemConnectionCount = 1;
                           } else if (entry.itemType === 'fitting') {
                             itemConnectionCount = flangeCount; // Already calculated above
@@ -14722,7 +14722,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             else if (pipeEndConfig !== 'PE') itemConnectionCount = 1; // FOE, FOE_LF, FOE_RF all = 1 connection
                           } else if (entry.itemType === 'bend') {
                             const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF') itemConnectionCount = 2;
+                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF' || bendEndConfig === 'LF_BE') itemConnectionCount = 2;
                             else if (bendEndConfig !== 'PE') itemConnectionCount = 1;
                           } else if (entry.itemType === 'fitting') {
                             itemConnectionCount = flangeCount; // Already calculated above
