@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import { StraightPipeEntry, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
-import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, SaMine, MineWithEnvironmentalData, RfqDraftResponse } from '@/app/lib/api/client';
+import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, SaMine, MineWithEnvironmentalData, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
 import {
   validatePage1RequiredFields,
   validatePage2Specifications,
@@ -18013,7 +18013,21 @@ export default function MultiStepStraightPipeRfqForm({ onSuccess, onCancel }: Pr
       console.log(`✅ RFQ progress saved as ${result.draftNumber}`);
     } catch (error) {
       console.error('Failed to save progress:', error);
-      // Fallback to localStorage only
+
+      if (error instanceof SessionExpiredError) {
+        try {
+          localStorage.setItem('annix_rfq_draft', JSON.stringify({
+            rfqData,
+            currentStep,
+            savedAt: new Date().toISOString(),
+          }));
+          console.log('✅ RFQ progress saved to localStorage (session expired, will sync after login)');
+        } catch (e) {
+          console.error('Failed to save to localStorage:', e);
+        }
+        return;
+      }
+
       try {
         localStorage.setItem('annix_rfq_draft', JSON.stringify({
           rfqData,
