@@ -27,6 +27,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { BoqService, PaginatedResult } from './boq.service';
 import { BoqParserService } from './boq-parser.service';
+import { BoqDistributionService } from './boq-distribution.service';
 import { Boq } from './entities/boq.entity';
 import { BoqLineItem } from './entities/boq-line-item.entity';
 import { CreateBoqDto } from './dto/create-boq.dto';
@@ -36,6 +37,7 @@ import { UpdateBoqLineItemDto } from './dto/update-boq-line-item.dto';
 import { BoqQueryDto } from './dto/boq-query.dto';
 import { ReorderLineItemsDto } from './dto/reorder-line-items.dto';
 import { UploadBoqDto } from './dto/upload-boq.dto';
+import { SubmitBoqDto, SubmitBoqResponseDto } from './dto/submit-boq.dto';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
@@ -47,6 +49,7 @@ export class BoqController {
   constructor(
     private readonly boqService: BoqService,
     private readonly boqParserService: BoqParserService,
+    private readonly distributionService: BoqDistributionService,
   ) {}
 
   // === CREATE ===
@@ -334,5 +337,59 @@ export class BoqController {
     @Request() req,
   ): Promise<Boq> {
     return this.boqService.linkToDrawing(id, drawingId, req.user);
+  }
+
+  // === BOQ DISTRIBUTION ===
+
+  @Post(':id/submit')
+  @Roles('rfq_administrator', 'customer', 'admin')
+  @ApiOperation({
+    summary: 'Submit BOQ for quotation (triggers supplier distribution)',
+  })
+  @ApiResponse({ status: HttpStatus.OK, type: SubmitBoqResponseDto })
+  async submitForQuotation(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() submitDto: SubmitBoqDto,
+  ): Promise<SubmitBoqResponseDto> {
+    const result = await this.distributionService.submitForQuotation(
+      id,
+      submitDto.boqData,
+      submitDto.customerInfo,
+      submitDto.projectInfo,
+    );
+
+    return {
+      boqId: result.boq.id,
+      boqNumber: result.boq.boqNumber,
+      sectionsCreated: result.sectionsCreated,
+      suppliersNotified: result.suppliersNotified,
+      sectionsSummary: result.sectionsSummary,
+    };
+  }
+
+  @Post(':id/update-submitted')
+  @Roles('rfq_administrator', 'customer', 'admin')
+  @ApiOperation({
+    summary: 'Update submitted BOQ (re-notifies suppliers)',
+  })
+  @ApiResponse({ status: HttpStatus.OK, type: SubmitBoqResponseDto })
+  async updateSubmittedBoq(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() submitDto: SubmitBoqDto,
+  ): Promise<SubmitBoqResponseDto> {
+    const result = await this.distributionService.handleBoqUpdate(
+      id,
+      submitDto.boqData,
+      submitDto.customerInfo,
+      submitDto.projectInfo,
+    );
+
+    return {
+      boqId: result.boq.id,
+      boqNumber: result.boq.boqNumber,
+      sectionsCreated: result.sectionsCreated,
+      suppliersNotified: result.suppliersNotified,
+      sectionsSummary: result.sectionsSummary,
+    };
   }
 }

@@ -122,6 +122,87 @@ export interface SupplierDashboardResponse {
   };
 }
 
+// BOQ Types
+export type SupplierBoqStatus = 'pending' | 'viewed' | 'quoted' | 'declined' | 'expired';
+
+export interface SupplierBoqListItem {
+  id: number;
+  boqNumber: string;
+  title: string;
+  status: SupplierBoqStatus;
+  projectInfo?: {
+    name: string;
+    description?: string;
+    requiredDate?: string;
+  };
+  customerInfo?: {
+    name: string;
+    email: string;
+    phone?: string;
+    company?: string;
+  };
+  sections: {
+    type: string;
+    title: string;
+    itemCount: number;
+  }[];
+  viewedAt?: string;
+  respondedAt?: string;
+  notificationSentAt?: string;
+  createdAt: string;
+}
+
+export interface ConsolidatedItem {
+  description: string;
+  qty: number;
+  unit: string;
+  weightKg: number;
+  entries: number[];
+  welds?: {
+    pipeWeld?: number;
+    flangeWeld?: number;
+    mitreWeld?: number;
+    teeWeld?: number;
+  };
+  areas?: {
+    intAreaM2?: number;
+    extAreaM2?: number;
+  };
+}
+
+export interface BoqSection {
+  id: number;
+  sectionType: string;
+  sectionTitle: string;
+  items: ConsolidatedItem[];
+  totalWeightKg: number;
+  itemCount: number;
+}
+
+export interface SupplierBoqDetailResponse {
+  boq: {
+    id: number;
+    boqNumber: string;
+    title: string;
+    description?: string;
+    status: string;
+  };
+  projectInfo?: {
+    name: string;
+    description?: string;
+    requiredDate?: string;
+  };
+  customerInfo?: {
+    name: string;
+    email: string;
+    phone?: string;
+    company?: string;
+  };
+  accessStatus: SupplierBoqStatus;
+  viewedAt: string;
+  sections: BoqSection[];
+}
+
 class SupplierApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
@@ -398,6 +479,29 @@ class SupplierApiClient {
       body: JSON.stringify({ capabilities }),
     });
   }
+
+  // BOQ endpoints
+  async getMyBoqs(status?: SupplierBoqStatus): Promise<SupplierBoqListItem[]> {
+    const queryString = status ? `?status=${status}` : '';
+    return this.request<SupplierBoqListItem[]>(`/supplier/boqs${queryString}`);
+  }
+
+  async getBoqDetails(boqId: number): Promise<SupplierBoqDetailResponse> {
+    return this.request<SupplierBoqDetailResponse>(`/supplier/boqs/${boqId}`);
+  }
+
+  async markBoqViewed(boqId: number): Promise<{ success: boolean; viewedAt: string; status: string }> {
+    return this.request(`/supplier/boqs/${boqId}/view`, {
+      method: 'POST',
+    });
+  }
+
+  async declineBoq(boqId: number, reason: string): Promise<{ success: boolean; status: string; respondedAt: string }> {
+    return this.request(`/supplier/boqs/${boqId}/decline`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
 }
 
 export const supplierApiClient = new SupplierApiClient();
@@ -426,4 +530,9 @@ export const supplierPortalApi = {
   submitOnboarding: () => supplierApiClient.submitOnboarding(),
   getCapabilities: () => supplierApiClient.getCapabilities(),
   saveCapabilities: (capabilities: string[]) => supplierApiClient.saveCapabilities(capabilities),
+  // BOQ methods
+  getMyBoqs: (status?: SupplierBoqStatus) => supplierApiClient.getMyBoqs(status),
+  getBoqDetails: (boqId: number) => supplierApiClient.getBoqDetails(boqId),
+  markBoqViewed: (boqId: number) => supplierApiClient.markBoqViewed(boqId),
+  declineBoq: (boqId: number, reason: string) => supplierApiClient.declineBoq(boqId, reason),
 };

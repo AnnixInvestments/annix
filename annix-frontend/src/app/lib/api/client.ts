@@ -1022,3 +1022,102 @@ export const draftsApi = {
   getByNumber: (draftNumber: string) => apiClient.getDraftByNumber(draftNumber),
   delete: (id: number) => apiClient.deleteDraft(id),
 };
+
+// BOQ Distribution API types
+export interface ConsolidatedBoqDataDto {
+  straightPipes?: ConsolidatedItemDto[];
+  bends?: ConsolidatedItemDto[];
+  tees?: ConsolidatedItemDto[];
+  reducers?: ConsolidatedItemDto[];
+  flanges?: ConsolidatedItemDto[];
+  blankFlanges?: ConsolidatedItemDto[];
+  bnwSets?: ConsolidatedItemDto[];
+  gaskets?: ConsolidatedItemDto[];
+  surfaceProtection?: ConsolidatedItemDto[];
+}
+
+export interface ConsolidatedItemDto {
+  description: string;
+  qty: number;
+  unit: string;
+  weightKg: number;
+  entries: number[];
+  welds?: {
+    pipeWeld?: number;
+    flangeWeld?: number;
+    mitreWeld?: number;
+    teeWeld?: number;
+  };
+  areas?: {
+    intAreaM2?: number;
+    extAreaM2?: number;
+  };
+}
+
+export interface SubmitBoqDto {
+  boqData: ConsolidatedBoqDataDto;
+  customerInfo?: {
+    name: string;
+    email: string;
+    phone?: string;
+    company?: string;
+  };
+  projectInfo?: {
+    name: string;
+    description?: string;
+    requiredDate?: string;
+  };
+}
+
+export interface SubmitBoqResponseDto {
+  boqId: number;
+  boqNumber: string;
+  sectionsCreated: number;
+  suppliersNotified: number;
+  sectionsSummary: {
+    sectionType: string;
+    sectionTitle: string;
+    itemCount: number;
+    totalWeightKg: number;
+  }[];
+}
+
+export const boqApi = {
+  submitForQuotation: async (boqId: number, dto: SubmitBoqDto): Promise<SubmitBoqResponseDto> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${API_BASE_URL}/boq/${boqId}/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(dto),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to submit BOQ: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  updateSubmittedBoq: async (boqId: number, dto: SubmitBoqDto): Promise<SubmitBoqResponseDto> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${API_BASE_URL}/boq/${boqId}/update-submitted`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(dto),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update BOQ: ${errorText}`);
+    }
+
+    return response.json();
+  },
+};

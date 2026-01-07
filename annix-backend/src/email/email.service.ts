@@ -522,6 +522,177 @@ export class EmailService {
 
   // Admin Portal Email Methods
 
+  // BOQ Distribution Email Methods
+
+  async sendSupplierBoqNotification(
+    email: string,
+    supplierName: string,
+    projectName: string,
+    boqNumber: string,
+    sections: string[],
+    customerDetails?: {
+      name: string;
+      email: string;
+      phone?: string;
+      company?: string;
+    },
+  ): Promise<boolean> {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const boqLink = `${frontendUrl}/supplier/portal/boqs`;
+
+    const sectionsList = sections
+      .map((s) => `<li>${s}</li>`)
+      .join('');
+
+    const customerSection = customerDetails
+      ? `
+        <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
+          <strong>Customer Details:</strong>
+          <p style="margin: 5px 0 0 0;">
+            ${customerDetails.company ? `<strong>Company:</strong> ${customerDetails.company}<br/>` : ''}
+            <strong>Contact:</strong> ${customerDetails.name}<br/>
+            <strong>Email:</strong> ${customerDetails.email}
+            ${customerDetails.phone ? `<br/><strong>Phone:</strong> ${customerDetails.phone}` : ''}
+          </p>
+        </div>
+      `
+      : '';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>New BOQ Request - Annix</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb;">New BOQ Request</h1>
+          <p>Hello ${supplierName},</p>
+          <p>You have been invited to quote on a new Bill of Quantities (BOQ).</p>
+
+          <div style="background-color: #f3f4f6; border-left: 4px solid #16a34a; padding: 15px; margin: 20px 0;">
+            <strong>Project Details:</strong>
+            <p style="margin: 5px 0 0 0;">
+              <strong>Project:</strong> ${projectName}<br/>
+              <strong>BOQ Number:</strong> ${boqNumber}
+            </p>
+          </div>
+
+          <p><strong>Sections you can quote on:</strong></p>
+          <ul>
+            ${sectionsList}
+          </ul>
+
+          ${customerSection}
+
+          <p style="margin: 30px 0;">
+            <a href="${boqLink}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View BOQ Details
+            </a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated notification from the Annix platform.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      New BOQ Request
+
+      Hello ${supplierName},
+
+      You have been invited to quote on a new Bill of Quantities (BOQ).
+
+      Project: ${projectName}
+      BOQ Number: ${boqNumber}
+
+      Sections you can quote on:
+      ${sections.map((s) => `- ${s}`).join('\n')}
+
+      ${customerDetails ? `Customer: ${customerDetails.company || customerDetails.name}` : ''}
+
+      View the BOQ at: ${boqLink}
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `New BOQ Request: ${projectName} (${boqNumber}) - Annix`,
+      html,
+      text,
+    });
+  }
+
+  async sendBoqUpdateNotification(
+    email: string,
+    supplierName: string,
+    projectName: string,
+    boqNumber: string,
+    sections: string[],
+  ): Promise<boolean> {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const boqLink = `${frontendUrl}/supplier/portal/boqs`;
+
+    const sectionsList = sections
+      .map((s) => `<li>${s}</li>`)
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>BOQ Updated - Annix</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #f59e0b;">BOQ Updated</h1>
+          <p>Hello ${supplierName},</p>
+          <p>A Bill of Quantities (BOQ) you were invited to quote on has been updated by the customer.</p>
+
+          <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+            <strong>Updated BOQ:</strong>
+            <p style="margin: 5px 0 0 0;">
+              <strong>Project:</strong> ${projectName}<br/>
+              <strong>BOQ Number:</strong> ${boqNumber}
+            </p>
+          </div>
+
+          <p><strong>Sections available to you:</strong></p>
+          <ul>
+            ${sectionsList}
+          </ul>
+
+          <p style="margin: 30px 0;">
+            <a href="${boqLink}"
+               style="background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View Updated BOQ
+            </a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            Please review the updated requirements and adjust your quotation if needed.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `BOQ Updated: ${projectName} (${boqNumber}) - Annix`,
+      html,
+    });
+  }
+
   async sendAdminWelcomeEmail(
     email: string,
     name: string,

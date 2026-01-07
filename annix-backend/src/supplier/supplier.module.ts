@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -26,6 +26,7 @@ import { SupplierAdminService } from './supplier-admin.service';
 import { SupplierAuthController } from './supplier-auth.controller';
 import { SupplierController } from './supplier.controller';
 import { SupplierAdminController } from './supplier-admin.controller';
+import { SupplierBoqController } from './supplier-boq.controller';
 
 // Guards
 import { SupplierAuthGuard } from './guards/supplier-auth.guard';
@@ -35,6 +36,7 @@ import { UserModule } from '../user/user.module';
 import { AuditModule } from '../audit/audit.module';
 import { EmailModule } from '../email/email.module';
 import { AdminModule } from '../admin/admin.module';
+import { BoqModule } from '../boq/boq.module';
 
 @Module({
   imports: [
@@ -64,11 +66,13 @@ import { AdminModule } from '../admin/admin.module';
     AuditModule,
     EmailModule,
     AdminModule,
+    forwardRef(() => BoqModule),
   ],
   controllers: [
     SupplierAuthController,
     SupplierController,
     SupplierAdminController,
+    SupplierBoqController,
   ],
   providers: [
     SupplierAuthService,
@@ -76,6 +80,11 @@ import { AdminModule } from '../admin/admin.module';
     SupplierAdminService,
     SupplierAuthGuard,
   ],
-  exports: [SupplierAuthService, SupplierService, SupplierAuthGuard],
+  exports: [
+    SupplierAuthService,
+    SupplierService,
+    SupplierAuthGuard,
+    TypeOrmModule, // Export TypeOrmModule for repository access in other modules
+  ],
 })
 export class SupplierModule {}
