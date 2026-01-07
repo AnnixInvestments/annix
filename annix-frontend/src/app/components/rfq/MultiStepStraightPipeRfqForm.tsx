@@ -16068,11 +16068,41 @@ function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, 
           </div>
           <div>
             <p className="text-slate-400">Steel Spec</p>
-            <p className="font-medium">{masterData?.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId)?.steelSpecName || '-'}</p>
+            <p className="font-medium">{(() => {
+              // Check if all items use the same steel spec as global
+              const globalSteelSpecId = globalSpecs?.steelSpecificationId;
+              const allSameSteel = entries.every((entry: any) => {
+                const itemSteelSpecId = entry.specs?.steelSpecificationId;
+                // Item uses global if no override OR override matches global
+                return !itemSteelSpecId || itemSteelSpecId === globalSteelSpecId;
+              });
+              if (allSameSteel && globalSteelSpecId) {
+                return masterData?.steelSpecs?.find((s: any) => s.id === globalSteelSpecId)?.steelSpecName || '-';
+              }
+              return 'SEE IN ITEM';
+            })()}</p>
           </div>
           <div>
             <p className="text-slate-400">Flange Standard</p>
-            <p className="font-medium">{masterData?.flangeStandards?.find((s: any) => s.id === globalSpecs?.flangeStandardId)?.code || '-'} {masterData?.pressureClasses?.find((p: any) => p.id === globalSpecs?.flangePressureClassId)?.designation || ''}</p>
+            <p className="font-medium">{(() => {
+              // Check if all items use the same flange standard as global
+              const globalFlangeStdId = globalSpecs?.flangeStandardId;
+              const globalPressureClassId = globalSpecs?.flangePressureClassId;
+              const allSameFlange = entries.every((entry: any) => {
+                const itemFlangeStdId = entry.specs?.flangeStandardId;
+                const itemPressureClassId = entry.specs?.flangePressureClassId;
+                // Item uses global if no override OR override matches global
+                const flangeMatch = !itemFlangeStdId || itemFlangeStdId === globalFlangeStdId;
+                const pressureMatch = !itemPressureClassId || itemPressureClassId === globalPressureClassId;
+                return flangeMatch && pressureMatch;
+              });
+              if (allSameFlange && globalFlangeStdId) {
+                const flangeCode = masterData?.flangeStandards?.find((s: any) => s.id === globalFlangeStdId)?.code || '';
+                const pressureClass = masterData?.pressureClasses?.find((p: any) => p.id === globalPressureClassId)?.designation || '';
+                return flangeCode + (pressureClass ? ' ' + pressureClass : '') || '-';
+              }
+              return 'SEE IN ITEM';
+            })()}</p>
           </div>
           <div>
             <p className="text-slate-400">Gasket Type</p>
