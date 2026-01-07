@@ -82,18 +82,24 @@ const DATA_KEY_TO_SECTION: Record<string, string> = {
 
 // Mapping from ProductCategory enum to capability keys
 const PRODUCT_CATEGORY_TO_CAPABILITY: Record<ProductCategory, string> = {
+  // Legacy values
   [ProductCategory.STRAIGHT_PIPE]: 'fabricated_steel',
   [ProductCategory.BENDS]: 'fabricated_steel',
   [ProductCategory.FLANGES]: 'fabricated_steel',
   [ProductCategory.FITTINGS]: 'fabricated_steel',
   [ProductCategory.VALVES]: 'fabricated_steel',
-  [ProductCategory.STRUCTURAL_STEEL]: 'structural_steel',
-  [ProductCategory.HDPE]: 'hdpe',
-  [ProductCategory.PVC]: 'pvc',
   [ProductCategory.FABRICATION]: 'fabricated_steel',
   [ProductCategory.COATING]: 'surface_protection',
   [ProductCategory.INSPECTION]: 'surface_protection',
   [ProductCategory.OTHER]: 'fabricated_steel',
+  // New unified values (self-referencing since they are the capability keys)
+  [ProductCategory.FABRICATED_STEEL]: 'fabricated_steel',
+  [ProductCategory.FASTENERS_GASKETS]: 'fasteners_gaskets',
+  [ProductCategory.SURFACE_PROTECTION]: 'surface_protection',
+  [ProductCategory.HDPE]: 'hdpe',
+  [ProductCategory.PVC]: 'pvc',
+  [ProductCategory.STRUCTURAL_STEEL]: 'structural_steel',
+  [ProductCategory.TRANSPORT_INSTALL]: 'transport_install',
 };
 
 @Injectable()

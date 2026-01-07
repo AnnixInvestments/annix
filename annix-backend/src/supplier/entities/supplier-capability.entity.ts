@@ -10,18 +10,24 @@ import {
 import { SupplierProfile } from './supplier-profile.entity';
 
 export enum ProductCategory {
+  // Legacy values (kept for backwards compatibility)
   STRAIGHT_PIPE = 'straight_pipe',
   BENDS = 'bends',
   FLANGES = 'flanges',
   FITTINGS = 'fittings',
   VALVES = 'valves',
-  STRUCTURAL_STEEL = 'structural_steel',
-  HDPE = 'hdpe',
-  PVC = 'pvc',
   FABRICATION = 'fabrication',
   COATING = 'coating',
   INSPECTION = 'inspection',
   OTHER = 'other',
+  // New unified values matching PRODUCTS_AND_SERVICES
+  FABRICATED_STEEL = 'fabricated_steel',
+  FASTENERS_GASKETS = 'fasteners_gaskets',
+  SURFACE_PROTECTION = 'surface_protection',
+  HDPE = 'hdpe',
+  PVC = 'pvc',
+  STRUCTURAL_STEEL = 'structural_steel',
+  TRANSPORT_INSTALL = 'transport_install',
 }
 
 export enum MaterialSpecialization {

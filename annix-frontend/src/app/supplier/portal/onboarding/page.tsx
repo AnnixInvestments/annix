@@ -132,7 +132,7 @@ export default function SupplierOnboardingPage() {
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = async (navigateToDocuments = false) => {
     setIsSaving(true);
     setError(null);
     setSuccess(null);
@@ -151,6 +151,11 @@ export default function SupplierOnboardingPage() {
 
       setSuccess('Details saved successfully');
       await refreshDashboard();
+
+      // Navigate to Documents page if requested (after completing onboarding form)
+      if (navigateToDocuments) {
+        setTimeout(() => router.push('/supplier/portal/documents'), 1000);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save details');
     } finally {
@@ -729,10 +734,10 @@ export default function SupplierOnboardingPage() {
             Previous
           </button>
           <div className="flex space-x-3">
-            {!isReadOnly && (
+            {!isReadOnly && step < 5 && (
               <button
                 type="button"
-                onClick={handleSave}
+                onClick={() => handleSave(false)}
                 disabled={isSaving}
                 className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50"
               >
@@ -748,15 +753,14 @@ export default function SupplierOnboardingPage() {
                 Next
               </button>
             ) : (
-              !isReadOnly &&
-              onboardingStatus?.canSubmit && (
+              !isReadOnly && (
                 <button
                   type="button"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || selectedCapabilities.length === 0}
+                  onClick={() => handleSave(true)}
+                  disabled={isSaving || selectedCapabilities.length === 0}
                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Application'}
+                  {isSaving ? 'Saving...' : 'Complete & Continue to Documents'}
                 </button>
               )
             )}
