@@ -6,6 +6,11 @@ import {
   IsArray,
   IsIn,
   MaxLength,
+  IsInt,
+  Min,
+  Max,
+  IsBoolean,
+  IsDateString,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -177,4 +182,40 @@ export class SupplierCompanyDto {
   @IsIn(['micro', 'small', 'medium', 'large', 'enterprise'])
   @IsOptional()
   companySize?: string;
+
+  // BEE (Broad-Based Black Economic Empowerment) fields
+  @ApiPropertyOptional({
+    description: 'BEE Level (1-8)',
+    example: 3,
+  })
+  @IsInt()
+  @Min(1)
+  @Max(8)
+  @IsOptional()
+  beeLevel?: number;
+
+  @ApiPropertyOptional({
+    description: 'BEE Certificate expiry date',
+    example: '2025-12-31',
+  })
+  @IsDateString()
+  @IsOptional()
+  beeCertificateExpiry?: string;
+
+  @ApiPropertyOptional({
+    description: 'BEE Verification agency name',
+    example: 'Empowerdex',
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  beeVerificationAgency?: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether company is an exempt micro enterprise (EME)',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isExemptMicroEnterprise?: boolean;
 }

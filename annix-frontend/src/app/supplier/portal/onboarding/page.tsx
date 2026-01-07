@@ -138,8 +138,11 @@ export default function SupplierOnboardingPage() {
     setSuccess(null);
 
     try {
+      // Strip out database-only fields before sending
+      const { id, createdAt, updatedAt, ...companyDataToSave } = companyData as any;
+
       // Save company details
-      await supplierPortalApi.saveCompanyDetails(companyData);
+      await supplierPortalApi.saveCompanyDetails(companyDataToSave);
 
       // Save capabilities if on step 5 or if any are selected
       if (selectedCapabilities.length > 0) {
