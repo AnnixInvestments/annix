@@ -10894,9 +10894,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             <div className="bg-white p-2 rounded text-center">
                               <p className="text-xs text-gray-600 font-medium">Weld Summary</p>
                               <div className="text-left mt-1 space-y-0.5">
-                                {bendFlangeCount > 0 && (
-                                  <p className="text-[10px] text-green-700">Bend Flange: {bendFlangeCount * 2} welds @ {effectiveWt?.toFixed(1) || '?'}mm</p>
-                                )}
+
                                 {numTangents > 0 && (
                                   <p className="text-[10px] text-blue-700">Tangent Buttweld: {numTangents} @ {effectiveWt?.toFixed(1) || '?'}mm</p>
                                 )}
