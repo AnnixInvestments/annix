@@ -44,7 +44,7 @@ export class SupplierBoqController {
     @Request() req: any,
     @Query('status') status?: SupplierBoqStatus,
   ) {
-    const supplierProfileId = req.supplierProfile.id;
+    const supplierProfileId = req.supplier.supplierId;
 
     const boqs = await this.distributionService.getSupplierBoqs(
       supplierProfileId,
@@ -76,7 +76,7 @@ export class SupplierBoqController {
     @Request() req: any,
     @Param('id', ParseIntPipe) boqId: number,
   ) {
-    const supplierProfileId = req.supplierProfile.id;
+    const supplierProfileId = req.supplier.supplierId;
 
     const { boq, sections, access } =
       await this.distributionService.getFilteredBoqForSupplier(
@@ -123,7 +123,7 @@ export class SupplierBoqController {
     @Request() req: any,
     @Param('id', ParseIntPipe) boqId: number,
   ) {
-    const supplierProfileId = req.supplierProfile.id;
+    const supplierProfileId = req.supplier.supplierId;
     const access = await this.distributionService.markAsViewed(
       boqId,
       supplierProfileId,
@@ -148,7 +148,7 @@ export class SupplierBoqController {
     @Param('id', ParseIntPipe) boqId: number,
     @Body() body: DeclineBoqDto,
   ) {
-    const supplierProfileId = req.supplierProfile.id;
+    const supplierProfileId = req.supplier.supplierId;
     const access = await this.distributionService.declineBoq(
       boqId,
       supplierProfileId,

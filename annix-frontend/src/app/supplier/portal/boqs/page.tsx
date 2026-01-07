@@ -12,6 +12,27 @@ const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label:
   expired: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Expired' },
 };
 
+const isBoqOpen = (boq: SupplierBoqListItem): boolean => {
+  if (boq.status === 'expired' || boq.status === 'declined' || boq.status === 'quoted') {
+    return false;
+  }
+  if (boq.projectInfo?.requiredDate) {
+    const deadline = new Date(boq.projectInfo.requiredDate);
+    return deadline > new Date();
+  }
+  return true;
+};
+
+const getDaysUntilDeadline = (dateString?: string): number | null => {
+  if (!dateString) return null;
+  const deadline = new Date(dateString);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  deadline.setHours(0, 0, 0, 0);
+  const diffTime = deadline.getTime() - today.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
 export default function SupplierBoqsPage() {
   const [boqs, setBoqs] = useState<SupplierBoqListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,13 +164,16 @@ export default function SupplierBoqsPage() {
                     BOQ Number
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Company
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Project
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
+                    Open/Closed
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Sections
+                    Closes
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -165,20 +189,12 @@ export default function SupplierBoqsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredBoqs.map((boq) => {
                   const statusStyle = statusColors[boq.status];
+                  const open = isBoqOpen(boq);
+                  const daysUntil = getDaysUntilDeadline(boq.projectInfo?.requiredDate);
                   return (
                     <tr key={boq.id} className="hover:bg-gray-50">
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className="font-medium text-gray-900">{boq.boqNumber}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-sm text-gray-900">
-                          {boq.projectInfo?.name || boq.title || '-'}
-                        </div>
-                        {boq.projectInfo?.requiredDate && (
-                          <div className="text-xs text-gray-500">
-                            Due: {formatDate(boq.projectInfo.requiredDate)}
-                          </div>
-                        )}
                       </td>
                       <td className="px-4 py-4">
                         <div className="text-sm text-gray-900">
@@ -189,21 +205,48 @@ export default function SupplierBoqsPage() {
                         )}
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {boq.sections.slice(0, 3).map((section, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"
-                            >
-                              {section.title} ({section.itemCount})
-                            </span>
-                          ))}
-                          {boq.sections.length > 3 && (
-                            <span className="text-xs text-gray-500">
-                              +{boq.sections.length - 3} more
-                            </span>
-                          )}
+                        <div className="text-sm text-gray-900">
+                          {boq.projectInfo?.name || boq.title || '-'}
                         </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            open
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {open ? 'Open' : 'Closed'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {boq.projectInfo?.requiredDate ? (
+                          <div>
+                            <div className="text-sm text-gray-900">
+                              {formatDate(boq.projectInfo.requiredDate)}
+                            </div>
+                            {daysUntil !== null && open && (
+                              <div
+                                className={`text-xs ${
+                                  daysUntil <= 3
+                                    ? 'text-red-600 font-medium'
+                                    : daysUntil <= 7
+                                    ? 'text-yellow-600'
+                                    : 'text-gray-500'
+                                }`}
+                              >
+                                {daysUntil === 0
+                                  ? 'Closes today'
+                                  : daysUntil === 1
+                                  ? '1 day left'
+                                  : `${daysUntil} days left`}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-500">-</span>
+                        )}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span

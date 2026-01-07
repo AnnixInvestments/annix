@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { supplierPortalApi, SupplierDocumentDto } from '@/app/lib/api/supplierApi';
+import { useRouter } from 'next/navigation';
+import { supplierPortalApi, SupplierDocumentDto, OnboardingStatusResponse } from '@/app/lib/api/supplierApi';
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
 import { DocumentActionButtons } from '@/app/components/DocumentActionButtons';
 
@@ -9,15 +10,18 @@ const documentTypes = [
   { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)', required: true },
   { value: 'tax_clearance', label: 'Tax Clearance Certificate (SARS)', required: true },
   { value: 'bee_cert', label: 'BEE/B-BBEE Certificate', required: true },
-  { value: 'iso_cert', label: 'ISO Certification', required: true },
-  { value: 'insurance', label: 'Insurance Certificate', required: true },
+  { value: 'iso_cert', label: 'ISO Certification', required: false },
+  { value: 'insurance', label: 'Insurance Certificate', required: false },
   { value: 'other', label: 'Other Document', required: false },
 ];
 
 export default function SupplierDocumentsPage() {
+  const router = useRouter();
   const [documents, setDocuments] = useState<SupplierDocumentDto[]>([]);
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatusResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState('');
@@ -25,20 +29,33 @@ export default function SupplierDocumentsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewModal, setPreviewModal] = useState<PreviewModalState>(initialPreviewState);
 
-  const fetchDocuments = async () => {
+  const fetchData = async () => {
     try {
-      const docs = await supplierPortalApi.getDocuments();
+      const [docs, status] = await Promise.all([
+        supplierPortalApi.getDocuments(),
+        supplierPortalApi.getOnboardingStatus(),
+      ]);
       setDocuments(docs);
+      setOnboardingStatus(status);
     } catch (err) {
-      console.error('Failed to fetch documents:', err);
+      console.error('Failed to fetch data:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDocuments();
+    fetchData();
   }, []);
+
+  const fetchDocuments = async () => {
+    try {
+      const docs = await supplierPortalApi.getDocuments();
+      setDocuments(docs);
+    } catch (err) {
+      console.error('Failed to fetch documents:', err);
+    }
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -100,6 +117,21 @@ export default function SupplierDocumentsPage() {
       URL.revokeObjectURL(previewModal.url);
     }
     setPreviewModal(initialPreviewState);
+  };
+
+  const handleSubmitOnboarding = async () => {
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await supplierPortalApi.submitOnboarding();
+      setSuccess('Application submitted successfully! Redirecting to dashboard...');
+      setTimeout(() => router.push('/supplier/portal/dashboard'), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit application');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -323,6 +355,68 @@ export default function SupplierDocumentsPage() {
       </div>
 
       <DocumentPreviewModal state={previewModal} onClose={closePreviewModal} />
+
+      {/* Complete Onboarding Button - shows when all required documents are uploaded */}
+      {missingRequired.length === 0 &&
+       onboardingStatus?.status === 'draft' &&
+       onboardingStatus?.companyDetailsComplete && (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Ready to Submit</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                All required documents have been uploaded. You can now submit your application for review.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleSubmitOnboarding}
+              disabled={isSubmitting}
+              className="px-6 py-3 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Complete Onboarding
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Show message if company details incomplete */}
+      {missingRequired.length === 0 &&
+       onboardingStatus?.status === 'draft' &&
+       !onboardingStatus?.companyDetailsComplete && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="text-sm text-amber-800 font-medium">Company Details Incomplete</p>
+              <p className="text-sm text-amber-700 mt-1">
+                Please complete your company details in the{' '}
+                <a href="/supplier/portal/onboarding" className="underline font-medium">
+                  Onboarding section
+                </a>{' '}
+                before submitting your application.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

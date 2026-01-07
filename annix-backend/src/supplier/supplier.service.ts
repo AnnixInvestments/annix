@@ -34,8 +34,6 @@ const REQUIRED_DOCUMENT_TYPES = [
   SupplierDocumentType.REGISTRATION_CERT,
   SupplierDocumentType.TAX_CLEARANCE,
   SupplierDocumentType.BEE_CERT,
-  SupplierDocumentType.ISO_CERT,
-  SupplierDocumentType.INSURANCE,
 ];
 
 @Injectable()
@@ -611,16 +609,14 @@ export class SupplierService {
    * Get supplier capabilities (products/services they can offer)
    */
   async getCapabilities(supplierId: number): Promise<{ capabilities: string[] }> {
-    // Use raw query to avoid TypeORM enum array hydration issues
-    const capabilities = await this.capabilityRepo
-      .createQueryBuilder('cap')
-      .select(['cap.id', 'cap.product_category'])
-      .where('cap.supplier_profile_id = :supplierId', { supplierId })
-      .andWhere('cap.is_active = true')
-      .getRawMany();
+    // Use direct raw SQL query to completely bypass TypeORM entity handling
+    const capabilities = await this.dataSource.query(
+      `SELECT product_category FROM supplier_capabilities WHERE supplier_profile_id = $1 AND is_active = true`,
+      [supplierId],
+    );
 
     return {
-      capabilities: capabilities.map((c) => c.cap_product_category as string),
+      capabilities: capabilities.map((c: { product_category: string }) => c.product_category),
     };
   }
 
@@ -641,43 +637,38 @@ export class SupplierService {
       throw new NotFoundException('Supplier profile not found');
     }
 
-    // Get existing capabilities using raw query to avoid TypeORM enum array hydration issues
-    const existingCapabilities = await this.capabilityRepo
-      .createQueryBuilder('cap')
-      .select(['cap.id', 'cap.product_category'])
-      .where('cap.supplier_profile_id = :supplierId', { supplierId })
-      .getRawMany();
+    // Get existing capabilities using raw SQL to completely bypass TypeORM entity handling
+    const existingCapabilities = await this.dataSource.query(
+      `SELECT id, product_category FROM supplier_capabilities WHERE supplier_profile_id = $1`,
+      [supplierId],
+    );
 
-    const existingCategories = existingCapabilities.map((c) => c.cap_product_category as string);
+    const existingCategories = existingCapabilities.map(
+      (c: { id: number; product_category: string }) => c.product_category,
+    );
     const newCategories = dto.capabilities;
 
     // Find categories to add and remove
     const toAdd = newCategories.filter((c) => !existingCategories.includes(c));
-    const toRemoveIds = existingCapabilities
-      .filter((c) => !newCategories.includes(c.cap_product_category as string))
-      .map((c) => c.cap_id);
+    const toRemove = existingCapabilities.filter(
+      (c: { id: number; product_category: string }) =>
+        !newCategories.includes(c.product_category),
+    );
 
     // Remove capabilities no longer selected
-    if (toRemoveIds.length > 0) {
-      await this.capabilityRepo
-        .createQueryBuilder()
-        .delete()
-        .where('id IN (:...ids)', { ids: toRemoveIds })
-        .execute();
+    for (const cap of toRemove) {
+      await this.dataSource.query(
+        `DELETE FROM supplier_capabilities WHERE id = $1`,
+        [cap.id],
+      );
     }
 
-    // Add new capabilities using raw insert to avoid TypeORM enum array hydration issues
+    // Add new capabilities using raw SQL
     for (const category of toAdd) {
-      await this.capabilityRepo
-        .createQueryBuilder()
-        .insert()
-        .into('supplier_capabilities')
-        .values({
-          supplierProfileId: supplierId,
-          productCategory: category,
-          isActive: true,
-        })
-        .execute();
+      await this.dataSource.query(
+        `INSERT INTO supplier_capabilities (supplier_profile_id, product_category, is_active, created_at, updated_at) VALUES ($1, $2, true, NOW(), NOW())`,
+        [supplierId, category],
+      );
     }
 
     await this.auditService.log({
