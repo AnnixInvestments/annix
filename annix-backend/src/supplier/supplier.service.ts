@@ -656,18 +656,18 @@ export class SupplierService {
       await this.capabilityRepo.remove(toRemove);
     }
 
-    // Add new capabilities
+    // Add new capabilities using raw insert to avoid TypeORM enum array hydration issues
     for (const category of toAdd) {
-      const capability = this.capabilityRepo.create({
-        supplierProfileId: supplierId,
-        productCategory: category as any,
-        isActive: true,
-        // Initialize array fields to avoid TypeORM hydration issues
-        materialSpecializations: [],
-        operationalRegions: [],
-        certifications: [],
-      });
-      await this.capabilityRepo.save(capability);
+      await this.capabilityRepo
+        .createQueryBuilder()
+        .insert()
+        .into('supplier_capabilities')
+        .values({
+          supplierProfileId: supplierId,
+          productCategory: category,
+          isActive: true,
+        })
+        .execute();
     }
 
     await this.auditService.log({
