@@ -1,14 +1,16 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   customerOnboardingApi,
   customerDocumentApi,
   OnboardingStatus,
   CustomerDocument,
-} from '@/app/lib/api/customerApi';
-import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
+} from "@/app/lib/api/customerApi";
+import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
+import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from "@/app/components/DocumentPreviewModal";
+import { DocumentActionButtons } from "@/app/components/DocumentActionButtons";
 
 const DOCUMENT_TYPES = [
   { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)', required: true },
@@ -46,9 +48,9 @@ export default function CustomerOnboardingPage() {
     primaryPhone: '',
   });
 
-  // Document upload state
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewModal, setPreviewModal] = useState<PreviewModalState>(initialPreviewState);
 
   useEffect(() => {
     loadOnboardingData();
@@ -135,8 +137,8 @@ export default function CustomerOnboardingPage() {
     }
   };
 
-  const handleDeleteDocument = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
+  const handleDeleteDocument = async (id: number, fileName: string) => {
+    if (!confirm(`Are you sure you want to delete ${fileName}?`)) return;
 
     try {
       await customerDocumentApi.deleteDocument(id);
@@ -144,6 +146,34 @@ export default function CustomerOnboardingPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete document');
     }
+  };
+
+  const handlePreview = async (doc: CustomerDocument) => {
+    try {
+      setError(null);
+      setPreviewModal({ ...initialPreviewState, isOpen: true, isLoading: true, filename: doc.fileName });
+      const { url, mimeType, filename } = await customerDocumentApi.previewDocument(doc.id);
+      setPreviewModal({ isOpen: true, url, mimeType, filename, isLoading: false });
+    } catch (e) {
+      setPreviewModal(initialPreviewState);
+      setError(e instanceof Error ? e.message : "Failed to preview document");
+    }
+  };
+
+  const handleDownload = async (doc: CustomerDocument) => {
+    try {
+      setError(null);
+      await customerDocumentApi.downloadDocument(doc.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to download document");
+    }
+  };
+
+  const closePreview = () => {
+    if (previewModal.url) {
+      URL.revokeObjectURL(previewModal.url);
+    }
+    setPreviewModal(initialPreviewState);
   };
 
   const handleSubmitOnboarding = async () => {
@@ -541,24 +571,14 @@ export default function CustomerOnboardingPage() {
                   )}
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
                   {uploadedDoc ? (
-                    <>
-                      <a
-                        href={customerDocumentApi.getDownloadUrl(uploadedDoc.id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800"
-                      >
-                        View
-                      </a>
-                      <button
-                        onClick={() => handleDeleteDocument(uploadedDoc.id)}
-                        className="px-3 py-1 text-sm text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    </>
+                    <DocumentActionButtons
+                      filename={uploadedDoc.fileName}
+                      onView={() => handlePreview(uploadedDoc)}
+                      onDownload={() => handleDownload(uploadedDoc)}
+                      onDelete={() => handleDeleteDocument(uploadedDoc.id, uploadedDoc.fileName)}
+                    />
                   ) : (
                     <label className="cursor-pointer">
                       <span
@@ -700,10 +720,12 @@ export default function CustomerOnboardingPage() {
 
       {currentStep !== 'status' && renderStepIndicator()}
 
-      {currentStep === 'status' && renderStatusPage()}
-      {currentStep === 'company' && renderCompanyStep()}
-      {currentStep === 'documents' && renderDocumentsStep()}
-      {currentStep === 'review' && renderReviewStep()}
+      {currentStep === "status" && renderStatusPage()}
+      {currentStep === "company" && renderCompanyStep()}
+      {currentStep === "documents" && renderDocumentsStep()}
+      {currentStep === "review" && renderReviewStep()}
+
+      <DocumentPreviewModal state={previewModal} onClose={closePreview} />
     </div>
   );
 }

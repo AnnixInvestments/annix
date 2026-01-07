@@ -607,7 +607,27 @@ class CustomerDocumentApi {
   }
 
   async downloadDocument(id: number): Promise<void> {
-    const token = this.client['getToken']();
+    const { blob, filename } = await this.fetchDocumentBlob(id);
+
+    // Create blob and trigger download
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+  }
+
+  async previewDocument(id: number): Promise<{ url: string; mimeType: string; filename: string }> {
+    const { blob, filename } = await this.fetchDocumentBlob(id);
+    const url = URL.createObjectURL(blob);
+    return { url, mimeType: blob.type, filename };
+  }
+
+  private async fetchDocumentBlob(id: number): Promise<{ blob: Blob; filename: string }> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('customerAccessToken') : null;
     const url = `${this.client['baseURL']}/customer/documents/${id}/download`;
 
     const response = await fetch(url, {
@@ -618,12 +638,12 @@ class CustomerDocumentApi {
 
     if (!response.ok) {
       if (response.status === 401) {
-        throw new Error('Please log in to download this document');
+        throw new Error('Please log in to view this document');
       }
       if (response.status === 404) {
         throw new Error('Document not found');
       }
-      throw new Error('Failed to download document. Please try again.');
+      throw new Error('Failed to load document. Please try again.');
     }
 
     // Get filename from Content-Disposition header or use default
@@ -636,16 +656,8 @@ class CustomerDocumentApi {
       }
     }
 
-    // Create blob and trigger download
     const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = objectUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(objectUrl);
+    return { blob, filename };
   }
 }
 

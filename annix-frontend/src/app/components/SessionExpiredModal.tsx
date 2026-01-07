@@ -39,7 +39,9 @@ export default function SessionExpiredModal({ loginUrl = '/customer/login' }: Se
     const unsubscribe = sessionExpiredEvent.subscribe(() => {
       setIsVisible(true);
     });
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const handleLogin = () => {

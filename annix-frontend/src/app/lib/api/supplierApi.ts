@@ -463,6 +463,58 @@ class SupplierApiClient {
     });
   }
 
+  async downloadDocument(documentId: number): Promise<void> {
+    const { blob, filename } = await this.fetchDocumentBlob(documentId);
+
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+  }
+
+  async previewDocument(documentId: number): Promise<{ url: string; mimeType: string; filename: string }> {
+    const { blob, filename } = await this.fetchDocumentBlob(documentId);
+    const url = URL.createObjectURL(blob);
+    return { url, mimeType: blob.type, filename };
+  }
+
+  private async fetchDocumentBlob(documentId: number): Promise<{ blob: Blob; filename: string }> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('supplierAccessToken') : null;
+    const url = `${this.baseURL}/supplier/onboarding/documents/${documentId}/download`;
+
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Please log in to view this document');
+      }
+      if (response.status === 404) {
+        throw new Error('Document not found');
+      }
+      throw new Error('Failed to load document. Please try again.');
+    }
+
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = 'document';
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
+      if (match) {
+        filename = match[1];
+      }
+    }
+
+    const blob = await response.blob();
+    return { blob, filename };
+  }
+
   async submitOnboarding(): Promise<{ success: boolean; message: string }> {
     return this.request('/supplier/onboarding/submit', {
       method: 'POST',
@@ -527,6 +579,8 @@ export const supplierPortalApi = {
   uploadDocument: (file: File, documentType: string, expiryDate?: string) =>
     supplierApiClient.uploadDocument(file, documentType, expiryDate),
   deleteDocument: (documentId: number) => supplierApiClient.deleteDocument(documentId),
+  downloadDocument: (documentId: number) => supplierApiClient.downloadDocument(documentId),
+  previewDocument: (documentId: number) => supplierApiClient.previewDocument(documentId),
   submitOnboarding: () => supplierApiClient.submitOnboarding(),
   getCapabilities: () => supplierApiClient.getCapabilities(),
   saveCapabilities: (capabilities: string[]) => supplierApiClient.saveCapabilities(capabilities),

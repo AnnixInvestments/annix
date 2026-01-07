@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supplierPortalApi, SupplierDocumentDto } from '@/app/lib/api/supplierApi';
+import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
+import { DocumentActionButtons } from '@/app/components/DocumentActionButtons';
 
 const documentTypes = [
   { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)', required: true },
@@ -21,6 +23,7 @@ export default function SupplierDocumentsPage() {
   const [selectedType, setSelectedType] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewModal, setPreviewModal] = useState<PreviewModalState>(initialPreviewState);
 
   const fetchDocuments = async () => {
     try {
@@ -71,6 +74,32 @@ export default function SupplierDocumentsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed');
     }
+  };
+
+  const handlePreview = async (doc: SupplierDocumentDto) => {
+    setPreviewModal({ ...initialPreviewState, isOpen: true, isLoading: true, filename: doc.fileName });
+    try {
+      const { url, mimeType, filename } = await supplierPortalApi.previewDocument(doc.id);
+      setPreviewModal({ isOpen: true, url, mimeType, filename, isLoading: false });
+    } catch (err) {
+      setPreviewModal(initialPreviewState);
+      setError(err instanceof Error ? err.message : 'Failed to preview document');
+    }
+  };
+
+  const handleDownload = async (doc: SupplierDocumentDto) => {
+    try {
+      await supplierPortalApi.downloadDocument(doc.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to download document');
+    }
+  };
+
+  const closePreviewModal = () => {
+    if (previewModal.url) {
+      URL.revokeObjectURL(previewModal.url);
+    }
+    setPreviewModal(initialPreviewState);
   };
 
   const getStatusBadge = (status: string) => {
@@ -279,12 +308,12 @@ export default function SupplierDocumentsPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleDelete(doc.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                    <DocumentActionButtons
+                      filename={doc.fileName}
+                      onView={() => handlePreview(doc)}
+                      onDownload={() => handleDownload(doc)}
+                      onDelete={() => handleDelete(doc.id)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -292,6 +321,8 @@ export default function SupplierDocumentsPage() {
           </table>
         )}
       </div>
+
+      <DocumentPreviewModal state={previewModal} onClose={closePreviewModal} />
     </div>
   );
 }

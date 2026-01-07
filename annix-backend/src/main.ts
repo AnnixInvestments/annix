@@ -16,6 +16,7 @@ async function bootstrap() {
       'Accept',
       'x-device-fingerprint',
     ],
+    exposedHeaders: ['Content-Disposition'],
     credentials: true,
   });
 

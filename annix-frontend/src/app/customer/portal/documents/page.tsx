@@ -3,8 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   customerDocumentApi,
+  customerOnboardingApi,
   CustomerDocument,
+  OnboardingStatus,
 } from '@/app/lib/api/customerApi';
+import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
+import { DocumentActionButtons } from '@/app/components/DocumentActionButtons';
 
 const DOCUMENT_TYPES = [
   { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)' },
@@ -17,26 +21,33 @@ const DOCUMENT_TYPES = [
 
 export default function CustomerDocumentsPage() {
   const [documents, setDocuments] = useState<CustomerDocument[]>([]);
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
 
-  // Upload form state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedType, setSelectedType] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewModal, setPreviewModal] = useState<PreviewModalState>(initialPreviewState);
+
+  const canUpload = onboardingStatus?.status === 'draft' || onboardingStatus?.status === 'rejected';
 
   useEffect(() => {
-    loadDocuments();
+    loadData();
   }, []);
 
-  const loadDocuments = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
-      const docs = await customerDocumentApi.getDocuments();
+      const [docs, status] = await Promise.all([
+        customerDocumentApi.getDocuments(),
+        customerOnboardingApi.getStatus(),
+      ]);
       setDocuments(docs);
+      setOnboardingStatus(status);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load documents');
     } finally {
@@ -75,7 +86,7 @@ export default function CustomerDocumentsPage() {
       setUploadingDoc(true);
       setUploadError(null);
       await customerDocumentApi.uploadDocument(selectedFile, selectedType, expiryDate || undefined);
-      await loadDocuments();
+      await loadData();
       setShowUploadModal(false);
       resetUploadForm();
     } catch (e) {
@@ -90,19 +101,38 @@ export default function CustomerDocumentsPage() {
 
     try {
       await customerDocumentApi.deleteDocument(id);
-      await loadDocuments();
+      await loadData();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete document');
     }
   };
 
-  const handleDownload = async (id: number) => {
+  const handleDownload = async (doc: CustomerDocument) => {
     try {
       setError(null);
-      await customerDocumentApi.downloadDocument(id);
+      await customerDocumentApi.downloadDocument(doc.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to download document');
     }
+  };
+
+  const handlePreview = async (doc: CustomerDocument) => {
+    try {
+      setError(null);
+      setPreviewModal({ ...initialPreviewState, isOpen: true, isLoading: true, filename: doc.fileName });
+      const { url, mimeType, filename } = await customerDocumentApi.previewDocument(doc.id);
+      setPreviewModal({ isOpen: true, url, mimeType, filename, isLoading: false });
+    } catch (e) {
+      setPreviewModal(initialPreviewState);
+      setError(e instanceof Error ? e.message : 'Failed to preview document');
+    }
+  };
+
+  const closePreview = () => {
+    if (previewModal.url) {
+      URL.revokeObjectURL(previewModal.url);
+    }
+    setPreviewModal(initialPreviewState);
   };
 
   const resetUploadForm = () => {
@@ -164,15 +194,27 @@ export default function CustomerDocumentsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
           <p className="text-gray-600">Manage your uploaded documents</p>
         </div>
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Upload Document
-        </button>
+        <div className="relative group">
+          <button
+            onClick={() => setShowUploadModal(true)}
+            disabled={!canUpload}
+            className={`px-4 py-2 rounded-md flex items-center ${
+              canUpload
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Upload Document
+          </button>
+          {!canUpload && (
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+              Documents can only be uploaded when onboarding is in draft or rejected status
+            </span>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -249,19 +291,15 @@ export default function CustomerDocumentsPage() {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right space-x-2">
-                    <button
-                      onClick={() => handleDownload(doc.id)}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      Download
-                    </button>
-                    <button
-                      onClick={() => handleDelete(doc.id)}
-                      className="text-red-600 hover:text-red-800 text-sm"
-                    >
-                      Delete
-                    </button>
+                  <td className="px-6 py-4 text-right">
+                    <DocumentActionButtons
+                      filename={doc.fileName}
+                      onView={() => handlePreview(doc)}
+                      onDownload={() => handleDownload(doc)}
+                      onDelete={() => handleDelete(doc.id)}
+                      canDelete={canUpload}
+                      deleteDisabledReason="Cannot delete when onboarding is under review"
+                    />
                   </td>
                 </tr>
               ))}
@@ -275,7 +313,7 @@ export default function CustomerDocumentsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div
-              className="fixed inset-0 bg-black bg-opacity-30"
+              className="fixed inset-0 bg-black/10 backdrop-blur-sm"
               onClick={() => {
                 setShowUploadModal(false);
                 resetUploadForm();
@@ -363,6 +401,8 @@ export default function CustomerDocumentsPage() {
           </div>
         </div>
       )}
+
+      <DocumentPreviewModal state={previewModal} onClose={closePreview} />
     </div>
   );
 }
