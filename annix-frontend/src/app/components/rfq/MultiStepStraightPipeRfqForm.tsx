@@ -15259,11 +15259,22 @@ function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevStep, errors, lo
                   let branchNbMm = 0;
                   let branchFlangeCount = 0;
 
+                  // Stub info for bends
+                  let stubFlanges: Array<{nb: number; count: number}> = [];
+
                   if (entry.itemType === 'bend') {
                     const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
                     hasFlanges = bendEndConfig !== 'PE';
                     flangeCount = getWeldCountPerBend(bendEndConfig); // Use correct function for bolt set connections
                     nbMm = entry.specs?.nominalBoreMm || 100;
+                    // Get stub flanges
+                    if (entry.specs?.stubs?.length > 0) {
+                      entry.specs.stubs.forEach((stub: any) => {
+                        if (stub?.nominalBoreMm) {
+                          stubFlanges.push({ nb: stub.nominalBoreMm, count: 1 });
+                        }
+                      });
+                    }
                   } else if (entry.itemType === 'fitting') {
                     const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
                     hasFlanges = fittingEndConfig !== 'PE';
@@ -15305,6 +15316,12 @@ function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevStep, errors, lo
                           {branchFlangeCount > 0 && branchBnwInfo && (
                             <span className="ml-2">+ Branch: {branchBnwInfo.boltSize} × {branchBnwInfo.holesPerFlange} holes ({branchNbMm}NB)</span>
                           )}
+                          {stubFlanges.length > 0 && stubFlanges.map((stub, i) => {
+                            const stubBnwInfo = getBnwSetInfo(stub.nb, pressureClass);
+                            return (
+                              <span key={i} className="ml-2">+ Stub {i+1}: {stubBnwInfo.boltSize} × {stubBnwInfo.holesPerFlange} holes ({stub.nb}NB)</span>
+                            );
+                          })}
                         </div>
                         {gasketType && (
                           <div className="text-green-700">
@@ -15312,6 +15329,9 @@ function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevStep, errors, lo
                             {branchFlangeCount > 0 && (
                               <span className="ml-2">+ Branch: {branchFlangeCount * qty} × ({branchNbMm}NB)</span>
                             )}
+                            {stubFlanges.length > 0 && stubFlanges.map((stub, i) => (
+                              <span key={i} className="ml-2">+ Stub {i+1}: {qty} × ({stub.nb}NB)</span>
+                            ))}
                           </div>
                         )}
                       </div>
