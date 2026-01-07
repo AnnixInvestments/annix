@@ -21,27 +21,28 @@ interface Pipe3DPreviewProps {
 }
 
 // Standard flange dimensions based on SABS 1123 Table 1000/4 (PN16) - Slip-on flanges
+// Bolt length calculated for: 2 x flange thickness + gasket (3mm) + nut + washer + thread engagement
 const getFlangeSpecs = (nominalBore: number) => {
-  const flangeData: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; thickness: number } } = {
-    15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, thickness: 14 },
-    20: { flangeOD: 105, pcd: 75, boltHoles: 4, holeID: 14, thickness: 14 },
-    25: { flangeOD: 115, pcd: 85, boltHoles: 4, holeID: 14, thickness: 14 },
-    32: { flangeOD: 140, pcd: 100, boltHoles: 4, holeID: 18, thickness: 16 },
-    40: { flangeOD: 150, pcd: 110, boltHoles: 4, holeID: 18, thickness: 16 },
-    50: { flangeOD: 165, pcd: 125, boltHoles: 4, holeID: 18, thickness: 18 },
-    65: { flangeOD: 185, pcd: 145, boltHoles: 4, holeID: 18, thickness: 18 },
-    80: { flangeOD: 200, pcd: 160, boltHoles: 8, holeID: 18, thickness: 18 },
-    100: { flangeOD: 220, pcd: 180, boltHoles: 8, holeID: 18, thickness: 18 },
-    125: { flangeOD: 250, pcd: 210, boltHoles: 8, holeID: 18, thickness: 20 },
-    150: { flangeOD: 285, pcd: 240, boltHoles: 8, holeID: 22, thickness: 20 },
-    200: { flangeOD: 340, pcd: 295, boltHoles: 12, holeID: 22, thickness: 22 },
-    250: { flangeOD: 405, pcd: 355, boltHoles: 12, holeID: 26, thickness: 24 },
-    300: { flangeOD: 460, pcd: 410, boltHoles: 12, holeID: 26, thickness: 24 },
-    350: { flangeOD: 520, pcd: 470, boltHoles: 16, holeID: 26, thickness: 26 },
-    400: { flangeOD: 580, pcd: 525, boltHoles: 16, holeID: 30, thickness: 28 },
-    450: { flangeOD: 640, pcd: 585, boltHoles: 20, holeID: 30, thickness: 28 },
-    500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, thickness: 32 },
-    600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, thickness: 32 },
+  const flangeData: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; thickness: number; boltSize: number; boltLength: number } } = {
+    15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, thickness: 14, boltSize: 12, boltLength: 55 },
+    20: { flangeOD: 105, pcd: 75, boltHoles: 4, holeID: 14, thickness: 14, boltSize: 12, boltLength: 55 },
+    25: { flangeOD: 115, pcd: 85, boltHoles: 4, holeID: 14, thickness: 14, boltSize: 12, boltLength: 55 },
+    32: { flangeOD: 140, pcd: 100, boltHoles: 4, holeID: 18, thickness: 16, boltSize: 16, boltLength: 65 },
+    40: { flangeOD: 150, pcd: 110, boltHoles: 4, holeID: 18, thickness: 16, boltSize: 16, boltLength: 65 },
+    50: { flangeOD: 165, pcd: 125, boltHoles: 4, holeID: 18, thickness: 18, boltSize: 16, boltLength: 70 },
+    65: { flangeOD: 185, pcd: 145, boltHoles: 4, holeID: 18, thickness: 18, boltSize: 16, boltLength: 70 },
+    80: { flangeOD: 200, pcd: 160, boltHoles: 8, holeID: 18, thickness: 18, boltSize: 16, boltLength: 70 },
+    100: { flangeOD: 220, pcd: 180, boltHoles: 8, holeID: 18, thickness: 18, boltSize: 16, boltLength: 70 },
+    125: { flangeOD: 250, pcd: 210, boltHoles: 8, holeID: 18, thickness: 20, boltSize: 16, boltLength: 75 },
+    150: { flangeOD: 285, pcd: 240, boltHoles: 8, holeID: 22, thickness: 20, boltSize: 20, boltLength: 80 },
+    200: { flangeOD: 340, pcd: 295, boltHoles: 12, holeID: 22, thickness: 22, boltSize: 20, boltLength: 85 },
+    250: { flangeOD: 405, pcd: 355, boltHoles: 12, holeID: 26, thickness: 24, boltSize: 24, boltLength: 95 },
+    300: { flangeOD: 460, pcd: 410, boltHoles: 12, holeID: 26, thickness: 24, boltSize: 24, boltLength: 95 },
+    350: { flangeOD: 520, pcd: 470, boltHoles: 16, holeID: 26, thickness: 26, boltSize: 24, boltLength: 100 },
+    400: { flangeOD: 580, pcd: 525, boltHoles: 16, holeID: 30, thickness: 28, boltSize: 27, boltLength: 110 },
+    450: { flangeOD: 640, pcd: 585, boltHoles: 20, holeID: 30, thickness: 28, boltSize: 27, boltLength: 110 },
+    500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, thickness: 32, boltSize: 24, boltLength: 115 },
+    600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, thickness: 32, boltSize: 27, boltLength: 120 },
   };
 
   // Find closest match
@@ -569,6 +570,35 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           const hasFlanges = configUpper !== 'PE';
           const flangeSpecs = hasFlanges && props.nominalBoreMm ? getFlangeSpecs(props.nominalBoreMm) : null;
 
+          // Check for R/F (rotating flange) or L/F (loose flange) configurations
+          // These require longer bolts to accommodate the backing ring
+          // Only these specific configurations have backing rings: FOE_RF, FOE_LF, 2X_RF, LF_BE
+          const hasRotatingFlange = ['FOE_RF', 'FOE_LF', '2X_RF', 'LF_BE'].includes(configUpper);
+          const backingRingThickness = 10; // Standard backing ring thickness in mm
+          const adjustedBoltLength = flangeSpecs ? flangeSpecs.boltLength + (hasRotatingFlange ? backingRingThickness : 0) : 0;
+
+          // Calculate backing ring weight for R/F and L/F configurations
+          // Ring: OD = Flange OD - 10mm, ID = Pipe OD, Thickness = 10mm
+          const calculateBackingRingWeight = () => {
+            if (!hasRotatingFlange || !flangeSpecs) return 0;
+            const ringOD = flangeSpecs.flangeOD - 10; // mm
+            const ringID = props.outerDiameter; // mm
+            const ringThickness = backingRingThickness; // mm
+            const steelDensity = 7.85; // kg/dm³ = g/cm³
+            // Volume = π × (R²outer - R²inner) × thickness in cm³
+            const volumeCm3 = Math.PI * (Math.pow(ringOD/20, 2) - Math.pow(ringID/20, 2)) * (ringThickness/10);
+            return volumeCm3 * steelDensity / 1000; // kg
+          };
+          const backingRingWeight = calculateBackingRingWeight();
+
+          // Count number of backing rings based on configuration
+          const getBackingRingCount = () => {
+            if (configUpper === 'FOE_RF' || configUpper === 'FOE_LF') return 1;
+            if (configUpper === '2X_RF' || configUpper === 'LF_BE') return 2;
+            return 0;
+          };
+          const backingRingCount = getBackingRingCount();
+
           // Get flange config label
           const getFlangeConfigLabel = (config: string) => {
             switch (config) {
@@ -596,9 +626,12 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                   {flangeSpecs && (
                     <>
                       <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
-                      <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.holeID - 2}</div>
-                      {props.pressureClass && (
-                        <div className="text-green-700 font-medium">{props.pressureClass}</div>
+                      <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize} × {adjustedBoltLength}mm</div>
+                      <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
+                      {backingRingCount > 0 && (
+                        <div className="text-purple-700 font-medium mt-0.5">
+                          Backing Ring: {backingRingCount} × {backingRingWeight.toFixed(2)}kg
+                        </div>
                       )}
                     </>
                   )}

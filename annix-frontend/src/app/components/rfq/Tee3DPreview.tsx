@@ -83,25 +83,44 @@ const getWallThickness = (nb: number, providedWT: number = 0): number => {
 };
 
 // Flange lookup table based on nominal bore - SABS 1123 Table 1000/4 (PN16) Slip-on flanges
+// Bolt length calculated for: 2 x flange thickness + gasket (3mm) + nut + washer + thread engagement
 const getFlangeSpecs = (nb: number) => {
-  const flangeData: Record<number, { flangeOD: number; pcd: number; thickness: number; boltHoles: number; holeID: number }> = {
-    200: { flangeOD: 340, pcd: 295, thickness: 24, boltHoles: 8, holeID: 22 },
-    250: { flangeOD: 395, pcd: 350, thickness: 26, boltHoles: 12, holeID: 22 },
-    300: { flangeOD: 445, pcd: 400, thickness: 26, boltHoles: 12, holeID: 22 },
-    350: { flangeOD: 505, pcd: 460, thickness: 28, boltHoles: 16, holeID: 22 },
-    400: { flangeOD: 565, pcd: 515, thickness: 28, boltHoles: 16, holeID: 26 },
-    450: { flangeOD: 615, pcd: 565, thickness: 30, boltHoles: 20, holeID: 26 },
-    500: { flangeOD: 670, pcd: 620, thickness: 30, boltHoles: 20, holeID: 26 },
-    550: { flangeOD: 725, pcd: 670, thickness: 32, boltHoles: 20, holeID: 30 },
-    600: { flangeOD: 780, pcd: 725, thickness: 32, boltHoles: 20, holeID: 30 },
-    650: { flangeOD: 830, pcd: 775, thickness: 34, boltHoles: 20, holeID: 30 },
-    700: { flangeOD: 885, pcd: 830, thickness: 34, boltHoles: 24, holeID: 30 },
-    750: { flangeOD: 940, pcd: 880, thickness: 36, boltHoles: 24, holeID: 33 },
-    800: { flangeOD: 1015, pcd: 950, thickness: 38, boltHoles: 24, holeID: 33 },
-    850: { flangeOD: 1065, pcd: 1000, thickness: 38, boltHoles: 24, holeID: 33 },
-    900: { flangeOD: 1115, pcd: 1050, thickness: 40, boltHoles: 28, holeID: 33 },
+  // Updated to match Pipe3DPreview and Bend3DPreview - SABS 1123 Table 1000/4 (PN16)
+  const flangeData: Record<number, { flangeOD: number; pcd: number; thickness: number; boltHoles: number; holeID: number; boltSize: number; boltLength: number }> = {
+    15: { flangeOD: 95, pcd: 65, thickness: 14, boltHoles: 4, holeID: 14, boltSize: 12, boltLength: 55 },
+    20: { flangeOD: 105, pcd: 75, thickness: 14, boltHoles: 4, holeID: 14, boltSize: 12, boltLength: 55 },
+    25: { flangeOD: 115, pcd: 85, thickness: 14, boltHoles: 4, holeID: 14, boltSize: 12, boltLength: 55 },
+    32: { flangeOD: 140, pcd: 100, thickness: 16, boltHoles: 4, holeID: 18, boltSize: 16, boltLength: 65 },
+    40: { flangeOD: 150, pcd: 110, thickness: 16, boltHoles: 4, holeID: 18, boltSize: 16, boltLength: 65 },
+    50: { flangeOD: 165, pcd: 125, thickness: 18, boltHoles: 4, holeID: 18, boltSize: 16, boltLength: 70 },
+    65: { flangeOD: 185, pcd: 145, thickness: 18, boltHoles: 4, holeID: 18, boltSize: 16, boltLength: 70 },
+    80: { flangeOD: 200, pcd: 160, thickness: 18, boltHoles: 8, holeID: 18, boltSize: 16, boltLength: 70 },
+    100: { flangeOD: 220, pcd: 180, thickness: 18, boltHoles: 8, holeID: 18, boltSize: 16, boltLength: 70 },
+    125: { flangeOD: 250, pcd: 210, thickness: 20, boltHoles: 8, holeID: 18, boltSize: 16, boltLength: 75 },
+    150: { flangeOD: 285, pcd: 240, thickness: 20, boltHoles: 8, holeID: 22, boltSize: 20, boltLength: 80 },
+    200: { flangeOD: 340, pcd: 295, thickness: 22, boltHoles: 12, holeID: 22, boltSize: 20, boltLength: 85 },
+    250: { flangeOD: 405, pcd: 355, thickness: 24, boltHoles: 12, holeID: 26, boltSize: 24, boltLength: 95 },
+    300: { flangeOD: 460, pcd: 410, thickness: 24, boltHoles: 12, holeID: 26, boltSize: 24, boltLength: 95 },
+    350: { flangeOD: 520, pcd: 470, thickness: 26, boltHoles: 16, holeID: 26, boltSize: 24, boltLength: 100 },
+    400: { flangeOD: 580, pcd: 525, thickness: 28, boltHoles: 16, holeID: 30, boltSize: 27, boltLength: 110 },
+    450: { flangeOD: 640, pcd: 585, thickness: 28, boltHoles: 20, holeID: 30, boltSize: 27, boltLength: 110 },
+    500: { flangeOD: 670, pcd: 620, thickness: 32, boltHoles: 20, holeID: 26, boltSize: 24, boltLength: 115 },
+    600: { flangeOD: 780, pcd: 725, thickness: 32, boltHoles: 20, holeID: 30, boltSize: 27, boltLength: 120 },
+    650: { flangeOD: 830, pcd: 775, thickness: 34, boltHoles: 20, holeID: 30, boltSize: 27, boltLength: 125 },
+    700: { flangeOD: 885, pcd: 830, thickness: 34, boltHoles: 24, holeID: 30, boltSize: 27, boltLength: 125 },
+    750: { flangeOD: 940, pcd: 880, thickness: 36, boltHoles: 24, holeID: 33, boltSize: 30, boltLength: 135 },
+    800: { flangeOD: 1015, pcd: 950, thickness: 38, boltHoles: 24, holeID: 33, boltSize: 30, boltLength: 140 },
+    850: { flangeOD: 1065, pcd: 1000, thickness: 38, boltHoles: 24, holeID: 33, boltSize: 30, boltLength: 140 },
+    900: { flangeOD: 1115, pcd: 1050, thickness: 40, boltHoles: 28, holeID: 33, boltSize: 30, boltLength: 145 },
   };
-  return flangeData[nb] || { flangeOD: nb * 1.5, pcd: nb * 1.3, thickness: 26, boltHoles: 12, holeID: 22 };
+  // Find closest match for non-standard sizes
+  const sizes = Object.keys(flangeData).map(Number).sort((a, b) => a - b);
+  let closestSize = sizes[0];
+  for (const size of sizes) {
+    if (size <= nb) closestSize = size;
+    else break;
+  }
+  return flangeData[closestSize] || { flangeOD: nb * 1.5, pcd: nb * 1.3, thickness: 26, boltHoles: 12, holeID: 22, boltSize: 20, boltLength: 90 };
 };
 
 // Blank Flange component (solid disc with bolt holes, no center bore)
@@ -1080,7 +1099,8 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
           <>
             <div className="font-bold text-blue-800 mt-1 mb-0.5">RUN FLANGE</div>
             <div className="text-gray-900 font-medium">OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm</div>
-            <div className="text-gray-900 font-medium">THK: {runFlangeSpecs.thickness}mm | {runFlangeSpecs.boltHoles} x Ø{runFlangeSpecs.holeID}mm</div>
+            <div className="text-gray-700">Bolts: {runFlangeSpecs.boltHoles} × M{runFlangeSpecs.boltSize} × {runFlangeSpecs.boltLength}mm</div>
+            <div className="text-green-700 font-medium text-[9px]">SABS 1123 T1000/3</div>
           </>
         )}
         {/* Branch Flange details */}
@@ -1088,7 +1108,8 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
           <>
             <div className="font-bold text-blue-800 mt-1 mb-0.5">BRANCH FLANGE</div>
             <div className="text-gray-900 font-medium">OD: {branchFlangeSpecs.flangeOD}mm | PCD: {branchFlangeSpecs.pcd}mm</div>
-            <div className="text-gray-900 font-medium">THK: {branchFlangeSpecs.thickness}mm | {branchFlangeSpecs.boltHoles} x Ø{branchFlangeSpecs.holeID}mm</div>
+            <div className="text-gray-700">Bolts: {branchFlangeSpecs.boltHoles} × M{branchFlangeSpecs.boltSize} × {branchFlangeSpecs.boltLength}mm</div>
+            <div className="text-green-700 font-medium text-[9px]">SABS 1123 T1000/3</div>
           </>
         )}
       </div>

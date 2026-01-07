@@ -146,27 +146,28 @@ const getMaterialProps = (name: string = "", isSegmented: boolean = false) => {
 };
 
 // Standard flange dimensions based on SABS 1123 Table 1000/4 (PN16) - Slip-on flanges
+// Bolt length calculated for: 2 x flange thickness + gasket (3mm) + nut + washer + thread engagement
 const getFlangeSpecs = (nominalBore: number) => {
-  const flangeData: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; thickness: number } } = {
-    15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, thickness: 14 },
-    20: { flangeOD: 105, pcd: 75, boltHoles: 4, holeID: 14, thickness: 14 },
-    25: { flangeOD: 115, pcd: 85, boltHoles: 4, holeID: 14, thickness: 14 },
-    32: { flangeOD: 140, pcd: 100, boltHoles: 4, holeID: 18, thickness: 16 },
-    40: { flangeOD: 150, pcd: 110, boltHoles: 4, holeID: 18, thickness: 16 },
-    50: { flangeOD: 165, pcd: 125, boltHoles: 4, holeID: 18, thickness: 18 },
-    65: { flangeOD: 185, pcd: 145, boltHoles: 4, holeID: 18, thickness: 18 },
-    80: { flangeOD: 200, pcd: 160, boltHoles: 8, holeID: 18, thickness: 18 },
-    100: { flangeOD: 220, pcd: 180, boltHoles: 8, holeID: 18, thickness: 18 },
-    125: { flangeOD: 250, pcd: 210, boltHoles: 8, holeID: 18, thickness: 20 },
-    150: { flangeOD: 285, pcd: 240, boltHoles: 8, holeID: 22, thickness: 20 },
-    200: { flangeOD: 340, pcd: 295, boltHoles: 12, holeID: 22, thickness: 22 },
-    250: { flangeOD: 405, pcd: 355, boltHoles: 12, holeID: 26, thickness: 24 },
-    300: { flangeOD: 460, pcd: 410, boltHoles: 12, holeID: 26, thickness: 24 },
-    350: { flangeOD: 520, pcd: 470, boltHoles: 16, holeID: 26, thickness: 26 },
-    400: { flangeOD: 580, pcd: 525, boltHoles: 16, holeID: 30, thickness: 28 },
-    450: { flangeOD: 640, pcd: 585, boltHoles: 20, holeID: 30, thickness: 28 },
-    500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, thickness: 32 },
-    600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, thickness: 32 },
+  const flangeData: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; thickness: number; boltSize: number; boltLength: number } } = {
+    15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, thickness: 14, boltSize: 12, boltLength: 55 },
+    20: { flangeOD: 105, pcd: 75, boltHoles: 4, holeID: 14, thickness: 14, boltSize: 12, boltLength: 55 },
+    25: { flangeOD: 115, pcd: 85, boltHoles: 4, holeID: 14, thickness: 14, boltSize: 12, boltLength: 55 },
+    32: { flangeOD: 140, pcd: 100, boltHoles: 4, holeID: 18, thickness: 16, boltSize: 16, boltLength: 65 },
+    40: { flangeOD: 150, pcd: 110, boltHoles: 4, holeID: 18, thickness: 16, boltSize: 16, boltLength: 65 },
+    50: { flangeOD: 165, pcd: 125, boltHoles: 4, holeID: 18, thickness: 18, boltSize: 16, boltLength: 70 },
+    65: { flangeOD: 185, pcd: 145, boltHoles: 4, holeID: 18, thickness: 18, boltSize: 16, boltLength: 70 },
+    80: { flangeOD: 200, pcd: 160, boltHoles: 8, holeID: 18, thickness: 18, boltSize: 16, boltLength: 70 },
+    100: { flangeOD: 220, pcd: 180, boltHoles: 8, holeID: 18, thickness: 18, boltSize: 16, boltLength: 70 },
+    125: { flangeOD: 250, pcd: 210, boltHoles: 8, holeID: 18, thickness: 20, boltSize: 16, boltLength: 75 },
+    150: { flangeOD: 285, pcd: 240, boltHoles: 8, holeID: 22, thickness: 20, boltSize: 20, boltLength: 80 },
+    200: { flangeOD: 340, pcd: 295, boltHoles: 12, holeID: 22, thickness: 22, boltSize: 20, boltLength: 85 },
+    250: { flangeOD: 405, pcd: 355, boltHoles: 12, holeID: 26, thickness: 24, boltSize: 24, boltLength: 95 },
+    300: { flangeOD: 460, pcd: 410, boltHoles: 12, holeID: 26, thickness: 24, boltSize: 24, boltLength: 95 },
+    350: { flangeOD: 520, pcd: 470, boltHoles: 16, holeID: 26, thickness: 26, boltSize: 24, boltLength: 100 },
+    400: { flangeOD: 580, pcd: 525, boltHoles: 16, holeID: 30, thickness: 28, boltSize: 27, boltLength: 110 },
+    450: { flangeOD: 640, pcd: 585, boltHoles: 20, holeID: 30, thickness: 28, boltSize: 27, boltLength: 110 },
+    500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, thickness: 32, boltSize: 24, boltLength: 115 },
+    600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, thickness: 32, boltSize: 27, boltLength: 120 },
   };
 
   // Find closest match
@@ -1849,32 +1850,72 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
       </div>
 
       {/* Pipe & Flange Info - top right */}
-      <div className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md leading-snug border border-gray-200">
-        <div className="font-bold text-blue-800 mb-0.5">PIPE</div>
-        <div className="text-gray-900 font-medium">OD: {odRaw.toFixed(0)}mm | ID: {idRaw.toFixed(0)}mm</div>
-        <div className="text-gray-700">WT: {wallThicknessDisplay.toFixed(1)}mm</div>
-        {/* Only show flange info if flanges have been allocated (not PE - Plain End) */}
-        {(props.flangeConfig || 'PE').toUpperCase() !== 'PE' && (
-          <>
-            <div className="font-bold text-blue-800 mt-1 mb-0.5">FLANGE ({(props.flangeConfig || 'PE').toUpperCase()})</div>
-            <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
-            <div className="text-gray-900 font-medium">THK: {flangeSpecs.thickness}mm | {flangeSpecs.boltHoles} x Ø{flangeSpecs.holeID}mm</div>
-            {/* Show flange type description */}
-            {(props.flangeConfig || '').toUpperCase() === 'FOE_LF' && (
-              <div className="text-blue-600 font-semibold mt-0.5">L/F = Loose Flange</div>
+      {(() => {
+        const configUpper = (props.flangeConfig || 'PE').toUpperCase();
+        const hasFlanges = configUpper !== 'PE';
+
+        // Check for R/F (rotating flange) or L/F (loose flange) configurations
+        // Only these specific configurations have backing rings: FOE_RF, FOE_LF, 2X_RF, LF_BE
+        const hasRotatingFlange = ['FOE_RF', 'FOE_LF', '2X_RF', 'LF_BE'].includes(configUpper);
+        const backingRingThickness = 10; // Standard backing ring thickness in mm
+        const adjustedBoltLength = flangeSpecs.boltLength + (hasRotatingFlange ? backingRingThickness : 0);
+
+        // Calculate backing ring weight for R/F and L/F configurations
+        const calculateBackingRingWeight = () => {
+          if (!hasRotatingFlange) return 0;
+          const ringOD = flangeSpecs.flangeOD - 10; // mm
+          const ringID = odRaw; // mm (pipe OD)
+          const ringThickness = backingRingThickness; // mm
+          const steelDensity = 7.85; // kg/dm³ = g/cm³
+          // Volume = π × (R²outer - R²inner) × thickness in cm³
+          const volumeCm3 = Math.PI * (Math.pow(ringOD/20, 2) - Math.pow(ringID/20, 2)) * (ringThickness/10);
+          return volumeCm3 * steelDensity / 1000; // kg
+        };
+        const backingRingWeight = calculateBackingRingWeight();
+
+        // Count number of backing rings based on configuration
+        const getBackingRingCount = () => {
+          if (configUpper === 'FOE_RF' || configUpper === 'FOE_LF') return 1;
+          if (configUpper === '2X_RF' || configUpper === 'LF_BE') return 2;
+          return 0;
+        };
+        const backingRingCount = getBackingRingCount();
+
+        return (
+          <div className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md leading-snug border border-gray-200">
+            <div className="font-bold text-blue-800 mb-0.5">PIPE</div>
+            <div className="text-gray-900 font-medium">OD: {odRaw.toFixed(0)}mm | ID: {idRaw.toFixed(0)}mm</div>
+            <div className="text-gray-700">WT: {wallThicknessDisplay.toFixed(1)}mm</div>
+            {/* Only show flange info if flanges have been allocated (not PE - Plain End) */}
+            {hasFlanges && (
+              <>
+                <div className="font-bold text-blue-800 mt-1 mb-0.5">FLANGE ({configUpper})</div>
+                <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
+                <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize} × {adjustedBoltLength}mm</div>
+                <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
+                {backingRingCount > 0 && (
+                  <div className="text-purple-700 font-medium mt-0.5">
+                    Backing Ring: {backingRingCount} × {backingRingWeight.toFixed(2)}kg
+                  </div>
+                )}
+                {/* Show flange type description */}
+                {configUpper === 'FOE_LF' && (
+                  <div className="text-blue-600 font-semibold mt-0.5">L/F = Loose Flange</div>
+                )}
+                {configUpper === 'FOE_RF' && (
+                  <div className="text-orange-600 font-semibold mt-0.5">R/F = Rotating Flange</div>
+                )}
+                {configUpper === '2X_RF' && (
+                  <div className="text-orange-600 font-semibold mt-0.5">2x R/F = Both Rotating</div>
+                )}
+                {configUpper === 'LF_BE' && (
+                  <div className="text-blue-600 font-semibold mt-0.5">L/F BE = Loose Both Ends</div>
+                )}
+              </>
             )}
-            {(props.flangeConfig || '').toUpperCase() === 'FOE_RF' && (
-              <div className="text-orange-600 font-semibold mt-0.5">R/F = Rotating Flange</div>
-            )}
-            {(props.flangeConfig || '').toUpperCase() === '2X_RF' && (
-              <div className="text-orange-600 font-semibold mt-0.5">2x R/F = Both Rotating</div>
-            )}
-            {(props.flangeConfig || '').toUpperCase() === 'LF_BE' && (
-              <div className="text-blue-600 font-semibold mt-0.5">L/F BE = Loose Both Ends</div>
-            )}
-          </>
-        )}
-      </div>
+          </div>
+        );
+      })()}
 
 
       {/* Bottom-left info container - Stubs and Tangent lengths */}
@@ -1888,8 +1929,8 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
               return (
                 <div className="text-black mb-1">
                   <div className="font-bold">S1: {props.stubs[0].nominalBoreMm}NB x {props.stubs[0].length || 0}mm @ {props.stubs[0].locationFromFlange || 0}mm</div>
-                  <div className="font-medium pl-2">OD: {stub1Flange.flangeOD}mm | THK: {stub1Flange.thickness}mm</div>
-                  <div className="font-medium pl-2">PCD: {stub1Flange.pcd}mm | {stub1Flange.boltHoles} x Ø{stub1Flange.holeID}mm</div>
+                  <div className="font-medium pl-2">OD: {stub1Flange.flangeOD}mm | PCD: {stub1Flange.pcd}mm</div>
+                  <div className="font-medium pl-2">Bolts: {stub1Flange.boltHoles} × M{stub1Flange.boltSize} × {stub1Flange.boltLength}mm</div>
                 </div>
               );
             })()}
@@ -1898,8 +1939,8 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
               return (
                 <div className="text-black">
                   <div className="font-bold">S2: {props.stubs[1].nominalBoreMm}NB x {props.stubs[1].length || 0}mm @ {props.stubs[1].locationFromFlange || 0}mm</div>
-                  <div className="font-medium pl-2">OD: {stub2Flange.flangeOD}mm | THK: {stub2Flange.thickness}mm</div>
-                  <div className="font-medium pl-2">PCD: {stub2Flange.pcd}mm | {stub2Flange.boltHoles} x Ø{stub2Flange.holeID}mm</div>
+                  <div className="font-medium pl-2">OD: {stub2Flange.flangeOD}mm | PCD: {stub2Flange.pcd}mm</div>
+                  <div className="font-medium pl-2">Bolts: {stub2Flange.boltHoles} × M{stub2Flange.boltSize} × {stub2Flange.boltLength}mm</div>
                 </div>
               );
             })()}

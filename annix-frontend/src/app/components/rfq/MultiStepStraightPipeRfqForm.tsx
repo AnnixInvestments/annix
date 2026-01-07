@@ -306,9 +306,9 @@ const getWeldCountPerPipe = (pipeEndConfig: string): number => {
   return config?.weldCount ?? 0;
 };
 
-// Helper function to calculate number of flanges required based on pipe end configuration
+// Helper function to calculate number of bolt set connections based on pipe end configuration
 const getFlangesPerPipe = (pipeEndConfig: string): number => {
-  // Returns number of bolt set connections (not physical flange pieces)
+  // Returns number of bolt set connections (for BNW calculations)
   // FOE_LF/FOE_RF are single connections with 2-piece flanges, so count as 1
   switch (pipeEndConfig) {
     case 'PE':  // Plain ended - no flanges
@@ -323,6 +323,31 @@ const getFlangesPerPipe = (pipeEndConfig: string): number => {
       return 1;
     case '2X_RF': // 2 rotating flanges - 2 connections
       return 2;
+    case 'LF_BE': // Loose flanges both ends - 2 connections
+      return 2;
+    default:
+      return 0;
+  }
+};
+
+// Helper function to calculate number of physical flanges (for flange count display)
+// L/F configurations have 2 physical flanges per connection (fixed + loose)
+const getPhysicalFlangeCount = (pipeEndConfig: string): number => {
+  switch (pipeEndConfig) {
+    case 'PE':  // Plain ended - no flanges
+      return 0;
+    case 'FOE': // Flanged one end - 1 physical flange
+      return 1;
+    case 'FBE': // Flanged both ends - 2 physical flanges
+      return 2;
+    case 'FOE_LF': // Fixed + Loose flange - 2 physical flanges (fixed + loose)
+      return 2;
+    case 'FOE_RF': // Fixed + Rotating flange - 2 physical flanges (fixed + rotating)
+      return 2;
+    case '2X_RF': // 2 rotating flanges - 2 physical flanges
+      return 2;
+    case 'LF_BE': // Loose flanges both ends - 4 physical flanges (2 x fixed + 2 x loose)
+      return 4;
     default:
       return 0;
   }
@@ -956,8 +981,12 @@ const calculateLocalPipeResult = (
   const totalPipeWeight = pipeWeightPerMeter * calculatedTotalLength;
 
   // Calculate flanges and welds
-  const flangesPerPipe = getFlangesPerPipe(pipeEndConfiguration);
-  const numberOfFlanges = flangesPerPipe * calculatedPipeCount;
+  // Physical flange count is used for weight calculations and display
+  const physicalFlangesPerPipe = getPhysicalFlangeCount(pipeEndConfiguration);
+  const numberOfFlanges = physicalFlangesPerPipe * calculatedPipeCount;
+  // Bolt connection count is used for BNW calculations
+  const flangeConnectionsPerPipe = getFlangesPerPipe(pipeEndConfiguration);
+  const numberOfFlangeConnections = flangeConnectionsPerPipe * calculatedPipeCount;
 
   const weldsPerPipe = getWeldCountPerPipe(pipeEndConfiguration);
   const numberOfFlangeWelds = weldsPerPipe * calculatedPipeCount;
@@ -980,6 +1009,7 @@ const calculateLocalPipeResult = (
     calculatedPipeCount,
     calculatedTotalLength,
     numberOfFlanges,
+    numberOfFlangeConnections, // Bolt set connections for BNW calculations
     numberOfFlangeWelds,
     totalFlangeWeldLength,
     outsideDiameterMm,
@@ -8168,12 +8198,15 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                        bendTypeRaw === '5D' ? '5D (Extra Long Radius)' :
                        bendTypeRaw;
 
-      // Get steel spec name if available
-      const steelSpec = entry.specs?.steelSpecificationId
-        ? masterData.steelSpecs.find((s: any) => s.id === entry.specs.steelSpecificationId)?.steelSpecName
-        : globalSpecs?.steelSpecificationId
-          ? masterData.steelSpecs.find((s: any) => s.id === globalSpecs.steelSpecificationId)?.steelSpecName
-          : undefined;
+      // Get steel spec name and ID for format determination
+      const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+      const steelSpec = steelSpecId
+        ? masterData.steelSpecs.find((s: any) => s.id === steelSpecId)?.steelSpecName
+        : undefined;
+
+      // Check if SABS 719 (ERW steel - id 8) - uses W/T format instead of Schedule
+      const isSABS719Bend = steelSpecId === 8;
+      const wallThicknessBend = entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm;
 
       // Get flange specs
       const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
@@ -8185,8 +8218,31 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
         ? masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId)?.designation
         : '';
 
-      // Build description: "80NB Sch40 SABS 719 ERW 45° 3D Bend C/F 150mm"
-      let description = `${nb}NB Sch${schedule}${steelSpec ? ` ${steelSpec}` : ''} ${bendAngle}° ${bendType} Bend`;
+      // Build description with different format based on steel spec:
+      // SABS 719: "80NB W/T 6mm SABS 719 ERW 45° 3D Bend"
+      // SABS 62/ASTM: "80NB Sch 40 (6.02mm) ASTM A106 45° 3D Bend"
+      let description = `${nb}NB`;
+
+      if (isSABS719Bend) {
+        // SABS 719: Show W/T only, no schedule
+        if (wallThicknessBend) {
+          description += ` W/T ${wallThicknessBend}mm`;
+        }
+        if (steelSpec) {
+          description += ` ${steelSpec}`;
+        }
+      } else {
+        // SABS 62/ASTM: Show Sch with WT in brackets
+        description += ` Sch ${schedule}`;
+        if (wallThicknessBend) {
+          description += ` (${wallThicknessBend}mm)`;
+        }
+        if (steelSpec) {
+          description += ` ${steelSpec}`;
+        }
+      }
+
+      description += ` ${bendAngle}° ${bendType} Bend`;
 
       // Add C/F - if tangents are present, show C/F + tangent for each end
       const tangentLengths = entry.specs?.tangentLengths || [];
@@ -8301,20 +8357,37 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
 
       let fittingDesc = `${fittingNb}NB ${fittingType}`;
 
-      // Add schedule with wall thickness in brackets
-      if (fittingSchedule) {
-        const cleanSchedule = fittingSchedule.replace('Sch', '').replace('sch', '');
-        fittingDesc += ` Sch${cleanSchedule}`;
-        if (fittingWallThickness) {
-          fittingDesc += ` (${fittingWallThickness}mm)`;
-        }
-      }
+      // Check if SABS 719 (ERW steel - id 8) - uses W/T format instead of Schedule
+      const isSABS719Fitting = fittingSteelSpecId === 8;
 
-      // Add steel spec (only once)
-      if (fittingStandard) {
-        fittingDesc += ` ${fittingStandard}`;
-      } else if (fittingSteelSpec) {
-        fittingDesc += ` ${fittingSteelSpec}`;
+      // Add schedule/WT with different format based on steel spec:
+      // SABS 719: "100NB Short Equal Tee W/T 6mm SABS 719 ERW"
+      // SABS 62/ASTM: "100NB Short Equal Tee Sch40 (6.02mm) ASTM A106"
+      if (isSABS719Fitting) {
+        // SABS 719: Show W/T only, no schedule
+        if (fittingWallThickness) {
+          fittingDesc += ` W/T ${fittingWallThickness}mm`;
+        }
+        if (fittingSteelSpec) {
+          fittingDesc += ` ${fittingSteelSpec}`;
+        } else if (fittingStandard) {
+          fittingDesc += ` ${fittingStandard}`;
+        }
+      } else {
+        // SABS 62/ASTM: Show Sch with WT in brackets
+        if (fittingSchedule) {
+          const cleanSchedule = fittingSchedule.replace('Sch', '').replace('sch', '');
+          fittingDesc += ` Sch${cleanSchedule}`;
+          if (fittingWallThickness) {
+            fittingDesc += ` (${fittingWallThickness}mm)`;
+          }
+        }
+        // Add steel spec (only once)
+        if (fittingStandard) {
+          fittingDesc += ` ${fittingStandard}`;
+        } else if (fittingSteelSpec) {
+          fittingDesc += ` ${fittingSteelSpec}`;
+        }
       }
 
       // Add C/F dimensions (pipe lengths A x B)
@@ -8397,12 +8470,31 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
       ? masterData.steelSpecs.find((s: any) => s.id === pipesteelSpecId)?.steelSpecName
       : undefined;
 
-    // Build description: 500NB Sch10 SABS 719 ERW 6.35mm Pipe, 12.192Lg, 2X R/F, SABS 1123 1000/3
-    let description = `${nb}NB Sch${schedule}${pipeSteelSpec ? ` ${pipeSteelSpec}` : ''}`;
+    // Check if SABS 719 (ERW steel - id 8) - uses W/T format instead of Schedule
+    const isSABS719 = pipesteelSpecId === 8;
 
-    // Add wall thickness if available
-    if (wallThickness) {
-      description += ` ${wallThickness}mm`;
+    // Build description with different format based on steel spec:
+    // SABS 719: "500NB W/T 6mm SABS 719 ERW Pipe"
+    // SABS 62/ASTM: "500NB Sch 40 (6.02mm) ASTM A106 Gr B Pipe"
+    let description = `${nb}NB`;
+
+    if (isSABS719) {
+      // SABS 719: Show W/T only, no schedule
+      if (wallThickness) {
+        description += ` W/T ${wallThickness}mm`;
+      }
+      if (pipeSteelSpec) {
+        description += ` ${pipeSteelSpec}`;
+      }
+    } else {
+      // SABS 62/ASTM: Show Sch with WT in brackets
+      description += ` Sch ${schedule}`;
+      if (wallThickness) {
+        description += ` (${wallThickness}mm)`;
+      }
+      if (pipeSteelSpec) {
+        description += ` ${pipeSteelSpec}`;
+      }
     }
 
     description += ' Pipe';
@@ -10507,7 +10599,10 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         }
 
                         // Count total flanges from all sources
-                        const bendFlangeCount = bendEndConfig === 'FBE' ? 2 : bendEndConfig === 'FOE' || bendEndConfig === 'FOE_LF' || bendEndConfig === 'FOE_RF' ? 1 : bendEndConfig === '2X_RF' ? 2 : 0;
+                        // FBE = Flanged Both Ends (2), LF_BE = Loose Flange Both Ends (2), 2X_RF = 2x Rotating Flange (2)
+                        // FOE = Flanged One End (1), FOE_LF = Flanged One End Loose Flange (1), FOE_RF = Flanged One End Rotating Flange (1)
+                        const bendFlangeCount = ['FBE', 'LF_BE', '2X_RF'].includes(bendEndConfig) ? 2
+                          : ['FOE', 'FOE_LF', 'FOE_RF'].includes(bendEndConfig) ? 1 : 0;
                         const stub1FlangeCount = stub1HasFlange ? 1 : 0;
                         const stub2FlangeCount = stub2HasFlange ? 1 : 0;
                         const numSegments = entry.specs?.numberOfSegments || 0;
@@ -10535,9 +10630,21 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         const effectiveWt = isSABS719 ? pipeWallThickness : (fittingWt || pipeWallThickness);
                         const usingPipeThickness = isSABS719 || !fittingWt;
 
-                        // Calculate stub weights (estimate based on pipe weight)
-                        const stub1Weight = stub1NB ? (stubs[0]?.length || 0) * 0.01 * (NB_TO_OD[stub1NB] || stub1NB) : 0;
-                        const stub2Weight = stub2NB ? (stubs[1]?.length || 0) * 0.01 * (NB_TO_OD[stub2NB] || stub2NB) : 0;
+                        // Calculate stub weights using proper pipe weight formula
+                        // Weight = π × (OD² - ID²) / 4 × density × length / 1000000
+                        // Steel density = 7850 kg/m³
+                        const calculateStubWeight = (stubNB: number | null, stubLength: number, stubWt?: number): number => {
+                          if (!stubNB || stubLength <= 0) return 0;
+                          const stubOD = NB_TO_OD[stubNB] || stubNB * 1.1;
+                          // Use provided WT or lookup from FITTING_WT, or estimate as 5% of OD
+                          const stubWT = stubWt || FITTING_WT[fittingClass]?.[stubNB] || (stubOD * 0.05);
+                          const stubID = stubOD - (2 * stubWT);
+                          const crossSectionalArea = Math.PI * (Math.pow(stubOD, 2) - Math.pow(stubID, 2)) / 4; // mm²
+                          const weightPerMeter = crossSectionalArea * 7850 / 1000000; // kg/m
+                          return weightPerMeter * (stubLength / 1000); // kg
+                        };
+                        const stub1Weight = calculateStubWeight(stub1NB, stubs[0]?.length || 0, stubs[0]?.wallThicknessMm);
+                        const stub2Weight = calculateStubWeight(stub2NB, stubs[1]?.length || 0, stubs[1]?.wallThicknessMm);
                         const stubsWeight = stub1Weight + stub2Weight;
 
                         // Stub weld thicknesses (for flange and tee welds) - SABS 719 uses pipe WT
@@ -10653,15 +10760,60 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               );
                             })()}
 
-                            {/* Total Weight - calculated from all components */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Total Weight</p>
-                              <p className="text-lg font-bold text-purple-900">
-                                {((entry.calculation.bendWeight || 0) + (entry.calculation.tangentWeight || 0) + totalCalcFlangeWeight + stubsWeight).toFixed(1)} kg
-                              </p>
-                            </div>
+                            {/* Total Weight - calculated from all components including backing rings */}
+                            {(() => {
+                              const bendConfig = (entry.specs?.bendEndConfiguration || 'PE').toUpperCase();
+                              // Only these specific configurations have backing rings: FOE_RF, FOE_LF, 2X_RF, LF_BE
+                              const hasRotatingFlange = ['FOE_RF', 'FOE_LF', '2X_RF', 'LF_BE'].includes(bendConfig);
 
-                            {/* Weight Breakdown - Bend first, then Tangent, Flange, Stubs */}
+                              let backingRingWeight = 0;
+                              if (hasRotatingFlange) {
+                                const getBackingRingCountBend = () => {
+                                  if (bendConfig === 'FOE_RF' || bendConfig === 'FOE_LF') return 1;
+                                  if (bendConfig === '2X_RF' || bendConfig === 'LF_BE') return 2;
+                                  return 0;
+                                };
+                                const backingRingCount = getBackingRingCountBend();
+
+                                const getFlangeODBend = (nb: number) => {
+                                  const flangeODs: Record<number, number> = {
+                                    15: 95, 20: 105, 25: 115, 32: 140, 40: 150, 50: 165, 65: 185, 80: 200,
+                                    100: 220, 125: 250, 150: 285, 200: 340, 250: 405, 300: 460, 350: 520,
+                                    400: 580, 450: 640, 500: 670, 600: 780
+                                  };
+                                  return flangeODs[nb] || nb * 1.5;
+                                };
+
+                                const pipeOD = entry.calculation?.outsideDiameterMm || (dn * 1.1);
+                                const flangeOD = getFlangeODBend(dn || 100);
+                                const ringOD = flangeOD - 10;
+                                const ringID = pipeOD;
+                                const ringThickness = 10;
+                                const steelDensity = 7.85;
+
+                                const volumeCm3 = Math.PI * (Math.pow(ringOD/20, 2) - Math.pow(ringID/20, 2)) * (ringThickness/10);
+                                const weightPerRing = volumeCm3 * steelDensity / 1000;
+                                backingRingWeight = weightPerRing * backingRingCount;
+                              }
+
+                              const totalWeight = (entry.calculation.bendWeight || 0) + (entry.calculation.tangentWeight || 0) + totalCalcFlangeWeight + stubsWeight + backingRingWeight;
+
+                              return (
+                                <div className="bg-white p-2 rounded text-center">
+                                  <p className="text-xs text-gray-600 font-medium">Total Weight</p>
+                                  <p className="text-lg font-bold text-purple-900">
+                                    {totalWeight.toFixed(1)} kg
+                                  </p>
+                                  {backingRingWeight > 0 && (
+                                    <p className="text-xs text-purple-600">
+                                      (incl. {backingRingWeight.toFixed(1)}kg rings)
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })()}
+
+                            {/* Weight Breakdown - Bend first, then Tangent, Flange, Stubs, Rings */}
                             <div className="bg-white p-2 rounded text-center">
                               <p className="text-xs text-gray-600 font-medium">Weight Breakdown</p>
                               <p className="text-xs text-gray-700 mt-1">Bend: {entry.calculation.bendWeight?.toFixed(1) || '0'}kg</p>
@@ -10673,29 +10825,70 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               {numStubs > 0 && <p className="text-xs text-gray-700">Stubs: {stubsWeight.toFixed(1)}kg</p>}
                             </div>
 
-                            {/* Flanges - Total count from all sources */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Total Flanges</p>
-                              <p className="text-lg font-bold text-gray-900">{totalFlanges}</p>
-                              <div className="text-left mt-1 space-y-0.5">
-                                {bendFlangeCount > 0 && (
-                                  <p className="text-[10px] text-gray-700">{bendFlangeCount} x {dn}NB Flange</p>
-                                )}
-                                {/* Stub flanges - combine if same NB, separate if different */}
-                                {stub1FlangeCount > 0 && stub2FlangeCount > 0 && stub1NB === stub2NB ? (
-                                  <p className="text-[10px] text-purple-700">2 x {stub1NB}NB Stub Flange</p>
-                                ) : (
-                                  <>
-                                    {stub1FlangeCount > 0 && stub1NB && (
-                                      <p className="text-[10px] text-purple-700">1 x {stub1NB}NB Stub Flange</p>
+                            {/* Flanges & Backing Rings - Combined field */}
+                            {(() => {
+                              const bendConfig = (entry.specs?.bendEndConfiguration || 'PE').toUpperCase();
+                              // Only these specific configurations have backing rings: FOE_RF, FOE_LF, 2X_RF, LF_BE
+                              const hasRotatingFlange = ['FOE_RF', 'FOE_LF', '2X_RF', 'LF_BE'].includes(bendConfig);
+
+                              // Get backing ring count and weight if applicable
+                              let backingRingCount = 0;
+                              let backingRingWeight = 0;
+                              if (hasRotatingFlange) {
+                                if (bendConfig === 'FOE_RF' || bendConfig === 'FOE_LF') backingRingCount = 1;
+                                else if (bendConfig === '2X_RF' || bendConfig === 'LF_BE') backingRingCount = 2;
+
+                                if (backingRingCount > 0) {
+                                  const getFlangeOD = (nb: number) => {
+                                    const flangeODs: Record<number, number> = {
+                                      15: 95, 20: 105, 25: 115, 32: 140, 40: 150, 50: 165, 65: 185, 80: 200,
+                                      100: 220, 125: 250, 150: 285, 200: 340, 250: 405, 300: 460, 350: 520,
+                                      400: 580, 450: 640, 500: 670, 600: 780
+                                    };
+                                    return flangeODs[nb] || nb * 1.5;
+                                  };
+                                  const pipeOD = entry.calculation?.outsideDiameterMm || (dn * 1.1);
+                                  const flangeOD = getFlangeOD(dn || 100);
+                                  const ringOD = flangeOD - 10;
+                                  const ringID = pipeOD;
+                                  const ringThickness = 10;
+                                  const steelDensity = 7.85;
+                                  const volumeCm3 = Math.PI * (Math.pow(ringOD/20, 2) - Math.pow(ringID/20, 2)) * (ringThickness/10);
+                                  const weightPerRing = volumeCm3 * steelDensity / 1000;
+                                  backingRingWeight = weightPerRing * backingRingCount;
+                                }
+                              }
+
+                              return (
+                                <div className="bg-white p-2 rounded text-center">
+                                  <p className="text-xs text-gray-600 font-medium">Flanges{backingRingCount > 0 ? ' & Rings' : ''}</p>
+                                  <p className="text-lg font-bold text-gray-900">{totalFlanges}</p>
+                                  <div className="text-left mt-1 space-y-0.5">
+                                    {bendFlangeCount > 0 && (
+                                      <p className="text-[10px] text-gray-700">{bendFlangeCount} x {dn}NB Flange</p>
                                     )}
-                                    {stub2FlangeCount > 0 && stub2NB && (
-                                      <p className="text-[10px] text-purple-700">1 x {stub2NB}NB Stub Flange</p>
+                                    {/* Stub flanges - combine if same NB, separate if different */}
+                                    {stub1FlangeCount > 0 && stub2FlangeCount > 0 && stub1NB === stub2NB ? (
+                                      <p className="text-[10px] text-purple-700">2 x {stub1NB}NB Stub Flange</p>
+                                    ) : (
+                                      <>
+                                        {stub1FlangeCount > 0 && stub1NB && (
+                                          <p className="text-[10px] text-purple-700">1 x {stub1NB}NB Stub Flange</p>
+                                        )}
+                                        {stub2FlangeCount > 0 && stub2NB && (
+                                          <p className="text-[10px] text-purple-700">1 x {stub2NB}NB Stub Flange</p>
+                                        )}
+                                      </>
                                     )}
-                                  </>
-                                )}
-                              </div>
-                            </div>
+                                    {backingRingCount > 0 && (
+                                      <p className="text-[10px] text-purple-700 mt-1 pt-1 border-t border-purple-200">
+                                        {backingRingCount} x Backing Ring ({backingRingWeight.toFixed(1)}kg)
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                             {/* Weld Summary */}
                             <div className="bg-white p-2 rounded text-center">
@@ -11999,7 +12192,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             <div className="bg-white p-2 rounded text-center">
                               <p className="text-xs text-gray-600 font-medium">Total Weight</p>
                               <p className="text-lg font-bold text-green-900">
-                                {(entry.calculation.totalWeight || ((entry.calculation.fittingWeight || 0) + (entry.calculation.pipeWeight || 0) + (entry.calculation.flangeWeight || 0) + (entry.calculation.boltWeight || 0) + (entry.calculation.nutWeight || 0) + (entry.calculation.weldWeight || 0))).toFixed(1)} kg
+                                {(entry.calculation.totalWeight || ((entry.calculation.fittingWeight || 0) + (entry.calculation.pipeWeight || 0) + (entry.calculation.flangeWeight || 0) + (entry.calculation.boltWeight || 0) + (entry.calculation.nutWeight || 0))).toFixed(1)} kg
                               </p>
                               <p className="text-[10px] text-gray-500">per fitting</p>
                             </div>
@@ -12022,9 +12215,6 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                                 )}
                                 {(entry.calculation.nutWeight || 0) > 0 && (
                                   <p className="text-[10px] text-gray-700">Nuts: {entry.calculation.nutWeight.toFixed(1)}kg</p>
-                                )}
-                                {(entry.calculation.weldWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-gray-700">Welds: {entry.calculation.weldWeight.toFixed(1)}kg</p>
                                 )}
                               </div>
                             </div>
@@ -13460,14 +13650,62 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         <p className="text-lg font-bold text-gray-900">{entry.calculation.calculatedTotalLength?.toFixed(1)}m</p>
                       </div>
 
-                      {/* Total System Weight */}
-                      <div className="bg-white p-2 rounded text-center">
-                        <p className="text-xs text-gray-600 font-medium">Total Weight</p>
-                        <p className="text-lg font-bold text-blue-900">{formatWeight(entry.calculation.totalSystemWeight)}</p>
-                        <p className="text-xs text-gray-500">
-                          (Pipe: {formatWeight(entry.calculation.totalPipeWeight)})
-                        </p>
-                      </div>
+                      {/* Total System Weight - includes backing ring weight for R/F configs */}
+                      {(() => {
+                        const configUpper = (entry.specs.pipeEndConfiguration || 'PE').toUpperCase();
+                        // Only these specific configurations have backing rings: FOE_RF, FOE_LF, 2X_RF, LF_BE
+                        const hasRotatingFlange = ['FOE_RF', 'FOE_LF', '2X_RF', 'LF_BE'].includes(configUpper);
+
+                        // Calculate backing ring weight if R/F or L/F
+                        let backingRingTotalWeight = 0;
+                        if (hasRotatingFlange) {
+                          const getBackingRingCountForTotal = () => {
+                            if (configUpper === 'FOE_RF' || configUpper === 'FOE_LF') return 1;
+                            if (configUpper === '2X_RF' || configUpper === 'LF_BE') return 2;
+                            return 0;
+                          };
+                          const backingRingCountPerPipe = getBackingRingCountForTotal();
+                          const totalBackingRings = backingRingCountPerPipe * (entry.calculation?.calculatedPipeCount || 0);
+
+                          const getFlangeODForTotal = (nb: number) => {
+                            const flangeODs: Record<number, number> = {
+                              15: 95, 20: 105, 25: 115, 32: 140, 40: 150, 50: 165, 65: 185, 80: 200,
+                              100: 220, 125: 250, 150: 285, 200: 340, 250: 405, 300: 460, 350: 520,
+                              400: 580, 450: 640, 500: 670, 600: 780
+                            };
+                            return flangeODs[nb] || nb * 1.5;
+                          };
+
+                          const nb = entry.specs.nominalBoreMm || 100;
+                          const pipeOD = entry.calculation?.outsideDiameterMm || (nb * 1.1);
+                          const flangeOD = getFlangeODForTotal(nb);
+                          const ringOD = flangeOD - 10;
+                          const ringID = pipeOD;
+                          const ringThickness = 10;
+                          const steelDensity = 7.85;
+
+                          const volumeCm3 = Math.PI * (Math.pow(ringOD/20, 2) - Math.pow(ringID/20, 2)) * (ringThickness/10);
+                          const weightPerRing = volumeCm3 * steelDensity / 1000;
+                          backingRingTotalWeight = weightPerRing * totalBackingRings;
+                        }
+
+                        const totalWithRings = (entry.calculation.totalSystemWeight || 0) + backingRingTotalWeight;
+
+                        return (
+                          <div className="bg-white p-2 rounded text-center">
+                            <p className="text-xs text-gray-600 font-medium">Total Weight</p>
+                            <p className="text-lg font-bold text-blue-900">{formatWeight(totalWithRings)}</p>
+                            <p className="text-xs text-gray-500">
+                              (Pipe: {formatWeight(entry.calculation.totalPipeWeight)})
+                            </p>
+                            {backingRingTotalWeight > 0 && (
+                              <p className="text-xs text-purple-600">
+                                (incl. {backingRingTotalWeight.toFixed(1)}kg rings)
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* Total Flange Weight */}
                       <div className="bg-white p-2 rounded text-center">
@@ -13475,11 +13713,62 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         <p className="text-lg font-bold text-gray-900">{formatWeight(entry.calculation.totalFlangeWeight)}</p>
                         <p className="text-xs text-gray-500">
                           {(() => {
-                            const flangesPerPipe = getFlangesPerPipe(entry.specs.pipeEndConfiguration || 'PE');
-                            return flangesPerPipe * (entry.calculation?.calculatedPipeCount || 0);
+                            const physicalFlanges = getPhysicalFlangeCount(entry.specs.pipeEndConfiguration || 'PE');
+                            return physicalFlanges * (entry.calculation?.calculatedPipeCount || 0);
                           })()} flanges
                         </p>
                       </div>
+
+                      {/* Backing Ring Weight - only for R/F and L/F configurations */}
+                      {(() => {
+                        const configUpper = (entry.specs.pipeEndConfiguration || 'PE').toUpperCase();
+                        // Only these specific configurations have backing rings: FOE_RF, FOE_LF, 2X_RF, LF_BE
+                        const hasRotatingFlange = ['FOE_RF', 'FOE_LF', '2X_RF', 'LF_BE'].includes(configUpper);
+                        if (!hasRotatingFlange) return null;
+
+                        // Get backing ring count based on configuration
+                        const getBackingRingCount = () => {
+                          if (configUpper === 'FOE_RF' || configUpper === 'FOE_LF') return 1;
+                          if (configUpper === '2X_RF' || configUpper === 'LF_BE') return 2;
+                          return 0;
+                        };
+                        const backingRingCountPerPipe = getBackingRingCount();
+                        const totalBackingRings = backingRingCountPerPipe * (entry.calculation?.calculatedPipeCount || 0);
+
+                        // Calculate backing ring weight
+                        // Flange lookup for ring dimensions
+                        const getFlangeOD = (nb: number) => {
+                          const flangeODs: Record<number, number> = {
+                            15: 95, 20: 105, 25: 115, 32: 140, 40: 150, 50: 165, 65: 185, 80: 200,
+                            100: 220, 125: 250, 150: 285, 200: 340, 250: 405, 300: 460, 350: 520,
+                            400: 580, 450: 640, 500: 670, 600: 780
+                          };
+                          return flangeODs[nb] || nb * 1.5;
+                        };
+
+                        const nb = entry.specs.nominalBoreMm || 100;
+                        const pipeOD = entry.calculation?.outsideDiameterMm || (nb * 1.1);
+                        const flangeOD = getFlangeOD(nb);
+                        const ringOD = flangeOD - 10; // mm
+                        const ringID = pipeOD; // mm
+                        const ringThickness = 10; // mm
+                        const steelDensity = 7.85; // kg/dm³
+
+                        // Volume = π × (R²outer - R²inner) × thickness in cm³
+                        const volumeCm3 = Math.PI * (Math.pow(ringOD/20, 2) - Math.pow(ringID/20, 2)) * (ringThickness/10);
+                        const weightPerRing = volumeCm3 * steelDensity / 1000; // kg
+                        const totalWeight = weightPerRing * totalBackingRings;
+
+                        return (
+                          <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
+                            <p className="text-xs text-purple-700 font-medium">Backing Rings (R/F)</p>
+                            <p className="text-lg font-bold text-purple-900">{totalWeight.toFixed(1)} kg</p>
+                            <p className="text-xs text-purple-600">
+                              {totalBackingRings} rings × {weightPerRing.toFixed(2)}kg
+                            </p>
+                          </div>
+                        );
+                      })()}
 
                       {/* Flange Welds */}
                       <div className="bg-white p-2 rounded text-center">
