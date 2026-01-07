@@ -611,12 +611,16 @@ export class SupplierService {
    * Get supplier capabilities (products/services they can offer)
    */
   async getCapabilities(supplierId: number): Promise<{ capabilities: string[] }> {
-    const capabilities = await this.capabilityRepo.find({
-      where: { supplierProfileId: supplierId, isActive: true },
-    });
+    // Use raw query to avoid TypeORM enum array hydration issues
+    const capabilities = await this.capabilityRepo
+      .createQueryBuilder('cap')
+      .select(['cap.id', 'cap.product_category'])
+      .where('cap.supplier_profile_id = :supplierId', { supplierId })
+      .andWhere('cap.is_active = true')
+      .getRawMany();
 
     return {
-      capabilities: capabilities.map((c) => c.productCategory as string),
+      capabilities: capabilities.map((c) => c.cap_product_category as string),
     };
   }
 
@@ -637,23 +641,29 @@ export class SupplierService {
       throw new NotFoundException('Supplier profile not found');
     }
 
-    // Get existing capabilities
-    const existingCapabilities = await this.capabilityRepo.find({
-      where: { supplierProfileId: supplierId },
-    });
+    // Get existing capabilities using raw query to avoid TypeORM enum array hydration issues
+    const existingCapabilities = await this.capabilityRepo
+      .createQueryBuilder('cap')
+      .select(['cap.id', 'cap.product_category'])
+      .where('cap.supplier_profile_id = :supplierId', { supplierId })
+      .getRawMany();
 
-    const existingCategories = existingCapabilities.map((c) => c.productCategory as string);
+    const existingCategories = existingCapabilities.map((c) => c.cap_product_category as string);
     const newCategories = dto.capabilities;
 
     // Find categories to add and remove
     const toAdd = newCategories.filter((c) => !existingCategories.includes(c));
-    const toRemove = existingCapabilities.filter(
-      (c) => !newCategories.includes(c.productCategory as string),
-    );
+    const toRemoveIds = existingCapabilities
+      .filter((c) => !newCategories.includes(c.cap_product_category as string))
+      .map((c) => c.cap_id);
 
     // Remove capabilities no longer selected
-    if (toRemove.length > 0) {
-      await this.capabilityRepo.remove(toRemove);
+    if (toRemoveIds.length > 0) {
+      await this.capabilityRepo
+        .createQueryBuilder()
+        .delete()
+        .where('id IN (:...ids)', { ids: toRemoveIds })
+        .execute();
     }
 
     // Add new capabilities using raw insert to avoid TypeORM enum array hydration issues
