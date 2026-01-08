@@ -147,23 +147,49 @@ export const physicalFlangeCount = (pipeEndConfig: string): number => {
 
 // Bolt set count for bends - based on user rule:
 // 2 same-sized flanged ends = 1 bolt set
-// 3 same-sized flanged ends = 2 bolt sets (not applicable for bends but for tees)
-// Additional stubs of different size = extra bolt sets
+// 1 flanged end = 1 bolt set (connects to something else)
+// Additional stubs of different size = extra bolt sets (handled separately)
 export const boltSetCountPerBend = (bendEndConfig: string): number => {
-  const flangeCount = physicalFlangeCount(bendEndConfig);
-  // For bends: 2 flanges of same size = 1 bolt set, 1 flange = 1 bolt set, 0 flanges = 0
-  if (flangeCount === 0) return 0;
-  if (flangeCount === 1) return 1;
-  // For 2+ flanges of same size: count - 1 = bolt sets (but minimum 1)
-  return Math.max(1, flangeCount - 1);
+  switch (bendEndConfig) {
+    case 'PE':
+      return 0;
+    case 'FOE':
+      return 1;
+    case 'FBE':
+      return 1;
+    case 'FOE_LF':
+      return 1;
+    case 'FOE_RF':
+      return 1;
+    case '2X_RF':
+      return 1;
+    case 'LF_BE':
+      return 1;
+    default:
+      return 0;
+  }
 };
 
 // Bolt set count for pipes - same logic as bends
 export const boltSetCountPerPipe = (pipeEndConfig: string): number => {
-  const flangeCount = physicalFlangeCount(pipeEndConfig);
-  if (flangeCount === 0) return 0;
-  if (flangeCount === 1) return 1;
-  return Math.max(1, flangeCount - 1);
+  switch (pipeEndConfig) {
+    case 'PE':
+      return 0;
+    case 'FOE':
+      return 1;
+    case 'FBE':
+      return 1;
+    case 'FOE_LF':
+      return 1;
+    case 'FOE_RF':
+      return 1;
+    case '2X_RF':
+      return 1;
+    case 'LF_BE':
+      return 1;
+    default:
+      return 0;
+  }
 };
 
 // Bolt set count for fittings (tees/laterals)
