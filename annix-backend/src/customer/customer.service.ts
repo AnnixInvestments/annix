@@ -22,6 +22,8 @@ import {
 } from './dto';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
+import { Rfq, RfqStatus } from '../rfq/entities/rfq.entity';
+import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
 
 @Injectable()
 export class CustomerService {
@@ -35,6 +37,10 @@ export class CustomerService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly auditService: AuditService,
+    @InjectRepository(Rfq)
+    private readonly rfqRepo: Repository<Rfq>,
+    @InjectRepository(RfqDraft)
+    private readonly rfqDraftRepo: Repository<RfqDraft>,
   ) {}
 
   /**
@@ -249,7 +255,7 @@ export class CustomerService {
   async getDashboard(customerId: number) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company', 'deviceBindings', 'sessions'],
+      relations: ['company', 'deviceBindings', 'sessions', 'user'],
     });
 
     if (!profile) {
@@ -266,6 +272,9 @@ export class CustomerService {
         (a, b) =>
           (b.lastActivity?.getTime() || 0) - (a.lastActivity?.getTime() || 0),
       )[0];
+
+    const rfqStats = await this.rfqStatsForUser(profile.userId);
+    const draftInfo = await this.activeDraftForUser(profile.userId);
 
     return {
       profile: {
@@ -287,13 +296,66 @@ export class CustomerService {
         lastLogin: lastSession?.createdAt,
         lastActivity: lastSession?.lastActivity,
       },
-      // RFQ stats will be added when we integrate with RFQ module
-      rfqStats: {
-        total: 0,
-        pending: 0,
-        quoted: 0,
-        accepted: 0,
+      rfqStats,
+      draftInfo,
+    };
+  }
+
+  private async rfqStatsForUser(userId: number): Promise<{
+    total: number;
+    pending: number;
+    quoted: number;
+    accepted: number;
+  }> {
+    const rfqs = await this.rfqRepo.find({
+      where: { createdBy: { id: userId } },
+      select: ['id', 'status'],
+    });
+
+    const statusCounts = rfqs.reduce(
+      (acc, rfq) => {
+        if (rfq.status !== RfqStatus.DRAFT) {
+          acc.total += 1;
+        }
+        if (rfq.status === RfqStatus.PENDING) {
+          acc.pending += 1;
+        } else if (rfq.status === RfqStatus.QUOTED) {
+          acc.quoted += 1;
+        } else if (rfq.status === RfqStatus.ACCEPTED) {
+          acc.accepted += 1;
+        }
+        return acc;
       },
+      { total: 0, pending: 0, quoted: 0, accepted: 0 },
+    );
+
+    return statusCounts;
+  }
+
+  private async activeDraftForUser(userId: number): Promise<{
+    hasDraft: boolean;
+    draftId: number | null;
+    projectName: string | null;
+    completionPercentage: number;
+    currentStep: number;
+    lastUpdated: Date | null;
+  } | null> {
+    const draft = await this.rfqDraftRepo.findOne({
+      where: { createdBy: { id: userId }, isConverted: false },
+      order: { updatedAt: 'DESC' },
+    });
+
+    if (!draft) {
+      return null;
+    }
+
+    return {
+      hasDraft: true,
+      draftId: draft.id,
+      projectName: draft.projectName || null,
+      completionPercentage: draft.completionPercentage,
+      currentStep: draft.currentStep,
+      lastUpdated: draft.updatedAt,
     };
   }
 }

@@ -691,44 +691,20 @@ export class RfqService {
     return `DRAFT-${year}-${String(draftCount + 1).padStart(4, '0')}`;
   }
 
-  /**
-   * Calculate completion percentage based on form data
-   */
+  private readonly stepPercentages: Record<number, number> = {
+    1: 20,
+    2: 40,
+    3: 60,
+    4: 80,
+    5: 95,
+  };
+
+  private completionPercentageForStep(step: number): number {
+    return this.stepPercentages[step] || 0;
+  }
+
   private calculateCompletionPercentage(dto: SaveRfqDraftDto): number {
-    let totalFields = 0;
-    let filledFields = 0;
-
-    // Step 1: Project details (25%)
-    const step1Fields = ['projectName', 'customerName', 'requiredByDate', 'deliveryLocation'];
-    step1Fields.forEach(field => {
-      totalFields++;
-      if (dto.formData[field]) filledFields++;
-    });
-
-    // Step 2: Global specs (25%)
-    if (dto.globalSpecs) {
-      const step2Fields = ['steelSpec', 'steelGrade', 'workingPressure', 'workingTemperature'];
-      step2Fields.forEach(field => {
-        totalFields++;
-        if (dto.globalSpecs![field]) filledFields++;
-      });
-    } else {
-      totalFields += 4;
-    }
-
-    // Step 3: Items (25%)
-    totalFields++;
-    if (dto.straightPipeEntries && dto.straightPipeEntries.length > 0) {
-      filledFields++;
-    }
-
-    // Required products (25%)
-    totalFields++;
-    if (dto.requiredProducts && dto.requiredProducts.length > 0) {
-      filledFields++;
-    }
-
-    return Math.round((filledFields / totalFields) * 100);
+    return this.completionPercentageForStep(dto.currentStep);
   }
 
   /**
@@ -869,7 +845,7 @@ export class RfqService {
       draftNumber: draft.draftNumber,
       projectName: draft.projectName,
       currentStep: draft.currentStep,
-      completionPercentage: draft.completionPercentage,
+      completionPercentage: this.completionPercentageForStep(draft.currentStep),
       createdAt: draft.createdAt,
       updatedAt: draft.updatedAt,
       isConverted: draft.isConverted,

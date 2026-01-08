@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
@@ -18,24 +18,36 @@ export default function CustomerDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [deletingDraftId, setDeletingDraftId] = useState<number | null>(null);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [dashboardData, draftsData] = await Promise.all([
-          customerPortalApi.getDashboard(),
-          draftsApi.getAll().catch(() => []), // Silently handle if no drafts
-        ]);
-        setDashboard(dashboardData);
-        setDrafts(draftsData);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load dashboard');
-      } finally {
-        setIsLoading(false);
-      }
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [dashboardData, draftsData] = await Promise.all([
+        customerPortalApi.getDashboard(),
+        draftsApi.getAll().catch(() => []),
+      ]);
+      setDashboard(dashboardData);
+      setDrafts(draftsData);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load dashboard');
+    } finally {
+      setIsLoading(false);
     }
-
-    fetchData();
   }, []);
+
+  useEffect(() => {
+    fetchData();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchData]);
 
   const handleResumeDraft = (draft: RfqDraftResponse) => {
     // Navigate to RFQ form with draft ID - use 'draft' param to match form component

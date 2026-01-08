@@ -1808,7 +1808,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
               customerEmail: rfqData.customerEmail,
               customerPhone: rfqData.customerPhone,
               requiredDate: rfqData.requiredDate,
-              status: 'draft' as const,
+              status: 'submitted' as const,
               notes: rfqData.notes,
             },
             straightPipe: {
@@ -1877,7 +1877,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
               customerEmail: rfqData.customerEmail,
               customerPhone: rfqData.customerPhone,
               requiredDate: rfqData.requiredDate,
-              status: 'draft' as const,
+              status: 'submitted' as const,
               notes: rfqData.notes,
             },
             bend: {
@@ -2076,6 +2076,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
             entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
             globalSpecs={rfqData.globalSpecs}
             requiredProducts={rfqData.requiredProducts || []}
+            masterData={masterData}
             onPrevStep={handlePrevStep}
             onSubmit={handleSubmit}
             loading={isSubmitting}

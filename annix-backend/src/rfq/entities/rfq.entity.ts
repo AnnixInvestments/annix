@@ -17,7 +17,9 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export enum RfqStatus {
   DRAFT = 'draft',
+  SUBMITTED = 'submitted',
   PENDING = 'pending',
+  IN_REVIEW = 'in_review',
   QUOTED = 'quoted',
   ACCEPTED = 'accepted',
   REJECTED = 'rejected',

@@ -400,7 +400,18 @@ export class CustomerAuthService {
     });
 
     if (!profile) {
-      throw new UnauthorizedException('Customer profile not found');
+      // Check if user has a different role (supplier or admin)
+      const userRoles = user.roles?.map(r => r.name) || [];
+      this.logger.warn(`Customer login failed: User ${dto.email} (ID: ${user.id}) has no customer profile. Roles: ${userRoles.join(', ')}`);
+
+      if (userRoles.includes('supplier')) {
+        throw new UnauthorizedException('This account is registered as a supplier. Please use the supplier portal to login.');
+      }
+      if (userRoles.includes('admin') || userRoles.includes('superadmin')) {
+        throw new UnauthorizedException('This account is registered as an administrator. Please use the admin portal to login.');
+      }
+
+      throw new UnauthorizedException('Customer profile not found. Your registration may not have completed. Please try registering again or contact support.');
     }
 
     // DEVELOPMENT MODE: Skip email verification check

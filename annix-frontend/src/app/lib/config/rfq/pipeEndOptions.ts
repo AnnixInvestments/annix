@@ -145,10 +145,11 @@ export const physicalFlangeCount = (pipeEndConfig: string): number => {
   }
 };
 
-// Bolt set count for bends - based on user rule:
-// 2 same-sized flanged ends = 1 bolt set
-// 1 flanged end = 1 bolt set (connects to something else)
-// Additional stubs of different size = extra bolt sets (handled separately)
+// Bolt set count for bends - each flanged end needs a bolt set for its connection
+// PE: 0 flanges = 0 bolt sets
+// FOE: 1 flanged end = 1 bolt set
+// FBE: 2 flanged ends = 2 bolt sets (each end connects to a different item)
+// Additional stubs = extra bolt sets (handled separately)
 export const boltSetCountPerBend = (bendEndConfig: string): number => {
   switch (bendEndConfig) {
     case 'PE':
@@ -156,21 +157,21 @@ export const boltSetCountPerBend = (bendEndConfig: string): number => {
     case 'FOE':
       return 1;
     case 'FBE':
-      return 1;
+      return 2;
     case 'FOE_LF':
-      return 1;
+      return 2;
     case 'FOE_RF':
-      return 1;
+      return 2;
     case '2X_RF':
-      return 1;
+      return 2;
     case 'LF_BE':
-      return 1;
+      return 2;
     default:
       return 0;
   }
 };
 
-// Bolt set count for pipes - same logic as bends
+// Bolt set count for pipes - each flanged end needs a bolt set for its connection
 export const boltSetCountPerPipe = (pipeEndConfig: string): number => {
   switch (pipeEndConfig) {
     case 'PE':
@@ -178,23 +179,24 @@ export const boltSetCountPerPipe = (pipeEndConfig: string): number => {
     case 'FOE':
       return 1;
     case 'FBE':
-      return 1;
+      return 2;
     case 'FOE_LF':
-      return 1;
+      return 2;
     case 'FOE_RF':
-      return 1;
+      return 2;
     case '2X_RF':
-      return 1;
+      return 2;
     case 'LF_BE':
-      return 1;
+      return 2;
     default:
       return 0;
   }
 };
 
 // Bolt set count for fittings (tees/laterals)
-// 3 same-sized flanged ends = 2 bolt sets
-// Different sized branch = additional bolt set for that size
+// Each flanged end needs a bolt set for its connection
+// FAE (3 flanged ends) = 3 bolt sets
+// F2E (2 flanged ends) = 2 bolt sets
 export const boltSetCountPerFitting = (fittingEndConfig: string, hasEqualBranch: boolean = true): { mainBoltSets: number; branchBoltSets: number } => {
   const config = FITTING_END_OPTIONS.find(opt => opt.value === fittingEndConfig);
   if (!config) return { mainBoltSets: 0, branchBoltSets: 0 };
@@ -205,14 +207,11 @@ export const boltSetCountPerFitting = (fittingEndConfig: string, hasEqualBranch:
   const branchFlangeCount = config.hasBranch ? 1 : 0;
 
   if (hasEqualBranch) {
-    // All ends same size: total flanges - 1 = bolt sets
-    const totalFlanges = mainFlangeCount + branchFlangeCount;
-    if (totalFlanges === 0) return { mainBoltSets: 0, branchBoltSets: 0 };
-    return { mainBoltSets: Math.max(1, totalFlanges - 1), branchBoltSets: 0 };
+    // All ends same size: each flanged end needs 1 bolt set
+    const totalBoltSets = mainFlangeCount + branchFlangeCount;
+    return { mainBoltSets: totalBoltSets, branchBoltSets: 0 };
   }
 
-  // Different branch size: main flanges count separately from branch
-  const mainBoltSets = mainFlangeCount > 0 ? Math.max(1, mainFlangeCount - 1) : 0;
-  const branchBoltSets = branchFlangeCount;
-  return { mainBoltSets, branchBoltSets };
+  // Different branch size: main flanges and branch flanges counted separately
+  return { mainBoltSets: mainFlangeCount, branchBoltSets: branchFlangeCount };
 };

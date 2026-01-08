@@ -18,6 +18,8 @@ import {
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
 import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
+import { Rfq } from '../rfq/entities/rfq.entity';
+import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
 
 // Services
 import { CustomerAuthService } from './customer-auth.service';
@@ -58,6 +60,8 @@ import { AdminModule } from '../admin/admin.module';
       SupplierProfile,
       User,
       UserRole,
+      Rfq,
+      RfqDraft,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
