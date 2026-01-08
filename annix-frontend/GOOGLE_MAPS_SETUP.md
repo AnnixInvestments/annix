@@ -48,7 +48,7 @@ You now have two options:
 To use the new extended component, update your RFQ form:
 
 ```tsx
-// In MultiStepStraightPipeRfqForm.tsx
+// In StraightPipeRfqOrchestrator.tsx
 import GoogleMapsExtendedPicker from '@/app/components/GoogleMapsExtendedPicker';
 
 // Replace the GoogleMapLocationPicker usage:

@@ -72,7 +72,7 @@ function MyComponent() {
 To add 3D preview to the RFQ form, you could add it like this:
 
 ```tsx
-// In MultiStepStraightPipeRfqForm.tsx
+// In StraightPipeRfqOrchestrator.tsx
 import Pipe3DPreview from './Pipe3DPreview';
 import Bend3DPreview from './Bend3DPreview';
 
@@ -147,7 +147,7 @@ If you want to keep the components for future use but remove the large dependenc
 
 ```bash
 cd annix-frontend
-yarn remove three @react-three/fiber @react-three/drei
+pnpm remove three @react-three/fiber @react-three/drei
 ```
 
 ### Option 3: Merge but Make Optional
@@ -181,7 +181,7 @@ const Pipe3DPreview = dynamic(
 
 ### "Module not found: Can't resolve 'three'"
 
-Run: `cd annix-frontend && yarn install`
+Run: `cd annix-frontend && pnpm install`
 
 ### Black screen or no render
 
@@ -201,7 +201,7 @@ Check browser console. Ensure:
 - **Commits**: 2 clean commits
   1. Add 3D preview components
   2. Install required dependencies
-- **Files Changed**: 4 (2 new components, package.json, yarn.lock)
+- **Files Changed**: 4 (2 new components, package.json, pnpm-lock.yaml)
 - **Lines Added**: ~1200
 - **Dependencies Added**: 52 packages (~60MB)
 

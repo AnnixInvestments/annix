@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import MultiStepStraightPipeRfqForm from './MultiStepStraightPipeRfqForm';
+import StraightPipeRfqOrchestrator from './StraightPipeRfqOrchestrator';
 
 interface Props {
   onSuccess: (rfqId: string) => void;
@@ -20,7 +20,7 @@ export default function UnifiedMultiStepRfqForm({ onSuccess, onCancel }: Props) 
   return (
     <div className="max-w-full mx-auto">
       <Suspense fallback={<FormLoading />}>
-        <MultiStepStraightPipeRfqForm
+        <StraightPipeRfqOrchestrator
           onSuccess={onSuccess}
           onCancel={onCancel}
         />

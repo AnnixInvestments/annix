@@ -2,3 +2,4 @@ export * from './sabs719BendData';
 export * from './pipeEndOptions';
 export * from './flangeWeights';
 export * from './materialLimits';
+export * from './pipeSchedules';

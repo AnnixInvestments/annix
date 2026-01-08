@@ -1,7 +1,7 @@
 # Cross-Platform Development Setup
 
 ## Problem
-The `yarn.lock` file contains platform-specific dependencies (e.g., `@img/sharp-darwin-arm64` on Mac vs `@img/sharp-win32-x64` on Windows), causing merge conflicts.
+The `pnpm-lock.yaml` file contains platform-specific dependencies (e.g., `@img/sharp-darwin-arm64` on Mac vs `@img/sharp-win32-x64` on Windows), causing merge conflicts.
 
 ## Solution Implemented
 
@@ -32,7 +32,7 @@ The hooks are **already configured** and will work automatically with Git Bash (
 
 ### What This Means
 
-✅ **No more yarn.lock conflicts!**
+✅ **No more pnpm-lock.yaml conflicts!**
 - Pull changes normally with `git pull`
 - Lock files automatically regenerate for your platform
 - The `run-dev.sh` / `run-dev.ps1` scripts handle everything
@@ -55,7 +55,7 @@ The hooks are **already configured** and will work automatically with Git Bash (
 
 After pulling this change:
 1. Run `git pull`
-2. You should see: "📦 Regenerating yarn.lock for your platform..."
+2. You should see: "📦 Regenerating pnpm-lock.yaml for your platform..."
 3. Lock files will be updated for your platform
 4. Commit the changes and push
 

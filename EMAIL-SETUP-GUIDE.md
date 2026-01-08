@@ -56,7 +56,7 @@ if (!profile.emailVerified) {
 
 ```bash
 # Stop current server (Ctrl+C)
-yarn start:dev
+pnpm start:dev
 ```
 
 Look for: `[EmailService] Email transporter configured successfully`

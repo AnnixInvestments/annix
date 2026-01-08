@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 
-const filePath = 'src/app/components/rfq/MultiStepStraightPipeRfqForm.tsx';
+const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
 let content = fs.readFileSync(filePath, 'utf8');
 
 // 1. Add state for hiding drawings - find a good place in ItemUploadStep

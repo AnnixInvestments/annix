@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 
-const filePath = 'src/app/components/rfq/MultiStepStraightPipeRfqForm.tsx';
+const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
 let content: string = fs.readFileSync(filePath, 'utf8');
 
 // The Steel confirm button needs to be moved from after Surface Protection to before Surface Protection

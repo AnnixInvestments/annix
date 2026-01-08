@@ -138,10 +138,10 @@ If you have existing files in local storage:
 
 ```bash
 # Preview migration (no changes made)
-yarn migrate:s3:dry-run
+pnpm migrate:s3:dry-run
 
 # Perform actual migration
-yarn migrate:s3
+pnpm migrate:s3
 ```
 
 ### Step 3: Verify Configuration

@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 // Dynamically import the existing RFQ forms to avoid SSR issues
-const MultiStepStraightPipeRfqForm = dynamic(
-  () => import('@/app/components/rfq/MultiStepStraightPipeRfqForm'),
+const StraightPipeRfqOrchestrator = dynamic(
+  () => import('@/app/components/rfq/StraightPipeRfqOrchestrator'),
   { ssr: false, loading: () => <div className="animate-pulse h-96 bg-gray-100 rounded-lg"></div> }
 );
 
@@ -22,7 +22,7 @@ export default function CustomerCreateRfqPage() {
   };
 
   return (
-    <MultiStepStraightPipeRfqForm
+    <StraightPipeRfqOrchestrator
       onSuccess={handleSuccess}
       onCancel={handleCancel}
     />

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Quick Test Script - Check Available Data in Annix Backend
-# Run this while backend is running: yarn start:dev
+# Run this while backend is running: pnpm start:dev
 
 echo "🔍 Checking Annix Backend Data..."
 echo ""

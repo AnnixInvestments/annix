@@ -172,8 +172,8 @@ The scripts perform the following:
 1. Ensure the correct Node.js version is active (via `nvm`/`nvm-windows` when available).
 2. Verify `annix-backend/.env` exists.
 3. Bootstrap PostgreSQL automatically (creates/updates `annix_user` + `annix_db`; honours `PG_SUPERUSER`/`PG_SUPERPASS` if authentication is needed).
-4. Install backend & frontend dependencies (`yarn install`, `npm install`).
-5. Run backend migrations (`yarn migration:run`).
+4. Install backend & frontend dependencies (`pnpm install`).
+5. Run backend migrations (`pnpm migration:run`).
 6. Export `NEXT_PUBLIC_API_URL=http://localhost:4001` (unless you already set another value) so the frontend always targets the running API.
 7. Launch both dev servers with output mirrored to the console **and** to log files in the repo root (`backend-dev.log`, `frontend-dev.log`).
 8. Terminate both servers when the script exits (Ctrl+C).
@@ -219,9 +219,9 @@ If you already have Postgres/Node running remotely you can adjust the environmen
 1. **Backend**
    ```bash
    cd annix-backend
-   yarn install
-   yarn migration:run
-   yarn start:dev
+   pnpm install
+   pnpm migration:run
+   pnpm start:dev
    ```
    - API listens on `http://localhost:4001`.
    - Swagger UI is available at `http://localhost:4001/swagger`.
@@ -229,8 +229,8 @@ If you already have Postgres/Node running remotely you can adjust the environmen
 2. **Frontend**
    ```bash
    cd annix-frontend
-   npm install
-   npm run dev
+   pnpm install
+   pnpm run dev
    ```
    - App listens on `http://localhost:3000`.
 
@@ -245,7 +245,7 @@ If you already have Postgres/Node running remotely you can adjust the environmen
 
 ### Automatic Lock File Management
 
-This project supports development on both **macOS** and **Windows**. Lock files (`yarn.lock` and `package-lock.json`) contain platform-specific dependencies that are automatically managed.
+This project supports development on both **macOS** and **Windows**. The lock file (`pnpm-lock.yaml`) contains platform-specific dependencies that are automatically managed.
 
 **What happens automatically:**
 - When you `git pull` changes, lock files are regenerated for your platform
@@ -261,10 +261,10 @@ This project supports development on both **macOS** and **Windows**. Lock files 
 **Manual regeneration (if needed):**
 ```bash
 # Frontend
-cd annix-frontend && yarn install --check-files
+cd annix-frontend && pnpm install --check-files
 
 # Backend
-cd annix-backend && npm install
+cd annix-backend && pnpm install
 ```
 
 For more details, see [CROSS_PLATFORM_SETUP.md](./CROSS_PLATFORM_SETUP.md).

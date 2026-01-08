@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 
-const filePath = 'src/app/components/rfq/MultiStepStraightPipeRfqForm.tsx';
+const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
 let content: string = fs.readFileSync(filePath, 'utf8');
 
 // Problem: Surface Protection is nested inside !steelPipesSpecsConfirmed block

@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 
-const filePath = 'src/app/components/rfq/MultiStepStraightPipeRfqForm.tsx';
+const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
 let content = fs.readFileSync(filePath, 'utf8');
 
 // Step 1: Remove the misplaced Steel confirm button from after Surface Protection

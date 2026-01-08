@@ -9,7 +9,7 @@
  * - Supplier Documents (from supplier_documents table)
  *
  * Usage:
- *   yarn migrate:s3 [--dry-run]
+ *   pnpm migrate:s3 [--dry-run]
  *
  * Options:
  *   --dry-run    Preview changes without actually uploading to S3

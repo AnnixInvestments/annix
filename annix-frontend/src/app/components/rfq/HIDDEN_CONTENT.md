@@ -16,7 +16,7 @@ To search for all hidden content: `grep -n "HIDDEN:" *.tsx`
 ## Hidden Content List
 
 ### 1. Soil Type (WRB Classification) Field
-- **File:** `MultiStepStraightPipeRfqForm.tsx`
+- **File:** `StraightPipeRfqOrchestrator.tsx`
 - **Location:** Environmental Intelligence > Soil Conditions section
 - **Line:** ~1508-1525
 - **Reason:** Hidden per user request
@@ -24,7 +24,7 @@ To search for all hidden content: `grep -n "HIDDEN:" *.tsx`
 - **Notes:** May be used in future. The field accepts WRB soil classification values.
 
 ### 2. Corrosion Severity Classification Section
-- **File:** `MultiStepStraightPipeRfqForm.tsx`
+- **File:** `StraightPipeRfqOrchestrator.tsx`
 - **Location:** Environmental Intelligence section
 - **Line:** ~1932-1997
 - **Reason:** Hidden per user request
@@ -35,7 +35,7 @@ To search for all hidden content: `grep -n "HIDDEN:" *.tsx`
   - Overall Environment Severity dropdown
 
 ### 3. Coating System Recommendations (ISO 21809)
-- **File:** `MultiStepStraightPipeRfqForm.tsx`
+- **File:** `StraightPipeRfqOrchestrator.tsx`
 - **Location:** Environmental Intelligence section
 - **Line:** ~1999-2096
 - **Reason:** Will be shown on a different page

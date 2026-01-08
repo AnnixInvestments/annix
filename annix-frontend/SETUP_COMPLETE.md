@@ -45,7 +45,7 @@
 ### 📁 Files Created/Updated:
 
 - `src/app/components/GoogleMapLocationPickerV2.tsx` - New enhanced component
-- `src/app/components/rfq/MultiStepStraightPipeRfqForm.tsx` - Updated to use new component
+- `src/app/components/rfq/StraightPipeRfqOrchestrator.tsx` - Updated to use new component
 - `.env.local` - Environment variables file
 - `GOOGLE_MAPS_SETUP.md` - Detailed setup guide
 

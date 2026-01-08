@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 
-const filePath = 'src/app/components/rfq/MultiStepStraightPipeRfqForm.tsx';
+const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
 let content: string = fs.readFileSync(filePath, 'utf8');
 
 // The problem: Steel Pipes unconfirmed block at line 3556 never closes

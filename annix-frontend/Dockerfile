@@ -11,11 +11,8 @@ RUN apk add --no-cache \
   libusb-dev eudev-dev libc6-compat
 ENV npm_config_python=/usr/bin/python3
 ENV NEXT_PUBLIC_API_URL=/api
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* .npmrc* ./
-RUN if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
-  else echo "Lockfile not found." && exit 1; fi
+COPY package.json pnpm-lock.yaml* .npmrc* ./
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
 # ---------- builder ----------
 FROM base AS builder
@@ -23,10 +20,7 @@ COPY --from=deps /app/node_modules ./node_modules
 ENV NEXT_PUBLIC_API_URL=/api
 COPY . .
 # ENV NEXT_TELEMETRY_DISABLED=1
-RUN if [ -f yarn.lock ]; then yarn build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
-  else echo "Lockfile not found." && exit 1; fi
+RUN corepack enable pnpm && pnpm run build
 
 # ---------- runner ----------
 FROM base AS runner
