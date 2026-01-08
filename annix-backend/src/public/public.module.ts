@@ -4,9 +4,10 @@ import { PublicController } from './public.controller';
 import { PublicService } from './public.service';
 import { Rfq } from '../rfq/entities/rfq.entity';
 import { CustomerProfile } from '../customer/entities/customer-profile.entity';
+import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Rfq, CustomerProfile])],
+  imports: [TypeOrmModule.forFeature([Rfq, CustomerProfile, SupplierProfile])],
   controllers: [PublicController],
   providers: [PublicService],
   exports: [PublicService],

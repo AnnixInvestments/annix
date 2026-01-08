@@ -26,6 +26,10 @@ class DeclineBoqDto {
   reason: string;
 }
 
+class SetReminderDto {
+  reminderDays: number | null;
+}
+
 @ApiTags('Supplier BOQs')
 @Controller('supplier/boqs')
 @UseGuards(SupplierAuthGuard)
@@ -159,6 +163,31 @@ export class SupplierBoqController {
       success: true,
       status: access.status,
       respondedAt: access.respondedAt,
+    };
+  }
+
+  @Post(':id/reminder')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Set email reminder for BOQ closing date' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reminder set successfully',
+  })
+  async setReminder(
+    @Request() req: any,
+    @Param('id', ParseIntPipe) boqId: number,
+    @Body() body: SetReminderDto,
+  ) {
+    const supplierProfileId = req.supplier.supplierId;
+    const access = await this.distributionService.setReminder(
+      boqId,
+      supplierProfileId,
+      body.reminderDays,
+    );
+
+    return {
+      success: true,
+      reminderDays: access.reminderDays,
     };
   }
 }

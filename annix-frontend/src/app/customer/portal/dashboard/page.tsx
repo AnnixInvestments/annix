@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { customerPortalApi, CustomerDashboardResponse } from '@/app/lib/api/customerApi';
-import { draftsApi, RfqDraftResponse } from '@/app/lib/api/client';
+import { draftsApi, RfqDraftResponse, RfqDraftStatus } from '@/app/lib/api/client';
 import { useToast } from '@/app/components/Toast';
 
 export default function CustomerDashboardPage() {
@@ -84,6 +84,17 @@ export default function CustomerDashboardPage() {
   const getStepName = (step: number) => {
     const steps = ['Project Details', 'Specifications', 'Items', 'Review', 'BOQ'];
     return steps[step - 1] || `Step ${step}`;
+  };
+
+  const getStatusDisplay = (status: RfqDraftStatus): { label: string; className: string } => {
+    const closedStatuses = ['accepted', 'rejected', 'cancelled'];
+    if (status === 'draft') {
+      return { label: 'Draft', className: 'bg-amber-100 text-amber-800' };
+    }
+    if (closedStatuses.includes(status)) {
+      return { label: 'Closed', className: 'bg-gray-100 text-gray-600' };
+    }
+    return { label: 'Submitted', className: 'bg-blue-100 text-blue-800' };
   };
 
   if (isLoading) {
@@ -192,12 +203,12 @@ export default function CustomerDashboardPage() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Saved RFQ Drafts</h2>
-                <p className="text-sm text-gray-500">Continue where you left off</p>
+                <h2 className="text-lg font-semibold text-gray-900">RFQ List</h2>
+                <p className="text-sm text-gray-500">Your requests for quotation</p>
               </div>
             </div>
-            <span className="bg-amber-100 text-amber-800 text-sm font-medium px-3 py-1 rounded-full">
-              {drafts.length} draft{drafts.length > 1 ? 's' : ''}
+            <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+              {drafts.length} RFQ{drafts.length !== 1 ? 's' : ''}
             </span>
           </div>
           <div className="divide-y divide-gray-100">
@@ -205,13 +216,29 @@ export default function CustomerDashboardPage() {
               <div key={draft.id} className="p-4 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-blue-100 text-blue-800">
-                        {draft.draftNumber}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getStatusDisplay(draft.status).className}`}>
+                        {getStatusDisplay(draft.status).label}
                       </span>
                       <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {draft.projectName || 'Untitled Project'}
+                        {draft.rfqNumber || draft.projectName || 'Untitled Project'}
                       </h3>
+                      {draft.isConverted && draft.supplierCounts && (
+                        <div className="flex items-center gap-2 ml-auto">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800" title="Suppliers pending response">
+                            Pending: {draft.supplierCounts.pending}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800" title="Suppliers who declined">
+                            Declined: {draft.supplierCounts.declined}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="Suppliers intending to quote">
+                            Intend: {draft.supplierCounts.intendToQuote}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title="Suppliers who quoted">
+                            Quoted: {draft.supplierCounts.quoted}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
@@ -246,11 +273,22 @@ export default function CustomerDashboardPage() {
                       onClick={() => handleResumeDraft(draft)}
                       className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Resume
+                      {draft.isConverted ? (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Resume
+                        </>
+                      )}
                     </button>
                     <button
                       onClick={() => handleDeleteDraft(draft.id)}

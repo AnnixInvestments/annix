@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { RfqStatus } from '../entities/rfq.entity';
 import { IsOptional, IsString, IsNumber, IsArray, IsObject, Min, Max } from 'class-validator';
 
 export class SaveRfqDraftDto {
@@ -72,6 +73,12 @@ export class RfqDraftResponseDto {
   })
   draftNumber: string;
 
+  @ApiPropertyOptional({
+    description: 'RFQ number (if submitted)',
+    example: 'RFQ-2025-0001',
+  })
+  rfqNumber?: string;
+
   @ApiProperty({
     description: 'Project name',
     example: '500NB Pipeline Extension',
@@ -89,6 +96,13 @@ export class RfqDraftResponseDto {
     example: 45,
   })
   completionPercentage: number;
+
+  @ApiProperty({
+    description: 'Status of the RFQ',
+    example: 'draft',
+    enum: RfqStatus,
+  })
+  status: RfqStatus;
 
   @ApiProperty({
     description: 'Creation date',
@@ -109,6 +123,16 @@ export class RfqDraftResponseDto {
     description: 'ID of the converted RFQ',
   })
   convertedRfqId?: number;
+
+  @ApiPropertyOptional({
+    description: 'Supplier response counts (only for submitted RFQs)',
+  })
+  supplierCounts?: {
+    pending: number;
+    declined: number;
+    intendToQuote: number;
+    quoted: number;
+  };
 }
 
 export class RfqDraftFullResponseDto extends RfqDraftResponseDto {

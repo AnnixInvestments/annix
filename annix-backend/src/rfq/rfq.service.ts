@@ -4,9 +4,10 @@ import {
   BadRequestException,
   ForbiddenException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import { Rfq, RfqStatus } from './entities/rfq.entity';
 import { RfqItem, RfqItemType } from './entities/rfq-item.entity';
 import {
@@ -25,6 +26,10 @@ import { NbNpsLookup } from '../nb-nps-lookup/entities/nb-nps-lookup.entity';
 import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.entity';
 import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
 import { NutMass } from '../nut-mass/entities/nut-mass.entity';
+import { Boq } from '../boq/entities/boq.entity';
+import { BoqSupplierAccess, SupplierBoqStatus } from '../boq/entities/boq-supplier-access.entity';
+import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
+import { EmailService } from '../email/email.service';
 import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
 import { CreateStraightPipeRfqWithItemDto } from './dto/create-rfq-item.dto';
 import { CreateBendRfqWithItemDto } from './dto/create-bend-rfq-with-item.dto';
@@ -48,6 +53,8 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 @Injectable()
 export class RfqService {
+  private readonly logger = new Logger(RfqService.name);
+
   constructor(
     @InjectRepository(Rfq)
     private rfqRepository: Repository<Rfq>,
@@ -75,8 +82,15 @@ export class RfqService {
     private boltMassRepository: Repository<BoltMass>,
     @InjectRepository(NutMass)
     private nutMassRepository: Repository<NutMass>,
+    @InjectRepository(Boq)
+    private boqRepository: Repository<Boq>,
+    @InjectRepository(BoqSupplierAccess)
+    private boqSupplierAccessRepository: Repository<BoqSupplierAccess>,
+    @InjectRepository(SupplierProfile)
+    private supplierProfileRepository: Repository<SupplierProfile>,
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
+    private emailService: EmailService,
   ) {}
 
   async calculateStraightPipeRequirements(
@@ -753,17 +767,78 @@ export class RfqService {
   }
 
   /**
-   * Get all drafts for a user
+   * Get all drafts for a user (including submitted/converted ones)
    */
   async getDrafts(userId: number): Promise<RfqDraftResponseDto[]> {
     const drafts = await this.rfqDraftRepository
       .createQueryBuilder('draft')
+      .leftJoinAndSelect('draft.convertedRfq', 'rfq')
       .where('draft.created_by_user_id = :userId', { userId })
-      .andWhere('draft.is_converted = :isConverted', { isConverted: false })
       .orderBy('draft.updated_at', 'DESC')
       .getMany();
 
-    return drafts.map(draft => this.mapDraftToResponse(draft));
+    const responses = await Promise.all(
+      drafts.map(async (draft) => {
+        const response = this.mapDraftToResponse(draft);
+        if (draft.isConverted && draft.convertedRfqId) {
+          response.supplierCounts = await this.supplierCountsForRfq(draft.convertedRfqId);
+        }
+        return response;
+      }),
+    );
+
+    return responses;
+  }
+
+  /**
+   * Get supplier response counts for an RFQ
+   */
+  private async supplierCountsForRfq(rfqId: number): Promise<{
+    pending: number;
+    declined: number;
+    intendToQuote: number;
+    quoted: number;
+  }> {
+    const boqs = await this.boqRepository.find({
+      where: { rfq: { id: rfqId } },
+      select: ['id'],
+    });
+
+    if (boqs.length === 0) {
+      return { pending: 0, declined: 0, intendToQuote: 0, quoted: 0 };
+    }
+
+    const boqIds = boqs.map(b => b.id);
+
+    const counts = await this.boqSupplierAccessRepository
+      .createQueryBuilder('access')
+      .select('access.status', 'status')
+      .addSelect('COUNT(DISTINCT access.supplier_profile_id)', 'count')
+      .where('access.boq_id IN (:...boqIds)', { boqIds })
+      .groupBy('access.status')
+      .getRawMany();
+
+    const result = { pending: 0, declined: 0, intendToQuote: 0, quoted: 0 };
+
+    counts.forEach((row: { status: string; count: string }) => {
+      const count = parseInt(row.count, 10);
+      switch (row.status) {
+        case SupplierBoqStatus.PENDING:
+          result.pending = count;
+          break;
+        case SupplierBoqStatus.DECLINED:
+          result.declined = count;
+          break;
+        case SupplierBoqStatus.VIEWED:
+          result.intendToQuote = count;
+          break;
+        case SupplierBoqStatus.QUOTED:
+          result.quoted = count;
+          break;
+      }
+    });
+
+    return result;
   }
 
   /**
@@ -840,14 +915,21 @@ export class RfqService {
    * Map draft entity to response DTO
    */
   private mapDraftToResponse(draft: RfqDraft): RfqDraftResponseDto {
+    const rfqStatus = draft.convertedRfq?.status;
+    const status = draft.isConverted
+      ? (rfqStatus || RfqStatus.SUBMITTED)
+      : RfqStatus.DRAFT;
+
     return {
       id: draft.id,
       draftNumber: draft.draftNumber,
+      rfqNumber: draft.convertedRfq?.rfqNumber,
       projectName: draft.projectName,
       currentStep: draft.currentStep,
-      completionPercentage: this.completionPercentageForStep(draft.currentStep),
+      completionPercentage: draft.isConverted ? 100 : this.completionPercentageForStep(draft.currentStep),
+      status,
       createdAt: draft.createdAt,
-      updatedAt: draft.updatedAt,
+      updatedAt: draft.convertedRfq?.updatedAt || draft.updatedAt,
       isConverted: draft.isConverted,
       convertedRfqId: draft.convertedRfqId,
     };
@@ -865,5 +947,92 @@ export class RfqService {
       straightPipeEntries: draft.straightPipeEntries,
       pendingDocuments: draft.pendingDocuments,
     };
+  }
+
+  async notifySuppliersOfRfqUpdate(rfqId: number): Promise<{
+    suppliersNotified: number;
+    suppliersSkipped: number;
+  }> {
+    const rfq = await this.rfqRepository.findOne({
+      where: { id: rfqId },
+      relations: ['boqs'],
+    });
+
+    if (!rfq) {
+      throw new NotFoundException(`RFQ with ID ${rfqId} not found`);
+    }
+
+    this.logger.log(`Notifying suppliers of RFQ update for ${rfq.rfqNumber}`);
+
+    let suppliersNotified = 0;
+    let suppliersSkipped = 0;
+
+    const boqs = await this.boqRepository.find({
+      where: { rfq: { id: rfqId } },
+    });
+
+    if (boqs.length === 0) {
+      this.logger.log(`No BOQs found for RFQ ${rfq.rfqNumber}`);
+      return { suppliersNotified: 0, suppliersSkipped: 0 };
+    }
+
+    for (const boq of boqs) {
+      const supplierAccessRecords = await this.boqSupplierAccessRepository.find({
+        where: {
+          boqId: boq.id,
+          status: Not(SupplierBoqStatus.DECLINED),
+        },
+      });
+
+      for (const access of supplierAccessRecords) {
+        try {
+          const supplierProfile = await this.supplierProfileRepository.findOne({
+            where: { id: access.supplierProfileId },
+            relations: ['user', 'company'],
+          });
+
+          if (!supplierProfile?.user?.email) {
+            this.logger.warn(
+              `Supplier profile ${access.supplierProfileId} has no email - skipping`,
+            );
+            suppliersSkipped++;
+            continue;
+          }
+
+          const supplierName =
+            supplierProfile.company?.tradingName ||
+            supplierProfile.company?.legalName ||
+            `${supplierProfile.firstName} ${supplierProfile.lastName}`;
+
+          const success = await this.emailService.sendRfqUpdateNotification(
+            supplierProfile.user.email,
+            supplierName,
+            rfq.projectName,
+            rfq.rfqNumber,
+          );
+
+          if (success) {
+            suppliersNotified++;
+            this.logger.log(
+              `Notified supplier ${supplierProfile.user.email} of RFQ update`,
+            );
+          } else {
+            suppliersSkipped++;
+          }
+        } catch (error) {
+          this.logger.error(
+            `Failed to notify supplier ${access.supplierProfileId}:`,
+            error,
+          );
+          suppliersSkipped++;
+        }
+      }
+    }
+
+    this.logger.log(
+      `RFQ update notification complete: ${suppliersNotified} notified, ${suppliersSkipped} skipped`,
+    );
+
+    return { suppliersNotified, suppliersSkipped };
   }
 }

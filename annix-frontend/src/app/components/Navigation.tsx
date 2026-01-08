@@ -135,7 +135,7 @@ export default function Navigation() {
         setShowLoginForm(false);
         setEmail('');
         setPassword('');
-        router.push('/admin/dashboard');
+        router.push('/admin/portal/dashboard');
         return;
       } catch {
         // Not an admin, try customer
@@ -212,7 +212,7 @@ export default function Navigation() {
 
   const goToDashboard = () => {
     if (loggedInUser?.type === 'admin') {
-      router.push('/admin/dashboard');
+      router.push('/admin/portal/dashboard');
     } else if (loggedInUser?.type === 'customer') {
       router.push('/customer/portal/dashboard');
     } else if (loggedInUser?.type === 'supplier') {
@@ -222,7 +222,7 @@ export default function Navigation() {
 
   // Get dashboard path based on logged in user type
   const getDashboardPath = () => {
-    if (loggedInUser?.type === 'admin') return '/admin/dashboard';
+    if (loggedInUser?.type === 'admin') return '/admin/portal/dashboard';
     if (loggedInUser?.type === 'customer') return '/customer/portal/dashboard';
     if (loggedInUser?.type === 'supplier') return '/supplier/portal/dashboard';
     return '/'; // Default to home if not logged in

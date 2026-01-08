@@ -147,16 +147,28 @@ export interface SaveRfqDraftDto {
   pendingDocuments?: Record<string, any>[];
 }
 
+export type RfqDraftStatus = 'draft' | 'submitted' | 'pending' | 'in_review' | 'quoted' | 'accepted' | 'rejected' | 'cancelled';
+
+export interface SupplierCounts {
+  pending: number;
+  declined: number;
+  intendToQuote: number;
+  quoted: number;
+}
+
 export interface RfqDraftResponse {
   id: number;
   draftNumber: string;
+  rfqNumber?: string;
   projectName?: string;
   currentStep: number;
   completionPercentage: number;
+  status: RfqDraftStatus;
   createdAt: Date;
   updatedAt: Date;
   isConverted: boolean;
   convertedRfqId?: number;
+  supplierCounts?: SupplierCounts;
 }
 
 export interface RfqDraftFullResponse extends RfqDraftResponse {
@@ -1026,6 +1038,19 @@ export const draftsApi = {
   getById: (id: number) => apiClient.getDraftById(id),
   getByNumber: (draftNumber: string) => apiClient.getDraftByNumber(draftNumber),
   delete: (id: number) => apiClient.deleteDraft(id),
+  markAsConverted: async (draftId: number, rfqId: number): Promise<void> => {
+    const response = await fetch(`${API_URL}/rfq/drafts/${draftId}/convert`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify({ rfqId }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to mark draft as converted');
+    }
+  },
 };
 
 // BOQ Distribution API types

@@ -151,3 +151,50 @@ body {
   color: var(--amix-orange-light);
   text-shadow: 0 0 8px rgba(255, 165, 0, 0.4);
 }
+
+/* Toolbar inputs - always dark styled regardless of color scheme */
+.amix-toolbar input {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+}
+
+.amix-toolbar input::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.amix-toolbar input:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 165, 0, 0.5) !important;
+}
+
+.amix-toolbar input:focus {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: var(--amix-orange) !important;
+}
+
+/* Override browser autofill styles for toolbar */
+.amix-toolbar input:-webkit-autofill,
+.amix-toolbar input:-webkit-autofill:hover,
+.amix-toolbar input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px rgba(0, 31, 63, 0.95) inset !important;
+  -webkit-text-fill-color: white !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  caret-color: white !important;
+}
+
+/* Global input hover effects */
+input:hover:not(:focus):not(:disabled),
+select:hover:not(:focus):not(:disabled),
+textarea:hover:not(:focus):not(:disabled) {
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  input:hover:not(:focus):not(:disabled),
+  select:hover:not(:focus):not(:disabled),
+  textarea:hover:not(:focus):not(:disabled) {
+    border-color: rgba(96, 165, 250, 0.6);
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}

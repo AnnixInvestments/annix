@@ -473,6 +473,31 @@ export class BoqDistributionService {
   }
 
   /**
+   * Set email reminder for BOQ closing date
+   */
+  async setReminder(
+    boqId: number,
+    supplierProfileId: number,
+    reminderDays: number | null,
+  ): Promise<BoqSupplierAccess> {
+    const access = await this.accessRepository.findOne({
+      where: { boqId, supplierProfileId },
+    });
+
+    if (!access) {
+      throw new NotFoundException(
+        `Supplier ${supplierProfileId} does not have access to BOQ ${boqId}`,
+      );
+    }
+
+    access.reminderDays = reminderDays ?? undefined;
+    access.reminderSent = false;
+
+    await this.accessRepository.save(access);
+    return access;
+  }
+
+  /**
    * Get all BOQs assigned to a supplier
    */
   async getSupplierBoqs(
@@ -503,6 +528,11 @@ export class BoqDistributionService {
     }[] = [];
 
     for (const access of accessRecords) {
+      if (!access.boq) {
+        this.logger.warn(`BOQ not found for access record ${access.id}, boqId: ${access.boqId}`);
+        continue;
+      }
+
       // Get section summaries for allowed sections
       const sections = await this.sectionRepository.find({
         where: {

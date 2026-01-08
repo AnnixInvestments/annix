@@ -16,6 +16,7 @@ import { ReorderLineItemsDto } from './dto/reorder-line-items.dto';
 import { User } from '../user/entities/user.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
+import { Rfq } from '../rfq/entities/rfq.entity';
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -32,10 +33,16 @@ export class BoqService {
     private boqRepository: Repository<Boq>,
     @InjectRepository(BoqLineItem)
     private lineItemRepository: Repository<BoqLineItem>,
+    @InjectRepository(Rfq)
+    private rfqRepository: Repository<Rfq>,
     private auditService: AuditService,
   ) {}
 
-  private async generateBoqNumber(): Promise<string> {
+  private async generateBoqNumber(rfqNumber?: string): Promise<string> {
+    if (rfqNumber) {
+      return rfqNumber.replace('RFQ-', 'BOQ-');
+    }
+
     const year = new Date().getFullYear();
     const prefix = `BOQ-${year}-`;
 
@@ -55,7 +62,15 @@ export class BoqService {
   }
 
   async create(dto: CreateBoqDto, user: User): Promise<Boq> {
-    const boqNumber = await this.generateBoqNumber();
+    let rfqNumber: string | undefined;
+    if (dto.rfqId) {
+      const rfq = await this.rfqRepository.findOne({ where: { id: dto.rfqId } });
+      if (rfq) {
+        rfqNumber = rfq.rfqNumber;
+      }
+    }
+
+    const boqNumber = await this.generateBoqNumber(rfqNumber);
 
     const boq = this.boqRepository.create({
       boqNumber,

@@ -86,6 +86,14 @@ export class BoqSupplierAccess {
   @Column({ name: 'decline_reason', type: 'text', nullable: true })
   declineReason?: string;
 
+  @ApiProperty({ description: 'Days before deadline to send email reminder (1, 3, or 7)' })
+  @Column({ name: 'reminder_days', type: 'int', nullable: true })
+  reminderDays?: number;
+
+  @ApiProperty({ description: 'Whether reminder email has been sent' })
+  @Column({ name: 'reminder_sent', type: 'boolean', default: false })
+  reminderSent: boolean;
+
   @ApiProperty({ description: 'Customer info for display to supplier' })
   @Column({ type: 'jsonb', name: 'customer_info', nullable: true })
   customerInfo?: {

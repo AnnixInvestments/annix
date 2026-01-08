@@ -86,6 +86,9 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
 
       const dashboard = await supplierApiClient.getDashboard();
 
+      const supplierName = response.supplier.firstName || response.supplier.companyName || 'Supplier';
+      localStorage.setItem('supplierName', supplierName);
+
       setState({
         isAuthenticated: true,
         isLoading: false,
@@ -104,6 +107,7 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
     try {
       await supplierApiClient.logout();
     } finally {
+      localStorage.removeItem('supplierName');
       setState({
         isAuthenticated: false,
         isLoading: false,

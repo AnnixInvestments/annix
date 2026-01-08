@@ -554,6 +554,13 @@ class SupplierApiClient {
       body: JSON.stringify({ reason }),
     });
   }
+
+  async setBoqReminder(boqId: number, reminderDays: string): Promise<{ success: boolean; reminderDays: string | null }> {
+    return this.request(`/supplier/boqs/${boqId}/reminder`, {
+      method: 'POST',
+      body: JSON.stringify({ reminderDays: reminderDays === 'none' ? null : parseInt(reminderDays, 10) }),
+    });
+  }
 }
 
 export const supplierApiClient = new SupplierApiClient();
@@ -589,4 +596,5 @@ export const supplierPortalApi = {
   getBoqDetails: (boqId: number) => supplierApiClient.getBoqDetails(boqId),
   markBoqViewed: (boqId: number) => supplierApiClient.markBoqViewed(boqId),
   declineBoq: (boqId: number, reason: string) => supplierApiClient.declineBoq(boqId, reason),
+  setBoqReminder: (boqId: number, reminderDays: string) => supplierApiClient.setBoqReminder(boqId, reminderDays),
 };

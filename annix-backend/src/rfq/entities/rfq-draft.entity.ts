@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
+import { Rfq } from './rfq.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('rfq_drafts')
@@ -88,6 +89,10 @@ export class RfqDraft {
   })
   @Column({ name: 'converted_rfq_id', nullable: true })
   convertedRfqId?: number;
+
+  @ManyToOne(() => Rfq, { nullable: true })
+  @JoinColumn({ name: 'converted_rfq_id' })
+  convertedRfq?: Rfq;
 
   @ApiProperty({ description: 'Whether this draft was converted to an RFQ' })
   @Column({ name: 'is_converted', default: false })

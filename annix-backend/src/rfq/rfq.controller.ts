@@ -506,6 +506,41 @@ export class RfqController {
     return { message: 'Draft deleted successfully' };
   }
 
+  @Post('drafts/:id/convert')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Mark draft as converted',
+    description: 'Mark an RFQ draft as converted to a submitted RFQ',
+  })
+  @ApiParam({ name: 'id', description: 'Draft ID', type: Number })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        rfqId: { type: 'number', description: 'The ID of the created RFQ' },
+      },
+      required: ['rfqId'],
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Draft marked as converted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Draft not found',
+  })
+  async convertDraft(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('rfqId') rfqId: number,
+    @Req() req: Request,
+  ): Promise<{ message: string }> {
+    const userId = (req as any).customer?.userId;
+    await this.rfqService.markDraftAsConverted(id, rfqId, userId);
+    return { message: 'Draft marked as converted successfully' };
+  }
+
   // ==================== RFQ by ID (must come after /drafts routes) ====================
 
   @Get(':id')
@@ -654,5 +689,28 @@ export class RfqController {
   ): Promise<{ message: string }> {
     await this.rfqService.deleteDocument(documentId);
     return { message: 'Document deleted successfully' };
+  }
+
+  @Post(':id/notify-update')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth('customer-auth')
+  @ApiOperation({
+    summary: 'Notify suppliers of RFQ update',
+    description:
+      'Send email notifications to suppliers when an RFQ is updated. Excludes suppliers who have declined to quote.',
+  })
+  @ApiParam({ name: 'id', description: 'RFQ ID', type: Number })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Suppliers notified successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'RFQ not found',
+  })
+  async notifySuppliersOfUpdate(
+    @Param('id', ParseIntPipe) rfqId: number,
+  ): Promise<{ suppliersNotified: number; suppliersSkipped: number }> {
+    return this.rfqService.notifySuppliersOfRfqUpdate(rfqId);
   }
 }

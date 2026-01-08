@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Rfq, RfqStatus } from '../rfq/entities/rfq.entity';
 import { CustomerProfile } from '../customer/entities';
+import { SupplierProfile, SupplierAccountStatus } from '../supplier/entities/supplier-profile.entity';
 import { PublicStatsDto, UpcomingRfqDto } from './dto/public-stats.dto';
 
 @Injectable()
@@ -12,6 +13,8 @@ export class PublicService {
     private rfqRepository: Repository<Rfq>,
     @InjectRepository(CustomerProfile)
     private customerProfileRepository: Repository<CustomerProfile>,
+    @InjectRepository(SupplierProfile)
+    private supplierProfileRepository: Repository<SupplierProfile>,
   ) {}
 
   async getPublicStats(): Promise<PublicStatsDto> {
@@ -21,9 +24,10 @@ export class PublicService {
     // Get total customer count
     const totalCustomers = await this.customerProfileRepository.count();
 
-    // For suppliers, we'll return 0 for now as supplier entity doesn't exist yet
-    // This can be updated when supplier registration is implemented
-    const totalSuppliers = 0;
+    // Get total supplier count (only active suppliers)
+    const totalSuppliers = await this.supplierProfileRepository.count({
+      where: { accountStatus: SupplierAccountStatus.ACTIVE },
+    });
 
     // Get upcoming RFQs (next 30 days) sorted by nearest closing date
     const today = new Date();
@@ -75,7 +79,8 @@ export class PublicService {
   }
 
   async getSupplierCount(): Promise<number> {
-    // Placeholder until supplier entity is implemented
-    return 0;
+    return this.supplierProfileRepository.count({
+      where: { accountStatus: SupplierAccountStatus.ACTIVE },
+    });
   }
 }

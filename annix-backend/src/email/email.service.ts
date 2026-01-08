@@ -895,4 +895,60 @@ export class EmailService {
       text,
     });
   }
+
+  async sendRfqUpdateNotification(
+    email: string,
+    supplierName: string,
+    projectName: string,
+    rfqNumber: string,
+  ): Promise<boolean> {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const rfqLink = `${frontendUrl}/supplier/portal/boqs`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>RFQ Updated - Annix</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #f59e0b;">RFQ Updated</h1>
+          <p>Hello ${supplierName},</p>
+          <p>A Request for Quotation (RFQ) you were invited to quote on has been updated by the customer.</p>
+
+          <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+            <strong>Updated RFQ:</strong>
+            <p style="margin: 5px 0 0 0;">
+              <strong>Project:</strong> ${projectName}<br/>
+              <strong>RFQ Number:</strong> ${rfqNumber}
+            </p>
+          </div>
+
+          <p>Please review the updated requirements and adjust your quotation if needed.</p>
+
+          <p style="margin: 30px 0;">
+            <a href="${rfqLink}"
+               style="background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View Updated RFQ
+            </a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you have already submitted a quote, please review the changes and submit an updated quote if necessary.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `RFQ Updated: ${projectName} (${rfqNumber}) - Annix`,
+      html,
+    });
+  }
 }

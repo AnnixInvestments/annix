@@ -95,6 +95,7 @@ const normalizeFittingTypeForApi = (type?: string | null) => {
 interface Props {
   onSuccess: (rfqId: string) => void;
   onCancel: () => void;
+  editRfqId?: number;
 }
 
 // Master data structure for API integration
@@ -191,7 +192,8 @@ const calculateLocalPipeResult = (
   };
 };
 
-export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Props) {
+export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editRfqId }: Props) {
+  const isEditing = editRfqId !== undefined;
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const {
@@ -1968,6 +1970,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
 
         // Clear pending documents after upload attempt
         setPendingDocuments([]);
+      }
+
+      // Mark the draft as converted if we were working from a draft
+      if (currentDraftId && results[0]?.rfq?.id) {
+        try {
+          await draftsApi.markAsConverted(currentDraftId, results[0].rfq.id);
+          console.log(`✅ Draft ${currentDraftId} marked as converted to RFQ ${results[0].rfq.id}`);
+        } catch (convertError) {
+          console.error('Failed to mark draft as converted:', convertError);
+        }
       }
 
       showToast(`Success! ${results.length} RFQ${results.length > 1 ? 's' : ''} created successfully. ${itemSummary}`, 'success');

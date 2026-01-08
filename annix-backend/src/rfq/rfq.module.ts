@@ -19,10 +19,15 @@ import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
 import { NutMass } from '../nut-mass/entities/nut-mass.entity';
 import { NbNpsLookup } from '../nb-nps-lookup/entities/nb-nps-lookup.entity';
 import { CustomerModule } from '../customer/customer.module';
+import { Boq } from '../boq/entities/boq.entity';
+import { BoqSupplierAccess } from '../boq/entities/boq-supplier-access.entity';
+import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
     CustomerModule,
+    EmailModule,
     TypeOrmModule.forFeature([
       Rfq,
       RfqItem,
@@ -39,6 +44,9 @@ import { CustomerModule } from '../customer/customer.module';
       BoltMass,
       NutMass,
       NbNpsLookup,
+      Boq,
+      BoqSupplierAccess,
+      SupplierProfile,
     ]),
     MulterModule.register({
       limits: {

@@ -11,10 +11,11 @@ import { BoqParserService } from './boq-parser.service';
 import { BoqDistributionService } from './boq-distribution.service';
 import { SupplierModule } from '../supplier/supplier.module';
 import { EmailModule } from '../email/email.module';
+import { Rfq } from '../rfq/entities/rfq.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Boq, BoqLineItem, BoqSection, BoqSupplierAccess]),
+    TypeOrmModule.forFeature([Boq, BoqLineItem, BoqSection, BoqSupplierAccess, Rfq]),
     MulterModule.register({
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB max file size
