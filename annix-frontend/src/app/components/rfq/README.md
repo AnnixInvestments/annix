@@ -55,7 +55,43 @@ When adding new shared logic, prefer:
 - `lib/config/rfq` for tabular data / lookups.
 - `components/rfq/utils` for light-weight helpers consumed by multiple steps.
 
+## Line Count Analysis
+
+### Original Structure
+
+| File | Lines |
+|------|------:|
+| `MultiStepStraightPipeRfqForm.tsx` | 17,781 |
+| `constants/flangeData.ts` | 267 |
+| `constants/pipeEndOptions.ts` | 135 |
+| `constants/sabs719Data.ts` | 168 |
+| `utils/flangeUtils.ts` | 154 |
+| **Total** | **18,505** |
+
+### Refactored Structure
+
+| File | Lines | % of Total |
+|------|------:|----------:|
+| `StraightPipeRfqOrchestrator.tsx` | 2,271 | 13.0% |
+| `steps/ItemUploadStep.tsx` | 6,912 | 39.5% |
+| `steps/SpecificationsStep.tsx` | 4,476 | 25.6% |
+| `steps/ProjectDetailsStep.tsx` | 1,882 | 10.8% |
+| `steps/BOQStep.tsx` | 967 | 5.5% |
+| `steps/ReviewSubmitStep.tsx` | 784 | 4.5% |
+| `lib/config/rfq/pipeSchedules.ts` | 386 | 2.2% |
+| `utils/flangeMaterialGroup.ts` | 17 | 0.1% |
+| **Total** | **17,695** | **100%** |
+
+### Summary
+
+- **Original monolith**: 17,781 lines (single file)
+- **Orchestrator after refactor**: 2,271 lines (87% reduction)
+- **Net reduction**: ~810 lines removed during consolidation
+- **Largest extracted step**: ItemUploadStep (6,912 lines) - the BOM entry UX
+
+The `ItemUploadStep` and `SpecificationsStep` together account for 65% of the codebase - candidates for further decomposition if needed.
+
 ## Testing Notes
 
-- Run `npm run build` (from `annix-frontend`) after touching any step. The type checker spans all files now that steps are isolated.
+- Run `pnpm run build` (from `annix-frontend`) after touching any step. The type checker spans all files now that steps are isolated.
 - For UI-driven validation, the split allows mounting each step independently in Storybook or your preferred harness without needing the whole multi-step container.
