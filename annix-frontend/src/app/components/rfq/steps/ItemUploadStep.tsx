@@ -6364,8 +6364,14 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
 
                   // Calculate weld thickness for flange welds
                   const getWeldThickness = () => {
-                    // Skip fittings but allow bends
-                    if (entry.itemType === 'fitting') return null;
+                    // For fittings (tees/laterals), use wall thickness from specs
+                    if (entry.itemType === 'fitting') {
+                      const fittingWt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
+                      if (fittingWt) {
+                        return { thickness: fittingWt, label: 'Fitting WT' };
+                      }
+                      return null;
+                    }
 
                     const dn = entry.specs?.nominalBoreMm;
                     const schedule = entry.specs?.scheduleNumber || '';

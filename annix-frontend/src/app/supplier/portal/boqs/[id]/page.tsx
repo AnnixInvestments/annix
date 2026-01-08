@@ -37,6 +37,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [decliningLoading, setDecliningLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'boq' | 'rfq'>('boq');
 
   useEffect(() => {
     loadBoqDetails();
@@ -102,19 +103,19 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         const row: (string | number)[] = [idx + 1, item.description, item.qty, item.unit];
         if (hasWelds) {
           row.push(
-            item.welds?.pipeWeld?.toFixed(3) || '-',
-            item.welds?.flangeWeld?.toFixed(3) || '-',
-            item.welds?.mitreWeld?.toFixed(3) || '-',
-            item.welds?.teeWeld?.toFixed(3) || '-'
+            item.welds?.pipeWeld ? Number(item.welds.pipeWeld).toFixed(3) : '-',
+            item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-',
+            item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-',
+            item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'
           );
         }
         if (hasAreas) {
           row.push(
-            item.areas?.intAreaM2?.toFixed(2) || '-',
-            item.areas?.extAreaM2?.toFixed(2) || '-'
+            item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-',
+            item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'
           );
         }
-        row.push(item.weightKg.toFixed(2));
+        row.push(Number(item.weightKg || 0).toFixed(2));
         return row;
       });
 
@@ -122,7 +123,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       const totalWeightIdx = headers.indexOf('Weight (kg)');
       const totalsRow: (string | number)[] = headers.map((_, idx) => {
         if (idx === 1) return 'TOTAL';
-        if (idx === totalWeightIdx) return section.totalWeightKg?.toFixed(2) || '0.00';
+        if (idx === totalWeightIdx) return Number(section.totalWeightKg || 0).toFixed(2);
         return '';
       });
       rows.push(totalsRow);
@@ -219,6 +220,15 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
           </div>
           <div className="flex gap-3">
             <button
+              onClick={() => setViewMode(viewMode === 'boq' ? 'rfq' : 'boq')}
+              className="inline-flex items-center px-4 py-2 border border-blue-500 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+              </svg>
+              {viewMode === 'boq' ? 'RFQ View' : 'BOQ View'}
+            </button>
+            <button
               onClick={exportToExcel}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
@@ -300,18 +310,32 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* BOQ Sections */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">
-          Bill of Quantities ({boqDetail.sections.length} sections)
-        </h2>
+      {/* BOQ/RFQ Content */}
+      {viewMode === 'boq' ? (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">
+            Bill of Quantities ({boqDetail.sections.length} sections)
+          </h2>
 
-        <div className="space-y-8">
-          {boqDetail.sections.map((section) => (
-            <SectionTable key={section.id} section={section} />
-          ))}
+          <div className="space-y-8">
+            {boqDetail.sections.map((section) => (
+              <SectionTable key={section.id} section={section} />
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">
+            RFQ Itemized View ({boqDetail.sections.reduce((sum, s) => sum + s.items.length, 0)} items)
+          </h2>
+
+          <div className="space-y-6">
+            {boqDetail.sections.map((section) => (
+              <RfqSectionTable key={section.id} section={section} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Decline Modal */}
       {showDeclineModal && (
@@ -413,31 +437,31 @@ function SectionTable({ section }: { section: BoqSection }) {
                 {hasWelds && (
                   <>
                     <td className="px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.welds?.pipeWeld?.toFixed(3) || '-'}
+                      {item.welds?.pipeWeld ? Number(item.welds.pipeWeld).toFixed(3) : '-'}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.welds?.flangeWeld?.toFixed(3) || '-'}
+                      {item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-'}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.welds?.mitreWeld?.toFixed(3) || '-'}
+                      {item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-'}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.welds?.teeWeld?.toFixed(3) || '-'}
+                      {item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'}
                     </td>
                   </>
                 )}
                 {hasAreas && (
                   <>
                     <td className="px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.areas?.intAreaM2?.toFixed(2) || '-'}
+                      {item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-'}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.areas?.extAreaM2?.toFixed(2) || '-'}
+                      {item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'}
                     </td>
                   </>
                 )}
                 <td className="px-3 py-2 text-sm text-gray-900 text-right font-medium">
-                  {item.weightKg.toFixed(2)}
+                  {Number(item.weightKg || 0).toFixed(2)}
                 </td>
               </tr>
             ))}
@@ -448,19 +472,124 @@ function SectionTable({ section }: { section: BoqSection }) {
               </td>
               {hasWelds && (
                 <>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{totals.pipeWeld.toFixed(3)}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{totals.flangeWeld.toFixed(3)}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{totals.mitreWeld.toFixed(3)}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{totals.teeWeld.toFixed(3)}</td>
+                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.pipeWeld || 0).toFixed(3)}</td>
+                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.flangeWeld || 0).toFixed(3)}</td>
+                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.mitreWeld || 0).toFixed(3)}</td>
+                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.teeWeld || 0).toFixed(3)}</td>
                 </>
               )}
               {hasAreas && (
                 <>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{totals.intArea.toFixed(2)}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{totals.extArea.toFixed(2)}</td>
+                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.intArea || 0).toFixed(2)}</td>
+                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.extArea || 0).toFixed(2)}</td>
                 </>
               )}
-              <td className="px-3 py-2 text-sm text-gray-900 text-right">{totals.weight.toFixed(2)}</td>
+              <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.weight || 0).toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function RfqSectionTable({ section }: { section: BoqSection }) {
+  const hasAreas = section.items.some((item) => item.areas?.intAreaM2 || item.areas?.extAreaM2);
+
+  // Calculate section totals
+  const sectionTotals = section.items.reduce(
+    (acc, item) => ({
+      qty: acc.qty + (item.qty || 0),
+      weight: acc.weight + Number(item.weightKg || 0),
+      extArea: acc.extArea + Number(item.areas?.extAreaM2 || 0),
+      intArea: acc.intArea + Number(item.areas?.intAreaM2 || 0),
+    }),
+    { qty: 0, weight: 0, extArea: 0, intArea: 0 }
+  );
+
+  return (
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
+      {/* Section Header */}
+      <div className="bg-gradient-to-r from-blue-900 to-blue-800 px-4 py-2">
+        <h3 className="text-white font-semibold text-sm">
+          {section.sectionTitle}
+          <span className="ml-2 text-blue-200 font-normal">({section.itemCount} items)</span>
+        </h3>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-blue-50 border-b border-blue-200">
+              <th className="text-left py-2 px-3 text-xs font-semibold text-blue-800 w-24">Item #</th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-blue-800">Description</th>
+              <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-20">Weld WT</th>
+              {hasAreas && (
+                <>
+                  <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-20">Ext m²</th>
+                  <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-20">Int m²</th>
+                </>
+              )}
+              <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-16">Qty</th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-800 w-28">Weight/Item</th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-800 w-28">Line Weight</th>
+            </tr>
+          </thead>
+          <tbody>
+            {section.items.map((item, idx) => {
+              const itemNumber = `${section.sectionType.substring(0, 3).toUpperCase()}-${String(idx + 1).padStart(3, '0')}`;
+              const weightPerItem = item.qty > 0 ? Number(item.weightKg || 0) / item.qty : 0;
+              const lineWeight = Number(item.weightKg || 0);
+
+              // Extract wall thickness from description if available
+              const wtMatch = item.description.match(/W\/T\s*(\d+(?:\.\d+)?)\s*mm|(\d+(?:\.\d+)?)\s*mm\s*W\/T|Sch\w*\s*\((\d+(?:\.\d+)?)mm\)/i);
+              const weldWt = wtMatch ? (wtMatch[1] || wtMatch[2] || wtMatch[3]) : null;
+
+              return (
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="py-2 px-3 text-xs text-blue-600 font-medium">{itemNumber}</td>
+                  <td className="py-2 px-3 text-xs text-gray-700">{item.description}</td>
+                  <td className="py-2 px-3 text-xs text-gray-600 text-center">
+                    {weldWt ? `${weldWt}mm` : '-'}
+                  </td>
+                  {hasAreas && (
+                    <>
+                      <td className="py-2 px-3 text-xs text-gray-600 text-center">
+                        {item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'}
+                      </td>
+                      <td className="py-2 px-3 text-xs text-gray-600 text-center">
+                        {item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-'}
+                      </td>
+                    </>
+                  )}
+                  <td className="py-2 px-3 text-xs text-gray-900 text-center font-medium">{item.qty}</td>
+                  <td className="py-2 px-3 text-xs text-gray-600 text-right">
+                    {weightPerItem.toFixed(2)} kg
+                  </td>
+                  <td className="py-2 px-3 text-xs text-green-700 text-right font-semibold">
+                    {lineWeight.toFixed(2)} kg
+                  </td>
+                </tr>
+              );
+            })}
+            {/* Totals Row */}
+            <tr className="bg-blue-100 border-t-2 border-blue-300 font-semibold">
+              <td className="py-2 px-3 text-xs text-blue-800" colSpan={2}>TOTAL</td>
+              <td className="py-2 px-3 text-xs text-blue-800 text-center">-</td>
+              {hasAreas && (
+                <>
+                  <td className="py-2 px-3 text-xs text-blue-800 text-center">
+                    {sectionTotals.extArea > 0 ? sectionTotals.extArea.toFixed(2) : '-'}
+                  </td>
+                  <td className="py-2 px-3 text-xs text-blue-800 text-center">
+                    {sectionTotals.intArea > 0 ? sectionTotals.intArea.toFixed(2) : '-'}
+                  </td>
+                </>
+              )}
+              <td className="py-2 px-3 text-xs text-blue-800 text-center">{sectionTotals.qty}</td>
+              <td className="py-2 px-3 text-xs text-blue-800 text-right">-</td>
+              <td className="py-2 px-3 text-xs text-green-700 text-right">{sectionTotals.weight.toFixed(2)} kg</td>
             </tr>
           </tbody>
         </table>

@@ -2254,15 +2254,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
               >
                 Next →
               </button>
-            ) : (
+            ) : currentStep === 4 ? (
               <button
-                onClick={() => {/* Submit logic handled in step 4 */}}
+                onClick={handleNextStep}
                 className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
                 style={{ backgroundColor: '#4CAF50', color: '#FFFFFF' }}
               >
-                Submit RFQ
+                Submit RFQ →
               </button>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

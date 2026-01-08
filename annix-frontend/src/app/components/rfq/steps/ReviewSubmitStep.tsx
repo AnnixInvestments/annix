@@ -7,6 +7,9 @@ import {
   weldCountPerFitting as getWeldCountPerFitting,
   weldCountPerPipe as getWeldCountPerPipe,
   flangesPerPipe as getFlangesPerPipe,
+  boltSetCountPerBend as getBoltSetCountPerBend,
+  boltSetCountPerPipe as getBoltSetCountPerPipe,
+  boltSetCountPerFitting as getBoltSetCountPerFitting,
   bnwSetInfo as getBnwSetInfo,
 } from '@/app/lib/config/rfq';
 
@@ -513,9 +516,10 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                   if (entry.itemType === 'bend') {
                     const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
                     hasFlanges = bendEndConfig !== 'PE';
-                    flangeCount = getWeldCountPerBend(bendEndConfig); // Use correct function for bolt set connections
+                    // Use bolt set count function - 2 same-sized flanges = 1 bolt set
+                    flangeCount = getBoltSetCountPerBend(bendEndConfig);
                     nbMm = entry.specs?.nominalBoreMm || 100;
-                    // Get stub flanges
+                    // Get stub flanges - each stub of different size needs 1 bolt set
                     if (entry.specs?.stubs?.length > 0) {
                       entry.specs.stubs.forEach((stub: any) => {
                         if (stub?.nominalBoreMm) {
@@ -528,22 +532,16 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                     hasFlanges = fittingEndConfig !== 'PE';
                     nbMm = entry.specs?.nominalDiameterMm || 100;
                     branchNbMm = entry.specs?.branchNominalDiameterMm || nbMm;
-                    // Count flanges based on configuration
-                    const config = fittingEndConfig;
-                    if (config.includes('F')) {
-                      // Count F's in config for main flanges
-                      const mainFlanges = (config.match(/F/g) || []).length;
-                      flangeCount = Math.min(mainFlanges, 2); // inlet/outlet
-                      // Check if branch has flange
-                      if (config.length >= 3 && config[2] === 'F') {
-                        branchFlangeCount = 1;
-                      }
-                    }
+                    // Use bolt set count function for fittings
+                    const isEqualBranch = nbMm === branchNbMm;
+                    const fittingBoltSets = getBoltSetCountPerFitting(fittingEndConfig, isEqualBranch);
+                    flangeCount = fittingBoltSets.mainBoltSets;
+                    branchFlangeCount = fittingBoltSets.branchBoltSets;
                   } else {
-                    // Straight pipe - use getFlangesPerPipe for correct bolt set connection count
+                    // Straight pipe - use bolt set count function
                     const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
                     hasFlanges = pipeEndConfig !== 'PE';
-                    flangeCount = getFlangesPerPipe(pipeEndConfig); // Use correct function
+                    flangeCount = getBoltSetCountPerPipe(pipeEndConfig);
                     nbMm = entry.specs?.nominalBoreMm || 100;
                   }
 
@@ -554,7 +552,9 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                   const branchBnwInfo = branchFlangeCount > 0 ? getBnwSetInfo(branchNbMm, pressureClass) : null;
                   const gasketType = rfqData.globalSpecs?.gasketType;
                   const qty = entry.specs?.quantityValue || 1;
-                  const totalBoltSets = (flangeCount + branchFlangeCount) * qty;
+                  // Total bolt sets = main bolt sets + branch bolt sets + stub bolt sets
+                  const stubBoltSets = stubFlanges.reduce((sum, stub) => sum + stub.count, 0);
+                  const totalBoltSets = (flangeCount + branchFlangeCount + stubBoltSets) * qty;
 
                   return (
                     <div className="mt-2 pt-2 border-t border-gray-200">

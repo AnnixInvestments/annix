@@ -144,3 +144,49 @@ export const physicalFlangeCount = (pipeEndConfig: string): number => {
       return 0;
   }
 };
+
+// Bolt set count for bends - based on user rule:
+// 2 same-sized flanged ends = 1 bolt set
+// 3 same-sized flanged ends = 2 bolt sets (not applicable for bends but for tees)
+// Additional stubs of different size = extra bolt sets
+export const boltSetCountPerBend = (bendEndConfig: string): number => {
+  const flangeCount = physicalFlangeCount(bendEndConfig);
+  // For bends: 2 flanges of same size = 1 bolt set, 1 flange = 1 bolt set, 0 flanges = 0
+  if (flangeCount === 0) return 0;
+  if (flangeCount === 1) return 1;
+  // For 2+ flanges of same size: count - 1 = bolt sets (but minimum 1)
+  return Math.max(1, flangeCount - 1);
+};
+
+// Bolt set count for pipes - same logic as bends
+export const boltSetCountPerPipe = (pipeEndConfig: string): number => {
+  const flangeCount = physicalFlangeCount(pipeEndConfig);
+  if (flangeCount === 0) return 0;
+  if (flangeCount === 1) return 1;
+  return Math.max(1, flangeCount - 1);
+};
+
+// Bolt set count for fittings (tees/laterals)
+// 3 same-sized flanged ends = 2 bolt sets
+// Different sized branch = additional bolt set for that size
+export const boltSetCountPerFitting = (fittingEndConfig: string, hasEqualBranch: boolean = true): { mainBoltSets: number; branchBoltSets: number } => {
+  const config = FITTING_END_OPTIONS.find(opt => opt.value === fittingEndConfig);
+  if (!config) return { mainBoltSets: 0, branchBoltSets: 0 };
+
+  // Count flanged main ends (inlet + outlet)
+  const mainFlangeCount = (config.hasInlet ? 1 : 0) + (config.hasOutlet ? 1 : 0);
+  // Count branch flanges
+  const branchFlangeCount = config.hasBranch ? 1 : 0;
+
+  if (hasEqualBranch) {
+    // All ends same size: total flanges - 1 = bolt sets
+    const totalFlanges = mainFlangeCount + branchFlangeCount;
+    if (totalFlanges === 0) return { mainBoltSets: 0, branchBoltSets: 0 };
+    return { mainBoltSets: Math.max(1, totalFlanges - 1), branchBoltSets: 0 };
+  }
+
+  // Different branch size: main flanges count separately from branch
+  const mainBoltSets = mainFlangeCount > 0 ? Math.max(1, mainFlangeCount - 1) : 0;
+  const branchBoltSets = branchFlangeCount;
+  return { mainBoltSets, branchBoltSets };
+};

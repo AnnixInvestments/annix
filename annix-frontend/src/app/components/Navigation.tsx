@@ -257,14 +257,6 @@ export default function Navigation() {
     }
   };
 
-  const isPortalRoute = pathname.startsWith('/admin/portal') ||
-    pathname.startsWith('/customer/portal') ||
-    pathname.startsWith('/supplier/portal');
-
-  if (isPortalRoute) {
-    return null;
-  }
-
   return (
     <nav
       className="sticky top-0 z-50 shadow-lg amix-toolbar"

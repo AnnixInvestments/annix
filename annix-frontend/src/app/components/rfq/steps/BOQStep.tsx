@@ -4,6 +4,7 @@ import React from 'react';
 import * as XLSX from 'xlsx';
 import { RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
 import { flangeWeight as getFlangeWeight, bnwSetInfo as getBnwSetInfo, gasketWeight as getGasketWeight } from '@/app/lib/config/rfq';
+import { boltSetCountPerBend, boltSetCountPerPipe, boltSetCountPerFitting } from '@/app/lib/config/rfq/pipeEndOptions';
 
 export default function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, onPrevStep, onSubmit, loading }: {
   rfqData: RfqFormData;
@@ -183,22 +184,23 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           });
         }
 
-        // BNW for bend flanges
+        // BNW for bend flanges - use bolt set count (2 same-sized ends = 1 bolt set)
         const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(' ').pop() || 'PN16');
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
+        const boltSetQty = boltSetCountPerBend(bendEndConfig) * qty;
 
         if (existingBnw) {
-          existingBnw.qty += flangeQty;
-          existingBnw.weight += bnwWeight * flangeQty;
+          existingBnw.qty += boltSetQty;
+          existingBnw.weight += bnwWeight * boltSetQty;
           existingBnw.entries.push(itemNumber);
         } else {
           consolidatedBnwSets.set(bnwKey, {
             description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
-            qty: flangeQty,
+            qty: boltSetQty,
             unit: 'sets',
-            weight: bnwWeight * flangeQty,
+            weight: bnwWeight * boltSetQty,
             entries: [itemNumber]
           });
         }
@@ -303,6 +305,8 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
       // Flanges for fittings (using fittingEndConfig declared above)
       const flangeCount = getFlangeCountFromConfig(fittingEndConfig, 'fitting');
+      const isEqualBranch = branchNb === nb;
+      const fittingBoltSets = boltSetCountPerFitting(fittingEndConfig, isEqualBranch);
 
       // Main flanges
       if (flangeCount.main > 0) {
@@ -325,24 +329,27 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           });
         }
 
-        // BNW for main flanges
+        // BNW for main flanges - use bolt set count (3 same-sized ends = 2 bolt sets)
         const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(' ').pop() || 'PN16');
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
+        const mainBoltSetQty = fittingBoltSets.mainBoltSets * qty;
 
-        if (existingBnw) {
-          existingBnw.qty += flangeQty;
-          existingBnw.weight += bnwWeight * flangeQty;
-          existingBnw.entries.push(itemNumber);
-        } else {
-          consolidatedBnwSets.set(bnwKey, {
-            description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
-            qty: flangeQty,
-            unit: 'sets',
-            weight: bnwWeight * flangeQty,
-            entries: [itemNumber]
-          });
+        if (mainBoltSetQty > 0) {
+          if (existingBnw) {
+            existingBnw.qty += mainBoltSetQty;
+            existingBnw.weight += bnwWeight * mainBoltSetQty;
+            existingBnw.entries.push(itemNumber);
+          } else {
+            consolidatedBnwSets.set(bnwKey, {
+              description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
+              qty: mainBoltSetQty,
+              unit: 'sets',
+              weight: bnwWeight * mainBoltSetQty,
+              entries: [itemNumber]
+            });
+          }
         }
 
         // Gaskets for main flanges
@@ -388,24 +395,27 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           });
         }
 
-        // BNW for branch flanges
+        // BNW for branch flanges - use bolt set count for branch (only counts when different size)
         const branchBnwInfo = getBnwSetInfo(branchNb, flangeSpec.split(' ').pop() || 'PN16');
         const branchBnwKey = `BNW_${branchBnwInfo.boltSize}_x${branchBnwInfo.holesPerFlange}_${branchNb}NB_${flangeSpec}`;
         const existingBranchBnw = consolidatedBnwSets.get(branchBnwKey);
         const branchBnwWeight = branchBnwInfo.weightPerHole * branchBnwInfo.holesPerFlange;
+        const branchBoltSetQty = fittingBoltSets.branchBoltSets * qty;
 
-        if (existingBranchBnw) {
-          existingBranchBnw.qty += branchFlangeQty;
-          existingBranchBnw.weight += branchBnwWeight * branchFlangeQty;
-          existingBranchBnw.entries.push(itemNumber);
-        } else {
-          consolidatedBnwSets.set(branchBnwKey, {
-            description: `${branchBnwInfo.boltSize} BNW Set x${branchBnwInfo.holesPerFlange} for ${branchNb}NB ${flangeSpec}`,
-            qty: branchFlangeQty,
-            unit: 'sets',
-            weight: branchBnwWeight * branchFlangeQty,
-            entries: [itemNumber]
-          });
+        if (branchBoltSetQty > 0) {
+          if (existingBranchBnw) {
+            existingBranchBnw.qty += branchBoltSetQty;
+            existingBranchBnw.weight += branchBnwWeight * branchBoltSetQty;
+            existingBranchBnw.entries.push(itemNumber);
+          } else {
+            consolidatedBnwSets.set(branchBnwKey, {
+              description: `${branchBnwInfo.boltSize} BNW Set x${branchBnwInfo.holesPerFlange} for ${branchNb}NB ${flangeSpec}`,
+              qty: branchBoltSetQty,
+              unit: 'sets',
+              weight: branchBnwWeight * branchBoltSetQty,
+              entries: [itemNumber]
+            });
+          }
         }
 
         // Gaskets for branch flanges
@@ -505,24 +515,27 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           });
         }
 
-        // BNW for pipe flanges
+        // BNW for pipe flanges - use bolt set count (2 same-sized ends = 1 bolt set)
         const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(' ').pop() || 'PN16');
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
+        const pipeBoltSetQty = boltSetCountPerPipe(pipeEndConfig) * pipeQty;
 
-        if (existingBnw) {
-          existingBnw.qty += flangeQty;
-          existingBnw.weight += bnwWeight * flangeQty;
-          existingBnw.entries.push(itemNumber);
-        } else {
-          consolidatedBnwSets.set(bnwKey, {
-            description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
-            qty: flangeQty,
-            unit: 'sets',
-            weight: bnwWeight * flangeQty,
-            entries: [itemNumber]
-          });
+        if (pipeBoltSetQty > 0) {
+          if (existingBnw) {
+            existingBnw.qty += pipeBoltSetQty;
+            existingBnw.weight += bnwWeight * pipeBoltSetQty;
+            existingBnw.entries.push(itemNumber);
+          } else {
+            consolidatedBnwSets.set(bnwKey, {
+              description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
+              qty: pipeBoltSetQty,
+              unit: 'sets',
+              weight: bnwWeight * pipeBoltSetQty,
+              entries: [itemNumber]
+            });
+          }
         }
 
         // Gaskets for pipe flanges
