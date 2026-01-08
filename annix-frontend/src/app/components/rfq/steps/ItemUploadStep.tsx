@@ -33,6 +33,9 @@ import {
   normalizePressureClass,
   flangeWeight as getFlangeWeight,
   getScheduleListForSpec,
+  boltSetCountPerBend as getBoltSetCountPerBend,
+  boltSetCountPerPipe as getBoltSetCountPerPipe,
+  boltSetCountPerFitting as getBoltSetCountPerFitting,
 } from '@/app/lib/config/rfq';
 import {
   calculateMaxAllowablePressure,
@@ -6312,9 +6315,12 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                   // Calculate flanges per item based on item type
                   let flangesPerPipe = 0;
                   let stubFlangesPerItem = 0;
+                  let boltSetsPerItem = 0;
 
                   if (entry.itemType === 'straight_pipe' || !entry.itemType) {
-                    flangesPerPipe = getFlangesPerPipe(entry.specs?.pipeEndConfiguration || 'PE');
+                    const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                    flangesPerPipe = getFlangesPerPipe(pipeEndConfig);
+                    boltSetsPerItem = getBoltSetCountPerPipe(pipeEndConfig);
                   } else if (entry.itemType === 'bend') {
                     // Calculate main bend flanges based on bendEndConfiguration
                     const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
@@ -6323,7 +6329,9 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                     } else if (bendEndConfig === 'FOE' || bendEndConfig === 'FOE_LF') {
                       flangesPerPipe = 1;
                     }
-                    // Add stub flanges (each stub has 1 flange)
+                    // Bolt sets: 2 same-sized flanged ends = 1 bolt set
+                    boltSetsPerItem = getBoltSetCountPerBend(bendEndConfig);
+                    // Add stub flanges (each stub has 1 flange AND 1 bolt set)
                     stubFlangesPerItem = entry.specs?.numberOfStubs || 0;
                   } else if (entry.itemType === 'fitting') {
                     // Calculate fitting flanges based on pipeEndConfiguration
@@ -6334,10 +6342,13 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                     else if (fittingEndConfig === '3X_RF') flangesPerPipe = 3;
                     else if (fittingEndConfig === '2X_RF_FOE') flangesPerPipe = 3;
                     else if (fittingEndConfig !== 'PE') flangesPerPipe = 1;
+                    // Bolt sets for fittings handled separately below
                   }
 
                   const totalFlanges = flangesPerPipe * qty;
                   const totalStubFlanges = stubFlangesPerItem * qty;
+                  const totalBoltSets = boltSetsPerItem * qty;
+                  const totalStubBoltSets = stubFlangesPerItem * qty;
 
                   // Get pressure class for BNW lookup
                   const pressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
@@ -6562,7 +6573,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         <td className="py-2 px-2 text-right font-semibold text-blue-900">{formatWeight(totalWeight)}</td>
                       </tr>
                       {/* BNW Line Item - only show if fasteners selected and item has flanges (not for fittings - handled separately) */}
-                      {showBnw && totalFlanges > 0 && entry.itemType !== 'fitting' && (
+                      {showBnw && totalBoltSets > 0 && entry.itemType !== 'fitting' && (
                         <tr className="border-b border-orange-100 bg-orange-50/50 hover:bg-orange-100/50">
                           <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                           <td className="py-2 px-2 text-orange-700 text-xs">
@@ -6575,15 +6586,15 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           {requiredProducts.includes('surface_protection') && (
                             <td className="py-2 px-2 text-center text-orange-600">-</td>
                           )}
-                          <td className="py-2 px-2 text-center font-medium text-orange-800">{totalFlanges}</td>
+                          <td className="py-2 px-2 text-center font-medium text-orange-800">{totalBoltSets}</td>
                           <td className="py-2 px-2 text-right text-orange-700">{formatWeight(bnwWeightPerSet)}</td>
-                          <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwWeightPerSet * totalFlanges)}</td>
+                          <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(bnwWeightPerSet * totalBoltSets)}</td>
                         </tr>
                       )}
                       {/* Gasket Line Item - only show if fasteners selected and item has flanges (not for fittings - handled separately) */}
-                      {showBnw && totalFlanges > 0 && globalSpecs?.gasketType && entry.itemType !== 'fitting' && (() => {
+                      {showBnw && totalBoltSets > 0 && globalSpecs?.gasketType && entry.itemType !== 'fitting' && (() => {
                         const gasketWeight = getGasketWeight(globalSpecs.gasketType, entry.specs?.nominalBoreMm || 100);
-                        const gasketTotalWeight = gasketWeight * totalFlanges;
+                        const gasketTotalWeight = gasketWeight * totalBoltSets;
                         return (
                           <tr className="border-b border-green-100 bg-green-50/50 hover:bg-green-100/50">
                             <td className="py-2 px-2 font-medium text-green-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}</td>
@@ -6597,7 +6608,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             {requiredProducts.includes('surface_protection') && (
                               <td className="py-2 px-2 text-center text-green-600">-</td>
                             )}
-                            <td className="py-2 px-2 text-center font-medium text-green-800">{totalFlanges}</td>
+                            <td className="py-2 px-2 text-center font-medium text-green-800">{totalBoltSets}</td>
                             <td className="py-2 px-2 text-right text-green-700">{gasketWeight.toFixed(2)} kg</td>
                             <td className="py-2 px-2 text-right font-semibold text-green-800">{gasketTotalWeight.toFixed(2)} kg</td>
                           </tr>
@@ -6610,42 +6621,29 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         const isEqualTee = mainNb === branchNb;
                         const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
 
-                        // Determine number of main and branch flanges based on end configuration
-                        // F2E = 2 main flanges, F2E_LF/F2E_RF = 2 main, 3X_RF = 2 main + 1 branch, etc.
-                        let mainFlangeCount = 0;
-                        let branchFlangeCount = 0;
-                        if (fittingEndConfig === 'F2E' || fittingEndConfig === 'F2E_LF' || fittingEndConfig === 'F2E_RF') {
-                          mainFlangeCount = 2;
-                        } else if (fittingEndConfig === '3X_RF') {
-                          mainFlangeCount = 2;
-                          branchFlangeCount = 1;
-                        } else if (fittingEndConfig === '2X_RF_FOE') {
-                          mainFlangeCount = 2;
-                          branchFlangeCount = 1;
-                        } else if (fittingEndConfig !== 'PE') {
-                          mainFlangeCount = 1;
-                        }
+                        // Use bolt set function: 3 same-sized ends = 2 bolt sets, 2 same-sized ends = 1 bolt set
+                        const fittingBoltSets = getBoltSetCountPerFitting(fittingEndConfig, isEqualTee);
+                        const mainBoltSetCount = fittingBoltSets.mainBoltSets;
+                        const branchBoltSetCount = fittingBoltSets.branchBoltSets;
 
-                        if (mainFlangeCount === 0 && branchFlangeCount === 0) return null;
+                        if (mainBoltSetCount === 0 && branchBoltSetCount === 0) return null;
 
                         const mainBnwInfo = getBnwSetInfo(mainNb, pressureClass || 'PN16');
                         const mainBnwWeightPerSet = mainBnwInfo.weightPerHole * mainBnwInfo.holesPerFlange;
                         const mainGasketWeight = globalSpecs?.gasketType ? getGasketWeight(globalSpecs.gasketType, mainNb) : 0;
 
-                        const branchBnwInfo = branchFlangeCount > 0 ? getBnwSetInfo(branchNb, pressureClass || 'PN16') : null;
+                        const branchBnwInfo = branchBoltSetCount > 0 ? getBnwSetInfo(branchNb, pressureClass || 'PN16') : null;
                         const branchBnwWeightPerSet = branchBnwInfo ? branchBnwInfo.weightPerHole * branchBnwInfo.holesPerFlange : 0;
-                        const branchGasketWeight = branchFlangeCount > 0 && globalSpecs?.gasketType ? getGasketWeight(globalSpecs.gasketType, branchNb) : 0;
+                        const branchGasketWeight = branchBoltSetCount > 0 && globalSpecs?.gasketType ? getGasketWeight(globalSpecs.gasketType, branchNb) : 0;
 
                         return (
                           <>
                             {/* Main NB BNW Sets */}
-                            {mainFlangeCount > 0 && (
+                            {mainBoltSetCount > 0 && (
                               <tr className="border-b border-orange-100 bg-orange-50/50 hover:bg-orange-100/50">
                                 <td className="py-2 px-2 font-medium text-orange-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                                 <td className="py-2 px-2 text-orange-700 text-xs">
-                                  {isEqualTee && branchFlangeCount === 0
-                                    ? `${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (1 set per pipe end × ${mainFlangeCount} ends) - ${mainNb}NB ${flangeSpec}`
-                                    : `Main: ${mainBnwInfo.boltSize} BNW Set x${mainBnwInfo.holesPerFlange} (1 set per end × ${mainFlangeCount}) - ${mainNb}NB ${flangeSpec}`}
+                                  {mainBnwInfo.boltSize} BNW Set x{mainBnwInfo.holesPerFlange} (1 set per pipe end × {mainBoltSetCount} ends) - {mainNb}NB {flangeSpec}
                                 </td>
                                 <td className="py-2 px-2 text-center text-orange-600">-</td>
                                 {requiredProducts.includes('surface_protection') && (
@@ -6654,17 +6652,17 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                                 {requiredProducts.includes('surface_protection') && (
                                   <td className="py-2 px-2 text-center text-orange-600">-</td>
                                 )}
-                                <td className="py-2 px-2 text-center font-medium text-orange-800">{mainFlangeCount * qty}</td>
+                                <td className="py-2 px-2 text-center font-medium text-orange-800">{mainBoltSetCount * qty}</td>
                                 <td className="py-2 px-2 text-right text-orange-700">{formatWeight(mainBnwWeightPerSet)}</td>
-                                <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(mainBnwWeightPerSet * mainFlangeCount * qty)}</td>
+                                <td className="py-2 px-2 text-right font-semibold text-orange-800">{formatWeight(mainBnwWeightPerSet * mainBoltSetCount * qty)}</td>
                               </tr>
                             )}
-                            {/* Branch NB BNW Sets - only if different from main */}
-                            {branchFlangeCount > 0 && (
+                            {/* Branch NB BNW Sets - only if different size from main */}
+                            {branchBoltSetCount > 0 && (
                               <tr className="border-b border-purple-100 bg-purple-50/50 hover:bg-purple-100/50">
                                 <td className="py-2 px-2 font-medium text-purple-800">BNW-{itemNumber.replace(/#?AIS-?/g, '')}-B</td>
                                 <td className="py-2 px-2 text-purple-700 text-xs">
-                                  Branch: {branchBnwInfo?.boltSize} BNW Set x{branchBnwInfo?.holesPerFlange} ({branchFlangeCount} {branchFlangeCount === 1 ? 'set' : 'sets'}) - {branchNb}NB {flangeSpec}
+                                  Branch: {branchBnwInfo?.boltSize} BNW Set x{branchBnwInfo?.holesPerFlange} ({branchBoltSetCount} {branchBoltSetCount === 1 ? 'set' : 'sets'}) - {branchNb}NB {flangeSpec}
                                 </td>
                                 <td className="py-2 px-2 text-center text-purple-600">-</td>
                                 {requiredProducts.includes('surface_protection') && (
@@ -6673,19 +6671,17 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                                 {requiredProducts.includes('surface_protection') && (
                                   <td className="py-2 px-2 text-center text-purple-600">-</td>
                                 )}
-                                <td className="py-2 px-2 text-center font-medium text-purple-800">{branchFlangeCount * qty}</td>
+                                <td className="py-2 px-2 text-center font-medium text-purple-800">{branchBoltSetCount * qty}</td>
                                 <td className="py-2 px-2 text-right text-purple-700">{formatWeight(branchBnwWeightPerSet)}</td>
-                                <td className="py-2 px-2 text-right font-semibold text-purple-800">{formatWeight(branchBnwWeightPerSet * branchFlangeCount * qty)}</td>
+                                <td className="py-2 px-2 text-right font-semibold text-purple-800">{formatWeight(branchBnwWeightPerSet * branchBoltSetCount * qty)}</td>
                               </tr>
                             )}
                             {/* Main NB Gaskets */}
-                            {mainFlangeCount > 0 && globalSpecs?.gasketType && (
+                            {mainBoltSetCount > 0 && globalSpecs?.gasketType && (
                               <tr className="border-b border-green-100 bg-green-50/50 hover:bg-green-100/50">
                                 <td className="py-2 px-2 font-medium text-green-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}</td>
                                 <td className="py-2 px-2 text-green-700 text-xs">
-                                  {isEqualTee && branchFlangeCount === 0
-                                    ? `${globalSpecs.gasketType} Gasket (1 per pipe end × ${mainFlangeCount} ends) - ${mainNb}NB ${flangeSpec}`
-                                    : `Main: ${globalSpecs.gasketType} Gasket (1 per end × ${mainFlangeCount}) - ${mainNb}NB ${flangeSpec}`}
+                                  {globalSpecs.gasketType} Gasket (1 per pipe end × {mainBoltSetCount} ends) - {mainNb}NB {flangeSpec}
                                 </td>
                                 <td className="py-2 px-2 text-center text-green-600">-</td>
                                 {requiredProducts.includes('surface_protection') && (
@@ -6694,17 +6690,17 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                                 {requiredProducts.includes('surface_protection') && (
                                   <td className="py-2 px-2 text-center text-green-600">-</td>
                                 )}
-                                <td className="py-2 px-2 text-center font-medium text-green-800">{mainFlangeCount * qty}</td>
+                                <td className="py-2 px-2 text-center font-medium text-green-800">{mainBoltSetCount * qty}</td>
                                 <td className="py-2 px-2 text-right text-green-700">{mainGasketWeight.toFixed(2)} kg</td>
-                                <td className="py-2 px-2 text-right font-semibold text-green-800">{(mainGasketWeight * mainFlangeCount * qty).toFixed(2)} kg</td>
+                                <td className="py-2 px-2 text-right font-semibold text-green-800">{(mainGasketWeight * mainBoltSetCount * qty).toFixed(2)} kg</td>
                               </tr>
                             )}
                             {/* Branch NB Gaskets - only if different from main */}
-                            {branchFlangeCount > 0 && globalSpecs?.gasketType && (
+                            {branchBoltSetCount > 0 && globalSpecs?.gasketType && (
                               <tr className="border-b border-teal-100 bg-teal-50/50 hover:bg-teal-100/50">
                                 <td className="py-2 px-2 font-medium text-teal-800">GAS-{itemNumber.replace(/#?AIS-?/g, '')}-B</td>
                                 <td className="py-2 px-2 text-teal-700 text-xs">
-                                  Branch: {globalSpecs.gasketType} Gasket ({branchFlangeCount} {branchFlangeCount === 1 ? 'pc' : 'pcs'}) - {branchNb}NB {flangeSpec}
+                                  Branch: {globalSpecs.gasketType} Gasket ({branchBoltSetCount} {branchBoltSetCount === 1 ? 'pc' : 'pcs'}) - {branchNb}NB {flangeSpec}
                                 </td>
                                 <td className="py-2 px-2 text-center text-teal-600">-</td>
                                 {requiredProducts.includes('surface_protection') && (
@@ -6713,9 +6709,9 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                                 {requiredProducts.includes('surface_protection') && (
                                   <td className="py-2 px-2 text-center text-teal-600">-</td>
                                 )}
-                                <td className="py-2 px-2 text-center font-medium text-teal-800">{branchFlangeCount * qty}</td>
+                                <td className="py-2 px-2 text-center font-medium text-teal-800">{branchBoltSetCount * qty}</td>
                                 <td className="py-2 px-2 text-right text-teal-700">{branchGasketWeight.toFixed(2)} kg</td>
-                                <td className="py-2 px-2 text-right font-semibold text-teal-800">{(branchGasketWeight * branchFlangeCount * qty).toFixed(2)} kg</td>
+                                <td className="py-2 px-2 text-right font-semibold text-teal-800">{(branchGasketWeight * branchBoltSetCount * qty).toFixed(2)} kg</td>
                               </tr>
                             )}
                           </>
@@ -6848,41 +6844,42 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           hasFlanges = flangeCount > 0;
                         }
 
-                        // Add BNW set (1 per flange connection)
+                        // Add BNW set (using bolt set count: 2 same-sized ends = 1 bolt set)
                         if (showBnw && hasFlanges) {
-                          // Calculate actual connection count for this item type
-                          // FOE_LF/FOE_RF are single connections with 2-piece flanges
-                          let itemConnectionCount = 0;
+                          let boltSetCount = 0;
                           if (entry.itemType === 'straight_pipe' || !entry.itemType) {
                             const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                            if (pipeEndConfig === 'FBE' || pipeEndConfig === '2X_RF') itemConnectionCount = 2;
-                            else if (pipeEndConfig !== 'PE') itemConnectionCount = 1; // FOE, FOE_LF, FOE_RF all = 1 connection
+                            boltSetCount = getBoltSetCountPerPipe(pipeEndConfig);
                           } else if (entry.itemType === 'bend') {
                             const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF' || bendEndConfig === 'LF_BE') itemConnectionCount = 2;
-                            else if (bendEndConfig !== 'PE') itemConnectionCount = 1;
+                            boltSetCount = getBoltSetCountPerBend(bendEndConfig);
                           } else if (entry.itemType === 'fitting') {
-                            itemConnectionCount = flangeCount; // Already calculated above
+                            const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                            const mainNb = entry.specs?.nominalDiameterMm || 100;
+                            const branchNb = entry.specs?.branchNominalDiameterMm || mainNb;
+                            const fittingBoltSets = getBoltSetCountPerFitting(fittingEndConfig, mainNb === branchNb);
+                            boltSetCount = fittingBoltSets.mainBoltSets + fittingBoltSets.branchBoltSets;
                           }
-                          totalQty += itemConnectionCount * qty; // BNW sets = connections × items
+                          totalQty += boltSetCount * qty;
                         }
 
-                        // Add Gasket (1 per flange connection, if gasket type selected)
+                        // Add Gasket (same as bolt sets)
                         if (showBnw && hasFlanges && globalSpecs?.gasketType) {
-                          // Use same connection count for gaskets
-                          let itemConnectionCount = 0;
+                          let boltSetCount = 0;
                           if (entry.itemType === 'straight_pipe' || !entry.itemType) {
                             const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                            if (pipeEndConfig === 'FBE' || pipeEndConfig === '2X_RF') itemConnectionCount = 2;
-                            else if (pipeEndConfig !== 'PE') itemConnectionCount = 1; // FOE, FOE_LF, FOE_RF all = 1 connection
+                            boltSetCount = getBoltSetCountPerPipe(pipeEndConfig);
                           } else if (entry.itemType === 'bend') {
                             const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                            if (bendEndConfig === 'FBE' || bendEndConfig === '2X_RF' || bendEndConfig === 'LF_BE') itemConnectionCount = 2;
-                            else if (bendEndConfig !== 'PE') itemConnectionCount = 1;
+                            boltSetCount = getBoltSetCountPerBend(bendEndConfig);
                           } else if (entry.itemType === 'fitting') {
-                            itemConnectionCount = flangeCount; // Already calculated above
+                            const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                            const mainNb = entry.specs?.nominalDiameterMm || 100;
+                            const branchNb = entry.specs?.branchNominalDiameterMm || mainNb;
+                            const fittingBoltSets = getBoltSetCountPerFitting(fittingEndConfig, mainNb === branchNb);
+                            boltSetCount = fittingBoltSets.mainBoltSets + fittingBoltSets.branchBoltSets;
                           }
-                          totalQty += itemConnectionCount * qty; // Gaskets = connections × items
+                          totalQty += boltSetCount * qty;
                         }
 
                         // Add stub BNW and gaskets for bends
