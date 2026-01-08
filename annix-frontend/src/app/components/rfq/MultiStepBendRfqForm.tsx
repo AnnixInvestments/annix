@@ -6,6 +6,7 @@ import {
   generateSystemReferenceNumber 
 } from '@/app/lib/utils/systemUtils';
 import { masterDataApi, bendRfqApi } from '@/app/lib/api/client';
+import { useToast } from '@/app/components/Toast';
 
 // Types
 interface BendEntry {
@@ -58,6 +59,7 @@ interface Props {
 const bendTypes = ['1D', '1.5D', '2D', '3D', '5D'];
 
 export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
+  const { showToast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -288,7 +290,7 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
 
     } catch (error) {
       console.error('Bend calculation failed:', error);
-      alert('Bend calculation failed. Please check your specifications.');
+      showToast('Bend calculation failed. Please check your specifications.', 'error');
     } finally {
       setLoading(false);
     }
@@ -389,7 +391,7 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
       
     } catch (error) {
       console.error('Submission failed:', error);
-      alert('Failed to submit bend RFQ. Please try again.');
+      showToast('Failed to submit bend RFQ. Please try again.', 'error');
     } finally {
       setLoading(false);
     }

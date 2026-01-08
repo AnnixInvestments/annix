@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from "@react-google-maps/api";
 import { GoogleMapDisplayConfig, GOOGLE_MAP_PRESETS, GoogleMapPreset } from "@/app/config/googleMapsConfig";
 import ManualLocationInput from "./ManualLocationInput";
+import { useToast } from "@/app/components/Toast";
 
 interface Location {
   lat: number;
@@ -50,6 +51,7 @@ export default function GoogleMapLocationPicker({
   apiKey,
   config
 }: GoogleMapLocationPickerProps) {
+  const { showToast } = useToast();
   const displayConfig = resolveConfig(config);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualLat, setManualLat] = useState(initialLocation?.lat?.toString() || "");
@@ -132,7 +134,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
       const place = autocompleteRef.current.getPlace();
       
       if (!place.geometry || !place.geometry.location) {
-        window.alert("No details available for input: '" + place.name + "'");
+        showToast(`No details available for input: '${place.name}'`, 'error');
         return;
       }
 
@@ -237,12 +239,12 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
         },
         () => {
           setIsGettingLocation(false);
-          alert("Unable to get your current location. Please enable location services or select a location on the map.");
+          showToast("Unable to get your current location. Please enable location services or select a location on the map.", 'error');
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
-      alert("Geolocation is not supported by your browser.");
+      showToast("Geolocation is not supported by your browser.", 'error');
     }
   }, [reverseGeocode]);
 
@@ -257,17 +259,17 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
     const lng = parseFloat(manualLng);
 
     if (isNaN(lat) || isNaN(lng)) {
-      alert("Please enter valid latitude and longitude values.");
+      showToast("Please enter valid latitude and longitude values.", 'error');
       return;
     }
 
     if (lat < -90 || lat > 90) {
-      alert("Latitude must be between -90 and 90.");
+      showToast("Latitude must be between -90 and 90.", 'error');
       return;
     }
 
     if (lng < -180 || lng > 180) {
-      alert("Longitude must be between -180 and 180.");
+      showToast("Longitude must be between -180 and 180.", 'error');
       return;
     }
 

@@ -10,6 +10,7 @@ import { AutoFilledInput, AutoFilledSelect, AutoFilledDisplay } from '@/app/comp
 import AddMineModal from '@/app/components/rfq/AddMineModal';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
+import { useToast } from '@/app/components/Toast';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
@@ -30,6 +31,7 @@ interface ProjectDetailsStepProps {
 }
 
 export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGlobalSpecs, pendingDocuments, onAddDocument, onRemoveDocument }: ProjectDetailsStepProps) {
+  const { showToast } = useToast();
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const hasProjectTypeError = Boolean(errors.projectType);
@@ -974,11 +976,11 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
               type="button"
               onClick={() => {
                 if (!rfqData.projectType) {
-                  alert('Please select a Project Type before confirming.');
+                  showToast('Please select a Project Type before confirming.', 'error');
                   return;
                 }
                 if (!rfqData.requiredProducts || rfqData.requiredProducts.length === 0) {
-                  alert('Please select at least one Required Product/Service before confirming.');
+                  showToast('Please select at least one Required Product/Service before confirming.', 'error');
                   return;
                 }
                 console.log('✅ Project type & products confirmed:', {

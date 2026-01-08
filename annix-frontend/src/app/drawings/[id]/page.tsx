@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
+import { useToast } from '@/app/components/Toast';
 
 interface DrawingVersion {
   id: number;
@@ -87,6 +88,7 @@ export default function DrawingDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
+  const { showToast } = useToast();
 
   const [drawing, setDrawing] = useState<Drawing | null>(null);
   const [comments, setComments] = useState<DrawingComment[]>([]);
@@ -168,7 +170,7 @@ export default function DrawingDetailPage() {
       link.click();
       URL.revokeObjectURL(link.href);
     } catch (err) {
-      alert('Download failed');
+      showToast('Download failed', 'error');
     }
   };
 
@@ -188,9 +190,9 @@ export default function DrawingDetailPage() {
       }
 
       await fetchDrawing();
-      alert('Drawing submitted for review');
+      showToast('Drawing submitted for review', 'success');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to submit');
+      showToast(err instanceof Error ? err.message : 'Failed to submit', 'error');
     }
   };
 
@@ -216,7 +218,7 @@ export default function DrawingDetailPage() {
       setNewComment('');
       await fetchComments();
     } catch (err) {
-      alert('Failed to add comment');
+      showToast('Failed to add comment', 'error');
     } finally {
       setSubmittingComment(false);
     }
@@ -244,9 +246,9 @@ export default function DrawingDetailPage() {
 
       setShowVersionModal(false);
       await fetchDrawing();
-      alert('New version uploaded successfully');
+      showToast('New version uploaded successfully', 'success');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Upload failed');
+      showToast(err instanceof Error ? err.message : 'Upload failed', 'error');
     } finally {
       setUploading(false);
     }

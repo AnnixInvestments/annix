@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
+import { useToast } from '@/app/components/Toast';
 
 interface BoqLineItem {
   id: number;
@@ -62,6 +63,7 @@ export default function BoqDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
+  const { showToast } = useToast();
 
   const [boq, setBoq] = useState<Boq | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,7 +116,7 @@ export default function BoqDetailPage() {
       setShowAddModal(false);
       await fetchBoq();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to add line item');
+      showToast(err instanceof Error ? err.message : 'Failed to add line item', 'error');
     }
   };
 
@@ -137,7 +139,7 @@ export default function BoqDetailPage() {
       setEditingItem(null);
       await fetchBoq();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update line item');
+      showToast(err instanceof Error ? err.message : 'Failed to update line item', 'error');
     }
   };
 
@@ -157,7 +159,7 @@ export default function BoqDetailPage() {
 
       await fetchBoq();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete line item');
+      showToast(err instanceof Error ? err.message : 'Failed to delete line item', 'error');
     }
   };
 
@@ -177,9 +179,9 @@ export default function BoqDetailPage() {
       }
 
       await fetchBoq();
-      alert('BOQ submitted for review');
+      showToast('BOQ submitted for review', 'success');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to submit');
+      showToast(err instanceof Error ? err.message : 'Failed to submit', 'error');
     }
   };
 

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { StraightPipeEntry, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
 import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
+import { useToast } from '@/app/components/Toast';
 import {
   validatePage1RequiredFields,
   validatePage2Specifications,
@@ -81,6 +82,15 @@ import SpecificationsStep from './steps/SpecificationsStep';
 import ItemUploadStep from './steps/ItemUploadStep';
 import ReviewSubmitStep from './steps/ReviewSubmitStep';
 import BOQStep from './steps/BOQStep';
+
+const normalizeFittingTypeForApi = (type?: string | null) => {
+  if (!type) return type;
+  const map: Record<string, string> = {
+    SHORT_REDUCING_TEE: 'UNEQUAL_SHORT_TEE',
+    GUSSET_REDUCING_TEE: 'UNEQUAL_GUSSET_TEE',
+  };
+  return map[type] || type;
+};
 
 interface Props {
   onSuccess: (rfqId: string) => void;
@@ -182,6 +192,7 @@ const calculateLocalPipeResult = (
 };
 
 export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Props) {
+  const { showToast } = useToast();
   const searchParams = useSearchParams();
   const {
     currentStep,
@@ -435,7 +446,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
         console.log(`✅ Loaded draft ${draft.draftNumber}`);
       } catch (error) {
         console.error('Failed to load draft:', error);
-        alert('Failed to load the saved draft. Starting with a new form.');
+        showToast('Failed to load the saved draft. Starting with a new form.', 'error');
       } finally {
         setIsLoadingDraft(false);
       }
@@ -1437,13 +1448,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
             console.log('✅ Local calculation result:', localResult);
             updateEntryCalculation(entry.id, localResult);
           } else {
-            alert(`Calculation error for item: ${entry.description || 'Untitled'}\n\n${errorMessage}`);
+            showToast(
+              `Calculation error for item: ${entry.description || 'Untitled'}\n${errorMessage}`,
+              'error'
+            );
           }
         }
       }
     } catch (error) {
       console.error('Calculation error:', error);
-      alert('An unexpected error occurred during calculation. Please check your inputs and try again.');
+      showToast('An unexpected error occurred during calculation. Please check your inputs and try again.', 'error');
     }
   };
 
@@ -1525,7 +1539,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
       console.error('Bend calculation failed:', error);
       const errorMessage = error?.message || error?.response?.data?.message || 'Unknown error';
       console.error('Bend calculation error details:', { error, errorMessage });
-      alert('Bend calculation failed: ' + errorMessage);
+      showToast(`Bend calculation failed: ${errorMessage}`, 'error');
     }
   };
 
@@ -1581,9 +1595,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
         }
       }
 
+      const apiFittingType = normalizeFittingTypeForApi(fittingEntry.specs.fittingType);
+      if (!apiFittingType) {
+        console.log('Fitting calculation skipped: Unable to map fitting type for API');
+        return;
+      }
+
       const calculationData = {
         fittingStandard: effectiveFittingStandard,
-        fittingType: fittingEntry.specs.fittingType,
+        fittingType: apiFittingType,
         nominalDiameterMm: fittingEntry.specs.nominalDiameterMm,
         angleRange: fittingEntry.specs.angleRange,
         pipeLengthAMm: fittingEntry.specs.pipeLengthAMm,
@@ -1608,7 +1628,11 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
 
     } catch (error: any) {
       console.error('Fitting calculation failed:', error);
-      alert(`Fitting calculation failed: ${error.message || 'Please check your specifications.'}`);
+      const rawMessage = error?.message || 'Please check your specifications.';
+      const friendlyMessage = rawMessage.includes('fittingType must be one of')
+        ? 'This fitting type is not supported by the selected standard. Please pick a supported type or switch standards.'
+        : rawMessage;
+      showToast(`Fitting calculation failed: ${friendlyMessage}`, 'error');
     }
   };
 
@@ -1723,7 +1747,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
         setTimeout(() => setShowSaveConfirmation(false), 3000);
         console.log('✅ RFQ progress saved to localStorage (server unavailable)');
       } catch (e) {
-        alert('Failed to save progress. Please try again.');
+        showToast('Failed to save progress. Please try again.', 'error');
       }
     } finally {
       setIsSavingDraft(false);
@@ -1946,7 +1970,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
         setPendingDocuments([]);
       }
 
-      alert(`Success! ${results.length} RFQ${results.length > 1 ? 's' : ''} created successfully!\n\n${itemSummary}`);
+      showToast(`Success! ${results.length} RFQ${results.length > 1 ? 's' : ''} created successfully. ${itemSummary}`, 'success');
 
       // Call the success callback with the first RFQ ID
       onSuccess(results[0]?.rfq?.id || 'success');
@@ -1964,7 +1988,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel }: Pro
       
       setValidationErrors({ submit: errorMessage });
       
-      alert(`❌ Submission failed:\n\n${errorMessage}\n\nPlease check the console for more details.`);
+      showToast(`Submission failed: ${errorMessage}. Please check the console for more details.`, 'error');
     } finally {
       setIsSubmitting(false);
     }

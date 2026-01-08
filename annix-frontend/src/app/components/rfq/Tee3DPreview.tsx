@@ -11,6 +11,11 @@ import {
   Sabs719TeeType
 } from '@/app/lib/utils/sabs719TeeData';
 
+const SCALE_FACTOR = 100;
+const PREVIEW_SCALE = 0.75;
+const MIN_CAMERA_DISTANCE = 1.8;
+const MAX_CAMERA_DISTANCE = 40;
+
 // Flange type for rendering
 type FlangeType = 'fixed' | 'loose' | 'rotating' | null;
 
@@ -375,7 +380,7 @@ function TeeScene(props: Tee3DPreviewProps) {
   const branchID = branchOD - (2 * branchWT);
 
   // Scale factor for 3D scene (convert mm to scene units)
-  const scaleFactor = 100;
+  const scaleFactor = SCALE_FACTOR;
   const outerRadius = (od / scaleFactor) / 2;
   const innerRadius = (id / scaleFactor) / 2;
   const branchOuterRadius = (branchOD / scaleFactor) / 2;
@@ -1033,9 +1038,51 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   // Get flange specs for display
   const runFlangeSpecs = getFlangeSpecs(props.nominalBore);
   const branchFlangeSpecs = getFlangeSpecs(props.branchNominalBore || props.nominalBore);
-
-  // Camera position based on size
-  const cameraZ = Math.max(8, props.nominalBore / 80);
+  const closureLength = props.closureLengthMm ?? 150;
+  const baseRunLengthMm = props.runLength || od * 3;
+  const runLengthMm = baseRunLengthMm + (props.hasInletFlange ? closureLength : 0) + (props.hasOutletFlange ? closureLength : 0);
+  const branchHeightMm = teeHeight + (props.hasBranchFlange ? closureLength : 0);
+  const depthMm = od + ((props.hasInletFlange || props.hasOutletFlange) ? runFlangeSpecs.thickness : 0);
+  const runExtent = (runLengthMm / SCALE_FACTOR) * PREVIEW_SCALE;
+  const heightExtent = (branchHeightMm / SCALE_FACTOR) * PREVIEW_SCALE;
+  const depthExtent = (depthMm / SCALE_FACTOR) * PREVIEW_SCALE;
+  const boundingRadius = Math.max(
+    0.4,
+    Math.sqrt(
+      (runExtent / 2) ** 2 +
+      (heightExtent / 2) ** 2 +
+      (depthExtent / 2) ** 2
+    )
+  );
+  const computeDistance = (fov: number) => {
+    const fovRad = (fov * Math.PI) / 180;
+    const dist = boundingRadius / Math.sin(fovRad / 2);
+    return Math.min(Math.max(dist * 1.15, MIN_CAMERA_DISTANCE), MAX_CAMERA_DISTANCE);
+  };
+  const defaultCameraDistance = computeDistance(50);
+  const expandedCameraDistance = computeDistance(45);
+  const defaultCameraPosition = useMemo(
+    () => [defaultCameraDistance, defaultCameraDistance * 0.8, defaultCameraDistance] as [number, number, number],
+    [defaultCameraDistance]
+  );
+  const expandedCameraPosition = useMemo(
+    () => [expandedCameraDistance, expandedCameraDistance * 0.85, expandedCameraDistance] as [number, number, number],
+    [expandedCameraDistance]
+  );
+  const defaultControls = useMemo(
+    () => ({
+      min: Math.max(defaultCameraDistance * 0.4, 0.8),
+      max: Math.min(defaultCameraDistance * 4, MAX_CAMERA_DISTANCE * 1.5)
+    }),
+    [defaultCameraDistance]
+  );
+  const expandedControls = useMemo(
+    () => ({
+      min: Math.max(expandedCameraDistance * 0.35, 0.8),
+      max: Math.min(expandedCameraDistance * 4, MAX_CAMERA_DISTANCE * 2)
+    }),
+    [expandedCameraDistance]
+  );
 
   // Hidden state
   if (isHidden) {
@@ -1060,15 +1107,20 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
 
   return (
     <div className="h-64 w-full bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative mb-4">
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [cameraZ, cameraZ * 0.8, cameraZ], fov: 50 }}>
+      <Canvas shadows dpr={[1, 2]} camera={{ position: defaultCameraPosition, fov: 50 }}>
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
         <Environment preset="city" />
-        <group scale={0.75}>
+        <group scale={PREVIEW_SCALE}>
           <TeeScene {...props} />
         </group>
         <ContactShadows position={[0, -3, 0]} opacity={0.3} scale={20} blur={2} />
-        <OrbitControls makeDefault enablePan={false} minDistance={2} maxDistance={30} />
+        <OrbitControls
+          makeDefault
+          enablePan={false}
+          minDistance={defaultControls.min}
+          maxDistance={defaultControls.max}
+        />
       </Canvas>
 
       {/* Badge - top left */}
@@ -1154,15 +1206,20 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
             </button>
 
             {/* Expanded Canvas */}
-            <Canvas shadows dpr={[1, 2]} camera={{ position: [cameraZ * 1.2, cameraZ, cameraZ * 1.2], fov: 45 }}>
+            <Canvas shadows dpr={[1, 2]} camera={{ position: expandedCameraPosition, fov: 45 }}>
               <ambientLight intensity={0.7} />
               <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
               <Environment preset="city" />
-              <group scale={0.75}>
+              <group scale={PREVIEW_SCALE}>
                 <TeeScene {...props} />
               </group>
               <ContactShadows position={[0, -3, 0]} opacity={0.3} scale={20} blur={2} />
-              <OrbitControls makeDefault enablePan={true} minDistance={1} maxDistance={50} />
+              <OrbitControls
+                makeDefault
+                enablePan
+                minDistance={expandedControls.min}
+                maxDistance={expandedControls.max}
+              />
             </Canvas>
 
             {/* Info overlay in expanded view */}
