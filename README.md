@@ -146,11 +146,35 @@ Docker is completely optional for local development - you can use a native Postg
 Both helper scripts now bootstrap PostgreSQL automatically:
 
 - They check whether `annix_user` / `annix_db` already exist.
-- If not, they connect as the Postgres superuser (defaults to `postgres`) and create the role and database for you.
+- If not, they connect as Postgres superuser (defaults to `postgres`) and create role and database for you.
 - If your superuser requires a password, set environment variables **before** running the script:
   - macOS/Linux: `export PG_SUPERPASS='your-password'` (and optionally `export PG_SUPERUSER='your-admin-user'`)
   - Windows PowerShell: `$env:PG_SUPERPASS = 'your-password'`
 - No manual SQL copy/paste is required; everything is handled automatically when `psql` is available.
+
+### Testing from Root Directory
+
+You can now run all tests from the project root using the new top-level package.json:
+
+```bash
+# Run all tests (backend + frontend)
+pnpm test:all
+
+# Run backend tests only  
+pnpm test:backend
+
+# Run frontend type checking only
+pnpm test:frontend
+
+# Run backend tests with coverage
+pnpm test:coverage
+
+# Run backend tests in watch mode
+pnpm test:watch
+
+# Run e2e tests only
+pnpm test:e2e
+```
 
 ### Optional: Run Postgres via Docker
 
@@ -234,10 +258,48 @@ If you already have Postgres/Node running remotely you can adjust the environmen
    ```
    - App listens on `http://localhost:3000`.
 
-3. **Quick API smoke test**
+3. **Testing**
    ```bash
+   # Run all tests (backend + frontend)
+   pnpm test:all
+   
+   # Run backend tests only
+   pnpm test:backend
+   
+   # Run frontend type checking only
+   pnpm test:frontend
+   
+   # Quick API smoke test
    ./test_backend_data.sh
    ```
+   - API listens on `http://localhost:4001`.
+   - Swagger UI is available at `http://localhost:4001/swagger`.
+
+2. **Frontend**
+   ```bash
+   cd annix-frontend
+   pnpm install
+   pnpm run dev
+   ```
+   - App listens on `http://localhost:3000`.
+
+3. **Testing**
+    ```bash
+    # Run all tests (backend + frontend)
+    pnpm test:all
+    
+    # Run backend tests only
+    pnpm test:backend
+    
+    # Run frontend type checking only
+    pnpm test:frontend
+    
+    # Run backend tests with coverage
+    pnpm test:coverage
+    
+    # Quick API smoke test
+    ./test_backend_data.sh
+    ```
 
 ---
 

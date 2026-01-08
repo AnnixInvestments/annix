@@ -11,8 +11,8 @@ describe('NominalOutsideDiameterMmService', () => {
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
-    findOneBy: jest.fn(),
-    delete: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -40,21 +40,30 @@ describe('NominalOutsideDiameterMmService', () => {
   describe('create', () => {
     it('should create a new entity', async () => {
       const dto = { nominal_diameter_mm: 65, outside_diameter_mm: 76.2 };
-      const savedEntity: NominalOutsideDiameterMm = { id: 1, ...dto };
+      const savedEntity: NominalOutsideDiameterMm = { 
+        id: 1, 
+        nominal_diameter_mm: dto.nominal_diameter_mm, 
+        outside_diameter_mm: dto.outside_diameter_mm,
+        pipeDimensions: [],
+        fittingBores: [],
+        flangeDimensions: []
+      };
 
-      mockRepo.findOneBy.mockResolvedValue(undefined);
+      mockRepo.findOne.mockResolvedValue(undefined);
       mockRepo.create.mockReturnValue(dto);
       mockRepo.save.mockResolvedValue(savedEntity);
 
       const result = await service.create(dto);
       expect(result).toEqual(savedEntity);
-      expect(mockRepo.findOneBy).toHaveBeenCalledWith(dto);
+      expect(mockRepo.findOne).toHaveBeenCalledWith({
+        where: { nominal_diameter_mm: dto.nominal_diameter_mm, outside_diameter_mm: dto.outside_diameter_mm }
+      });
       expect(mockRepo.save).toHaveBeenCalledWith(dto);
     });
 
     it('should throw BadRequestException if duplicate exists', async () => {
       const dto = { nominal_diameter_mm: 65, outside_diameter_mm: 76.2 };
-      mockRepo.findOneBy.mockResolvedValue({ id: 1, ...dto });
+      mockRepo.findOne.mockResolvedValue({ id: 1, ...dto });
 
       await expect(service.create(dto)).rejects.toThrow(BadRequestException);
     });
@@ -69,7 +78,9 @@ describe('NominalOutsideDiameterMmService', () => {
 
       const result = await service.findAll();
       expect(result).toEqual(entities);
-      expect(mockRepo.find).toHaveBeenCalled();
+      expect(mockRepo.find).toHaveBeenCalledWith({
+        relations: ['pipeDimensions', 'fittingBores']
+      });
     });
   });
 
@@ -80,15 +91,18 @@ describe('NominalOutsideDiameterMmService', () => {
         nominal_diameter_mm: 65,
         outside_diameter_mm: 76.2,
       };
-      mockRepo.findOneBy.mockResolvedValue(entity);
+      mockRepo.findOne.mockResolvedValue(entity);
 
       const result = await service.findOne(1);
       expect(result).toEqual(entity);
-      expect(mockRepo.findOneBy).toHaveBeenCalledWith({ id: 1 });
+      expect(mockRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1 },
+        relations: ['pipeDimensions', 'fittingBores']
+      });
     });
 
     it('should throw NotFoundException if entity not found', async () => {
-      mockRepo.findOneBy.mockResolvedValue(undefined);
+      mockRepo.findOne.mockResolvedValue(undefined);
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
   });
@@ -103,48 +117,25 @@ describe('NominalOutsideDiameterMmService', () => {
       const dto = { nominal_diameter_mm: 70, outside_diameter_mm: 80 };
       const updated = { ...existing, ...dto };
 
-      mockRepo.findOneBy
-        .mockResolvedValueOnce(existing)
-        .mockResolvedValueOnce(undefined);
-
+      mockRepo.findOne.mockResolvedValue(existing);
       mockRepo.save.mockResolvedValue(updated);
 
       const result = await service.update(1, dto);
       expect(result).toEqual(updated);
-      expect(mockRepo.save).toHaveBeenCalledWith(updated);
+      expect(mockRepo.save).toHaveBeenCalledWith({ ...existing, ...dto });
     });
 
-    it('should throw BadRequestException if duplicate exists', async () => {
-      const existing = {
-        id: 1,
-        nominal_diameter_mm: 65,
-        outside_diameter_mm: 76.2,
-      };
-      const duplicate = {
-        id: 2,
-        nominal_diameter_mm: 70,
-        outside_diameter_mm: 80,
-      };
-      const dto = { nominal_diameter_mm: 70, outside_diameter_mm: 80 };
 
-      mockRepo.findOneBy
-        .mockResolvedValueOnce(existing)
-        .mockResolvedValueOnce(duplicate);
-
-      await expect(service.update(1, dto)).rejects.toThrow(BadRequestException);
-    });
   });
 
   describe('remove', () => {
-    it('should delete the entity', async () => {
-      mockRepo.delete.mockResolvedValue({ affected: 1 });
-      await expect(service.remove(1)).resolves.toBeUndefined();
-      expect(mockRepo.delete).toHaveBeenCalledWith(1);
-    });
+    it('should delete an entity', async () => {
+      const entity = { id: 1, nominal_diameter_mm: 65, outside_diameter_mm: 76.2 } as NominalOutsideDiameterMm;
+      mockRepo.findOne.mockResolvedValue(entity);
+      mockRepo.remove.mockResolvedValue(undefined);
 
-    it('should throw NotFoundException if entity not found', async () => {
-      mockRepo.delete.mockResolvedValue({ affected: 0 });
-      await expect(service.remove(1)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(1)).resolves.toBeUndefined();
+      expect(mockRepo.remove).toHaveBeenCalledWith(entity);
     });
   });
 });

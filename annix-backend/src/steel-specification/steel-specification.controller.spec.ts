@@ -4,10 +4,19 @@ import { SteelSpecificationService } from './steel-specification.service';
 import { CreateSteelSpecificationDto } from './dto/create-steel-specification.dto';
 import { UpdateSteelSpecificationDto } from './dto/update-steel-specification.dto';
 import { SteelSpecification } from './entities/steel-specification.entity';
+import { getRepositoryToken } from '@nestjs/typeorm';
 
 describe('SteelSpecificationController', () => {
   let controller: SteelSpecificationController;
   let service: jest.Mocked<SteelSpecificationService>;
+
+  const mockSteelSpecRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -23,6 +32,7 @@ describe('SteelSpecificationController', () => {
             remove: jest.fn(),
           },
         },
+        { provide: getRepositoryToken(SteelSpecification), useValue: mockSteelSpecRepo },
       ],
     }).compile();
 
@@ -42,6 +52,8 @@ describe('SteelSpecificationController', () => {
       const result: SteelSpecification = {
         id: 1,
         steelSpecName: dto.steelSpecName,
+        fittings: [],
+        pipeDimensions: [],
       };
 
       service.create.mockResolvedValue(result);
@@ -53,7 +65,7 @@ describe('SteelSpecificationController', () => {
 
   describe('findAll', () => {
     it('should return an array of steel specifications', async () => {
-      const result: SteelSpecification[] = [{ id: 1, steelSpecName: 'S355' }];
+      const result: SteelSpecification[] = [{ id: 1, steelSpecName: 'S355', fittings: [], pipeDimensions: [] }];
       service.findAll.mockResolvedValue(result);
 
       expect(await controller.findAll()).toEqual(result);
@@ -63,7 +75,7 @@ describe('SteelSpecificationController', () => {
 
   describe('findOne', () => {
     it('should return a single steel specification by id', async () => {
-      const result: SteelSpecification = { id: 1, steelSpecName: 'S355' };
+      const result: SteelSpecification = { id: 1, steelSpecName: 'S355', fittings: [], pipeDimensions: [] };
       service.findOne.mockResolvedValue(result);
 
       expect(await controller.findOne(1)).toEqual(result);
@@ -77,6 +89,8 @@ describe('SteelSpecificationController', () => {
       const result: SteelSpecification = {
         id: 1,
         steelSpecName: dto.steelSpecName!,
+        fittings: [],
+        pipeDimensions: [],
       };
 
       service.update.mockResolvedValue(result);

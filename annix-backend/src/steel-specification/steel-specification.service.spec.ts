@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SteelSpecificationService } from './steel-specification.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SteelSpecification } from './entities/steel-specification.entity';
+import { getRepositoryToken } from '@nestjs/typeorm';
 
 describe('SteelSpecificationService', () => {
   let service: SteelSpecificationService;
@@ -10,15 +11,15 @@ describe('SteelSpecificationService', () => {
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
-    findOneBy: jest.fn(),
-    delete: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SteelSpecificationService,
-        { provide: 'SteelSpecificationRepository', useValue: mockRepo },
+        { provide: getRepositoryToken(SteelSpecification), useValue: mockRepo },
       ],
     }).compile();
 
@@ -36,14 +37,14 @@ describe('SteelSpecificationService', () => {
       const dto = { steelSpecName: 'S355' };
       const entity = { id: 1, ...dto } as SteelSpecification;
 
-      mockRepo.findOneBy.mockResolvedValue(undefined);
+      mockRepo.findOne.mockResolvedValue(undefined);
       mockRepo.create.mockReturnValue(dto);
       mockRepo.save.mockResolvedValue(entity);
 
       const result = await service.create(dto);
       expect(result).toEqual(entity);
-      expect(mockRepo.findOneBy).toHaveBeenCalledWith({
-        steelSpecName: dto.steelSpecName,
+      expect(mockRepo.findOne).toHaveBeenCalledWith({
+        where: { steelSpecName: dto.steelSpecName },
       });
       expect(mockRepo.create).toHaveBeenCalledWith(dto);
       expect(mockRepo.save).toHaveBeenCalledWith(dto);
@@ -51,11 +52,11 @@ describe('SteelSpecificationService', () => {
 
     it('should throw BadRequestException if steel spec already exists', async () => {
       const dto = { steelSpecName: 'S355' };
-      mockRepo.findOneBy.mockResolvedValue({ id: 1, steelSpecName: 'S355' });
+      mockRepo.findOne.mockResolvedValue({ id: 1, steelSpecName: 'S355' });
 
       await expect(service.create(dto)).rejects.toThrow(BadRequestException);
-      expect(mockRepo.findOneBy).toHaveBeenCalledWith({
-        steelSpecName: dto.steelSpecName,
+      expect(mockRepo.findOne).toHaveBeenCalledWith({
+        where: { steelSpecName: dto.steelSpecName },
       });
     });
   });
@@ -73,14 +74,17 @@ describe('SteelSpecificationService', () => {
   describe('findOne', () => {
     it('should return a steel specification by id', async () => {
       const result = { id: 1, steelSpecName: 'S355' } as SteelSpecification;
-      mockRepo.findOneBy.mockResolvedValue(result);
+      mockRepo.findOne.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
-      expect(mockRepo.findOneBy).toHaveBeenCalledWith({ id: 1 });
+      expect(mockRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1 },
+        relations: ['fittings', 'pipeDimensions'],
+      });
     });
 
     it('should throw NotFoundException if steel spec not found', async () => {
-      mockRepo.findOneBy.mockResolvedValue(undefined);
+      mockRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
@@ -92,7 +96,7 @@ describe('SteelSpecificationService', () => {
       const existing = { id: 1, steelSpecName: 'S355' } as SteelSpecification;
       const updated = { id: 1, steelSpecName: 'S275' } as SteelSpecification;
 
-      mockRepo.findOneBy
+      mockRepo.findOne
         .mockResolvedValueOnce(undefined)
         .mockResolvedValueOnce(existing);
       mockRepo.save.mockResolvedValue(updated);
@@ -109,13 +113,11 @@ describe('SteelSpecificationService', () => {
       const current = { id: 1, steelSpecName: 'S355' } as SteelSpecification;
       const existing = { id: 2, steelSpecName: 'S275' } as SteelSpecification;
 
-      mockRepo.findOneBy.mockImplementation(({ id, steelSpecName }) => {
-        if (id === 1) return Promise.resolve(current);
-        if (steelSpecName === 'S275') return Promise.resolve(existing);
-        return Promise.resolve(null);
-      });
-
-      mockRepo.save.mockResolvedValue({ ...current, ...dto });
+      // Mock findOne for the initial findOne call (to get current spec)
+      jest.spyOn(service, 'findOne').mockResolvedValue(current);
+      
+      // Mock findOne for duplicate check
+      mockRepo.findOne.mockResolvedValue(existing);
 
       await expect(service.update(1, dto)).rejects.toThrow(BadRequestException);
     });
@@ -123,14 +125,14 @@ describe('SteelSpecificationService', () => {
 
   describe('remove', () => {
     it('should delete a steel specification', async () => {
-      mockRepo.delete.mockResolvedValue({ affected: 1 });
+      mockRepo.remove.mockResolvedValue(undefined);
 
       await expect(service.remove(1)).resolves.toBeUndefined();
-      expect(mockRepo.delete).toHaveBeenCalledWith(1);
+      expect(mockRepo.remove).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if steel spec not found', async () => {
-      mockRepo.delete.mockResolvedValue({ affected: 0 });
+      mockRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.remove(1)).rejects.toThrow(NotFoundException);
     });

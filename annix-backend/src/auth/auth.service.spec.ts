@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../user/entities/user.entity';
@@ -8,6 +9,7 @@ import { UnauthorizedException } from '@nestjs/common';
 
 jest.mock('bcrypt', () => ({
   hash: jest.fn(),
+  compare: jest.fn(),
 }));
 
 import * as bcrypt from 'bcrypt';
@@ -23,6 +25,12 @@ describe('AuthService', () => {
 
   const mockJwtService = {
     sign: jest.fn(),
+    signAsync: jest.fn(),
+    verifyAsync: jest.fn(),
+  };
+
+  const mockConfigService = {
+    get: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -31,6 +39,7 @@ describe('AuthService', () => {
         AuthService,
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
         { provide: JwtService, useValue: mockJwtService },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -55,6 +64,7 @@ describe('AuthService', () => {
       mockUserRepo.findOne.mockResolvedValue(user);
 
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_pass');
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await service.validateUser('john@test.com', '123456');
 
@@ -85,7 +95,7 @@ describe('AuthService', () => {
 
       mockUserRepo.findOne.mockResolvedValue(user);
 
-      (bcrypt.hash as jest.Mock).mockResolvedValue('wrong_hash');
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(
         service.validateUser('john@test.com', '123456'),
@@ -101,16 +111,20 @@ describe('AuthService', () => {
         roles: [{ id: 1, name: 'employee' }],
       };
 
-      mockJwtService.sign.mockReturnValue('signed_jwt_token');
+      mockJwtService.signAsync.mockResolvedValue('signed_jwt_token');
 
       const result = await service.login(user);
 
-      expect(result).toEqual({ access_token: 'signed_jwt_token' });
-      expect(mockJwtService.sign).toHaveBeenCalledWith({
-        sub: user.id,
-        username: user.username,
-        roles: ['employee'],
+      expect(result).toEqual({
+        access_token: 'signed_jwt_token',
+        refresh_token: 'signed_jwt_token',
+        token_type: 'Bearer',
+        expires_in: 3600,
       });
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
+        expect.any(Object),
+        { expiresIn: '1h' }
+      );
     });
   });
 });

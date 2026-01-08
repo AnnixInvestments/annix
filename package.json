@@ -1,0 +1,25 @@
+{
+  "name": "annix-fullstack",
+  "version": "0.1.0",
+  "description": "Full-stack application with NestJS backend and Next.js frontend",
+  "private": true,
+  "scripts": {
+    "test:backend": "cd annix-backend && pnpm test",
+    "test:frontend": "cd annix-frontend && pnpm type-check",
+    "test:all": "pnpm test:backend && pnpm test:frontend",
+    "test:coverage": "cd annix-backend && pnpm test:cov",
+    "test:watch": "cd annix-backend && pnpm test:watch",
+    "test:e2e": "cd annix-backend && pnpm test:e2e",
+    "dev:backend": "cd annix-backend && pnpm start:dev",
+    "dev:frontend": "cd annix-frontend && pnpm dev",
+    "dev": "concurrently \"pnpm dev:backend\" \"pnpm dev:frontend\"",
+    "build:backend": "cd annix-backend && pnpm build",
+    "build:frontend": "cd annix-frontend && pnpm build",
+    "build": "pnpm build:backend && pnpm build:frontend",
+    "lint:backend": "cd annix-backend && pnpm lint",
+    "type-check": "cd annix-frontend && pnpm type-check"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

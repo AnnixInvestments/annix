@@ -46,15 +46,36 @@ $ npm run start:prod
 
 ## Run tests
 
+You can run tests from the project root or from this directory:
+
+**From project root (recommended):**
+```bash
+# Run all tests (backend + frontend)
+pnpm test:all
+
+# Run backend tests only
+pnpm test:backend
+
+# Run backend tests with coverage
+pnpm test:coverage
+
+# Run backend tests in watch mode
+pnpm test:watch
+
+# Run e2e tests only
+pnpm test:e2e
+```
+
+**From this directory:**
 ```bash
 # unit tests
-$ npm run test
+$ pnpm test
 
 # e2e tests
-$ npm run test:e2e
+$ pnpm test:e2e
 
 # test coverage
-$ npm run test:cov
+$ pnpm test:cov
 ```
 
 ## Deployment

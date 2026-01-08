@@ -15,6 +15,31 @@ Or use the project's run script from the root directory which handles everything
 ./run-dev.sh
 ```
 
+## Testing
+
+You can run frontend type checking from the project root or from this directory:
+
+**From project root (recommended):**
+```bash
+# Run all tests (backend + frontend)
+pnpm test:all
+
+# Run frontend type checking only
+pnpm test:frontend
+
+# Run backend tests only
+pnpm test:backend
+```
+
+**From this directory:**
+```bash
+# Type checking (acts as testing for frontend)
+pnpm type-check
+
+# Build to check for errors
+pnpm build
+```
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.

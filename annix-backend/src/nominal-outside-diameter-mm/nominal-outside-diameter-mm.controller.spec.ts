@@ -4,10 +4,19 @@ import { NominalOutsideDiameterMmService } from './nominal-outside-diameter-mm.s
 import { CreateNominalOutsideDiameterMmDto } from './dto/create-nominal-outside-diameter-mm.dto';
 import { UpdateNominalOutsideDiameterMmDto } from './dto/update-nominal-outside-diameter-mm.dto';
 import { NominalOutsideDiameterMm } from './entities/nominal-outside-diameter-mm.entity';
+import { getRepositoryToken } from '@nestjs/typeorm';
 
 describe('NominalOutsideDiameterMmController', () => {
   let controller: NominalOutsideDiameterMmController;
   let service: jest.Mocked<NominalOutsideDiameterMmService>;
+
+  const mockNominalRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -23,6 +32,7 @@ describe('NominalOutsideDiameterMmController', () => {
             remove: jest.fn(),
           },
         },
+        { provide: getRepositoryToken(NominalOutsideDiameterMm), useValue: mockNominalRepo },
       ],
     }).compile();
 
@@ -43,9 +53,12 @@ describe('NominalOutsideDiameterMmController', () => {
         outside_diameter_mm: 60.32,
       };
 
-      const result: NominalOutsideDiameterMm = {
+const result: NominalOutsideDiameterMm = {
         id: 1,
         ...dto,
+        pipeDimensions: [],
+        fittingBores: [],
+        flangeDimensions: [],
       };
 
       service.create.mockResolvedValue(result);
@@ -58,7 +71,7 @@ describe('NominalOutsideDiameterMmController', () => {
   describe('findAll', () => {
     it('should return array of values', async () => {
       const result: NominalOutsideDiameterMm[] = [
-        { id: 1, nominal_diameter_mm: 50, outside_diameter_mm: 60.32 },
+        { id: 1, nominal_diameter_mm: 50, outside_diameter_mm: 60.32, pipeDimensions: [], fittingBores: [], flangeDimensions: [] },
       ];
 
       service.findAll.mockResolvedValue(result);
@@ -74,6 +87,9 @@ describe('NominalOutsideDiameterMmController', () => {
         id: 1,
         nominal_diameter_mm: 50,
         outside_diameter_mm: 60.32,
+        pipeDimensions: [],
+        fittingBores: [],
+        flangeDimensions: [],
       };
 
       service.findOne.mockResolvedValue(result);
@@ -94,6 +110,9 @@ describe('NominalOutsideDiameterMmController', () => {
         id: 1,
         nominal_diameter_mm: dto.nominal_diameter_mm!,
         outside_diameter_mm: dto.outside_diameter_mm!,
+        pipeDimensions: [],
+        fittingBores: [],
+        flangeDimensions: [],
       };
 
       service.update.mockResolvedValue(result);
