@@ -11,6 +11,7 @@ import {
   BoqSection,
   ConsolidatedItem,
 } from '@/app/lib/api/supplierApi';
+import { useToast } from '@/app/components/Toast';
 
 const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label: string }> = {
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
@@ -27,6 +28,7 @@ interface PageProps {
 export default function SupplierBoqDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const router = useRouter();
+  const { showToast } = useToast();
   const boqId = parseInt(resolvedParams.id, 10);
 
   const [boqDetail, setBoqDetail] = useState<SupplierBoqDetailResponse | null>(null);
@@ -55,7 +57,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 
   const handleDecline = async () => {
     if (!declineReason.trim()) {
-      alert('Please provide a reason for declining');
+      showToast('Please provide a reason for declining', 'warning');
       return;
     }
 
@@ -63,9 +65,10 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       setDecliningLoading(true);
       await supplierPortalApi.declineBoq(boqId, declineReason);
       setShowDeclineModal(false);
+      showToast('BOQ declined successfully', 'success');
       loadBoqDetails(); // Refresh to show updated status
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to decline BOQ');
+      showToast(err instanceof Error ? err.message : 'Failed to decline BOQ', 'error');
     } finally {
       setDecliningLoading(false);
     }

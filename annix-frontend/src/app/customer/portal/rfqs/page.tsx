@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { apiClient, draftsApi, RfqResponse, RfqDraftResponse } from '@/app/lib/api/client';
+import { useToast } from '@/app/components/Toast';
 
 export default function CustomerRfqsPage() {
+  const { showToast } = useToast();
   const [rfqs, setRfqs] = useState<RfqResponse[]>([]);
   const [drafts, setDrafts] = useState<RfqDraftResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,8 +49,9 @@ export default function CustomerRfqsPage() {
     try {
       await draftsApi.delete(draftId);
       setDrafts(drafts.filter(d => d.id !== draftId));
+      showToast('Draft deleted successfully', 'success');
     } catch (e) {
-      alert('Failed to delete draft');
+      showToast('Failed to delete draft', 'error');
     }
   };
 

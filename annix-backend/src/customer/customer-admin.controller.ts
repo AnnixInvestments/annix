@@ -28,17 +28,21 @@ import {
   CustomerListResponseDto,
   CustomerDetailDto,
 } from './dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { EmailService } from '../email/email.service';
 
 @ApiTags('Customer Administration')
 @Controller('admin/customers')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(AdminAuthGuard, RolesGuard)
 @Roles('admin')
 @ApiBearerAuth()
 export class CustomerAdminController {
-  constructor(private readonly customerAdminService: CustomerAdminService) {}
+  constructor(
+    private readonly customerAdminService: CustomerAdminService,
+    private readonly emailService: EmailService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List all customers with filtering and pagination' })
@@ -243,6 +247,34 @@ export class CustomerAdminController {
       adminUserId,
       clientIp,
     );
+  }
+
+  // Invitation Endpoints
+
+  @Post('invite')
+  @ApiOperation({ summary: 'Send customer invitation email' })
+  @ApiResponse({ status: 200, description: 'Invitation sent' })
+  @ApiResponse({ status: 400, description: 'Invalid email' })
+  async inviteCustomer(
+    @Body() body: { email: string; message?: string },
+    @Req() req: Request,
+  ) {
+    const adminName = req['user']?.firstName
+      ? `${req['user'].firstName} ${req['user'].lastName || ''}`.trim()
+      : 'Annix Admin';
+
+    const success = await this.emailService.sendCustomerInvitationEmail(
+      body.email,
+      adminName,
+      body.message,
+    );
+
+    return {
+      success,
+      message: success
+        ? `Invitation sent to ${body.email}`
+        : 'Failed to send invitation',
+    };
   }
 
   // Helper methods

@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminApiClient } from '@/app/lib/api/adminApi';
+import { useToast } from '@/app/components/Toast';
 
 export default function AdminSuppliersPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -15,6 +17,10 @@ export default function AdminSuppliersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({ total: 0, active: 0, pending: 0, suspended: 0 });
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
 
   const fetchSuppliers = async () => {
     try {
@@ -54,6 +60,26 @@ export default function AdminSuppliersPage() {
   useEffect(() => {
     fetchSuppliers();
   }, [page, statusFilter]);
+
+  const handleInvite = async () => {
+    if (!inviteEmail) return;
+    setIsSendingInvite(true);
+    try {
+      const response = await adminApiClient.inviteSupplier(inviteEmail, inviteMessage || undefined);
+      if (response.success) {
+        showToast(`Invitation sent to ${inviteEmail}`, 'success');
+        setShowInviteModal(false);
+        setInviteEmail('');
+        setInviteMessage('');
+      } else {
+        showToast('Failed to send invitation', 'error');
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`, 'error');
+    } finally {
+      setIsSendingInvite(false);
+    }
+  };
 
   const getStatusBadgeClass = (status: string): string => {
     switch (status) {
@@ -107,6 +133,15 @@ export default function AdminSuppliersPage() {
           </p>
         </div>
         <div className="flex space-x-3">
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            Invite Supplier
+          </button>
           <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -405,6 +440,55 @@ export default function AdminSuppliersPage() {
           </>
         )}
       </div>
+
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setShowInviteModal(false)} />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Invite Supplier</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email Address</label>
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                    placeholder="supplier@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Message (optional)</label>
+                  <textarea
+                    value={inviteMessage}
+                    onChange={(e) => setInviteMessage(e.target.value)}
+                    rows={3}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                    placeholder="Add a personal message..."
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowInviteModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleInvite}
+                  disabled={!inviteEmail || isSendingInvite}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isSendingInvite ? 'Sending...' : 'Send Invitation'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

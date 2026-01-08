@@ -23,6 +23,7 @@ import { SupplierAdminService } from './supplier-admin.service';
 import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { EmailService } from '../email/email.service';
 import {
   RejectSupplierDto,
   SuspendSupplierDto,
@@ -36,7 +37,10 @@ import { SupplierOnboardingStatus } from './entities';
 @Roles('admin', 'employee')
 @ApiBearerAuth()
 export class SupplierAdminController {
-  constructor(private readonly supplierAdminService: SupplierAdminService) {}
+  constructor(
+    private readonly supplierAdminService: SupplierAdminService,
+    private readonly emailService: EmailService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Get all suppliers with pagination' })
@@ -176,6 +180,31 @@ export class SupplierAdminController {
       adminUserId,
       clientIp,
     );
+  }
+
+  @Post('invite')
+  @ApiOperation({ summary: 'Send supplier invitation email' })
+  @ApiResponse({ status: 200, description: 'Invitation sent' })
+  async inviteSupplier(
+    @Body() body: { email: string; message?: string },
+    @Req() req: Request,
+  ) {
+    const adminName = req['user']?.firstName
+      ? `${req['user'].firstName} ${req['user'].lastName || ''}`.trim()
+      : 'Annix Admin';
+
+    const success = await this.emailService.sendSupplierAdminInvitationEmail(
+      body.email,
+      adminName,
+      body.message,
+    );
+
+    return {
+      success,
+      message: success
+        ? `Invitation sent to ${body.email}`
+        : 'Failed to send invitation',
+    };
   }
 
   private getClientIp(req: Request): string {

@@ -522,6 +522,126 @@ export class EmailService {
 
   // Admin Portal Email Methods
 
+  async sendCustomerInvitationEmail(
+    email: string,
+    inviterName: string,
+    message?: string,
+  ): Promise<boolean> {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const registerLink = `${frontendUrl}/customer/register?email=${encodeURIComponent(email)}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Customer Invitation - Annix</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb;">You're Invited to Annix</h1>
+          <p>${inviterName} has invited you to register as a customer on the Annix platform.</p>
+          ${
+            message
+              ? `
+          <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
+            <strong>Message:</strong>
+            <p style="margin: 5px 0 0 0;">${message}</p>
+          </div>
+          `
+              : ''
+          }
+          <p>As a registered customer, you'll be able to:</p>
+          <ul>
+            <li>Create and manage Requests for Quotation (RFQs)</li>
+            <li>Connect with verified suppliers</li>
+            <li>Track your orders and quotes</li>
+          </ul>
+          <p style="margin: 30px 0;">
+            <a href="${registerLink}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Register Now
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${registerLink}</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you did not expect this invitation, please ignore this email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `You're Invited to Annix - Customer Registration`,
+      html,
+    });
+  }
+
+  async sendSupplierAdminInvitationEmail(
+    email: string,
+    inviterName: string,
+    message?: string,
+  ): Promise<boolean> {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const registerLink = `${frontendUrl}/supplier/register?email=${encodeURIComponent(email)}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Supplier Invitation - Annix</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb;">You're Invited to Annix</h1>
+          <p>${inviterName} has invited you to register as a supplier on the Annix platform.</p>
+          ${
+            message
+              ? `
+          <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
+            <strong>Message:</strong>
+            <p style="margin: 5px 0 0 0;">${message}</p>
+          </div>
+          `
+              : ''
+          }
+          <p>As a registered supplier, you'll be able to:</p>
+          <ul>
+            <li>Receive RFQ notifications</li>
+            <li>Submit competitive quotations</li>
+            <li>Grow your business with new customers</li>
+          </ul>
+          <p style="margin: 30px 0;">
+            <a href="${registerLink}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Register Now
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${registerLink}</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you did not expect this invitation, please ignore this email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `You're Invited to Annix - Supplier Registration`,
+      html,
+    });
+  }
+
   // BOQ Distribution Email Methods
 
   async sendSupplierBoqNotification(

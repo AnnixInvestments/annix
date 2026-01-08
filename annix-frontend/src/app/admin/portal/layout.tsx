@@ -120,13 +120,13 @@ function AdminNavigation() {
               {/* User Avatar Button */}
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center space-x-3 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
+                className="flex items-center space-x-3 focus:outline-none"
               >
                 <div className="flex items-center space-x-2">
                   <span className="hidden md:block text-sm font-medium text-white">
                     {admin?.firstName} {admin?.lastName}
                   </span>
-                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm hover:bg-blue-700 transition-colors ring-2 ring-blue-400">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm hover:bg-blue-700 transition-colors">
                     {getInitials()}
                   </div>
                 </div>

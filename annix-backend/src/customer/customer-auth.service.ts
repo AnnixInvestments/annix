@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, MoreThan } from 'typeorm';
+import { Repository, DataSource, MoreThan, MoreThanOrEqual } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -698,7 +698,7 @@ export class CustomerAuthService {
         where: {
           email,
           success: false,
-          attemptTime: { $gte: lockoutTime } as any,
+          attemptTime: MoreThanOrEqual(lockoutTime),
         },
       });
 

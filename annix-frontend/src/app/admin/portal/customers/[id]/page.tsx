@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
-import { adminApiClient, CustomerDetail, LoginHistoryItem, CustomerDocument } from '@/app/lib/api/adminApi';
+import React, { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { adminApiClient, CustomerDetail, CustomerDocument, LoginHistoryItem } from '@/app/lib/api/adminApi';
+import { useToast } from '@/app/components/Toast';
 
 type TabType = 'overview' | 'documents' | 'activity';
 
 export default function CustomerDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const {showToast} = useToast();
   const customerId = parseInt(params?.id as string);
 
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -53,7 +54,7 @@ export default function CustomerDetailPage() {
 
   const handleSuspend = async () => {
     if (!suspendReason.trim()) {
-      alert('Please provide a reason for suspension');
+      showToast('Please provide a reason for suspension', 'warning');
       return;
     }
 
@@ -62,9 +63,10 @@ export default function CustomerDetailPage() {
       await adminApiClient.suspendCustomer(customerId, { reason: suspendReason });
       setSuspendDialogOpen(false);
       setSuspendReason('');
+      showToast('Customer account suspended', 'success');
       fetchCustomerDetail(); // Refresh data
     } catch (err: any) {
-      alert(`Failed to suspend customer: ${err.message}`);
+      showToast(`Failed to suspend customer: ${err.message}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -78,9 +80,10 @@ export default function CustomerDetailPage() {
     try {
       setIsSubmitting(true);
       await adminApiClient.reactivateCustomer(customerId, { note: 'Account reactivated by admin' });
+      showToast('Customer account reactivated', 'success');
       fetchCustomerDetail(); // Refresh data
     } catch (err: any) {
-      alert(`Failed to reactivate customer: ${err.message}`);
+      showToast(`Failed to reactivate customer: ${err.message}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -93,9 +96,10 @@ export default function CustomerDetailPage() {
     try {
       setIsSubmitting(true);
       await adminApiClient.resetDeviceBinding(customerId, { reason });
+      showToast('Device binding reset successfully', 'success');
       fetchCustomerDetail(); // Refresh data
     } catch (err: any) {
-      alert(`Failed to reset device binding: ${err.message}`);
+      showToast(`Failed to reset device binding: ${err.message}`, 'error');
     } finally {
       setIsSubmitting(false);
     }

@@ -41,6 +41,7 @@ import { UserModule } from '../user/user.module';
 import { AuditModule } from '../audit/audit.module';
 import { EmailModule } from '../email/email.module';
 import { StorageModule } from '../storage/storage.module';
+import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { StorageModule } from '../storage/storage.module';
     AuditModule,
     EmailModule,
     StorageModule,
+    AdminModule,
   ],
   controllers: [
     CustomerAuthController,

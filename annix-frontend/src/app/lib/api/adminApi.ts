@@ -417,6 +417,13 @@ class AdminApiClient {
     });
   }
 
+  async inviteCustomer(email: string, message?: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/admin/customers/invite', {
+      method: 'POST',
+      body: JSON.stringify({ email, message }),
+    });
+  }
+
   // Supplier Management endpoints
 
   async listSuppliers(query?: { page?: number; limit?: number; status?: string }): Promise<any> {
@@ -480,6 +487,13 @@ class AdminApiClient {
   async reactivateSupplier(id: number): Promise<void> {
     return this.request<void>(`/admin/suppliers/${id}/reactivate`, {
       method: 'POST',
+    });
+  }
+
+  async inviteSupplier(email: string, message?: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/admin/suppliers/invite', {
+      method: 'POST',
+      body: JSON.stringify({ email, message }),
     });
   }
 }

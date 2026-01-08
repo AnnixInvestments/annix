@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { customerPortalApi, CustomerDashboardResponse } from '@/app/lib/api/customerApi';
 import { draftsApi, RfqDraftResponse } from '@/app/lib/api/client';
+import { useToast } from '@/app/components/Toast';
 
 export default function CustomerDashboardPage() {
   const router = useRouter();
   const { customer } = useCustomerAuth();
+  const { showToast } = useToast();
   const [dashboard, setDashboard] = useState<CustomerDashboardResponse | null>(null);
   const [drafts, setDrafts] = useState<RfqDraftResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,8 +51,9 @@ export default function CustomerDashboardPage() {
     try {
       await draftsApi.delete(draftId);
       setDrafts(drafts.filter(d => d.id !== draftId));
+      showToast('Draft deleted successfully', 'success');
     } catch (e) {
-      alert('Failed to delete draft. Please try again.');
+      showToast('Failed to delete draft. Please try again.', 'error');
     } finally {
       setDeletingDraftId(null);
     }

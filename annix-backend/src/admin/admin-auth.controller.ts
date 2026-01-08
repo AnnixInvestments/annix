@@ -7,15 +7,20 @@ import {
   Req,
   Ip,
   Headers,
+  Query,
 } from '@nestjs/common';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminLoginDto, RefreshTokenDto } from './dto/admin-auth.dto';
 import { AdminAuthGuard } from './guards/admin-auth.guard';
+import { EmailService } from '../email/email.service';
 import { Request } from 'express';
 
 @Controller('admin/auth')
 export class AdminAuthController {
-  constructor(private readonly adminAuthService: AdminAuthService) {}
+  constructor(
+    private readonly adminAuthService: AdminAuthService,
+    private readonly emailService: EmailService,
+  ) {}
 
   @Post('login')
   async login(
@@ -48,5 +53,23 @@ export class AdminAuthController {
   @UseGuards(AdminAuthGuard)
   async getCurrentUser(@Req() req: any) {
     return this.adminAuthService.getCurrentUser(req.user.id);
+  }
+
+  @Get('test-email')
+  async testEmail(@Query('to') to: string) {
+    if (!to) {
+      return { success: false, message: 'Missing "to" query parameter' };
+    }
+    const success = await this.emailService.sendEmail({
+      to,
+      subject: 'Annix Test Email',
+      html: `
+        <h1>Test Email from Annix</h1>
+        <p>If you received this email, your SMTP configuration is working correctly!</p>
+        <p>Sent at: ${new Date().toISOString()}</p>
+      `,
+      text: 'Test Email from Annix - SMTP configuration is working!',
+    });
+    return { success, message: success ? 'Email sent successfully' : 'Failed to send email' };
   }
 }

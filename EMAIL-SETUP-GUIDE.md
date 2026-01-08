@@ -63,12 +63,45 @@ Look for: `[EmailService] Email transporter configured successfully`
 
 ### 5. Test It Works
 
+**Quick Test (Admin API):**
+```
+GET http://localhost:4001/admin/auth/test-email?to=your-email@example.com
+```
+This sends a test email without authentication. Check your Mailtrap inbox to verify it arrived.
+
+**Full Test (Customer Registration):**
 1. Register a new customer at: http://localhost:3000/customer/register
 2. Check your Mailtrap inbox: https://mailtrap.io/inboxes
 3. Click the verification link in the email
 4. Try to login - should work!
 
+**View Emails in Mailtrap:**
+- Dashboard: https://mailtrap.io/inboxes
+- All emails sent from development appear here (not in real inboxes)
+- You can preview HTML, check spam score, and view raw source
+
 Or use the HTTP test file: `test-email-verification.http`
+
+---
+
+## Email Types Sent by the System
+
+The application sends the following types of emails:
+
+| Email Type | Trigger | Recipient |
+|------------|---------|-----------|
+| **Email Verification** | Customer/Supplier registration | New user |
+| **Customer Invitation** | Admin clicks "Invite Customer" | Prospective customer |
+| **Supplier Invitation** | Admin clicks "Invite Supplier" | Prospective supplier |
+| **Password Reset** | User requests password reset | User |
+| **Onboarding Approved** | Admin approves onboarding | Customer/Supplier |
+| **Onboarding Rejected** | Admin rejects onboarding | Customer/Supplier |
+
+**Admin Portal Invitation Feature:**
+- Navigate to: Admin Portal → Customers/Suppliers
+- Click "Invite Customer" or "Invite Supplier" button
+- Enter email address and optional message
+- Invitation email contains a link to the registration page
 
 ---
 
@@ -161,3 +194,32 @@ You can check which mode it's in by looking at backend startup logs.
 - You MUST use App Password (not regular password)
 - 2FA must be enabled first
 - Generate new App Password if issues persist
+
+---
+
+## API Endpoints for Email
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/admin/auth/test-email?to=email` | GET | None | Send test email (dev only) |
+| `/admin/customers/invite` | POST | Admin | Send customer invitation |
+| `/admin/suppliers/invite` | POST | Admin | Send supplier invitation |
+| `/customer/auth/verify-email` | POST | None | Verify email with token |
+| `/customer/auth/resend-verification` | POST | None | Resend verification email |
+
+**Invitation Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "message": "Optional personal message"
+}
+```
+
+---
+
+## Useful Links
+
+- **Mailtrap Dashboard:** https://mailtrap.io/inboxes
+- **Mailtrap Docs:** https://mailtrap.io/blog/nodemailer-gmail/
+- **SendGrid Signup:** https://sendgrid.com
+- **Gmail App Passwords:** https://myaccount.google.com/apppasswords

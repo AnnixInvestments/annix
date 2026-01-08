@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { adminApiClient } from '@/app/lib/api/adminApi';
+import { useToast } from '@/app/components/Toast';
 
 type TabType = 'overview' | 'onboarding' | 'documents';
 
 export default function SupplierDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const { showToast } = useToast();
   const supplierId = parseInt(params?.id as string);
 
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -46,7 +48,7 @@ export default function SupplierDetailPage() {
 
   const handleSuspend = async () => {
     if (!suspendReason.trim()) {
-      alert('Please provide a reason for suspension');
+      showToast('Please provide a reason for suspension', 'warning');
       return;
     }
 
@@ -55,9 +57,10 @@ export default function SupplierDetailPage() {
       await adminApiClient.suspendSupplier(supplierId, suspendReason);
       setSuspendDialogOpen(false);
       setSuspendReason('');
+      showToast('Supplier account suspended', 'success');
       fetchSupplierDetail();
     } catch (err: any) {
-      alert(`Failed to suspend supplier: ${err.message}`);
+      showToast(`Failed to suspend supplier: ${err.message}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -71,9 +74,10 @@ export default function SupplierDetailPage() {
     try {
       setIsSubmitting(true);
       await adminApiClient.reactivateSupplier(supplierId);
+      showToast('Supplier account reactivated', 'success');
       fetchSupplierDetail();
     } catch (err: any) {
-      alert(`Failed to reactivate supplier: ${err.message}`);
+      showToast(`Failed to reactivate supplier: ${err.message}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -87,9 +91,10 @@ export default function SupplierDetailPage() {
     try {
       setIsSubmitting(true);
       await adminApiClient.approveSupplierOnboarding(supplierId);
+      showToast('Supplier onboarding approved', 'success');
       fetchSupplierDetail();
     } catch (err: any) {
-      alert(`Failed to approve onboarding: ${err.message}`);
+      showToast(`Failed to approve onboarding: ${err.message}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -97,7 +102,7 @@ export default function SupplierDetailPage() {
 
   const handleReject = async () => {
     if (!rejectReason.trim() || !remediationSteps.trim()) {
-      alert('Please provide both rejection reason and remediation steps');
+      showToast('Please provide both rejection reason and remediation steps', 'warning');
       return;
     }
 
@@ -107,9 +112,10 @@ export default function SupplierDetailPage() {
       setRejectDialogOpen(false);
       setRejectReason('');
       setRemediationSteps('');
+      showToast('Supplier onboarding rejected', 'success');
       fetchSupplierDetail();
     } catch (err: any) {
-      alert(`Failed to reject onboarding: ${err.message}`);
+      showToast(`Failed to reject onboarding: ${err.message}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
