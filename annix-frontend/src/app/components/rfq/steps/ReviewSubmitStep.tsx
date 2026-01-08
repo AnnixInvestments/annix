@@ -552,33 +552,33 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                   const branchBnwInfo = branchFlangeCount > 0 ? getBnwSetInfo(branchNbMm, pressureClass) : null;
                   const gasketType = rfqData.globalSpecs?.gasketType;
                   const qty = entry.specs?.quantityValue || 1;
-                  // Total bolt sets = main bolt sets + branch bolt sets + stub bolt sets
-                  const stubBoltSets = stubFlanges.reduce((sum, stub) => sum + stub.count, 0);
-                  const totalBoltSets = (flangeCount + branchFlangeCount + stubBoltSets) * qty;
+                  // Main bolt sets (not including stubs - stubs shown separately)
+                  const mainBoltSets = flangeCount * qty;
+                  const branchBoltSets = branchFlangeCount * qty;
 
                   return (
                     <div className="mt-2 pt-2 border-t border-gray-200">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
                         <div className="text-orange-700">
-                          <span className="font-medium">Bolt Sets:</span> {totalBoltSets} sets @ {bnwInfo.boltSize} × {bnwInfo.holesPerFlange} holes ({nbMm}NB)
-                          {branchFlangeCount > 0 && branchBnwInfo && (
-                            <span className="ml-2">+ Branch: {branchBnwInfo.boltSize} × {branchBnwInfo.holesPerFlange} holes ({branchNbMm}NB)</span>
+                          <span className="font-medium">Bolt Sets:</span> {mainBoltSets} {mainBoltSets === 1 ? 'set' : 'sets'} @ {bnwInfo.boltSize} × {bnwInfo.holesPerFlange} holes ({nbMm}NB)
+                          {branchBoltSets > 0 && branchBnwInfo && (
+                            <span className="ml-2">+ Branch: {branchBoltSets} × {branchBnwInfo.boltSize} × {branchBnwInfo.holesPerFlange} holes ({branchNbMm}NB)</span>
                           )}
                           {stubFlanges.length > 0 && stubFlanges.map((stub, i) => {
                             const stubBnwInfo = getBnwSetInfo(stub.nb, pressureClass);
                             return (
-                              <span key={i} className="ml-2">+ Stub {i+1}: {stubBnwInfo.boltSize} × {stubBnwInfo.holesPerFlange} holes ({stub.nb}NB)</span>
+                              <span key={i} className="ml-2">+ Stub {i+1}: {stub.count * qty} × {stubBnwInfo.boltSize} × {stubBnwInfo.holesPerFlange} holes ({stub.nb}NB)</span>
                             );
                           })}
                         </div>
                         {gasketType && (
                           <div className="text-green-700">
-                            <span className="font-medium">Gaskets:</span> {totalBoltSets} × {gasketType} ({nbMm}NB)
-                            {branchFlangeCount > 0 && (
-                              <span className="ml-2">+ Branch: {branchFlangeCount * qty} × ({branchNbMm}NB)</span>
+                            <span className="font-medium">Gaskets:</span> {mainBoltSets} × {gasketType} ({nbMm}NB)
+                            {branchBoltSets > 0 && (
+                              <span className="ml-2">+ Branch: {branchBoltSets} × ({branchNbMm}NB)</span>
                             )}
                             {stubFlanges.length > 0 && stubFlanges.map((stub, i) => (
-                              <span key={i} className="ml-2">+ Stub {i+1}: {qty} × ({stub.nb}NB)</span>
+                              <span key={i} className="ml-2">+ Stub {i+1}: {stub.count * qty} × ({stub.nb}NB)</span>
                             ))}
                           </div>
                         )}
