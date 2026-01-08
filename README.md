@@ -333,6 +333,12 @@ For more details, see [CROSS_PLATFORM_SETUP.md](./CROSS_PLATFORM_SETUP.md).
 
 ---
 
+### Emergency Git Hook Bypass
+
+The repo includes a `pre-push` hook (`.githooks/pre-push`) that runs `pnpm test:all`, builds both apps, and runs migrations before every push. When those checks fail but you still need to share your branch so someone else can diagnose the issue, run `git push --no-verify` to skip the hook for that push only. Mention that you bypassed the hook when handing off the branch, and make sure the hook passes before merging anything permanent.
+
+---
+
 ## 5. Troubleshooting
 
 - **Postgres connection errors** – confirm the `annix_user/annix_password` credentials in `annix-backend/.env` match your local Postgres role and that the instance is listening on `localhost:5432`. Use `pg_isready -h localhost -p 5432` (macOS/Linux) or `psql -h localhost -U annix_user annix_db -c "SELECT 1;"` (Windows) to verify connectivity. If automatic provisioning fails because your Postgres superuser needs a password, export `PG_SUPERPASS` (and `PG_SUPERUSER` if you changed the default) before rerunning the script.
