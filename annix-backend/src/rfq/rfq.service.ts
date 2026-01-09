@@ -17,6 +17,7 @@ import {
   ScheduleType,
 } from './entities/straight-pipe-rfq.entity';
 import { BendRfq } from './entities/bend-rfq.entity';
+import { FittingRfq } from './entities/fitting-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
 import { User } from '../user/entities/user.entity';
@@ -34,6 +35,7 @@ import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
 import { CreateStraightPipeRfqWithItemDto } from './dto/create-rfq-item.dto';
 import { CreateBendRfqWithItemDto } from './dto/create-bend-rfq-with-item.dto';
 import { CreateBendRfqDto } from './dto/create-bend-rfq.dto';
+import { CreateUnifiedRfqDto } from './dto/create-unified-rfq.dto';
 import {
   StraightPipeCalculationResultDto,
   RfqResponseDto,
@@ -64,6 +66,8 @@ export class RfqService {
     private straightPipeRfqRepository: Repository<StraightPipeRfq>,
     @InjectRepository(BendRfq)
     private bendRfqRepository: Repository<BendRfq>,
+    @InjectRepository(FittingRfq)
+    private fittingRfqRepository: Repository<FittingRfq>,
     @InjectRepository(RfqDocument)
     private rfqDocumentRepository: Repository<RfqDocument>,
     @InjectRepository(RfqDraft)
@@ -410,6 +414,175 @@ export class RfqService {
     });
 
     return { rfq: finalRfq!, calculation };
+  }
+
+  async createUnifiedRfq(
+    dto: CreateUnifiedRfqDto,
+    userId: number,
+  ): Promise<{ rfq: Rfq; itemsCreated: number }> {
+    const user = await this.userRepository
+      .findOne({ where: { id: userId } })
+      .catch(() => null);
+
+    const rfqCount = await this.rfqRepository.count();
+    const rfqNumber = `RFQ-${new Date().getFullYear()}-${String(rfqCount + 1).padStart(4, '0')}`;
+
+    let totalWeight = 0;
+    dto.items.forEach((item) => {
+      if (item.totalWeightKg) {
+        totalWeight += item.totalWeightKg;
+      }
+    });
+
+    const rfq = this.rfqRepository.create({
+      ...dto.rfq,
+      rfqNumber,
+      status: dto.rfq.status || RfqStatus.SUBMITTED,
+      totalWeightKg: totalWeight,
+      ...(user && { createdBy: user }),
+    });
+
+    const savedRfq = await this.rfqRepository.save(rfq);
+    this.logger.log(`Created unified RFQ ${rfqNumber} with ${dto.items.length} items`);
+
+    let lineNumber = 0;
+    for (const item of dto.items) {
+      lineNumber++;
+
+      if (item.itemType === 'straight_pipe' && item.straightPipe) {
+        const calculation = await this.calculateStraightPipeRequirements(item.straightPipe as any);
+
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.STRAIGHT_PIPE,
+          quantity: calculation.calculatedPipeCount,
+          weightPerUnitKg: calculation.totalSystemWeight / calculation.calculatedPipeCount,
+          totalWeightKg: calculation.totalSystemWeight,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const straightPipeRfq = this.straightPipeRfqRepository.create({
+          nominalBoreMm: item.straightPipe.nominalBoreMm,
+          scheduleType: item.straightPipe.scheduleType as ScheduleType,
+          scheduleNumber: item.straightPipe.scheduleNumber,
+          wallThicknessMm: item.straightPipe.wallThicknessMm,
+          pipeEndConfiguration: item.straightPipe.pipeEndConfiguration,
+          individualPipeLength: item.straightPipe.individualPipeLength,
+          lengthUnit: item.straightPipe.lengthUnit as LengthUnit,
+          quantityType: item.straightPipe.quantityType as QuantityType,
+          quantityValue: item.straightPipe.quantityValue,
+          workingPressureBar: item.straightPipe.workingPressureBar,
+          workingTemperatureC: item.straightPipe.workingTemperatureC,
+          rfqItem: savedRfqItem,
+          calculatedOdMm: calculation.outsideDiameterMm,
+          calculatedWtMm: calculation.wallThicknessMm,
+          pipeWeightPerMeterKg: calculation.pipeWeightPerMeter,
+          totalPipeWeightKg: calculation.totalPipeWeight,
+          calculatedPipeCount: calculation.calculatedPipeCount,
+          calculatedTotalLengthM: calculation.calculatedTotalLength,
+          numberOfFlanges: calculation.numberOfFlanges,
+          numberOfButtWelds: calculation.numberOfButtWelds,
+          totalButtWeldLengthM: calculation.totalButtWeldLength,
+          numberOfFlangeWelds: calculation.numberOfFlangeWelds,
+          totalFlangeWeldLengthM: calculation.totalFlangeWeldLength,
+        });
+
+        if (item.straightPipe.steelSpecificationId) {
+          const steelSpec = await this.steelSpecRepository.findOne({
+            where: { id: item.straightPipe.steelSpecificationId },
+          });
+          if (steelSpec) {
+            straightPipeRfq.steelSpecification = steelSpec;
+          }
+        }
+
+        await this.straightPipeRfqRepository.save(straightPipeRfq);
+        this.logger.log(`Created straight pipe item #${lineNumber}: ${item.description}`);
+
+      } else if (item.itemType === 'bend' && item.bend) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.BEND,
+          quantity: item.bend.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const bendRfq = this.bendRfqRepository.create({
+          nominalBoreMm: item.bend.nominalBoreMm,
+          scheduleNumber: item.bend.scheduleNumber,
+          bendType: item.bend.bendType,
+          bendDegrees: item.bend.bendDegrees,
+          numberOfTangents: item.bend.numberOfTangents || 0,
+          tangentLengths: item.bend.tangentLengths || [],
+          quantityValue: item.bend.quantityValue || 1,
+          quantityType: item.bend.quantityType || 'number_of_items',
+          workingPressureBar: item.bend.workingPressureBar || 10,
+          workingTemperatureC: item.bend.workingTemperatureC || 20,
+          steelSpecificationId: item.bend.steelSpecificationId || 2,
+          useGlobalFlangeSpecs: item.bend.useGlobalFlangeSpecs ?? true,
+          flangeStandardId: item.bend.flangeStandardId,
+          flangePressureClassId: item.bend.flangePressureClassId,
+          totalWeightKg: item.totalWeightKg,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.bendRfqRepository.save(bendRfq);
+        this.logger.log(`Created bend item #${lineNumber}: ${item.description}`);
+
+      } else if (item.itemType === 'fitting' && item.fitting) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.FITTING,
+          quantity: item.fitting.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const fittingRfq = this.fittingRfqRepository.create({
+          nominalDiameterMm: item.fitting.nominalDiameterMm,
+          scheduleNumber: item.fitting.scheduleNumber,
+          wallThicknessMm: item.fitting.wallThicknessMm,
+          fittingType: item.fitting.fittingType,
+          fittingStandard: item.fitting.fittingStandard,
+          pipeLengthAMm: item.fitting.pipeLengthAMm,
+          pipeLengthBMm: item.fitting.pipeLengthBMm,
+          pipeEndConfiguration: item.fitting.pipeEndConfiguration,
+          addBlankFlange: item.fitting.addBlankFlange || false,
+          blankFlangeCount: item.fitting.blankFlangeCount,
+          blankFlangePositions: item.fitting.blankFlangePositions,
+          quantityValue: item.fitting.quantityValue || 1,
+          quantityType: item.fitting.quantityType || 'number_of_items',
+          workingPressureBar: item.fitting.workingPressureBar,
+          workingTemperatureC: item.fitting.workingTemperatureC,
+          totalWeightKg: item.totalWeightKg,
+          calculationData: item.fitting.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.fittingRfqRepository.save(fittingRfq);
+        this.logger.log(`Created fitting item #${lineNumber}: ${item.description}`);
+      }
+    }
+
+    const finalRfq = await this.rfqRepository.findOne({
+      where: { id: savedRfq.id },
+      relations: ['items', 'items.straightPipeDetails', 'items.bendDetails', 'items.fittingDetails'],
+    });
+
+    return { rfq: finalRfq!, itemsCreated: lineNumber };
   }
 
   async findAllRfqs(userId?: number): Promise<RfqResponseDto[]> {

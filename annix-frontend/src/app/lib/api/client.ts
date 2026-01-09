@@ -84,6 +84,45 @@ export interface CreateBendRfqWithItemDto {
   itemNotes?: string;
 }
 
+export interface UnifiedRfqItemDto {
+  itemType: 'straight_pipe' | 'bend' | 'fitting';
+  description: string;
+  notes?: string;
+  totalWeightKg?: number;
+  straightPipe?: CreateStraightPipeRfqDto;
+  bend?: Omit<CreateBendRfqDto, 'workingPressureBar' | 'workingTemperatureC' | 'steelSpecificationId'> & {
+    workingPressureBar?: number;
+    workingTemperatureC?: number;
+    steelSpecificationId?: number;
+    useGlobalFlangeSpecs?: boolean;
+    flangeStandardId?: number;
+    flangePressureClassId?: number;
+  };
+  fitting?: {
+    nominalDiameterMm: number;
+    scheduleNumber: string;
+    wallThicknessMm?: number;
+    fittingType: string;
+    fittingStandard?: string;
+    pipeLengthAMm?: number;
+    pipeLengthBMm?: number;
+    pipeEndConfiguration?: string;
+    addBlankFlange?: boolean;
+    blankFlangeCount?: number;
+    blankFlangePositions?: string[];
+    quantityType?: string;
+    quantityValue?: number;
+    workingPressureBar?: number;
+    workingTemperatureC?: number;
+    calculationData?: Record<string, any>;
+  };
+}
+
+export interface CreateUnifiedRfqDto {
+  rfq: CreateRfqDto;
+  items: UnifiedRfqItemDto[];
+}
+
 export interface StraightPipeCalculationResult {
   outsideDiameterMm: number;
   wallThicknessMm: number;
@@ -525,6 +564,15 @@ class ApiClient {
     });
   }
 
+  async createUnifiedRfq(
+    data: CreateUnifiedRfqDto
+  ): Promise<{ rfq: any; itemsCreated: number }> {
+    return this.request('/rfq/unified', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async getRfqs(): Promise<RfqResponse[]> {
     return this.request<RfqResponse[]>('/rfq');
   }
@@ -956,10 +1004,15 @@ export const rfqApi = {
 };
 
 export const bendRfqApi = {
-  calculate: (data: CreateBendRfqDto) => 
+  calculate: (data: CreateBendRfqDto) =>
     apiClient.calculateBendRfq(data),
-  create: (data: CreateBendRfqWithItemDto) => 
+  create: (data: CreateBendRfqWithItemDto) =>
     apiClient.createBendRfq(data),
+};
+
+export const unifiedRfqApi = {
+  create: (data: CreateUnifiedRfqDto) =>
+    apiClient.createUnifiedRfq(data),
 };
 
 export const masterDataApi = {

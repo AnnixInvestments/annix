@@ -7,6 +7,7 @@ import { Rfq } from './entities/rfq.entity';
 import { RfqItem } from './entities/rfq-item.entity';
 import { StraightPipeRfq } from './entities/straight-pipe-rfq.entity';
 import { BendRfq } from './entities/bend-rfq.entity';
+import { FittingRfq } from './entities/fitting-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
 import { User } from '../user/entities/user.entity';
@@ -33,6 +34,7 @@ import { EmailModule } from '../email/email.module';
       RfqItem,
       StraightPipeRfq,
       BendRfq,
+      FittingRfq,
       RfqDocument,
       RfqDraft,
       User,

@@ -1759,195 +1759,135 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setValidationErrors({});
-    
+
     try {
-      // Use unified items array that includes both straight pipes and bends
       const allItems = rfqData.items || rfqData.straightPipeEntries || [];
-      
-      // Validate we have at least one item
+
       if (allItems.length === 0) {
         setValidationErrors({ submit: 'Please add at least one item before submitting.' });
         setIsSubmitting(false);
         return;
       }
 
-      // Separate items by type
       const straightPipeItems = allItems.filter((item: any) => item.itemType !== 'bend' && item.itemType !== 'fitting');
       const bendItems = allItems.filter((item: any) => item.itemType === 'bend');
       const fittingItems = allItems.filter((item: any) => item.itemType === 'fitting');
 
-      console.log(`📊 Submitting: ${straightPipeItems.length} straight pipe(s), ${bendItems.length} bend(s), ${fittingItems.length} fitting(s)`);
+      console.log(`📊 Submitting unified RFQ: ${straightPipeItems.length} pipe(s), ${bendItems.length} bend(s), ${fittingItems.length} fitting(s)`);
 
-      // Import the API clients
-      const { rfqApi, bendRfqApi } = await import('@/app/lib/api/client');
-      
-      const results = [];
-      
-      // ========== PROCESS ALL STRAIGHT PIPES ==========
-      if (straightPipeItems.length > 0) {
-        console.log(`📏 Processing ${straightPipeItems.length} straight pipe(s)...`);
-        
-        for (let i = 0; i < straightPipeItems.length; i++) {
-          const entry = straightPipeItems[i];
-          
-          // Validate entry has calculation results
-          if (!entry.calculation) {
-            setValidationErrors({ 
-              submit: `Straight Pipe #${i + 1} (${entry.description}) has not been calculated. Please calculate all items before submitting.` 
-            });
-            setIsSubmitting(false);
-            return;
-          }
-
-          // Prepare Straight Pipe RFQ payload
-          const rfqPayload = {
-            rfq: {
-              projectName: straightPipeItems.length > 1 
-                ? `${rfqData.projectName} - Straight Pipe ${i + 1}/${straightPipeItems.length}`
-                : rfqData.projectName,
-              description: rfqData.description,
-              customerName: rfqData.customerName,
-              customerEmail: rfqData.customerEmail,
-              customerPhone: rfqData.customerPhone,
-              requiredDate: rfqData.requiredDate,
-              status: 'submitted' as const,
-              notes: rfqData.notes,
-            },
-            straightPipe: {
-              nominalBoreMm: (entry.specs as any).nominalBoreMm,
-              scheduleType: (entry.specs as any).scheduleType,
-              scheduleNumber: (entry.specs as any).scheduleNumber,
-              wallThicknessMm: (entry.specs as any).wallThicknessMm,
-              pipeEndConfiguration: (entry.specs as any).pipeEndConfiguration,
-              individualPipeLength: (entry.specs as any).individualPipeLength,
-              lengthUnit: (entry.specs as any).lengthUnit,
-              quantityType: (entry.specs as any).quantityType,
-              quantityValue: (entry.specs as any).quantityValue,
-              workingPressureBar: (entry.specs as any).workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
-              workingTemperatureC: (entry.specs as any).workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
-              steelSpecificationId: (entry.specs as any).steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId,
-              flangeStandardId: (entry.specs as any).flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
-              flangePressureClassId: (entry.specs as any).flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
-            },
-            itemDescription: entry.description || `Pipe Item ${i + 1}`,
-            itemNotes: entry.notes,
-          };
-
-          console.log(`📏 Submitting Straight Pipe #${i + 1}:`, rfqPayload);
-          
-          // Submit to straight pipe RFQ endpoint
-          const result = await rfqApi.create(rfqPayload);
-          results.push({ ...result, itemType: 'straightPipe' });
-          
-          console.log(`✅ Straight Pipe #${i + 1} submitted successfully:`, result);
-        }
-      }
-      
-      // ========== PROCESS ALL BENDS ==========
-      if (bendItems.length > 0) {
-        console.log(`🔄 Processing ${bendItems.length} bend(s)...`);
-        
-        for (let i = 0; i < bendItems.length; i++) {
-          const entry = bendItems[i];
-          
-          // Validate entry has calculation results
-          if (!entry.calculation) {
-            setValidationErrors({ 
-              submit: `Bend #${i + 1} (${entry.description}) has not been calculated. Please calculate all items before submitting.` 
-            });
-            setIsSubmitting(false);
-            return;
-          }
-
-          // Validate required bend fields
-          if (!(entry.specs as any).nominalBoreMm || !(entry.specs as any).scheduleNumber || !(entry.specs as any).bendType || !(entry.specs as any).bendDegrees) {
-            setValidationErrors({ 
-              submit: `Bend #${i + 1} is missing required fields. Please complete all bend specifications.` 
-            });
-            setIsSubmitting(false);
-            return;
-          }
-          
-          // Prepare Bend RFQ payload
-          const bendPayload = {
-            rfq: {
-              projectName: bendItems.length > 1 
-                ? `${rfqData.projectName} - Bend ${i + 1}/${bendItems.length}`
-                : rfqData.projectName,
-              description: rfqData.description,
-              customerName: rfqData.customerName,
-              customerEmail: rfqData.customerEmail,
-              customerPhone: rfqData.customerPhone,
-              requiredDate: rfqData.requiredDate,
-              status: 'submitted' as const,
-              notes: rfqData.notes,
-            },
-            bend: {
-              nominalBoreMm: (entry.specs as any).nominalBoreMm!,
-              scheduleNumber: (entry.specs as any).scheduleNumber!,
-              bendType: (entry.specs as any).bendType!,
-              bendDegrees: (entry.specs as any).bendDegrees!,
-              numberOfTangents: (entry.specs as any).numberOfTangents || 0,
-              tangentLengths: (entry.specs as any).tangentLengths || [],
-              quantityType: 'number_of_items' as const,
-              quantityValue: (entry.specs as any).quantityValue || 1,
-              workingPressureBar: (entry.specs as any).workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
-              workingTemperatureC: (entry.specs as any).workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC || 20,
-              steelSpecificationId: (entry.specs as any).steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId || 2,
-              flangeStandardId: (entry.specs as any).flangeStandardId || rfqData.globalSpecs?.flangeStandardId || 1,
-              flangePressureClassId: (entry.specs as any).flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId || 1,
-            },
-            itemDescription: entry.description || `Bend Item ${i + 1}`,
-            itemNotes: entry.notes,
-          };
-
-          console.log(`🔄 Submitting Bend #${i + 1}:`, bendPayload);
-          
-          // Submit to bend RFQ endpoint
-          const result = await bendRfqApi.create(bendPayload);
-          results.push({ ...result, itemType: 'bend' });
-          
-          console.log(`✅ Bend #${i + 1} submitted successfully:`, result);
-        }
-      }
-
-      // ========== PROCESS ALL FITTINGS ==========
-      if (fittingItems.length > 0) {
-        console.log(`⚙️ Processing ${fittingItems.length} fitting(s)...`);
-        
-        for (let i = 0; i < fittingItems.length; i++) {
-          const entry = fittingItems[i];
-          
-          // Validate entry has calculation results
-          if (!entry.calculation) {
-            setValidationErrors({ 
-              submit: `Fitting #${i + 1} (${entry.description}) has not been calculated. Please calculate all items before submitting.` 
-            });
-            setIsSubmitting(false);
-            return;
-          }
-
-          // For now, we'll skip RFQ submission for fittings as there's no backend endpoint yet
-          // Just log them as success
-          console.log(`⚙️ Fitting #${i + 1} would be submitted:`, entry);
-          results.push({ 
-            rfq: { rfqNumber: `FITTING-${i + 1}`, id: `fitting-${i + 1}` },
-            itemType: 'fitting' 
+      for (let i = 0; i < allItems.length; i++) {
+        const entry = allItems[i];
+        if (!entry.calculation) {
+          const itemType = entry.itemType === 'bend' ? 'Bend' : entry.itemType === 'fitting' ? 'Fitting' : 'Pipe';
+          setValidationErrors({
+            submit: `${itemType} #${i + 1} (${entry.description}) has not been calculated. Please calculate all items before submitting.`
           });
-          
-          console.log(`✅ Fitting #${i + 1} noted successfully`);
+          setIsSubmitting(false);
+          return;
         }
       }
 
-      // All items submitted successfully
-      const itemSummary = results.map((r) => {
-        const itemType = r.itemType === 'bend' ? 'Bend' : r.itemType === 'fitting' ? 'Fitting' : 'Pipe';
-        return `${itemType}: RFQ #${r.rfq?.rfqNumber || r.rfq?.id || 'Created'}`;
-      }).join('\n');
+      const { unifiedRfqApi } = await import('@/app/lib/api/client');
 
-      // Upload pending documents to the first RFQ created
-      if (pendingDocuments.length > 0 && results[0]?.rfq?.id) {
-        const rfqId = results[0].rfq.id;
+      const unifiedItems = allItems.map((entry: any) => {
+        const specs = entry.specs || {};
+        const calculation = entry.calculation || {};
+
+        if (entry.itemType === 'bend') {
+          return {
+            itemType: 'bend' as const,
+            description: entry.description || 'Bend Item',
+            notes: entry.notes,
+            totalWeightKg: calculation.totalWeight || calculation.bendWeight,
+            bend: {
+              nominalBoreMm: specs.nominalBoreMm,
+              scheduleNumber: specs.scheduleNumber,
+              bendType: specs.bendType,
+              bendDegrees: specs.bendDegrees,
+              numberOfTangents: specs.numberOfTangents || 0,
+              tangentLengths: specs.tangentLengths || [],
+              quantityType: specs.quantityType || 'number_of_items',
+              quantityValue: specs.quantityValue || 1,
+              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC || 20,
+              steelSpecificationId: specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId || 2,
+              useGlobalFlangeSpecs: specs.useGlobalFlangeSpecs ?? true,
+              flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
+              flangePressureClassId: specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+            },
+          };
+        } else if (entry.itemType === 'fitting') {
+          return {
+            itemType: 'fitting' as const,
+            description: entry.description || 'Fitting Item',
+            notes: entry.notes,
+            totalWeightKg: calculation.totalWeight || calculation.pipeWeight,
+            fitting: {
+              nominalDiameterMm: specs.nominalDiameterMm,
+              scheduleNumber: specs.scheduleNumber,
+              wallThicknessMm: specs.wallThicknessMm,
+              fittingType: specs.fittingType,
+              fittingStandard: specs.fittingStandard,
+              pipeLengthAMm: specs.pipeLengthAMm,
+              pipeLengthBMm: specs.pipeLengthBMm,
+              pipeEndConfiguration: specs.pipeEndConfiguration,
+              addBlankFlange: specs.addBlankFlange || false,
+              blankFlangeCount: specs.blankFlangeCount,
+              blankFlangePositions: specs.blankFlangePositions,
+              quantityType: specs.quantityType || 'number_of_items',
+              quantityValue: specs.quantityValue || 1,
+              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar,
+              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+              calculationData: calculation,
+            },
+          };
+        } else {
+          return {
+            itemType: 'straight_pipe' as const,
+            description: entry.description || 'Pipe Item',
+            notes: entry.notes,
+            totalWeightKg: calculation.totalSystemWeight || calculation.totalPipeWeight,
+            straightPipe: {
+              nominalBoreMm: specs.nominalBoreMm,
+              scheduleType: specs.scheduleType,
+              scheduleNumber: specs.scheduleNumber,
+              wallThicknessMm: specs.wallThicknessMm,
+              pipeEndConfiguration: specs.pipeEndConfiguration,
+              individualPipeLength: specs.individualPipeLength,
+              lengthUnit: specs.lengthUnit,
+              quantityType: specs.quantityType,
+              quantityValue: specs.quantityValue,
+              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+              steelSpecificationId: specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId,
+              flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
+              flangePressureClassId: specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+            },
+          };
+        }
+      });
+
+      const unifiedPayload = {
+        rfq: {
+          projectName: rfqData.projectName,
+          description: rfqData.description,
+          customerName: rfqData.customerName,
+          customerEmail: rfqData.customerEmail,
+          customerPhone: rfqData.customerPhone,
+          requiredDate: rfqData.requiredDate,
+          status: 'submitted' as const,
+          notes: rfqData.notes,
+        },
+        items: unifiedItems,
+      };
+
+      console.log('📦 Submitting unified RFQ payload:', unifiedPayload);
+
+      const result = await unifiedRfqApi.create(unifiedPayload);
+      console.log(`✅ Unified RFQ created successfully:`, result);
+
+      if (pendingDocuments.length > 0 && result.rfq?.id) {
+        const rfqId = result.rfq.id;
         console.log(`📎 Uploading ${pendingDocuments.length} document(s) to RFQ #${rfqId}...`);
 
         let uploadedCount = 0;
@@ -1968,38 +1908,32 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           console.warn(`⚠️ ${failedCount} document(s) failed to upload`);
         }
 
-        // Clear pending documents after upload attempt
         setPendingDocuments([]);
       }
 
-      // Mark the draft as converted if we were working from a draft
-      if (currentDraftId && results[0]?.rfq?.id) {
+      if (currentDraftId && result.rfq?.id) {
         try {
-          await draftsApi.markAsConverted(currentDraftId, results[0].rfq.id);
-          console.log(`✅ Draft ${currentDraftId} marked as converted to RFQ ${results[0].rfq.id}`);
+          await draftsApi.markAsConverted(currentDraftId, result.rfq.id);
+          console.log(`✅ Draft ${currentDraftId} marked as converted to RFQ ${result.rfq.id}`);
         } catch (convertError) {
           console.error('Failed to mark draft as converted:', convertError);
         }
       }
 
-      showToast(`Success! ${results.length} RFQ${results.length > 1 ? 's' : ''} created successfully. ${itemSummary}`, 'success');
+      showToast(`Success! RFQ ${result.rfq?.rfqNumber} created with ${result.itemsCreated} item(s).`, 'success');
+      onSuccess(result.rfq?.id || 'success');
 
-      // Call the success callback with the first RFQ ID
-      onSuccess(results[0]?.rfq?.id || 'success');
-      
     } catch (error: any) {
       console.error('Submission error:', error);
-      
-      // Extract error message
+
       let errorMessage = 'Failed to submit RFQ. Please try again.';
       if (error.message) {
         errorMessage = error.message;
       } else if (typeof error === 'string') {
         errorMessage = error;
       }
-      
+
       setValidationErrors({ submit: errorMessage });
-      
       showToast(`Submission failed: ${errorMessage}. Please check the console for more details.`, 'error');
     } finally {
       setIsSubmitting(false);

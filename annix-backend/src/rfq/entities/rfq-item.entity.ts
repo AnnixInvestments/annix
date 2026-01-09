@@ -5,10 +5,13 @@ import {
   ManyToOne,
   OneToOne,
   JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Rfq } from './rfq.entity';
 import { StraightPipeRfq } from './straight-pipe-rfq.entity';
 import { BendRfq } from './bend-rfq.entity';
+import { FittingRfq } from './fitting-rfq.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum RfqItemType {
@@ -117,4 +120,21 @@ export class RfqItem {
     nullable: true,
   })
   bendDetails?: BendRfq;
+
+  @ApiProperty({
+    description: 'Fitting details (if item type is fitting)',
+    required: false,
+    type: () => FittingRfq,
+  })
+  @OneToOne(() => FittingRfq, (fitting) => fitting.rfqItem, {
+    cascade: true,
+    nullable: true,
+  })
+  fittingDetails?: FittingRfq;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }

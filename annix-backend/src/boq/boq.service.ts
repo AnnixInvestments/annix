@@ -6,7 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Boq, BoqStatus } from './entities/boq.entity';
-import { BoqLineItem } from './entities/boq-line-item.entity';
+import { BoqLineItem, BoqItemType } from './entities/boq-line-item.entity';
 import { CreateBoqDto } from './dto/create-boq.dto';
 import { UpdateBoqDto } from './dto/update-boq.dto';
 import { CreateBoqLineItemDto } from './dto/create-boq-line-item.dto';
@@ -17,6 +17,7 @@ import { User } from '../user/entities/user.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { Rfq } from '../rfq/entities/rfq.entity';
+import { RfqItem } from '../rfq/entities/rfq-item.entity';
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -35,6 +36,8 @@ export class BoqService {
     private lineItemRepository: Repository<BoqLineItem>,
     @InjectRepository(Rfq)
     private rfqRepository: Repository<Rfq>,
+    @InjectRepository(RfqItem)
+    private rfqItemRepository: Repository<RfqItem>,
     private auditService: AuditService,
   ) {}
 
@@ -63,11 +66,17 @@ export class BoqService {
 
   async create(dto: CreateBoqDto, user: User): Promise<Boq> {
     let rfqNumber: string | undefined;
+    let rfqItems: RfqItem[] = [];
+
     if (dto.rfqId) {
       const rfq = await this.rfqRepository.findOne({ where: { id: dto.rfqId } });
       if (rfq) {
         rfqNumber = rfq.rfqNumber;
       }
+      rfqItems = await this.rfqItemRepository.find({
+        where: { rfq: { id: dto.rfqId } },
+        order: { lineNumber: 'ASC' },
+      });
     }
 
     const boqNumber = await this.generateBoqNumber(rfqNumber);
@@ -84,15 +93,57 @@ export class BoqService {
 
     const savedBoq = await this.boqRepository.save(boq);
 
+    if (rfqItems.length > 0) {
+      const lineItems = rfqItems.map((rfqItem, index) => {
+        const lineItem = new BoqLineItem();
+        lineItem.boq = savedBoq;
+        lineItem.lineNumber = rfqItem.lineNumber || index + 1;
+        lineItem.itemCode = this.generateItemCode(rfqItem.itemType, index + 1);
+        lineItem.description = rfqItem.description;
+        lineItem.itemType = this.mapRfqItemTypeToBoqItemType(rfqItem.itemType);
+        lineItem.unitOfMeasure = 'EA';
+        lineItem.quantity = rfqItem.quantity || 1;
+        lineItem.unitWeightKg = rfqItem.weightPerUnitKg ? Number(rfqItem.weightPerUnitKg) : undefined;
+        lineItem.totalWeightKg = rfqItem.totalWeightKg ? Number(rfqItem.totalWeightKg) : undefined;
+        lineItem.notes = rfqItem.notes;
+        return lineItem;
+      });
+
+      await this.lineItemRepository.save(lineItems);
+      await this.recalculateTotals(savedBoq.id);
+    }
+
     await this.auditService.log({
       entityType: 'boq',
       entityId: savedBoq.id,
       action: AuditAction.CREATE,
-      newValues: { boqNumber, title: dto.title },
+      newValues: { boqNumber, title: dto.title, lineItemsCreated: rfqItems.length },
       performedBy: user,
     });
 
     return this.findOne(savedBoq.id);
+  }
+
+  private generateItemCode(itemType: string, lineNumber: number): string {
+    const typePrefix = {
+      straight_pipe: 'PIPE',
+      bend: 'BEND',
+      fitting: 'FIT',
+      flange: 'FLG',
+      custom: 'CUST',
+    }[itemType] || 'ITEM';
+    return `${typePrefix}-${String(lineNumber).padStart(3, '0')}`;
+  }
+
+  private mapRfqItemTypeToBoqItemType(rfqItemType: string): BoqItemType {
+    const typeMap: Record<string, BoqItemType> = {
+      straight_pipe: BoqItemType.STRAIGHT_PIPE,
+      bend: BoqItemType.BEND,
+      fitting: BoqItemType.FITTING,
+      flange: BoqItemType.FLANGE,
+      custom: BoqItemType.CUSTOM,
+    };
+    return typeMap[rfqItemType] || BoqItemType.CUSTOM;
   }
 
   async findAll(query: BoqQueryDto): Promise<PaginatedResult<Boq>> {

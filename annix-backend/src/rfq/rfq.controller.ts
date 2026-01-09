@@ -28,6 +28,7 @@ import { RfqService } from './rfq.service';
 import { CreateStraightPipeRfqWithItemDto } from './dto/create-rfq-item.dto';
 import { CreateBendRfqWithItemDto } from './dto/create-bend-rfq-with-item.dto';
 import { CreateBendRfqDto } from './dto/create-bend-rfq.dto';
+import { CreateUnifiedRfqDto } from './dto/create-unified-rfq.dto';
 import {
   StraightPipeCalculationResultDto,
   RfqResponseDto,
@@ -226,6 +227,41 @@ export class RfqController {
   ): Promise<{ rfq: Rfq; calculation: StraightPipeCalculationResultDto }> {
     const userId = (req as any).customer?.userId;
     return this.rfqService.createStraightPipeRfq(dto, userId);
+  }
+
+  @Post('unified')
+  @ApiOperation({
+    summary: 'Create unified RFQ with all items',
+    description:
+      'Create a single RFQ containing multiple items (straight pipes, bends, fittings) in one request',
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'RFQ created successfully with all items',
+    schema: {
+      type: 'object',
+      properties: {
+        rfq: { $ref: '#/components/schemas/Rfq' },
+        itemsCreated: { type: 'number', example: 3 },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data',
+  })
+  @ApiBody({
+    description: 'Unified RFQ data with all items',
+    type: CreateUnifiedRfqDto,
+  })
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  async createUnifiedRfq(
+    @Body() dto: CreateUnifiedRfqDto,
+    @Req() req: Request,
+  ): Promise<{ rfq: Rfq; itemsCreated: number }> {
+    const userId = (req as any).customer?.userId;
+    return this.rfqService.createUnifiedRfq(dto, userId);
   }
 
   @Post('bend/calculate')
