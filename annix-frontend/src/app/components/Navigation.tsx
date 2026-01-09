@@ -282,7 +282,7 @@ export default function Navigation() {
                 <button
                   key={item.label}
                   onClick={() => handleNavClick(item)}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
                     isActive(item)
                       ? 'bg-[#FFA500]'
                       : 'hover:bg-[#003366]'
