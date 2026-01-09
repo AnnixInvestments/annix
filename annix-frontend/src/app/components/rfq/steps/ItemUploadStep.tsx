@@ -73,8 +73,8 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
   const [isLoadingNominalBores, setIsLoadingNominalBores] = useState(false);
 
   const focusAndOpenSelect = useCallback((selectId: string, retryCount = 0) => {
-    const maxRetries = 5;
-    const delay = 200 + (retryCount * 100);
+    const maxRetries = 10;
+    const delay = 300 + (retryCount * 150);
 
     setTimeout(() => {
       const selectElement = document.getElementById(selectId) as HTMLSelectElement;
@@ -86,21 +86,17 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
       }
 
       selectElement.focus();
-      if (typeof selectElement.showPicker === 'function') {
-        try {
-          selectElement.showPicker();
-        } catch {
-          const length = selectElement.options.length;
-          selectElement.size = Math.min(length, 10);
-          const resetSize = () => {
-            selectElement.size = 1;
-            selectElement.removeEventListener('blur', resetSize);
-            selectElement.removeEventListener('change', resetSize);
-          };
-          selectElement.addEventListener('blur', resetSize);
-          selectElement.addEventListener('change', resetSize);
+      selectElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      const openDropdown = () => {
+        if (typeof selectElement.showPicker === 'function') {
+          try {
+            selectElement.showPicker();
+            return;
+          } catch {
+            // showPicker failed, use fallback
+          }
         }
-      } else {
         const length = selectElement.options.length;
         selectElement.size = Math.min(length, 10);
         const resetSize = () => {
@@ -110,43 +106,61 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
         };
         selectElement.addEventListener('blur', resetSize);
         selectElement.addEventListener('change', resetSize);
-      }
+      };
+
+      requestAnimationFrame(() => {
+        openDropdown();
+      });
     }, delay);
   }, []);
 
+  // Track the last entry count to detect new entries
+  const lastEntryCountRef = useRef<number>(0);
+
   // Auto-focus on first empty required field for new entries
   useEffect(() => {
-    entries.forEach((entry: any) => {
-      if (autoFocusedEntriesRef.current.has(entry.id)) return;
+    const currentCount = entries.length;
+    const previousCount = lastEntryCountRef.current;
 
-      const hasSteelSpec = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+    // If entries were added (not removed or unchanged)
+    if (currentCount > previousCount) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        entries.forEach((entry: any) => {
+          if (autoFocusedEntriesRef.current.has(entry.id)) return;
 
-      if (entry.itemType === 'fitting') {
-        autoFocusedEntriesRef.current.add(entry.id);
-        if (!entry.specs?.fittingType) {
-          focusAndOpenSelect(`fitting-type-${entry.id}`);
-        } else if (!entry.specs?.nominalDiameterMm) {
-          focusAndOpenSelect(`fitting-nb-${entry.id}`);
-        }
-      } else if (entry.itemType === 'bend' && hasSteelSpec) {
-        autoFocusedEntriesRef.current.add(entry.id);
-        const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
-        if (isSABS719 && !entry.specs?.bendRadiusType) {
-          focusAndOpenSelect(`bend-radius-type-${entry.id}`);
-        } else if (!isSABS719 && !entry.specs?.bendType) {
-          focusAndOpenSelect(`bend-type-${entry.id}`);
-        } else if (!entry.specs?.nominalBoreMm) {
-          focusAndOpenSelect(`bend-nb-${entry.id}`);
-        } else if (!entry.specs?.bendDegrees) {
-          focusAndOpenSelect(`bend-angle-${entry.id}`);
-        }
-      } else if (entry.itemType === 'straight_pipe' && hasSteelSpec) {
-        autoFocusedEntriesRef.current.add(entry.id);
-        if (!entry.specs?.nominalBoreMm) {
-          focusAndOpenSelect(`pipe-nb-${entry.id}`);
-        }
-      }
-    });
+          const hasSteelSpec = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+
+          if (entry.itemType === 'fitting') {
+            autoFocusedEntriesRef.current.add(entry.id);
+            if (!entry.specs?.fittingType) {
+              focusAndOpenSelect(`fitting-type-${entry.id}`);
+            } else if (!entry.specs?.nominalDiameterMm) {
+              focusAndOpenSelect(`fitting-nb-${entry.id}`);
+            }
+          } else if (entry.itemType === 'bend' && hasSteelSpec) {
+            autoFocusedEntriesRef.current.add(entry.id);
+            const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+            if (isSABS719 && !entry.specs?.bendRadiusType) {
+              focusAndOpenSelect(`bend-radius-type-${entry.id}`);
+            } else if (!isSABS719 && !entry.specs?.bendType) {
+              focusAndOpenSelect(`bend-type-${entry.id}`);
+            } else if (!entry.specs?.nominalBoreMm) {
+              focusAndOpenSelect(`bend-nb-${entry.id}`);
+            } else if (!entry.specs?.bendDegrees) {
+              focusAndOpenSelect(`bend-angle-${entry.id}`);
+            }
+          } else if (entry.itemType === 'straight_pipe' && hasSteelSpec) {
+            autoFocusedEntriesRef.current.add(entry.id);
+            if (!entry.specs?.nominalBoreMm) {
+              focusAndOpenSelect(`pipe-nb-${entry.id}`);
+            }
+          }
+        });
+      });
+    }
+
+    lastEntryCountRef.current = currentCount;
   }, [entries, globalSpecs?.steelSpecificationId, focusAndOpenSelect]);
 
   // Pre-fetch pressure classes for any standards that are already selected
