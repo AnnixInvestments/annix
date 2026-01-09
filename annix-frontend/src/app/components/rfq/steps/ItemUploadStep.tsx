@@ -72,26 +72,24 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [isLoadingNominalBores, setIsLoadingNominalBores] = useState(false);
 
-  const focusAndOpenSelect = useCallback((selectId: string) => {
+  const focusAndOpenSelect = useCallback((selectId: string, retryCount = 0) => {
+    const maxRetries = 5;
+    const delay = 200 + (retryCount * 100);
+
     setTimeout(() => {
       const selectElement = document.getElementById(selectId) as HTMLSelectElement;
-      if (selectElement) {
-        selectElement.focus();
-        if (typeof selectElement.showPicker === 'function') {
-          try {
-            selectElement.showPicker();
-          } catch {
-            const length = selectElement.options.length;
-            selectElement.size = Math.min(length, 10);
-            const resetSize = () => {
-              selectElement.size = 1;
-              selectElement.removeEventListener('blur', resetSize);
-              selectElement.removeEventListener('change', resetSize);
-            };
-            selectElement.addEventListener('blur', resetSize);
-            selectElement.addEventListener('change', resetSize);
-          }
-        } else {
+      if (!selectElement) {
+        if (retryCount < maxRetries) {
+          focusAndOpenSelect(selectId, retryCount + 1);
+        }
+        return;
+      }
+
+      selectElement.focus();
+      if (typeof selectElement.showPicker === 'function') {
+        try {
+          selectElement.showPicker();
+        } catch {
           const length = selectElement.options.length;
           selectElement.size = Math.min(length, 10);
           const resetSize = () => {
@@ -102,8 +100,18 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
           selectElement.addEventListener('blur', resetSize);
           selectElement.addEventListener('change', resetSize);
         }
+      } else {
+        const length = selectElement.options.length;
+        selectElement.size = Math.min(length, 10);
+        const resetSize = () => {
+          selectElement.size = 1;
+          selectElement.removeEventListener('blur', resetSize);
+          selectElement.removeEventListener('change', resetSize);
+        };
+        selectElement.addEventListener('blur', resetSize);
+        selectElement.addEventListener('change', resetSize);
       }
-    }, 150);
+    }, delay);
   }, []);
 
   // Auto-focus on first empty required field for new entries
@@ -113,7 +121,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
 
       const hasSteelSpec = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
 
-      if (entry.itemType === 'fitting' && hasSteelSpec) {
+      if (entry.itemType === 'fitting') {
         autoFocusedEntriesRef.current.add(entry.id);
         if (!entry.specs?.fittingType) {
           focusAndOpenSelect(`fitting-type-${entry.id}`);
