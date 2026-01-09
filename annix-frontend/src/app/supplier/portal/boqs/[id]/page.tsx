@@ -10,6 +10,7 @@ import {
   SupplierBoqStatus,
   BoqSection,
   ConsolidatedItem,
+  RfqItemDetail,
 } from '@/app/lib/api/supplierApi';
 import { useToast } from '@/app/components/Toast';
 
@@ -32,7 +33,9 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   const boqId = parseInt(resolvedParams.id, 10);
 
   const [boqDetail, setBoqDetail] = useState<SupplierBoqDetailResponse | null>(null);
+  const [rfqItems, setRfqItems] = useState<RfqItemDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rfqLoading, setRfqLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
@@ -42,6 +45,24 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   useEffect(() => {
     loadBoqDetails();
   }, [boqId]);
+
+  useEffect(() => {
+    if (viewMode === 'rfq' && rfqItems.length === 0 && !rfqLoading) {
+      loadRfqItems();
+    }
+  }, [viewMode]);
+
+  const loadRfqItems = async () => {
+    try {
+      setRfqLoading(true);
+      const items = await supplierPortalApi.getRfqItems(boqId);
+      setRfqItems(items);
+    } catch (err) {
+      console.error('Failed to load RFQ items:', err);
+    } finally {
+      setRfqLoading(false);
+    }
+  };
 
   const loadBoqDetails = async () => {
     try {
@@ -326,14 +347,25 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       ) : (
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">
-            RFQ Itemized View ({boqDetail.sections.reduce((sum, s) => sum + s.items.length, 0)} items)
+            RFQ Item Details ({rfqItems.length > 0 ? rfqItems.length : boqDetail.sections.reduce((sum, s) => sum + s.items.length, 0)} items)
           </h2>
 
-          <div className="space-y-6">
-            {boqDetail.sections.map((section) => (
-              <RfqSectionTable key={section.id} section={section} />
-            ))}
-          </div>
+          {rfqLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">Loading RFQ details...</span>
+            </div>
+          ) : rfqItems.length > 0 ? (
+            <div className="space-y-6">
+              <RfqItemsDetailedView items={rfqItems} />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {boqDetail.sections.map((section) => (
+                <RfqSectionTable key={section.id} section={section} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -593,6 +625,210 @@ function RfqSectionTable({ section }: { section: BoqSection }) {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+function RfqItemsDetailedView({ items }: { items: RfqItemDetail[] }) {
+  const totalWeight = items.reduce((sum, item) => sum + Number(item.totalWeightKg || 0), 0);
+
+  const itemTypeColors: Record<string, { bg: string; badge: string; badgeText: string }> = {
+    straight_pipe: { bg: 'bg-blue-50', badge: 'bg-blue-200', badgeText: 'text-blue-800' },
+    bend: { bg: 'bg-purple-50', badge: 'bg-purple-200', badgeText: 'text-purple-800' },
+    fitting: { bg: 'bg-green-50', badge: 'bg-green-200', badgeText: 'text-green-800' },
+  };
+
+  const formatItemType = (type: string) => {
+    const labels: Record<string, string> = {
+      straight_pipe: 'Pipe',
+      bend: 'Bend',
+      fitting: 'Fitting',
+    };
+    return labels[type] || type;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Items List */}
+      <div className="space-y-4">
+        {items.map((item, index) => {
+          const colors = itemTypeColors[item.itemType] || itemTypeColors.straight_pipe;
+          const details = item.straightPipeDetails || item.bendDetails || item.fittingDetails;
+
+          return (
+            <div key={item.id} className={`border border-gray-200 rounded-lg p-4 ${colors.bg}`}>
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-1 text-xs font-semibold rounded ${colors.badge} ${colors.badgeText}`}>
+                    {formatItemType(item.itemType)}
+                  </span>
+                  <h4 className="font-medium text-gray-800">Item #{item.lineNumber || index + 1}</h4>
+                </div>
+                <span className="text-sm font-semibold text-gray-700">
+                  {Number(item.totalWeightKg || 0).toFixed(2)} kg
+                </span>
+              </div>
+
+              <p className="text-sm text-gray-700 mb-3 font-medium">{item.description}</p>
+
+              {/* Item Details Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                {item.straightPipeDetails && (
+                  <>
+                    <div>
+                      <span className="text-gray-500">NB:</span>{' '}
+                      <span className="font-medium">{item.straightPipeDetails.nominalBoreMm}mm</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Schedule:</span>{' '}
+                      <span className="font-medium">
+                        {item.straightPipeDetails.scheduleNumber || `${item.straightPipeDetails.wallThicknessMm}mm WT`}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Length:</span>{' '}
+                      <span className="font-medium">
+                        {item.straightPipeDetails.individualPipeLength?.toFixed(3) || item.straightPipeDetails.totalLength?.toFixed(3) || '-'}m
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Qty:</span>{' '}
+                      <span className="font-medium">{item.quantity || item.straightPipeDetails.quantityValue || 1}</span>
+                    </div>
+                    {item.straightPipeDetails.pipeEndConfiguration && item.straightPipeDetails.pipeEndConfiguration !== 'PE' && (
+                      <div className="col-span-2">
+                        <span className="text-gray-500">End Config:</span>{' '}
+                        <span className="font-medium text-blue-700">{item.straightPipeDetails.pipeEndConfiguration}</span>
+                      </div>
+                    )}
+                    {item.straightPipeDetails.pipeStandard && (
+                      <div className="col-span-2">
+                        <span className="text-gray-500">Standard:</span>{' '}
+                        <span className="font-medium">{item.straightPipeDetails.pipeStandard}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {item.bendDetails && (
+                  <>
+                    <div>
+                      <span className="text-gray-500">NB:</span>{' '}
+                      <span className="font-medium">{item.bendDetails.nominalBoreMm}mm</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Angle:</span>{' '}
+                      <span className="font-medium">{item.bendDetails.bendDegrees}°</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Type:</span>{' '}
+                      <span className="font-medium">{item.bendDetails.bendType || '1.5D'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Qty:</span>{' '}
+                      <span className="font-medium">{item.quantity || 1}</span>
+                    </div>
+                    {item.bendDetails.scheduleNumber && (
+                      <div>
+                        <span className="text-gray-500">Schedule:</span>{' '}
+                        <span className="font-medium">{item.bendDetails.scheduleNumber}</span>
+                      </div>
+                    )}
+                    {item.bendDetails.bendEndConfiguration && item.bendDetails.bendEndConfiguration !== 'PE' && (
+                      <div className="col-span-2">
+                        <span className="text-gray-500">End Config:</span>{' '}
+                        <span className="font-medium text-purple-700">{item.bendDetails.bendEndConfiguration}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {item.fittingDetails && (
+                  <>
+                    <div>
+                      <span className="text-gray-500">Type:</span>{' '}
+                      <span className="font-medium">{item.fittingDetails.fittingType || 'Tee'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">NB:</span>{' '}
+                      <span className="font-medium">{item.fittingDetails.nominalDiameterMm}mm</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Qty:</span>{' '}
+                      <span className="font-medium">{item.quantity || 1}</span>
+                    </div>
+                    {item.fittingDetails.scheduleNumber && (
+                      <div>
+                        <span className="text-gray-500">Schedule:</span>{' '}
+                        <span className="font-medium">{item.fittingDetails.scheduleNumber}</span>
+                      </div>
+                    )}
+                    {item.fittingDetails.pipeLengthAMm && (
+                      <div>
+                        <span className="text-gray-500">Length A:</span>{' '}
+                        <span className="font-medium">{item.fittingDetails.pipeLengthAMm}mm</span>
+                      </div>
+                    )}
+                    {item.fittingDetails.pipeLengthBMm && (
+                      <div>
+                        <span className="text-gray-500">Length B:</span>{' '}
+                        <span className="font-medium">{item.fittingDetails.pipeLengthBMm}mm</span>
+                      </div>
+                    )}
+                    {item.fittingDetails.pipeEndConfiguration && item.fittingDetails.pipeEndConfiguration !== 'PE' && (
+                      <div className="col-span-2">
+                        <span className="text-gray-500">End Config:</span>{' '}
+                        <span className="font-medium text-green-700">{item.fittingDetails.pipeEndConfiguration}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {item.weightPerUnitKg && (
+                  <div>
+                    <span className="text-gray-500">Weight/Unit:</span>{' '}
+                    <span className="font-medium">{Number(item.weightPerUnitKg).toFixed(2)} kg</span>
+                  </div>
+                )}
+              </div>
+
+              {item.notes && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <span className="text-xs text-gray-500">Notes:</span>{' '}
+                  <span className="text-xs text-gray-700">{item.notes}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Total Summary */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="text-lg font-semibold text-blue-800 mb-3">Total Summary</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center">
+            <p className="text-sm font-medium text-blue-700">Total Items</p>
+            <p className="text-2xl font-bold text-blue-900">{items.length}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-blue-700">Total Weight</p>
+            <p className="text-2xl font-bold text-blue-900">{totalWeight.toFixed(2)} kg</p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-blue-700">Pipes</p>
+            <p className="text-2xl font-bold text-blue-900">
+              {items.filter(i => i.itemType === 'straight_pipe').length}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-blue-700">Bends/Fittings</p>
+            <p className="text-2xl font-bold text-blue-900">
+              {items.filter(i => i.itemType === 'bend' || i.itemType === 'fitting').length}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

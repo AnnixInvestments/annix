@@ -203,6 +203,52 @@ export interface SupplierBoqDetailResponse {
   sections: BoqSection[];
 }
 
+export interface RfqItemDetail {
+  id: number;
+  lineNumber: number;
+  itemType: string;
+  description: string;
+  quantity: number;
+  totalWeightKg: number;
+  weightPerUnitKg?: number;
+  notes?: string;
+  straightPipeDetails?: {
+    nominalBoreMm: number;
+    scheduleNumber?: string;
+    wallThicknessMm?: number;
+    pipeStandard?: string;
+    individualPipeLength?: number;
+    totalLength?: number;
+    quantityType?: string;
+    quantityValue?: number;
+    pipeEndConfiguration?: string;
+    outsideDiameterMm?: number;
+    calculationData?: Record<string, any>;
+  };
+  bendDetails?: {
+    nominalBoreMm: number;
+    scheduleNumber?: string;
+    wallThicknessMm?: number;
+    pipeStandard?: string;
+    bendDegrees?: number;
+    bendType?: string;
+    bendEndConfiguration?: string;
+    outsideDiameterMm?: number;
+    calculationData?: Record<string, any>;
+  };
+  fittingDetails?: {
+    nominalDiameterMm: number;
+    scheduleNumber?: string;
+    wallThicknessMm?: number;
+    fittingType?: string;
+    fittingStandard?: string;
+    pipeLengthAMm?: number;
+    pipeLengthBMm?: number;
+    pipeEndConfiguration?: string;
+    calculationData?: Record<string, any>;
+  };
+}
+
 class SupplierApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
@@ -561,6 +607,10 @@ class SupplierApiClient {
       body: JSON.stringify({ reminderDays: reminderDays === 'none' ? null : parseInt(reminderDays, 10) }),
     });
   }
+
+  async getRfqItems(boqId: number): Promise<RfqItemDetail[]> {
+    return this.request<RfqItemDetail[]>(`/supplier/boqs/${boqId}/rfq-items`);
+  }
 }
 
 export const supplierApiClient = new SupplierApiClient();
@@ -597,4 +647,5 @@ export const supplierPortalApi = {
   markBoqViewed: (boqId: number) => supplierApiClient.markBoqViewed(boqId),
   declineBoq: (boqId: number, reason: string) => supplierApiClient.declineBoq(boqId, reason),
   setBoqReminder: (boqId: number, reminderDays: string) => supplierApiClient.setBoqReminder(boqId, reminderDays),
+  getRfqItems: (boqId: number) => supplierApiClient.getRfqItems(boqId),
 };

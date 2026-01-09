@@ -11,6 +11,7 @@ import { SupplierProfile, SupplierAccountStatus } from '../supplier/entities/sup
 import { SupplierCapability, ProductCategory } from '../supplier/entities/supplier-capability.entity';
 import { SupplierOnboarding, SupplierOnboardingStatus } from '../supplier/entities/supplier-onboarding.entity';
 import { EmailService } from '../email/email.service';
+import { RfqItem } from '../rfq/entities/rfq-item.entity';
 import {
   BOQ_SECTION_TO_CAPABILITY,
   CAPABILITY_TO_SECTIONS,
@@ -119,6 +120,8 @@ export class BoqDistributionService {
     private capabilityRepository: Repository<SupplierCapability>,
     @InjectRepository(SupplierOnboarding)
     private onboardingRepository: Repository<SupplierOnboarding>,
+    @InjectRepository(RfqItem)
+    private rfqItemRepository: Repository<RfqItem>,
     private emailService: EmailService,
   ) {}
 
@@ -382,7 +385,7 @@ export class BoqDistributionService {
   }
 
   /**
-   * Get filtered BOQ for a specific supplier (only their allowed sections)
+   * Get BOQ for a specific supplier (shows ALL sections so supplier can quote accurately)
    */
   async getFilteredBoqForSupplier(
     boqId: number,
@@ -411,16 +414,49 @@ export class BoqDistributionService {
       throw new NotFoundException(`BOQ with ID ${boqId} not found`);
     }
 
-    // Get only allowed sections
+    // Get ALL sections for this BOQ so supplier can see complete picture for quoting
     const sections = await this.sectionRepository.find({
-      where: {
-        boqId,
-        sectionType: In(access.allowedSections),
-      },
+      where: { boqId },
       order: { id: 'ASC' },
     });
 
     return { boq, sections, access };
+  }
+
+  /**
+   * Get full RFQ items with detailed specifications for a BOQ
+   * This returns the itemized RFQ data so suppliers can see full details
+   */
+  async getRfqItemsForBoq(
+    boqId: number,
+    supplierProfileId: number,
+  ): Promise<RfqItem[]> {
+    const access = await this.accessRepository.findOne({
+      where: { boqId, supplierProfileId },
+    });
+
+    if (!access) {
+      throw new NotFoundException(
+        `Supplier ${supplierProfileId} does not have access to BOQ ${boqId}`,
+      );
+    }
+
+    const boq = await this.boqRepository.findOne({
+      where: { id: boqId },
+      relations: ['rfq'],
+    });
+
+    if (!boq || !boq.rfq) {
+      return [];
+    }
+
+    const rfqItems = await this.rfqItemRepository.find({
+      where: { rfq: { id: boq.rfq.id } },
+      relations: ['straightPipeDetails', 'bendDetails', 'fittingDetails'],
+      order: { lineNumber: 'ASC' },
+    });
+
+    return rfqItems;
   }
 
   /**

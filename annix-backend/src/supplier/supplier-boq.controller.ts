@@ -190,4 +190,35 @@ export class SupplierBoqController {
       reminderDays: access.reminderDays,
     };
   }
+
+  @Get(':id/rfq-items')
+  @ApiOperation({ summary: 'Get full RFQ item details for quoting' })
+  @ApiResponse({
+    status: 200,
+    description: 'Full RFQ items with detailed specifications',
+  })
+  async getRfqItems(
+    @Request() req: any,
+    @Param('id', ParseIntPipe) boqId: number,
+  ) {
+    const supplierProfileId = req.supplier.supplierId;
+    const items = await this.distributionService.getRfqItemsForBoq(
+      boqId,
+      supplierProfileId,
+    );
+
+    return items.map((item) => ({
+      id: item.id,
+      lineNumber: item.lineNumber,
+      itemType: item.itemType,
+      description: item.description,
+      quantity: item.quantity,
+      totalWeightKg: item.totalWeightKg,
+      weightPerUnitKg: item.weightPerUnitKg,
+      notes: item.notes,
+      straightPipeDetails: item.straightPipeDetails,
+      bendDetails: item.bendDetails,
+      fittingDetails: item.fittingDetails,
+    }));
+  }
 }
