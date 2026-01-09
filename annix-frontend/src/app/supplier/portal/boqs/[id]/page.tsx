@@ -357,7 +357,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
             </div>
           ) : rfqItems.length > 0 ? (
             <div className="space-y-6">
-              <RfqItemsDetailedView items={rfqItems} />
+              <RfqItemsDetailedView items={rfqItems} sections={boqDetail.sections} />
             </div>
           ) : (
             <div className="space-y-6">
@@ -435,88 +435,92 @@ function SectionTable({ section }: { section: BoqSection }) {
         <span className="text-sm font-normal text-gray-500">({section.itemCount} items)</span>
       </h3>
       <div className="overflow-x-auto border rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+              <th className="w-12 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+              <th className="w-16 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
+              <th className="w-16 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
               {hasWelds && (
                 <>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Pipe Weld (m)</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Flange Weld (m)</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Mitre Weld (m)</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tee Weld (m)</th>
+                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Pipe Weld (m)</th>
+                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Flange Weld (m)</th>
+                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Mitre Weld (m)</th>
+                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tee Weld (m)</th>
                 </>
               )}
               {hasAreas && (
                 <>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Int m²</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Ext m²</th>
+                  <th className="w-20 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Int m²</th>
+                  <th className="w-20 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Ext m²</th>
                 </>
               )}
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Weight (kg)</th>
+              <th className="w-28 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Weight (kg)</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {section.items.map((item, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-3 py-2 text-sm text-gray-500">{idx + 1}</td>
+                <td className="w-12 px-3 py-2 text-sm text-gray-500">{idx + 1}</td>
                 <td className="px-3 py-2 text-sm text-gray-900">{item.description}</td>
-                <td className="px-3 py-2 text-sm text-gray-900 text-right">{item.qty}</td>
-                <td className="px-3 py-2 text-sm text-gray-500">{item.unit}</td>
+                <td className="w-16 px-3 py-2 text-sm text-gray-900 text-right">{item.qty}</td>
+                <td className="w-16 px-3 py-2 text-sm text-gray-500">{item.unit}</td>
                 {hasWelds && (
                   <>
-                    <td className="px-3 py-2 text-sm text-gray-900 text-right">
+                    <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
                       {item.welds?.pipeWeld ? Number(item.welds.pipeWeld).toFixed(3) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-900 text-right">
+                    <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
                       {item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-900 text-right">
+                    <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
                       {item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-900 text-right">
+                    <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
                       {item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'}
                     </td>
                   </>
                 )}
                 {hasAreas && (
                   <>
-                    <td className="px-3 py-2 text-sm text-gray-900 text-right">
+                    <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
                       {item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-900 text-right">
+                    <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
                       {item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'}
                     </td>
                   </>
                 )}
-                <td className="px-3 py-2 text-sm text-gray-900 text-right font-medium">
+                <td className="w-28 px-3 py-2 text-sm text-gray-900 text-right font-medium">
                   {Number(item.weightKg || 0).toFixed(2)}
                 </td>
               </tr>
             ))}
             {/* Totals row */}
             <tr className="bg-gray-100 font-medium">
-              <td className="px-3 py-2 text-sm text-gray-900" colSpan={4}>
+              <td className="px-3 py-2 text-sm text-gray-900" colSpan={2}>
                 TOTAL
               </td>
+              <td className="w-16 px-3 py-2 text-sm text-gray-900 text-right">
+                {section.items.reduce((sum, item) => sum + (item.qty || 0), 0)}
+              </td>
+              <td className="w-16 px-3 py-2 text-sm text-gray-500"></td>
               {hasWelds && (
                 <>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.pipeWeld || 0).toFixed(3)}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.flangeWeld || 0).toFixed(3)}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.mitreWeld || 0).toFixed(3)}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.teeWeld || 0).toFixed(3)}</td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.pipeWeld || 0).toFixed(3)}</td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.flangeWeld || 0).toFixed(3)}</td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.mitreWeld || 0).toFixed(3)}</td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.teeWeld || 0).toFixed(3)}</td>
                 </>
               )}
               {hasAreas && (
                 <>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.intArea || 0).toFixed(2)}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.extArea || 0).toFixed(2)}</td>
+                  <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.intArea || 0).toFixed(2)}</td>
+                  <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.extArea || 0).toFixed(2)}</td>
                 </>
               )}
-              <td className="px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.weight || 0).toFixed(2)}</td>
+              <td className="w-28 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.weight || 0).toFixed(2)}</td>
             </tr>
           </tbody>
         </table>
@@ -630,8 +634,14 @@ function RfqSectionTable({ section }: { section: BoqSection }) {
   );
 }
 
-function RfqItemsDetailedView({ items }: { items: RfqItemDetail[] }) {
+function RfqItemsDetailedView({ items, sections }: { items: RfqItemDetail[]; sections?: BoqSection[] }) {
   const totalWeight = items.reduce((sum, item) => sum + Number(item.totalWeightKg || 0), 0);
+
+  const accessorySections = sections?.filter(s =>
+    ['flanges', 'bnw_sets', 'gaskets', 'blank_flanges'].includes(s.sectionType)
+  ) || [];
+
+  const accessoryWeight = accessorySections.reduce((sum, s) => sum + Number(s.totalWeightKg || 0), 0);
 
   const itemTypeColors: Record<string, { bg: string; badge: string; badgeText: string }> = {
     straight_pipe: { bg: 'bg-blue-50', badge: 'bg-blue-200', badgeText: 'text-blue-800' },
@@ -808,29 +818,75 @@ function RfqItemsDetailedView({ items }: { items: RfqItemDetail[] }) {
         })}
       </div>
 
+      {/* Accessory Sections */}
+      {accessorySections.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Accessories</h3>
+          {accessorySections.map((section) => (
+            <div key={section.id} className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-amber-50 px-4 py-2 border-b border-amber-200">
+                <h4 className="font-medium text-amber-800">{section.sectionTitle}</h4>
+              </div>
+              <div className="p-4">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 text-xs font-medium text-gray-500 uppercase w-12">#</th>
+                      <th className="text-left py-2 text-xs font-medium text-gray-500 uppercase">Description</th>
+                      <th className="text-right py-2 text-xs font-medium text-gray-500 uppercase w-16">Qty</th>
+                      <th className="text-left py-2 text-xs font-medium text-gray-500 uppercase w-16">Unit</th>
+                      <th className="text-right py-2 text-xs font-medium text-gray-500 uppercase w-28">Weight (kg)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {section.items.map((item, idx) => (
+                      <tr key={idx} className="border-b border-gray-100">
+                        <td className="py-2 text-gray-500">{idx + 1}</td>
+                        <td className="py-2 text-gray-900">{item.description}</td>
+                        <td className="py-2 text-gray-900 text-right">{item.qty}</td>
+                        <td className="py-2 text-gray-500">{item.unit}</td>
+                        <td className="py-2 text-gray-900 text-right font-medium">{Number(item.weightKg || 0).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-50 font-medium">
+                      <td colSpan={2} className="py-2 text-gray-900">TOTAL</td>
+                      <td className="py-2 text-gray-900 text-right">
+                        {section.items.reduce((sum, i) => sum + (i.qty || 0), 0)}
+                      </td>
+                      <td className="py-2"></td>
+                      <td className="py-2 text-gray-900 text-right">{Number(section.totalWeightKg || 0).toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Total Summary */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="text-lg font-semibold text-blue-800 mb-3">Total Summary</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="text-center">
-            <p className="text-sm font-medium text-blue-700">Total Items</p>
+            <p className="text-sm font-medium text-blue-700">Main Items</p>
             <p className="text-2xl font-bold text-blue-900">{items.length}</p>
           </div>
           <div className="text-center">
-            <p className="text-sm font-medium text-blue-700">Total Weight</p>
+            <p className="text-sm font-medium text-blue-700">Fabrication Weight</p>
             <p className="text-2xl font-bold text-blue-900">{totalWeight.toFixed(2)} kg</p>
           </div>
           <div className="text-center">
-            <p className="text-sm font-medium text-blue-700">Pipes</p>
-            <p className="text-2xl font-bold text-blue-900">
-              {items.filter(i => i.itemType === 'straight_pipe').length}
-            </p>
+            <p className="text-sm font-medium text-blue-700">Accessories</p>
+            <p className="text-2xl font-bold text-amber-700">{accessorySections.reduce((sum, s) => sum + s.items.length, 0)}</p>
           </div>
           <div className="text-center">
-            <p className="text-sm font-medium text-blue-700">Bends/Fittings</p>
-            <p className="text-2xl font-bold text-blue-900">
-              {items.filter(i => i.itemType === 'bend' || i.itemType === 'fitting').length}
-            </p>
+            <p className="text-sm font-medium text-blue-700">Accessory Weight</p>
+            <p className="text-2xl font-bold text-amber-700">{accessoryWeight.toFixed(2)} kg</p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-blue-700">Grand Total</p>
+            <p className="text-2xl font-bold text-green-700">{(totalWeight + accessoryWeight).toFixed(2)} kg</p>
           </div>
         </div>
       </div>
