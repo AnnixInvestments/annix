@@ -689,7 +689,11 @@ function RfqItemsDetailedView({ items }: { items: RfqItemDetail[] }) {
                     <div>
                       <span className="text-gray-500">Length:</span>{' '}
                       <span className="font-medium">
-                        {item.straightPipeDetails.individualPipeLength?.toFixed(3) || item.straightPipeDetails.totalLength?.toFixed(3) || '-'}m
+                        {item.straightPipeDetails.individualPipeLength
+                          ? Number(item.straightPipeDetails.individualPipeLength).toFixed(3)
+                          : item.straightPipeDetails.totalLength
+                            ? Number(item.straightPipeDetails.totalLength).toFixed(3)
+                            : '-'}m
                       </span>
                     </div>
                     <div>
