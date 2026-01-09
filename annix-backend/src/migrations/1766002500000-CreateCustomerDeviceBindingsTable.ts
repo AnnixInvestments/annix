@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateCustomerDeviceBindingsTable1766002500000
-  implements MigrationInterface
-{
+export class CreateCustomerDeviceBindingsTable1766002500000 implements MigrationInterface {
   name = 'CreateCustomerDeviceBindingsTable1766002500000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

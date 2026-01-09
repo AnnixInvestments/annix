@@ -74,14 +74,38 @@ describe('FittingService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FittingService,
-        { provide: getRepositoryToken(Sabs62FittingDimension), useValue: mockSabs62Repository },
-        { provide: getRepositoryToken(Sabs719FittingDimension), useValue: mockSabs719Repository },
-        { provide: getRepositoryToken(PipeDimension), useValue: mockPipeDimensionRepository },
-        { provide: getRepositoryToken(NbNpsLookup), useValue: mockNbNpsLookupRepository },
-        { provide: getRepositoryToken(FlangeDimension), useValue: mockFlangeDimensionRepository },
-        { provide: getRepositoryToken(BoltMass), useValue: mockBoltMassRepository },
-        { provide: getRepositoryToken(NutMass), useValue: mockNutMassRepository },
-        { provide: getRepositoryToken(SteelSpecification), useValue: mockSteelSpecRepository },
+        {
+          provide: getRepositoryToken(Sabs62FittingDimension),
+          useValue: mockSabs62Repository,
+        },
+        {
+          provide: getRepositoryToken(Sabs719FittingDimension),
+          useValue: mockSabs719Repository,
+        },
+        {
+          provide: getRepositoryToken(PipeDimension),
+          useValue: mockPipeDimensionRepository,
+        },
+        {
+          provide: getRepositoryToken(NbNpsLookup),
+          useValue: mockNbNpsLookupRepository,
+        },
+        {
+          provide: getRepositoryToken(FlangeDimension),
+          useValue: mockFlangeDimensionRepository,
+        },
+        {
+          provide: getRepositoryToken(BoltMass),
+          useValue: mockBoltMassRepository,
+        },
+        {
+          provide: getRepositoryToken(NutMass),
+          useValue: mockNutMassRepository,
+        },
+        {
+          provide: getRepositoryToken(SteelSpecification),
+          useValue: mockSteelSpecRepository,
+        },
       ],
     }).compile();
 

@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { now } from '../lib/datetime';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse');
 
@@ -134,7 +135,7 @@ export class DrawingAnalyzerService {
       metadata: {
         pageCount: 0,
         extractionMethod: 'pdf-parse',
-        analysisTimestamp: new Date(),
+        analysisTimestamp: now().toJSDate(),
       },
     };
 

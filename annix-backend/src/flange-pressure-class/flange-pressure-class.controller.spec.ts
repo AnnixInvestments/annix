@@ -34,16 +34,27 @@ describe('FlangePressureClassController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [FlangePressureClassController],
       providers: [
-        { provide: FlangePressureClassService, useValue: mockFlangePressureClassService },
-        { provide: getRepositoryToken(FlangePressureClass), useValue: mockPressureRepo },
-        { provide: getRepositoryToken(FlangeStandard), useValue: mockStandardRepo },
+        {
+          provide: FlangePressureClassService,
+          useValue: mockFlangePressureClassService,
+        },
+        {
+          provide: getRepositoryToken(FlangePressureClass),
+          useValue: mockPressureRepo,
+        },
+        {
+          provide: getRepositoryToken(FlangeStandard),
+          useValue: mockStandardRepo,
+        },
       ],
     }).compile();
 
     controller = module.get<FlangePressureClassController>(
       FlangePressureClassController,
     );
-    service = module.get<FlangePressureClassService>(FlangePressureClassService);
+    service = module.get<FlangePressureClassService>(
+      FlangePressureClassService,
+    );
 
     jest.clearAllMocks();
   });

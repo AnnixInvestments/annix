@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 
+import { now } from '../lib/datetime';
+
 import {
   CustomerProfile,
   CustomerAccountStatus,
@@ -83,17 +85,17 @@ export class AdminDashboardService {
     const recentActivity = await this.getRecentActivity(10);
 
     // Get active session counts
-    const now = new Date();
+    const currentTime = now().toJSDate();
     const activeCustomerSessions = await this.customerSessionRepo.count({
-      where: { expiresAt: MoreThan(now) },
+      where: { expiresAt: MoreThan(currentTime) },
     });
 
     const activeSupplierSessions = await this.supplierSessionRepo.count({
-      where: { expiresAt: MoreThan(now) },
+      where: { expiresAt: MoreThan(currentTime) },
     });
 
     const activeAdminSessions = await this.adminSessionRepo.count({
-      where: { isRevoked: false, expiresAt: MoreThan(now) },
+      where: { isRevoked: false, expiresAt: MoreThan(currentTime) },
     });
 
     return {

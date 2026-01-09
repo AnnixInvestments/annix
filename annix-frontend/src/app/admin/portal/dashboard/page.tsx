@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminApiClient, DashboardStats, ActivityItem } from '@/app/lib/api/adminApi';
+import { fromISO, now } from '@/app/lib/datetime';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -30,9 +31,9 @@ export default function AdminDashboardPage() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
+    const date = fromISO(dateString);
+    const currentTime = now();
+    const diffMs = currentTime.toMillis() - date.toMillis();
     const diffMins = Math.floor(diffMs / 60000);
 
     if (diffMins < 1) return 'Just now';
@@ -44,7 +45,7 @@ export default function AdminDashboardPage() {
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `${diffDays}d ago`;
 
-    return date.toLocaleDateString();
+    return date.toLocaleString({ year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   if (isLoading) {

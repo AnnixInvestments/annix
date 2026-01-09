@@ -6,6 +6,7 @@ import {
   PreferredSupplier,
   SupplierInvitation,
 } from '@/app/lib/api/customerApi';
+import { formatDateZA } from '@/app/lib/datetime';
 
 type Tab = 'suppliers' | 'invitations';
 
@@ -148,11 +149,7 @@ export default function CustomerSuppliersPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatDateZA(dateString);
   };
 
   const getInvitationStatusBadge = (invitation: SupplierInvitation) => {

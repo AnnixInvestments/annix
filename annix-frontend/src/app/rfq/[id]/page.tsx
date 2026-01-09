@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
+import { formatDateZA } from '@/app/lib/datetime';
 
 interface Drawing {
   id: number;
@@ -124,13 +125,7 @@ export default function RfqDetailPage() {
     }).format(num);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const formatDate = (dateString: string) => formatDateZA(dateString);
 
   if (loading) {
     return (

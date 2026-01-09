@@ -29,9 +29,18 @@ describe('FittingDimensionService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FittingDimensionService,
-        { provide: getRepositoryToken(FittingDimension), useValue: mockDimRepo },
-        { provide: getRepositoryToken(FittingVariant), useValue: mockVariantRepo },
-        { provide: getRepositoryToken(AngleRange), useValue: mockAngleRangeRepo },
+        {
+          provide: getRepositoryToken(FittingDimension),
+          useValue: mockDimRepo,
+        },
+        {
+          provide: getRepositoryToken(FittingVariant),
+          useValue: mockVariantRepo,
+        },
+        {
+          provide: getRepositoryToken(AngleRange),
+          useValue: mockAngleRangeRepo,
+        },
       ],
     }).compile();
 
@@ -50,7 +59,9 @@ describe('FittingDimensionService', () => {
       mockDimRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
-      expect(mockDimRepo.find).toHaveBeenCalledWith({ relations: ['variant', 'angleRange'] });
+      expect(mockDimRepo.find).toHaveBeenCalledWith({
+        relations: ['variant', 'angleRange'],
+      });
     });
   });
 

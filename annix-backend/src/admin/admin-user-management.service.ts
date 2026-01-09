@@ -11,6 +11,8 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
+import { now } from '../lib/datetime';
+
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
 import { AdminSession } from './entities/admin-session.entity';
@@ -101,7 +103,7 @@ export class AdminUserManagementService {
       firstName: user.username || '', // Assuming firstName stored in username
       lastName: '',
       roles: user.roles.map((r) => r.name),
-      createdAt: new Date(), // You might want to add this to User entity
+      createdAt: now().toJSDate(),
       lastLogin: lastLogins.find((ll) => ll.userId === user.id)?.lastLogin,
       isActive: true, // You might want to add this to User entity
     }));
@@ -236,7 +238,7 @@ export class AdminUserManagementService {
     // Revoke all sessions since role changed
     await this.adminSessionRepo.update(
       { userId, isRevoked: false },
-      { isRevoked: true, revokedAt: new Date() },
+      { isRevoked: true, revokedAt: now().toJSDate() },
     );
 
     // Log audit
@@ -283,7 +285,7 @@ export class AdminUserManagementService {
     // Revoke all sessions
     await this.adminSessionRepo.update(
       { userId, isRevoked: false },
-      { isRevoked: true, revokedAt: new Date() },
+      { isRevoked: true, revokedAt: now().toJSDate() },
     );
 
     // Log audit
@@ -396,7 +398,7 @@ export class AdminUserManagementService {
       firstName: user.username || '',
       lastName: '',
       roles: user.roles.map((r) => r.name),
-      createdAt: new Date(),
+      createdAt: now().toJSDate(),
       lastLogin: sessions[0]?.createdAt,
       isActive: true,
       loginHistory,

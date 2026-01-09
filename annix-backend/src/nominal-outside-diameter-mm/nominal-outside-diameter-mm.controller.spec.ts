@@ -32,7 +32,10 @@ describe('NominalOutsideDiameterMmController', () => {
             remove: jest.fn(),
           },
         },
-        { provide: getRepositoryToken(NominalOutsideDiameterMm), useValue: mockNominalRepo },
+        {
+          provide: getRepositoryToken(NominalOutsideDiameterMm),
+          useValue: mockNominalRepo,
+        },
       ],
     }).compile();
 
@@ -53,7 +56,7 @@ describe('NominalOutsideDiameterMmController', () => {
         outside_diameter_mm: 60.32,
       };
 
-const result: NominalOutsideDiameterMm = {
+      const result: NominalOutsideDiameterMm = {
         id: 1,
         ...dto,
         pipeDimensions: [],
@@ -71,7 +74,14 @@ const result: NominalOutsideDiameterMm = {
   describe('findAll', () => {
     it('should return array of values', async () => {
       const result: NominalOutsideDiameterMm[] = [
-        { id: 1, nominal_diameter_mm: 50, outside_diameter_mm: 60.32, pipeDimensions: [], fittingBores: [], flangeDimensions: [] },
+        {
+          id: 1,
+          nominal_diameter_mm: 50,
+          outside_diameter_mm: 60.32,
+          pipeDimensions: [],
+          fittingBores: [],
+          flangeDimensions: [],
+        },
       ];
 
       service.findAll.mockResolvedValue(result);

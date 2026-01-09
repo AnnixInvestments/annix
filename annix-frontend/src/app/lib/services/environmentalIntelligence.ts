@@ -57,6 +57,8 @@ import {
   type ISDAsoilTextureData,
 } from '../api/externalApis';
 
+import { nowISO } from '@/app/lib/datetime';
+
 import {
   getMarineEnvironmentalData,
   type MarineEnvironmentalData,
@@ -270,7 +272,7 @@ export async function fetchEnvironmentalData(
 
   // Initialize metadata
   const metadata: EnvironmentalMetadata = {
-    fetchTimestamp: new Date().toISOString(),
+    fetchTimestamp: nowISO(),
     dataSources: [],
   };
 

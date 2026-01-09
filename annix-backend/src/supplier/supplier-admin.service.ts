@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { now } from '../lib/datetime';
 
 import {
   SupplierProfile,
@@ -203,7 +204,7 @@ export class SupplierAdminService {
     document.validationStatus = dto.validationStatus;
     document.validationNotes = dto.validationNotes ?? null;
     document.reviewedById = adminUserId;
-    document.reviewedAt = new Date();
+    document.reviewedAt = now().toJSDate();
 
     const savedDocument = await this.documentRepo.save(document);
 
@@ -254,7 +255,7 @@ export class SupplierAdminService {
 
     // Update onboarding status
     onboarding.status = SupplierOnboardingStatus.APPROVED;
-    onboarding.reviewedAt = new Date();
+    onboarding.reviewedAt = now().toJSDate();
     onboarding.reviewedById = adminUserId;
     await this.onboardingRepo.save(onboarding);
 
@@ -321,7 +322,7 @@ export class SupplierAdminService {
 
     // Update onboarding status
     onboarding.status = SupplierOnboardingStatus.REJECTED;
-    onboarding.reviewedAt = new Date();
+    onboarding.reviewedAt = now().toJSDate();
     onboarding.reviewedById = adminUserId;
     onboarding.rejectionReason = dto.rejectionReason;
     onboarding.remediationSteps = dto.remediationSteps;
@@ -413,7 +414,7 @@ export class SupplierAdminService {
 
     profile.accountStatus = SupplierAccountStatus.SUSPENDED;
     profile.suspensionReason = dto.reason;
-    profile.suspendedAt = new Date();
+    profile.suspendedAt = now().toJSDate();
     profile.suspendedBy = adminUserId;
     await this.profileRepo.save(profile);
 

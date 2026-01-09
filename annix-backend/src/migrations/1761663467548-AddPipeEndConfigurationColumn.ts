@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPipeEndConfigurationColumn1761663467548
-  implements MigrationInterface
-{
+export class AddPipeEndConfigurationColumn1761663467548 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log(
       '🔧 Adding pipe_end_configuration column to straight_pipe_rfqs...',

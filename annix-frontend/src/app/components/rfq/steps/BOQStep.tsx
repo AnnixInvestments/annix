@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
 import { flangeWeight as getFlangeWeight, bnwSetInfo as getBnwSetInfo, gasketWeight as getGasketWeight, blankFlangeSurfaceArea } from '@/app/lib/config/rfq';
 import { boltSetCountPerBend, boltSetCountPerPipe, boltSetCountPerFitting } from '@/app/lib/config/rfq/pipeEndOptions';
+import { nowISO, formatDateLongZA, fromJSDate } from '@/app/lib/datetime';
 
 export default function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, onPrevStep, onSubmit, loading }: {
   rfqData: RfqFormData;
@@ -18,8 +19,10 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 }) {
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return 'Not specified';
-    const d = new Date(date);
-    return d.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+    if (typeof date === 'string') {
+      return formatDateLongZA(date);
+    }
+    return fromJSDate(date).toLocaleString({ year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const formatWeight = (weight: number | undefined) => {
@@ -1076,7 +1079,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
     // Generate filename with project name and date
     const projectName = (rfqData.projectName || 'BOQ').replace(/[^a-zA-Z0-9]/g, '_');
-    const dateStr = new Date().toISOString().split('T')[0];
+    const dateStr = nowISO().split('T')[0];
     const filename = `${projectName}_BOQ_${dateStr}.xlsx`;
 
     // Write and download

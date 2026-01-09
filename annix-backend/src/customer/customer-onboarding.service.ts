@@ -7,6 +7,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { now } from '../lib/datetime';
+
 import {
   CustomerProfile,
   CustomerOnboarding,
@@ -234,7 +236,7 @@ export class CustomerOnboardingService {
     // Update status
     const previousStatus = onboarding.status;
     onboarding.status = CustomerOnboardingStatus.SUBMITTED;
-    onboarding.submittedAt = new Date();
+    onboarding.submittedAt = now().toJSDate();
     onboarding.documentsComplete = true;
 
     if (previousStatus === CustomerOnboardingStatus.REJECTED) {

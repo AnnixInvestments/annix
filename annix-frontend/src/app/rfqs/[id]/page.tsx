@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { browserBaseUrl } from '@/lib/api-config';
+import { formatDateLongZA } from '@/app/lib/datetime';
 
 interface SteelSpecification {
   id: number;
@@ -116,11 +117,7 @@ export default function RfqDetailsPage() {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return formatDateLongZA(dateString);
   };
 
   const formatNumber = (num?: number) => {

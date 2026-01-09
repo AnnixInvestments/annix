@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateBendCenterToFaceAndPopulateData1699380000000
-  implements MigrationInterface
-{
+export class CreateBendCenterToFaceAndPopulateData1699380000000 implements MigrationInterface {
   name = 'CreateBendCenterToFaceAndPopulateData1699380000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

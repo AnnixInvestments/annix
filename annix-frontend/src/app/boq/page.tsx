@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
+import { formatDateZA } from '@/app/lib/datetime';
 
 interface Boq {
   id: number;
@@ -131,13 +132,7 @@ export default function BoqListPage() {
     }).format(num);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const formatDate = (dateString: string) => formatDateZA(dateString);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

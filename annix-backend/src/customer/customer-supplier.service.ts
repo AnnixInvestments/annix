@@ -9,6 +9,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 
+import { now } from '../lib/datetime';
+
 import {
   CustomerProfile,
   CustomerCompany,
@@ -266,7 +268,7 @@ export class CustomerSupplierService {
       invitedBy: inv.invitedBy
         ? `${inv.invitedBy.firstName} ${inv.invitedBy.lastName}`
         : undefined,
-      isExpired: new Date() > inv.expiresAt,
+      isExpired: now().toJSDate() > inv.expiresAt,
     }));
   }
 
@@ -300,7 +302,7 @@ export class CustomerSupplierService {
         customerCompanyId: profile.companyId,
         email: data.email,
         status: SupplierInvitationStatus.PENDING,
-        expiresAt: MoreThan(new Date()),
+        expiresAt: MoreThan(now().toJSDate()),
       },
     });
 
@@ -324,8 +326,7 @@ export class CustomerSupplierService {
 
     // Generate invitation
     const token = uuidv4();
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + INVITATION_EXPIRY_DAYS);
+    const expiresAt = now().plus({ days: INVITATION_EXPIRY_DAYS }).toJSDate();
 
     const invitation = this.invitationRepo.create({
       customerCompanyId: profile.companyId,
@@ -441,10 +442,9 @@ export class CustomerSupplierService {
 
     // Generate new token and extend expiry
     invitation.token = uuidv4();
-    invitation.expiresAt = new Date();
-    invitation.expiresAt.setDate(
-      invitation.expiresAt.getDate() + INVITATION_EXPIRY_DAYS,
-    );
+    invitation.expiresAt = now()
+      .plus({ days: INVITATION_EXPIRY_DAYS })
+      .toJSDate();
     invitation.status = SupplierInvitationStatus.PENDING;
 
     await this.invitationRepo.save(invitation);
@@ -478,7 +478,7 @@ export class CustomerSupplierService {
       where: {
         token,
         status: SupplierInvitationStatus.PENDING,
-        expiresAt: MoreThan(new Date()),
+        expiresAt: MoreThan(now().toJSDate()),
       },
       relations: ['customerCompany'],
     });
@@ -508,7 +508,7 @@ export class CustomerSupplierService {
     }
 
     invitation.status = SupplierInvitationStatus.ACCEPTED;
-    invitation.acceptedAt = new Date();
+    invitation.acceptedAt = now().toJSDate();
     invitation.supplierProfileId = supplierProfileId;
     await this.invitationRepo.save(invitation);
 

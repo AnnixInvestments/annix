@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class MarkStep5DraftsAsConverted1767900001000
-  implements MigrationInterface
-{
+export class MarkStep5DraftsAsConverted1767900001000 implements MigrationInterface {
   name = 'MarkStep5DraftsAsConverted1767900001000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

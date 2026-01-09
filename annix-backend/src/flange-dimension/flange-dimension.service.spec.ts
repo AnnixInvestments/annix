@@ -39,10 +39,22 @@ describe('FlangeDimensionService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FlangeDimensionService,
-        { provide: getRepositoryToken(FlangeDimension), useValue: mockFlangeRepo },
-        { provide: getRepositoryToken(NominalOutsideDiameterMm), useValue: mockNominalRepo },
-        { provide: getRepositoryToken(FlangeStandard), useValue: mockStandardRepo },
-        { provide: getRepositoryToken(FlangePressureClass), useValue: mockPressureRepo },
+        {
+          provide: getRepositoryToken(FlangeDimension),
+          useValue: mockFlangeRepo,
+        },
+        {
+          provide: getRepositoryToken(NominalOutsideDiameterMm),
+          useValue: mockNominalRepo,
+        },
+        {
+          provide: getRepositoryToken(FlangeStandard),
+          useValue: mockStandardRepo,
+        },
+        {
+          provide: getRepositoryToken(FlangePressureClass),
+          useValue: mockPressureRepo,
+        },
         { provide: getRepositoryToken(Bolt), useValue: mockBoltRepo },
       ],
     }).compile();

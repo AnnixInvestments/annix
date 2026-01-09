@@ -54,7 +54,10 @@ export class UnifiedStraightPipeDto {
   @IsNumber()
   workingPressureBar?: number;
 
-  @ApiProperty({ description: 'Working temperature in Celsius', required: false })
+  @ApiProperty({
+    description: 'Working temperature in Celsius',
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   workingTemperatureC?: number;
@@ -113,7 +116,10 @@ export class UnifiedBendDto {
   @IsNumber()
   workingPressureBar?: number;
 
-  @ApiProperty({ description: 'Working temperature in Celsius', required: false })
+  @ApiProperty({
+    description: 'Working temperature in Celsius',
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   workingTemperatureC?: number;
@@ -207,12 +213,18 @@ export class UnifiedFittingDto {
   @IsNumber()
   workingPressureBar?: number;
 
-  @ApiProperty({ description: 'Working temperature in Celsius', required: false })
+  @ApiProperty({
+    description: 'Working temperature in Celsius',
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   workingTemperatureC?: number;
 
-  @ApiProperty({ description: 'Calculation data from frontend', required: false })
+  @ApiProperty({
+    description: 'Calculation data from frontend',
+    required: false,
+  })
   @IsOptional()
   calculationData?: Record<string, any>;
 }
@@ -231,24 +243,36 @@ export class UnifiedRfqItemDto {
   @IsString()
   notes?: string;
 
-  @ApiProperty({ description: 'Total weight from calculation', required: false })
+  @ApiProperty({
+    description: 'Total weight from calculation',
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   totalWeightKg?: number;
 
-  @ApiProperty({ description: 'Straight pipe specs (if itemType is straight_pipe)', required: false })
+  @ApiProperty({
+    description: 'Straight pipe specs (if itemType is straight_pipe)',
+    required: false,
+  })
   @IsOptional()
   @ValidateNested()
   @Type(() => UnifiedStraightPipeDto)
   straightPipe?: UnifiedStraightPipeDto;
 
-  @ApiProperty({ description: 'Bend specs (if itemType is bend)', required: false })
+  @ApiProperty({
+    description: 'Bend specs (if itemType is bend)',
+    required: false,
+  })
   @IsOptional()
   @ValidateNested()
   @Type(() => UnifiedBendDto)
   bend?: UnifiedBendDto;
 
-  @ApiProperty({ description: 'Fitting specs (if itemType is fitting)', required: false })
+  @ApiProperty({
+    description: 'Fitting specs (if itemType is fitting)',
+    required: false,
+  })
   @IsOptional()
   @ValidateNested()
   @Type(() => UnifiedFittingDto)
@@ -261,7 +285,10 @@ export class CreateUnifiedRfqDto {
   @Type(() => CreateRfqDto)
   rfq: CreateRfqDto;
 
-  @ApiProperty({ description: 'Array of all RFQ items', type: [UnifiedRfqItemDto] })
+  @ApiProperty({
+    description: 'Array of all RFQ items',
+    type: [UnifiedRfqItemDto],
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => UnifiedRfqItemDto)

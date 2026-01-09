@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminApiClient } from '@/app/lib/api/adminApi';
 import { useToast } from '@/app/components/Toast';
+import { formatDateZA } from '@/app/lib/datetime';
 
 export default function AdminSuppliersPage() {
   const router = useRouter();
@@ -98,11 +99,7 @@ export default function AdminSuppliersPage() {
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatDateZA(dateString);
   };
 
   if (error) {

@@ -7,6 +7,7 @@ import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { customerPortalApi, CustomerDashboardResponse } from '@/app/lib/api/customerApi';
 import { draftsApi, RfqDraftResponse, RfqDraftStatus } from '@/app/lib/api/client';
 import { useToast } from '@/app/components/Toast';
+import { formatDateZA, formatDateTimeZA } from '@/app/lib/datetime';
 
 export default function CustomerDashboardPage() {
   const router = useRouter();
@@ -72,13 +73,7 @@ export default function CustomerDashboardPage() {
   };
 
   const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatDateTimeZA(date);
   };
 
   const getStepName = (step: number) => {
@@ -417,7 +412,7 @@ export default function CustomerDashboardPage() {
               <span className="text-sm text-gray-500">Member Since</span>
               <span className="text-sm text-gray-900">
                 {dashboard?.profile.memberSince
-                  ? new Date(dashboard.profile.memberSince).toLocaleDateString()
+                  ? formatDateZA(dashboard.profile.memberSince)
                   : 'N/A'}
               </span>
             </div>
@@ -426,7 +421,7 @@ export default function CustomerDashboardPage() {
               <span className="text-sm text-gray-500">Last Login</span>
               <span className="text-sm text-gray-900">
                 {dashboard?.security.lastLogin
-                  ? new Date(dashboard.security.lastLogin).toLocaleString()
+                  ? formatDateTimeZA(dashboard.security.lastLogin)
                   : 'N/A'}
               </span>
             </div>

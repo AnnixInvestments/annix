@@ -4,6 +4,7 @@ import { Repository, Like, Between } from 'typeorm';
 import * as fs from 'fs';
 import { createReadStream } from 'fs';
 import { StreamableFile } from '@nestjs/common';
+import { fromISO } from '../lib/datetime';
 
 import { Rfq } from '../rfq/entities/rfq.entity';
 import { RfqItem } from '../rfq/entities/rfq-item.entity';
@@ -72,8 +73,8 @@ export class AdminRfqService {
     // Apply date range filter
     if (dateFrom && dateTo) {
       queryBuilder.andWhere('rfq.createdAt BETWEEN :dateFrom AND :dateTo', {
-        dateFrom: new Date(dateFrom),
-        dateTo: new Date(dateTo),
+        dateFrom: fromISO(dateFrom).toJSDate(),
+        dateTo: fromISO(dateTo).toJSDate(),
       });
     }
 

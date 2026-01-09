@@ -8,6 +8,7 @@ import {
   CustomerDetailResponse,
   CustomerLoginHistoryItem,
 } from '@/app/lib/api/adminCustomerApi';
+import { formatDateTimeZA } from '@/app/lib/datetime';
 
 export default function AdminCustomerDetailPage() {
   const params = useParams();
@@ -222,14 +223,14 @@ export default function AdminCustomerDetailPage() {
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Registered</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {new Date(customer.createdAt).toLocaleString()}
+                    {formatDateTimeZA(customer.createdAt)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Terms Accepted</dt>
                   <dd className="mt-1 text-sm text-gray-900">
                     {customer.termsAcceptedAt
-                      ? new Date(customer.termsAcceptedAt).toLocaleString()
+                      ? formatDateTimeZA(customer.termsAcceptedAt)
                       : 'Not accepted'}
                   </dd>
                 </div>
@@ -243,7 +244,7 @@ export default function AdminCustomerDetailPage() {
                   </p>
                   {customer.suspendedAt && (
                     <p className="text-sm text-red-700">
-                      <strong>Suspended At:</strong> {new Date(customer.suspendedAt).toLocaleString()}
+                      <strong>Suspended At:</strong> {formatDateTimeZA(customer.suspendedAt)}
                     </p>
                   )}
                 </div>
@@ -324,7 +325,7 @@ export default function AdminCustomerDetailPage() {
                     {loginHistory.map((login) => (
                       <tr key={login.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(login.attemptTime).toLocaleString()}
+                          {formatDateTimeZA(login.attemptTime)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {login.success ? (
@@ -392,7 +393,7 @@ export default function AdminCustomerDetailPage() {
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Registered At</dt>
                     <dd className="mt-1 text-sm text-gray-900">
-                      {new Date(customer.deviceBinding.createdAt).toLocaleString()}
+                      {formatDateTimeZA(customer.deviceBinding.createdAt)}
                     </dd>
                   </div>
                   <div>

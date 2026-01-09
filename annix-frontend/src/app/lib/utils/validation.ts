@@ -1,5 +1,7 @@
 'use client';
 
+import { fromISO } from '@/app/lib/datetime';
+
 /**
  * Validation utilities for RFQ form
  */
@@ -148,8 +150,8 @@ function isValidPhoneNumber(phone: string): boolean {
  * Date validation
  */
 function isValidDate(dateString: string): boolean {
-  const date = new Date(dateString);
-  return date instanceof Date && !isNaN(date.getTime());
+  const date = fromISO(dateString);
+  return date.isValid;
 }
 
 /**

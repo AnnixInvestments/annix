@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner, Table } from 'typeorm';
 
-export class CreateSabs719FittingDimensions1734265000000
-  implements MigrationInterface
-{
+export class CreateSabs719FittingDimensions1734265000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create the SABS719 fitting dimensions table
     await queryRunner.createTable(

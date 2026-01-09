@@ -14,6 +14,7 @@ import { AdminAuthService } from './admin-auth.service';
 import { AdminLoginDto, AdminRefreshTokenDto } from './dto/admin-auth.dto';
 import { AdminAuthGuard } from './guards/admin-auth.guard';
 import { EmailService } from '../email/email.service';
+import { nowISO } from '../lib/datetime';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -73,7 +74,7 @@ export class AdminAuthController {
       html: `
         <h1>Test Email from Annix</h1>
         <p>If you received this email, your SMTP configuration is working correctly!</p>
-        <p>Sent at: ${new Date().toISOString()}</p>
+        <p>Sent at: ${nowISO()}</p>
       `,
       text: 'Test Email from Annix - SMTP configuration is working!',
     });

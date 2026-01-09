@@ -1,15 +1,25 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
+import { now } from '../lib/datetime';
 import { Boq, BoqStatus } from './entities/boq.entity';
 import { BoqSection } from './entities/boq-section.entity';
 import {
   BoqSupplierAccess,
   SupplierBoqStatus,
 } from './entities/boq-supplier-access.entity';
-import { SupplierProfile, SupplierAccountStatus } from '../supplier/entities/supplier-profile.entity';
-import { SupplierCapability, ProductCategory } from '../supplier/entities/supplier-capability.entity';
-import { SupplierOnboarding, SupplierOnboardingStatus } from '../supplier/entities/supplier-onboarding.entity';
+import {
+  SupplierProfile,
+  SupplierAccountStatus,
+} from '../supplier/entities/supplier-profile.entity';
+import {
+  SupplierCapability,
+  ProductCategory,
+} from '../supplier/entities/supplier-capability.entity';
+import {
+  SupplierOnboarding,
+  SupplierOnboardingStatus,
+} from '../supplier/entities/supplier-onboarding.entity';
 import { EmailService } from '../email/email.service';
 import { RfqItem } from '../rfq/entities/rfq-item.entity';
 import {
@@ -156,7 +166,9 @@ export class BoqDistributionService {
 
     // 1. Generate BOQ sections from consolidated data
     const sections = await this.generateSections(boqId, boqData);
-    this.logger.log(`Generated ${sections.length} sections for BOQ ${boq.boqNumber}`);
+    this.logger.log(
+      `Generated ${sections.length} sections for BOQ ${boq.boqNumber}`,
+    );
 
     // 2. Find matching suppliers for each section
     const supplierAccessRecords = await this.findAndCreateSupplierAccess(
@@ -165,10 +177,15 @@ export class BoqDistributionService {
       customerInfo,
       projectInfo,
     );
-    this.logger.log(`Created ${supplierAccessRecords.length} supplier access records`);
+    this.logger.log(
+      `Created ${supplierAccessRecords.length} supplier access records`,
+    );
 
     // 3. Send notifications to suppliers
-    const notifiedCount = await this.notifySuppliers(boq, supplierAccessRecords);
+    const notifiedCount = await this.notifySuppliers(
+      boq,
+      supplierAccessRecords,
+    );
     this.logger.log(`Notified ${notifiedCount} suppliers`);
 
     // 4. Update BOQ status to SUBMITTED
@@ -207,7 +224,9 @@ export class BoqDistributionService {
         const capabilityKey = BOQ_SECTION_TO_CAPABILITY[sectionType];
 
         if (!capabilityKey) {
-          this.logger.warn(`No capability mapping for section type: ${sectionType}`);
+          this.logger.warn(
+            `No capability mapping for section type: ${sectionType}`,
+          );
           continue;
         }
 
@@ -260,8 +279,12 @@ export class BoqDistributionService {
     await this.accessRepository.delete({ boqId });
 
     // Get unique capability keys needed
-    const requiredCapabilities = [...new Set(sections.map((s) => s.capabilityKey))];
-    this.logger.log(`Required capabilities: ${requiredCapabilities.join(', ')}`);
+    const requiredCapabilities = [
+      ...new Set(sections.map((s) => s.capabilityKey)),
+    ];
+    this.logger.log(
+      `Required capabilities: ${requiredCapabilities.join(', ')}`,
+    );
 
     // Find approved suppliers
     const approvedOnboardings = await this.onboardingRepository.find({
@@ -284,7 +307,11 @@ export class BoqDistributionService {
         supplierProfileId: In(approvedSupplierIds),
         isActive: true,
       },
-      relations: ['supplierProfile', 'supplierProfile.user', 'supplierProfile.company'],
+      relations: [
+        'supplierProfile',
+        'supplierProfile.user',
+        'supplierProfile.company',
+      ],
     });
 
     // Map suppliers to their capability keys
@@ -355,11 +382,14 @@ export class BoqDistributionService {
         }
 
         // Get section titles for this supplier
-        const sectionTitles = access.allowedSections.map((s) => getSectionTitle(s));
+        const sectionTitles = access.allowedSections.map((s) =>
+          getSectionTitle(s),
+        );
 
         const success = await this.emailService.sendSupplierBoqNotification(
           supplierProfile.user.email,
-          supplierProfile.company?.tradingName || supplierProfile.company?.legalName ||
+          supplierProfile.company?.tradingName ||
+            supplierProfile.company?.legalName ||
             `${supplierProfile.firstName} ${supplierProfile.lastName}`,
           access.projectInfo?.name || boq.title || 'New Project',
           boq.boqNumber,
@@ -369,7 +399,7 @@ export class BoqDistributionService {
 
         if (success) {
           // Update notification sent timestamp
-          access.notificationSentAt = new Date();
+          access.notificationSentAt = now().toJSDate();
           await this.accessRepository.save(access);
           notifiedCount++;
         }
@@ -462,7 +492,10 @@ export class BoqDistributionService {
   /**
    * Mark BOQ as viewed by supplier
    */
-  async markAsViewed(boqId: number, supplierProfileId: number): Promise<BoqSupplierAccess> {
+  async markAsViewed(
+    boqId: number,
+    supplierProfileId: number,
+  ): Promise<BoqSupplierAccess> {
     const access = await this.accessRepository.findOne({
       where: { boqId, supplierProfileId },
     });
@@ -474,7 +507,7 @@ export class BoqDistributionService {
     }
 
     if (!access.viewedAt) {
-      access.viewedAt = new Date();
+      access.viewedAt = now().toJSDate();
       access.status = SupplierBoqStatus.VIEWED;
       await this.accessRepository.save(access);
     }
@@ -502,7 +535,7 @@ export class BoqDistributionService {
 
     access.status = SupplierBoqStatus.DECLINED;
     access.declineReason = reason;
-    access.respondedAt = new Date();
+    access.respondedAt = now().toJSDate();
 
     await this.accessRepository.save(access);
     return access;
@@ -565,7 +598,9 @@ export class BoqDistributionService {
 
     for (const access of accessRecords) {
       if (!access.boq) {
-        this.logger.warn(`BOQ not found for access record ${access.id}, boqId: ${access.boqId}`);
+        this.logger.warn(
+          `BOQ not found for access record ${access.id}, boqId: ${access.boqId}`,
+        );
         continue;
       }
 
@@ -639,7 +674,10 @@ export class BoqDistributionService {
     );
 
     // Send update notifications
-    const notifiedCount = await this.sendUpdateNotifications(boq, newAccessRecords);
+    const notifiedCount = await this.sendUpdateNotifications(
+      boq,
+      newAccessRecords,
+    );
 
     return {
       boq,
@@ -672,11 +710,14 @@ export class BoqDistributionService {
 
         if (!supplierProfile?.user?.email) continue;
 
-        const sectionTitles = access.allowedSections.map((s) => getSectionTitle(s));
+        const sectionTitles = access.allowedSections.map((s) =>
+          getSectionTitle(s),
+        );
 
         const success = await this.emailService.sendBoqUpdateNotification(
           supplierProfile.user.email,
-          supplierProfile.company?.tradingName || supplierProfile.company?.legalName ||
+          supplierProfile.company?.tradingName ||
+            supplierProfile.company?.legalName ||
             `${supplierProfile.firstName} ${supplierProfile.lastName}`,
           access.projectInfo?.name || boq.title || 'Project',
           boq.boqNumber,

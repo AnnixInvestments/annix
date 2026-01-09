@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CorrectAstmA106GradeBData1762267850000
-  implements MigrationInterface
-{
+export class CorrectAstmA106GradeBData1762267850000 implements MigrationInterface {
   name = 'CorrectAstmA106GradeBData1762267850000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

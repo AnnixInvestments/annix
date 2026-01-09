@@ -40,13 +40,13 @@ describe('NominalOutsideDiameterMmService', () => {
   describe('create', () => {
     it('should create a new entity', async () => {
       const dto = { nominal_diameter_mm: 65, outside_diameter_mm: 76.2 };
-      const savedEntity: NominalOutsideDiameterMm = { 
-        id: 1, 
-        nominal_diameter_mm: dto.nominal_diameter_mm, 
+      const savedEntity: NominalOutsideDiameterMm = {
+        id: 1,
+        nominal_diameter_mm: dto.nominal_diameter_mm,
         outside_diameter_mm: dto.outside_diameter_mm,
         pipeDimensions: [],
         fittingBores: [],
-        flangeDimensions: []
+        flangeDimensions: [],
       };
 
       mockRepo.findOne.mockResolvedValue(undefined);
@@ -56,7 +56,10 @@ describe('NominalOutsideDiameterMmService', () => {
       const result = await service.create(dto);
       expect(result).toEqual(savedEntity);
       expect(mockRepo.findOne).toHaveBeenCalledWith({
-        where: { nominal_diameter_mm: dto.nominal_diameter_mm, outside_diameter_mm: dto.outside_diameter_mm }
+        where: {
+          nominal_diameter_mm: dto.nominal_diameter_mm,
+          outside_diameter_mm: dto.outside_diameter_mm,
+        },
       });
       expect(mockRepo.save).toHaveBeenCalledWith(dto);
     });
@@ -79,7 +82,7 @@ describe('NominalOutsideDiameterMmService', () => {
       const result = await service.findAll();
       expect(result).toEqual(entities);
       expect(mockRepo.find).toHaveBeenCalledWith({
-        relations: ['pipeDimensions', 'fittingBores']
+        relations: ['pipeDimensions', 'fittingBores'],
       });
     });
   });
@@ -97,7 +100,7 @@ describe('NominalOutsideDiameterMmService', () => {
       expect(result).toEqual(entity);
       expect(mockRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['pipeDimensions', 'fittingBores']
+        relations: ['pipeDimensions', 'fittingBores'],
       });
     });
 
@@ -124,13 +127,15 @@ describe('NominalOutsideDiameterMmService', () => {
       expect(result).toEqual(updated);
       expect(mockRepo.save).toHaveBeenCalledWith({ ...existing, ...dto });
     });
-
-
   });
 
   describe('remove', () => {
     it('should delete an entity', async () => {
-      const entity = { id: 1, nominal_diameter_mm: 65, outside_diameter_mm: 76.2 } as NominalOutsideDiameterMm;
+      const entity = {
+        id: 1,
+        nominal_diameter_mm: 65,
+        outside_diameter_mm: 76.2,
+      } as NominalOutsideDiameterMm;
       mockRepo.findOne.mockResolvedValue(entity);
       mockRepo.remove.mockResolvedValue(undefined);
 

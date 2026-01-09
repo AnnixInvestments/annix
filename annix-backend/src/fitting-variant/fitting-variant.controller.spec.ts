@@ -44,10 +44,16 @@ describe('FittingVariantController', () => {
       controllers: [FittingVariantController],
       providers: [
         { provide: FittingVariantService, useValue: mockFittingVariantService },
-        { provide: getRepositoryToken(FittingVariant), useValue: mockVariantRepo },
+        {
+          provide: getRepositoryToken(FittingVariant),
+          useValue: mockVariantRepo,
+        },
         { provide: getRepositoryToken(Fitting), useValue: mockFittingRepo },
         { provide: getRepositoryToken(FittingBore), useValue: mockBoreRepo },
-        { provide: getRepositoryToken(FittingDimension), useValue: mockDimensionRepo },
+        {
+          provide: getRepositoryToken(FittingDimension),
+          useValue: mockDimensionRepo,
+        },
       ],
     }).compile();
 

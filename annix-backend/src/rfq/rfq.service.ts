@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
+import { now } from '../lib/datetime';
 import { Rfq, RfqStatus } from './entities/rfq.entity';
 import { RfqItem, RfqItemType } from './entities/rfq-item.entity';
 import {
@@ -28,7 +29,10 @@ import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.e
 import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
 import { NutMass } from '../nut-mass/entities/nut-mass.entity';
 import { Boq } from '../boq/entities/boq.entity';
-import { BoqSupplierAccess, SupplierBoqStatus } from '../boq/entities/boq-supplier-access.entity';
+import {
+  BoqSupplierAccess,
+  SupplierBoqStatus,
+} from '../boq/entities/boq-supplier-access.entity';
 import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
 import { EmailService } from '../email/email.service';
 import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
@@ -350,7 +354,7 @@ export class RfqService {
 
     // Generate RFQ number
     const rfqCount = await this.rfqRepository.count();
-    const rfqNumber = `RFQ-${new Date().getFullYear()}-${String(rfqCount + 1).padStart(4, '0')}`;
+    const rfqNumber = `RFQ-${now().year}-${String(rfqCount + 1).padStart(4, '0')}`;
 
     // Create RFQ
     const rfq = this.rfqRepository.create({
@@ -425,7 +429,7 @@ export class RfqService {
       .catch(() => null);
 
     const rfqCount = await this.rfqRepository.count();
-    const rfqNumber = `RFQ-${new Date().getFullYear()}-${String(rfqCount + 1).padStart(4, '0')}`;
+    const rfqNumber = `RFQ-${now().year}-${String(rfqCount + 1).padStart(4, '0')}`;
 
     let totalWeight = 0;
     dto.items.forEach((item) => {
@@ -443,21 +447,26 @@ export class RfqService {
     });
 
     const savedRfq = await this.rfqRepository.save(rfq);
-    this.logger.log(`Created unified RFQ ${rfqNumber} with ${dto.items.length} items`);
+    this.logger.log(
+      `Created unified RFQ ${rfqNumber} with ${dto.items.length} items`,
+    );
 
     let lineNumber = 0;
     for (const item of dto.items) {
       lineNumber++;
 
       if (item.itemType === 'straight_pipe' && item.straightPipe) {
-        const calculation = await this.calculateStraightPipeRequirements(item.straightPipe as any);
+        const calculation = await this.calculateStraightPipeRequirements(
+          item.straightPipe as any,
+        );
 
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.STRAIGHT_PIPE,
           quantity: calculation.calculatedPipeCount,
-          weightPerUnitKg: calculation.totalSystemWeight / calculation.calculatedPipeCount,
+          weightPerUnitKg:
+            calculation.totalSystemWeight / calculation.calculatedPipeCount,
           totalWeightKg: calculation.totalSystemWeight,
           notes: item.notes,
           rfq: savedRfq,
@@ -501,8 +510,9 @@ export class RfqService {
         }
 
         await this.straightPipeRfqRepository.save(straightPipeRfq);
-        this.logger.log(`Created straight pipe item #${lineNumber}: ${item.description}`);
-
+        this.logger.log(
+          `Created straight pipe item #${lineNumber}: ${item.description}`,
+        );
       } else if (item.itemType === 'bend' && item.bend) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
@@ -536,8 +546,9 @@ export class RfqService {
         });
 
         await this.bendRfqRepository.save(bendRfq);
-        this.logger.log(`Created bend item #${lineNumber}: ${item.description}`);
-
+        this.logger.log(
+          `Created bend item #${lineNumber}: ${item.description}`,
+        );
       } else if (item.itemType === 'fitting' && item.fitting) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
@@ -573,13 +584,20 @@ export class RfqService {
         });
 
         await this.fittingRfqRepository.save(fittingRfq);
-        this.logger.log(`Created fitting item #${lineNumber}: ${item.description}`);
+        this.logger.log(
+          `Created fitting item #${lineNumber}: ${item.description}`,
+        );
       }
     }
 
     const finalRfq = await this.rfqRepository.findOne({
       where: { id: savedRfq.id },
-      relations: ['items', 'items.straightPipeDetails', 'items.bendDetails', 'items.fittingDetails'],
+      relations: [
+        'items',
+        'items.straightPipeDetails',
+        'items.bendDetails',
+        'items.fittingDetails',
+      ],
     });
 
     return { rfq: finalRfq!, itemsCreated: lineNumber };
@@ -705,7 +723,7 @@ export class RfqService {
 
     // Generate RFQ number
     const rfqCount = await this.rfqRepository.count();
-    const rfqNumber = `RFQ-${new Date().getFullYear()}-${String(rfqCount + 1).padStart(4, '0')}`;
+    const rfqNumber = `RFQ-${now().year}-${String(rfqCount + 1).padStart(4, '0')}`;
 
     // Create RFQ
     const rfq = this.rfqRepository.create({
@@ -873,7 +891,7 @@ export class RfqService {
    * Generate a unique draft number
    */
   private async generateDraftNumber(): Promise<string> {
-    const year = new Date().getFullYear();
+    const year = now().year;
     const draftCount = await this.rfqDraftRepository.count();
     return `DRAFT-${year}-${String(draftCount + 1).padStart(4, '0')}`;
   }
@@ -897,7 +915,10 @@ export class RfqService {
   /**
    * Save or update an RFQ draft
    */
-  async saveDraft(dto: SaveRfqDraftDto, userId: number): Promise<RfqDraftResponseDto> {
+  async saveDraft(
+    dto: SaveRfqDraftDto,
+    userId: number,
+  ): Promise<RfqDraftResponseDto> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
@@ -911,10 +932,14 @@ export class RfqService {
         where: { id: dto.draftId, createdBy: { id: userId } },
       });
       if (!existingDraft) {
-        throw new NotFoundException(`Draft with ID ${dto.draftId} not found or access denied`);
+        throw new NotFoundException(
+          `Draft with ID ${dto.draftId} not found or access denied`,
+        );
       }
       if (existingDraft.isConverted) {
-        throw new BadRequestException('Cannot update a draft that has been converted to an RFQ');
+        throw new BadRequestException(
+          'Cannot update a draft that has been converted to an RFQ',
+        );
       }
       draft = existingDraft;
     } else {
@@ -925,7 +950,8 @@ export class RfqService {
     }
 
     // Update draft fields
-    draft.projectName = dto.projectName || dto.formData.projectName || 'Untitled Draft';
+    draft.projectName =
+      dto.projectName || dto.formData.projectName || 'Untitled Draft';
     draft.currentStep = dto.currentStep;
     draft.formData = dto.formData;
     draft.globalSpecs = dto.globalSpecs;
@@ -954,7 +980,9 @@ export class RfqService {
       drafts.map(async (draft) => {
         const response = this.mapDraftToResponse(draft);
         if (draft.isConverted && draft.convertedRfqId) {
-          response.supplierCounts = await this.supplierCountsForRfq(draft.convertedRfqId);
+          response.supplierCounts = await this.supplierCountsForRfq(
+            draft.convertedRfqId,
+          );
         }
         return response;
       }),
@@ -981,7 +1009,7 @@ export class RfqService {
       return { pending: 0, declined: 0, intendToQuote: 0, quoted: 0 };
     }
 
-    const boqIds = boqs.map(b => b.id);
+    const boqIds = boqs.map((b) => b.id);
 
     const counts = await this.boqSupplierAccessRepository
       .createQueryBuilder('access')
@@ -1017,7 +1045,10 @@ export class RfqService {
   /**
    * Get a single draft with full data
    */
-  async getDraftById(draftId: number, userId: number): Promise<RfqDraftFullResponseDto> {
+  async getDraftById(
+    draftId: number,
+    userId: number,
+  ): Promise<RfqDraftFullResponseDto> {
     const draft = await this.rfqDraftRepository
       .createQueryBuilder('draft')
       .where('draft.id = :draftId', { draftId })
@@ -1025,7 +1056,9 @@ export class RfqService {
       .getOne();
 
     if (!draft) {
-      throw new NotFoundException(`Draft with ID ${draftId} not found or access denied`);
+      throw new NotFoundException(
+        `Draft with ID ${draftId} not found or access denied`,
+      );
     }
 
     return this.mapDraftToFullResponse(draft);
@@ -1034,7 +1067,10 @@ export class RfqService {
   /**
    * Get a draft by draft number
    */
-  async getDraftByNumber(draftNumber: string, userId: number): Promise<RfqDraftFullResponseDto> {
+  async getDraftByNumber(
+    draftNumber: string,
+    userId: number,
+  ): Promise<RfqDraftFullResponseDto> {
     const draft = await this.rfqDraftRepository
       .createQueryBuilder('draft')
       .where('draft.draft_number = :draftNumber', { draftNumber })
@@ -1042,7 +1078,9 @@ export class RfqService {
       .getOne();
 
     if (!draft) {
-      throw new NotFoundException(`Draft ${draftNumber} not found or access denied`);
+      throw new NotFoundException(
+        `Draft ${draftNumber} not found or access denied`,
+      );
     }
 
     return this.mapDraftToFullResponse(draft);
@@ -1059,11 +1097,15 @@ export class RfqService {
       .getOne();
 
     if (!draft) {
-      throw new NotFoundException(`Draft with ID ${draftId} not found or access denied`);
+      throw new NotFoundException(
+        `Draft with ID ${draftId} not found or access denied`,
+      );
     }
 
     if (draft.isConverted) {
-      throw new BadRequestException('Cannot delete a draft that has been converted to an RFQ');
+      throw new BadRequestException(
+        'Cannot delete a draft that has been converted to an RFQ',
+      );
     }
 
     await this.rfqDraftRepository.remove(draft);
@@ -1072,7 +1114,11 @@ export class RfqService {
   /**
    * Mark a draft as converted to RFQ
    */
-  async markDraftAsConverted(draftId: number, rfqId: number, userId: number): Promise<void> {
+  async markDraftAsConverted(
+    draftId: number,
+    rfqId: number,
+    userId: number,
+  ): Promise<void> {
     const draft = await this.rfqDraftRepository.findOne({
       where: { id: draftId, createdBy: { id: userId } },
     });
@@ -1090,7 +1136,7 @@ export class RfqService {
   private mapDraftToResponse(draft: RfqDraft): RfqDraftResponseDto {
     const rfqStatus = draft.convertedRfq?.status;
     const status = draft.isConverted
-      ? (rfqStatus || RfqStatus.SUBMITTED)
+      ? rfqStatus || RfqStatus.SUBMITTED
       : RfqStatus.DRAFT;
 
     return {
@@ -1099,7 +1145,9 @@ export class RfqService {
       rfqNumber: draft.convertedRfq?.rfqNumber,
       projectName: draft.projectName,
       currentStep: draft.currentStep,
-      completionPercentage: draft.isConverted ? 100 : this.completionPercentageForStep(draft.currentStep),
+      completionPercentage: draft.isConverted
+        ? 100
+        : this.completionPercentageForStep(draft.currentStep),
       status,
       createdAt: draft.createdAt,
       updatedAt: draft.convertedRfq?.updatedAt || draft.updatedAt,
@@ -1150,12 +1198,14 @@ export class RfqService {
     }
 
     for (const boq of boqs) {
-      const supplierAccessRecords = await this.boqSupplierAccessRepository.find({
-        where: {
-          boqId: boq.id,
-          status: Not(SupplierBoqStatus.DECLINED),
+      const supplierAccessRecords = await this.boqSupplierAccessRepository.find(
+        {
+          where: {
+            boqId: boq.id,
+            status: Not(SupplierBoqStatus.DECLINED),
+          },
         },
-      });
+      );
 
       for (const access of supplierAccessRecords) {
         try {

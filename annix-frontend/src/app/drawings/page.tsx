@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
+import { formatDateZA } from '@/app/lib/datetime';
 
 interface Drawing {
   id: number;
@@ -111,11 +112,7 @@ export default function DrawingsListPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatDateZA(dateString);
   };
 
   const getFileIcon = (fileType: string) => {

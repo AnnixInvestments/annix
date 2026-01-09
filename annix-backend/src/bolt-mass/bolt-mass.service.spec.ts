@@ -85,7 +85,9 @@ describe('BoltMassService', () => {
       mockBoltMassRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
-      expect(mockBoltMassRepo.find).toHaveBeenCalledWith({ relations: ['bolt'] });
+      expect(mockBoltMassRepo.find).toHaveBeenCalledWith({
+        relations: ['bolt'],
+      });
     });
   });
 

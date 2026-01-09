@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateFlangePtRatingsTable1766001300000
-  implements MigrationInterface
-{
+export class CreateFlangePtRatingsTable1766001300000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log('🏗️ Creating flange_pt_ratings table...');
 

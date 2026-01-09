@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { now } from '../lib/datetime';
 import {
   ApiTags,
   ApiOperation,
@@ -104,7 +105,7 @@ export class SupplierBoqController {
       projectInfo: access.projectInfo,
       customerInfo: access.customerInfo,
       accessStatus: access.status,
-      viewedAt: access.viewedAt || new Date(),
+      viewedAt: access.viewedAt || now().toJSDate(),
       sections: sections.map((section) => ({
         id: section.id,
         sectionType: section.sectionType,

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class FixNominalOutsideDiameterTable1761656454932
-  implements MigrationInterface
-{
+export class FixNominalOutsideDiameterTable1761656454932 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log('🔍 Checking nominal_outside_diameters table...');
 

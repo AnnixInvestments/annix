@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AddBeeFieldsToSupplierCompany1766004200000
-  implements MigrationInterface
-{
+export class AddBeeFieldsToSupplierCompany1766004200000 implements MigrationInterface {
   name = 'AddBeeFieldsToSupplierCompany1766004200000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

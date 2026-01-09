@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddComprehensiveScheduleDatabase1699376000000
-  implements MigrationInterface
-{
+export class AddComprehensiveScheduleDatabase1699376000000 implements MigrationInterface {
   name = 'AddComprehensiveScheduleDatabase1699376000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { CreateStraightPipeRfqDto, StraightPipeCalculationResult } from '@/app/lib/api/client';
 import type { AirSaltContentResult, TimeOfWetnessResult, FloodRiskLevel } from '../services/environmentalIntelligence';
+import { addDaysFromNowISODate, generateUniqueId } from '@/app/lib/datetime';
 
 export interface StraightPipeEntry {
   id: string;
@@ -266,7 +267,7 @@ export const useRfqForm = () => {
     customerName: '',
     customerEmail: '',
     customerPhone: '',
-    requiredDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    requiredDate: addDaysFromNowISODate(30),
     requiredProducts: [], // Selected product/service types
     notes: '',
     globalSpecs: {},
@@ -283,7 +284,7 @@ export const useRfqForm = () => {
 
   const addStraightPipeEntry = useCallback((description?: string) => {
     const newEntry: StraightPipeEntry = {
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       itemType: 'straight_pipe',
       description: description || 'New Straight Pipe Item - Please configure specifications',
       specs: { ...DEFAULT_PIPE_SPECS } as CreateStraightPipeRfqDto,
@@ -302,7 +303,7 @@ export const useRfqForm = () => {
   const addBendEntry = useCallback((description?: string) => {
     // Steel spec will be inherited from globalSpecs - user can override in the item UI
     const newEntry: BendEntry = {
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       itemType: 'bend',
       description: description || 'New Bend Item',
       specs: {
@@ -338,7 +339,7 @@ export const useRfqForm = () => {
     // Derive fitting standard from steel spec: ID 8 = SABS 719 ERW
     const fittingStandard = steelSpecId === 8 ? 'SABS719' : 'SABS62';
     const newEntry: FittingEntry = {
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       itemType: 'fitting',
       description: description || 'New Fitting Item',
       specs: {
@@ -505,7 +506,7 @@ export const useRfqForm = () => {
       customerName: formData.customerName ?? '',
       customerEmail: formData.customerEmail ?? '',
       customerPhone: formData.customerPhone ?? '',
-      requiredDate: formData.requiredDate ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      requiredDate: formData.requiredDate ?? addDaysFromNowISODate(30),
       requiredProducts: draft.requiredProducts ?? [],
       notes: formData.notes ?? '',
 

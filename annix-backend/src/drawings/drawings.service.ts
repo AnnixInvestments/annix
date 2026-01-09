@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
+import { now } from '../lib/datetime';
 import {
   Drawing,
   DrawingStatus,
@@ -97,7 +98,7 @@ export class DrawingsService {
   }
 
   private async generateDrawingNumber(): Promise<string> {
-    const year = new Date().getFullYear();
+    const year = now().year;
     const prefix = `DRW-${year}-`;
 
     const lastDrawing = await this.drawingRepository
@@ -127,8 +128,9 @@ export class DrawingsService {
     const drawingNumber = await this.generateDrawingNumber();
 
     // Upload file
-    const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, '0');
+    const currentDate = now();
+    const year = currentDate.year;
+    const month = String(currentDate.month).padStart(2, '0');
     const subPath = `drawings/${year}/${month}`;
     const storageResult = await this.storageService.upload(file, subPath);
 
@@ -195,8 +197,9 @@ export class DrawingsService {
 
     this.validateFile(file);
 
-    const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, '0');
+    const currentDate = now();
+    const year = currentDate.year;
+    const month = String(currentDate.month).padStart(2, '0');
     const subPath = `drawings/${year}/${month}`;
     const storageResult = await this.storageService.upload(file, subPath);
 

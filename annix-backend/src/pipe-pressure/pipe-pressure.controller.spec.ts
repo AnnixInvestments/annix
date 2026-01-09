@@ -35,8 +35,14 @@ describe('PipePressureController', () => {
       controllers: [PipePressureController],
       providers: [
         { provide: PipePressureService, useValue: mockPipePressureService },
-        { provide: getRepositoryToken(PipePressure), useValue: mockPressureRepo },
-        { provide: getRepositoryToken(PipeDimension), useValue: mockDimensionRepo },
+        {
+          provide: getRepositoryToken(PipePressure),
+          useValue: mockPressureRepo,
+        },
+        {
+          provide: getRepositoryToken(PipeDimension),
+          useValue: mockDimensionRepo,
+        },
       ],
     }).compile();
 

@@ -22,6 +22,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
+import { fromISO } from '../lib/datetime';
 
 import { CustomerDocumentService } from './customer-document.service';
 import { CustomerAuthGuard } from './guards';
@@ -68,7 +69,7 @@ export class CustomerDocumentController {
   ) {
     const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
-    const expiryDate = body.expiryDate ? new Date(body.expiryDate) : null;
+    const expiryDate = body.expiryDate ? fromISO(body.expiryDate).toJSDate() : null;
 
     return this.documentService.uploadDocument(
       customerId,

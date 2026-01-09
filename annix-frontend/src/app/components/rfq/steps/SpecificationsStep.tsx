@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { type MaterialLimits, materialLimits as getMaterialLimits, checkMaterialSuitability } from '@/app/lib/config/rfq';
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
+import { nowISO } from '@/app/lib/datetime';
 
 interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
@@ -1716,7 +1717,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                               },
                               externalCoatingActionLog: [
                                 ...(globalSpecs?.externalCoatingActionLog || []),
-                                { action: 'ACCEPTED', timestamp: new Date().toISOString(), recommendation: recommendation.coating }
+                                { action: 'ACCEPTED', timestamp: nowISO(), recommendation: recommendation.coating }
                               ]
                             })}
                             className="flex-1 px-2 py-1.5 bg-emerald-600 text-white font-medium rounded text-xs flex items-center justify-center gap-1 hover:bg-emerald-700"
@@ -1733,7 +1734,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                               externalCoatingRecommendationRejected: true,
                               externalCoatingActionLog: [
                                 ...(globalSpecs?.externalCoatingActionLog || []),
-                                { action: 'REJECTED', timestamp: new Date().toISOString(), recommendation: recommendation.coating }
+                                { action: 'REJECTED', timestamp: nowISO(), recommendation: recommendation.coating }
                               ]
                             })}
                             className="px-2 py-1.5 bg-red-600 text-white font-medium rounded text-xs flex items-center justify-center gap-1 hover:bg-red-700"
@@ -1878,7 +1879,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                     externalCoatingRecommendation: undefined,
                     externalCoatingActionLog: [
                       ...(globalSpecs?.externalCoatingActionLog || []),
-                      { action: 'UNLOCKED_FOR_EDIT', timestamp: new Date().toISOString() }
+                      { action: 'UNLOCKED_FOR_EDIT', timestamp: nowISO() }
                     ]
                   })}
                   className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 flex items-center gap-2"
@@ -1919,7 +1920,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                     showExternalCoatingProfile: true,
                     externalCoatingActionLog: [
                       ...(globalSpecs?.externalCoatingActionLog || []),
-                      { action: 'REVERTED_TO_RECOMMENDATION', timestamp: new Date().toISOString() }
+                      { action: 'REVERTED_TO_RECOMMENDATION', timestamp: nowISO() }
                     ]
                   })}
                   className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"

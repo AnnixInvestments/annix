@@ -17,6 +17,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
+import { now } from '../lib/datetime';
 import {
   ApiTags,
   ApiOperation,
@@ -329,7 +330,7 @@ export class DrawingsController {
         metadata: {
           pageCount: 0,
           extractionMethod: 'none',
-          analysisTimestamp: new Date(),
+          analysisTimestamp: now().toJSDate(),
         },
       };
     }
@@ -347,7 +348,7 @@ export class DrawingsController {
         metadata: {
           pageCount: 0,
           extractionMethod: 'none',
-          analysisTimestamp: new Date(),
+          analysisTimestamp: now().toJSDate(),
         },
       };
     }
@@ -385,7 +386,7 @@ export class DrawingsController {
         metadata: {
           pageCount: 0,
           extractionMethod: 'none',
-          analysisTimestamp: new Date(),
+          analysisTimestamp: now().toJSDate(),
         },
       };
     }
@@ -419,7 +420,7 @@ export class DrawingsController {
           metadata: {
             pageCount: 0,
             extractionMethod: 'none',
-            analysisTimestamp: new Date(),
+            analysisTimestamp: now().toJSDate(),
           },
         },
         rfqItems: [],

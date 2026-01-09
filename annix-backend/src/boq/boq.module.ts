@@ -16,7 +16,14 @@ import { RfqItem } from '../rfq/entities/rfq-item.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Boq, BoqLineItem, BoqSection, BoqSupplierAccess, Rfq, RfqItem]),
+    TypeOrmModule.forFeature([
+      Boq,
+      BoqLineItem,
+      BoqSection,
+      BoqSupplierAccess,
+      Rfq,
+      RfqItem,
+    ]),
     MulterModule.register({
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB max file size

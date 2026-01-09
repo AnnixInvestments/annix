@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class SeedHdpePipeSpecifications1766002400000
-  implements MigrationInterface
-{
+export class SeedHdpePipeSpecifications1766002400000 implements MigrationInterface {
   name = 'SeedHdpePipeSpecifications1766002400000';
 
   // HDPE density in kg/m³

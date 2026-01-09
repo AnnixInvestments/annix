@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { apiClient, draftsApi, RfqResponse, RfqDraftResponse, RfqDraftStatus } from '@/app/lib/api/client';
 import { useToast } from '@/app/components/Toast';
+import { formatDateZA, formatDateTimeZA } from '@/app/lib/datetime';
 
 export default function CustomerRfqsPage() {
   const { showToast } = useToast();
@@ -243,7 +244,7 @@ export default function CustomerRfqsPage() {
                       {rfq.itemCount} item{rfq.itemCount !== 1 ? 's' : ''}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(rfq.createdAt).toLocaleDateString()}
+                      {formatDateZA(rfq.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                       <Link
@@ -347,8 +348,7 @@ export default function CustomerRfqsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(rfq.updatedAt).toLocaleDateString()} at{' '}
-                      {new Date(rfq.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatDateTimeZA(rfq.updatedAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                       {rfq.isConverted ? (

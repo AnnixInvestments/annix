@@ -12,6 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import { now, nowMillis } from '../lib/datetime';
 
 import * as path from 'path';
 import * as fs from 'fs';
@@ -125,7 +126,6 @@ export class SupplierAuthService {
       });
       const savedUser = await queryRunner.manager.save(user);
 
-      // 2. Generate email verification token
       const verificationToken = this.jwtService.sign(
         {
           userId: savedUser.id,
@@ -134,10 +134,9 @@ export class SupplierAuthService {
         },
         { expiresIn: `${EMAIL_VERIFICATION_EXPIRY_HOURS}h` },
       );
-      const verificationExpires = new Date();
-      verificationExpires.setHours(
-        verificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS,
-      );
+      const verificationExpires = now()
+        .plus({ hours: EMAIL_VERIFICATION_EXPIRY_HOURS })
+        .toJSDate();
 
       // 3. Create the supplier profile (minimal info, awaiting email verification)
       const profile = this.profileRepo.create({
@@ -176,13 +175,10 @@ export class SupplierAuthService {
         ipAddress: clientIp,
       });
 
-      // Create session for immediate login
       const sessionToken = uuidv4();
       const refreshTokenValue = uuidv4();
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
+      const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
 
-      // Create a device binding for the user
       const deviceBinding = this.deviceBindingRepo.create({
         supplierProfileId: savedProfile.id,
         deviceFingerprint: 'registration-device',
@@ -201,7 +197,7 @@ export class SupplierAuthService {
         userAgent: 'registration',
         isActive: true,
         expiresAt,
-        lastActivity: new Date(),
+        lastActivity: now().toJSDate(),
       });
       await this.sessionRepo.save(session);
 
@@ -398,11 +394,9 @@ export class SupplierAuthService {
         userAgent,
       });
 
-      // Create session for immediate login
       const sessionToken = uuidv4();
       const refreshTokenValue = uuidv4();
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
+      const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
 
       const session = this.sessionRepo.create({
         supplierProfileId: savedProfile.id,
@@ -413,7 +407,7 @@ export class SupplierAuthService {
         userAgent,
         isActive: true,
         expiresAt,
-        lastActivity: new Date(),
+        lastActivity: now().toJSDate(),
       });
       await this.sessionRepo.save(session);
 
@@ -474,9 +468,8 @@ export class SupplierAuthService {
       fs.mkdirSync(supplierDir, { recursive: true });
     }
 
-    // Save VAT document
     if (vatDocument) {
-      const fileName = `vat_${Date.now()}_${vatDocument.originalname}`;
+      const fileName = `vat_${nowMillis()}_${vatDocument.originalname}`;
       const filePath = path.join(supplierDir, fileName);
 
       fs.writeFileSync(filePath, vatDocument.buffer);
@@ -495,9 +488,8 @@ export class SupplierAuthService {
       await manager.save(vatDocEntity);
     }
 
-    // Save company registration document
     if (companyRegDocument) {
-      const fileName = `company_reg_${Date.now()}_${companyRegDocument.originalname}`;
+      const fileName = `company_reg_${nowMillis()}_${companyRegDocument.originalname}`;
       const filePath = path.join(supplierDir, fileName);
 
       fs.writeFileSync(filePath, companyRegDocument.buffer);
@@ -516,9 +508,8 @@ export class SupplierAuthService {
       await manager.save(companyRegEntity);
     }
 
-    // Save BEE document
     if (beeDocument) {
-      const fileName = `bee_${Date.now()}_${beeDocument.originalname}`;
+      const fileName = `bee_${nowMillis()}_${beeDocument.originalname}`;
       const filePath = path.join(supplierDir, fileName);
 
       fs.writeFileSync(filePath, beeDocument.buffer);
@@ -572,7 +563,7 @@ export class SupplierAuthService {
 
       if (
         profile.emailVerificationExpires &&
-        new Date() > profile.emailVerificationExpires
+        now().toJSDate() > profile.emailVerificationExpires
       ) {
         throw new BadRequestException(
           'Verification token has expired. Please request a new one.',
@@ -638,15 +629,13 @@ export class SupplierAuthService {
       throw new BadRequestException('Email is already verified');
     }
 
-    // Generate new verification token
     const verificationToken = this.jwtService.sign(
       { userId: user.id, email, type: 'supplier_verification' },
       { expiresIn: `${EMAIL_VERIFICATION_EXPIRY_HOURS}h` },
     );
-    const verificationExpires = new Date();
-    verificationExpires.setHours(
-      verificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS,
-    );
+    const verificationExpires = now()
+      .plus({ hours: EMAIL_VERIFICATION_EXPIRY_HOURS })
+      .toJSDate();
 
     profile.emailVerificationToken = verificationToken;
     profile.emailVerificationExpires = verificationExpires;
@@ -709,17 +698,25 @@ export class SupplierAuthService {
 
     if (!profile) {
       // Check if user has a different role (customer or admin)
-      const userRoles = user.roles?.map(r => r.name) || [];
-      this.logger.warn(`Supplier login failed: User ${dto.email} (ID: ${user.id}) has no supplier profile. Roles: ${userRoles.join(', ')}`);
+      const userRoles = user.roles?.map((r) => r.name) || [];
+      this.logger.warn(
+        `Supplier login failed: User ${dto.email} (ID: ${user.id}) has no supplier profile. Roles: ${userRoles.join(', ')}`,
+      );
 
       if (userRoles.includes('customer')) {
-        throw new UnauthorizedException('This account is registered as a customer. Please use the customer portal to login.');
+        throw new UnauthorizedException(
+          'This account is registered as a customer. Please use the customer portal to login.',
+        );
       }
       if (userRoles.includes('admin') || userRoles.includes('superadmin')) {
-        throw new UnauthorizedException('This account is registered as an administrator. Please use the admin portal to login.');
+        throw new UnauthorizedException(
+          'This account is registered as an administrator. Please use the admin portal to login.',
+        );
       }
 
-      throw new UnauthorizedException('Supplier profile not found. Your registration may not have completed. Please try registering again or contact support.');
+      throw new UnauthorizedException(
+        'Supplier profile not found. Your registration may not have completed. Please try registering again or contact support.',
+      );
     }
 
     // DEVELOPMENT MODE: Skip email verification
@@ -789,11 +786,9 @@ export class SupplierAuthService {
       SupplierSessionInvalidationReason.NEW_LOGIN,
     );
 
-    // Create new session
     const sessionToken = uuidv4();
     const refreshToken = uuidv4();
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
+    const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
 
     const session = this.sessionRepo.create({
       supplierProfileId: profile.id,
@@ -804,7 +799,7 @@ export class SupplierAuthService {
       userAgent,
       isActive: true,
       expiresAt,
-      lastActivity: new Date(),
+      lastActivity: now().toJSDate(),
     });
     await this.sessionRepo.save(session);
 
@@ -874,7 +869,7 @@ export class SupplierAuthService {
 
     if (session) {
       session.isActive = false;
-      session.invalidatedAt = new Date();
+      session.invalidatedAt = now().toJSDate();
       session.invalidationReason = SupplierSessionInvalidationReason.LOGOUT;
       await this.sessionRepo.save(session);
 
@@ -940,13 +935,11 @@ export class SupplierAuthService {
         this.jwtService.signAsync(newPayload, { expiresIn: '7d' }),
       ]);
 
-      // Update session
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
+      const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
 
       await this.sessionRepo.update(
         { supplierProfileId: profile.id, isActive: true },
-        { sessionToken, lastActivity: new Date(), expiresAt },
+        { sessionToken, lastActivity: now().toJSDate(), expiresAt },
       );
 
       return {
@@ -981,17 +974,15 @@ export class SupplierAuthService {
 
     if (!session) return null;
 
-    // Check if expired
-    if (new Date() > session.expiresAt) {
+    if (now().toJSDate() > session.expiresAt) {
       session.isActive = false;
-      session.invalidatedAt = new Date();
+      session.invalidatedAt = now().toJSDate();
       session.invalidationReason = SupplierSessionInvalidationReason.EXPIRED;
       await this.sessionRepo.save(session);
       return null;
     }
 
-    // Update last activity
-    session.lastActivity = new Date();
+    session.lastActivity = now().toJSDate();
     await this.sessionRepo.save(session);
 
     return session;
@@ -1013,8 +1004,9 @@ export class SupplierAuthService {
     email: string,
     ipAddress: string,
   ): Promise<void> {
-    const lockoutTime = new Date();
-    lockoutTime.setMinutes(lockoutTime.getMinutes() - LOGIN_LOCKOUT_MINUTES);
+    const lockoutTime = now()
+      .minus({ minutes: LOGIN_LOCKOUT_MINUTES })
+      .toJSDate();
 
     const recentAttempts = await this.loginAttemptRepo.count({
       where: {
@@ -1062,7 +1054,7 @@ export class SupplierAuthService {
       { supplierProfileId, isActive: true },
       {
         isActive: false,
-        invalidatedAt: new Date(),
+        invalidatedAt: now().toJSDate(),
         invalidationReason: reason,
       },
     );

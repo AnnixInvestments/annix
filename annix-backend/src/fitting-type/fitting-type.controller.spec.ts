@@ -29,7 +29,10 @@ describe('FittingTypeController', () => {
       controllers: [FittingTypeController],
       providers: [
         { provide: FittingTypeService, useValue: mockFittingTypeService },
-        { provide: getRepositoryToken(FittingType), useValue: mockFittingTypeRepo },
+        {
+          provide: getRepositoryToken(FittingType),
+          useValue: mockFittingTypeRepo,
+        },
       ],
     }).compile();
 

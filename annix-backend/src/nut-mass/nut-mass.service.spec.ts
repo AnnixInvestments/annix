@@ -57,7 +57,10 @@ describe('NutMassService', () => {
       expect(mockNutMassRepo.findOne).toHaveBeenCalledWith({
         where: { bolt: { id: 1 }, mass_kg: 0.1 },
       });
-      expect(mockNutMassRepo.create).toHaveBeenCalledWith({ bolt, mass_kg: 0.1 });
+      expect(mockNutMassRepo.create).toHaveBeenCalledWith({
+        bolt,
+        mass_kg: 0.1,
+      });
     });
 
     it('should throw NotFoundException if bolt not found', async () => {
@@ -85,7 +88,9 @@ describe('NutMassService', () => {
       mockNutMassRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
-      expect(mockNutMassRepo.find).toHaveBeenCalledWith({ relations: ['bolt'] });
+      expect(mockNutMassRepo.find).toHaveBeenCalledWith({
+        relations: ['bolt'],
+      });
     });
   });
 

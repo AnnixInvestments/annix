@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
+import { formatDateTimeZA } from '@/app/lib/datetime';
 
 interface ReviewWorkflow {
   id: number;
@@ -165,15 +166,7 @@ export default function ReviewDashboardPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const formatDate = (dateString: string) => formatDateTimeZA(dateString);
 
   const getEntityInfo = (review: ReviewWorkflow) => {
     if (review.entityType === 'drawing' && review.drawing) {

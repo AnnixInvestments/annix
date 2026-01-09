@@ -115,7 +115,7 @@ describe('SteelSpecificationService', () => {
 
       // Mock findOne for the initial findOne call (to get current spec)
       jest.spyOn(service, 'findOne').mockResolvedValue(current);
-      
+
       // Mock findOne for duplicate check
       mockRepo.findOne.mockResolvedValue(existing);
 

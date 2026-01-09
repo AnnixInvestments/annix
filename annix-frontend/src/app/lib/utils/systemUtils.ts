@@ -1,5 +1,7 @@
 'use client';
 
+import { getYear, nowMillis } from '@/app/lib/datetime';
+
 /**
  * System number generation utilities
  */
@@ -10,11 +12,11 @@
  * @returns Generated RFQ number
  */
 export function generateSystemReferenceNumber(): string {
-  const year = new Date().getFullYear();
-  const timestamp = Date.now();
+  const year = getYear();
+  const timestamp = nowMillis();
   const randomNum = Math.floor(Math.random() * 1000);
   const sequence = String(timestamp % 1000 + randomNum).padStart(3, '0');
-  
+
   return `RFQ-${year}-${sequence}`;
 }
 
@@ -24,9 +26,9 @@ export function generateSystemReferenceNumber(): string {
  * @returns Generated item number
  */
 export function generateItemNumber(): string {
-  const timestamp = Date.now();
+  const timestamp = nowMillis();
   const sequence = String(timestamp % 1000).padStart(3, '0');
-  
+
   return `ITM-${sequence}`;
 }
 

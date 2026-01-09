@@ -52,7 +52,11 @@ describe('AngleRangeService', () => {
 
     it('should throw BadRequestException if angle range already exists', async () => {
       const dto = { angle_min: 0, angle_max: 90 };
-      mockRepo.findOne.mockResolvedValue({ id: 1, angle_min: 0, angle_max: 90 });
+      mockRepo.findOne.mockResolvedValue({
+        id: 1,
+        angle_min: 0,
+        angle_max: 90,
+      });
 
       await expect(service.create(dto)).rejects.toThrow(BadRequestException);
       expect(mockRepo.findOne).toHaveBeenCalledWith({
@@ -67,7 +71,9 @@ describe('AngleRangeService', () => {
       mockRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
-      expect(mockRepo.find).toHaveBeenCalledWith({ relations: ['fittingDimensions'] });
+      expect(mockRepo.find).toHaveBeenCalledWith({
+        relations: ['fittingDimensions'],
+      });
     });
   });
 

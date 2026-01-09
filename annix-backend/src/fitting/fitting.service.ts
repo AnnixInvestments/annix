@@ -228,7 +228,9 @@ export class FittingService {
     for (const scheduleFormat of scheduleFormats) {
       pipeDimension = await this.pipeDimensionRepository.findOne({
         where: {
-          nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalDiameterMm },
+          nominalOutsideDiameter: {
+            nominal_diameter_mm: dto.nominalDiameterMm,
+          },
           schedule_designation: scheduleFormat,
           ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
         },
@@ -418,7 +420,8 @@ export class FittingService {
       Math.PI *
       Math.pow(outsideDiameterMm / 1000, 2) * // (mm to m)²
       0.5; // factor for tee/cross/lateral shape
-    const fittingWeight = estimatedVolumeM3 * steelDensityKgM3 * dto.quantityValue;
+    const fittingWeight =
+      estimatedVolumeM3 * steelDensityKgM3 * dto.quantityValue;
 
     // For SABS62, typically 3 flanges for tees/crosses/laterals
     const numberOfFlangesPerFitting = 3;

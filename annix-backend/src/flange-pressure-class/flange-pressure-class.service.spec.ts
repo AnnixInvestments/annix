@@ -24,8 +24,14 @@ describe('FlangePressureClassService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FlangePressureClassService,
-        { provide: getRepositoryToken(FlangePressureClass), useValue: mockPressureRepo },
-        { provide: getRepositoryToken(FlangeStandard), useValue: mockStandardRepo },
+        {
+          provide: getRepositoryToken(FlangePressureClass),
+          useValue: mockPressureRepo,
+        },
+        {
+          provide: getRepositoryToken(FlangeStandard),
+          useValue: mockStandardRepo,
+        },
       ],
     }).compile();
 
@@ -46,7 +52,9 @@ describe('FlangePressureClassService', () => {
       mockPressureRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
-      expect(mockPressureRepo.find).toHaveBeenCalledWith({ relations: ['standard'] });
+      expect(mockPressureRepo.find).toHaveBeenCalledWith({
+        relations: ['standard'],
+      });
     });
   });
 
@@ -109,7 +117,9 @@ describe('FlangePressureClassService', () => {
     it('should throw NotFoundException if standard not found', async () => {
       mockStandardRepo.findOne.mockResolvedValue(undefined);
 
-      await expect(service.getAllByStandard(1)).rejects.toThrow(NotFoundException);
+      await expect(service.getAllByStandard(1)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

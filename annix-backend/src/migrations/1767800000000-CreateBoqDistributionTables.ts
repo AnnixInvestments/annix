@@ -1,4 +1,10 @@
-import { MigrationInterface, QueryRunner, Table, TableIndex, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableIndex,
+  TableForeignKey,
+} from 'typeorm';
 
 export class CreateBoqDistributionTables1767800000000 implements MigrationInterface {
   name = 'CreateBoqDistributionTables1767800000000';
@@ -245,8 +251,14 @@ export class CreateBoqDistributionTables1767800000000 implements MigrationInterf
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop foreign keys
-    await queryRunner.dropForeignKey('boq_supplier_access', 'FK_boq_supplier_access_supplier_profile');
-    await queryRunner.dropForeignKey('boq_supplier_access', 'FK_boq_supplier_access_boq');
+    await queryRunner.dropForeignKey(
+      'boq_supplier_access',
+      'FK_boq_supplier_access_supplier_profile',
+    );
+    await queryRunner.dropForeignKey(
+      'boq_supplier_access',
+      'FK_boq_supplier_access_boq',
+    );
     await queryRunner.dropForeignKey('boq_sections', 'FK_boq_sections_boq');
 
     // Drop tables

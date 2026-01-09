@@ -10,6 +10,8 @@
  * - OpenWeatherMap: Temperature & Humidity (Global, requires API key)
  */
 
+import { nowMillis, generateUniqueId } from '@/app/lib/datetime';
+
 // API Base URLs
 const SOILGRIDS_BASE = 'https://rest.isric.org/soilgrids/v2.0';
 const ISDASOIL_BASE = 'https://api.isda-africa.com';
@@ -279,7 +281,7 @@ async function getISDAsoilToken(): Promise<string | null> {
   }
 
   // Check if we have a valid cached token
-  if (iSDAsoilToken && iSDAsoilToken.expires > Date.now()) {
+  if (iSDAsoilToken && iSDAsoilToken.expires > nowMillis()) {
     return iSDAsoilToken.token;
   }
 
@@ -311,7 +313,7 @@ async function getISDAsoilToken(): Promise<string | null> {
     // Cache token for 55 minutes (5 minutes before expiry)
     iSDAsoilToken = {
       token,
-      expires: Date.now() + 55 * 60 * 1000,
+      expires: nowMillis() + 55 * 60 * 1000,
     };
 
     return token;
@@ -499,7 +501,7 @@ export async function fetchAgromonitoringSoilMoisture(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: `temp_${Date.now()}`,
+          name: `temp_${generateUniqueId()}`,
           geo_json: {
             type: 'Feature',
             properties: {},

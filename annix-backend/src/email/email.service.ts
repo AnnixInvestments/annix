@@ -661,9 +661,7 @@ export class EmailService {
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const boqLink = `${frontendUrl}/supplier/portal/boqs`;
 
-    const sectionsList = sections
-      .map((s) => `<li>${s}</li>`)
-      .join('');
+    const sectionsList = sections.map((s) => `<li>${s}</li>`).join('');
 
     const customerSection = customerDetails
       ? `
@@ -760,9 +758,7 @@ export class EmailService {
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const boqLink = `${frontendUrl}/supplier/portal/boqs`;
 
-    const sectionsList = sections
-      .map((s) => `<li>${s}</li>`)
-      .join('');
+    const sectionsList = sections.map((s) => `<li>${s}</li>`).join('');
 
     const html = `
       <!DOCTYPE html>

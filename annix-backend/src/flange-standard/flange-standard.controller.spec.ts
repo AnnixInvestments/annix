@@ -29,7 +29,10 @@ describe('FlangeStandardController', () => {
       controllers: [FlangeStandardController],
       providers: [
         { provide: FlangeStandardService, useValue: mockFlangeStandardService },
-        { provide: getRepositoryToken(FlangeStandard), useValue: mockStandardRepo },
+        {
+          provide: getRepositoryToken(FlangeStandard),
+          useValue: mockStandardRepo,
+        },
       ],
     }).compile();
 

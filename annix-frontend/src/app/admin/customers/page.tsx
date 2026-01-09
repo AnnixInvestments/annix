@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { adminCustomerApi, CustomerListItem, CustomerListResponse } from '@/app/lib/api/adminCustomerApi';
+import { formatDateZA } from '@/app/lib/datetime';
 
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<CustomerListItem[]>([]);
@@ -209,7 +210,7 @@ export default function AdminCustomersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(customer.createdAt).toLocaleDateString()}
+                      {formatDateZA(customer.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link

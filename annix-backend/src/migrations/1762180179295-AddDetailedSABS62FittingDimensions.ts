@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddDetailedSABS62FittingDimensions1762180179295
-  implements MigrationInterface
-{
+export class AddDetailedSABS62FittingDimensions1762180179295 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log('🔧 Adding detailed SABS 62 fitting dimensions...');
 

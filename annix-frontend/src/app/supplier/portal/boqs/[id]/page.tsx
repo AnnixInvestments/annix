@@ -13,6 +13,7 @@ import {
   RfqItemDetail,
 } from '@/app/lib/api/supplierApi';
 import { useToast } from '@/app/components/Toast';
+import { formatDateTimeZA, nowISO } from '@/app/lib/datetime';
 
 const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label: string }> = {
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
@@ -167,19 +168,13 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     });
 
     // Download
-    const fileName = `BOQ_${boqDetail.boq.boqNumber}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = `BOQ_${boqDetail.boq.boqNumber}_${nowISO().split('T')[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
   };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatDateTimeZA(dateString);
   };
 
   if (loading) {

@@ -9,6 +9,7 @@ import {
 } from '@/app/lib/api/customerApi';
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
 import { DocumentActionButtons } from '@/app/components/DocumentActionButtons';
+import { formatDateZA } from '@/app/lib/datetime';
 
 const DOCUMENT_TYPES = [
   { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)' },
@@ -169,11 +170,7 @@ export default function CustomerDocumentsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatDateZA(dateString);
   };
 
   if (isLoading) {

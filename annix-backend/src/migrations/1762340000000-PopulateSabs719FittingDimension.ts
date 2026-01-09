@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class PopulateSabs719FittingDimension1762340000000
-  implements MigrationInterface
-{
+export class PopulateSabs719FittingDimension1762340000000 implements MigrationInterface {
   name = 'PopulateSabs719FittingDimension1762340000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

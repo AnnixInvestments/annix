@@ -32,7 +32,10 @@ describe('SteelSpecificationController', () => {
             remove: jest.fn(),
           },
         },
-        { provide: getRepositoryToken(SteelSpecification), useValue: mockSteelSpecRepo },
+        {
+          provide: getRepositoryToken(SteelSpecification),
+          useValue: mockSteelSpecRepo,
+        },
       ],
     }).compile();
 
@@ -65,7 +68,9 @@ describe('SteelSpecificationController', () => {
 
   describe('findAll', () => {
     it('should return an array of steel specifications', async () => {
-      const result: SteelSpecification[] = [{ id: 1, steelSpecName: 'S355', fittings: [], pipeDimensions: [] }];
+      const result: SteelSpecification[] = [
+        { id: 1, steelSpecName: 'S355', fittings: [], pipeDimensions: [] },
+      ];
       service.findAll.mockResolvedValue(result);
 
       expect(await controller.findAll()).toEqual(result);
@@ -75,7 +80,12 @@ describe('SteelSpecificationController', () => {
 
   describe('findOne', () => {
     it('should return a single steel specification by id', async () => {
-      const result: SteelSpecification = { id: 1, steelSpecName: 'S355', fittings: [], pipeDimensions: [] };
+      const result: SteelSpecification = {
+        id: 1,
+        steelSpecName: 'S355',
+        fittings: [],
+        pipeDimensions: [],
+      };
       service.findOne.mockResolvedValue(result);
 
       expect(await controller.findOne(1)).toEqual(result);

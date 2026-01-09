@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { customerPortalApi, CustomerProfileResponse } from '@/app/lib/api/customerApi';
+import { formatDateTimeZA } from '@/app/lib/datetime';
 
 export default function CustomerProfilePage() {
   const { refreshProfile } = useCustomerAuth();
@@ -394,7 +395,7 @@ export default function CustomerProfilePage() {
                   <p className="text-sm font-medium text-gray-900">Device Registered</p>
                   <p className="text-sm text-gray-500">
                     {profile?.security.registeredAt
-                      ? new Date(profile.security.registeredAt).toLocaleString()
+                      ? formatDateTimeZA(profile.security.registeredAt)
                       : 'N/A'}
                   </p>
                 </div>

@@ -2,12 +2,10 @@ import {
   Injectable,
   UnauthorizedException,
   ForbiddenException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { AdminSession } from './entities/admin-session.entity';
 import { User } from '../user/entities/user.entity';
@@ -18,6 +16,7 @@ import {
   AdminLoginResponseDto,
   TokenResponseDto,
 } from './dto/admin-auth.dto';
+import { now } from '../lib/datetime';
 
 @Injectable()
 export class AdminAuthService {
@@ -107,10 +106,8 @@ export class AdminAuthService {
     //   throw new ForbiddenException(`Your account is ${user.status}. Please contact your administrator.`);
     // }
 
-    // Create session token
     const sessionToken = uuidv4();
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+    const expiresAt = now().plus({ days: 7 }).toJSDate();
 
     // Save session
     const session = this.adminSessionRepository.create({
@@ -149,8 +146,7 @@ export class AdminAuthService {
       userAgent,
     });
 
-    // Update last login
-    user.lastLoginAt = new Date();
+    user.lastLoginAt = now().toJSDate();
     await this.userRepository.save(user);
 
     return {
@@ -178,7 +174,7 @@ export class AdminAuthService {
 
     if (session) {
       session.isRevoked = true;
-      session.revokedAt = new Date();
+      session.revokedAt = now().toJSDate();
       await this.adminSessionRepository.save(session);
 
       const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -200,7 +196,7 @@ export class AdminAuthService {
       where: {
         sessionToken,
         isRevoked: false,
-        expiresAt: MoreThan(new Date()),
+        expiresAt: MoreThan(now().toJSDate()),
       },
       relations: ['user', 'user.roles'],
     });
@@ -209,8 +205,7 @@ export class AdminAuthService {
       throw new UnauthorizedException('Invalid or expired session');
     }
 
-    // Update last active time
-    session.lastActiveAt = new Date();
+    session.lastActiveAt = now().toJSDate();
     await this.adminSessionRepository.save(session);
 
     return session.user;

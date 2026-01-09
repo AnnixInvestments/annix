@@ -96,6 +96,11 @@ import { AdminModule } from '../admin/admin.module';
     CustomerSupplierService,
     DocumentOcrService,
   ],
-  exports: [CustomerAuthService, CustomerService, CustomerOnboardingService, JwtModule],
+  exports: [
+    CustomerAuthService,
+    CustomerService,
+    CustomerOnboardingService,
+    JwtModule,
+  ],
 })
 export class CustomerModule {}

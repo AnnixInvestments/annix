@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class PopulateWeldTypesAndPipeEndConfigurationsData1699375000000
-  implements MigrationInterface
-{
+export class PopulateWeldTypesAndPipeEndConfigurationsData1699375000000 implements MigrationInterface {
   name = 'PopulateWeldTypesAndPipeEndConfigurationsData1699375000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

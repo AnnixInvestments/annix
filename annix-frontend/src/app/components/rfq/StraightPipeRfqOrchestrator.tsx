@@ -78,6 +78,7 @@ import {
   suitableMaterials as getSuitableMaterials,
   getScheduleListForSpec,
 } from '@/app/lib/config/rfq';
+import { generateUniqueId, nowISO } from '@/app/lib/datetime';
 import ProjectDetailsStep, { PendingDocument } from './steps/ProjectDetailsStep';
 import SpecificationsStep from './steps/SpecificationsStep';
 import ItemUploadStep from './steps/ItemUploadStep';
@@ -249,7 +250,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const handleAddDocument = (file: File) => {
     const newDoc: PendingDocument = {
       file,
-      id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
     };
     setPendingDocuments(prev => [...prev, newDoc]);
   };
@@ -1715,7 +1716,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       localStorage.setItem('annix_rfq_draft', JSON.stringify({
         ...saveData,
         draftNumber: result.draftNumber,
-        savedAt: new Date().toISOString(),
+        savedAt: nowISO(),
       }));
 
       // Show confirmation
@@ -1731,7 +1732,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           localStorage.setItem('annix_rfq_draft', JSON.stringify({
             rfqData,
             currentStep,
-            savedAt: new Date().toISOString(),
+            savedAt: nowISO(),
           }));
           console.log('✅ RFQ progress saved to localStorage (session expired, will sync after login)');
         } catch (e) {
@@ -1744,7 +1745,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         localStorage.setItem('annix_rfq_draft', JSON.stringify({
           rfqData,
           currentStep,
-          savedAt: new Date().toISOString(),
+          savedAt: nowISO(),
         }));
         setShowSaveConfirmation(true);
         setTimeout(() => setShowSaveConfirmation(false), 3000);

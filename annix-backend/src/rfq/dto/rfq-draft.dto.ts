@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { RfqStatus } from '../entities/rfq.entity';
-import { IsOptional, IsString, IsNumber, IsArray, IsObject, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsArray,
+  IsObject,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class SaveRfqDraftDto {
   @ApiPropertyOptional({

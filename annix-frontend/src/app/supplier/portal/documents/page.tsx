@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supplierPortalApi, SupplierDocumentDto, OnboardingStatusResponse } from '@/app/lib/api/supplierApi';
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
 import { DocumentActionButtons } from '@/app/components/DocumentActionButtons';
+import { formatDateZA } from '@/app/lib/datetime';
 
 const documentTypes = [
   { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)', required: true },
@@ -332,10 +333,10 @@ export default function SupplierDocumentsPage() {
                     {formatFileSize(doc.fileSize)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(doc.uploadedAt).toLocaleDateString()}
+                    {formatDateZA(doc.uploadedAt)}
                     {doc.expiryDate && (
                       <p className="text-xs text-gray-400">
-                        Expires: {new Date(doc.expiryDate).toLocaleDateString()}
+                        Expires: {formatDateZA(doc.expiryDate)}
                       </p>
                     )}
                   </td>

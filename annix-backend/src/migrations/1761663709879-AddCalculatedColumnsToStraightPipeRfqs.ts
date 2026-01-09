@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddCalculatedColumnsToStraightPipeRfqs1761663709879
-  implements MigrationInterface
-{
+export class AddCalculatedColumnsToStraightPipeRfqs1761663709879 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log(
       '➕ Adding calculated_od_mm and calculated_wt_mm columns to straight_pipe_rfqs...',

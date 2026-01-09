@@ -30,8 +30,14 @@ describe('FittingBoreService', () => {
       providers: [
         FittingBoreService,
         { provide: getRepositoryToken(FittingBore), useValue: mockBoreRepo },
-        { provide: getRepositoryToken(FittingVariant), useValue: mockVariantRepo },
-        { provide: getRepositoryToken(NominalOutsideDiameterMm), useValue: mockNominalRepo },
+        {
+          provide: getRepositoryToken(FittingVariant),
+          useValue: mockVariantRepo,
+        },
+        {
+          provide: getRepositoryToken(NominalOutsideDiameterMm),
+          useValue: mockNominalRepo,
+        },
       ],
     }).compile();
 
@@ -49,18 +55,31 @@ describe('FittingBoreService', () => {
       const dto = { variantId: 1, nominalId: 1, borePosition: 'center' };
       const variant = { id: 1 } as FittingVariant;
       const nominal = { id: 1 } as NominalOutsideDiameterMm;
-      const entity = { id: 1, variant, nominalOutsideDiameter: nominal, borePositionName: 'center' } as FittingBore;
+      const entity = {
+        id: 1,
+        variant,
+        nominalOutsideDiameter: nominal,
+        borePositionName: 'center',
+      } as FittingBore;
 
       mockVariantRepo.findOne.mockResolvedValue(variant);
       mockNominalRepo.findOne.mockResolvedValue(nominal);
       mockBoreRepo.findOne.mockResolvedValue(undefined);
-      mockBoreRepo.create.mockReturnValue({ variant, nominalOutsideDiameter: nominal, borePositionName: 'center' });
+      mockBoreRepo.create.mockReturnValue({
+        variant,
+        nominalOutsideDiameter: nominal,
+        borePositionName: 'center',
+      });
       mockBoreRepo.save.mockResolvedValue(entity);
 
       const result = await service.create(dto);
       expect(result).toEqual(entity);
-      expect(mockVariantRepo.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
-      expect(mockNominalRepo.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(mockVariantRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1 },
+      });
+      expect(mockNominalRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1 },
+      });
       expect(mockBoreRepo.create).toHaveBeenCalledWith({
         variant,
         nominalOutsideDiameter: nominal,

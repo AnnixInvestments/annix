@@ -9,6 +9,7 @@ import { adminApiClient } from '@/app/lib/api/adminApi'
 import { customerApiClient } from '@/app/lib/api/customerApi'
 import { supplierApiClient } from '@/app/lib/api/supplierApi'
 import { getStoredFingerprint, generateFingerprint } from '@/app/hooks/useDeviceFingerprint'
+import { nowMillis } from '@/app/lib/datetime'
 
 type UserType = 'admin' | 'customer' | 'supplier' | null;
 
@@ -39,7 +40,7 @@ export default function Navigation() {
         try {
           const { email: savedEmail, password: savedPassword, expiry } = JSON.parse(savedCredentials);
           // Check if credentials have expired (7 days)
-          if (expiry && new Date().getTime() < expiry) {
+          if (expiry && nowMillis() < expiry) {
             setEmail(savedEmail);
             setPassword(savedPassword);
             setRememberMe(true);
@@ -115,7 +116,7 @@ export default function Navigation() {
     const handleRememberMe = (loginEmail: string, loginPassword: string) => {
       if (rememberMe) {
         // Save credentials with 7-day expiry
-        const expiry = new Date().getTime() + (7 * 24 * 60 * 60 * 1000); // 7 days
+        const expiry = nowMillis() + (7 * 24 * 60 * 60 * 1000); // 7 days
         localStorage.setItem('rememberedCredentials', JSON.stringify({
           email: loginEmail,
           password: loginPassword,

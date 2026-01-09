@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supplierPortalApi, SupplierBoqListItem, SupplierBoqStatus } from '@/app/lib/api/supplierApi';
+import { formatDateZA, fromISO, now } from '@/app/lib/datetime';
 
 const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label: string }> = {
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
@@ -17,20 +18,18 @@ const isBoqOpen = (boq: SupplierBoqListItem): boolean => {
     return false;
   }
   if (boq.projectInfo?.requiredDate) {
-    const deadline = new Date(boq.projectInfo.requiredDate);
-    return deadline > new Date();
+    const deadline = fromISO(boq.projectInfo.requiredDate);
+    return deadline > now();
   }
   return true;
 };
 
 const getDaysUntilDeadline = (dateString?: string): number | null => {
   if (!dateString) return null;
-  const deadline = new Date(dateString);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  deadline.setHours(0, 0, 0, 0);
-  const diffTime = deadline.getTime() - today.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const deadline = fromISO(dateString).startOf('day');
+  const today = now().startOf('day');
+  const diffDays = deadline.diff(today, 'days').days;
+  return Math.ceil(diffDays);
 };
 
 export default function SupplierBoqsPage() {
@@ -71,11 +70,7 @@ export default function SupplierBoqsPage() {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatDateZA(dateString);
   };
 
   return (

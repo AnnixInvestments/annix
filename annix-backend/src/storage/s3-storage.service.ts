@@ -5,6 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { nowISO } from '../lib/datetime';
 import {
   S3Client,
   PutObjectCommand,
@@ -180,7 +181,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
         ContentType: file.mimetype,
         Metadata: {
           originalFilename: encodeURIComponent(file.originalname),
-          uploadedAt: new Date().toISOString(),
+          uploadedAt: nowISO(),
         },
       });
 

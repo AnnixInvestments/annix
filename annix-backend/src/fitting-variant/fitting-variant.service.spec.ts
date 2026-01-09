@@ -34,10 +34,16 @@ describe('FittingVariantService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FittingVariantService,
-        { provide: getRepositoryToken(FittingVariant), useValue: mockVariantRepo },
+        {
+          provide: getRepositoryToken(FittingVariant),
+          useValue: mockVariantRepo,
+        },
         { provide: getRepositoryToken(Fitting), useValue: mockFittingRepo },
         { provide: getRepositoryToken(FittingBore), useValue: mockBoreRepo },
-        { provide: getRepositoryToken(FittingDimension), useValue: mockDimensionRepo },
+        {
+          provide: getRepositoryToken(FittingDimension),
+          useValue: mockDimensionRepo,
+        },
       ],
     }).compile();
 

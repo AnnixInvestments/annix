@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { now } from '../lib/datetime';
 import { Boq, BoqStatus } from './entities/boq.entity';
 import { BoqLineItem, BoqItemType } from './entities/boq-line-item.entity';
 import { CreateBoqDto } from './dto/create-boq.dto';
@@ -46,7 +47,7 @@ export class BoqService {
       return rfqNumber.replace('RFQ-', 'BOQ-');
     }
 
-    const year = new Date().getFullYear();
+    const year = now().year;
     const prefix = `BOQ-${year}-`;
 
     const lastBoq = await this.boqRepository
@@ -69,7 +70,9 @@ export class BoqService {
     let rfqItems: RfqItem[] = [];
 
     if (dto.rfqId) {
-      const rfq = await this.rfqRepository.findOne({ where: { id: dto.rfqId } });
+      const rfq = await this.rfqRepository.findOne({
+        where: { id: dto.rfqId },
+      });
       if (rfq) {
         rfqNumber = rfq.rfqNumber;
       }
@@ -103,8 +106,12 @@ export class BoqService {
         lineItem.itemType = this.mapRfqItemTypeToBoqItemType(rfqItem.itemType);
         lineItem.unitOfMeasure = 'EA';
         lineItem.quantity = rfqItem.quantity || 1;
-        lineItem.unitWeightKg = rfqItem.weightPerUnitKg ? Number(rfqItem.weightPerUnitKg) : undefined;
-        lineItem.totalWeightKg = rfqItem.totalWeightKg ? Number(rfqItem.totalWeightKg) : undefined;
+        lineItem.unitWeightKg = rfqItem.weightPerUnitKg
+          ? Number(rfqItem.weightPerUnitKg)
+          : undefined;
+        lineItem.totalWeightKg = rfqItem.totalWeightKg
+          ? Number(rfqItem.totalWeightKg)
+          : undefined;
         lineItem.notes = rfqItem.notes;
         return lineItem;
       });
@@ -117,7 +124,11 @@ export class BoqService {
       entityType: 'boq',
       entityId: savedBoq.id,
       action: AuditAction.CREATE,
-      newValues: { boqNumber, title: dto.title, lineItemsCreated: rfqItems.length },
+      newValues: {
+        boqNumber,
+        title: dto.title,
+        lineItemsCreated: rfqItems.length,
+      },
       performedBy: user,
     });
 
@@ -125,13 +136,14 @@ export class BoqService {
   }
 
   private generateItemCode(itemType: string, lineNumber: number): string {
-    const typePrefix = {
-      straight_pipe: 'PIPE',
-      bend: 'BEND',
-      fitting: 'FIT',
-      flange: 'FLG',
-      custom: 'CUST',
-    }[itemType] || 'ITEM';
+    const typePrefix =
+      {
+        straight_pipe: 'PIPE',
+        bend: 'BEND',
+        fitting: 'FIT',
+        flange: 'FLG',
+        custom: 'CUST',
+      }[itemType] || 'ITEM';
     return `${typePrefix}-${String(lineNumber).padStart(3, '0')}`;
   }
 

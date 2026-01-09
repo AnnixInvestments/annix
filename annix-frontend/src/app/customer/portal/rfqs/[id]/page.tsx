@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiClient } from '@/app/lib/api/client';
+import { formatDateZA } from '@/app/lib/datetime';
 
 interface RfqDetail {
   id: number;
@@ -190,14 +191,14 @@ export default function CustomerRfqDetailPage() {
               <div className="flex justify-between">
                 <dt className="text-sm text-gray-500">Created</dt>
                 <dd className="text-sm text-gray-900">
-                  {new Date(rfq.createdAt).toLocaleDateString()}
+                  {formatDateZA(rfq.createdAt)}
                 </dd>
               </div>
               {rfq.requiredDate && (
                 <div className="flex justify-between">
                   <dt className="text-sm text-gray-500">Required By</dt>
                   <dd className="text-sm text-gray-900">
-                    {new Date(rfq.requiredDate).toLocaleDateString()}
+                    {formatDateZA(rfq.requiredDate)}
                   </dd>
                 </div>
               )}

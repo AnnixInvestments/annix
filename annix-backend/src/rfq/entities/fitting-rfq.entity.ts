@@ -17,7 +17,12 @@ export class FittingRfq {
   id: number;
 
   @ApiProperty({ description: 'Nominal diameter in mm', example: 500 })
-  @Column({ name: 'nominal_diameter_mm', type: 'decimal', precision: 10, scale: 3 })
+  @Column({
+    name: 'nominal_diameter_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 3,
+  })
   nominalDiameterMm: number;
 
   @ApiProperty({ description: 'Schedule number', example: 'WT6' })
@@ -25,7 +30,13 @@ export class FittingRfq {
   scheduleNumber: string;
 
   @ApiProperty({ description: 'Wall thickness in mm', example: 6 })
-  @Column({ name: 'wall_thickness_mm', type: 'decimal', precision: 10, scale: 3, nullable: true })
+  @Column({
+    name: 'wall_thickness_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 3,
+    nullable: true,
+  })
   wallThicknessMm?: number;
 
   @ApiProperty({ description: 'Fitting type', example: 'SHORT_TEE' })
@@ -33,19 +44,41 @@ export class FittingRfq {
   fittingType: string;
 
   @ApiProperty({ description: 'Fitting standard', example: 'SABS719' })
-  @Column({ name: 'fitting_standard', type: 'varchar', length: 50, nullable: true })
+  @Column({
+    name: 'fitting_standard',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   fittingStandard?: string;
 
   @ApiProperty({ description: 'Pipe length A in mm', example: 1020 })
-  @Column({ name: 'pipe_length_a_mm', type: 'decimal', precision: 10, scale: 3, nullable: true })
+  @Column({
+    name: 'pipe_length_a_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 3,
+    nullable: true,
+  })
   pipeLengthAMm?: number;
 
   @ApiProperty({ description: 'Pipe length B in mm', example: 510 })
-  @Column({ name: 'pipe_length_b_mm', type: 'decimal', precision: 10, scale: 3, nullable: true })
+  @Column({
+    name: 'pipe_length_b_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 3,
+    nullable: true,
+  })
   pipeLengthBMm?: number;
 
   @ApiProperty({ description: 'Pipe end configuration', example: 'F2E_RF' })
-  @Column({ name: 'pipe_end_configuration', type: 'varchar', length: 50, nullable: true })
+  @Column({
+    name: 'pipe_end_configuration',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   pipeEndConfiguration?: string;
 
   @ApiProperty({ description: 'Whether to add blank flange', example: true })
@@ -56,28 +89,60 @@ export class FittingRfq {
   @Column({ name: 'blank_flange_count', type: 'int', nullable: true })
   blankFlangeCount?: number;
 
-  @ApiProperty({ description: 'Blank flange positions as JSON array', example: '["inlet"]' })
+  @ApiProperty({
+    description: 'Blank flange positions as JSON array',
+    example: '["inlet"]',
+  })
   @Column({ name: 'blank_flange_positions', type: 'json', nullable: true })
   blankFlangePositions?: string[];
 
   @ApiProperty({ description: 'Quantity value', example: 1 })
-  @Column({ name: 'quantity_value', type: 'decimal', precision: 10, scale: 2, default: 1 })
+  @Column({
+    name: 'quantity_value',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 1,
+  })
   quantityValue: number;
 
   @ApiProperty({ description: 'Quantity type', example: 'number_of_items' })
-  @Column({ name: 'quantity_type', type: 'varchar', length: 50, default: 'number_of_items' })
+  @Column({
+    name: 'quantity_type',
+    type: 'varchar',
+    length: 50,
+    default: 'number_of_items',
+  })
   quantityType: string;
 
   @ApiProperty({ description: 'Working pressure in bar', example: 10 })
-  @Column({ name: 'working_pressure_bar', type: 'decimal', precision: 6, scale: 2, nullable: true })
+  @Column({
+    name: 'working_pressure_bar',
+    type: 'decimal',
+    precision: 6,
+    scale: 2,
+    nullable: true,
+  })
   workingPressureBar?: number;
 
   @ApiProperty({ description: 'Working temperature in Celsius', example: 50 })
-  @Column({ name: 'working_temperature_c', type: 'decimal', precision: 5, scale: 2, nullable: true })
+  @Column({
+    name: 'working_temperature_c',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+  })
   workingTemperatureC?: number;
 
   @ApiProperty({ description: 'Total weight in kg', example: 125.52 })
-  @Column({ name: 'total_weight_kg', type: 'decimal', precision: 10, scale: 3, nullable: true })
+  @Column({
+    name: 'total_weight_kg',
+    type: 'decimal',
+    precision: 10,
+    scale: 3,
+    nullable: true,
+  })
   totalWeightKg?: number;
 
   @ApiProperty({ description: 'Number of flanges', example: 3 })

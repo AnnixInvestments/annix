@@ -38,10 +38,22 @@ describe('FittingDimensionController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [FittingDimensionController],
       providers: [
-        { provide: FittingDimensionService, useValue: mockFittingDimensionService },
-        { provide: getRepositoryToken(FittingDimension), useValue: mockDimRepo },
-        { provide: getRepositoryToken(FittingVariant), useValue: mockVariantRepo },
-        { provide: getRepositoryToken(AngleRange), useValue: mockAngleRangeRepo },
+        {
+          provide: FittingDimensionService,
+          useValue: mockFittingDimensionService,
+        },
+        {
+          provide: getRepositoryToken(FittingDimension),
+          useValue: mockDimRepo,
+        },
+        {
+          provide: getRepositoryToken(FittingVariant),
+          useValue: mockVariantRepo,
+        },
+        {
+          provide: getRepositoryToken(AngleRange),
+          useValue: mockAngleRangeRepo,
+        },
       ],
     }).compile();
 

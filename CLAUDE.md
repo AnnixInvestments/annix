@@ -24,6 +24,22 @@
     - ✅ `isEmpty()`, `isArray()`, `isObject()` etc.
     - ❌ Direct `===` for object comparisons
 
+### Date/Time Handling
+- **Always use Luxon via the datetime module**: Never use native `Date`, `Date.now()`, or `Date.parse()`
+- **Frontend**: Import from `@/app/lib/datetime`
+- **Backend**: Import from `../lib/datetime` (relative to src)
+- **Never import directly from 'luxon'**: All Luxon imports must go through the datetime module
+- **Default timezone**: Africa/Johannesburg is set as the default zone
+- **Common patterns**:
+    - `now()` - current DateTime
+    - `nowISO()` - current time as ISO string
+    - `nowMillis()` - current timestamp in milliseconds
+    - `fromISO(string)` - parse ISO date string to DateTime
+    - `fromJSDate(date)` - convert JS Date to DateTime
+    - `now().toJSDate()` - for TypeORM entity Date fields
+    - `formatDateZA()`, `formatDateLongZA()` - localized date formatting
+- **ESLint enforces this**: Native Date usage will trigger lint errors
+
 ### Error Handling
 - **No empty catches**: Never add `catch {}` or `catch (e) {}` blocks without at least one of:
     - Logging a meaningful message through the appropriate logger, or

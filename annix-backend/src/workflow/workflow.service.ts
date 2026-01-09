@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { now, fromISO } from '../lib/datetime';
 import {
   ReviewWorkflow,
   ReviewStatus,
@@ -91,7 +92,7 @@ export class WorkflowService {
       currentStatus: ReviewStatus.SUBMITTED,
       previousStatus: ReviewStatus.DRAFT,
       submittedBy: user,
-      submittedAt: new Date(),
+      submittedAt: now().toJSDate(),
       isActive: true,
     });
 
@@ -208,7 +209,7 @@ export class WorkflowService {
     workflow.currentStatus = newStatus;
     workflow.decidedBy = user;
     workflow.decisionNotes = notes;
-    workflow.decidedAt = new Date();
+    workflow.decidedAt = now().toJSDate();
 
     const saved = await this.workflowRepository.save(workflow);
 
@@ -247,7 +248,7 @@ export class WorkflowService {
 
     workflow.assignedReviewer = { id: dto.reviewerUserId } as User;
     if (dto.dueDate) {
-      workflow.dueDate = new Date(dto.dueDate);
+      workflow.dueDate = fromISO(dto.dueDate).toJSDate();
     }
 
     if (workflow.currentStatus === ReviewStatus.SUBMITTED) {

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddFlangeSpecificationData1762269000000
-  implements MigrationInterface
-{
+export class AddFlangeSpecificationData1762269000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log('🔩 Adding comprehensive flange specification data...');
 

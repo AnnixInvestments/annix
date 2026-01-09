@@ -25,8 +25,14 @@ describe('PipePressureService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PipePressureService,
-        { provide: getRepositoryToken(PipePressure), useValue: mockPressureRepo },
-        { provide: getRepositoryToken(PipeDimension), useValue: mockDimensionRepo },
+        {
+          provide: getRepositoryToken(PipePressure),
+          useValue: mockPressureRepo,
+        },
+        {
+          provide: getRepositoryToken(PipeDimension),
+          useValue: mockDimensionRepo,
+        },
       ],
     }).compile();
 
@@ -45,7 +51,9 @@ describe('PipePressureService', () => {
       mockPressureRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
-      expect(mockPressureRepo.find).toHaveBeenCalledWith({ relations: ['pipeDimension'] });
+      expect(mockPressureRepo.find).toHaveBeenCalledWith({
+        relations: ['pipeDimension'],
+      });
     });
   });
 

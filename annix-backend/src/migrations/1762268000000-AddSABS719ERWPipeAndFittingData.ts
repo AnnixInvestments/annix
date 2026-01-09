@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddSABS719ERWPipeAndFittingData1762268000000
-  implements MigrationInterface
-{
+export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationInterface {
   name = 'AddSABS719ERWPipeAndFittingData1762268000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

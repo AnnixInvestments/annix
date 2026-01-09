@@ -14,11 +14,11 @@ import { SupplierProfile } from '../../supplier/entities/supplier-profile.entity
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum SupplierBoqStatus {
-  PENDING = 'pending',       // Awaiting supplier response
-  VIEWED = 'viewed',         // Supplier has viewed the BOQ
-  QUOTED = 'quoted',         // Supplier has submitted quote
-  DECLINED = 'declined',     // Supplier declined to quote
-  EXPIRED = 'expired',       // Quote deadline passed
+  PENDING = 'pending', // Awaiting supplier response
+  VIEWED = 'viewed', // Supplier has viewed the BOQ
+  QUOTED = 'quoted', // Supplier has submitted quote
+  DECLINED = 'declined', // Supplier declined to quote
+  EXPIRED = 'expired', // Quote deadline passed
 }
 
 /**
@@ -86,7 +86,9 @@ export class BoqSupplierAccess {
   @Column({ name: 'decline_reason', type: 'text', nullable: true })
   declineReason?: string;
 
-  @ApiProperty({ description: 'Days before deadline to send email reminder (1, 3, or 7)' })
+  @ApiProperty({
+    description: 'Days before deadline to send email reminder (1, 3, or 7)',
+  })
   @Column({ name: 'reminder_days', type: 'int', nullable: true })
   reminderDays?: number;
 

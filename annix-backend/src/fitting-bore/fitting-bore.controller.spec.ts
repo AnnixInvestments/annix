@@ -40,8 +40,14 @@ describe('FittingBoreController', () => {
       providers: [
         { provide: FittingBoreService, useValue: mockFittingBoreService },
         { provide: getRepositoryToken(FittingBore), useValue: mockBoreRepo },
-        { provide: getRepositoryToken(FittingVariant), useValue: mockVariantRepo },
-        { provide: getRepositoryToken(NominalOutsideDiameterMm), useValue: mockNominalRepo },
+        {
+          provide: getRepositoryToken(FittingVariant),
+          useValue: mockVariantRepo,
+        },
+        {
+          provide: getRepositoryToken(NominalOutsideDiameterMm),
+          useValue: mockNominalRepo,
+        },
       ],
     }).compile();
 

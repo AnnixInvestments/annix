@@ -7,6 +7,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { now } from '../lib/datetime';
+
 import {
   CustomerProfile,
   CustomerOnboarding,
@@ -130,7 +132,7 @@ export class CustomerDocumentService {
       existingDoc.filePath = storageResult.path;
       existingDoc.fileSize = file.size;
       existingDoc.mimeType = file.mimetype;
-      existingDoc.uploadedAt = new Date();
+      existingDoc.uploadedAt = now().toJSDate();
       existingDoc.validationStatus = CustomerDocumentValidationStatus.PENDING;
       existingDoc.validationNotes = null;
       existingDoc.expiryDate = expiryDate;
@@ -333,7 +335,7 @@ export class CustomerDocumentService {
     document.validationStatus = validationStatus;
     document.validationNotes = validationNotes;
     document.ocrExtractedData = ocrResult.extractedData;
-    document.ocrProcessedAt = new Date();
+    document.ocrProcessedAt = now().toJSDate();
     document.ocrFailed = ocrResult.ocrFailed;
 
     await this.documentRepo.save(document);

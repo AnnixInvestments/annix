@@ -103,7 +103,9 @@ describe('WeldTypeService', () => {
     it('should throw NotFoundException if weld type not found by code', async () => {
       mockRepo.findOne.mockResolvedValue(undefined);
 
-      await expect(service.findByCode('UNKNOWN')).rejects.toThrow(NotFoundException);
+      await expect(service.findByCode('UNKNOWN')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

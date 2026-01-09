@@ -35,11 +35,11 @@ describe('AuthController', () => {
 
     it('should return access token if credentials are valid', async () => {
       const user = { id: 1, username: 'test', roles: ['user'] };
-      const token = { 
-        access_token: 'jwt-token', 
-        refresh_token: 'refresh-token', 
-        token_type: 'Bearer', 
-        expires_in: 3600 
+      const token = {
+        access_token: 'jwt-token',
+        refresh_token: 'refresh-token',
+        token_type: 'Bearer',
+        expires_in: 3600,
       };
 
       service.validateUser.mockResolvedValue(user);

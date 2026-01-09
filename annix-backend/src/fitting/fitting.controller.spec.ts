@@ -61,14 +61,32 @@ describe('FittingController', () => {
       controllers: [FittingController],
       providers: [
         { provide: FittingService, useValue: mockFittingService },
-        { provide: getRepositoryToken(Sabs62FittingDimension), useValue: mockSabs62Repo },
-        { provide: getRepositoryToken(Sabs719FittingDimension), useValue: mockSabs719Repo },
-        { provide: getRepositoryToken(PipeDimension), useValue: mockPipeDimensionRepo },
-        { provide: getRepositoryToken(NbNpsLookup), useValue: mockNbNpsLookupRepo },
-        { provide: getRepositoryToken(FlangeDimension), useValue: mockFlangeDimensionRepo },
+        {
+          provide: getRepositoryToken(Sabs62FittingDimension),
+          useValue: mockSabs62Repo,
+        },
+        {
+          provide: getRepositoryToken(Sabs719FittingDimension),
+          useValue: mockSabs719Repo,
+        },
+        {
+          provide: getRepositoryToken(PipeDimension),
+          useValue: mockPipeDimensionRepo,
+        },
+        {
+          provide: getRepositoryToken(NbNpsLookup),
+          useValue: mockNbNpsLookupRepo,
+        },
+        {
+          provide: getRepositoryToken(FlangeDimension),
+          useValue: mockFlangeDimensionRepo,
+        },
         { provide: getRepositoryToken(BoltMass), useValue: mockBoltMassRepo },
         { provide: getRepositoryToken(NutMass), useValue: mockNutMassRepo },
-        { provide: getRepositoryToken(SteelSpecification), useValue: mockSteelSpecRepo },
+        {
+          provide: getRepositoryToken(SteelSpecification),
+          useValue: mockSteelSpecRepo,
+        },
       ],
     }).compile();
 

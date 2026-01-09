@@ -6,6 +6,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, ILike, In } from 'typeorm';
 
+import { now } from '../lib/datetime';
+
 import {
   CustomerCompany,
   CustomerProfile,
@@ -236,7 +238,7 @@ export class CustomerAdminService {
 
     profile.accountStatus = CustomerAccountStatus.SUSPENDED;
     profile.suspensionReason = dto.reason;
-    profile.suspendedAt = new Date();
+    profile.suspendedAt = now().toJSDate();
     profile.suspendedBy = adminUserId;
 
     await this.profileRepo.save(profile);
@@ -246,7 +248,7 @@ export class CustomerAdminService {
       { customerProfileId: customerId, isActive: true },
       {
         isActive: false,
-        invalidatedAt: new Date(),
+        invalidatedAt: now().toJSDate(),
         invalidationReason: SessionInvalidationReason.ACCOUNT_SUSPENDED,
       },
     );
@@ -355,7 +357,7 @@ export class CustomerAdminService {
 
     // Deactivate the current binding
     activeBinding.isActive = false;
-    activeBinding.deactivatedAt = new Date();
+    activeBinding.deactivatedAt = now().toJSDate();
     activeBinding.deactivatedBy = adminUserId;
     activeBinding.deactivationReason = dto.reason;
 
@@ -366,7 +368,7 @@ export class CustomerAdminService {
       { customerProfileId: customerId, isActive: true },
       {
         isActive: false,
-        invalidatedAt: new Date(),
+        invalidatedAt: now().toJSDate(),
         invalidationReason: SessionInvalidationReason.DEVICE_RESET,
       },
     );
@@ -584,7 +586,7 @@ export class CustomerAdminService {
 
     // Update onboarding
     onboarding.status = CustomerOnboardingStatus.APPROVED;
-    onboarding.reviewedAt = new Date();
+    onboarding.reviewedAt = now().toJSDate();
     onboarding.reviewedById = adminUserId;
     await this.onboardingRepo.save(onboarding);
 
@@ -602,7 +604,7 @@ export class CustomerAdminService {
       {
         validationStatus: CustomerDocumentValidationStatus.VALID,
         reviewedById: adminUserId,
-        reviewedAt: new Date(),
+        reviewedAt: now().toJSDate(),
       },
     );
 
@@ -663,7 +665,7 @@ export class CustomerAdminService {
 
     // Update onboarding
     onboarding.status = CustomerOnboardingStatus.REJECTED;
-    onboarding.reviewedAt = new Date();
+    onboarding.reviewedAt = now().toJSDate();
     onboarding.reviewedById = adminUserId;
     onboarding.rejectionReason = reason;
     onboarding.remediationSteps = remediationSteps;
@@ -722,7 +724,7 @@ export class CustomerAdminService {
     document.validationStatus = validationStatus;
     document.validationNotes = validationNotes;
     document.reviewedById = adminUserId;
-    document.reviewedAt = new Date();
+    document.reviewedAt = now().toJSDate();
     await this.documentRepo.save(document);
 
     const adminUser = await this.userRepo.findOne({

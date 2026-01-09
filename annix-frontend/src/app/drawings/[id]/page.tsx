@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
 import { useToast } from '@/app/components/Toast';
+import { formatDateTimeZA, nowISO } from '@/app/lib/datetime';
 
 interface DrawingVersion {
   id: number;
@@ -279,7 +280,7 @@ export default function DrawingDetailPage() {
         metadata: {
           pageCount: 0,
           extractionMethod: 'none',
-          analysisTimestamp: new Date().toISOString(),
+          analysisTimestamp: nowISO(),
         },
       });
     } finally {
@@ -313,13 +314,7 @@ export default function DrawingDetailPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatDateTimeZA(dateString);
   };
 
   if (loading) {

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { adminApiClient, CustomerDetail, CustomerDocument, LoginHistoryItem } from '@/app/lib/api/adminApi';
 import { useToast } from '@/app/components/Toast';
+import { formatDateTimeZA } from '@/app/lib/datetime';
 
 type TabType = 'overview' | 'documents' | 'activity';
 
@@ -121,13 +122,7 @@ export default function CustomerDetailPage() {
   };
 
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatDateTimeZA(dateString);
   };
 
   if (isLoading) {

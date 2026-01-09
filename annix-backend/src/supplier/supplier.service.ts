@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
+import { now, fromISO } from '../lib/datetime';
 
 import {
   SupplierProfile,
@@ -98,10 +99,10 @@ export class SupplierService {
     if (dto.mobilePhone !== undefined) profile.mobilePhone = dto.mobilePhone;
 
     if (dto.acceptTerms) {
-      profile.termsAcceptedAt = new Date();
+      profile.termsAcceptedAt = now().toJSDate();
     }
     if (dto.acceptSecurityPolicy) {
-      profile.securityPolicyAcceptedAt = new Date();
+      profile.securityPolicyAcceptedAt = now().toJSDate();
     }
 
     const savedProfile = await this.profileRepo.save(profile);
@@ -324,7 +325,7 @@ export class SupplierService {
       fileSize: file.size,
       mimeType: file.mimetype,
       validationStatus: SupplierDocumentValidationStatus.PENDING,
-      expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null,
+      expiryDate: dto.expiryDate ? fromISO(dto.expiryDate).toJSDate() : null,
       isRequired: REQUIRED_DOCUMENT_TYPES.includes(dto.documentType),
     });
 
@@ -482,7 +483,7 @@ export class SupplierService {
 
     // Update onboarding status
     onboarding.status = SupplierOnboardingStatus.SUBMITTED;
-    onboarding.submittedAt = new Date();
+    onboarding.submittedAt = now().toJSDate();
     onboarding.companyDetailsComplete = true;
     onboarding.documentsComplete = true;
 
@@ -608,7 +609,9 @@ export class SupplierService {
   /**
    * Get supplier capabilities (products/services they can offer)
    */
-  async getCapabilities(supplierId: number): Promise<{ capabilities: string[] }> {
+  async getCapabilities(
+    supplierId: number,
+  ): Promise<{ capabilities: string[] }> {
     // Use direct raw SQL query to completely bypass TypeORM entity handling
     const capabilities = await this.dataSource.query(
       `SELECT product_category FROM supplier_capabilities WHERE supplier_profile_id = $1 AND is_active = true`,
@@ -616,7 +619,9 @@ export class SupplierService {
     );
 
     return {
-      capabilities: capabilities.map((c: { product_category: string }) => c.product_category),
+      capabilities: capabilities.map(
+        (c: { product_category: string }) => c.product_category,
+      ),
     };
   }
 

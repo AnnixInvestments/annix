@@ -34,7 +34,7 @@ describe('BendDimensionService', () => {
       mockLookupRepo.findOne.mockResolvedValue(lookup);
 
       const result = await service.calculate(50, 90, 1.5);
-      
+
       // Expected calculation: radius = 1.5 * 2 * 25.4 = 76.2mm
       // tan(45°) = 1, so result = 76.2
       expect(result).toBe(76.2);
@@ -47,7 +47,7 @@ describe('BendDimensionService', () => {
       mockLookupRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.calculate(999, 90, 1.5)).rejects.toThrow(
-        NotFoundException
+        NotFoundException,
       );
     });
 
@@ -56,10 +56,10 @@ describe('BendDimensionService', () => {
       mockLookupRepo.findOne.mockResolvedValue(lookup);
 
       const result = await service.calculate(50, 45, 1.5);
-      
+
       // Should be rounded to 1 decimal place
       expect(typeof result).toBe('number');
-      expect(result * 10 % 1).toBeCloseTo(0, 1);
+      expect((result * 10) % 1).toBeCloseTo(0, 1);
     });
   });
 });

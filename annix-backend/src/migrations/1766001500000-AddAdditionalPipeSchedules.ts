@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddAdditionalPipeSchedules1766001500000
-  implements MigrationInterface
-{
+export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log(
       '📊 Adding additional pipe schedules (Sch 10, 20, 30, 60, 100, 140)...',

@@ -44,8 +44,14 @@ describe('PipeDimensionController', () => {
       providers: [
         { provide: PipeDimensionService, useValue: mockPipeDimensionService },
         { provide: getRepositoryToken(PipeDimension), useValue: mockPipeRepo },
-        { provide: getRepositoryToken(NominalOutsideDiameterMm), useValue: mockNominalRepo },
-        { provide: getRepositoryToken(SteelSpecification), useValue: mockSteelRepo },
+        {
+          provide: getRepositoryToken(NominalOutsideDiameterMm),
+          useValue: mockNominalRepo,
+        },
+        {
+          provide: getRepositoryToken(SteelSpecification),
+          useValue: mockSteelRepo,
+        },
       ],
     }).compile();
 

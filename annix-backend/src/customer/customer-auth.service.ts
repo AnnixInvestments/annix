@@ -13,6 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import { now, nowMillis } from '../lib/datetime';
 
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
@@ -162,12 +163,10 @@ export class CustomerAuthService {
       });
       const savedUser = await queryRunner.manager.save(user);
 
-      // 3. Generate email verification token
       const emailVerificationToken = uuidv4();
-      const emailVerificationExpires = new Date();
-      emailVerificationExpires.setHours(
-        emailVerificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS,
-      );
+      const emailVerificationExpires = now()
+        .plus({ hours: EMAIL_VERIFICATION_EXPIRY_HOURS })
+        .toJSDate();
 
       // 4. Create the customer profile (PENDING until email verified)
       const profile = this.profileRepo.create({
@@ -178,13 +177,13 @@ export class CustomerAuthService {
         jobTitle: dto.user.jobTitle,
         directPhone: dto.user.directPhone,
         mobilePhone: dto.user.mobilePhone,
-        role: CustomerRole.CUSTOMER_ADMIN, // First user is admin
-        accountStatus: CustomerAccountStatus.PENDING, // Pending until email verified
+        role: CustomerRole.CUSTOMER_ADMIN,
+        accountStatus: CustomerAccountStatus.PENDING,
         emailVerified: false,
         emailVerificationToken,
         emailVerificationExpires,
-        termsAcceptedAt: new Date(),
-        securityPolicyAcceptedAt: new Date(),
+        termsAcceptedAt: now().toJSDate(),
+        securityPolicyAcceptedAt: now().toJSDate(),
       });
       const savedProfile = await queryRunner.manager.save(profile);
 
@@ -243,11 +242,9 @@ export class CustomerAuthService {
       //   emailVerificationToken,
       // );
 
-      // Create session for immediate login
       const sessionToken = uuidv4();
       const refreshTokenValue = uuidv4();
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
+      const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
 
       const session = this.sessionRepo.create({
         customerProfileId: savedProfile.id,
@@ -258,7 +255,7 @@ export class CustomerAuthService {
         userAgent: dto.security.browserInfo?.userAgent || 'unknown',
         isActive: true,
         expiresAt,
-        lastActivity: new Date(),
+        lastActivity: now().toJSDate(),
       });
       await this.sessionRepo.save(session);
 
@@ -314,7 +311,7 @@ export class CustomerAuthService {
 
     // Save VAT document
     if (vatDocument) {
-      const fileName = `vat_${Date.now()}_${vatDocument.originalname}`;
+      const fileName = `vat_${nowMillis()}_${vatDocument.originalname}`;
       const filePath = path.join(customerDir, fileName);
 
       fs.writeFileSync(filePath, vatDocument.buffer);
@@ -335,7 +332,7 @@ export class CustomerAuthService {
 
     // Save company registration document
     if (companyRegDocument) {
-      const fileName = `company_reg_${Date.now()}_${companyRegDocument.originalname}`;
+      const fileName = `company_reg_${nowMillis()}_${companyRegDocument.originalname}`;
       const filePath = path.join(customerDir, fileName);
 
       fs.writeFileSync(filePath, companyRegDocument.buffer);
@@ -401,17 +398,25 @@ export class CustomerAuthService {
 
     if (!profile) {
       // Check if user has a different role (supplier or admin)
-      const userRoles = user.roles?.map(r => r.name) || [];
-      this.logger.warn(`Customer login failed: User ${dto.email} (ID: ${user.id}) has no customer profile. Roles: ${userRoles.join(', ')}`);
+      const userRoles = user.roles?.map((r) => r.name) || [];
+      this.logger.warn(
+        `Customer login failed: User ${dto.email} (ID: ${user.id}) has no customer profile. Roles: ${userRoles.join(', ')}`,
+      );
 
       if (userRoles.includes('supplier')) {
-        throw new UnauthorizedException('This account is registered as a supplier. Please use the supplier portal to login.');
+        throw new UnauthorizedException(
+          'This account is registered as a supplier. Please use the supplier portal to login.',
+        );
       }
       if (userRoles.includes('admin') || userRoles.includes('superadmin')) {
-        throw new UnauthorizedException('This account is registered as an administrator. Please use the admin portal to login.');
+        throw new UnauthorizedException(
+          'This account is registered as an administrator. Please use the admin portal to login.',
+        );
       }
 
-      throw new UnauthorizedException('Customer profile not found. Your registration may not have completed. Please try registering again or contact support.');
+      throw new UnauthorizedException(
+        'Customer profile not found. Your registration may not have completed. Please try registering again or contact support.',
+      );
     }
 
     // DEVELOPMENT MODE: Skip email verification check
@@ -484,11 +489,9 @@ export class CustomerAuthService {
       SessionInvalidationReason.NEW_LOGIN,
     );
 
-    // Create new session
     const sessionToken = uuidv4();
     const refreshToken = uuidv4();
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
+    const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
 
     const session = this.sessionRepo.create({
       customerProfileId: profile.id,
@@ -499,7 +502,7 @@ export class CustomerAuthService {
       userAgent,
       isActive: true,
       expiresAt,
-      lastActivity: new Date(),
+      lastActivity: now().toJSDate(),
     });
     await this.sessionRepo.save(session);
 
@@ -565,7 +568,7 @@ export class CustomerAuthService {
 
     if (session) {
       session.isActive = false;
-      session.invalidatedAt = new Date();
+      session.invalidatedAt = now().toJSDate();
       session.invalidationReason = SessionInvalidationReason.LOGOUT;
       await this.sessionRepo.save(session);
 
@@ -629,13 +632,11 @@ export class CustomerAuthService {
         this.jwtService.signAsync(newPayload, { expiresIn: '7d' }),
       ]);
 
-      // Update session
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
+      const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
 
       await this.sessionRepo.update(
         { customerProfileId: profile.id, isActive: true },
-        { sessionToken, lastActivity: new Date(), expiresAt },
+        { sessionToken, lastActivity: now().toJSDate(), expiresAt },
       );
 
       return {
@@ -679,17 +680,15 @@ export class CustomerAuthService {
 
     if (!session) return null;
 
-    // Check if expired
-    if (new Date() > session.expiresAt) {
+    if (now().toJSDate() > session.expiresAt) {
       session.isActive = false;
-      session.invalidatedAt = new Date();
+      session.invalidatedAt = now().toJSDate();
       session.invalidationReason = SessionInvalidationReason.EXPIRED;
       await this.sessionRepo.save(session);
       return null;
     }
 
-    // Update last activity
-    session.lastActivity = new Date();
+    session.lastActivity = now().toJSDate();
     await this.sessionRepo.save(session);
 
     return session;
@@ -702,8 +701,9 @@ export class CustomerAuthService {
     ipAddress: string,
   ): Promise<void> {
     try {
-      const lockoutTime = new Date();
-      lockoutTime.setMinutes(lockoutTime.getMinutes() - LOGIN_LOCKOUT_MINUTES);
+      const lockoutTime = now()
+        .minus({ minutes: LOGIN_LOCKOUT_MINUTES })
+        .toJSDate();
 
       const recentAttempts = await this.loginAttemptRepo.count({
         where: {
@@ -772,7 +772,7 @@ export class CustomerAuthService {
       { customerProfileId, isActive: true },
       {
         isActive: false,
-        invalidatedAt: new Date(),
+        invalidatedAt: now().toJSDate(),
         invalidationReason: reason,
       },
     );
@@ -788,7 +788,7 @@ export class CustomerAuthService {
     const profile = await this.profileRepo.findOne({
       where: {
         emailVerificationToken: token,
-        emailVerificationExpires: MoreThan(new Date()),
+        emailVerificationExpires: MoreThan(now().toJSDate()),
       },
       relations: ['user', 'company'],
     });
@@ -864,12 +864,10 @@ export class CustomerAuthService {
       );
     }
 
-    // Generate new token
     const emailVerificationToken = uuidv4();
-    const emailVerificationExpires = new Date();
-    emailVerificationExpires.setHours(
-      emailVerificationExpires.getHours() + EMAIL_VERIFICATION_EXPIRY_HOURS,
-    );
+    const emailVerificationExpires = now()
+      .plus({ hours: EMAIL_VERIFICATION_EXPIRY_HOURS })
+      .toJSDate();
 
     profile.emailVerificationToken = emailVerificationToken;
     profile.emailVerificationExpires = emailVerificationExpires;

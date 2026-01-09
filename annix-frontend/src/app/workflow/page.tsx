@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { formatDateZA, nowISO } from '@/app/lib/datetime';
 
 interface Workflow {
   id: number;
@@ -37,7 +38,7 @@ export default function WorkflowPage() {
           entityId: 1,
           status: 'PENDING_REVIEW',
           submittedBy: 'John Doe',
-          submittedAt: new Date().toISOString(),
+          submittedAt: nowISO(),
         },
         {
           id: 2,
@@ -46,8 +47,8 @@ export default function WorkflowPage() {
           status: 'UNDER_REVIEW',
           submittedBy: 'Jane Smith',
           reviewer: 'Bob Wilson',
-          submittedAt: new Date().toISOString(),
-          reviewedAt: new Date().toISOString(),
+          submittedAt: nowISO(),
+          reviewedAt: nowISO(),
         },
       ];
       setWorkflows(mockWorkflows);
@@ -132,12 +133,12 @@ export default function WorkflowPage() {
                         </span>
                       </div>
                       <div className="mt-1 text-sm text-gray-500">
-                        Submitted by {workflow.submittedBy} on {new Date(workflow.submittedAt).toLocaleDateString()}
+                        Submitted by {workflow.submittedBy} on {formatDateZA(workflow.submittedAt)}
                       </div>
                       {workflow.reviewer && (
                         <div className="text-sm text-gray-500">
                           Reviewed by {workflow.reviewer}
-                          {workflow.reviewedAt && ` on ${new Date(workflow.reviewedAt).toLocaleDateString()}`}
+                          {workflow.reviewedAt && ` on ${formatDateZA(workflow.reviewedAt)}`}
                         </div>
                       )}
                     </div>

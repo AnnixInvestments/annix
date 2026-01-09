@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { browserBaseUrl } from '@/lib/api-config';
+import { formatDateZA } from '@/app/lib/datetime';
 
 interface UpcomingRfq {
   id: number;
@@ -125,13 +126,7 @@ export default function HomePage() {
     };
   }, []);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+  const formatDate = (dateString: string) => formatDateZA(dateString);
 
   const getDaysRemainingColor = (days: number) => {
     if (days <= 3) return 'text-red-600 bg-red-50';

@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 
 import { CustomerAuthService } from '../customer-auth.service';
@@ -13,15 +14,21 @@ import { AuditAction } from '../../audit/entities/audit-log.entity';
 /**
  * Guard that verifies the device fingerprint on every request
  * Use this guard AFTER CustomerAuthGuard
+ * Can be disabled via DISABLE_DEVICE_FINGERPRINT=true env variable
  */
 @Injectable()
 export class CustomerDeviceGuard implements CanActivate {
   constructor(
     private readonly customerAuthService: CustomerAuthService,
     private readonly auditService: AuditService,
+    private readonly configService: ConfigService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (this.configService.get('DISABLE_DEVICE_FINGERPRINT') === 'true') {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest<Request>();
     const deviceFingerprint = request.headers['x-device-fingerprint'] as string;
     const customer = request['customer'];

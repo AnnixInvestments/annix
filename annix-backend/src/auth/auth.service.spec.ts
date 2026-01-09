@@ -123,7 +123,7 @@ describe('AuthService', () => {
       });
       expect(mockJwtService.signAsync).toHaveBeenCalledWith(
         expect.any(Object),
-        { expiresIn: '1h' }
+        { expiresIn: '1h' },
       );
     });
   });

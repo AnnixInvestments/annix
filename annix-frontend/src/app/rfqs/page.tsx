@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { browserBaseUrl } from '@/lib/api-config';
+import { formatDateZA } from '@/app/lib/datetime';
 
 interface RfqListItem {
   id: number;
@@ -74,13 +75,7 @@ export default function RfqListPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const formatDate = (dateString: string) => formatDateZA(dateString);
 
   const formatNumber = (num?: number) => {
     if (num === undefined || num === null) return 'N/A';

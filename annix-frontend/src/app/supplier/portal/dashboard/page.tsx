@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
 import { supplierPortalApi, OnboardingStatusResponse, SupplierBoqListItem, SupplierBoqStatus } from '@/app/lib/api/supplierApi';
 import { useToast } from '@/app/components/Toast';
+import { formatDateZA, fromISO, now, nowMillis, formatIcsDate } from '@/app/lib/datetime';
 
 const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label: string }> = {
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending Response' },
@@ -153,21 +154,19 @@ export default function SupplierDashboardPage() {
       return;
     }
 
-    const closingDate = new Date(boq.projectInfo.requiredDate);
-    const formatIcsDate = (date: Date) => {
-      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    };
+    const closingDate = fromISO(boq.projectInfo.requiredDate);
+    const eventEndDate = closingDate.plus({ hours: 1 });
 
-    const eventStart = formatIcsDate(closingDate);
-    const eventEnd = formatIcsDate(new Date(closingDate.getTime() + 60 * 60 * 1000));
+    const eventStart = formatIcsDate(boq.projectInfo.requiredDate);
+    const eventEnd = formatIcsDate(eventEndDate.toISO() ?? '');
 
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//Annix//RFQ Closing Date//EN',
       'BEGIN:VEVENT',
-      `UID:${boq.id}-${Date.now()}@annix.co.za`,
-      `DTSTAMP:${formatIcsDate(new Date())}`,
+      `UID:${boq.id}-${nowMillis()}@annix.co.za`,
+      `DTSTAMP:${formatIcsDate(now().toISO() ?? '')}`,
       `DTSTART:${eventStart}`,
       `DTEND:${eventEnd}`,
       `SUMMARY:RFQ Closing - ${boq.boqNumber}`,
@@ -206,21 +205,15 @@ export default function SupplierDashboardPage() {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatDateZA(dateString);
   };
 
   const getDaysUntilDeadline = (dateString?: string): number | null => {
     if (!dateString) return null;
-    const deadline = new Date(dateString);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    deadline.setHours(0, 0, 0, 0);
-    const diffTime = deadline.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const deadline = fromISO(dateString).startOf('day');
+    const today = now().startOf('day');
+    const diffDays = deadline.diff(today, 'days').days;
+    return Math.ceil(diffDays);
   };
 
   const boqStats = {

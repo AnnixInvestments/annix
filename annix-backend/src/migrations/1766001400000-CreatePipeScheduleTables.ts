@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreatePipeScheduleTables1766001400000
-  implements MigrationInterface
-{
+export class CreatePipeScheduleTables1766001400000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log('🏗️ Creating pipe schedule tables...');
 

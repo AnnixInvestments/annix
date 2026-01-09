@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
 import { useToast } from '@/app/components/Toast';
+import { formatDateZA } from '@/app/lib/datetime';
 
 interface BoqLineItem {
   id: number;
@@ -212,13 +213,7 @@ export default function BoqDetailPage() {
     }).format(num);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const formatDate = (dateString: string) => formatDateZA(dateString);
 
   if (loading) {
     return (

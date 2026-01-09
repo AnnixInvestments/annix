@@ -31,8 +31,14 @@ describe('PipeDimensionService', () => {
       providers: [
         PipeDimensionService,
         { provide: getRepositoryToken(PipeDimension), useValue: mockPipeRepo },
-        { provide: getRepositoryToken(NominalOutsideDiameterMm), useValue: mockNominalRepo },
-        { provide: getRepositoryToken(SteelSpecification), useValue: mockSteelRepo },
+        {
+          provide: getRepositoryToken(NominalOutsideDiameterMm),
+          useValue: mockNominalRepo,
+        },
+        {
+          provide: getRepositoryToken(SteelSpecification),
+          useValue: mockSteelRepo,
+        },
       ],
     }).compile();
 
@@ -52,7 +58,11 @@ describe('PipeDimensionService', () => {
 
       expect(await service.findAll()).toEqual(result);
       expect(mockPipeRepo.find).toHaveBeenCalledWith({
-        relations: ['nominalOutsideDiameter', 'steelSpecification', 'pressures'],
+        relations: [
+          'nominalOutsideDiameter',
+          'steelSpecification',
+          'pressures',
+        ],
       });
     });
   });
@@ -65,7 +75,11 @@ describe('PipeDimensionService', () => {
       expect(await service.findOne(1)).toEqual(result);
       expect(mockPipeRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['nominalOutsideDiameter', 'steelSpecification', 'pressures'],
+        relations: [
+          'nominalOutsideDiameter',
+          'steelSpecification',
+          'pressures',
+        ],
       });
     });
 
@@ -98,7 +112,11 @@ describe('PipeDimensionService', () => {
           steelSpecification: { id: 1 },
           nominalOutsideDiameter: { id: 1 },
         },
-        relations: ['nominalOutsideDiameter', 'steelSpecification', 'pressures'],
+        relations: [
+          'nominalOutsideDiameter',
+          'steelSpecification',
+          'pressures',
+        ],
         order: {
           wall_thickness_mm: 'ASC',
         },

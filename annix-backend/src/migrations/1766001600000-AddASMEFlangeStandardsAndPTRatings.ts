@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddASMEFlangeStandardsAndPTRatings1766001600000
-  implements MigrationInterface
-{
+export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log(
       '🔧 Adding ASME flange standards and comprehensive P-T ratings...',

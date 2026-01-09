@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
+import { formatDateZA } from '@/app/lib/datetime';
 
 interface Rfq {
   id: number;
@@ -77,13 +78,7 @@ export default function RfqListPage() {
     }).format(num);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const formatDate = (dateString: string) => formatDateZA(dateString);
 
   const filteredRfqs = rfqs.filter((rfq) => {
     const matchesSearch =

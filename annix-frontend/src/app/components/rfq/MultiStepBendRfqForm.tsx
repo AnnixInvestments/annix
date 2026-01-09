@@ -7,6 +7,7 @@ import {
 } from '@/app/lib/utils/systemUtils';
 import { masterDataApi, bendRfqApi } from '@/app/lib/api/client';
 import { useToast } from '@/app/components/Toast';
+import { addDaysFromNowISODate, generateUniqueId } from '@/app/lib/datetime';
 
 // Types
 interface BendEntry {
@@ -78,7 +79,7 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
     customerName: 'Acme Industrial Solutions',
     customerEmail: 'procurement@acme-industrial.co.za',
     customerPhone: '+27 11 555 0123',
-    requiredDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    requiredDate: addDaysFromNowISODate(30),
     notes: 'All bends to be fabricated according to ASME B16.49',
     globalSpecs: {
       workingPressureBar: 16,
@@ -218,7 +219,7 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
 
   const addBendEntry = () => {
     const newEntry: BendEntry = {
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       description: '40NB 90° Bend',
       clientItemNumber: generateClientItemNumber(formData.customerName, formData.bendEntries.length + 1),
       specs: {
