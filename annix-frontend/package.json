@@ -16,6 +16,7 @@
     "@react-google-maps/api": "^2.20.8",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
+    "luxon": "^3.7.2",
     "next": "15.5.9",
     "openapi-fetch": "^0.13.4",
     "react": "19.1.0",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "^2.8.0",
     "@tailwindcss/postcss": "^4",
+    "@types/luxon": "^3.7.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
