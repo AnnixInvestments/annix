@@ -1,19 +1,26 @@
 import {
-  Controller,
-  Post,
-  Get,
   Body,
-  UseGuards,
-  Req,
-  Ip,
+  Controller,
+  Get,
   Headers,
+  Ip,
+  Post,
   Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { AdminAuthService } from './admin-auth.service';
-import { AdminLoginDto, RefreshTokenDto } from './dto/admin-auth.dto';
+import { AdminLoginDto, AdminRefreshTokenDto } from './dto/admin-auth.dto';
 import { AdminAuthGuard } from './guards/admin-auth.guard';
 import { EmailService } from '../email/email.service';
-import { Request } from 'express';
+
+interface AuthenticatedRequest extends Request {
+  user: {
+    id: number;
+    sessionToken: string;
+  };
+}
 
 @Controller('admin/auth')
 export class AdminAuthController {
@@ -37,7 +44,7 @@ export class AdminAuthController {
 
   @Post('logout')
   @UseGuards(AdminAuthGuard)
-  async logout(@Req() req: any, @Ip() clientIp: string) {
+  async logout(@Req() req: AuthenticatedRequest, @Ip() clientIp: string) {
     const userId = req.user.id;
     const sessionToken = req.user.sessionToken;
     await this.adminAuthService.logout(userId, sessionToken, clientIp);
@@ -45,13 +52,13 @@ export class AdminAuthController {
   }
 
   @Post('refresh')
-  async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
+  async refreshToken(@Body() refreshTokenDto: AdminRefreshTokenDto) {
     return this.adminAuthService.refreshToken(refreshTokenDto.refreshToken);
   }
 
   @Get('me')
   @UseGuards(AdminAuthGuard)
-  async getCurrentUser(@Req() req: any) {
+  async getCurrentUser(@Req() req: AuthenticatedRequest) {
     return this.adminAuthService.getCurrentUser(req.user.id);
   }
 
@@ -70,6 +77,9 @@ export class AdminAuthController {
       `,
       text: 'Test Email from Annix - SMTP configuration is working!',
     });
-    return { success, message: success ? 'Email sent successfully' : 'Failed to send email' };
+    return {
+      success,
+      message: success ? 'Email sent successfully' : 'Failed to send email',
+    };
   }
 }

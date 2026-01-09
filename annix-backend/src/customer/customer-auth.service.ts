@@ -40,7 +40,7 @@ import {
   CreateCustomerRegistrationDto,
   CustomerLoginDto,
   CustomerLoginResponseDto,
-  RefreshTokenDto,
+  CustomerRefreshTokenDto,
 } from './dto';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
@@ -583,7 +583,7 @@ export class CustomerAuthService {
    * Refresh session token
    */
   async refreshSession(
-    dto: RefreshTokenDto,
+    dto: CustomerRefreshTokenDto,
     clientIp: string,
   ): Promise<CustomerLoginResponseDto> {
     try {

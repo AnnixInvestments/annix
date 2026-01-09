@@ -26,7 +26,7 @@ import {
   CreateCustomerRegistrationDto,
   CustomerLoginDto,
   CustomerLoginResponseDto,
-  RefreshTokenDto,
+  CustomerRefreshTokenDto,
 } from './dto';
 
 @ApiTags('Customer Authentication')
@@ -198,7 +198,7 @@ export class CustomerAuthController {
   @Post('auth/refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh customer session token' })
-  @ApiBody({ type: RefreshTokenDto })
+  @ApiBody({ type: CustomerRefreshTokenDto })
   @ApiResponse({
     status: 200,
     description: 'Token refreshed',
@@ -209,7 +209,7 @@ export class CustomerAuthController {
     description: 'Invalid refresh token or device mismatch',
   })
   async refresh(
-    @Body() dto: RefreshTokenDto,
+    @Body() dto: CustomerRefreshTokenDto,
     @Req() req: Request,
   ): Promise<CustomerLoginResponseDto> {
     const clientIp = this.getClientIp(req);

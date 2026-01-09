@@ -61,7 +61,7 @@ export class CustomerLoginResponseDto {
   registeredIp?: string;
 }
 
-export class RefreshTokenDto {
+export class CustomerRefreshTokenDto {
   @ApiProperty({ description: 'Refresh token' })
   @IsString()
   @IsNotEmpty()

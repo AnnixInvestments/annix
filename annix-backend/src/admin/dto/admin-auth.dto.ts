@@ -23,7 +23,7 @@ export class AdminLoginResponseDto {
   };
 }
 
-export class RefreshTokenDto {
+export class AdminRefreshTokenDto {
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
