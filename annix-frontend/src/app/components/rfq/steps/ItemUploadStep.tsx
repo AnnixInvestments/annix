@@ -67,6 +67,8 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
   const processedEntriesRef = useRef<Set<string>>(new Set());
   // Track entries that have been manually updated by onChange - these should NOT be overwritten by useEffect
   const manuallyUpdatedEntriesRef = useRef<Set<string>>(new Set());
+  // Track entries that have had initial auto-focus applied
+  const autoFocusedEntriesRef = useRef<Set<string>>(new Set());
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [isLoadingNominalBores, setIsLoadingNominalBores] = useState(false);
 
@@ -103,6 +105,41 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
       }
     }, 150);
   }, []);
+
+  // Auto-focus on first empty required field for new entries
+  useEffect(() => {
+    entries.forEach((entry: any) => {
+      if (autoFocusedEntriesRef.current.has(entry.id)) return;
+
+      const hasSteelSpec = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+
+      if (entry.itemType === 'fitting' && hasSteelSpec) {
+        autoFocusedEntriesRef.current.add(entry.id);
+        if (!entry.specs?.fittingType) {
+          focusAndOpenSelect(`fitting-type-${entry.id}`);
+        } else if (!entry.specs?.nominalDiameterMm) {
+          focusAndOpenSelect(`fitting-nb-${entry.id}`);
+        }
+      } else if (entry.itemType === 'bend' && hasSteelSpec) {
+        autoFocusedEntriesRef.current.add(entry.id);
+        const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+        if (isSABS719 && !entry.specs?.bendRadiusType) {
+          focusAndOpenSelect(`bend-radius-type-${entry.id}`);
+        } else if (!isSABS719 && !entry.specs?.bendType) {
+          focusAndOpenSelect(`bend-type-${entry.id}`);
+        } else if (!entry.specs?.nominalBoreMm) {
+          focusAndOpenSelect(`bend-nb-${entry.id}`);
+        } else if (!entry.specs?.bendDegrees) {
+          focusAndOpenSelect(`bend-angle-${entry.id}`);
+        }
+      } else if (entry.itemType === 'straight_pipe' && hasSteelSpec) {
+        autoFocusedEntriesRef.current.add(entry.id);
+        if (!entry.specs?.nominalBoreMm) {
+          focusAndOpenSelect(`pipe-nb-${entry.id}`);
+        }
+      }
+    });
+  }, [entries, globalSpecs?.steelSpecificationId, focusAndOpenSelect]);
 
   // Pre-fetch pressure classes for any standards that are already selected
   useEffect(() => {

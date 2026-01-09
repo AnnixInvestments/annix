@@ -5,6 +5,7 @@ import { Rfq } from './entities/rfq.entity';
 import { RfqItem } from './entities/rfq-item.entity';
 import { StraightPipeRfq } from './entities/straight-pipe-rfq.entity';
 import { BendRfq } from './entities/bend-rfq.entity';
+import { FittingRfq } from './entities/fitting-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
 import { User } from '../user/entities/user.entity';
@@ -14,7 +15,11 @@ import { NbNpsLookup } from '../nb-nps-lookup/entities/nb-nps-lookup.entity';
 import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.entity';
 import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
 import { NutMass } from '../nut-mass/entities/nut-mass.entity';
+import { Boq } from '../boq/entities/boq.entity';
+import { BoqSupplierAccess } from '../boq/entities/boq-supplier-access.entity';
+import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
 import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
+import { EmailService } from '../email/email.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 describe('RfqService', () => {
@@ -47,6 +52,14 @@ describe('RfqService', () => {
   };
 
   const mockBendRfqRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
+
+  const mockFittingRfqRepo = {
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
@@ -137,6 +150,35 @@ describe('RfqService', () => {
     getPublicUrl: jest.fn(),
   };
 
+  const mockBoqRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
+
+  const mockBoqSupplierAccessRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
+
+  const mockSupplierProfileRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
+
+  const mockEmailService = {
+    sendEmail: jest.fn(),
+    sendBoqAccessEmail: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -145,6 +187,7 @@ describe('RfqService', () => {
         { provide: getRepositoryToken(RfqItem), useValue: mockRfqItemRepo },
         { provide: getRepositoryToken(StraightPipeRfq), useValue: mockStraightPipeRfqRepo },
         { provide: getRepositoryToken(BendRfq), useValue: mockBendRfqRepo },
+        { provide: getRepositoryToken(FittingRfq), useValue: mockFittingRfqRepo },
         { provide: getRepositoryToken(RfqDocument), useValue: mockRfqDocumentRepo },
         { provide: getRepositoryToken(RfqDraft), useValue: mockRfqDraftRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
@@ -154,7 +197,11 @@ describe('RfqService', () => {
         { provide: getRepositoryToken(FlangeDimension), useValue: mockFlangeDimensionRepo },
         { provide: getRepositoryToken(BoltMass), useValue: mockBoltMassRepo },
         { provide: getRepositoryToken(NutMass), useValue: mockNutMassRepo },
+        { provide: getRepositoryToken(Boq), useValue: mockBoqRepo },
+        { provide: getRepositoryToken(BoqSupplierAccess), useValue: mockBoqSupplierAccessRepo },
+        { provide: getRepositoryToken(SupplierProfile), useValue: mockSupplierProfileRepo },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
+        { provide: EmailService, useValue: mockEmailService },
       ],
     }).compile();
 
