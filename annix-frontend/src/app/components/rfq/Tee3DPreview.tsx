@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, Center, Text, Line } from '@react-three/drei';
 import * as THREE from 'three';
@@ -12,8 +12,8 @@ import {
 } from '@/app/lib/utils/sabs719TeeData';
 
 const SCALE_FACTOR = 100;
-const PREVIEW_SCALE = 0.75;
-const MIN_CAMERA_DISTANCE = 1.8;
+const PREVIEW_SCALE = 1.1;
+const MIN_CAMERA_DISTANCE = 1.2;
 const MAX_CAMERA_DISTANCE = 40;
 
 // Flange type for rendering
@@ -1021,6 +1021,20 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   const [isHidden, setIsHidden] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Handle escape key to close expanded modal
+  useEffect(() => {
+    if (!isExpanded) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsExpanded(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isExpanded]);
+
   // Get dimensions using proper lookup tables
   const dims = getSabs719TeeDimensions(props.nominalBore);
   const branchDims = props.branchNominalBore ? getSabs719TeeDimensions(props.branchNominalBore) : null;
@@ -1106,8 +1120,8 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   }
 
   return (
-    <div className="h-64 w-full bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative mb-4">
-      <Canvas shadows dpr={[1, 2]} camera={{ position: defaultCameraPosition, fov: 50 }}>
+    <div className="w-full bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative" style={{ height: '100%', minHeight: '500px' }}>
+      <Canvas shadows dpr={[1, 2]} camera={{ position: defaultCameraPosition, fov: 50 }} style={{ width: '100%', height: '100%' }}>
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
         <Environment preset="city" />
@@ -1191,14 +1205,20 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
         </button>
       </div>
 
-      {/* Expanded Modal */}
+      {/* Expanded Modal - centered in viewport */}
       {isExpanded && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-start justify-center pt-4 pb-24">
-          <div className="relative w-full h-full max-w-6xl max-h-[calc(100vh-120px)] bg-slate-100 rounded-lg overflow-hidden">
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8"
+          onClick={() => setIsExpanded(false)}
+        >
+          <div
+            className="relative w-full h-full max-w-6xl max-h-[90vh] bg-slate-100 rounded-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Close button */}
             <button
               onClick={() => setIsExpanded(false)}
-              className="absolute top-4 right-4 z-10 bg-white/90 hover:bg-white text-gray-700 p-2 rounded-full shadow-lg transition-colors"
+              className="absolute top-4 right-4 z-50 bg-white hover:bg-white text-gray-700 p-3 rounded-full shadow-xl transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

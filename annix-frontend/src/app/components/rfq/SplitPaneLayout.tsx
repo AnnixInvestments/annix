@@ -1,0 +1,210 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+
+interface SplitPaneLayoutProps {
+  entryId: string;
+  formContent: React.ReactNode;
+  previewContent: React.ReactNode;
+  showSplitToggle: boolean;
+  itemType: 'straight_pipe' | 'bend' | 'fitting';
+}
+
+export default function SplitPaneLayout({
+  entryId,
+  formContent,
+  previewContent,
+  showSplitToggle,
+  itemType
+}: SplitPaneLayoutProps) {
+  const [splitPaneEnabledState, setSplitPaneEnabledState] = useState<Record<string, boolean>>({});
+  const [splitPaneWidthState, setSplitPaneWidthState] = useState<Record<string, number>>({});
+  const [defaultEnabled, setDefaultEnabled] = useState<boolean>(false);
+  const [defaultWidth, setDefaultWidth] = useState<number>(50);
+
+  // Load split pane preferences from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedEnabled = localStorage.getItem('rfq-split-pane-enabled');
+      const savedWidth = localStorage.getItem('rfq-split-pane-width');
+      const savedDefaultEnabled = localStorage.getItem('rfq-split-pane-default-enabled');
+      const savedDefaultWidth = localStorage.getItem('rfq-split-pane-default-width');
+
+      if (savedEnabled) {
+        try {
+          setSplitPaneEnabledState(JSON.parse(savedEnabled));
+        } catch (e) {
+          console.error('Failed to parse split pane enabled state from localStorage', e);
+        }
+      }
+
+      if (savedWidth) {
+        try {
+          setSplitPaneWidthState(JSON.parse(savedWidth));
+        } catch (e) {
+          console.error('Failed to parse split pane width from localStorage', e);
+        }
+      }
+
+      if (savedDefaultEnabled) {
+        try {
+          setDefaultEnabled(JSON.parse(savedDefaultEnabled));
+        } catch (e) {
+          console.error('Failed to parse split pane default enabled from localStorage', e);
+        }
+      }
+
+      if (savedDefaultWidth) {
+        try {
+          setDefaultWidth(JSON.parse(savedDefaultWidth));
+        } catch (e) {
+          console.error('Failed to parse split pane default width from localStorage', e);
+        }
+      }
+    }
+  }, []);
+
+  // Wrapper functions to save to localStorage
+  const setSplitPaneEnabled = (updater: React.SetStateAction<Record<string, boolean>>, newValue?: boolean) => {
+    setSplitPaneEnabledState(prev => {
+      const newState = typeof updater === 'function' ? updater(prev) : updater;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('rfq-split-pane-enabled', JSON.stringify(newState));
+        if (newValue !== undefined) {
+          localStorage.setItem('rfq-split-pane-default-enabled', JSON.stringify(newValue));
+          setDefaultEnabled(newValue);
+        }
+      }
+      return newState;
+    });
+  };
+
+  const setSplitPaneWidth = (updater: React.SetStateAction<Record<string, number>>) => {
+    setSplitPaneWidthState(prev => {
+      const newState = typeof updater === 'function' ? updater(prev) : updater;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('rfq-split-pane-width', JSON.stringify(newState));
+        const currentWidth = newState[entryId];
+        if (currentWidth) {
+          localStorage.setItem('rfq-split-pane-default-width', JSON.stringify(currentWidth));
+          setDefaultWidth(currentWidth);
+        }
+      }
+      return newState;
+    });
+  };
+
+  const hasExplicitSetting = entryId in splitPaneEnabledState;
+  const isEnabled = hasExplicitSetting ? splitPaneEnabledState[entryId] : defaultEnabled;
+  const width = splitPaneWidthState[entryId] || defaultWidth;
+
+  // Color scheme based on item type
+  const colorScheme = {
+    straight_pipe: {
+      from: 'from-blue-500',
+      to: 'to-blue-600',
+      hoverFrom: 'hover:from-blue-600',
+      hoverTo: 'hover:to-blue-700',
+      divider: 'hover:bg-blue-500'
+    },
+    bend: {
+      from: 'from-purple-500',
+      to: 'to-purple-600',
+      hoverFrom: 'hover:from-purple-600',
+      hoverTo: 'hover:to-purple-700',
+      divider: 'hover:bg-purple-500'
+    },
+    fitting: {
+      from: 'from-green-500',
+      to: 'to-green-600',
+      hoverFrom: 'hover:from-green-600',
+      hoverTo: 'hover:to-green-700',
+      divider: 'hover:bg-green-500'
+    }
+  }[itemType];
+
+  return (
+    <div className={isEnabled ? "flex gap-0" : "space-y-5"}>
+      {/* Left Pane - Form Fields */}
+      <div className={isEnabled ? "flex-1 space-y-5 pr-4 overflow-y-auto" : "space-y-5"}>
+        {formContent}
+
+        {/* Toggle Button for Split-Pane 3D Preview */}
+        {showSplitToggle && (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                const newValue = !isEnabled;
+                setSplitPaneEnabled(prev => ({ ...prev, [entryId]: newValue }), newValue);
+              }}
+              className={`px-4 py-2 text-sm font-medium bg-gradient-to-r ${colorScheme.from} ${colorScheme.to} ${colorScheme.hoverFrom} ${colorScheme.hoverTo} text-white rounded-lg shadow-md transition-all flex items-center gap-2`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              {isEnabled ? 'Disable Split View' : 'Enable Split View'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Draggable Divider */}
+      {isEnabled && (
+        <div
+          className={`w-1 bg-gray-300 ${colorScheme.divider} cursor-col-resize transition-colors flex-shrink-0 mx-2`}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            const startX = e.clientX;
+            const startWidth = width;
+
+            let rafId: number | null = null;
+            const onMouseMove = (moveEvent: MouseEvent) => {
+              const container = (e.target as HTMLElement).parentElement;
+              if (container) {
+                const containerWidth = container.offsetWidth;
+                const deltaX = moveEvent.clientX - startX;
+                const deltaPercent = (deltaX / containerWidth) * 100;
+                const newWidth = Math.min(Math.max(startWidth + deltaPercent, 10), 90);
+                setSplitPaneWidth(prev => ({ ...prev, [entryId]: newWidth }));
+                if (!rafId) {
+                  rafId = requestAnimationFrame(() => {
+                    window.dispatchEvent(new Event('resize'));
+                    rafId = null;
+                  });
+                }
+              }
+            };
+
+            const onMouseUp = () => {
+              document.removeEventListener('mousemove', onMouseMove);
+              document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+          }}
+        />
+      )}
+
+      {/* Right Pane - 3D Preview */}
+      {isEnabled && showSplitToggle && (
+        <div
+          className="flex-shrink-0 sticky top-4"
+          style={{ width: `${100 - width}%`, height: 'calc(100vh - 280px)', minHeight: '350px', maxHeight: '700px' }}
+        >
+          <div className="h-full w-full">
+            {previewContent}
+          </div>
+        </div>
+      )}
+
+      {/* 3D Preview - shown below when split-pane is disabled */}
+      {!isEnabled && showSplitToggle && (
+        <div style={{ height: '450px' }}>
+          {previewContent}
+        </div>
+      )}
+    </div>
+  );
+}

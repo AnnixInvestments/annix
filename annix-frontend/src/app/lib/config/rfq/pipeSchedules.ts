@@ -374,8 +374,71 @@ export const SABS719_PIPE_SCHEDULES: Record<number, Array<{ id: number; schedule
   ],
 };
 
+// SABS 62 ERW pipe schedules (Medium and Heavy grades, 15-150NB only)
+export const SABS62_MEDIUM_SCHEDULES: Record<number, Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }>> = {
+  15: [{ id: 62151, scheduleDesignation: 'MEDIUM', wallThicknessMm: 2.30 }],
+  20: [{ id: 62201, scheduleDesignation: 'MEDIUM', wallThicknessMm: 2.30 }],
+  25: [{ id: 62251, scheduleDesignation: 'MEDIUM', wallThicknessMm: 2.80 }],
+  32: [{ id: 62321, scheduleDesignation: 'MEDIUM', wallThicknessMm: 2.80 }],
+  40: [{ id: 62401, scheduleDesignation: 'MEDIUM', wallThicknessMm: 2.80 }],
+  50: [{ id: 62501, scheduleDesignation: 'MEDIUM', wallThicknessMm: 3.20 }],
+  65: [{ id: 62651, scheduleDesignation: 'MEDIUM', wallThicknessMm: 3.20 }],
+  80: [{ id: 62801, scheduleDesignation: 'MEDIUM', wallThicknessMm: 3.50 }],
+  100: [{ id: 621001, scheduleDesignation: 'MEDIUM', wallThicknessMm: 3.90 }],
+  125: [{ id: 621251, scheduleDesignation: 'MEDIUM', wallThicknessMm: 4.20 }],
+  150: [{ id: 621501, scheduleDesignation: 'MEDIUM', wallThicknessMm: 4.20 }],
+};
+
+export const SABS62_HEAVY_SCHEDULES: Record<number, Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }>> = {
+  15: [{ id: 62152, scheduleDesignation: 'HEAVY', wallThicknessMm: 2.80 }],
+  20: [{ id: 62202, scheduleDesignation: 'HEAVY', wallThicknessMm: 2.80 }],
+  25: [{ id: 62252, scheduleDesignation: 'HEAVY', wallThicknessMm: 3.50 }],
+  32: [{ id: 62322, scheduleDesignation: 'HEAVY', wallThicknessMm: 3.50 }],
+  40: [{ id: 62402, scheduleDesignation: 'HEAVY', wallThicknessMm: 3.50 }],
+  50: [{ id: 62502, scheduleDesignation: 'HEAVY', wallThicknessMm: 3.90 }],
+  65: [{ id: 62652, scheduleDesignation: 'HEAVY', wallThicknessMm: 3.90 }],
+  80: [{ id: 62802, scheduleDesignation: 'HEAVY', wallThicknessMm: 4.20 }],
+  100: [{ id: 621002, scheduleDesignation: 'HEAVY', wallThicknessMm: 4.70 }],
+  125: [{ id: 621252, scheduleDesignation: 'HEAVY', wallThicknessMm: 4.70 }],
+  150: [{ id: 621502, scheduleDesignation: 'HEAVY', wallThicknessMm: 4.70 }],
+};
+
+// Valid NB ranges for each steel spec type
+export const STEEL_SPEC_NB_RANGES: Record<string, number[]> = {
+  'SABS 62 ERW Medium': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150],
+  'SABS 62 ERW Heavy': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150],
+  'SABS 719 ERW': [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900],
+  'ASTM A53 Grade B': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 750, 800, 900, 1000, 1050, 1200],
+  'ASTM A106 Grade B': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 750, 800, 900, 1000, 1050, 1200],
+};
+
+// Get valid NBs for a given steel spec (by name or ID)
+export const getValidNBsForSpec = (steelSpecName?: string, steelSpecId?: number): number[] => {
+  if (steelSpecName) {
+    return STEEL_SPEC_NB_RANGES[steelSpecName] || Object.keys(FALLBACK_PIPE_SCHEDULES).map(Number);
+  }
+  if (steelSpecId === 8) {
+    return STEEL_SPEC_NB_RANGES['SABS 719 ERW'];
+  }
+  return Object.keys(FALLBACK_PIPE_SCHEDULES).map(Number);
+};
+
 // Helper function to get appropriate schedule list based on steel spec (MODULE SCOPE)
-export const getScheduleListForSpec = (nominalDiameter: number, steelSpecId: number | undefined): Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }> => {
+export const getScheduleListForSpec = (nominalDiameter: number, steelSpecId: number | undefined, steelSpecName?: string): Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }> => {
+  // Check by name first (more reliable)
+  if (steelSpecName) {
+    if (steelSpecName.includes('SABS 62') && steelSpecName.includes('Medium')) {
+      return SABS62_MEDIUM_SCHEDULES[nominalDiameter] || [];
+    }
+    if (steelSpecName.includes('SABS 62') && steelSpecName.includes('Heavy')) {
+      return SABS62_HEAVY_SCHEDULES[nominalDiameter] || [];
+    }
+    if (steelSpecName.includes('SABS 719')) {
+      return SABS719_PIPE_SCHEDULES[nominalDiameter] || [];
+    }
+  }
+
+  // Fallback to ID-based lookup
   if (steelSpecId === 8) {
     // SABS 719 - use wall thickness format
     return SABS719_PIPE_SCHEDULES[nominalDiameter] || [];

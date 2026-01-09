@@ -538,8 +538,8 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
         </button>
       </div>
 
-      <div className="h-64 w-full bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
-        <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 1.5, 5], fov: 45 }}>
+      <div className="h-full w-full min-h-[300px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
+        <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 1, 3.5], fov: 45 }}>
           <ambientLight intensity={0.8} />
           <spotLight position={[10, 10, 5]} angle={0.5} penumbra={1} intensity={1} />
           <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />

@@ -57,6 +57,7 @@ import {
 const Pipe3DPreview = dynamic(() => import('@/app/components/rfq/Pipe3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 const Bend3DPreview = dynamic(() => import('@/app/components/rfq/Bend3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 const Tee3DPreview = dynamic(() => import('@/app/components/rfq/Tee3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
+import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
 
 export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors, loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions, fetchCenterToFace, bendOptionsCache, autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses }: any) {
   // State for hiding/showing 3D drawings per item
@@ -68,6 +69,40 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
   const manuallyUpdatedEntriesRef = useRef<Set<string>>(new Set());
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [isLoadingNominalBores, setIsLoadingNominalBores] = useState(false);
+
+  const focusAndOpenSelect = useCallback((selectId: string) => {
+    setTimeout(() => {
+      const selectElement = document.getElementById(selectId) as HTMLSelectElement;
+      if (selectElement) {
+        selectElement.focus();
+        if (typeof selectElement.showPicker === 'function') {
+          try {
+            selectElement.showPicker();
+          } catch {
+            const length = selectElement.options.length;
+            selectElement.size = Math.min(length, 10);
+            const resetSize = () => {
+              selectElement.size = 1;
+              selectElement.removeEventListener('blur', resetSize);
+              selectElement.removeEventListener('change', resetSize);
+            };
+            selectElement.addEventListener('blur', resetSize);
+            selectElement.addEventListener('change', resetSize);
+          }
+        } else {
+          const length = selectElement.options.length;
+          selectElement.size = Math.min(length, 10);
+          const resetSize = () => {
+            selectElement.size = 1;
+            selectElement.removeEventListener('blur', resetSize);
+            selectElement.removeEventListener('change', resetSize);
+          };
+          selectElement.addEventListener('blur', resetSize);
+          selectElement.addEventListener('change', resetSize);
+        }
+      }
+    }, 150);
+  }, []);
 
   // Pre-fetch pressure classes for any standards that are already selected
   useEffect(() => {
@@ -987,7 +1022,12 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
 
             {entry.itemType === 'bend' ? (
               /* Bend Item Fields */
-              <div className="space-y-5">
+              <SplitPaneLayout
+                entryId={entry.id}
+                itemType="bend"
+                showSplitToggle={entry.specs?.nominalBoreMm && entry.specs?.bendDegrees}
+                formContent={
+                  <>
                 {/* Item Description */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-900 mb-1">
@@ -1022,6 +1062,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         })()}
                       </label>
                       <select
+                        id={`bend-steel-spec-${entry.id}`}
                         value={entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || ''}
                         onChange={(e) => {
                           const newSpecId = e.target.value ? Number(e.target.value) : undefined;
@@ -1043,6 +1084,14 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
+
+                          if (newSpecId) {
+                            const isSABS719 = newSpecId === 8;
+                            const nextFieldId = isSABS719
+                              ? `bend-radius-type-${entry.id}`
+                              : `bend-type-${entry.id}`;
+                            focusAndOpenSelect(nextFieldId);
+                          }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                       >
@@ -1064,6 +1113,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         )}
                       </label>
                       <select
+                        id={`bend-nb-${entry.id}`}
                         value={entry.specs?.nominalBoreMm || ''}
                         onChange={async (e) => {
                           const nominalBore = parseInt(e.target.value);
@@ -1148,6 +1198,10 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           if (matchedSchedule && hasBendSpecs) {
                             setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                           }
+
+                          if (!entry.specs?.bendDegrees) {
+                            focusAndOpenSelect(`bend-angle-${entry.id}`);
+                          }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                         disabled={!isSABS719 && !entry.specs?.bendType}
@@ -1225,6 +1279,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         <span className="text-purple-600 text-xs ml-1">(SABS 62)</span>
                       </label>
                       <select
+                        id={`bend-type-${entry.id}`}
                         value={entry.specs?.bendType || ''}
                         onChange={(e) => {
                           const bendType = e.target.value;
@@ -1242,6 +1297,10 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
+
+                          if (bendType) {
+                            focusAndOpenSelect(`bend-nb-${entry.id}`);
+                          }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
                       >
@@ -1263,6 +1322,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         <span className="text-blue-600 text-xs ml-1">(SABS 719)</span>
                       </label>
                       <select
+                        id={`bend-radius-type-${entry.id}`}
                         value={entry.specs?.bendRadiusType || ''}
                         onChange={(e) => {
                           const radiusType = e.target.value || undefined;
@@ -1272,6 +1332,10 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
+
+                          if (radiusType) {
+                            focusAndOpenSelect(`bend-nb-${entry.id}`);
+                          }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
                       >
@@ -1300,6 +1364,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         )}
                       </label>
                       <select
+                        id={`bend-angle-${entry.id}`}
                         value={entry.specs?.bendDegrees || ''}
                         onChange={(e) => {
                           const bendDegrees = e.target.value ? parseFloat(e.target.value) : undefined;
@@ -3075,9 +3140,9 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                     </div>
                   </div>
                 )}
-
-                {/* 3D Bend Preview - positioned after calculation results */}
-                {entry.specs?.nominalBoreMm && entry.specs?.bendDegrees && (
+                  </>
+                }
+                previewContent={
                   <Bend3DPreview
                     nominalBore={entry.specs.nominalBoreMm}
                     outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}
@@ -3097,11 +3162,17 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                     addBlankFlange={entry.specs?.addBlankFlange}
                     blankFlangePositions={entry.specs?.blankFlangePositions}
                   />
-                )}
-              </div>
+                }
+              />
             ) : entry.itemType === 'fitting' ? (
-              /* Fitting Item Fields */
-              <div className="space-y-5">
+              <>
+              {/* Fitting Item Fields with Split-Pane Layout */}
+              <SplitPaneLayout
+                entryId={entry.id}
+                itemType="fitting"
+                showSplitToggle={entry.specs?.fittingType && ['SHORT_TEE', 'GUSSET_TEE', 'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE', 'SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE', 'EQUAL_TEE', 'UNEQUAL_TEE', 'SWEEP_TEE', 'GUSSETTED_TEE'].includes(entry.specs?.fittingType)}
+                formContent={
+                  <>
                 {/* Item Description */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-900 mb-1">
@@ -3155,6 +3226,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                       </label>
                       <div className="flex gap-2">
                         <select
+                          id={`fitting-standard-${entry.id}`}
                           value={entry.specs?.fittingStandard || ((entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8 ? 'SABS719' : 'SABS62')}
                           onChange={(e) => {
                             const updatedEntry = {
@@ -3163,6 +3235,10 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             };
                             updatedEntry.description = generateItemDescription(updatedEntry);
                             onUpdateEntry(entry.id, updatedEntry);
+
+                            if (!entry.specs?.fittingType) {
+                              focusAndOpenSelect(`fitting-type-${entry.id}`);
+                            }
                           }}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                         >
@@ -3201,6 +3277,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         Fitting Type *
                       </label>
                       <select
+                        id={`fitting-type-${entry.id}`}
                         value={entry.specs?.fittingType || ''}
                         onChange={async (e) => {
                           const fittingType = e.target.value;
@@ -3268,6 +3345,10 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           onUpdateEntry(entry.id, updatedEntry);
                           // Auto-calculate fitting
                           setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+
+                          if (fittingType && !entry.specs?.nominalDiameterMm) {
+                            focusAndOpenSelect(`fitting-nb-${entry.id}`);
+                          }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                       >
@@ -3313,6 +3394,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         )}
                       </label>
                       <select
+                        id={`fitting-nb-${entry.id}`}
                         value={entry.specs?.nominalDiameterMm || ''}
                         onChange={async (e) => {
                           const nominalDiameter = Number(e.target.value);
@@ -3395,6 +3477,11 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           onUpdateEntry(entry.id, updatedEntry);
                           // Auto-calculate fitting
                           setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+
+                          const isReducingTee = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(entry.specs?.fittingType || '');
+                          if (nominalDiameter && isReducingTee && !entry.specs?.branchNominalDiameterMm) {
+                            focusAndOpenSelect(`fitting-branch-nb-${entry.id}`);
+                          }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                       >
@@ -3432,6 +3519,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           <span className="text-blue-600 text-xs ml-2">(Tee Outlet Size)</span>
                         </label>
                         <select
+                          id={`fitting-branch-nb-${entry.id}`}
                           value={entry.specs?.branchNominalDiameterMm || ''}
                           onChange={(e) => {
                             const branchDiameter = Number(e.target.value);
@@ -4150,94 +4238,60 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                     placeholder="Any special requirements or notes..."
                   />
                 </div>
+                  </>
+                }
+                previewContent={
+                  <>
+                    {(() => {
+                      const fittingType = entry.specs?.fittingType || '';
+                      const isTeeType = ['SHORT_TEE', 'GUSSET_TEE', 'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE', 'SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE', 'EQUAL_TEE', 'UNEQUAL_TEE', 'SWEEP_TEE', 'GUSSETTED_TEE'].includes(fittingType);
 
-                {/* 3D Fitting Preview - Collapsible */}
-                {entry.specs?.fittingType && entry.specs?.nominalDiameterMm && (
-                  (() => {
-                    // Determine tee type based on fitting type
-                    const fittingType = entry.specs?.fittingType || '';
-                    const isTeeType = ['SHORT_TEE', 'GUSSET_TEE', 'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE', 'SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE', 'EQUAL_TEE', 'UNEQUAL_TEE', 'SWEEP_TEE', 'GUSSETTED_TEE'].includes(fittingType);
+                      if (!isTeeType) return null;
 
-                    if (!isTeeType) return null;
+                      const teeType = ['GUSSET_TEE', 'UNEQUAL_GUSSET_TEE', 'GUSSET_REDUCING_TEE', 'GUSSETTED_TEE'].includes(fittingType)
+                        ? 'gusset' as const
+                        : 'short' as const;
 
-                    // Check if drawing is hidden for this entry
-                    const isDrawingHidden = hiddenDrawings[entry.id];
+                      const nominalBore = entry.specs?.nominalDiameterMm || 500;
+                      const branchNominalBore = entry.specs?.branchNominalDiameterMm;
+                      const wallThickness = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 8;
+                      const outerDiameter = entry.calculation?.outsideDiameterMm;
 
-                    // Map fitting type to tee type for 3D preview
-                    const teeType = ['GUSSET_TEE', 'UNEQUAL_GUSSET_TEE', 'GUSSET_REDUCING_TEE', 'GUSSETTED_TEE'].includes(fittingType)
-                      ? 'gusset' as const
-                      : 'short' as const;
+                      const steelSpec = masterData.steelSpecs?.find((s: any) =>
+                        s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId)
+                      );
 
-                    const nominalBore = entry.specs?.nominalDiameterMm || 500;
-                    const branchNominalBore = entry.specs?.branchNominalDiameterMm;
-                    const wallThickness = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 8;
-                    const outerDiameter = entry.calculation?.outsideDiameterMm;
-
-                    // Get material name from global specs
-                    const steelSpec = masterData.steelSpecs?.find((s: any) =>
-                      s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId)
-                    );
-
-                    return (
-                      <div className="border border-gray-200 rounded-lg overflow-hidden bg-slate-50">
-                        <div className="bg-gray-100 px-3 py-2 border-b border-gray-200 flex items-center justify-between">
-                          <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
-                            </svg>
-                            3D Fitting Preview
-                          </h4>
-                          <button
-                            onClick={() => setHiddenDrawings(prev => ({ ...prev, [entry.id]: !prev[entry.id] }))}
-                            className="px-3 py-1 text-xs font-medium bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-md transition-colors"
-                          >
-                            {isDrawingHidden ? 'Show Drawing' : 'Hide Drawing'}
-                          </button>
-                        </div>
-                        {!isDrawingHidden && (
-                        <>
-                        <div className="h-64">
-                          <Tee3DPreview
-                            nominalBore={nominalBore}
-                            branchNominalBore={branchNominalBore}
-                            outerDiameter={outerDiameter}
-                            wallThickness={wallThickness}
-                            teeType={teeType}
-                            runLength={entry.specs?.pipeLengthAMm}
-                            branchPositionMm={(() => {
-                              // Parse stubLocation to extract numeric value (distance from left flange)
-                              const loc = entry.specs?.stubLocation;
-                              if (!loc) return undefined;
-                              // Try to extract number from string like "500", "500mm", "500mm from end"
-                              const match = loc.match(/(\d+)/);
-                              return match ? Number(match[1]) : undefined;
-                            })()}
-                            materialName={steelSpec?.steelSpecName}
-                            hasInletFlange={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').hasInlet}
-                            hasOutletFlange={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').hasOutlet}
-                            hasBranchFlange={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').hasBranch}
-                            inletFlangeType={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').inletType}
-                            outletFlangeType={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').outletType}
-                            branchFlangeType={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').branchType}
-                            closureLengthMm={entry.specs?.closureLengthMm || 150}
-                            addBlankFlange={entry.specs?.addBlankFlange}
-                            blankFlangeCount={entry.specs?.blankFlangeCount}
-                            blankFlangePositions={entry.specs?.blankFlangePositions}
-                          />
-                        </div>
-                        <div className="bg-gray-50 px-3 py-2 border-t border-gray-200">
-                          <p className="text-xs text-gray-500 text-center">
-                            {fittingType.replace(/_/g, ' ')} - {nominalBore}mm NB
-                            {branchNominalBore && ` × ${branchNominalBore}mm Branch`}
-                            {teeType === 'gusset' && ' (Gussetted)'}
-                          </p>
-                        </div>
-                        </>
-                        )}
-                      </div>
-                    );
-                  })()
-                )}
+                      return (
+                        <Tee3DPreview
+                          nominalBore={nominalBore}
+                          branchNominalBore={branchNominalBore}
+                          outerDiameter={outerDiameter}
+                          wallThickness={wallThickness}
+                          teeType={teeType}
+                          runLength={entry.specs?.pipeLengthAMm}
+                          branchPositionMm={(() => {
+                            const loc = entry.specs?.stubLocation;
+                            if (!loc) return undefined;
+                            const match = loc.match(/(\d+)/);
+                            return match ? Number(match[1]) : undefined;
+                          })()}
+                          materialName={steelSpec?.steelSpecName}
+                          hasInletFlange={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').hasInlet}
+                          hasOutletFlange={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').hasOutlet}
+                          hasBranchFlange={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').hasBranch}
+                          inletFlangeType={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').inletType}
+                          outletFlangeType={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').outletType}
+                          branchFlangeType={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').branchType}
+                          closureLengthMm={entry.specs?.closureLengthMm || 150}
+                          addBlankFlange={entry.specs?.addBlankFlange}
+                          blankFlangeCount={entry.specs?.blankFlangeCount}
+                          blankFlangePositions={entry.specs?.blankFlangePositions}
+                        />
+                      );
+                    })()}
+                  </>
+                }
+              />
 
                 {/* Calculate button removed - calculation happens automatically on spec changes */}
 
@@ -4617,10 +4671,16 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                     </button>
                   </div>
                 )}
-              </div>
+              </>
             ) : (
-              /* Straight Pipe Fields */
-              <div className="space-y-5">
+              <>
+              {/* Straight Pipe Fields */}
+              <SplitPaneLayout
+                entryId={entry.id}
+                itemType="straight_pipe"
+                showSplitToggle={entry.specs?.nominalBoreMm}
+                formContent={
+                  <>
                 {/* Item Description - Single Field */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-900 mb-1">
@@ -4675,6 +4735,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                     </label>
                     <div className="flex gap-2">
                       <select
+                        id={`pipe-steel-spec-${entry.id}`}
                         value={entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || ''}
                         onChange={(e) => {
                           const specId = e.target.value ? Number(e.target.value) : undefined;
@@ -4684,6 +4745,9 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               steelSpecificationId: specId
                             }
                           });
+                          if (specId && !entry.specs?.nominalBoreMm) {
+                            focusAndOpenSelect(`pipe-nb-${entry.id}`);
+                          }
                         }}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                       >
@@ -4724,6 +4788,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                       Nominal Bore (mm) *
                     </label>
                     <select
+                      id={`pipe-nb-${entry.id}`}
                       value={entry.specs.nominalBoreMm}
                       onChange={async (e) => {
                         const nominalBore = Number(e.target.value);
@@ -5741,31 +5806,22 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                 </div>
 
               </div>
-
-              {/* 3D Pipe Preview - below specifications, above calculations */}
-              {entry.specs?.nominalBoreMm && (
-                <div className="mt-4 relative">
-                  {!hiddenDrawings[entry.id] && (
-                    <Pipe3DPreview
-                      length={entry.specs.individualPipeLength || 12.192}
-                      outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
-                      wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
-                      endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
-                      materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
-                      nominalBoreMm={entry.specs.nominalBoreMm}
-                      pressureClass={globalSpecs?.pressureClassDesignation || 'PN16'}
-                      addBlankFlange={entry.specs?.addBlankFlange}
-                      blankFlangePositions={entry.specs?.blankFlangePositions}
-                    />
-                  )}
-                  <button
-                    onClick={() => setHiddenDrawings(prev => ({ ...prev, [entry.id]: !prev[entry.id] }))}
-                    className="absolute bottom-2 right-2 px-3 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-md transition-colors z-10"
-                  >
-                    {hiddenDrawings[entry.id] ? 'Show Drawing' : 'Hide Drawing'}
-                  </button>
-                </div>
-              )}
+                  </>
+                }
+                previewContent={
+                  <Pipe3DPreview
+                    length={entry.specs.individualPipeLength || 12.192}
+                    outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
+                    wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
+                    endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
+                    materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                    nominalBoreMm={entry.specs.nominalBoreMm}
+                    pressureClass={globalSpecs?.pressureClassDesignation || 'PN16'}
+                    addBlankFlange={entry.specs?.addBlankFlange}
+                    blankFlangePositions={entry.specs?.blankFlangePositions}
+                  />
+                }
+              />
 
               {/* Remove Item Button */}
               {entries.length > 1 && (
@@ -6220,12 +6276,11 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                   </div>
                 )}
               </div>
-
-
-            </div>
+              </>
             )}
           </div>
         ))}
+        </div>
 
         {/* Total Summary */}
         <div className="border-2 border-blue-200 rounded-md p-3 bg-blue-50">
@@ -6907,7 +6962,6 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
             </table>
           </div>
         </div>
-          </div>
         </>
       )}
     </div>

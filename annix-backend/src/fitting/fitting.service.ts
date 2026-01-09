@@ -202,33 +202,40 @@ export class FittingService {
       }
     }
 
-    // Normalize schedule number (convert "Sch40", "Sch 10", "Sch 40/STD" to "40", etc.)
-    const normalizeScheduleNumber = (scheduleNumber: string): string => {
-      if (!scheduleNumber) return scheduleNumber;
-      // Handle formats like "Sch10", "Sch 10", "Sch 40/STD", "Sch 80/XS"
-      const schMatch = scheduleNumber.match(/^[Ss]ch\s*(\d+)(?:\/\w+)?$/);
-      if (schMatch) {
-        return schMatch[1];
-      }
-      // Handle just the number
+    // Generate possible schedule formats to try (DB stores various formats: Sch20, Sch40, MEDIUM, HEAVY, WT6, etc.)
+    const possibleScheduleFormats = (scheduleNumber: string): string[] => {
+      if (!scheduleNumber) return [scheduleNumber];
+      const formats: string[] = [scheduleNumber];
+
+      // Extract number from various formats
+      const schMatch = scheduleNumber.match(/^[Ss]ch\s*(\d+[Ss]?)(?:\/\w+)?$/);
       const numMatch = scheduleNumber.match(/^(\d+)(?:\/\w+)?$/);
-      if (numMatch) {
-        return numMatch[1];
+      const num = schMatch ? schMatch[1] : numMatch ? numMatch[1] : null;
+
+      if (num) {
+        formats.push(`Sch${num}`);
+        formats.push(`Sch ${num}`);
+        formats.push(num);
       }
-      return scheduleNumber;
+
+      return [...new Set(formats)];
     };
 
-    const normalizedSchedule = normalizeScheduleNumber(dto.scheduleNumber);
+    const scheduleFormats = possibleScheduleFormats(dto.scheduleNumber);
 
-    // Find pipe dimension for the specified nominal diameter and schedule
-    const pipeDimension = await this.pipeDimensionRepository.findOne({
-      where: {
-        nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalDiameterMm },
-        schedule_designation: normalizedSchedule,
-        ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
-      },
-      relations: ['nominalOutsideDiameter', 'steelSpecification'],
-    });
+    // Find pipe dimension trying multiple schedule formats
+    let pipeDimension: PipeDimension | null = null;
+    for (const scheduleFormat of scheduleFormats) {
+      pipeDimension = await this.pipeDimensionRepository.findOne({
+        where: {
+          nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalDiameterMm },
+          schedule_designation: scheduleFormat,
+          ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
+        },
+        relations: ['nominalOutsideDiameter', 'steelSpecification'],
+      });
+      if (pipeDimension) break;
+    }
 
     if (!pipeDimension) {
       throw new NotFoundException(

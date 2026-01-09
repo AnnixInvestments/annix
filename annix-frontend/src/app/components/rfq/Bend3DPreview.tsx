@@ -1781,7 +1781,8 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
   const t2 = (props.tangent2 || 0) / scaleFactor;
   const bendSize = (props.nominalBore || 50) / scaleFactor * 2;
   const maxExtent = Math.max(t1, t2, bendSize, 1);
-  const cameraZ = Math.max(12, maxExtent * 3 + 8);
+  // Closer camera distance to make pipe fill more of the viewport
+  const cameraZ = Math.max(6, maxExtent * 1.8 + 4);
 
   // Calculate pipe dimensions for info display using proper wall thickness lookup
   const odRaw = getOuterDiameter(props.nominalBore, props.outerDiameter);
@@ -1820,12 +1821,12 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
   }
 
   return (
-    <div className="h-64 w-full bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative mb-4">
+    <div className="h-full w-full min-h-[300px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
       <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 0, cameraZ], fov: 50 }}>
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
         <Environment preset="city" />
-        <group scale={0.75}>
+        <group scale={1.2}>
           <BendScene {...props} />
         </group>
         <ContactShadows position={[0, -5, 0]} opacity={0.3} scale={20} blur={2} />
@@ -1981,10 +1982,10 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
         </button>
       </div>
 
-      {/* Expanded Modal - positioned above bottom toolbar */}
+      {/* Expanded Modal - centered in viewport */}
       {isExpanded && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-start justify-center pt-4 pb-24">
-          <div className="relative w-full h-full max-w-6xl max-h-[calc(100vh-120px)] bg-slate-100 rounded-lg overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8">
+          <div className="relative w-full h-full max-w-6xl max-h-[90vh] bg-slate-100 rounded-lg overflow-hidden">
             {/* Close button */}
             <button
               onClick={() => setIsExpanded(false)}
