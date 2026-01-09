@@ -133,10 +133,14 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
 
           if (entry.itemType === 'fitting') {
             autoFocusedEntriesRef.current.add(entry.id);
+            const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+            const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
             if (!entry.specs?.fittingType) {
               focusAndOpenSelect(`fitting-type-${entry.id}`);
             } else if (!entry.specs?.nominalDiameterMm) {
               focusAndOpenSelect(`fitting-nb-${entry.id}`);
+            } else if (effectiveStandard === 'SABS719' && !entry.specs?.scheduleNumber) {
+              focusAndOpenSelect(`fitting-schedule-${entry.id}`);
             }
           } else if (entry.itemType === 'bend' && hasSteelSpec) {
             autoFocusedEntriesRef.current.add(entry.id);
@@ -3296,7 +3300,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             onUpdateEntry(entry.id, updatedEntry);
 
                             if (!entry.specs?.fittingType) {
-                              focusAndOpenSelect(`fitting-type-${entry.id}`);
+                              setTimeout(() => focusAndOpenSelect(`fitting-type-${entry.id}`), 100);
                             }
                           }}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
@@ -3406,7 +3410,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
 
                           if (fittingType && !entry.specs?.nominalDiameterMm) {
-                            focusAndOpenSelect(`fitting-nb-${entry.id}`);
+                            setTimeout(() => focusAndOpenSelect(`fitting-nb-${entry.id}`), 100);
                           }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
@@ -3538,8 +3542,11 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
 
                           const isReducingTee = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(entry.specs?.fittingType || '');
+                          const isSABS719Fitting = effectiveStandard === 'SABS719';
                           if (nominalDiameter && isReducingTee && !entry.specs?.branchNominalDiameterMm) {
-                            focusAndOpenSelect(`fitting-branch-nb-${entry.id}`);
+                            setTimeout(() => focusAndOpenSelect(`fitting-branch-nb-${entry.id}`), 100);
+                          } else if (nominalDiameter && isSABS719Fitting && !matchedSchedule) {
+                            setTimeout(() => focusAndOpenSelect(`fitting-schedule-${entry.id}`), 100);
                           }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
@@ -3890,6 +3897,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               Auto-calculated for {globalSpecs.workingPressureBar} bar @ {entry.specs.nominalDiameterMm}NB
                             </p>
                             <select
+                              id={`fitting-schedule-${entry.id}`}
                               value={entry.specs?.scheduleNumber || ''}
                               onChange={(e) => {
                                 const schedule = e.target.value;
@@ -3938,6 +3946,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           </div>
                         ) : (
                           <select
+                            id={`fitting-schedule-${entry.id}`}
                             value={entry.specs?.scheduleNumber || ''}
                             onChange={(e) => {
                               const scheduleNumber = e.target.value;
