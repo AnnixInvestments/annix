@@ -3292,15 +3292,18 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           id={`fitting-standard-${entry.id}`}
                           value={entry.specs?.fittingStandard || ((entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8 ? 'SABS719' : 'SABS62')}
                           onChange={(e) => {
+                            const newStandard = e.target.value as 'SABS62' | 'SABS719';
                             const updatedEntry = {
                               ...entry,
-                              specs: { ...entry.specs, fittingStandard: e.target.value as 'SABS62' | 'SABS719', nominalDiameterMm: undefined }
+                              specs: { ...entry.specs, fittingStandard: newStandard, nominalDiameterMm: undefined, scheduleNumber: undefined }
                             };
                             updatedEntry.description = generateItemDescription(updatedEntry);
                             onUpdateEntry(entry.id, updatedEntry);
 
                             if (!entry.specs?.fittingType) {
                               setTimeout(() => focusAndOpenSelect(`fitting-type-${entry.id}`), 100);
+                            } else {
+                              setTimeout(() => focusAndOpenSelect(`fitting-nb-${entry.id}`), 100);
                             }
                           }}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
