@@ -375,17 +375,27 @@ export const useRfqForm = () => {
   }, [addStraightPipeEntry, addBendEntry, addFittingEntry]);
 
   const updateStraightPipeEntry = useCallback((
-    id: string, 
+    id: string,
     updates: Partial<Omit<StraightPipeEntry, 'id'>>
   ) => {
     setRfqData(prev => ({
       ...prev,
-      items: prev.items.map(item =>
-        item.id === id && item.itemType === 'straight_pipe' ? { ...item, ...updates } : item
-      ),
-      straightPipeEntries: prev.straightPipeEntries.map(entry =>
-        entry.id === id ? { ...entry, ...updates } : entry
-      ),
+      items: prev.items.map(item => {
+        if (item.id !== id || item.itemType !== 'straight_pipe') return item;
+        // Deep merge specs to avoid losing existing spec fields
+        const mergedSpecs = updates.specs
+          ? { ...item.specs, ...updates.specs }
+          : item.specs;
+        return { ...item, ...updates, specs: mergedSpecs };
+      }),
+      straightPipeEntries: prev.straightPipeEntries.map(entry => {
+        if (entry.id !== id) return entry;
+        // Deep merge specs to avoid losing existing spec fields
+        const mergedSpecs = updates.specs
+          ? { ...entry.specs, ...updates.specs }
+          : entry.specs;
+        return { ...entry, ...updates, specs: mergedSpecs };
+      }),
     }));
   }, []);
 
@@ -395,9 +405,14 @@ export const useRfqForm = () => {
   ) => {
     setRfqData(prev => ({
       ...prev,
-      items: prev.items.map(item =>
-        item.id === id ? { ...item, ...updates } as PipeItem : item
-      ),
+      items: prev.items.map(item => {
+        if (item.id !== id) return item;
+        // Deep merge specs to avoid losing existing spec fields
+        const mergedSpecs = updates.specs
+          ? { ...item.specs, ...updates.specs }
+          : item.specs;
+        return { ...item, ...updates, specs: mergedSpecs } as PipeItem;
+      }),
     }));
   }, []);
 

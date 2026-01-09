@@ -322,9 +322,16 @@ function Start-ServiceJobs {
         $env:NEXT_PUBLIC_API_URL = "http://localhost:4001"
     }
 
+    # Clear frontend cache before starting
+    Write-Info "Clearing frontend cache..."
+    $nextDir = Join-Path $FrontendDir ".next"
+    $cacheDir = Join-Path $FrontendDir "node_modules/.cache"
+    if (Test-Path $nextDir) { Remove-Item -Recurse -Force $nextDir }
+    if (Test-Path $cacheDir) { Remove-Item -Recurse -Force $cacheDir }
+
     foreach ($definition in @(
         @{ Name = "backend"; WorkingDir = $BackendDir; Command = "pnpm start:dev"; Log = Join-Path $RepoRoot $BackendLog },
-        @{ Name = "frontend"; WorkingDir = $FrontendDir; Command = "pnpm dev"; Log = Join-Path $RepoRoot $FrontendLog }
+        @{ Name = "frontend"; WorkingDir = $FrontendDir; Command = "pnpm dev --turbo"; Log = Join-Path $RepoRoot $FrontendLog }
     )) {
         if (Test-Path $definition.Log) {
             Remove-Item $definition.Log

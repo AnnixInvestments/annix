@@ -355,10 +355,13 @@ start_services() {
   ) | tee -a "$BACKEND_LOG" &
   BACKEND_PID=$!
 
-  info "Starting frontend (logs: $FRONTEND_LOG)..."
+  info "Clearing frontend cache..."
+  rm -rf "$FRONTEND_DIR/.next" "$FRONTEND_DIR/node_modules/.cache"
+
+  info "Starting frontend with Turbopack (logs: $FRONTEND_LOG)..."
   (
     cd "$FRONTEND_DIR"
-    NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:4001}" pnpm dev
+    NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:4001}" pnpm dev --turbo
   ) | tee -a "$FRONTEND_LOG" &
   FRONTEND_PID=$!
 }

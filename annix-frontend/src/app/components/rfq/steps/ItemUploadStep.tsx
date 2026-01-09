@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { Select } from '@/app/components/ui/Select';
 import { getPipeEndConfigurationDetails } from '@/app/lib/utils/systemUtils';
 import { masterDataApi, pipeScheduleApi } from '@/app/lib/api/client';
 import {
@@ -72,31 +73,51 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [isLoadingNominalBores, setIsLoadingNominalBores] = useState(false);
 
+  const pendingFocusRef = useRef<Set<string>>(new Set());
+  const [openSelects, setOpenSelects] = useState<Record<string, boolean>>({});
+  const radixSelectIds = useRef<Set<string>>(new Set());
+
+  const registerRadixSelect = useCallback((selectId: string) => {
+    radixSelectIds.current.add(selectId);
+  }, []);
+
+  const openSelect = useCallback((selectId: string) => {
+    setOpenSelects(prev => ({ ...prev, [selectId]: true }));
+    requestAnimationFrame(() => {
+      const element = document.getElementById(selectId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.focus();
+      }
+    });
+  }, []);
+
+  const closeSelect = useCallback((selectId: string) => {
+    setOpenSelects(prev => ({ ...prev, [selectId]: false }));
+  }, []);
+
   const focusAndOpenSelect = useCallback((selectId: string, retryCount = 0) => {
-    const maxRetries = 10;
-    const delay = 100 + (retryCount * 100);
+    if (pendingFocusRef.current.has(selectId) && retryCount === 0) {
+      return;
+    }
+    pendingFocusRef.current.add(selectId);
+
+    const maxRetries = 5;
+    const delay = 50 + (retryCount * 50);
 
     setTimeout(() => {
-      const selectElement = document.getElementById(selectId) as HTMLSelectElement;
-      if (!selectElement) {
-        if (retryCount < maxRetries) {
-          focusAndOpenSelect(selectId, retryCount + 1);
-        }
-        return;
-      }
+      pendingFocusRef.current.delete(selectId);
 
-      selectElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      selectElement.focus();
+      // Always try to open via Radix state first (works for all our migrated selects)
+      openSelect(selectId);
 
-      try {
-        if (typeof selectElement.showPicker === 'function') {
-          selectElement.showPicker();
-        }
-      } catch {
-        // showPicker requires user activation - silently fail
+      // Also scroll to the element
+      const element = document.getElementById(selectId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, delay);
-  }, []);
+  }, [openSelect]);
 
   // Track the last entry count to detect new entries
   const lastEntryCountRef = useRef<number>(0);
@@ -1108,45 +1129,53 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           return null;
                         })()}
                       </label>
-                      <select
-                        id={`bend-steel-spec-${entry.id}`}
-                        value={entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || ''}
-                        onChange={(e) => {
-                          const newSpecId = e.target.value ? Number(e.target.value) : undefined;
-                          const updatedEntry: any = {
-                            ...entry,
-                            specs: {
-                              ...entry.specs,
-                              steelSpecificationId: newSpecId,
-                              nominalBoreMm: undefined,
-                              scheduleNumber: undefined,
-                              wallThicknessMm: undefined,
-                              bendType: undefined,
-                              bendRadiusType: undefined,
-                              bendDegrees: undefined,
-                              numberOfSegments: undefined,
-                              centerToFaceMm: undefined,
-                              bendRadiusMm: undefined
-                            }
-                          };
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
+                      {(() => {
+                        const selectId = `bend-steel-spec-${entry.id}`;
+                        const options = masterData.steelSpecs?.map((spec: any) => ({
+                          value: String(spec.id),
+                          label: spec.steelSpecName
+                        })) || [];
 
-                          if (newSpecId) {
-                            const isSABS719 = newSpecId === 8;
-                            const nextFieldId = isSABS719
-                              ? `bend-radius-type-${entry.id}`
-                              : `bend-type-${entry.id}`;
-                            focusAndOpenSelect(nextFieldId);
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                      >
-                        <option value="">Select Steel Spec</option>
-                        {masterData.steelSpecs?.map((spec: any) => (
-                          <option key={spec.id} value={spec.id}>{spec.steelSpecName}</option>
-                        ))}
-                      </select>
+                        return (
+                          <Select
+                            id={selectId}
+                            value={String(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || '')}
+                            onChange={(value) => {
+                              const newSpecId = value ? Number(value) : undefined;
+                              const updatedEntry: any = {
+                                ...entry,
+                                specs: {
+                                  ...entry.specs,
+                                  steelSpecificationId: newSpecId,
+                                  nominalBoreMm: undefined,
+                                  scheduleNumber: undefined,
+                                  wallThicknessMm: undefined,
+                                  bendType: undefined,
+                                  bendRadiusType: undefined,
+                                  bendDegrees: undefined,
+                                  numberOfSegments: undefined,
+                                  centerToFaceMm: undefined,
+                                  bendRadiusMm: undefined
+                                }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+
+                              if (newSpecId) {
+                                const isSABS719 = newSpecId === 8;
+                                const nextFieldId = isSABS719
+                                  ? `bend-radius-type-${entry.id}`
+                                  : `bend-type-${entry.id}`;
+                                setTimeout(() => focusAndOpenSelect(nextFieldId), 100);
+                              }
+                            }}
+                            options={options}
+                            placeholder="Select Steel Spec"
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
                     </div>
                   );
 
@@ -1159,119 +1188,128 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           <span className="text-orange-500 text-xs ml-1">(Select Bend Type first)</span>
                         )}
                       </label>
-                      <select
-                        id={`bend-nb-${entry.id}`}
-                        value={entry.specs?.nominalBoreMm || ''}
-                        onChange={async (e) => {
-                          const nominalBore = parseInt(e.target.value);
-                          if (!nominalBore) return;
+                      {(() => {
+                        const selectId = `bend-nb-${entry.id}`;
+                        const isDisabled = !isSABS719 && !entry.specs?.bendType;
 
-                          const pressure = globalSpecs?.workingPressureBar || 0;
-                          const nbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                        const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId);
-
-                          let matchedSchedule: string | null = null;
-                          let matchedWT = 0;
-
-                          if (pressure > 0 && schedules.length > 0) {
-                            const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
-                            const pressureMpa = pressure * 0.1;
-                            const allowableStress = 137.9;
-                            const safetyFactor = 1.2;
-                            const minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
-
-                            const eligibleSchedules = schedules
-                              .filter(s => s.wallThicknessMm >= minWT)
-                              .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
-
-                            if (eligibleSchedules.length > 0) {
-                              matchedSchedule = eligibleSchedules[0].scheduleDesignation;
-                              matchedWT = eligibleSchedules[0].wallThicknessMm;
-                            } else {
-                              const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
-                              matchedSchedule = sorted[0].scheduleDesignation;
-                              matchedWT = sorted[0].wallThicknessMm;
-                            }
-                          } else if (schedules.length > 0) {
-                            const sch40 = schedules.find(s => s.scheduleDesignation === '40' || s.scheduleDesignation === 'Sch 40');
-                            if (sch40) {
-                              matchedSchedule = sch40.scheduleDesignation;
-                              matchedWT = sch40.wallThicknessMm;
-                            } else {
-                              matchedSchedule = schedules[0].scheduleDesignation;
-                              matchedWT = schedules[0].wallThicknessMm;
-                            }
-                          }
-
-                          let newCenterToFace: number | undefined = undefined;
-                          let newBendRadius: number | undefined = undefined;
-
-                          if (isSABS719 && entry.specs?.bendRadiusType && entry.specs?.numberOfSegments) {
-                            const cfResult = getSABS719CenterToFaceBySegments(
-                              entry.specs.bendRadiusType,
-                              nominalBore,
-                              entry.specs.numberOfSegments
-                            );
-                            if (cfResult) {
-                              newCenterToFace = cfResult.centerToFace;
-                              newBendRadius = cfResult.radius;
-                            }
-                          }
-
-                          // For SABS 62, calculate C/F if bend type and angle are set
-                          if (!isSABS719 && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                            const bendType = entry.specs.bendType as SABS62BendType;
-                            newCenterToFace = getSabs62CFInterpolated(bendType, entry.specs.bendDegrees, nominalBore);
-                            newBendRadius = SABS62_BEND_RADIUS[bendType]?.[nominalBore];
-                          }
-
-                          const updatedEntry: any = {
-                            ...entry,
-                            specs: {
-                              ...entry.specs,
-                              nominalBoreMm: nominalBore,
-                              scheduleNumber: matchedSchedule,
-                              wallThicknessMm: matchedWT,
-                              centerToFaceMm: newCenterToFace,
-                              bendRadiusMm: newBendRadius
-                            }
-                          };
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
-
-                          const hasBendSpecs = isSABS719
-                            ? (entry.specs?.bendRadiusType && entry.specs?.bendDegrees)
-                            : (entry.specs?.bendType && entry.specs?.bendDegrees);
-                          if (matchedSchedule && hasBendSpecs) {
-                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                          }
-
-                          if (!entry.specs?.bendDegrees) {
-                            focusAndOpenSelect(`bend-angle-${entry.id}`);
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                        disabled={!isSABS719 && !entry.specs?.bendType}
-                      >
-                        <option value="">{!isSABS719 && !entry.specs?.bendType ? 'Select Bend Type first' : 'Select NB'}</option>
-                        {(() => {
+                        const nbOptions = (() => {
                           if (!isSABS719 && entry.specs?.bendType) {
                             const bendType = entry.specs.bendType as SABS62BendType;
                             const sabs62NBs = SABS62_NB_OPTIONS[bendType] || [];
-                            return sabs62NBs.map((nb: number) => (
-                              <option key={nb} value={nb}>{nb} NB</option>
-                            ));
+                            return sabs62NBs.map((nb: number) => ({
+                              value: String(nb),
+                              label: `${nb} NB`
+                            }));
                           }
-                          // SABS 719 or no bend type - show fallback
                           const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === effectiveSteelSpecId);
                           const steelSpecName = steelSpec?.steelSpecName || '';
                           const fallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => steelSpecName.includes(pattern))?.[1];
                           const nbs = fallbackNBs || [40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600];
-                          return nbs.map((nb: number) => (
-                            <option key={nb} value={nb}>{nb} NB</option>
-                          ));
-                        })()}
-                      </select>
+                          return nbs.map((nb: number) => ({
+                            value: String(nb),
+                            label: `${nb} NB`
+                          }));
+                        })();
+
+                        return (
+                          <Select
+                            id={selectId}
+                            value={entry.specs?.nominalBoreMm ? String(entry.specs.nominalBoreMm) : ''}
+                            onChange={(value) => {
+                              const nominalBore = parseInt(value);
+                              if (!nominalBore) return;
+
+                              const pressure = globalSpecs?.workingPressureBar || 0;
+                              const nbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                              const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId);
+
+                              let matchedSchedule: string | null = null;
+                              let matchedWT = 0;
+
+                              if (pressure > 0 && schedules.length > 0) {
+                                const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
+                                const pressureMpa = pressure * 0.1;
+                                const allowableStress = 137.9;
+                                const safetyFactor = 1.2;
+                                const minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
+
+                                const eligibleSchedules = schedules
+                                  .filter(s => s.wallThicknessMm >= minWT)
+                                  .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
+
+                                if (eligibleSchedules.length > 0) {
+                                  matchedSchedule = eligibleSchedules[0].scheduleDesignation;
+                                  matchedWT = eligibleSchedules[0].wallThicknessMm;
+                                } else {
+                                  const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
+                                  matchedSchedule = sorted[0].scheduleDesignation;
+                                  matchedWT = sorted[0].wallThicknessMm;
+                                }
+                              } else if (schedules.length > 0) {
+                                const sch40 = schedules.find(s => s.scheduleDesignation === '40' || s.scheduleDesignation === 'Sch 40');
+                                if (sch40) {
+                                  matchedSchedule = sch40.scheduleDesignation;
+                                  matchedWT = sch40.wallThicknessMm;
+                                } else {
+                                  matchedSchedule = schedules[0].scheduleDesignation;
+                                  matchedWT = schedules[0].wallThicknessMm;
+                                }
+                              }
+
+                              let newCenterToFace: number | undefined = undefined;
+                              let newBendRadius: number | undefined = undefined;
+
+                              if (isSABS719 && entry.specs?.bendRadiusType && entry.specs?.numberOfSegments) {
+                                const cfResult = getSABS719CenterToFaceBySegments(
+                                  entry.specs.bendRadiusType,
+                                  nominalBore,
+                                  entry.specs.numberOfSegments
+                                );
+                                if (cfResult) {
+                                  newCenterToFace = cfResult.centerToFace;
+                                  newBendRadius = cfResult.radius;
+                                }
+                              }
+
+                              if (!isSABS719 && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                                const bendType = entry.specs.bendType as SABS62BendType;
+                                newCenterToFace = getSabs62CFInterpolated(bendType, entry.specs.bendDegrees, nominalBore);
+                                newBendRadius = SABS62_BEND_RADIUS[bendType]?.[nominalBore];
+                              }
+
+                              const updatedEntry: any = {
+                                ...entry,
+                                specs: {
+                                  ...entry.specs,
+                                  nominalBoreMm: nominalBore,
+                                  scheduleNumber: matchedSchedule,
+                                  wallThicknessMm: matchedWT,
+                                  centerToFaceMm: newCenterToFace,
+                                  bendRadiusMm: newBendRadius
+                                }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+
+                              const hasBendSpecs = isSABS719
+                                ? (entry.specs?.bendRadiusType && entry.specs?.bendDegrees)
+                                : (entry.specs?.bendType && entry.specs?.bendDegrees);
+                              if (matchedSchedule && hasBendSpecs) {
+                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              }
+
+                              if (!entry.specs?.bendDegrees) {
+                                setTimeout(() => focusAndOpenSelect(`bend-angle-${entry.id}`), 100);
+                              }
+                            }}
+                            options={nbOptions}
+                            placeholder={isDisabled ? 'Select Bend Type first' : 'Select NB'}
+                            disabled={isDisabled}
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
                     </div>
                   );
 
@@ -1284,34 +1322,37 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           <span className="text-green-600 text-xs ml-2">(Auto)</span>
                         )}
                       </label>
-                      <select
-                        value={entry.specs?.scheduleNumber || ''}
-                        onChange={(e) => {
-                          const schedule = e.target.value;
-                          const effectiveSteelSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                          const schedules = getScheduleListForSpec(entry.specs?.nominalBoreMm || 0, effectiveSteelSpecId);
-                          const scheduleData = schedules.find((s: any) => s.scheduleDesignation === schedule);
-                          const updatedEntry: any = {
-                            ...entry,
-                            specs: { ...entry.specs, scheduleNumber: schedule, wallThicknessMm: scheduleData?.wallThicknessMm }
-                          };
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                        disabled={!entry.specs?.nominalBoreMm}
-                      >
-                        <option value="">{entry.specs?.nominalBoreMm ? 'Select Schedule' : 'Select NB first'}</option>
-                        {(() => {
-                          const effectiveSteelSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                          const schedules = getScheduleListForSpec(entry.specs?.nominalBoreMm || 0, effectiveSteelSpecId);
-                          return schedules.map((s: any) => (
-                            <option key={s.scheduleDesignation} value={s.scheduleDesignation}>
-                              {s.scheduleDesignation} ({s.wallThicknessMm}mm)
-                            </option>
-                          ));
-                        })()}
-                      </select>
+                      {(() => {
+                        const selectId = `bend-schedule-${entry.id}`;
+                        const schedEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                        const schedules = getScheduleListForSpec(entry.specs?.nominalBoreMm || 0, schedEffectiveSpecId);
+                        const options = schedules.map((s: any) => ({
+                          value: s.scheduleDesignation,
+                          label: `${s.scheduleDesignation} (${s.wallThicknessMm}mm)`
+                        }));
+
+                        return (
+                          <Select
+                            id={selectId}
+                            value={entry.specs?.scheduleNumber || ''}
+                            onChange={(schedule) => {
+                              if (!schedule) return;
+                              const scheduleData = schedules.find((s: any) => s.scheduleDesignation === schedule);
+                              const updatedEntry: any = {
+                                ...entry,
+                                specs: { ...entry.specs, scheduleNumber: schedule, wallThicknessMm: scheduleData?.wallThicknessMm }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            options={options}
+                            placeholder={entry.specs?.nominalBoreMm ? 'Select Schedule' : 'Select NB first'}
+                            disabled={!entry.specs?.nominalBoreMm}
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
                       {entry.specs?.wallThicknessMm && (
                         <p className="text-xs text-green-700 mt-0.5">WT: {entry.specs.wallThicknessMm}mm</p>
                       )}
@@ -1325,39 +1366,46 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         Bend Type *
                         <span className="text-purple-600 text-xs ml-1">(SABS 62)</span>
                       </label>
-                      <select
-                        id={`bend-type-${entry.id}`}
-                        value={entry.specs?.bendType || ''}
-                        onChange={(e) => {
-                          const bendType = e.target.value;
-                          // Clear dependent fields since different bend types have different NB options and angles
-                          const updatedEntry: any = {
-                            ...entry,
-                            specs: {
-                              ...entry.specs,
-                              bendType: bendType || undefined,
-                              nominalBoreMm: undefined, // Clear NB when bend type changes
-                              bendDegrees: undefined, // Clear angle since each bend type has different valid angles
-                              centerToFaceMm: undefined,
-                              bendRadiusMm: undefined
-                            }
-                          };
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
+                      {(() => {
+                        const selectId = `bend-type-${entry.id}`;
+                        const options = [
+                          { value: '1D', label: '1D (Elbow)' },
+                          { value: '1.5D', label: '1.5D (Short Radius)' },
+                          { value: '2D', label: '2D (Standard)' },
+                          { value: '3D', label: '3D (Long Radius)' },
+                          { value: '5D', label: '5D (Extra Long)' }
+                        ];
 
-                          if (bendType) {
-                            focusAndOpenSelect(`bend-nb-${entry.id}`);
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                      >
-                        <option value="">Select Bend Type</option>
-                        <option value="1D">1D (Elbow)</option>
-                        <option value="1.5D">1.5D (Short Radius)</option>
-                        <option value="2D">2D (Standard)</option>
-                        <option value="3D">3D (Long Radius)</option>
-                        <option value="5D">5D (Extra Long)</option>
-                      </select>
+                        return (
+                          <Select
+                            id={selectId}
+                            value={entry.specs?.bendType || ''}
+                            onChange={(bendType) => {
+                              const updatedEntry: any = {
+                                ...entry,
+                                specs: {
+                                  ...entry.specs,
+                                  bendType: bendType || undefined,
+                                  nominalBoreMm: undefined,
+                                  bendDegrees: undefined,
+                                  centerToFaceMm: undefined,
+                                  bendRadiusMm: undefined
+                                }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+
+                              if (bendType) {
+                                setTimeout(() => focusAndOpenSelect(`bend-nb-${entry.id}`), 100);
+                              }
+                            }}
+                            options={options}
+                            placeholder="Select Bend Type"
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
                     </div>
                   );
 
@@ -1368,29 +1416,36 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         Bend Radius *
                         <span className="text-blue-600 text-xs ml-1">(SABS 719)</span>
                       </label>
-                      <select
-                        id={`bend-radius-type-${entry.id}`}
-                        value={entry.specs?.bendRadiusType || ''}
-                        onChange={(e) => {
-                          const radiusType = e.target.value || undefined;
-                          const updatedEntry: any = {
-                            ...entry,
-                            specs: { ...entry.specs, bendRadiusType: radiusType, bendType: undefined, numberOfSegments: undefined, centerToFaceMm: undefined, bendDegrees: undefined }
-                          };
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
+                      {(() => {
+                        const selectId = `bend-radius-type-${entry.id}`;
+                        const options = SABS719_BEND_TYPES.map(opt => ({
+                          value: opt.value,
+                          label: opt.label
+                        }));
 
-                          if (radiusType) {
-                            focusAndOpenSelect(`bend-nb-${entry.id}`);
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                      >
-                        <option value="">Select Radius Type</option>
-                        {SABS719_BEND_TYPES.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
+                        return (
+                          <Select
+                            id={selectId}
+                            value={entry.specs?.bendRadiusType || ''}
+                            onChange={(radiusType) => {
+                              const updatedEntry: any = {
+                                ...entry,
+                                specs: { ...entry.specs, bendRadiusType: radiusType || undefined, bendType: undefined, numberOfSegments: undefined, centerToFaceMm: undefined, bendDegrees: undefined }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+
+                              if (radiusType) {
+                                setTimeout(() => focusAndOpenSelect(`bend-nb-${entry.id}`), 100);
+                              }
+                            }}
+                            options={options}
+                            placeholder="Select Radius Type"
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
                     </div>
                   );
 
@@ -1400,7 +1455,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                   const sabs62NB = entry.specs?.nominalBoreMm;
                   const availableAngles = !isSABS719 && sabs62BendType && sabs62NB
                     ? getSabs62AvailableAngles(sabs62BendType, sabs62NB)
-                    : []; // SABS 719 will use a different range
+                    : [];
 
                   const AngleDropdown = (
                     <div>
@@ -1410,56 +1465,61 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           <span className="text-purple-600 text-xs ml-1">({sabs62BendType})</span>
                         )}
                       </label>
-                      <select
-                        id={`bend-angle-${entry.id}`}
-                        value={entry.specs?.bendDegrees || ''}
-                        onChange={(e) => {
-                          const bendDegrees = e.target.value ? parseFloat(e.target.value) : undefined;
-                          let centerToFaceMm: number | undefined;
-                          let bendRadiusMm: number | undefined;
-                          if (!isSABS719 && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
-                            const bendType = entry.specs.bendType as SABS62BendType;
-                            centerToFaceMm = getSabs62CFInterpolated(bendType, bendDegrees, entry.specs.nominalBoreMm);
-                            bendRadiusMm = SABS62_BEND_RADIUS[bendType]?.[entry.specs.nominalBoreMm];
+                      {(() => {
+                        const selectId = `bend-angle-${entry.id}`;
+                        const isDisabled = !isSABS719 && !sabs62BendType;
+
+                        const angleOptions = (() => {
+                          if (!isSABS719) {
+                            return availableAngles.map(deg => ({
+                              value: String(deg),
+                              label: `${deg}°`
+                            }));
                           }
-                          const updatedEntry: any = {
-                            ...entry,
-                            specs: { ...entry.specs, bendDegrees, centerToFaceMm, bendRadiusMm, numberOfSegments: isSABS719 ? undefined : entry.specs?.numberOfSegments }
-                          };
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
-                          if (bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType) {
-                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                          }
-                        }}
-                        disabled={!isSABS719 && !sabs62BendType}
-                        className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 ${
-                          !isSABS719 && !sabs62BendType ? 'bg-gray-100 cursor-not-allowed' : ''
-                        }`}
-                      >
-                        <option value="">{!isSABS719 && !sabs62BendType ? 'Select Bend Type first' : 'Select Angle'}</option>
-                        {!isSABS719 ? (
-                          // SABS 62: Show only angles valid for the selected bend type
-                          availableAngles.map(deg => (
-                            <option key={deg} value={deg}>{deg}°</option>
-                          ))
-                        ) : (
-                          // SABS 719: Show full range of angles
-                          <>
-                            {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22].map(deg => (
-                              <option key={deg} value={deg}>{deg}°</option>
-                            ))}
-                            <option value="22.5">22.5°</option>
-                            {[23,24,25,26,27,28,29,30,31,32,33,34,35,36,37].map(deg => (
-                              <option key={deg} value={deg}>{deg}°</option>
-                            ))}
-                            <option value="37.5">37.5°</option>
-                            {[38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90].map(deg => (
-                              <option key={deg} value={deg}>{deg}°</option>
-                            ))}
-                          </>
-                        )}
-                      </select>
+                          const sabs719Angles = [
+                            ...Array.from({ length: 22 }, (_, i) => i + 1),
+                            22.5,
+                            ...Array.from({ length: 15 }, (_, i) => i + 23),
+                            37.5,
+                            ...Array.from({ length: 53 }, (_, i) => i + 38)
+                          ];
+                          return sabs719Angles.map(deg => ({
+                            value: String(deg),
+                            label: `${deg}°`
+                          }));
+                        })();
+
+                        return (
+                          <Select
+                            id={selectId}
+                            value={entry.specs?.bendDegrees ? String(entry.specs.bendDegrees) : ''}
+                            onChange={(value) => {
+                              const bendDegrees = value ? parseFloat(value) : undefined;
+                              let centerToFaceMm: number | undefined;
+                              let bendRadiusMm: number | undefined;
+                              if (!isSABS719 && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
+                                const bendType = entry.specs.bendType as SABS62BendType;
+                                centerToFaceMm = getSabs62CFInterpolated(bendType, bendDegrees, entry.specs.nominalBoreMm);
+                                bendRadiusMm = SABS62_BEND_RADIUS[bendType]?.[entry.specs.nominalBoreMm];
+                              }
+                              const updatedEntry: any = {
+                                ...entry,
+                                specs: { ...entry.specs, bendDegrees, centerToFaceMm, bendRadiusMm, numberOfSegments: isSABS719 ? undefined : entry.specs?.numberOfSegments }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                              if (bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType) {
+                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              }
+                            }}
+                            options={angleOptions}
+                            placeholder={isDisabled ? 'Select Bend Type first' : 'Select Angle'}
+                            disabled={isDisabled}
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
                     </div>
                   );
 
@@ -2024,26 +2084,35 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Bend End Configuration
                       </label>
-                      <select
-                        value={entry.specs?.bendEndConfiguration || 'PE'}
-                        onChange={(e) => {
-                          const newConfig = e.target.value;
-                          const updatedEntry: any = {
-                            ...entry,
-                            specs: { ...entry.specs, bendEndConfiguration: newConfig }
-                          };
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
-                          if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                      >
-                        {BEND_END_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
+                      {(() => {
+                        const selectId = `bend-end-config-${entry.id}`;
+                        const options = BEND_END_OPTIONS.map(opt => ({
+                          value: opt.value,
+                          label: opt.label
+                        }));
+
+                        return (
+                          <Select
+                            id={selectId}
+                            value={entry.specs?.bendEndConfiguration || 'PE'}
+                            onChange={(newConfig) => {
+                              const updatedEntry: any = {
+                                ...entry,
+                                specs: { ...entry.specs, bendEndConfiguration: newConfig }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                              if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              }
+                            }}
+                            options={options}
+                            placeholder="Select End Configuration"
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
                       {entry.specs?.bendEndConfiguration && entry.specs.bendEndConfiguration !== 'PE' && (
                         <p className="mt-1 text-xs text-purple-600 font-medium">
                           {entry.specs.bendEndConfiguration === 'LF_BE'
@@ -2399,35 +2468,45 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Number of Stubs
                         </label>
-                        <select
-                          value={entry.specs?.numberOfStubs || 0}
-                          onChange={(e) => {
-                            const count = parseInt(e.target.value) || 0;
-                            const currentStubs = entry.specs?.stubs || [];
-                            const newStubs = count === 0 ? [] :
-                                            count === 1 ? [currentStubs[0] || { nominalBoreMm: 40, length: 150, flangeSpec: '' }] :
-                                            [
-                                              currentStubs[0] || { nominalBoreMm: 40, length: 150, flangeSpec: '' },
-                                              currentStubs[1] || { nominalBoreMm: 40, length: 150, flangeSpec: '' }
-                                            ];
-                            const updatedEntry = {
-                              ...entry,
-                              specs: {
-                                ...entry.specs,
-                                numberOfStubs: count,
-                                stubs: newStubs
-                              }
-                            };
-                            // Auto-update description
-                            updatedEntry.description = generateItemDescription(updatedEntry);
-                            onUpdateEntry(entry.id, updatedEntry);
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                        >
-                          <option value="0">0 - No Stubs</option>
-                          <option value="1">1 - Single Stub</option>
-                          <option value="2">2 - Both Stubs</option>
-                        </select>
+                        {(() => {
+                          const selectId = `bend-num-stubs-${entry.id}`;
+                          const options = [
+                            { value: '0', label: '0 - No Stubs' },
+                            { value: '1', label: '1 - Single Stub' },
+                            { value: '2', label: '2 - Both Stubs' }
+                          ];
+
+                          return (
+                            <Select
+                              id={selectId}
+                              value={String(entry.specs?.numberOfStubs || 0)}
+                              onChange={(value) => {
+                                const count = parseInt(value) || 0;
+                                const currentStubs = entry.specs?.stubs || [];
+                                const newStubs = count === 0 ? [] :
+                                                count === 1 ? [currentStubs[0] || { nominalBoreMm: 40, length: 150, flangeSpec: '' }] :
+                                                [
+                                                  currentStubs[0] || { nominalBoreMm: 40, length: 150, flangeSpec: '' },
+                                                  currentStubs[1] || { nominalBoreMm: 40, length: 150, flangeSpec: '' }
+                                                ];
+                                const updatedEntry = {
+                                  ...entry,
+                                  specs: {
+                                    ...entry.specs,
+                                    numberOfStubs: count,
+                                    stubs: newStubs
+                                  }
+                                };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+                              }}
+                              options={options}
+                              placeholder="Select number of stubs"
+                              open={openSelects[selectId] || false}
+                              onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            />
+                          );
+                        })()}
                       </div>
 
                       {(entry.specs?.numberOfStubs || 0) >= 1 && (
@@ -2436,29 +2515,36 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           <div className="grid grid-cols-3 gap-2 mb-2">
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">NB</label>
-                              <select
-                                value={entry.specs?.stubs?.[0]?.nominalBoreMm || ''}
-                                onChange={(e) => {
-                                  const stubs = [...(entry.specs?.stubs || [])];
-                                  stubs[0] = { ...stubs[0], nominalBoreMm: parseInt(e.target.value) || 0 };
-                                  const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
-                                  updatedEntry.description = generateItemDescription(updatedEntry);
-                                  onUpdateEntry(entry.id, updatedEntry);
-                                }}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
-                              >
-                                <option value="">Select NB</option>
-                                {(() => {
-                                  const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                                  const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === effectiveSteelSpecId);
-                                  const steelSpecName = steelSpec?.steelSpecName || '';
-                                  const fallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => steelSpecName.includes(pattern))?.[1];
-                                  const nbs = fallbackNBs || [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300];
-                                  return nbs.map((nb: number) => (
-                                    <option key={nb} value={nb}>{nb} NB</option>
-                                  ));
-                                })()}
-                              </select>
+                              {(() => {
+                                const selectId = `bend-stub1-nb-${entry.id}`;
+                                const stub1EffectiveSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                const stub1SteelSpec = masterData.steelSpecs?.find((s: any) => s.id === stub1EffectiveSpecId);
+                                const stub1SteelSpecName = stub1SteelSpec?.steelSpecName || '';
+                                const stub1FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => stub1SteelSpecName.includes(pattern))?.[1];
+                                const stub1Nbs = stub1FallbackNBs || [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300];
+                                const options = stub1Nbs.map((nb: number) => ({
+                                  value: String(nb),
+                                  label: `${nb} NB`
+                                }));
+
+                                return (
+                                  <Select
+                                    id={selectId}
+                                    value={entry.specs?.stubs?.[0]?.nominalBoreMm ? String(entry.specs.stubs[0].nominalBoreMm) : ''}
+                                    onChange={(value) => {
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      stubs[0] = { ...stubs[0], nominalBoreMm: parseInt(value) || 0 };
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                      updatedEntry.description = generateItemDescription(updatedEntry);
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    options={options}
+                                    placeholder="Select NB"
+                                    open={openSelects[selectId] || false}
+                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                  />
+                                );
+                              })()}
                             </div>
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">Length (mm)</label>
@@ -2586,29 +2672,36 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           <div className="grid grid-cols-3 gap-2 mb-2">
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">NB</label>
-                              <select
-                                value={entry.specs?.stubs?.[1]?.nominalBoreMm || ''}
-                                onChange={(e) => {
-                                  const stubs = [...(entry.specs?.stubs || [])];
-                                  stubs[1] = { ...stubs[1], nominalBoreMm: parseInt(e.target.value) || 0 };
-                                  const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
-                                  updatedEntry.description = generateItemDescription(updatedEntry);
-                                  onUpdateEntry(entry.id, updatedEntry);
-                                }}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
-                              >
-                                <option value="">Select NB</option>
-                                {(() => {
-                                  const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                                  const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === effectiveSteelSpecId);
-                                  const steelSpecName = steelSpec?.steelSpecName || '';
-                                  const fallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => steelSpecName.includes(pattern))?.[1];
-                                  const nbs = fallbackNBs || [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300];
-                                  return nbs.map((nb: number) => (
-                                    <option key={nb} value={nb}>{nb} NB</option>
-                                  ));
-                                })()}
-                              </select>
+                              {(() => {
+                                const selectId = `bend-stub2-nb-${entry.id}`;
+                                const stub2EffectiveSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                const stub2SteelSpec = masterData.steelSpecs?.find((s: any) => s.id === stub2EffectiveSpecId);
+                                const stub2SteelSpecName = stub2SteelSpec?.steelSpecName || '';
+                                const stub2FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => stub2SteelSpecName.includes(pattern))?.[1];
+                                const stub2Nbs = stub2FallbackNBs || [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300];
+                                const options = stub2Nbs.map((nb: number) => ({
+                                  value: String(nb),
+                                  label: `${nb} NB`
+                                }));
+
+                                return (
+                                  <Select
+                                    id={selectId}
+                                    value={entry.specs?.stubs?.[1]?.nominalBoreMm ? String(entry.specs.stubs[1].nominalBoreMm) : ''}
+                                    onChange={(value) => {
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      stubs[1] = { ...stubs[1], nominalBoreMm: parseInt(value) || 0 };
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                      updatedEntry.description = generateItemDescription(updatedEntry);
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    options={options}
+                                    placeholder="Select NB"
+                                    open={openSelects[selectId] || false}
+                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                  />
+                                );
+                              })()}
                             </div>
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">Length (mm)</label>
@@ -3272,29 +3365,44 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         })()}
                       </label>
                       <div className="flex gap-2">
-                        <select
-                          id={`fitting-standard-${entry.id}`}
-                          value={entry.specs?.fittingStandard || ((entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8 ? 'SABS719' : 'SABS62')}
-                          onChange={(e) => {
-                            const newStandard = e.target.value as 'SABS62' | 'SABS719';
-                            const updatedEntry = {
-                              ...entry,
-                              specs: { ...entry.specs, fittingStandard: newStandard, nominalDiameterMm: undefined, scheduleNumber: undefined }
-                            };
-                            updatedEntry.description = generateItemDescription(updatedEntry);
-                            onUpdateEntry(entry.id, updatedEntry);
+                        {(() => {
+                          const selectId = `fitting-standard-${entry.id}`;
+                          const derivedStandard = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8 ? 'SABS719' : 'SABS62';
+                          return (
+                            <Select
+                              id={selectId}
+                              value={entry.specs?.fittingStandard || derivedStandard}
+                              onChange={(newStandard) => {
+                                const updatedEntry = {
+                                  ...entry,
+                                  specs: { ...entry.specs, fittingStandard: newStandard as 'SABS62' | 'SABS719', nominalDiameterMm: undefined, scheduleNumber: undefined }
+                                };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
 
-                            if (!entry.specs?.fittingType) {
-                              setTimeout(() => focusAndOpenSelect(`fitting-type-${entry.id}`), 100);
-                            } else {
-                              setTimeout(() => focusAndOpenSelect(`fitting-nb-${entry.id}`), 100);
-                            }
-                          }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                        >
-                          <option value="SABS62">SABS62 (Standard Fittings)</option>
-                          <option value="SABS719">SABS719 (Fabricated Fittings)</option>
-                        </select>
+                                if (!entry.specs?.fittingType) {
+                                  setTimeout(() => focusAndOpenSelect(`fitting-type-${entry.id}`), 100);
+                                } else {
+                                  setTimeout(() => focusAndOpenSelect(`fitting-nb-${entry.id}`), 100);
+                                }
+                              }}
+                              options={[
+                                { value: 'SABS62', label: 'SABS62 (Standard Fittings)' },
+                                { value: 'SABS719', label: 'SABS719 (Fabricated Fittings)' }
+                              ]}
+                              className="flex-1"
+                              open={openSelects[selectId] || false}
+                              onOpenChange={(open) => {
+                                if (open) {
+                                  openSelect(selectId);
+                                } else {
+                                  closeSelect(selectId);
+                                  setTimeout(() => focusAndOpenSelect(`fitting-type-${entry.id}`), 150);
+                                }
+                              }}
+                            />
+                          );
+                        })()}
                         {(() => {
                           const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                           const derived = isSABS719 ? 'SABS719' : 'SABS62';
@@ -3326,113 +3434,107 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Fitting Type *
                       </label>
-                      <select
-                        id={`fitting-type-${entry.id}`}
-                        value={entry.specs?.fittingType || ''}
-                        onChange={async (e) => {
-                          const fittingType = e.target.value;
-                          const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
-                          const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                      {(() => {
+                        const selectId = `fitting-type-${entry.id}`;
+                        const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+                        const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                        const sabs62Options = [
+                          { value: 'EQUAL_TEE', label: 'Equal Tee' },
+                          { value: 'UNEQUAL_TEE', label: 'Unequal Tee' },
+                          { value: 'LATERAL', label: 'Lateral' },
+                          { value: 'SWEEP_TEE', label: 'Sweep Tee' },
+                          { value: 'Y_PIECE', label: 'Y-Piece' },
+                          { value: 'GUSSETTED_TEE', label: 'Gussetted Tee' },
+                          { value: 'EQUAL_CROSS', label: 'Equal Cross' },
+                          { value: 'UNEQUAL_CROSS', label: 'Unequal Cross' },
+                        ];
+                        const sabs719Options = [
+                          { value: 'SHORT_TEE', label: 'Short Tee (Equal)' },
+                          { value: 'UNEQUAL_SHORT_TEE', label: 'Short Tee (Unequal)' },
+                          { value: 'SHORT_REDUCING_TEE', label: 'Short Reducing Tee' },
+                          { value: 'GUSSET_TEE', label: 'Gusset Tee (Equal)' },
+                          { value: 'UNEQUAL_GUSSET_TEE', label: 'Gusset Tee (Unequal)' },
+                          { value: 'GUSSET_REDUCING_TEE', label: 'Gusset Reducing Tee' },
+                          { value: 'LATERAL', label: 'Lateral' },
+                          { value: 'DUCKFOOT_SHORT', label: 'Duckfoot (Short)' },
+                          { value: 'DUCKFOOT_GUSSETTED', label: 'Duckfoot (Gussetted)' },
+                          { value: 'SWEEP_LONG_RADIUS', label: 'Sweep (Long Radius)' },
+                          { value: 'SWEEP_MEDIUM_RADIUS', label: 'Sweep (Medium Radius)' },
+                          { value: 'SWEEP_ELBOW', label: 'Sweep Elbow' },
+                        ];
+                        const commonOptions = [
+                          { value: 'CON_REDUCER', label: 'Concentric Reducer' },
+                          { value: 'ECCENTRIC_REDUCER', label: 'Eccentric Reducer' },
+                        ];
+                        const options = effectiveStandard === 'SABS62'
+                          ? [...sabs62Options, ...commonOptions]
+                          : [...sabs719Options, ...commonOptions];
 
-                          // Check if switching to equal tee or reducing tee
-                          const isReducingTee = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(fittingType);
-                          const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType);
+                        return (
+                          <Select
+                            id={selectId}
+                            value={entry.specs?.fittingType || ''}
+                            onChange={(fittingType) => {
+                              if (!fittingType) return;
 
-                          // Fetch fitting dimensions for pipe lengths if NB is selected
-                          let pipeLengthA = entry.specs?.pipeLengthAMm;
-                          let pipeLengthB = entry.specs?.pipeLengthBMm;
-                          let pipeLengthAMmAuto = entry.specs?.pipeLengthAMmAuto;
-                          let pipeLengthBMmAuto = entry.specs?.pipeLengthBMmAuto;
+                              const isReducingTee = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(fittingType);
+                              const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType);
 
-                          if (fittingType && entry.specs?.nominalDiameterMm) {
-                            try {
-                              const dims = await masterDataApi.getFittingDimensions(
-                                effectiveStandard as 'SABS62' | 'SABS719',
-                                fittingType,
-                                entry.specs.nominalDiameterMm,
-                                entry.specs?.angleRange
-                              );
-                              if (dims) {
-                                // Parse string values to numbers (API returns decimal strings)
-                                const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
-                                const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
-                                // For equal tees, ALWAYS use the table values (ignore overrides)
-                                // For other types, respect existing overrides
-                                if (dimA && (isEqualTee || !entry.specs?.pipeLengthAOverride)) {
-                                  pipeLengthA = dimA;
-                                  pipeLengthAMmAuto = dimA;
+                              const updatedEntry = {
+                                ...entry,
+                                specs: {
+                                  ...entry.specs,
+                                  fittingType,
+                                  branchNominalDiameterMm: isReducingTee ? entry.specs?.branchNominalDiameterMm : undefined,
+                                  stubLocation: isEqualTee ? undefined : entry.specs?.stubLocation,
+                                  pipeLengthAOverride: isEqualTee ? false : entry.specs?.pipeLengthAOverride,
+                                  pipeLengthBOverride: isEqualTee ? false : entry.specs?.pipeLengthBOverride
                                 }
-                                if (dimB && (isEqualTee || !entry.specs?.pipeLengthBOverride)) {
-                                  pipeLengthB = dimB;
-                                  pipeLengthBMmAuto = dimB;
-                                }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+
+                              if (fittingType && entry.specs?.nominalDiameterMm) {
+                                masterDataApi.getFittingDimensions(
+                                  effectiveStandard as 'SABS62' | 'SABS719',
+                                  fittingType,
+                                  entry.specs.nominalDiameterMm,
+                                  entry.specs?.angleRange
+                                ).then((dims) => {
+                                  if (dims) {
+                                    const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
+                                    const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
+                                    const pipeUpdates: Record<string, unknown> = {};
+                                    if (dimA && (isEqualTee || !entry.specs?.pipeLengthAOverride)) {
+                                      pipeUpdates.pipeLengthAMm = dimA;
+                                      pipeUpdates.pipeLengthAMmAuto = dimA;
+                                    }
+                                    if (dimB && (isEqualTee || !entry.specs?.pipeLengthBOverride)) {
+                                      pipeUpdates.pipeLengthBMm = dimB;
+                                      pipeUpdates.pipeLengthBMmAuto = dimB;
+                                    }
+                                    if (Object.keys(pipeUpdates).length > 0) {
+                                      onUpdateEntry(entry.id, { specs: pipeUpdates });
+                                    }
+                                  }
+                                }).catch((err) => {
+                                  console.log('Could not fetch fitting dimensions:', err);
+                                });
                               }
-                            } catch (err) {
-                              console.log('Could not fetch fitting dimensions:', err);
-                            }
-                          }
 
-                          const updatedEntry = {
-                            ...entry,
-                            specs: {
-                              ...entry.specs,
-                              fittingType,
-                              pipeLengthAMm: pipeLengthA,
-                              pipeLengthBMm: pipeLengthB,
-                              pipeLengthAMmAuto,
-                              pipeLengthBMmAuto,
-                              // Clear branch NB when not a reducing tee
-                              branchNominalDiameterMm: isReducingTee ? entry.specs?.branchNominalDiameterMm : undefined,
-                              // Clear stub location for equal tees (they use standard C/F from tables)
-                              stubLocation: isEqualTee ? undefined : entry.specs?.stubLocation,
-                              // Clear pipe length overrides for equal tees
-                              pipeLengthAOverride: isEqualTee ? false : entry.specs?.pipeLengthAOverride,
-                              pipeLengthBOverride: isEqualTee ? false : entry.specs?.pipeLengthBOverride
-                            }
-                          };
-                          // Regenerate description with new specs
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
-                          // Auto-calculate fitting
-                          setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                              setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
 
-                          if (fittingType && !entry.specs?.nominalDiameterMm) {
-                            setTimeout(() => focusAndOpenSelect(`fitting-nb-${entry.id}`), 100);
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                      >
-                        <option value="">Select fitting type...</option>
-                        {(entry.specs?.fittingStandard || ((entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8 ? 'SABS719' : 'SABS62')) === 'SABS62' ? (
-                          <>
-                            <option value="EQUAL_TEE">Equal Tee</option>
-                            <option value="UNEQUAL_TEE">Unequal Tee</option>
-                            <option value="LATERAL">Lateral</option>
-                            <option value="SWEEP_TEE">Sweep Tee</option>
-                            <option value="Y_PIECE">Y-Piece</option>
-                            <option value="GUSSETTED_TEE">Gussetted Tee</option>
-                            <option value="EQUAL_CROSS">Equal Cross</option>
-                            <option value="UNEQUAL_CROSS">Unequal Cross</option>
-                          </>
-                        ) : (
-                          <>
-                            <option value="SHORT_TEE">Short Tee (Equal)</option>
-                            <option value="UNEQUAL_SHORT_TEE">Short Tee (Unequal)</option>
-                            <option value="SHORT_REDUCING_TEE">Short Reducing Tee</option>
-                            <option value="GUSSET_TEE">Gusset Tee (Equal)</option>
-                            <option value="UNEQUAL_GUSSET_TEE">Gusset Tee (Unequal)</option>
-                            <option value="GUSSET_REDUCING_TEE">Gusset Reducing Tee</option>
-                            <option value="LATERAL">Lateral</option>
-                            <option value="DUCKFOOT_SHORT">Duckfoot (Short)</option>
-                            <option value="DUCKFOOT_GUSSETTED">Duckfoot (Gussetted)</option>
-                            <option value="SWEEP_LONG_RADIUS">Sweep (Long Radius)</option>
-                            <option value="SWEEP_MEDIUM_RADIUS">Sweep (Medium Radius)</option>
-                            <option value="SWEEP_ELBOW">Sweep Elbow</option>
-                          </>
-                        )}
-                        <option value="CON_REDUCER">Concentric Reducer</option>
-                        <option value="ECCENTRIC_REDUCER">Eccentric Reducer</option>
-                      </select>
+                              if (fittingType && !entry.specs?.nominalDiameterMm) {
+                                setTimeout(() => focusAndOpenSelect(`fitting-nb-${entry.id}`), 100);
+                              }
+                            }}
+                            options={options}
+                            placeholder="Select fitting type..."
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
                     </div>
 
                     {/* Nominal Diameter - Linked to Steel Specification */}
@@ -3443,113 +3545,108 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           <span className="text-green-600 text-xs ml-2">(From Steel Spec)</span>
                         )}
                       </label>
-                      <select
-                        id={`fitting-nb-${entry.id}`}
-                        value={entry.specs?.nominalDiameterMm || ''}
-                        onChange={async (e) => {
-                          const nominalDiameter = Number(e.target.value);
+                      {(() => {
+                        const selectId = `fitting-nb-${entry.id}`;
+                        const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+                        const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                        const sizes = effectiveStandard === 'SABS719'
+                          ? [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900]
+                          : [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150];
+                        const options = sizes.map((nb: number) => ({ value: String(nb), label: `${nb}mm` }));
 
-                          // Get effective fitting standard (ID 8 = SABS 719)
-                          const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
-                          const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                        return (
+                          <Select
+                            id={selectId}
+                            value={entry.specs?.nominalDiameterMm ? String(entry.specs.nominalDiameterMm) : ''}
+                            onChange={(selectedValue) => {
+                              if (!selectedValue) return;
 
-                          // Auto-populate schedule for SABS719 fittings
-                          let matchedSchedule = entry.specs?.scheduleNumber;
-                          let matchedWT = entry.specs?.wallThicknessMm;
+                              const nominalDiameter = parseInt(selectedValue, 10);
+                              if (isNaN(nominalDiameter)) return;
 
-                          if (effectiveStandard === 'SABS719' && globalSpecs?.workingPressureBar) {
-                            const effectiveSpecId2 = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                            const availableSchedules = getScheduleListForSpec(nominalDiameter, effectiveSpecId2);
-                            if (availableSchedules.length > 0) {
-                              const minWT = getMinimumWallThickness(nominalDiameter, globalSpecs.workingPressureBar);
-                              const sorted = [...availableSchedules].sort((a: any, b: any) =>
-                                (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0)
-                              );
-                              const suitable = sorted.find((s: any) => (s.wallThicknessMm || 0) >= minWT);
-                              if (suitable) {
-                                matchedSchedule = suitable.scheduleDesignation;
-                                matchedWT = suitable.wallThicknessMm;
-                              } else if (sorted.length > 0) {
-                                const thickest = sorted[sorted.length - 1];
-                                matchedSchedule = thickest.scheduleDesignation;
-                                matchedWT = thickest.wallThicknessMm;
-                              }
-                            }
-                          }
+                              let matchedSchedule = entry.specs?.scheduleNumber;
+                              let matchedWT = entry.specs?.wallThicknessMm;
 
-                          // Fetch fitting dimensions for pipe lengths
-                          let pipeLengthA = entry.specs?.pipeLengthAMm;
-                          let pipeLengthB = entry.specs?.pipeLengthBMm;
-                          let pipeLengthAMmAuto = entry.specs?.pipeLengthAMmAuto;
-                          let pipeLengthBMmAuto = entry.specs?.pipeLengthBMmAuto;
-
-                          if (entry.specs?.fittingType && nominalDiameter) {
-                            try {
-                              const dims = await masterDataApi.getFittingDimensions(
-                                effectiveStandard as 'SABS62' | 'SABS719',
-                                entry.specs.fittingType,
-                                nominalDiameter,
-                                entry.specs?.angleRange
-                              );
-                              if (dims) {
-                                // Parse string values to numbers (API returns decimal strings)
-                                const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
-                                const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
-                                if (dimA && !entry.specs?.pipeLengthAOverride) {
-                                  pipeLengthA = dimA;
-                                  pipeLengthAMmAuto = dimA;
-                                }
-                                if (dimB && !entry.specs?.pipeLengthBOverride) {
-                                  pipeLengthB = dimB;
-                                  pipeLengthBMmAuto = dimB;
+                              if (effectiveStandard === 'SABS719' && globalSpecs?.workingPressureBar) {
+                                const effectiveSpecId2 = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                                const availableSchedules = getScheduleListForSpec(nominalDiameter, effectiveSpecId2);
+                                if (availableSchedules.length > 0) {
+                                  const minWT = getMinimumWallThickness(nominalDiameter, globalSpecs.workingPressureBar);
+                                  const sorted = [...availableSchedules].sort((a: any, b: any) =>
+                                    (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0)
+                                  );
+                                  const suitable = sorted.find((s: any) => (s.wallThicknessMm || 0) >= minWT);
+                                  if (suitable) {
+                                    matchedSchedule = suitable.scheduleDesignation;
+                                    matchedWT = suitable.wallThicknessMm;
+                                  } else if (sorted.length > 0) {
+                                    const thickest = sorted[sorted.length - 1];
+                                    matchedSchedule = thickest.scheduleDesignation;
+                                    matchedWT = thickest.wallThicknessMm;
+                                  }
                                 }
                               }
-                            } catch (err) {
-                              console.log('Could not fetch fitting dimensions:', err);
-                            }
-                          }
 
-                          const updatedEntry = {
-                            ...entry,
-                            specs: {
-                              ...entry.specs,
-                              nominalDiameterMm: nominalDiameter,
-                              scheduleNumber: matchedSchedule,
-                              wallThicknessMm: matchedWT,
-                              pipeLengthAMm: pipeLengthA,
-                              pipeLengthBMm: pipeLengthB,
-                              pipeLengthAMmAuto: pipeLengthAMmAuto,
-                              pipeLengthBMmAuto: pipeLengthBMmAuto
-                            }
-                          };
-                          // Regenerate description with new specs
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
-                          // Auto-calculate fitting
-                          setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                              const newSpecs = {
+                                ...entry.specs,
+                                nominalDiameterMm: nominalDiameter,
+                                scheduleNumber: matchedSchedule,
+                                wallThicknessMm: matchedWT
+                              };
+                              const immediateEntry = { ...entry, specs: newSpecs };
+                              immediateEntry.description = generateItemDescription(immediateEntry);
+                              onUpdateEntry(entry.id, immediateEntry);
 
-                          const isReducingTee = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(entry.specs?.fittingType || '');
-                          const isSABS719Fitting = effectiveStandard === 'SABS719';
-                          if (nominalDiameter && isReducingTee && !entry.specs?.branchNominalDiameterMm) {
-                            setTimeout(() => focusAndOpenSelect(`fitting-branch-nb-${entry.id}`), 100);
-                          } else if (nominalDiameter && isSABS719Fitting && !matchedSchedule) {
-                            setTimeout(() => focusAndOpenSelect(`fitting-schedule-${entry.id}`), 100);
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                      >
-                        <option value="">Select diameter...</option>
-                        {(() => {
-                          const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
-                          const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
-                          const sizes = effectiveStandard === 'SABS719'
-                            ? [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900]
-                            : [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150];
-                          return sizes.map((nb: number) => (
-                            <option key={nb} value={nb}>{nb}mm</option>
-                          ));
-                        })()}
-                      </select>
+                              const fittingType = entry.specs?.fittingType;
+                              const angleRange = entry.specs?.angleRange;
+                              const pipeLengthAOverride = entry.specs?.pipeLengthAOverride;
+                              const pipeLengthBOverride = entry.specs?.pipeLengthBOverride;
+
+                              if (fittingType && nominalDiameter) {
+                                masterDataApi.getFittingDimensions(
+                                  effectiveStandard as 'SABS62' | 'SABS719',
+                                  fittingType,
+                                  nominalDiameter,
+                                  angleRange
+                                ).then((dims) => {
+                                  if (dims) {
+                                    const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
+                                    const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
+                                    const pipeUpdates: Record<string, unknown> = {};
+                                    if (dimA && !pipeLengthAOverride) {
+                                      pipeUpdates.pipeLengthAMm = dimA;
+                                      pipeUpdates.pipeLengthAMmAuto = dimA;
+                                    }
+                                    if (dimB && !pipeLengthBOverride) {
+                                      pipeUpdates.pipeLengthBMm = dimB;
+                                      pipeUpdates.pipeLengthBMmAuto = dimB;
+                                    }
+                                    if (Object.keys(pipeUpdates).length > 0) {
+                                      onUpdateEntry(entry.id, { specs: pipeUpdates });
+                                    }
+                                  }
+                                }).catch((err) => {
+                                  console.log('Could not fetch fitting dimensions:', err);
+                                });
+                              }
+
+                              setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+
+                              const isReducingTee = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(entry.specs?.fittingType || '');
+                              const isSABS719Fitting = effectiveStandard === 'SABS719';
+                              if (nominalDiameter && isReducingTee && !entry.specs?.branchNominalDiameterMm) {
+                                setTimeout(() => focusAndOpenSelect(`fitting-branch-nb-${entry.id}`), 100);
+                              } else if (nominalDiameter && isSABS719Fitting && !matchedSchedule) {
+                                setTimeout(() => focusAndOpenSelect(`fitting-schedule-${entry.id}`), 100);
+                              }
+                            }}
+                            options={options}
+                            placeholder="Select diameter..."
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
                       {(() => {
                         const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                         const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
@@ -3571,33 +3668,35 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           Branch Nominal Diameter (mm) *
                           <span className="text-blue-600 text-xs ml-2">(Tee Outlet Size)</span>
                         </label>
-                        <select
-                          id={`fitting-branch-nb-${entry.id}`}
-                          value={entry.specs?.branchNominalDiameterMm || ''}
-                          onChange={(e) => {
-                            const branchDiameter = Number(e.target.value);
-                            onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                branchNominalDiameterMm: branchDiameter
-                              }
-                            });
-                            // Auto-calculate fitting
-                            setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select branch diameter...</option>
-                          {(() => {
-                            const mainNB = entry.specs?.nominalDiameterMm || 0;
-                            // Branch sizes should be smaller than main pipe
-                            const sizes = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900]
-                              .filter(nb => nb < mainNB);
-                            return sizes.map((nb: number) => (
-                              <option key={nb} value={nb}>{nb}mm</option>
-                            ));
-                          })()}
-                        </select>
+                        {(() => {
+                          const selectId = `fitting-branch-nb-${entry.id}`;
+                          const mainNB = entry.specs?.nominalDiameterMm || 0;
+                          const sizes = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900]
+                            .filter(nb => nb < mainNB);
+                          const options = sizes.map((nb: number) => ({ value: String(nb), label: `${nb}mm` }));
+
+                          return (
+                            <Select
+                              id={selectId}
+                              value={entry.specs?.branchNominalDiameterMm ? String(entry.specs.branchNominalDiameterMm) : ''}
+                              onChange={(value) => {
+                                if (!value) return;
+                                const branchDiameter = Number(value);
+                                onUpdateEntry(entry.id, {
+                                  specs: {
+                                    ...entry.specs,
+                                    branchNominalDiameterMm: branchDiameter
+                                  }
+                                });
+                                setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                              }}
+                              options={options}
+                              placeholder="Select branch diameter..."
+                              open={openSelects[selectId] || false}
+                              onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            />
+                          );
+                        })()}
                         <p className="mt-1 text-xs text-gray-500">
                           Branch/outlet size must be smaller than main pipe ({entry.specs?.nominalDiameterMm || '--'}mm)
                         </p>
@@ -3878,116 +3977,102 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                             <span className="text-orange-600 text-xs ml-2">(Manual)</span>
                           )}
                         </label>
-                        {globalSpecs?.workingPressureBar && entry.specs?.nominalDiameterMm ? (
-                          <div className="bg-green-50 p-2 rounded-md">
-                            <p className="text-green-800 font-medium text-xs mb-2">
-                              Auto-calculated for {globalSpecs.workingPressureBar} bar @ {entry.specs.nominalDiameterMm}NB
-                            </p>
-                            <select
-                              id={`fitting-schedule-${entry.id}`}
+                        {(() => {
+                          const selectId = `fitting-schedule-${entry.id}`;
+                          const nbValue = entry.specs?.nominalDiameterMm || 0;
+                          const fitEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                          const allSchedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
+
+                          if (globalSpecs?.workingPressureBar && entry.specs?.nominalDiameterMm) {
+                            const minWT = getMinimumWallThickness(nbValue, globalSpecs?.workingPressureBar || 0);
+                            const eligibleSchedules = allSchedules
+                              .filter((dim: any) => (dim.wallThicknessMm || 0) >= minWT)
+                              .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+
+                            const options = eligibleSchedules.map((dim: any, idx: number) => {
+                              const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString() || 'Unknown';
+                              const wt = dim.wallThicknessMm || 0;
+                              const isRecommended = idx === 0;
+                              const label = isRecommended
+                                ? `★ ${scheduleValue} (${wt}mm) - RECOMMENDED`
+                                : `${scheduleValue} (${wt}mm)`;
+                              return { value: scheduleValue, label };
+                            });
+
+                            return (
+                              <div className="bg-green-50 p-2 rounded-md">
+                                <p className="text-green-800 font-medium text-xs mb-2">
+                                  Auto-calculated for {globalSpecs.workingPressureBar} bar @ {entry.specs.nominalDiameterMm}NB
+                                </p>
+                                <Select
+                                  id={selectId}
+                                  value={entry.specs?.scheduleNumber || ''}
+                                  onChange={(schedule) => {
+                                    if (!schedule) return;
+                                    const selectedDim = allSchedules.find((dim: any) =>
+                                      (dim.scheduleDesignation || dim.scheduleNumber?.toString()) === schedule
+                                    );
+                                    onUpdateEntry(entry.id, {
+                                      specs: {
+                                        ...entry.specs,
+                                        scheduleNumber: schedule,
+                                        wallThicknessMm: selectedDim?.wallThicknessMm || entry.specs?.wallThicknessMm
+                                      }
+                                    });
+                                    setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                                  }}
+                                  options={options}
+                                  placeholder="Select schedule..."
+                                  open={openSelects[selectId] || false}
+                                  onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                />
+                              </div>
+                            );
+                          }
+
+                          const manualOptions = allSchedules.length > 0
+                            ? allSchedules.map((dim: any) => ({
+                                value: dim.scheduleDesignation || dim.scheduleNumber?.toString(),
+                                label: `${dim.scheduleDesignation || dim.scheduleNumber?.toString()} (${dim.wallThicknessMm}mm)`
+                              }))
+                            : [
+                                { value: '10', label: 'Sch 10' },
+                                { value: '40', label: 'Sch 40' },
+                                { value: '80', label: 'Sch 80' },
+                                { value: '160', label: 'Sch 160' },
+                              ];
+
+                          return (
+                            <Select
+                              id={selectId}
                               value={entry.specs?.scheduleNumber || ''}
-                              onChange={(e) => {
-                                const schedule = e.target.value;
-                                const effectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                                const availableSchedules = getScheduleListForSpec(entry.specs?.nominalDiameterMm || 0, effectiveSpecId);
-                                const selectedDim = availableSchedules.find((dim: any) =>
-                                  (dim.scheduleDesignation || dim.scheduleNumber?.toString()) === schedule
+                              onChange={(scheduleNumber) => {
+                                if (!scheduleNumber) return;
+                                const schedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
+                                const matchingSchedule = schedules.find((s: any) =>
+                                  (s.scheduleDesignation || s.scheduleNumber?.toString()) === scheduleNumber
                                 );
-                                onUpdateEntry(entry.id, {
+                                const wallThickness = matchingSchedule?.wallThicknessMm;
+
+                                const updatedEntry = {
+                                  ...entry,
                                   specs: {
                                     ...entry.specs,
-                                    scheduleNumber: schedule,
-                                    wallThicknessMm: selectedDim?.wallThicknessMm || entry.specs?.wallThicknessMm
+                                    scheduleNumber,
+                                    wallThicknessMm: wallThickness
                                   }
-                                });
-                                // Auto-calculate fitting
+                                };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
                                 setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                               }}
-                              className="w-full px-2 py-1.5 text-black border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
-                            >
-                              <option value="">Select schedule...</option>
-                              {(() => {
-                                const nbValue = entry.specs?.nominalDiameterMm || 0;
-                                const fitEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                                const allSchedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
-                                const minWT = getMinimumWallThickness(nbValue, globalSpecs?.workingPressureBar || 0);
-                                const eligibleSchedules = allSchedules
-                                  .filter((dim: any) => (dim.wallThicknessMm || 0) >= minWT)
-                                  .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
-
-                                return eligibleSchedules.map((dim: any, idx: number) => {
-                                  const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString() || 'Unknown';
-                                  const wt = dim.wallThicknessMm || 0;
-                                  const isRecommended = idx === 0;
-                                  const label = isRecommended
-                                    ? `★ ${scheduleValue} (${wt}mm) - RECOMMENDED`
-                                    : `${scheduleValue} (${wt}mm)`;
-                                  return (
-                                    <option key={dim.id || scheduleValue} value={scheduleValue}>
-                                      {label}
-                                    </option>
-                                  );
-                                });
-                              })()}
-                            </select>
-                          </div>
-                        ) : (
-                          <select
-                            id={`fitting-schedule-${entry.id}`}
-                            value={entry.specs?.scheduleNumber || ''}
-                            onChange={(e) => {
-                              const scheduleNumber = e.target.value;
-                              // Get wall thickness from schedule
-                              const nbValue = entry.specs?.nominalDiameterMm || 0;
-                              const fitEffectiveSpecId2 = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                              const schedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId2);
-                              const matchingSchedule = schedules.find((s: any) =>
-                                (s.scheduleDesignation || s.scheduleNumber?.toString()) === scheduleNumber
-                              );
-                              const wallThickness = matchingSchedule?.wallThicknessMm;
-
-                              const updatedEntry = {
-                                ...entry,
-                                specs: {
-                                  ...entry.specs,
-                                  scheduleNumber,
-                                  wallThicknessMm: wallThickness
-                                }
-                              };
-                              // Regenerate description
-                              updatedEntry.description = generateItemDescription(updatedEntry);
-                              onUpdateEntry(entry.id, updatedEntry);
-                              // Auto-calculate fitting
-                              setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                          >
-                            <option value="">Select Schedule</option>
-                            {(() => {
-                              const nbValue = entry.specs?.nominalDiameterMm || 0;
-                              const fitEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                                const allSchedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
-                              if (allSchedules.length > 0) {
-                                return allSchedules.map((dim: any) => {
-                                  const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString();
-                                  return (
-                                    <option key={dim.id || scheduleValue} value={scheduleValue}>
-                                      {scheduleValue} ({dim.wallThicknessMm}mm)
-                                    </option>
-                                  );
-                                });
-                              }
-                              return (
-                                <>
-                                  <option value="10">Sch 10</option>
-                                  <option value="40">Sch 40</option>
-                                  <option value="80">Sch 80</option>
-                                  <option value="160">Sch 160</option>
-                                </>
-                              );
-                            })()}
-                          </select>
-                        )}
+                              options={manualOptions}
+                              placeholder="Select Schedule"
+                              open={openSelects[selectId] || false}
+                              onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            />
+                          );
+                        })()}
                         <p className="text-xs text-gray-500 mt-1">
                           Required for fabricated SABS719 fittings
                         </p>
@@ -4221,57 +4306,111 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <div className="grid grid-cols-2 gap-2">
-                            <select
-                              value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
-                              onChange={async (e) => {
-                                const standardId = parseInt(e.target.value) || undefined;
-                                onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined }
-                                });
-                                if (standardId) {
-                                  getFilteredPressureClasses(standardId);
-                                }
-                              }}
-                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
-                            >
-                              <option value="">Standard...</option>
-                              {masterData.flangeStandards?.map((standard: any) => (
-                                <option key={standard.id} value={standard.id}>
-                                  {standard.code}
-                                </option>
-                              ))}
-                            </select>
-                            <select
-                              value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
-                              onChange={(e) => onUpdateEntry(entry.id, {
-                                specs: {
-                                  ...entry.specs,
-                                  flangePressureClassId: parseInt(e.target.value) || undefined
-                                }
-                              })}
-                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
-                            >
-                              <option value="">Class...</option>
-                              {(() => {
-                                const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                                const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
-                                return filtered.map((pressureClass: any) => (
-                                  <option key={pressureClass.id} value={pressureClass.id}>
-                                    {pressureClass.designation}
-                                  </option>
-                                ));
-                              })()}
-                            </select>
-                          </div>
-                          {entry.hasFlangeOverride && entry.specs?.flangeStandardId && entry.specs?.flangePressureClassId && (
-                            <button
-                              type="button"
-                              onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: true })}
-                              className="w-full px-2 py-1 text-xs font-semibold text-white bg-green-600 rounded hover:bg-green-700"
-                            >
-                              ✓ Confirm
-                            </button>
+                          {entry.flangeOverrideConfirmed ? (
+                            <div className="bg-blue-50 border-2 border-blue-400 p-2 rounded-md">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-bold text-blue-900 flex items-center gap-1">
+                                  <span className="text-green-600">✓</span> Item-Specific Flange Confirmed
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: false })}
+                                  className="px-2 py-0.5 text-xs font-medium text-blue-700 bg-white border border-blue-300 rounded hover:bg-blue-50 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                              </div>
+                              <div className="bg-white p-1.5 rounded border border-blue-200">
+                                <p className="text-sm font-bold text-blue-800">
+                                  {(() => {
+                                    const flangeStandard = masterData.flangeStandards?.find(
+                                      (fs: any) => fs.id === entry.specs?.flangeStandardId
+                                    );
+                                    const pressureClass = masterData.pressureClasses?.find(
+                                      (pc: any) => pc.id === entry.specs?.flangePressureClassId
+                                    );
+                                    if (flangeStandard && pressureClass) {
+                                      return `${flangeStandard.code} / ${pressureClass.designation}`;
+                                    }
+                                    return 'N/A';
+                                  })()}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="grid grid-cols-2 gap-2">
+                                <select
+                                  value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
+                                  onChange={(e) => {
+                                    const standardId = parseInt(e.target.value) || undefined;
+                                    onUpdateEntry(entry.id, {
+                                      specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined }
+                                    });
+                                    if (standardId) {
+                                      getFilteredPressureClasses(standardId);
+                                    }
+                                  }}
+                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                >
+                                  <option value="">Standard...</option>
+                                  {masterData.flangeStandards?.map((standard: any) => (
+                                    <option key={standard.id} value={standard.id}>
+                                      {standard.code}
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
+                                  onChange={(e) => onUpdateEntry(entry.id, {
+                                    specs: {
+                                      ...entry.specs,
+                                      flangePressureClassId: parseInt(e.target.value) || undefined
+                                    }
+                                  })}
+                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                >
+                                  <option value="">Class...</option>
+                                  {(() => {
+                                    const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                                    const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
+                                    return filtered.map((pressureClass: any) => (
+                                      <option key={pressureClass.id} value={pressureClass.id}>
+                                        {pressureClass.designation}
+                                      </option>
+                                    ));
+                                  })()}
+                                </select>
+                              </div>
+                              {entry.hasFlangeOverride && entry.specs?.flangeStandardId && entry.specs?.flangePressureClassId && (
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: true })}
+                                    className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-green-600 rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
+                                  >
+                                    <span>✓</span> Confirm Override
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onUpdateEntry(entry.id, {
+                                        hasFlangeOverride: false,
+                                        flangeOverrideConfirmed: false,
+                                        specs: {
+                                          ...entry.specs,
+                                          flangeStandardId: undefined,
+                                          flangePressureClassId: undefined
+                                        }
+                                      });
+                                    }}
+                                    className="px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       )}
@@ -4786,30 +4925,37 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                       })()}
                     </label>
                     <div className="flex gap-2">
-                      <select
-                        id={`pipe-steel-spec-${entry.id}`}
-                        value={entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || ''}
-                        onChange={(e) => {
-                          const specId = e.target.value ? Number(e.target.value) : undefined;
-                          onUpdateEntry(entry.id, {
-                            specs: {
-                              ...entry.specs,
-                              steelSpecificationId: specId
-                            }
-                          });
-                          if (specId && !entry.specs?.nominalBoreMm) {
-                            focusAndOpenSelect(`pipe-nb-${entry.id}`);
-                          }
-                        }}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">Select steel spec...</option>
-                        {masterData.steelSpecs?.map((spec: any) => (
-                          <option key={spec.id} value={spec.id}>
-                            {spec.steelSpecName}
-                          </option>
-                        ))}
-                      </select>
+                      {(() => {
+                        const selectId = `pipe-steel-spec-${entry.id}`;
+                        const options = masterData.steelSpecs?.map((spec: any) => ({
+                          value: String(spec.id),
+                          label: spec.steelSpecName
+                        })) || [];
+
+                        return (
+                          <Select
+                            id={selectId}
+                            value={String(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || '')}
+                            onChange={(value) => {
+                              const specId = value ? Number(value) : undefined;
+                              onUpdateEntry(entry.id, {
+                                specs: {
+                                  ...entry.specs,
+                                  steelSpecificationId: specId
+                                }
+                              });
+                              if (specId && !entry.specs?.nominalBoreMm) {
+                                setTimeout(() => focusAndOpenSelect(`pipe-nb-${entry.id}`), 100);
+                              }
+                            }}
+                            options={options}
+                            placeholder="Select steel spec..."
+                            className="flex-1"
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
                       {entry.specs?.steelSpecificationId && entry.specs?.steelSpecificationId !== globalSpecs?.steelSpecificationId && (
                         <button
                           type="button"
@@ -4839,26 +4985,27 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                     <label className="block text-xs font-semibold text-gray-900 mb-1">
                       Nominal Bore (mm) *
                     </label>
-                    <select
-                      id={`pipe-nb-${entry.id}`}
-                      value={entry.specs.nominalBoreMm}
-                      onChange={async (e) => {
-                        const nominalBore = Number(e.target.value);
+                    {(() => {
+                      const selectId = `pipe-nb-${entry.id}`;
+                      const options = nominalBores.map((nb: number) => ({
+                        value: String(nb),
+                        label: `${nb}NB`
+                      }));
+
+                      const handleNominalBoreChange = (value: string) => {
+                        const nominalBore = Number(value);
                         if (!nominalBore) return;
 
                         console.log(`[NB onChange] Selected NB: ${nominalBore}mm`);
 
-                        // Get steel spec ID and temperature
                         const steelSpecId = entry.specs.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
                         const pressure = globalSpecs?.workingPressureBar || 0;
                         const temperature = globalSpecs?.workingTemperatureC || 20;
 
-                        // Get schedules from fallback data directly for synchronous dropdown update
                         const nbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                         const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId);
                         console.log(`[NB onChange] Using ${schedules.length} fallback schedules for ${nominalBore}mm`);
 
-                        // CRITICAL: Set the availableSchedulesMap SYNCHRONOUSLY before updating entry
                         if (schedules.length > 0) {
                           setAvailableSchedulesMap((prev: Record<string, any[]>) => ({
                             ...prev,
@@ -4867,77 +5014,18 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           console.log(`[NB onChange] Set availableSchedulesMap for entry ${entry.id} with ${schedules.length} schedules`);
                         }
 
-                        // Try backend API for ASME B31.3 compliant schedule recommendation
                         let matchedSchedule: string | null = null;
                         let matchedWT = 0;
                         let minWT = 0;
-                        let apiSucceeded = false;
 
-                        if (pressure > 0) {
-                          try {
-                            console.log(`[NB onChange] Calling pipeScheduleApi.recommend with NB=${nominalBore}, P=${pressure}bar, T=${temperature}°C`);
-                            const recommendation = await pipeScheduleApi.recommend({
-                              nbMm: nominalBore,
-                              pressureBar: pressure,
-                              temperatureCelsius: temperature,
-                              materialCode: steelSpecId === 1 ? 'ASTM_A53_Grade_B' : 'ASTM_A106_Grade_B'
-                            });
-
-                            if (recommendation && recommendation.minRequiredThicknessMm) {
-                              minWT = recommendation.minRequiredThicknessMm;
-                              console.log(`[NB onChange] API returned minWT: ${minWT.toFixed(2)}mm`);
-
-                              if (recommendation.warnings?.length > 0) {
-                                console.warn('[NB onChange] API warnings:', recommendation.warnings);
-                              }
-
-                              // CRITICAL FIX: Always use fallback schedule data for the schedule name
-                              // Find the lightest schedule that meets the minimum wall thickness requirement
-                              const eligibleSchedules = schedules
-                                .filter(s => s.wallThicknessMm >= minWT)
-                                .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
-
-                              if (eligibleSchedules.length > 0) {
-                                matchedSchedule = eligibleSchedules[0].scheduleDesignation;
-                                matchedWT = eligibleSchedules[0].wallThicknessMm;
-                                apiSucceeded = true;
-                                console.log(`[NB onChange] Using fallback schedule: ${matchedSchedule} (${matchedWT}mm) for minWT=${minWT.toFixed(2)}mm`);
-                              } else {
-                                // No schedule meets requirements - use thickest available
-                                const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
-                                matchedSchedule = sorted[0].scheduleDesignation;
-                                matchedWT = sorted[0].wallThicknessMm;
-                                apiSucceeded = true;
-                                console.warn(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm minWT, using thickest: ${matchedSchedule} (${matchedWT}mm)`);
-                              }
-                            }
-                          } catch (error) {
-                            console.warn('[NB onChange] API call failed, using local calculation:', error);
-                          }
-                        }
-
-                        // Fallback to local ASME B31.3 calculation if API failed
-                        if (!apiSucceeded && schedules.length > 0) {
+                        if (schedules.length > 0) {
                           if (pressure > 0) {
-                            // OD lookup based on NB
                             const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
                             const materialCode = steelSpecId === 1 ? 'ASTM_A53_Grade_B' : 'ASTM_A106_Grade_B';
-
-                            // Use ASME B31.3 formula: P = (2 × S × E × t) / OD
-                            // Calculate minimum required wall thickness with 1.2x safety factor
                             minWT = calculateMinWallThickness(od, pressure, materialCode, temperature, 1.0, 0, 1.2);
-
                             console.log(`[NB onChange] ASME B31.3 calc minWT: ${minWT.toFixed(2)}mm for ${pressure} bar @ ${temperature}°C, OD=${od}mm`);
 
-                            // Find recommended schedule using ASME B31.3 validation
-                            const recommendation = findRecommendedSchedule(
-                              schedules,
-                              od,
-                              pressure,
-                              materialCode,
-                              temperature,
-                              1.2 // Minimum 1.2x safety factor
-                            );
+                            const recommendation = findRecommendedSchedule(schedules, od, pressure, materialCode, temperature, 1.2);
 
                             if (recommendation.schedule) {
                               matchedSchedule = recommendation.schedule.scheduleDesignation;
@@ -4946,7 +5034,6 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               const margin = recommendation.validation?.safetyMargin || 0;
                               console.log(`[NB onChange] ASME B31.3 recommended: ${matchedSchedule} (${matchedWT}mm), max ${maxPressure.toFixed(1)} bar, ${margin.toFixed(1)}x margin`);
                             } else {
-                              // No schedule meets requirements - use thickest available with warning
                               const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
                               matchedSchedule = sorted[0].scheduleDesignation;
                               matchedWT = sorted[0].wallThicknessMm;
@@ -4954,7 +5041,6 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                               console.warn(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm minWT, using thickest: ${matchedSchedule} (${matchedWT}mm). ${validation.message}`);
                             }
                           } else {
-                            // No pressure set - use lightest schedule (Sch 10 or STD)
                             const sorted = [...schedules].sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
                             matchedSchedule = sorted[0].scheduleDesignation;
                             matchedWT = sorted[0].wallThicknessMm;
@@ -4962,7 +5048,6 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           }
                         }
 
-                        // Build the update object
                         const updatedEntry: any = {
                           ...entry,
                           minimumSchedule: matchedSchedule,
@@ -4976,26 +5061,25 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           }
                         };
 
-                        // Update description
                         updatedEntry.description = generateItemDescription(updatedEntry);
-
-                        console.log(`[NB onChange] Updating entry ${entry.id} with schedule: ${matchedSchedule}, WT: ${matchedWT}mm (API: ${apiSucceeded})`);
+                        console.log(`[NB onChange] Updating entry ${entry.id} with schedule: ${matchedSchedule}, WT: ${matchedWT}mm`);
                         onUpdateEntry(entry.id, updatedEntry);
-
-                        // Also fetch from API to potentially get better data (runs async in background)
                         fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      required
-                      disabled={isLoadingNominalBores}
-                    >
-                      <option value="">{isLoadingNominalBores ? 'Loading available sizes...' : 'Please Select NB'}</option>
-                      {nominalBores.map((nb: number) => (
-                        <option key={nb} value={nb}>
-                          {nb}NB
-                        </option>
-                      ))}
-                    </select>
+                      };
+
+                      return (
+                        <Select
+                          id={selectId}
+                          value={entry.specs.nominalBoreMm ? String(entry.specs.nominalBoreMm) : ''}
+                          onChange={handleNominalBoreChange}
+                          options={options}
+                          placeholder={isLoadingNominalBores ? 'Loading available sizes...' : 'Please Select NB'}
+                          disabled={isLoadingNominalBores}
+                          open={openSelects[selectId] || false}
+                          onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                        />
+                      );
+                    })()}
                     {globalSpecs?.steelSpecificationId && nominalBores.length > 0 && (
                       <p className="mt-1 text-xs text-gray-500">
                         {nominalBores.length} sizes available for selected steel specification
