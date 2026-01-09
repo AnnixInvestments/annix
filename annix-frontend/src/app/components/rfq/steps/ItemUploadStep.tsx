@@ -74,7 +74,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
 
   const focusAndOpenSelect = useCallback((selectId: string, retryCount = 0) => {
     const maxRetries = 10;
-    const delay = 300 + (retryCount * 150);
+    const delay = 100 + (retryCount * 100);
 
     setTimeout(() => {
       const selectElement = document.getElementById(selectId) as HTMLSelectElement;
@@ -85,32 +85,16 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
         return;
       }
 
-      selectElement.focus();
       selectElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      selectElement.focus();
 
-      const openDropdown = () => {
+      try {
         if (typeof selectElement.showPicker === 'function') {
-          try {
-            selectElement.showPicker();
-            return;
-          } catch {
-            // showPicker failed, use fallback
-          }
+          selectElement.showPicker();
         }
-        const length = selectElement.options.length;
-        selectElement.size = Math.min(length, 10);
-        const resetSize = () => {
-          selectElement.size = 1;
-          selectElement.removeEventListener('blur', resetSize);
-          selectElement.removeEventListener('change', resetSize);
-        };
-        selectElement.addEventListener('blur', resetSize);
-        selectElement.addEventListener('change', resetSize);
-      };
-
-      requestAnimationFrame(() => {
-        openDropdown();
-      });
+      } catch {
+        // showPicker requires user activation - silently fail
+      }
     }, delay);
   }, []);
 
@@ -4017,15 +4001,17 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           Location of Stub/Lateral (mm from left flange)
                         </label>
                         <input
-                          type="text"
+                          type="number"
                           value={entry.specs?.stubLocation || ''}
                           onChange={(e) => {
+                            const value = e.target.value ? Number(e.target.value) : undefined;
                             onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, stubLocation: e.target.value }
+                              specs: { ...entry.specs, stubLocation: value }
                             });
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
                           placeholder="e.g., 500"
+                          min="0"
                         />
                         <p className="mt-0.5 text-xs text-gray-500">
                           Distance from left flange to center of tee outlet
@@ -4340,12 +4326,7 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
                           wallThickness={wallThickness}
                           teeType={teeType}
                           runLength={entry.specs?.pipeLengthAMm}
-                          branchPositionMm={(() => {
-                            const loc = entry.specs?.stubLocation;
-                            if (!loc) return undefined;
-                            const match = loc.match(/(\d+)/);
-                            return match ? Number(match[1]) : undefined;
-                          })()}
+                          branchPositionMm={entry.specs?.stubLocation}
                           materialName={steelSpec?.steelSpecName}
                           hasInletFlange={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').hasInlet}
                           hasOutletFlange={getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || '').hasOutlet}
