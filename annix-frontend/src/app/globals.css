@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@config "../../tailwind.config.ts";
 
 /* Annix App Brand Colors */
 :root {
@@ -21,18 +22,16 @@
   --muted-text: #6b7280;
 }
 
-/* Dark mode - follows browser preference */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #111827;
-    --foreground: #f9fafb;
-    --card-bg: #1f2937;
-    --card-border: #374151;
-    --input-bg: #1f2937;
-    --input-border: #4b5563;
-    --muted-bg: #1f2937;
-    --muted-text: #9ca3af;
-  }
+/* Dark mode - class-based for user toggle */
+.dark {
+  --background: #111827;
+  --foreground: #f9fafb;
+  --card-bg: #1f2937;
+  --card-border: #374151;
+  --input-bg: #1f2937;
+  --input-border: #4b5563;
+  --muted-bg: #1f2937;
+  --muted-text: #9ca3af;
 }
 
 @theme inline {
@@ -62,56 +61,56 @@ body {
 }
 
 /* Dark mode overrides for common elements */
-@media (prefers-color-scheme: dark) {
+.dark {
   /* Form inputs */
   input, select, textarea {
-    background-color: var(--input-bg) !important;
-    border-color: var(--input-border) !important;
-    color: var(--foreground) !important;
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--foreground);
   }
 
   /* Cards and containers */
   .bg-white {
-    background-color: var(--card-bg) !important;
+    background-color: var(--card-bg);
   }
 
   .bg-gray-50, .bg-gray-100 {
-    background-color: var(--muted-bg) !important;
+    background-color: var(--muted-bg);
   }
 
   /* Borders */
   .border-gray-200, .border-gray-300 {
-    border-color: var(--card-border) !important;
+    border-color: var(--card-border);
   }
 
   /* Text colors */
   .text-gray-900, .text-gray-800, .text-gray-700 {
-    color: var(--foreground) !important;
+    color: var(--foreground);
   }
 
   .text-gray-600, .text-gray-500 {
-    color: var(--muted-text) !important;
+    color: var(--muted-text);
   }
 
   /* Special backgrounds */
   .bg-green-50 {
-    background-color: rgba(34, 197, 94, 0.15) !important;
+    background-color: rgba(34, 197, 94, 0.15);
   }
 
   .bg-blue-50 {
-    background-color: rgba(59, 130, 246, 0.15) !important;
+    background-color: rgba(59, 130, 246, 0.15);
   }
 
   .bg-orange-50, .bg-yellow-50 {
-    background-color: rgba(251, 146, 60, 0.15) !important;
+    background-color: rgba(251, 146, 60, 0.15);
   }
 
   .bg-red-50 {
-    background-color: rgba(239, 68, 68, 0.15) !important;
+    background-color: rgba(239, 68, 68, 0.15);
   }
 
   .bg-purple-50 {
-    background-color: rgba(168, 85, 247, 0.15) !important;
+    background-color: rgba(168, 85, 247, 0.15);
   }
 
   /* Shadows for dark mode */
@@ -190,11 +189,9 @@ textarea:hover:not(:focus):not(:disabled) {
   border-color: rgba(59, 130, 246, 0.5);
 }
 
-@media (prefers-color-scheme: dark) {
-  input:hover:not(:focus):not(:disabled),
-  select:hover:not(:focus):not(:disabled),
-  textarea:hover:not(:focus):not(:disabled) {
-    border-color: rgba(96, 165, 250, 0.6);
-    background-color: rgba(255, 255, 255, 0.05);
-  }
+.dark input:hover:not(:focus):not(:disabled),
+.dark select:hover:not(:focus):not(:disabled),
+.dark textarea:hover:not(:focus):not(:disabled) {
+  border-color: rgba(96, 165, 250, 0.6);
+  background-color: rgba(255, 255, 255, 0.05);
 }

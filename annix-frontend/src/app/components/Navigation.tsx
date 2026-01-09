@@ -1,13 +1,14 @@
-'use client';
+'use client'
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
-import AmixLogo from './AmixLogo';
-import { adminApiClient } from '@/app/lib/api/adminApi';
-import { customerApiClient } from '@/app/lib/api/customerApi';
-import { supplierApiClient } from '@/app/lib/api/supplierApi';
-import { getStoredFingerprint, generateFingerprint } from '@/app/hooks/useDeviceFingerprint';
+import React, { useState, useEffect } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
+import AmixLogo from './AmixLogo'
+import { ThemeToggle } from './ThemeToggle'
+import { adminApiClient } from '@/app/lib/api/adminApi'
+import { customerApiClient } from '@/app/lib/api/customerApi'
+import { supplierApiClient } from '@/app/lib/api/supplierApi'
+import { getStoredFingerprint, generateFingerprint } from '@/app/hooks/useDeviceFingerprint'
 
 type UserType = 'admin' | 'customer' | 'supplier' | null;
 
@@ -296,8 +297,9 @@ export default function Navigation() {
             </div>
           </div>
 
-          {/* Right side - Quick Login or User Info */}
+          {/* Right side - Theme Toggle, Quick Login or User Info */}
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             {showLoginForm ? (
               <form onSubmit={handleQuickLogin} className="flex items-center gap-2">
                 <input
