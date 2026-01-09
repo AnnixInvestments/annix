@@ -193,7 +193,7 @@ DateTime.now().setZone('Africa/Johannesburg')
    - `<BoltPattern count={12} pcd={200} />` - bolt hole circles
    - `<DimensionLine from={[0,0,0]} to={[100,0,0]} label="200mm" />` - measurement annotations
 
-2. **Consider @react-three/csg** for boolean operations on tee branch intersections instead of manual positioning
+2. **Consider [@react-three/csg](https://github.com/pmndrs/react-three-csg)** for boolean operations on tee branch intersections instead of manual positioning
 
 3. **Precompute standard geometries**: SABS flanges are standardized - could be loaded as GLTFs rather than computed at runtime
 
@@ -237,6 +237,23 @@ Total potential addition: ~77KB gzipped (acceptable for app of this complexity)
 
 ---
 
+## Licensing
+
+All recommended libraries are open source under the **MIT License**, which permits commercial use, modification, and distribution with no restrictions.
+
+| Library | License | Repository |
+|---------|---------|------------|
+| TanStack Table | MIT | [github.com/TanStack/table](https://github.com/TanStack/table) |
+| TanStack Query | MIT | [github.com/TanStack/query](https://github.com/TanStack/query) |
+| Radix UI | MIT | [github.com/radix-ui/primitives](https://github.com/radix-ui/primitives) |
+| XState | MIT | [github.com/statelyai/xstate](https://github.com/statelyai/xstate) |
+| Zustand | MIT | [github.com/pmndrs/zustand](https://github.com/pmndrs/zustand) |
+| Luxon | MIT | [github.com/moment/luxon](https://github.com/moment/luxon) |
+| react-dropzone | MIT | [github.com/react-dropzone/react-dropzone](https://github.com/react-dropzone/react-dropzone) |
+| @react-three/csg | MIT | [github.com/pmndrs/react-three-csg](https://github.com/pmndrs/react-three-csg) |
+
+---
+
 ## References
 
 - [TanStack Table Documentation](https://tanstack.com/table/latest)
@@ -246,3 +263,4 @@ Total potential addition: ~77KB gzipped (acceptable for app of this complexity)
 - [Zustand Documentation](https://github.com/pmndrs/zustand)
 - [Luxon Documentation](https://moment.github.io/luxon/)
 - [react-dropzone Documentation](https://react-dropzone.js.org/)
+- [@react-three/csg Documentation](https://github.com/pmndrs/react-three-csg)
