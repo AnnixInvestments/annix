@@ -16,7 +16,7 @@ export interface CreateRfqDto {
   customerEmail?: string;
   customerPhone?: string;
   requiredDate?: string;
-  status?: 'draft' | 'pending' | 'quoted' | 'accepted' | 'rejected' | 'cancelled';
+  status?: 'draft' | 'submitted' | 'pending' | 'quoted' | 'accepted' | 'rejected' | 'cancelled';
   notes?: string;
 }
 
@@ -1092,11 +1092,12 @@ export const draftsApi = {
   getByNumber: (draftNumber: string) => apiClient.getDraftByNumber(draftNumber),
   delete: (id: number) => apiClient.deleteDraft(id),
   markAsConverted: async (draftId: number, rfqId: number): Promise<void> => {
-    const response = await fetch(`${API_URL}/rfq/drafts/${draftId}/convert`, {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${API_BASE_URL}/rfq/drafts/${draftId}/convert`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...authHeaders(),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ rfqId }),
     });
@@ -1165,7 +1166,39 @@ export interface SubmitBoqResponseDto {
   }[];
 }
 
+export interface CreateBoqDto {
+  title: string;
+  description?: string;
+  rfqId?: number;
+}
+
+export interface BoqResponse {
+  id: number;
+  boqNumber: string;
+  title: string;
+  status: string;
+}
+
 export const boqApi = {
+  create: async (dto: CreateBoqDto): Promise<BoqResponse> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${API_BASE_URL}/boq`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(dto),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create BOQ: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
   submitForQuotation: async (boqId: number, dto: SubmitBoqDto): Promise<SubmitBoqResponseDto> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const response = await fetch(`${API_BASE_URL}/boq/${boqId}/submit`, {

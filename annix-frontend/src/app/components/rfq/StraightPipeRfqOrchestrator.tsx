@@ -3,7 +3,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { StraightPipeEntry, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
-import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
+import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, boqApi, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
+import { consolidateBoqData } from '@/app/lib/utils/boqConsolidation';
 import { useToast } from '@/app/components/Toast';
 import {
   validatePage1RequiredFields,
@@ -1909,6 +1910,55 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         }
 
         setPendingDocuments([]);
+      }
+
+      if (result.rfq?.id) {
+        try {
+          console.log(`📦 Creating BOQ for RFQ ${result.rfq.id}...`);
+          const boq = await boqApi.create({
+            title: `BOQ for ${rfqData.projectName || 'Untitled Project'}`,
+            description: rfqData.description,
+            rfqId: result.rfq.id,
+          });
+          console.log(`✅ BOQ ${boq.boqNumber} created with ID ${boq.id}`);
+
+          const consolidatedData = consolidateBoqData({
+            entries: allItems,
+            globalSpecs: {
+              gasketType: rfqData.globalSpecs?.gasketType,
+              pressureClassDesignation: masterData?.pressureClasses?.find(
+                (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId
+              )?.designation,
+              flangeStandardId: rfqData.globalSpecs?.flangeStandardId,
+              flangePressureClassId: rfqData.globalSpecs?.flangePressureClassId,
+            },
+            masterData: {
+              flangeStandards: masterData?.flangeStandards,
+              pressureClasses: masterData?.pressureClasses,
+              steelSpecs: masterData?.steelSpecs,
+            },
+          });
+
+          console.log(`📊 Consolidated data:`, consolidatedData);
+
+          const submitResult = await boqApi.submitForQuotation(boq.id, {
+            boqData: consolidatedData,
+            customerInfo: {
+              name: rfqData.customerName || 'Unknown',
+              email: rfqData.customerEmail || '',
+              phone: rfqData.customerPhone,
+            },
+            projectInfo: {
+              name: rfqData.projectName || 'Untitled Project',
+              description: rfqData.description,
+              requiredDate: rfqData.requiredDate,
+            },
+          });
+
+          console.log(`✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`);
+        } catch (boqError) {
+          console.error('Failed to create/submit BOQ:', boqError);
+        }
       }
 
       if (currentDraftId && result.rfq?.id) {
