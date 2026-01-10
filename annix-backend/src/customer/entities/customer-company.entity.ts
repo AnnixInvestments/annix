@@ -47,6 +47,9 @@ export class CustomerCompany {
   @Column({ name: 'country', length: 100, default: 'South Africa' })
   country: string;
 
+  @Column({ name: 'currency_code', length: 3, default: 'ZAR' })
+  currencyCode: string;
+
   // Contact fields
   @Column({ name: 'primary_phone', length: 30 })
   primaryPhone: string;

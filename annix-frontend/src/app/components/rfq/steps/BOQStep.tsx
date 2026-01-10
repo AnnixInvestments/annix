@@ -114,14 +114,24 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
     const totalMain = counts.fixed + counts.loose + counts.rotating;
     // For fittings, branch flanges are handled separately
     if (itemType === 'fitting') {
-      if (config === 'FAE' || config === 'F2E_LF' || config === 'F2E_RF' || config === '3X_RF' || config === '2X_RF_FOE') {
+      if (config === 'FAE' || config === '3X_RF' || config === '2X_RF_FOE') {
         return { main: 2, branch: 1 }; // Main run has 2 flanges, branch has 1
+      }
+      if (config === 'F2E_LF' || config === 'F2E_RF') {
+        return { main: 1, branch: 1 }; // 1 main flange + 1 branch flange (loose/rotating)
       }
       if (config === 'F2E') return { main: 2, branch: 0 };
       if (config === 'PE') return { main: 0, branch: 0 };
       return { main: totalMain, branch: 0 };
     }
     return { main: totalMain, branch: 0 };
+  };
+
+  const getFlangeTypeName = (config: string): string => {
+    if (!config || config === 'PE') return 'Slip On';
+    if (config.includes('LF') || config.includes('_L')) return 'Slip On';
+    if (config.includes('RF') || config.includes('_R')) return 'Rotating';
+    return 'Slip On';
   };
 
   // Process each entry
@@ -204,8 +214,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
       // Flanges for bends (using bendEndConfig declared above)
       const flangeCount = getFlangeCountFromConfig(bendEndConfig, 'bend');
+      const flangeTypeName = getFlangeTypeName(bendEndConfig);
       if (flangeCount.main > 0) {
-        const flangeKey = `FLANGE_${nb}_${flangeSpec}_WN`;
+        const flangeKey = `FLANGE_${nb}_${flangeSpec}_${flangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * qty;
         const flangeWeight = getFlangeWeight(nb, flangeSpec.split(' ').pop() || 'PN16');
@@ -216,7 +227,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           existingFlange.entries.push(itemNumber);
         } else {
           consolidatedFlanges.set(flangeKey, {
-            description: `${nb}NB Flange ${flangeSpec}`,
+            description: `${nb}NB ${flangeTypeName} Flange ${flangeSpec}`,
             qty: flangeQty,
             unit: 'Each',
             weight: flangeWeight * flangeQty,
@@ -275,8 +286,8 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
         // A stub has a flange if it has a valid NB (stubs are always flanged by design)
         if (stubNb && stubNb > 0) {
-          // Stub flange
-          const stubFlangeKey = `FLANGE_${stubNb}_${flangeSpec}_WN`;
+          // Stub flange - stubs are typically Slip On flanges
+          const stubFlangeKey = `FLANGE_${stubNb}_${flangeSpec}_${flangeTypeName}`;
           const existingStubFlange = consolidatedFlanges.get(stubFlangeKey);
           const stubFlangeWeight = getFlangeWeight(stubNb, flangeSpec.split(' ').pop() || 'PN16');
 
@@ -288,7 +299,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
             }
           } else {
             consolidatedFlanges.set(stubFlangeKey, {
-              description: `${stubNb}NB Flange ${flangeSpec}`,
+              description: `${stubNb}NB ${flangeTypeName} Flange ${flangeSpec}`,
               qty: qty,
               unit: 'Each',
               weight: stubFlangeWeight * qty,
@@ -468,12 +479,13 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
       // Flanges for fittings (using fittingEndConfig declared above)
       const flangeCount = getFlangeCountFromConfig(fittingEndConfig, 'fitting');
+      const fittingFlangeTypeName = getFlangeTypeName(fittingEndConfig);
       const isEqualBranch = branchNb === nb;
       const fittingBoltSets = boltSetCountPerFitting(fittingEndConfig, isEqualBranch);
 
       // Main flanges
       if (flangeCount.main > 0) {
-        const flangeKey = `FLANGE_${nb}_${flangeSpec}_WN`;
+        const flangeKey = `FLANGE_${nb}_${flangeSpec}_${fittingFlangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * qty;
         const flangeWeight = getFlangeWeight(nb, flangeSpec.split(' ').pop() || 'PN16');
@@ -484,7 +496,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           existingFlange.entries.push(itemNumber);
         } else {
           consolidatedFlanges.set(flangeKey, {
-            description: `${nb}NB Flange ${flangeSpec}`,
+            description: `${nb}NB ${fittingFlangeTypeName} Flange ${flangeSpec}`,
             qty: flangeQty,
             unit: 'Each',
             weight: flangeWeight * flangeQty,
@@ -539,7 +551,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
       // Branch flanges (if different NB)
       if (flangeCount.branch > 0) {
-        const branchFlangeKey = `FLANGE_${branchNb}_${flangeSpec}_WN`;
+        const branchFlangeKey = `FLANGE_${branchNb}_${flangeSpec}_${fittingFlangeTypeName}`;
         const existingBranchFlange = consolidatedFlanges.get(branchFlangeKey);
         const branchFlangeQty = flangeCount.branch * qty;
         const branchFlangeWeight = getFlangeWeight(branchNb, flangeSpec.split(' ').pop() || 'PN16');
@@ -550,7 +562,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           existingBranchFlange.entries.push(itemNumber);
         } else {
           consolidatedFlanges.set(branchFlangeKey, {
-            description: `${branchNb}NB Flange ${flangeSpec}`,
+            description: `${branchNb}NB ${fittingFlangeTypeName} Flange ${flangeSpec}`,
             qty: branchFlangeQty,
             unit: 'Each',
             weight: branchFlangeWeight * branchFlangeQty,
@@ -690,8 +702,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
       // Flanges for pipes (using pipeEndConfig declared above)
       const flangeCount = getFlangeCountFromConfig(pipeEndConfig, 'pipe');
+      const pipeFlangeTypeName = getFlangeTypeName(pipeEndConfig);
       if (flangeCount.main > 0) {
-        const flangeKey = `FLANGE_${nb}_${flangeSpec}_WN`;
+        const flangeKey = `FLANGE_${nb}_${flangeSpec}_${pipeFlangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * pipeQty;
         const flangeWeight = getFlangeWeight(nb, flangeSpec.split(' ').pop() || 'PN16');
@@ -702,7 +715,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           existingFlange.entries.push(itemNumber);
         } else {
           consolidatedFlanges.set(flangeKey, {
-            description: `${nb}NB Flange ${flangeSpec}`,
+            description: `${nb}NB ${pipeFlangeTypeName} Flange ${flangeSpec}`,
             qty: flangeQty,
             unit: 'Each',
             weight: flangeWeight * flangeQty,

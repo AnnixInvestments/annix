@@ -42,6 +42,7 @@ export interface SupplierCompanyDto {
   provinceState: string;
   postalCode: string;
   country?: string;
+  currencyCode?: string;
   primaryContactName: string;
   primaryContactEmail: string;
   primaryContactPhone: string;
@@ -245,6 +246,8 @@ export interface RfqItemDetail {
     pipeLengthAMm?: number;
     pipeLengthBMm?: number;
     pipeEndConfiguration?: string;
+    addBlankFlange?: boolean;
+    blankFlangeCount?: number;
     calculationData?: Record<string, any>;
   };
 }

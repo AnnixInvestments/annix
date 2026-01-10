@@ -47,6 +47,9 @@ export class SupplierCompany {
   @Column({ name: 'country', length: 100, default: 'South Africa' })
   country: string;
 
+  @Column({ name: 'currency_code', length: 3, default: 'ZAR' })
+  currencyCode: string;
+
   // Primary contact fields
   @Column({ name: 'primary_contact_name', length: 200 })
   primaryContactName: string;

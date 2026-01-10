@@ -87,6 +87,11 @@ export class UnifiedBendDto {
   @IsString()
   scheduleNumber: string;
 
+  @ApiProperty({ description: 'Wall thickness in mm', required: false })
+  @IsOptional()
+  @IsNumber()
+  wallThicknessMm?: number;
+
   @ApiProperty({ description: 'Bend type (1D, 3D, 5D)', example: '3D' })
   @IsString()
   bendType: string;
@@ -94,6 +99,11 @@ export class UnifiedBendDto {
   @ApiProperty({ description: 'Bend degrees', example: 90 })
   @IsNumber()
   bendDegrees: number;
+
+  @ApiProperty({ description: 'Bend end configuration', example: 'LF_BE', required: false })
+  @IsOptional()
+  @IsString()
+  bendEndConfiguration?: string;
 
   @ApiProperty({ description: 'Number of tangents', example: 1 })
   @IsNumber()

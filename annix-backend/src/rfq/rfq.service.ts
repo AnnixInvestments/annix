@@ -529,8 +529,10 @@ export class RfqService {
         const bendRfq = this.bendRfqRepository.create({
           nominalBoreMm: item.bend.nominalBoreMm,
           scheduleNumber: item.bend.scheduleNumber,
+          wallThicknessMm: item.bend.wallThicknessMm,
           bendType: item.bend.bendType,
           bendDegrees: item.bend.bendDegrees,
+          bendEndConfiguration: item.bend.bendEndConfiguration,
           numberOfTangents: item.bend.numberOfTangents || 0,
           tangentLengths: item.bend.tangentLengths || [],
           quantityValue: item.bend.quantityValue || 1,

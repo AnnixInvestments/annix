@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { supplierPortalApi, SupplierCompanyDto, OnboardingStatusResponse } from '@/app/lib/api/supplierApi';
 import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
 import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
+import { CurrencySelect, DEFAULT_CURRENCY } from '@/app/components/ui/CurrencySelect';
+import { currencyCodeForCountry } from '@/app/lib/currencies';
 
 const initialCompanyData: SupplierCompanyDto = {
   legalName: '',
@@ -18,6 +20,7 @@ const initialCompanyData: SupplierCompanyDto = {
   provinceState: '',
   postalCode: '',
   country: 'South Africa',
+  currencyCode: DEFAULT_CURRENCY,
   primaryContactName: '',
   primaryContactEmail: '',
   primaryContactPhone: '',
@@ -112,7 +115,16 @@ export default function SupplierOnboardingPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setCompanyData((prev) => ({ ...prev, [name]: value }));
+    setCompanyData((prev) => {
+      const updates: Partial<SupplierCompanyDto> = { [name]: value };
+      if (name === 'country') {
+        const suggestedCurrency = currencyCodeForCountry(value);
+        if (suggestedCurrency) {
+          updates.currencyCode = suggestedCurrency;
+        }
+      }
+      return { ...prev, ...updates };
+    });
   };
 
   const handleRegionToggle = (region: string) => {
@@ -444,6 +456,15 @@ export default function SupplierOnboardingPage() {
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Preferred Currency</label>
+                <CurrencySelect
+                  value={companyData.currencyCode || DEFAULT_CURRENCY}
+                  onChange={(value) => setCompanyData((prev) => ({ ...prev, currencyCode: value }))}
+                  className="mt-1"
                 />
               </div>
             </div>

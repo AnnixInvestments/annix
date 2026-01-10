@@ -30,12 +30,30 @@ export class CreateBendRfqDto {
   scheduleNumber: string;
 
   @ApiProperty({
+    description: 'Wall thickness in mm',
+    example: 6.35,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  wallThicknessMm?: number;
+
+  @ApiProperty({
     description: 'Type of bend (1.5D, 2D, 3D, 5D)',
     example: '3D',
     enum: ['1.5D', '2D', '3D', '5D'],
   })
   @IsString()
   bendType: string;
+
+  @ApiProperty({
+    description: 'Bend end configuration',
+    example: 'LF_BE',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  bendEndConfiguration?: string;
 
   @ApiProperty({
     description: 'Bend angle in degrees',

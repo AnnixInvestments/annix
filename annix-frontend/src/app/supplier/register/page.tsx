@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useDeviceFingerprint } from '@/app/hooks/useDeviceFingerprint';
 import { supplierAuthApi, SupplierCompanyDto, SupplierProfileDto } from '@/app/lib/api/supplierApi';
+import { CurrencySelect, DEFAULT_CURRENCY } from '@/app/components/ui/CurrencySelect';
+import { currencyCodeForCountry } from '@/app/lib/currencies';
 
 type Step = 'company' | 'bee' | 'documents' | 'profile' | 'security' | 'complete';
 
@@ -64,6 +66,7 @@ export default function SupplierRegistrationPage() {
   // Company data
   const [company, setCompany] = useState<Partial<SupplierCompanyDto>>({
     country: 'South Africa',
+    currencyCode: DEFAULT_CURRENCY,
   });
 
   // User profile data
@@ -129,7 +132,16 @@ export default function SupplierRegistrationPage() {
   }, [security.password]);
 
   const handleCompanyChange = (field: keyof SupplierCompanyDto, value: any) => {
-    setCompany((prev) => ({ ...prev, [field]: value }));
+    setCompany((prev) => {
+      const updates: Partial<SupplierCompanyDto> = { [field]: value };
+      if (field === 'country') {
+        const suggestedCurrency = currencyCodeForCountry(value);
+        if (suggestedCurrency) {
+          updates.currencyCode = suggestedCurrency;
+        }
+      }
+      return { ...prev, ...updates };
+    });
   };
 
   const handleProfileChange = (field: keyof SupplierProfileDto, value: string) => {
@@ -445,6 +457,15 @@ export default function SupplierRegistrationPage() {
             value={company.country || 'South Africa'}
             onChange={(e) => handleCompanyChange('country', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Preferred Currency</label>
+          <CurrencySelect
+            value={company.currencyCode || DEFAULT_CURRENCY}
+            onChange={(value) => handleCompanyChange('currencyCode', value)}
+            className="mt-1"
           />
         </div>
       </div>

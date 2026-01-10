@@ -11,6 +11,8 @@ import {
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from "@/app/components/DocumentPreviewModal";
 import { DocumentActionButtons } from "@/app/components/DocumentActionButtons";
+import { CurrencySelect, DEFAULT_CURRENCY } from "@/app/components/ui/CurrencySelect";
+import { currencyCodeForCountry } from "@/app/lib/currencies";
 
 const DOCUMENT_TYPES = [
   { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)', required: true },
@@ -45,6 +47,7 @@ export default function CustomerOnboardingPage() {
     provinceState: '',
     postalCode: '',
     country: 'South Africa',
+    currencyCode: DEFAULT_CURRENCY,
     primaryPhone: '',
   });
 
@@ -89,7 +92,16 @@ export default function CustomerOnboardingPage() {
   };
 
   const handleCompanyChange = (field: string, value: string) => {
-    setCompanyData((prev) => ({ ...prev, [field]: value }));
+    setCompanyData((prev) => {
+      const updates: Record<string, string> = { [field]: value };
+      if (field === 'country') {
+        const suggestedCurrency = currencyCodeForCountry(value);
+        if (suggestedCurrency) {
+          updates.currencyCode = suggestedCurrency;
+        }
+      }
+      return { ...prev, ...updates };
+    });
   };
 
   const handleSaveCompany = async () => {
@@ -511,6 +523,17 @@ export default function CustomerOnboardingPage() {
             value={companyData.country}
             onChange={(e) => handleCompanyChange('country', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Preferred Currency <span className="text-red-500">*</span>
+          </label>
+          <CurrencySelect
+            value={companyData.currencyCode}
+            onChange={(value) => handleCompanyChange('currencyCode', value)}
+            className="mt-1"
           />
         </div>
       </div>

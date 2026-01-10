@@ -14,6 +14,90 @@ import {
 } from '@/app/lib/api/supplierApi';
 import { useToast } from '@/app/components/Toast';
 import { formatDateTimeZA, nowISO } from '@/app/lib/datetime';
+import { currencyByCode, DEFAULT_CURRENCY } from '@/app/lib/currencies';
+
+interface PricingInputs {
+  steelSpecs: Record<string, number>;
+  weldThicknesses: Record<string, number>;
+  flangeTypes: Record<string, number>;
+  labourExtrasPercent: number;
+  contingenciesPercent: number;
+}
+
+interface ExtractedSpecs {
+  steelSpecs: string[];
+  weldThicknesses: string[];
+  flangeTypes: string[];
+}
+
+const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
+  const steelSpecs = new Set<string>();
+  const weldThicknesses = new Set<string>();
+  const flangeTypes = new Set<string>();
+
+  items.forEach((item) => {
+    const straightDetails = item.straightPipeDetails;
+    const bendDetails = item.bendDetails;
+    const fittingDetails = item.fittingDetails;
+
+    if (straightDetails) {
+      if (straightDetails.pipeStandard) {
+        steelSpecs.add(straightDetails.pipeStandard);
+      }
+      if (straightDetails.scheduleNumber) {
+        steelSpecs.add(straightDetails.scheduleNumber);
+      }
+      if (straightDetails.wallThicknessMm) {
+        weldThicknesses.add(`${straightDetails.wallThicknessMm}mm`);
+      }
+      if (straightDetails.pipeEndConfiguration && straightDetails.pipeEndConfiguration !== 'PE') {
+        flangeTypes.add(straightDetails.pipeEndConfiguration);
+      }
+    }
+
+    if (bendDetails) {
+      if (bendDetails.pipeStandard) {
+        steelSpecs.add(bendDetails.pipeStandard);
+      }
+      if (bendDetails.scheduleNumber) {
+        steelSpecs.add(bendDetails.scheduleNumber);
+      }
+      if (bendDetails.wallThicknessMm) {
+        weldThicknesses.add(`${bendDetails.wallThicknessMm}mm`);
+      }
+      if (bendDetails.bendEndConfiguration && bendDetails.bendEndConfiguration !== 'PE') {
+        flangeTypes.add(bendDetails.bendEndConfiguration);
+      }
+    }
+
+    if (fittingDetails) {
+      if (fittingDetails.fittingStandard) {
+        steelSpecs.add(fittingDetails.fittingStandard);
+      }
+      if (fittingDetails.scheduleNumber) {
+        steelSpecs.add(fittingDetails.scheduleNumber);
+      }
+      if (fittingDetails.wallThicknessMm) {
+        weldThicknesses.add(`${fittingDetails.wallThicknessMm}mm`);
+      }
+      if (fittingDetails.pipeEndConfiguration && fittingDetails.pipeEndConfiguration !== 'PE') {
+        flangeTypes.add(fittingDetails.pipeEndConfiguration);
+      }
+    }
+
+    const description = item.description.toUpperCase();
+    const sabsMatch = description.match(/SABS\s*(\d+)/);
+    if (sabsMatch) {
+      steelSpecs.add(`SABS ${sabsMatch[1]}`);
+    }
+  });
+
+  return {
+    steelSpecs: Array.from(steelSpecs).sort(),
+    weldThicknesses: Array.from(weldThicknesses).sort((a, b) => parseFloat(a) - parseFloat(b)),
+    flangeTypes: Array.from(flangeTypes).sort(),
+  };
+};
 
 const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label: string }> = {
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
@@ -42,27 +126,84 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   const [declineReason, setDeclineReason] = useState('');
   const [decliningLoading, setDecliningLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'boq' | 'rfq'>('boq');
+  const [supplierCurrency, setSupplierCurrency] = useState(DEFAULT_CURRENCY);
+  const [unitPrices, setUnitPrices] = useState<Record<string, Record<number, number>>>({});
+  const [extractedSpecs, setExtractedSpecs] = useState<ExtractedSpecs>({
+    steelSpecs: [],
+    weldThicknesses: [],
+    flangeTypes: [],
+  });
+  const [pricingInputs, setPricingInputs] = useState<PricingInputs>({
+    steelSpecs: {},
+    weldThicknesses: {},
+    flangeTypes: {},
+    labourExtrasPercent: 0,
+    contingenciesPercent: 5,
+  });
 
   useEffect(() => {
     loadBoqDetails();
+    loadSupplierCurrency();
+    loadRfqItems();
   }, [boqId]);
 
-  useEffect(() => {
-    if (viewMode === 'rfq' && rfqItems.length === 0 && !rfqLoading) {
-      loadRfqItems();
+  const loadSupplierCurrency = async () => {
+    try {
+      const profile = await supplierPortalApi.getProfile();
+      if (profile?.company?.currencyCode) {
+        setSupplierCurrency(profile.company.currencyCode);
+      }
+    } catch (err) {
+      console.error('Failed to load supplier currency:', err);
     }
-  }, [viewMode]);
+  };
+
+  const handleUnitPriceChange = (sectionId: string, itemIndex: number, value: number) => {
+    setUnitPrices((prev) => ({
+      ...prev,
+      [sectionId]: {
+        ...prev[sectionId],
+        [itemIndex]: value,
+      },
+    }));
+  };
 
   const loadRfqItems = async () => {
     try {
       setRfqLoading(true);
       const items = await supplierPortalApi.getRfqItems(boqId);
       setRfqItems(items);
+      const specs = extractUniqueSpecs(items);
+      setExtractedSpecs(specs);
     } catch (err) {
       console.error('Failed to load RFQ items:', err);
     } finally {
       setRfqLoading(false);
     }
+  };
+
+  const handlePricingInputChange = (
+    category: 'steelSpecs' | 'weldThicknesses' | 'flangeTypes',
+    key: string,
+    value: number
+  ) => {
+    setPricingInputs((prev) => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [key]: value,
+      },
+    }));
+  };
+
+  const handlePercentageChange = (
+    field: 'labourExtrasPercent' | 'contingenciesPercent',
+    value: number
+  ) => {
+    setPricingInputs((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const loadBoqDetails = async () => {
@@ -326,6 +467,15 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         )}
       </div>
 
+      {/* Pricing Inputs Section */}
+      <PricingInputsSection
+        extractedSpecs={extractedSpecs}
+        pricingInputs={pricingInputs}
+        onPricingInputChange={handlePricingInputChange}
+        onPercentageChange={handlePercentageChange}
+        currencyCode={supplierCurrency}
+      />
+
       {/* BOQ/RFQ Content */}
       {viewMode === 'boq' ? (
         <div className="bg-white rounded-lg shadow-sm p-6">
@@ -335,9 +485,25 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 
           <div className="space-y-8">
             {boqDetail.sections.map((section) => (
-              <SectionTable key={section.id} section={section} />
+              <SectionTable
+                key={section.id}
+                section={section}
+                currencyCode={supplierCurrency}
+                unitPrices={unitPrices[String(section.id)] || {}}
+                onUnitPriceChange={(itemIndex, value) => handleUnitPriceChange(String(section.id), itemIndex, value)}
+                pricingInputs={pricingInputs}
+                rfqItems={rfqItems}
+              />
             ))}
           </div>
+
+          {/* Grand Totals Section */}
+          <GrandTotalsSection
+            sections={boqDetail.sections}
+            unitPrices={unitPrices}
+            pricingInputs={pricingInputs}
+            currencyCode={supplierCurrency}
+          />
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm p-6">
@@ -405,14 +571,379 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   );
 }
 
-function SectionTable({ section }: { section: BoqSection }) {
+interface PricingInputsSectionProps {
+  extractedSpecs: ExtractedSpecs;
+  pricingInputs: PricingInputs;
+  onPricingInputChange: (category: 'steelSpecs' | 'weldThicknesses' | 'flangeTypes', key: string, value: number) => void;
+  onPercentageChange: (field: 'labourExtrasPercent' | 'contingenciesPercent', value: number) => void;
+  currencyCode: string;
+}
+
+function PricingInputsSection({
+  extractedSpecs,
+  pricingInputs,
+  onPricingInputChange,
+  onPercentageChange,
+  currencyCode,
+}: PricingInputsSectionProps) {
+  const currency = currencyByCode(currencyCode);
+  const currencySymbol = currency?.symbol || currencyCode;
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <h2 className="text-lg font-medium text-gray-900 mb-4">Pricing Inputs</h2>
+      <p className="text-sm text-gray-500 mb-6">
+        Enter your prices below and the BOQ item unit prices will be automatically calculated based on weight.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Steel Specifications */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Steel Specifications (Price/kg)</h3>
+          {extractedSpecs.steelSpecs.length > 0 ? (
+            extractedSpecs.steelSpecs.map((spec) => (
+              <div key={spec} className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1 min-w-0 truncate" title={spec}>
+                  {spec}
+                </label>
+                <div className="flex items-center w-32">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.steelSpecs[spec] || ''}
+                    onChange={(e) => onPricingInputChange('steelSpecs', spec, parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 flex-1">
+                Steel (General)
+              </label>
+              <div className="flex items-center w-32">
+                <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={pricingInputs.steelSpecs['Steel'] || ''}
+                  onChange={(e) => onPricingInputChange('steelSpecs', 'Steel', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Weld Thicknesses */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Weld Thicknesses (Price/m)</h3>
+          {extractedSpecs.weldThicknesses.length > 0 ? (
+            extractedSpecs.weldThicknesses.map((thickness) => (
+              <div key={thickness} className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">
+                  {thickness} W/T
+                </label>
+                <div className="flex items-center w-32">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.weldThicknesses[thickness] || ''}
+                    onChange={(e) => onPricingInputChange('weldThicknesses', thickness, parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 flex-1">
+                Welding (General)
+              </label>
+              <div className="flex items-center w-32">
+                <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={pricingInputs.weldThicknesses['General'] || ''}
+                  onChange={(e) => onPricingInputChange('weldThicknesses', 'General', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Flange Types */}
+        {extractedSpecs.flangeTypes.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Flange Configurations (Price/unit)</h3>
+            {extractedSpecs.flangeTypes.map((flangeType) => (
+              <div key={flangeType} className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">
+                  {flangeType}
+                </label>
+                <div className="flex items-center w-32">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.flangeTypes[flangeType] || ''}
+                    onChange={(e) => onPricingInputChange('flangeTypes', flangeType, parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Labour & Extras and Contingencies */}
+      <div className="mt-6 pt-6 border-t border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700">
+              Labour & Extras
+            </label>
+            <div className="flex items-center w-24">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.5"
+                value={pricingInputs.labourExtrasPercent || ''}
+                onChange={(e) => onPercentageChange('labourExtrasPercent', parseFloat(e.target.value) || 0)}
+                placeholder="0"
+                className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-sm text-gray-500 ml-1">%</span>
+            </div>
+            <span className="text-xs text-gray-400">(Added to each line item)</span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700">
+              Contingencies
+            </label>
+            <div className="flex items-center w-24">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.5"
+                value={pricingInputs.contingenciesPercent || ''}
+                onChange={(e) => onPercentageChange('contingenciesPercent', parseFloat(e.target.value) || 0)}
+                placeholder="5"
+                className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-sm text-gray-500 ml-1">%</span>
+            </div>
+            <span className="text-xs text-gray-400">(Added to grand total)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface GrandTotalsSectionProps {
+  sections: BoqSection[];
+  unitPrices: Record<string, Record<number, number>>;
+  pricingInputs: PricingInputs;
+  currencyCode: string;
+}
+
+function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode }: GrandTotalsSectionProps) {
+  const currency = currencyByCode(currencyCode);
+  const currencySymbol = currency?.symbol || currencyCode;
+
+  const formatCurrency = (value: number): string => {
+    return value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const calculateSuggestedPriceForItem = (item: ConsolidatedItem, sectionType: string): number => {
+    const isFabricatedSection = ['straight_pipes', 'bends', 'fittings'].includes(sectionType);
+    if (!isFabricatedSection) return 0;
+
+    let basePrice = 0;
+    const description = item.description.toUpperCase();
+
+    Object.entries(pricingInputs.steelSpecs).forEach(([spec, pricePerKg]) => {
+      if (pricePerKg > 0 && description.includes(spec.toUpperCase())) {
+        const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
+        basePrice += weightPerUnit * pricePerKg;
+      }
+    });
+
+    if (basePrice === 0) {
+      const defaultSteelPrice = Object.values(pricingInputs.steelSpecs)[0] || 0;
+      if (defaultSteelPrice > 0) {
+        const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
+        basePrice = weightPerUnit * defaultSteelPrice;
+      }
+    }
+
+    let weldPrice = 0;
+    Object.entries(pricingInputs.weldThicknesses).forEach(([thickness, pricePerMeter]) => {
+      if (pricePerMeter > 0) {
+        const thicknessValue = thickness.replace('mm', '');
+        if (description.includes(`${thicknessValue}MM`) || description.includes(`W/T ${thicknessValue}`) || description.includes(`${thicknessValue} MM`)) {
+          const totalWeldLength = (item.welds?.pipeWeld || 0) + (item.welds?.flangeWeld || 0) +
+                                  (item.welds?.mitreWeld || 0) + (item.welds?.teeWeld || 0);
+          const weldPerUnit = item.qty > 0 ? (totalWeldLength / item.qty) : 0;
+          weldPrice += weldPerUnit * pricePerMeter;
+        }
+      }
+    });
+
+    let flangePrice = 0;
+    Object.entries(pricingInputs.flangeTypes).forEach(([flangeType, price]) => {
+      if (price > 0 && description.includes(flangeType)) {
+        flangePrice += price;
+      }
+    });
+
+    const subtotal = basePrice + weldPrice + flangePrice;
+    const labourExtras = subtotal * (pricingInputs.labourExtrasPercent / 100);
+
+    return subtotal + labourExtras;
+  };
+
+  const subtotal = sections.reduce((total, section) => {
+    const sectionPrices = unitPrices[String(section.id)] || {};
+    const sectionTotal = section.items.reduce((sum, item, idx) => {
+      const manualPrice = sectionPrices[idx];
+      const effectivePrice = (manualPrice !== undefined && manualPrice > 0)
+        ? manualPrice
+        : calculateSuggestedPriceForItem(item, section.sectionType);
+      return sum + (item.qty * effectivePrice);
+    }, 0);
+    return total + sectionTotal;
+  }, 0);
+
+  const contingenciesAmount = subtotal * (pricingInputs.contingenciesPercent / 100);
+  const grandTotal = subtotal + contingenciesAmount;
+
+  return (
+    <div className="mt-8 border-t-2 border-gray-300 pt-6">
+      <div className="flex flex-col items-end space-y-2">
+        <div className="flex justify-between w-72 text-sm">
+          <span className="text-gray-600">Subtotal:</span>
+          <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(subtotal)}</span>
+        </div>
+        <div className="flex justify-between w-72 text-sm">
+          <span className="text-gray-600">Contingencies ({pricingInputs.contingenciesPercent}%):</span>
+          <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(contingenciesAmount)}</span>
+        </div>
+        <div className="flex justify-between w-72 text-lg font-bold border-t border-gray-300 pt-2 mt-2">
+          <span className="text-gray-900">Grand Total (ex VAT):</span>
+          <span className="text-green-700">{currencySymbol} {formatCurrency(grandTotal)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface SectionTableProps {
+  section: BoqSection;
+  currencyCode: string;
+  unitPrices: Record<number, number>;
+  onUnitPriceChange: (itemIndex: number, value: number) => void;
+  pricingInputs: PricingInputs;
+  rfqItems: RfqItemDetail[];
+}
+
+function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pricingInputs, rfqItems }: SectionTableProps) {
   const hasWelds = section.items.some(
     (item) =>
       item.welds?.pipeWeld || item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld
   );
   const hasAreas = section.items.some((item) => item.areas?.intAreaM2 || item.areas?.extAreaM2);
 
-  // Calculate totals
+  const currency = currencyByCode(currencyCode);
+  const currencySymbol = currency?.symbol || currencyCode;
+
+  const isFabricatedSection = ['straight_pipes', 'bends', 'fittings'].includes(section.sectionType);
+
+  const calculateSuggestedPrice = (item: ConsolidatedItem): number => {
+    if (!isFabricatedSection) return 0;
+
+    let basePrice = 0;
+    const description = item.description.toUpperCase();
+
+    Object.entries(pricingInputs.steelSpecs).forEach(([spec, pricePerKg]) => {
+      if (pricePerKg > 0 && description.includes(spec.toUpperCase())) {
+        const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
+        basePrice += weightPerUnit * pricePerKg;
+      }
+    });
+
+    if (basePrice === 0) {
+      const defaultSteelPrice = Object.values(pricingInputs.steelSpecs)[0] || 0;
+      if (defaultSteelPrice > 0) {
+        const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
+        basePrice = weightPerUnit * defaultSteelPrice;
+      }
+    }
+
+    let weldPrice = 0;
+    Object.entries(pricingInputs.weldThicknesses).forEach(([thickness, pricePerMeter]) => {
+      if (pricePerMeter > 0) {
+        const thicknessValue = thickness.replace('mm', '');
+        if (description.includes(`${thicknessValue}MM`) || description.includes(`W/T ${thicknessValue}`) || description.includes(`${thicknessValue} MM`)) {
+          const totalWeldLength = (item.welds?.pipeWeld || 0) + (item.welds?.flangeWeld || 0) +
+                                  (item.welds?.mitreWeld || 0) + (item.welds?.teeWeld || 0);
+          const weldPerUnit = item.qty > 0 ? (totalWeldLength / item.qty) : 0;
+          weldPrice += weldPerUnit * pricePerMeter;
+        }
+      }
+    });
+
+    let flangePrice = 0;
+    Object.entries(pricingInputs.flangeTypes).forEach(([flangeType, price]) => {
+      if (price > 0 && description.includes(flangeType)) {
+        flangePrice += price;
+      }
+    });
+
+    const subtotal = basePrice + weldPrice + flangePrice;
+    const labourExtras = subtotal * (pricingInputs.labourExtrasPercent / 100);
+
+    return subtotal + labourExtras;
+  };
+
+  const effectiveUnitPrice = (itemIndex: number, item: ConsolidatedItem): number => {
+    const manualPrice = unitPrices[itemIndex];
+    if (manualPrice !== undefined && manualPrice > 0) {
+      return manualPrice;
+    }
+    return calculateSuggestedPrice(item);
+  };
+
+  const lineTotal = (itemIndex: number, item: ConsolidatedItem): number => {
+    const unitPrice = effectiveUnitPrice(itemIndex, item);
+    return item.qty * unitPrice;
+  };
+
+  const totalLineAmount = section.items.reduce(
+    (sum, item, idx) => sum + lineTotal(idx, item),
+    0
+  );
+
   const totals = {
     pipeWeld: section.items.reduce((sum, item) => sum + (item.welds?.pipeWeld || 0), 0),
     flangeWeld: section.items.reduce((sum, item) => sum + (item.welds?.flangeWeld || 0), 0),
@@ -421,6 +952,10 @@ function SectionTable({ section }: { section: BoqSection }) {
     intArea: section.items.reduce((sum, item) => sum + (item.areas?.intAreaM2 || 0), 0),
     extArea: section.items.reduce((sum, item) => sum + (item.areas?.extAreaM2 || 0), 0),
     weight: Number(section.totalWeightKg) || 0,
+  };
+
+  const formatCurrency = (value: number): string => {
+    return value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   return (
@@ -437,6 +972,12 @@ function SectionTable({ section }: { section: BoqSection }) {
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
               <th className="w-16 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
               <th className="w-16 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+              <th className="w-32 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                Unit Price ({currencySymbol})
+              </th>
+              <th className="w-32 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                Line Total ({currencySymbol})
+              </th>
               {hasWelds && (
                 <>
                   <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Pipe Weld (m)</th>
@@ -455,43 +996,71 @@ function SectionTable({ section }: { section: BoqSection }) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {section.items.map((item, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="w-12 px-3 py-2 text-sm text-gray-500">{idx + 1}</td>
-                <td className="px-3 py-2 text-sm text-gray-900">{item.description}</td>
-                <td className="w-16 px-3 py-2 text-sm text-gray-900 text-right">{item.qty}</td>
-                <td className="w-16 px-3 py-2 text-sm text-gray-500">{item.unit}</td>
-                {hasWelds && (
-                  <>
-                    <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.welds?.pipeWeld ? Number(item.welds.pipeWeld).toFixed(3) : '-'}
-                    </td>
-                    <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-'}
-                    </td>
-                    <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-'}
-                    </td>
-                    <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'}
-                    </td>
-                  </>
-                )}
-                {hasAreas && (
-                  <>
-                    <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-'}
-                    </td>
-                    <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
-                      {item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'}
-                    </td>
-                  </>
-                )}
-                <td className="w-28 px-3 py-2 text-sm text-gray-900 text-right font-medium">
-                  {Number(item.weightKg || 0).toFixed(2)}
-                </td>
-              </tr>
-            ))}
+            {section.items.map((item, idx) => {
+              const manualPrice = unitPrices[idx];
+              const suggestedPrice = calculateSuggestedPrice(item);
+              const currentUnitPrice = effectiveUnitPrice(idx, item);
+              const lineTotalValue = lineTotal(idx, item);
+              const isAutoCalculated = (manualPrice === undefined || manualPrice === 0) && suggestedPrice > 0;
+
+              return (
+                <tr key={idx}>
+                  <td className="w-12 px-3 py-2 text-sm text-gray-500">{idx + 1}</td>
+                  <td className="px-3 py-2 text-sm text-gray-900">{item.description}</td>
+                  <td className="w-16 px-3 py-2 text-sm text-gray-900 text-right">{item.qty}</td>
+                  <td className="w-16 px-3 py-2 text-sm text-gray-500">{item.unit}</td>
+                  <td className="w-32 px-2 py-1">
+                    <div className="flex items-center">
+                      <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={manualPrice || ''}
+                        onChange={(e) => onUnitPriceChange(idx, parseFloat(e.target.value) || 0)}
+                        placeholder={suggestedPrice > 0 ? suggestedPrice.toFixed(2) : '0.00'}
+                        className={`w-full px-2 py-1 text-sm text-right border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isAutoCalculated ? 'border-green-300 bg-green-50' : 'border-gray-300'}`}
+                      />
+                    </div>
+                    {isAutoCalculated && (
+                      <div className="text-xs text-green-600 text-right mt-0.5">Auto</div>
+                    )}
+                  </td>
+                  <td className="w-32 px-3 py-2 text-sm text-gray-900 text-right font-medium">
+                    {currencySymbol} {formatCurrency(lineTotalValue)}
+                  </td>
+                  {hasWelds && (
+                    <>
+                      <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                        {item.welds?.pipeWeld ? Number(item.welds.pipeWeld).toFixed(3) : '-'}
+                      </td>
+                      <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                        {item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-'}
+                      </td>
+                      <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                        {item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-'}
+                      </td>
+                      <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                        {item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'}
+                      </td>
+                    </>
+                  )}
+                  {hasAreas && (
+                    <>
+                      <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
+                        {item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-'}
+                      </td>
+                      <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
+                        {item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'}
+                      </td>
+                    </>
+                  )}
+                  <td className="w-28 px-3 py-2 text-sm text-gray-900 text-right font-medium">
+                    {Number(item.weightKg || 0).toFixed(2)}
+                  </td>
+                </tr>
+              );
+            })}
             {/* Totals row */}
             <tr className="bg-gray-100 font-medium">
               <td className="px-3 py-2 text-sm text-gray-900" colSpan={2}>
@@ -501,6 +1070,10 @@ function SectionTable({ section }: { section: BoqSection }) {
                 {section.items.reduce((sum, item) => sum + (item.qty || 0), 0)}
               </td>
               <td className="w-16 px-3 py-2 text-sm text-gray-500"></td>
+              <td className="w-32 px-3 py-2 text-sm text-gray-500"></td>
+              <td className="w-32 px-3 py-2 text-sm text-green-700 text-right font-semibold">
+                {currencySymbol} {formatCurrency(totalLineAmount)}
+              </td>
               {hasWelds && (
                 <>
                   <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.pipeWeld || 0).toFixed(3)}</td>
@@ -632,9 +1205,10 @@ function RfqSectionTable({ section }: { section: BoqSection }) {
 function RfqItemsDetailedView({ items, sections }: { items: RfqItemDetail[]; sections?: BoqSection[] }) {
   const totalWeight = items.reduce((sum, item) => sum + Number(item.totalWeightKg || 0), 0);
 
+  const accessorySectionOrder = ['blank_flanges', 'bnw_sets', 'gaskets'];
   const accessorySections = sections?.filter(s =>
-    ['flanges', 'bnw_sets', 'gaskets', 'blank_flanges'].includes(s.sectionType)
-  ) || [];
+    accessorySectionOrder.includes(s.sectionType)
+  ).sort((a, b) => accessorySectionOrder.indexOf(a.sectionType) - accessorySectionOrder.indexOf(b.sectionType)) || [];
 
   const accessoryWeight = accessorySections.reduce((sum, s) => sum + Number(s.totalWeightKg || 0), 0);
 
@@ -651,6 +1225,48 @@ function RfqItemsDetailedView({ items, sections }: { items: RfqItemDetail[]; sec
       fitting: 'Fitting',
     };
     return labels[type] || type;
+  };
+
+  const formatScheduleDisplay = (scheduleNumber?: string, wallThicknessMm?: number): string => {
+    if (!scheduleNumber && !wallThicknessMm) return '-';
+    if (scheduleNumber?.startsWith('WT') || scheduleNumber?.includes('719')) {
+      const wt = wallThicknessMm || parseFloat(scheduleNumber.replace(/[^0-9.]/g, ''));
+      return wt ? `${wt}mm W/T` : scheduleNumber;
+    }
+    return scheduleNumber || (wallThicknessMm ? `${wallThicknessMm}mm W/T` : '-');
+  };
+
+  const flangeWeightByNB: Record<number, number> = {
+    15: 0.8, 20: 1.1, 25: 1.4, 32: 1.8, 40: 2.2, 50: 2.8, 65: 4.2, 80: 5.0,
+    100: 7.5, 125: 10.5, 150: 13.0, 200: 18.0, 250: 28.0, 300: 38.0,
+    350: 48.0, 400: 58.0, 450: 68.0, 500: 65.0, 600: 95.0, 700: 120.0,
+    750: 135.0, 800: 150.0, 900: 180.0, 1000: 220.0, 1050: 240.0, 1200: 300.0,
+  };
+
+  const flangeCountFromConfig = (config: string | undefined, itemType: string): number => {
+    if (!config || config === 'PE') return 0;
+    if (itemType === 'bend' || itemType === 'straight_pipe') {
+      const counts: Record<string, number> = {
+        'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, 'LF_BE': 4,
+      };
+      return counts[config] || 0;
+    }
+    if (itemType === 'fitting') {
+      const counts: Record<string, number> = {
+        'FAE': 3, 'FFF': 3, 'F2E': 2, 'F2E_RF': 2, 'F2E_LF': 2, 'FFP': 2, 'PFF': 2, 'PPF': 1, 'FPP': 1, 'PFP': 1,
+      };
+      return counts[config] || 0;
+    }
+    return 0;
+  };
+
+  const calculateFlangeWeight = (nb: number, config: string | undefined, itemType: string, qty: number): number => {
+    const flangeCount = flangeCountFromConfig(config, itemType);
+    if (flangeCount === 0) return 0;
+    const closestNB = Object.keys(flangeWeightByNB)
+      .map(Number)
+      .reduce((prev, curr) => Math.abs(curr - nb) < Math.abs(prev - nb) ? curr : prev);
+    return flangeCount * (flangeWeightByNB[closestNB] || 0) * qty;
   };
 
   return (
@@ -677,18 +1293,18 @@ function RfqItemsDetailedView({ items, sections }: { items: RfqItemDetail[]; sec
 
               <p className="text-sm text-gray-700 mb-3 font-medium">{item.description}</p>
 
-              {/* Item Details Grid */}
+              {/* Item Details Grid - Consistent format for all item types */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                 {item.straightPipeDetails && (
                   <>
                     <div>
                       <span className="text-gray-500">NB:</span>{' '}
-                      <span className="font-medium">{item.straightPipeDetails.nominalBoreMm}mm</span>
+                      <span className="font-medium">{Math.round(Number(item.straightPipeDetails.nominalBoreMm))}mm</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Schedule:</span>{' '}
+                      <span className="text-gray-500">Wall Thickness:</span>{' '}
                       <span className="font-medium">
-                        {item.straightPipeDetails.scheduleNumber || `${item.straightPipeDetails.wallThicknessMm}mm WT`}
+                        {formatScheduleDisplay(item.straightPipeDetails.scheduleNumber, item.straightPipeDetails.wallThicknessMm)}
                       </span>
                     </div>
                     <div>
@@ -706,17 +1322,30 @@ function RfqItemsDetailedView({ items, sections }: { items: RfqItemDetail[]; sec
                       <span className="font-medium">{item.quantity || item.straightPipeDetails.quantityValue || 1}</span>
                     </div>
                     {item.straightPipeDetails.pipeEndConfiguration && item.straightPipeDetails.pipeEndConfiguration !== 'PE' && (
-                      <div className="col-span-2">
+                      <div>
                         <span className="text-gray-500">End Config:</span>{' '}
-                        <span className="font-medium text-blue-700">{item.straightPipeDetails.pipeEndConfiguration}</span>
+                        <span className="font-medium text-blue-600">{item.straightPipeDetails.pipeEndConfiguration}</span>
                       </div>
                     )}
-                    {item.straightPipeDetails.pipeStandard && (
-                      <div className="col-span-2">
-                        <span className="text-gray-500">Standard:</span>{' '}
-                        <span className="font-medium">{item.straightPipeDetails.pipeStandard}</span>
-                      </div>
-                    )}
+                    <div>
+                      <span className="text-gray-500">Weight/Unit:</span>{' '}
+                      <span className="font-medium">{Number(item.weightPerUnitKg || 0).toFixed(2)} kg</span>
+                    </div>
+                    {item.straightPipeDetails.pipeEndConfiguration && item.straightPipeDetails.pipeEndConfiguration !== 'PE' && (() => {
+                      const flangeWt = calculateFlangeWeight(
+                        Number(item.straightPipeDetails.nominalBoreMm),
+                        item.straightPipeDetails.pipeEndConfiguration,
+                        'straight_pipe',
+                        item.quantity || item.straightPipeDetails.quantityValue || 1
+                      );
+                      const flangeCount = flangeCountFromConfig(item.straightPipeDetails.pipeEndConfiguration, 'straight_pipe');
+                      return flangeWt > 0 ? (
+                        <div>
+                          <span className="text-gray-500">Flanges ({flangeCount}x):</span>{' '}
+                          <span className="font-medium text-amber-600">{flangeWt.toFixed(2)} kg</span>
+                        </div>
+                      ) : null;
+                    })()}
                   </>
                 )}
 
@@ -724,7 +1353,13 @@ function RfqItemsDetailedView({ items, sections }: { items: RfqItemDetail[]; sec
                   <>
                     <div>
                       <span className="text-gray-500">NB:</span>{' '}
-                      <span className="font-medium">{item.bendDetails.nominalBoreMm}mm</span>
+                      <span className="font-medium">{Math.round(Number(item.bendDetails.nominalBoreMm))}mm</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Wall Thickness:</span>{' '}
+                      <span className="font-medium">
+                        {formatScheduleDisplay(item.bendDetails.scheduleNumber, item.bendDetails.wallThicknessMm)}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-500">Angle:</span>{' '}
@@ -738,67 +1373,119 @@ function RfqItemsDetailedView({ items, sections }: { items: RfqItemDetail[]; sec
                       <span className="text-gray-500">Qty:</span>{' '}
                       <span className="font-medium">{item.quantity || 1}</span>
                     </div>
-                    {item.bendDetails.scheduleNumber && (
-                      <div>
-                        <span className="text-gray-500">Schedule:</span>{' '}
-                        <span className="font-medium">{item.bendDetails.scheduleNumber}</span>
-                      </div>
-                    )}
                     {item.bendDetails.bendEndConfiguration && item.bendDetails.bendEndConfiguration !== 'PE' && (
-                      <div className="col-span-2">
+                      <div>
                         <span className="text-gray-500">End Config:</span>{' '}
-                        <span className="font-medium text-purple-700">{item.bendDetails.bendEndConfiguration}</span>
+                        <span className="font-medium text-purple-600">{item.bendDetails.bendEndConfiguration}</span>
                       </div>
                     )}
+                    <div>
+                      <span className="text-gray-500">Weight/Unit:</span>{' '}
+                      <span className="font-medium">{Number(item.weightPerUnitKg || 0).toFixed(2)} kg</span>
+                    </div>
+                    {item.bendDetails.bendEndConfiguration && item.bendDetails.bendEndConfiguration !== 'PE' && (() => {
+                      const flangeWt = calculateFlangeWeight(
+                        Number(item.bendDetails.nominalBoreMm),
+                        item.bendDetails.bendEndConfiguration,
+                        'bend',
+                        item.quantity || 1
+                      );
+                      const flangeCount = flangeCountFromConfig(item.bendDetails.bendEndConfiguration, 'bend');
+                      return flangeWt > 0 ? (
+                        <div>
+                          <span className="text-gray-500">Flanges ({flangeCount}x):</span>{' '}
+                          <span className="font-medium text-amber-600">{flangeWt.toFixed(2)} kg</span>
+                        </div>
+                      ) : null;
+                    })()}
                   </>
                 )}
 
                 {item.fittingDetails && (
                   <>
                     <div>
-                      <span className="text-gray-500">Type:</span>{' '}
-                      <span className="font-medium">{item.fittingDetails.fittingType || 'Tee'}</span>
+                      <span className="text-gray-500">NB:</span>{' '}
+                      <span className="font-medium">{Math.round(Number(item.fittingDetails.nominalDiameterMm))}mm</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">NB:</span>{' '}
-                      <span className="font-medium">{item.fittingDetails.nominalDiameterMm}mm</span>
+                      <span className="text-gray-500">Wall Thickness:</span>{' '}
+                      <span className="font-medium">
+                        {formatScheduleDisplay(item.fittingDetails.scheduleNumber, item.fittingDetails.wallThicknessMm)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Type:</span>{' '}
+                      <span className="font-medium">{item.fittingDetails.fittingType || 'Tee'}</span>
                     </div>
                     <div>
                       <span className="text-gray-500">Qty:</span>{' '}
                       <span className="font-medium">{item.quantity || 1}</span>
                     </div>
-                    {item.fittingDetails.scheduleNumber && (
-                      <div>
-                        <span className="text-gray-500">Schedule:</span>{' '}
-                        <span className="font-medium">{item.fittingDetails.scheduleNumber}</span>
-                      </div>
-                    )}
                     {item.fittingDetails.pipeLengthAMm && (
                       <div>
                         <span className="text-gray-500">Length A:</span>{' '}
-                        <span className="font-medium">{item.fittingDetails.pipeLengthAMm}mm</span>
+                        <span className="font-medium">{Math.round(Number(item.fittingDetails.pipeLengthAMm))}mm</span>
                       </div>
                     )}
                     {item.fittingDetails.pipeLengthBMm && (
                       <div>
                         <span className="text-gray-500">Length B:</span>{' '}
-                        <span className="font-medium">{item.fittingDetails.pipeLengthBMm}mm</span>
+                        <span className="font-medium">{Math.round(Number(item.fittingDetails.pipeLengthBMm))}mm</span>
                       </div>
                     )}
                     {item.fittingDetails.pipeEndConfiguration && item.fittingDetails.pipeEndConfiguration !== 'PE' && (
-                      <div className="col-span-2">
+                      <div>
                         <span className="text-gray-500">End Config:</span>{' '}
-                        <span className="font-medium text-green-700">{item.fittingDetails.pipeEndConfiguration}</span>
+                        <span className="font-medium text-green-600">{item.fittingDetails.pipeEndConfiguration}</span>
                       </div>
                     )}
+                    <div>
+                      <span className="text-gray-500">Weight/Unit:</span>{' '}
+                      <span className="font-medium">{Number(item.weightPerUnitKg || 0).toFixed(2)} kg</span>
+                    </div>
+                    {item.fittingDetails.pipeEndConfiguration && item.fittingDetails.pipeEndConfiguration !== 'PE' && (() => {
+                      const flangeWt = calculateFlangeWeight(
+                        Number(item.fittingDetails.nominalDiameterMm),
+                        item.fittingDetails.pipeEndConfiguration,
+                        'fitting',
+                        item.quantity || 1
+                      );
+                      const flangeCount = flangeCountFromConfig(item.fittingDetails.pipeEndConfiguration, 'fitting');
+                      return flangeWt > 0 ? (
+                        <div>
+                          <span className="text-gray-500">Flanges ({flangeCount}x):</span>{' '}
+                          <span className="font-medium text-amber-600">{flangeWt.toFixed(2)} kg</span>
+                        </div>
+                      ) : null;
+                    })()}
+                    {item.fittingDetails.addBlankFlange && item.fittingDetails.blankFlangeCount && (() => {
+                      const blankFlangeNB = Math.round(Number(item.fittingDetails.nominalDiameterMm));
+                      const closestNB = Object.keys(flangeWeightByNB)
+                        .map(Number)
+                        .reduce((prev, curr) => Math.abs(curr - blankFlangeNB) < Math.abs(prev - blankFlangeNB) ? curr : prev);
+                      const blankWt = (flangeWeightByNB[closestNB] || 0) * 0.6 * item.fittingDetails.blankFlangeCount;
+                      return (
+                        <div>
+                          <span className="text-gray-500">Blank Flange ({item.fittingDetails.blankFlangeCount}x):</span>{' '}
+                          <span className="font-medium text-orange-600">{blankWt.toFixed(2)} kg</span>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
 
-                {item.weightPerUnitKg && (
-                  <div>
-                    <span className="text-gray-500">Weight/Unit:</span>{' '}
-                    <span className="font-medium">{Number(item.weightPerUnitKg).toFixed(2)} kg</span>
-                  </div>
+                {/* Fallback display when detailed entity data is not available */}
+                {!item.straightPipeDetails && !item.bendDetails && !item.fittingDetails && (
+                  <>
+                    <div>
+                      <span className="text-gray-500">Qty:</span>{' '}
+                      <span className="font-medium">{item.quantity || 1}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Weight/Unit:</span>{' '}
+                      <span className="font-medium">{Number(item.weightPerUnitKg || 0).toFixed(2)} kg</span>
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -826,30 +1513,30 @@ function RfqItemsDetailedView({ items, sections }: { items: RfqItemDetail[]; sec
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 text-xs font-medium text-gray-500 uppercase w-12">#</th>
-                      <th className="text-left py-2 text-xs font-medium text-gray-500 uppercase">Description</th>
-                      <th className="text-right py-2 text-xs font-medium text-gray-500 uppercase w-16">Qty</th>
-                      <th className="text-left py-2 text-xs font-medium text-gray-500 uppercase w-16">Unit</th>
-                      <th className="text-right py-2 text-xs font-medium text-gray-500 uppercase w-28">Weight (kg)</th>
+                      <th className="text-left py-2 px-2 text-xs font-medium text-gray-500 uppercase w-12">#</th>
+                      <th className="text-left py-2 px-2 text-xs font-medium text-gray-500 uppercase">Description</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase w-20">Qty</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase w-20">Unit</th>
+                      <th className="text-right py-2 px-2 text-xs font-medium text-gray-500 uppercase w-28">Weight (kg)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {section.items.map((item, idx) => (
                       <tr key={idx} className="border-b border-gray-100">
-                        <td className="py-2 text-gray-500">{idx + 1}</td>
-                        <td className="py-2 text-gray-900">{item.description}</td>
-                        <td className="py-2 text-gray-900 text-right">{item.qty}</td>
-                        <td className="py-2 text-gray-500">{item.unit}</td>
-                        <td className="py-2 text-gray-900 text-right font-medium">{Number(item.weightKg || 0).toFixed(2)}</td>
+                        <td className="py-2 px-2 text-gray-500">{idx + 1}</td>
+                        <td className="py-2 px-2 text-gray-900">{item.description}</td>
+                        <td className="py-2 px-3 text-gray-900 text-right">{item.qty}</td>
+                        <td className="py-2 px-3 text-gray-500">{item.unit}</td>
+                        <td className="py-2 px-2 text-gray-900 text-right font-medium">{Number(item.weightKg || 0).toFixed(2)}</td>
                       </tr>
                     ))}
                     <tr className="bg-gray-50 font-medium">
-                      <td colSpan={2} className="py-2 text-gray-900">TOTAL</td>
-                      <td className="py-2 text-gray-900 text-right">
+                      <td colSpan={2} className="py-2 px-2 text-gray-900">TOTAL</td>
+                      <td className="py-2 px-3 text-gray-900 text-right">
                         {section.items.reduce((sum, i) => sum + (i.qty || 0), 0)}
                       </td>
-                      <td className="py-2"></td>
-                      <td className="py-2 text-gray-900 text-right">{Number(section.totalWeightKg || 0).toFixed(2)}</td>
+                      <td className="py-2 px-3"></td>
+                      <td className="py-2 px-2 text-gray-900 text-right">{Number(section.totalWeightKg || 0).toFixed(2)}</td>
                     </tr>
                   </tbody>
                 </table>

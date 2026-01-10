@@ -10,12 +10,13 @@ export interface CustomerCompanyDto {
   registrationNumber: string;
   vatNumber?: string;
   industry?: string;
-  companySize?: 'micro' | 'small' | 'medium' | 'large' | 'enterprise'; // lowercase to match backend
+  companySize?: 'micro' | 'small' | 'medium' | 'large' | 'enterprise';
   streetAddress: string;
   city: string;
   provinceState: string;
   postalCode: string;
   country?: string;
+  currencyCode?: string;
   primaryPhone: string;
   faxNumber?: string;
   generalEmail?: string;

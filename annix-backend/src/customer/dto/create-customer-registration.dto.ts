@@ -101,6 +101,16 @@ export class CompanyDetailsDto {
   @MaxLength(100)
   country?: string;
 
+  @ApiPropertyOptional({
+    description: 'Currency code (ISO 4217)',
+    example: 'ZAR',
+    default: 'ZAR',
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(3)
+  currencyCode?: string;
+
   @ApiProperty({
     description: 'Primary contact phone number',
     example: '+27 11 555 0123',

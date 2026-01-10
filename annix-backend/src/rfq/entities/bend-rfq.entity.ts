@@ -22,6 +22,16 @@ export class BendRfq {
   @Column({ name: 'schedule_number', type: 'varchar', length: 50 })
   scheduleNumber: string;
 
+  @ApiProperty({ description: 'Wall thickness in mm', example: 6.35 })
+  @Column({
+    name: 'wall_thickness_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 3,
+    nullable: true,
+  })
+  wallThicknessMm?: number;
+
   @ApiProperty({ description: 'Bend type', example: '3D' })
   @Column({ name: 'bend_type', type: 'varchar', length: 10 })
   bendType: string;
@@ -29,6 +39,15 @@ export class BendRfq {
   @ApiProperty({ description: 'Bend angle in degrees', example: 45 })
   @Column({ name: 'bend_degrees', type: 'decimal', precision: 5, scale: 2 })
   bendDegrees: number;
+
+  @ApiProperty({ description: 'Bend end configuration', example: 'LF_BE' })
+  @Column({
+    name: 'bend_end_configuration',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
+  bendEndConfiguration?: string;
 
   @ApiProperty({ description: 'Number of tangents', example: 1 })
   @Column({ name: 'number_of_tangents', type: 'int' })

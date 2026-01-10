@@ -12,6 +12,8 @@ import {
   DocumentValidationResult,
 } from '@/app/lib/api/customerApi';
 import DocumentIssueModal from '@/app/components/customer/DocumentIssueModal';
+import { CurrencySelect, DEFAULT_CURRENCY } from '@/app/components/ui/CurrencySelect';
+import { currencyCodeForCountry } from '@/app/lib/currencies';
 
 type Step = 'company' | 'documents' | 'profile' | 'security' | 'complete';
 
@@ -58,6 +60,7 @@ export default function CustomerRegistrationPage() {
   // Company data
   const [company, setCompany] = useState<Partial<CustomerCompanyDto>>({
     country: 'South Africa',
+    currencyCode: DEFAULT_CURRENCY,
   });
 
   // User data (profile + credentials)
@@ -153,7 +156,16 @@ export default function CustomerRegistrationPage() {
   }, [user.password]);
 
   const handleCompanyChange = (field: keyof CustomerCompanyDto, value: string) => {
-    setCompany((prev) => ({ ...prev, [field]: value }));
+    setCompany((prev) => {
+      const updates: Partial<CustomerCompanyDto> = { [field]: value };
+      if (field === 'country') {
+        const suggestedCurrency = currencyCodeForCountry(value);
+        if (suggestedCurrency) {
+          updates.currencyCode = suggestedCurrency;
+        }
+      }
+      return { ...prev, ...updates };
+    });
   };
 
   const handleUserChange = (field: keyof CustomerUserDto, value: string) => {
@@ -577,6 +589,17 @@ export default function CustomerRegistrationPage() {
             value={company.country || ''}
             onChange={(e) => handleCompanyChange('country', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Preferred Currency <span className="text-red-500">*</span>
+          </label>
+          <CurrencySelect
+            value={company.currencyCode || DEFAULT_CURRENCY}
+            onChange={(value) => handleCompanyChange('currencyCode', value)}
+            className="mt-1"
           />
         </div>
       </div>
