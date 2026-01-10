@@ -927,7 +927,7 @@ function PricingInputsSection({
         Enter your prices below and the BOQ item unit prices will be automatically calculated based on weight.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Steel Specifications */}
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Steel Specifications (Price/kg)</h3>
