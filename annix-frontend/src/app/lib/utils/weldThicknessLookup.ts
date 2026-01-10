@@ -436,6 +436,17 @@ export function getOuterDiameterMm(dn: number): number | null {
 }
 
 /**
+ * Round a weld thickness to the nearest 1.5mm increment.
+ * Welding is done in 1.5mm runs, so thicknesses should be multiples of 1.5mm.
+ * Examples: 2.77 -> 3.0, 3.68 -> 4.5, 5.16 -> 4.5, 7.11 -> 7.5
+ */
+export function roundToWeldIncrement(thicknessMm: number): number {
+  if (thicknessMm <= 0) return 0;
+  const increment = 1.5;
+  return Math.round(thicknessMm / increment) * increment;
+}
+
+/**
  * Get all available schedules for a given DN
  */
 export function getAvailableSchedules(dn: number): string[] {

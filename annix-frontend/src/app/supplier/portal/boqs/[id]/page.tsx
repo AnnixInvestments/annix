@@ -18,7 +18,7 @@ import { currencyByCode, DEFAULT_CURRENCY } from '@/app/lib/currencies';
 
 interface PricingInputs {
   steelSpecs: Record<string, number>;
-  weldThicknesses: Record<string, number>;
+  weldTypes: Record<string, number>;
   flangeTypes: Record<string, number>;
   labourExtrasPercent: number;
   contingenciesPercent: number;
@@ -26,14 +26,62 @@ interface PricingInputs {
 
 interface ExtractedSpecs {
   steelSpecs: string[];
-  weldThicknesses: string[];
-  flangeTypes: string[];
+  weldTypes: {
+    flangeWeld: boolean;
+    mitreWeld: boolean;
+    teeWeld: boolean;
+    tackWeld: boolean;
+  };
+  flangeTypes: {
+    slipOn: boolean;
+    rotating: boolean;
+    blank: boolean;
+  };
 }
+
+interface WeldTotals {
+  flangeWeld: number;
+  mitreWeld: number;
+  teeWeld: number;
+  tackWeld: number;
+}
+
+const normalizeSteelSpec = (spec: string): string => {
+  return spec
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+    .replace(/SABS\s*(\d+)/g, 'SABS $1')
+    .trim();
+};
+
+const isRotatingFlange = (config: string): boolean => {
+  return config.includes('RF') || config.includes('R/F');
+};
+
+const isSlipOnFlange = (config: string): boolean => {
+  return Boolean(config) && config !== 'PE' && !isRotatingFlange(config);
+};
+
+const flangeCountFromConfig = (config: string | undefined, itemType: string): number => {
+  if (!config || config === 'PE') return 0;
+  if (itemType === 'bend' || itemType === 'straight_pipe') {
+    const counts: Record<string, number> = {
+      'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, 'LF_BE': 4,
+    };
+    return counts[config] || 0;
+  }
+  if (itemType === 'fitting') {
+    const counts: Record<string, number> = {
+      'FAE': 3, 'FFF': 3, 'F2E': 2, 'F2E_RF': 2, 'F2E_LF': 2, 'FFP': 2, 'PFF': 2, 'PPF': 1, 'FPP': 1, 'PFP': 1,
+    };
+    return counts[config] || 0;
+  }
+  return 0;
+};
 
 const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
   const steelSpecs = new Set<string>();
-  const weldThicknesses = new Set<string>();
-  const flangeTypes = new Set<string>();
+  const flangeTypes = { slipOn: false, rotating: false, blank: false };
 
   items.forEach((item) => {
     const straightDetails = item.straightPipeDetails;
@@ -42,46 +90,49 @@ const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
 
     if (straightDetails) {
       if (straightDetails.pipeStandard) {
-        steelSpecs.add(straightDetails.pipeStandard);
+        steelSpecs.add(normalizeSteelSpec(straightDetails.pipeStandard));
       }
-      if (straightDetails.scheduleNumber) {
-        steelSpecs.add(straightDetails.scheduleNumber);
-      }
-      if (straightDetails.wallThicknessMm) {
-        weldThicknesses.add(`${straightDetails.wallThicknessMm}mm`);
-      }
-      if (straightDetails.pipeEndConfiguration && straightDetails.pipeEndConfiguration !== 'PE') {
-        flangeTypes.add(straightDetails.pipeEndConfiguration);
+      const config = straightDetails.pipeEndConfiguration;
+      if (config && config !== 'PE') {
+        if (isRotatingFlange(config)) {
+          flangeTypes.rotating = true;
+        }
+        if (isSlipOnFlange(config)) {
+          flangeTypes.slipOn = true;
+        }
       }
     }
 
     if (bendDetails) {
       if (bendDetails.pipeStandard) {
-        steelSpecs.add(bendDetails.pipeStandard);
+        steelSpecs.add(normalizeSteelSpec(bendDetails.pipeStandard));
       }
-      if (bendDetails.scheduleNumber) {
-        steelSpecs.add(bendDetails.scheduleNumber);
-      }
-      if (bendDetails.wallThicknessMm) {
-        weldThicknesses.add(`${bendDetails.wallThicknessMm}mm`);
-      }
-      if (bendDetails.bendEndConfiguration && bendDetails.bendEndConfiguration !== 'PE') {
-        flangeTypes.add(bendDetails.bendEndConfiguration);
+      const config = bendDetails.bendEndConfiguration;
+      if (config && config !== 'PE') {
+        if (isRotatingFlange(config)) {
+          flangeTypes.rotating = true;
+        }
+        if (isSlipOnFlange(config)) {
+          flangeTypes.slipOn = true;
+        }
       }
     }
 
     if (fittingDetails) {
       if (fittingDetails.fittingStandard) {
-        steelSpecs.add(fittingDetails.fittingStandard);
+        steelSpecs.add(normalizeSteelSpec(fittingDetails.fittingStandard));
       }
-      if (fittingDetails.scheduleNumber) {
-        steelSpecs.add(fittingDetails.scheduleNumber);
+      const config = fittingDetails.pipeEndConfiguration;
+      if (config && config !== 'PE') {
+        if (isRotatingFlange(config)) {
+          flangeTypes.rotating = true;
+        }
+        if (isSlipOnFlange(config)) {
+          flangeTypes.slipOn = true;
+        }
       }
-      if (fittingDetails.wallThicknessMm) {
-        weldThicknesses.add(`${fittingDetails.wallThicknessMm}mm`);
-      }
-      if (fittingDetails.pipeEndConfiguration && fittingDetails.pipeEndConfiguration !== 'PE') {
-        flangeTypes.add(fittingDetails.pipeEndConfiguration);
+      if (fittingDetails.addBlankFlange) {
+        flangeTypes.blank = true;
       }
     }
 
@@ -90,13 +141,200 @@ const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
     if (sabsMatch) {
       steelSpecs.add(`SABS ${sabsMatch[1]}`);
     }
+    if (description.includes('BLANK') && description.includes('FLANGE')) {
+      flangeTypes.blank = true;
+    }
   });
 
   return {
     steelSpecs: Array.from(steelSpecs).sort(),
-    weldThicknesses: Array.from(weldThicknesses).sort((a, b) => parseFloat(a) - parseFloat(b)),
-    flangeTypes: Array.from(flangeTypes).sort(),
+    weldTypes: { flangeWeld: false, mitreWeld: false, teeWeld: false, tackWeld: false },
+    flangeTypes,
   };
+};
+
+const NOMINAL_TO_OD_MM: Record<number, number> = {
+  15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3,
+  65: 73.0, 80: 88.9, 100: 114.3, 125: 141.3, 150: 168.3, 200: 219.1,
+  250: 273.1, 300: 323.9, 350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0,
+  550: 558.8, 600: 609.6, 650: 660.4, 700: 711.2, 750: 762.0, 800: 812.8,
+  850: 863.6, 900: 914.4, 950: 965.2, 1000: 1016.0, 1050: 1066.8, 1100: 1117.6,
+  1200: 1219.2, 1400: 1422.4, 1500: 1524.0, 1600: 1625.6, 1800: 1828.8, 2000: 2032.0,
+};
+
+const nominalToOutsideDiameter = (nominalBoreMm: number | undefined): number => {
+  if (!nominalBoreMm) return 0;
+  const roundedNominal = Math.round(nominalBoreMm);
+  if (NOMINAL_TO_OD_MM[roundedNominal]) {
+    return NOMINAL_TO_OD_MM[roundedNominal];
+  }
+  const keys = Object.keys(NOMINAL_TO_OD_MM).map(Number).sort((a, b) => a - b);
+  const closest = keys.reduce((prev, curr) =>
+    Math.abs(curr - roundedNominal) < Math.abs(prev - roundedNominal) ? curr : prev
+  );
+  return NOMINAL_TO_OD_MM[closest] || roundedNominal * 1.05;
+};
+
+const calculateWeldCircumference = (diameterMm: number | undefined): number => {
+  if (!diameterMm) return 0;
+  return (Math.PI * diameterMm) / 1000;
+};
+
+const countFlangesFromConfig = (config: string | undefined, itemType: string): number => {
+  if (!config || config === 'PE') return 0;
+  if (itemType === 'straight_pipe') {
+    const counts: Record<string, number> = { 'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, 'LF_BE': 4 };
+    return counts[config] || 0;
+  }
+  if (itemType === 'bend') {
+    const counts: Record<string, number> = { 'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, 'LF_BE': 4 };
+    return counts[config] || 0;
+  }
+  if (itemType === 'fitting') {
+    const counts: Record<string, number> = { 'FAE': 3, 'FFF': 3, 'F2E': 2, 'F2E_RF': 2, 'F2E_LF': 2, 'FFP': 2, 'PFF': 2, 'PPF': 1, 'FPP': 1, 'PFP': 1 };
+    return counts[config] || 0;
+  }
+  return 0;
+};
+
+const hasLooseFlanges = (config: string | undefined): boolean => {
+  if (!config) return false;
+  return config.includes('LF') || config.includes('_L') || config === 'LF_BE';
+};
+
+const countLooseFlanges = (config: string | undefined, itemType: string): number => {
+  if (!config) return 0;
+  if (itemType === 'straight_pipe' || itemType === 'bend') {
+    const counts: Record<string, number> = {
+      'FOE_LF': 1, 'LF_BE': 2, '2X_RF': 0,
+    };
+    if (counts[config] !== undefined) return counts[config];
+    if (config.includes('LF')) return 1;
+    if (config.includes('_L')) return 1;
+  }
+  if (itemType === 'fitting') {
+    const counts: Record<string, number> = {
+      'F2E_LF': 1, 'FAE_LF': 1,
+    };
+    if (counts[config] !== undefined) return counts[config];
+    if (config.includes('LF')) return 1;
+    if (config.includes('_L')) return 1;
+  }
+  return 0;
+};
+
+const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: ExtractedSpecs['weldTypes']; totals: WeldTotals } => {
+  const weldTypes = { flangeWeld: false, mitreWeld: false, teeWeld: false, tackWeld: false };
+  const totals = { flangeWeld: 0, mitreWeld: 0, teeWeld: 0, tackWeld: 0 };
+
+  items.forEach((item) => {
+    const qty = item.quantity || 1;
+
+    if (item.straightPipeDetails) {
+      const details = item.straightPipeDetails;
+      const outsideDiameter = details.calculatedOdMm || nominalToOutsideDiameter(details.nominalBoreMm);
+      const circumference = calculateWeldCircumference(outsideDiameter);
+      const flangeCount = countFlangesFromConfig(details.pipeEndConfiguration, 'straight_pipe');
+      const hasLoose = hasLooseFlanges(details.pipeEndConfiguration);
+
+      if (details.totalButtWeldLengthM && details.totalButtWeldLengthM > 0) {
+        weldTypes.flangeWeld = true;
+        totals.flangeWeld += details.totalButtWeldLengthM * qty;
+      } else if (details.numberOfButtWelds && details.numberOfButtWelds > 0 && circumference > 0) {
+        weldTypes.flangeWeld = true;
+        totals.flangeWeld += circumference * details.numberOfButtWelds * qty;
+      }
+
+      if (details.totalFlangeWeldLengthM && details.totalFlangeWeldLengthM > 0) {
+        weldTypes.flangeWeld = true;
+        totals.flangeWeld += details.totalFlangeWeldLengthM * qty;
+      } else if (circumference > 0 && flangeCount > 0) {
+        weldTypes.flangeWeld = true;
+        totals.flangeWeld += circumference * flangeCount * qty;
+      }
+
+      if (hasLoose && circumference > 0) {
+        const looseFlangeCount = countLooseFlanges(details.pipeEndConfiguration, 'straight_pipe');
+        if (looseFlangeCount > 0) {
+          weldTypes.tackWeld = true;
+          totals.tackWeld += circumference * looseFlangeCount * qty;
+        }
+      }
+    }
+
+    if (item.bendDetails) {
+      const details = item.bendDetails;
+      const outsideDiameter = nominalToOutsideDiameter(details.nominalBoreMm);
+      const circumference = calculateWeldCircumference(outsideDiameter);
+      const flangeCount = countFlangesFromConfig(details.bendEndConfiguration, 'bend');
+      const numberOfTangents = details.numberOfTangents || 0;
+      const hasLoose = hasLooseFlanges(details.bendEndConfiguration);
+
+      if (numberOfTangents > 0 && circumference > 0) {
+        weldTypes.mitreWeld = true;
+        totals.mitreWeld += circumference * (numberOfTangents + 1) * qty;
+      }
+
+      if (details.totalButtWeldLengthM && details.totalButtWeldLengthM > 0) {
+        weldTypes.flangeWeld = true;
+        totals.flangeWeld += details.totalButtWeldLengthM * qty;
+      } else if (numberOfTangents > 0 && circumference > 0) {
+        weldTypes.flangeWeld = true;
+        totals.flangeWeld += circumference * numberOfTangents * qty;
+      }
+
+      if (details.totalFlangeWeldLengthM && details.totalFlangeWeldLengthM > 0) {
+        weldTypes.flangeWeld = true;
+        totals.flangeWeld += details.totalFlangeWeldLengthM * qty;
+      } else if (circumference > 0 && flangeCount > 0) {
+        weldTypes.flangeWeld = true;
+        totals.flangeWeld += circumference * flangeCount * qty;
+      }
+
+      if (hasLoose && circumference > 0) {
+        const looseFlangeCount = countLooseFlanges(details.bendEndConfiguration, 'bend');
+        if (looseFlangeCount > 0) {
+          weldTypes.tackWeld = true;
+          totals.tackWeld += circumference * looseFlangeCount * qty;
+        }
+      }
+    }
+
+    if (item.fittingDetails) {
+      const details = item.fittingDetails;
+      const mainOd = nominalToOutsideDiameter(details.nominalDiameterMm);
+      const branchOd = details.branchNominalDiameterMm ? nominalToOutsideDiameter(details.branchNominalDiameterMm) : mainOd;
+      const mainCircumference = calculateWeldCircumference(mainOd);
+      const branchCircumference = calculateWeldCircumference(branchOd);
+      const flangeCount = details.numberOfFlanges || countFlangesFromConfig(details.pipeEndConfiguration, 'fitting');
+      const fittingType = (details.fittingType || '').toLowerCase();
+      const isTee = fittingType.includes('tee') || fittingType.includes('stub');
+      const hasLoose = hasLooseFlanges(details.pipeEndConfiguration);
+
+      if (mainCircumference > 0 && flangeCount > 0) {
+        weldTypes.flangeWeld = true;
+        totals.flangeWeld += mainCircumference * flangeCount * qty;
+      }
+
+      if (details.numberOfTeeWelds && details.numberOfTeeWelds > 0) {
+        weldTypes.teeWeld = true;
+        totals.teeWeld += branchCircumference * details.numberOfTeeWelds * qty;
+      } else if (isTee && branchCircumference > 0) {
+        weldTypes.teeWeld = true;
+        totals.teeWeld += branchCircumference * qty;
+      }
+
+      if (hasLoose && mainCircumference > 0) {
+        const looseFlangeCount = countLooseFlanges(details.pipeEndConfiguration, 'fitting');
+        if (looseFlangeCount > 0) {
+          weldTypes.tackWeld = true;
+          totals.tackWeld += mainCircumference * looseFlangeCount * qty;
+        }
+      }
+    }
+  });
+
+  return { weldTypes, totals };
 };
 
 const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label: string }> = {
@@ -130,15 +368,45 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   const [unitPrices, setUnitPrices] = useState<Record<string, Record<number, number>>>({});
   const [extractedSpecs, setExtractedSpecs] = useState<ExtractedSpecs>({
     steelSpecs: [],
-    weldThicknesses: [],
-    flangeTypes: [],
+    weldTypes: { flangeWeld: false, mitreWeld: false, teeWeld: false, tackWeld: false },
+    flangeTypes: { slipOn: false, rotating: false, blank: false },
   });
-  const [pricingInputs, setPricingInputs] = useState<PricingInputs>({
-    steelSpecs: {},
-    weldThicknesses: {},
-    flangeTypes: {},
-    labourExtrasPercent: 0,
-    contingenciesPercent: 5,
+  const [weldTotals, setWeldTotals] = useState<WeldTotals>({
+    flangeWeld: 0,
+    mitreWeld: 0,
+    teeWeld: 0,
+    tackWeld: 0,
+  });
+  const [pricingInputs, setPricingInputs] = useState<PricingInputs>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('supplier_pricing_inputs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          steelSpecs: parsed.steelSpecs || {},
+          weldTypes: parsed.weldTypes || {},
+          flangeTypes: parsed.flangeTypes || {},
+          labourExtrasPercent: parsed.labourExtrasPercent || 0,
+          contingenciesPercent: parsed.contingenciesPercent ?? 5,
+        };
+      }
+    }
+    return {
+      steelSpecs: {},
+      weldTypes: {},
+      flangeTypes: {},
+      labourExtrasPercent: 0,
+      contingenciesPercent: 5,
+    };
+  });
+  const [weldUnitPrices, setWeldUnitPrices] = useState<Record<string, number>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('supplier_weld_unit_prices');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    }
+    return {};
   });
 
   useEffect(() => {
@@ -146,6 +414,40 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     loadSupplierCurrency();
     loadRfqItems();
   }, [boqId]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('supplier_pricing_inputs', JSON.stringify(pricingInputs));
+    }
+  }, [pricingInputs]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('supplier_weld_unit_prices', JSON.stringify(weldUnitPrices));
+    }
+  }, [weldUnitPrices]);
+
+  useEffect(() => {
+    if (rfqItems.length > 0) {
+      const { weldTypes, totals } = extractWeldTypesFromRfqItems(rfqItems);
+      setExtractedSpecs((prev) => ({ ...prev, weldTypes }));
+      setWeldTotals(totals);
+    }
+  }, [rfqItems]);
+
+  useEffect(() => {
+    if (boqDetail?.sections) {
+      const hasBlankFlangesSection = boqDetail.sections.some(
+        (section) => section.sectionType === 'blank_flanges' && section.items.length > 0
+      );
+      if (hasBlankFlangesSection) {
+        setExtractedSpecs((prev) => ({
+          ...prev,
+          flangeTypes: { ...prev.flangeTypes, blank: true },
+        }));
+      }
+    }
+  }, [boqDetail]);
 
   const loadSupplierCurrency = async () => {
     try {
@@ -183,7 +485,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   };
 
   const handlePricingInputChange = (
-    category: 'steelSpecs' | 'weldThicknesses' | 'flangeTypes',
+    category: 'steelSpecs' | 'weldTypes' | 'flangeTypes',
     key: string,
     value: number
   ) => {
@@ -203,6 +505,13 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     setPricingInputs((prev) => ({
       ...prev,
       [field]: value,
+    }));
+  };
+
+  const handleWeldUnitPriceChange = (weldType: string, value: number) => {
+    setWeldUnitPrices((prev) => ({
+      ...prev,
+      [weldType]: value,
     }));
   };
 
@@ -247,14 +556,14 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     boqDetail.sections.forEach((section) => {
       const hasWelds = section.items.some(
         (item) =>
-          item.welds?.pipeWeld || item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld
+          item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld
       );
       const hasAreas = section.items.some((item) => item.areas?.intAreaM2 || item.areas?.extAreaM2);
 
       // Build headers
       const headers = ['#', 'Description', 'Qty', 'Unit'];
       if (hasWelds) {
-        headers.push('Pipe Weld (m)', 'Flange Weld (m)', 'Mitre Weld (m)', 'Tee Weld (m)');
+        headers.push('Flange Weld (m)', 'Mitre Weld (m)', 'Tee Weld (m)');
       }
       if (hasAreas) {
         headers.push('Int Area (m²)', 'Ext Area (m²)');
@@ -266,7 +575,6 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         const row: (string | number)[] = [idx + 1, item.description, item.qty, item.unit];
         if (hasWelds) {
           row.push(
-            item.welds?.pipeWeld ? Number(item.welds.pipeWeld).toFixed(3) : '-',
             item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-',
             item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-',
             item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'
@@ -495,6 +803,16 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
                 rfqItems={rfqItems}
               />
             ))}
+
+            {/* Welding Section */}
+            <WeldsSection
+              weldTotals={weldTotals}
+              extractedSpecs={extractedSpecs}
+              pricingInputs={pricingInputs}
+              currencyCode={supplierCurrency}
+              weldUnitPrices={weldUnitPrices}
+              onWeldUnitPriceChange={handleWeldUnitPriceChange}
+            />
           </div>
 
           {/* Grand Totals Section */}
@@ -503,6 +821,10 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
             unitPrices={unitPrices}
             pricingInputs={pricingInputs}
             currencyCode={supplierCurrency}
+            rfqItems={rfqItems}
+            weldTotals={weldTotals}
+            extractedSpecs={extractedSpecs}
+            weldUnitPrices={weldUnitPrices}
           />
         </div>
       ) : (
@@ -574,7 +896,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 interface PricingInputsSectionProps {
   extractedSpecs: ExtractedSpecs;
   pricingInputs: PricingInputs;
-  onPricingInputChange: (category: 'steelSpecs' | 'weldThicknesses' | 'flangeTypes', key: string, value: number) => void;
+  onPricingInputChange: (category: 'steelSpecs' | 'weldTypes' | 'flangeTypes', key: string, value: number) => void;
   onPercentageChange: (field: 'labourExtrasPercent' | 'contingenciesPercent', value: number) => void;
   currencyCode: string;
 }
@@ -606,7 +928,7 @@ function PricingInputsSection({
                 <label className="text-sm text-gray-600 flex-1 min-w-0 truncate" title={spec}>
                   {spec}
                 </label>
-                <div className="flex items-center w-32">
+                <div className="flex items-center">
                   <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
                   <input
                     type="number"
@@ -615,8 +937,9 @@ function PricingInputsSection({
                     value={pricingInputs.steelSpecs[spec] || ''}
                     onChange={(e) => onPricingInputChange('steelSpecs', spec, parseFloat(e.target.value) || 0)}
                     placeholder="0.00"
-                    className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
+                  <span className="text-xs text-gray-500 ml-1">/Kg</span>
                 </div>
               </div>
             ))
@@ -625,7 +948,7 @@ function PricingInputsSection({
               <label className="text-sm text-gray-600 flex-1">
                 Steel (General)
               </label>
-              <div className="flex items-center w-32">
+              <div className="flex items-center">
                 <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
                 <input
                   type="number"
@@ -634,80 +957,134 @@ function PricingInputsSection({
                   value={pricingInputs.steelSpecs['Steel'] || ''}
                   onChange={(e) => onPricingInputChange('steelSpecs', 'Steel', parseFloat(e.target.value) || 0)}
                   placeholder="0.00"
-                  className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
+                <span className="text-xs text-gray-500 ml-1">/Kg</span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Weld Thicknesses */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Weld Thicknesses (Price/m)</h3>
-          {extractedSpecs.weldThicknesses.length > 0 ? (
-            extractedSpecs.weldThicknesses.map((thickness) => (
-              <div key={thickness} className="flex items-center gap-2">
-                <label className="text-sm text-gray-600 flex-1">
-                  {thickness} W/T
-                </label>
-                <div className="flex items-center w-32">
-                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={pricingInputs.weldThicknesses[thickness] || ''}
-                    onChange={(e) => onPricingInputChange('weldThicknesses', thickness, parseFloat(e.target.value) || 0)}
-                    placeholder="0.00"
-                    className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 flex-1">
-                Welding (General)
-              </label>
-              <div className="flex items-center w-32">
-                <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={pricingInputs.weldThicknesses['General'] || ''}
-                  onChange={(e) => onPricingInputChange('weldThicknesses', 'General', parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Flange Types */}
-        {extractedSpecs.flangeTypes.length > 0 && (
+        {/* Weld Types - only show types used in this RFQ */}
+        {(extractedSpecs.weldTypes.flangeWeld ||
+          extractedSpecs.weldTypes.mitreWeld || extractedSpecs.weldTypes.teeWeld) && (
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Flange Configurations (Price/unit)</h3>
-            {extractedSpecs.flangeTypes.map((flangeType) => (
-              <div key={flangeType} className="flex items-center gap-2">
-                <label className="text-sm text-gray-600 flex-1">
-                  {flangeType}
-                </label>
-                <div className="flex items-center w-32">
+            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Weld Types (Price/Lm)</h3>
+            {extractedSpecs.weldTypes.flangeWeld && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">Flange Weld</label>
+                <div className="flex items-center">
                   <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.flangeTypes[flangeType] || ''}
-                    onChange={(e) => onPricingInputChange('flangeTypes', flangeType, parseFloat(e.target.value) || 0)}
+                    value={pricingInputs.weldTypes['flangeWeld'] || ''}
+                    onChange={(e) => onPricingInputChange('weldTypes', 'flangeWeld', parseFloat(e.target.value) || 0)}
                     placeholder="0.00"
-                    className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
+                  <span className="text-xs text-gray-500 ml-1">/Lm</span>
                 </div>
               </div>
-            ))}
+            )}
+            {extractedSpecs.weldTypes.mitreWeld && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">Mitre Weld</label>
+                <div className="flex items-center">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.weldTypes['mitreWeld'] || ''}
+                    onChange={(e) => onPricingInputChange('weldTypes', 'mitreWeld', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-xs text-gray-500 ml-1">/Lm</span>
+                </div>
+              </div>
+            )}
+            {extractedSpecs.weldTypes.teeWeld && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">Tee Weld</label>
+                <div className="flex items-center">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.weldTypes['teeWeld'] || ''}
+                    onChange={(e) => onPricingInputChange('weldTypes', 'teeWeld', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-xs text-gray-500 ml-1">/Lm</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Flange Price Centers - only show types used in this RFQ */}
+        {(extractedSpecs.flangeTypes.slipOn || extractedSpecs.flangeTypes.rotating || extractedSpecs.flangeTypes.blank) && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Flange Pricing (Price/unit)</h3>
+            {extractedSpecs.flangeTypes.slipOn && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">Slip On Flange</label>
+                <div className="flex items-center">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.flangeTypes['slipOn'] || ''}
+                    onChange={(e) => onPricingInputChange('flangeTypes', 'slipOn', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-xs text-gray-500 ml-1">/Kg</span>
+                </div>
+              </div>
+            )}
+            {extractedSpecs.flangeTypes.rotating && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">Rotating Flange (R/F)</label>
+                <div className="flex items-center">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.flangeTypes['rotating'] || ''}
+                    onChange={(e) => onPricingInputChange('flangeTypes', 'rotating', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-xs text-gray-500 ml-1">/Kg</span>
+                </div>
+              </div>
+            )}
+            {extractedSpecs.flangeTypes.blank && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">Blank Flange</label>
+                <div className="flex items-center">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.flangeTypes['blank'] || ''}
+                    onChange={(e) => onPricingInputChange('flangeTypes', 'blank', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-xs text-gray-500 ml-1">/Kg</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -765,9 +1142,13 @@ interface GrandTotalsSectionProps {
   unitPrices: Record<string, Record<number, number>>;
   pricingInputs: PricingInputs;
   currencyCode: string;
+  rfqItems: RfqItemDetail[];
+  weldTotals: WeldTotals;
+  extractedSpecs: ExtractedSpecs;
+  weldUnitPrices: Record<string, number>;
 }
 
-function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode }: GrandTotalsSectionProps) {
+function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode, rfqItems, weldTotals, extractedSpecs, weldUnitPrices }: GrandTotalsSectionProps) {
   const currency = currencyByCode(currencyCode);
   const currencySymbol = currency?.symbol || currencyCode;
 
@@ -776,54 +1157,101 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode 
   };
 
   const calculateSuggestedPriceForItem = (item: ConsolidatedItem, sectionType: string): number => {
-    const isFabricatedSection = ['straight_pipes', 'bends', 'fittings'].includes(sectionType);
+    const isFabricatedSection = ['straight_pipes', 'bends', 'fittings', 'tees'].includes(sectionType);
+    const isFlangesSection = sectionType === 'flanges' || sectionType === 'blank_flanges';
+    const isBlankFlangesSection = sectionType === 'blank_flanges';
+    const description = item.description.toUpperCase();
+    const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
+
+    if (isFlangesSection) {
+      let flangePrice = 0;
+      if (isBlankFlangesSection || description.includes('BLANK')) {
+        flangePrice = (pricingInputs.flangeTypes['blank'] || 0) * weightPerUnit;
+      } else if (description.includes('ROTATING') || description.includes('R/F')) {
+        flangePrice = (pricingInputs.flangeTypes['rotating'] || 0) * weightPerUnit;
+      } else {
+        flangePrice = (pricingInputs.flangeTypes['slipOn'] || 0) * weightPerUnit;
+      }
+      const labourExtras = flangePrice * (pricingInputs.labourExtrasPercent / 100);
+      return flangePrice + labourExtras;
+    }
+
     if (!isFabricatedSection) return 0;
 
     let basePrice = 0;
-    const description = item.description.toUpperCase();
+
+    const rfqItem = item.entries.length > 0
+      ? rfqItems.find(ri => ri.lineNumber === item.entries[0] || ri.id === item.entries[0])
+      : null;
+
+    const itemSteelSpec = rfqItem
+      ? normalizeSteelSpec(
+          rfqItem.straightPipeDetails?.pipeStandard ||
+          rfqItem.bendDetails?.pipeStandard ||
+          rfqItem.fittingDetails?.fittingStandard ||
+          ''
+        )
+      : '';
 
     Object.entries(pricingInputs.steelSpecs).forEach(([spec, pricePerKg]) => {
-      if (pricePerKg > 0 && description.includes(spec.toUpperCase())) {
-        const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
-        basePrice += weightPerUnit * pricePerKg;
+      if (pricePerKg > 0) {
+        const normalizedSpec = spec.toUpperCase();
+        if (description.includes(normalizedSpec) || itemSteelSpec === normalizedSpec) {
+          basePrice += weightPerUnit * pricePerKg;
+        }
       }
     });
 
     if (basePrice === 0) {
       const defaultSteelPrice = Object.values(pricingInputs.steelSpecs)[0] || 0;
       if (defaultSteelPrice > 0) {
-        const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
         basePrice = weightPerUnit * defaultSteelPrice;
       }
     }
 
-    let weldPrice = 0;
-    Object.entries(pricingInputs.weldThicknesses).forEach(([thickness, pricePerMeter]) => {
-      if (pricePerMeter > 0) {
-        const thicknessValue = thickness.replace('mm', '');
-        if (description.includes(`${thicknessValue}MM`) || description.includes(`W/T ${thicknessValue}`) || description.includes(`${thicknessValue} MM`)) {
-          const totalWeldLength = (item.welds?.pipeWeld || 0) + (item.welds?.flangeWeld || 0) +
-                                  (item.welds?.mitreWeld || 0) + (item.welds?.teeWeld || 0);
-          const weldPerUnit = item.qty > 0 ? (totalWeldLength / item.qty) : 0;
-          weldPrice += weldPerUnit * pricePerMeter;
+    let flangePrice = 0;
+    if (rfqItem) {
+      const endConfig = rfqItem.straightPipeDetails?.pipeEndConfiguration ||
+                        rfqItem.bendDetails?.bendEndConfiguration ||
+                        rfqItem.fittingDetails?.pipeEndConfiguration || '';
+
+      if (endConfig && endConfig !== 'PE') {
+        const flangeCount = flangeCountFromConfig(endConfig, rfqItem.itemType);
+        if (isRotatingFlange(endConfig)) {
+          flangePrice += (pricingInputs.flangeTypes['rotating'] || 0) * flangeCount;
+        } else {
+          flangePrice += (pricingInputs.flangeTypes['slipOn'] || 0) * flangeCount;
         }
       }
-    });
 
-    let flangePrice = 0;
-    Object.entries(pricingInputs.flangeTypes).forEach(([flangeType, price]) => {
-      if (price > 0 && description.includes(flangeType)) {
-        flangePrice += price;
+      if (rfqItem.fittingDetails?.addBlankFlange && rfqItem.fittingDetails.blankFlangeCount) {
+        flangePrice += (pricingInputs.flangeTypes['blank'] || 0) * rfqItem.fittingDetails.blankFlangeCount;
       }
-    });
+    }
 
-    const subtotal = basePrice + weldPrice + flangePrice;
+    const subtotal = basePrice + flangePrice;
     const labourExtras = subtotal * (pricingInputs.labourExtrasPercent / 100);
 
     return subtotal + labourExtras;
   };
 
-  const subtotal = sections.reduce((total, section) => {
+  const calculateWeldingSectionTotal = (): number => {
+    const weldTypes = Object.entries(extractedSpecs.weldTypes)
+      .filter(([, hasWeld]) => hasWeld)
+      .map(([type]) => type);
+
+    return weldTypes.reduce((sum, weldType) => {
+      const quantity = weldTotals[weldType as keyof WeldTotals];
+      const manualPrice = weldUnitPrices[weldType];
+      const pricePerLm = pricingInputs.weldTypes[weldType] || 0;
+      const labourExtras = pricePerLm * (pricingInputs.labourExtrasPercent / 100);
+      const suggestedPrice = pricePerLm + labourExtras;
+      const effectivePrice = (manualPrice !== undefined && manualPrice > 0) ? manualPrice : suggestedPrice;
+      return sum + (quantity * effectivePrice);
+    }, 0);
+  };
+
+  const sectionsSubtotal = sections.reduce((total, section) => {
     const sectionPrices = unitPrices[String(section.id)] || {};
     const sectionTotal = section.items.reduce((sum, item, idx) => {
       const manualPrice = sectionPrices[idx];
@@ -834,6 +1262,9 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode 
     }, 0);
     return total + sectionTotal;
   }, 0);
+
+  const weldingTotal = calculateWeldingSectionTotal();
+  const subtotal = sectionsSubtotal + weldingTotal;
 
   const contingenciesAmount = subtotal * (pricingInputs.contingenciesPercent / 100);
   const grandTotal = subtotal + contingenciesAmount;
@@ -858,6 +1289,145 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode 
   );
 }
 
+interface WeldsSectionProps {
+  weldTotals: WeldTotals;
+  extractedSpecs: ExtractedSpecs;
+  pricingInputs: PricingInputs;
+  currencyCode: string;
+  weldUnitPrices: Record<string, number>;
+  onWeldUnitPriceChange: (weldType: string, value: number) => void;
+}
+
+const WELD_TYPE_LABELS: Record<string, string> = {
+  flangeWeld: 'Flange Weld',
+  mitreWeld: 'Mitre Weld',
+  teeWeld: 'Tee Weld',
+  tackWeld: 'Tack Weld (Loose Flange)',
+};
+
+function WeldsSection({
+  weldTotals,
+  extractedSpecs,
+  pricingInputs,
+  currencyCode,
+  weldUnitPrices,
+  onWeldUnitPriceChange,
+}: WeldsSectionProps) {
+  const currency = currencyByCode(currencyCode);
+  const currencySymbol = currency?.symbol || currencyCode;
+
+  const formatCurrency = (value: number): string => {
+    return value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const weldTypes = Object.entries(extractedSpecs.weldTypes)
+    .filter(([, hasWeld]) => hasWeld)
+    .map(([type]) => type);
+
+  if (weldTypes.length === 0) {
+    return null;
+  }
+
+  const calculateSuggestedPrice = (weldType: string): number => {
+    const pricePerLm = pricingInputs.weldTypes[weldType] || 0;
+    const labourExtras = pricePerLm * (pricingInputs.labourExtrasPercent / 100);
+    return pricePerLm + labourExtras;
+  };
+
+  const effectiveUnitPrice = (weldType: string): number => {
+    const manualPrice = weldUnitPrices[weldType];
+    if (manualPrice !== undefined && manualPrice > 0) {
+      return manualPrice;
+    }
+    return calculateSuggestedPrice(weldType);
+  };
+
+  const totalAmount = weldTypes.reduce((sum, weldType) => {
+    const quantity = weldTotals[weldType as keyof WeldTotals];
+    const unitPrice = effectiveUnitPrice(weldType);
+    return sum + (quantity * unitPrice);
+  }, 0);
+
+  return (
+    <div className="mb-8">
+      <h3 className="text-md font-medium text-gray-800 mb-3 flex items-center gap-2">
+        Welding
+        <span className="text-sm font-normal text-gray-500">({weldTypes.length} types)</span>
+      </h3>
+      <div className="overflow-x-auto border rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200 table-fixed">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="w-12 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Weld Type</th>
+              <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total (Lm)</th>
+              <th className="w-16 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+              <th className="w-32 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                Unit Price ({currencySymbol})
+              </th>
+              <th className="w-32 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                Line Total ({currencySymbol})
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {weldTypes.map((weldType, idx) => {
+              const quantity = weldTotals[weldType as keyof WeldTotals];
+              const suggestedPrice = calculateSuggestedPrice(weldType);
+              const manualPrice = weldUnitPrices[weldType];
+              const currentUnitPrice = effectiveUnitPrice(weldType);
+              const lineTotalValue = quantity * currentUnitPrice;
+              const isAutoCalculated = (manualPrice === undefined || manualPrice === 0) && suggestedPrice > 0;
+
+              return (
+                <tr key={weldType}>
+                  <td className="w-12 px-3 py-2 text-sm text-gray-500">{idx + 1}</td>
+                  <td className="px-3 py-2 text-sm text-gray-900">{WELD_TYPE_LABELS[weldType] || weldType}</td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{quantity.toFixed(3)}</td>
+                  <td className="w-16 px-3 py-2 text-sm text-gray-500">Lm</td>
+                  <td className="w-32 px-2 py-1">
+                    <div className="flex items-center">
+                      <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={manualPrice || ''}
+                        onChange={(e) => onWeldUnitPriceChange(weldType, parseFloat(e.target.value) || 0)}
+                        placeholder={suggestedPrice > 0 ? suggestedPrice.toFixed(2) : '0.00'}
+                        className={`w-full px-2 py-1 text-sm text-right border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isAutoCalculated ? 'border-green-300 bg-green-50' : 'border-gray-300'}`}
+                      />
+                    </div>
+                    {isAutoCalculated && (
+                      <div className="text-xs text-green-600 text-right mt-0.5">Auto</div>
+                    )}
+                  </td>
+                  <td className="w-32 px-3 py-2 text-sm text-gray-900 text-right font-medium">
+                    {currencySymbol} {formatCurrency(lineTotalValue)}
+                  </td>
+                </tr>
+              );
+            })}
+            <tr className="bg-gray-100 font-medium">
+              <td className="px-3 py-2 text-sm text-gray-900" colSpan={2}>
+                TOTAL
+              </td>
+              <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                {(weldTotals.flangeWeld + weldTotals.mitreWeld + weldTotals.teeWeld + weldTotals.tackWeld).toFixed(3)}
+              </td>
+              <td className="w-16 px-3 py-2 text-sm text-gray-500">Lm</td>
+              <td className="w-32 px-3 py-2 text-sm text-gray-500"></td>
+              <td className="w-32 px-3 py-2 text-sm text-green-700 text-right font-semibold">
+                {currencySymbol} {formatCurrency(totalAmount)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 interface SectionTableProps {
   section: BoqSection;
   currencyCode: string;
@@ -870,57 +1440,88 @@ interface SectionTableProps {
 function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pricingInputs, rfqItems }: SectionTableProps) {
   const hasWelds = section.items.some(
     (item) =>
-      item.welds?.pipeWeld || item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld
+      item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld
   );
   const hasAreas = section.items.some((item) => item.areas?.intAreaM2 || item.areas?.extAreaM2);
 
   const currency = currencyByCode(currencyCode);
   const currencySymbol = currency?.symbol || currencyCode;
 
-  const isFabricatedSection = ['straight_pipes', 'bends', 'fittings'].includes(section.sectionType);
+  const isFabricatedSection = ['straight_pipes', 'bends', 'fittings', 'tees'].includes(section.sectionType);
+  const isFlangesSection = section.sectionType === 'flanges' || section.sectionType === 'blank_flanges';
+  const isBlankFlangesSection = section.sectionType === 'blank_flanges';
 
   const calculateSuggestedPrice = (item: ConsolidatedItem): number => {
+    const description = item.description.toUpperCase();
+    const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
+
+    if (isFlangesSection) {
+      let flangePrice = 0;
+      if (isBlankFlangesSection || description.includes('BLANK')) {
+        flangePrice = (pricingInputs.flangeTypes['blank'] || 0) * weightPerUnit;
+      } else if (description.includes('ROTATING') || description.includes('R/F')) {
+        flangePrice = (pricingInputs.flangeTypes['rotating'] || 0) * weightPerUnit;
+      } else {
+        flangePrice = (pricingInputs.flangeTypes['slipOn'] || 0) * weightPerUnit;
+      }
+      const labourExtras = flangePrice * (pricingInputs.labourExtrasPercent / 100);
+      return flangePrice + labourExtras;
+    }
+
     if (!isFabricatedSection) return 0;
 
     let basePrice = 0;
-    const description = item.description.toUpperCase();
+
+    const rfqItem = item.entries.length > 0
+      ? rfqItems.find(ri => ri.lineNumber === item.entries[0] || ri.id === item.entries[0])
+      : null;
+
+    const itemSteelSpec = rfqItem
+      ? normalizeSteelSpec(
+          rfqItem.straightPipeDetails?.pipeStandard ||
+          rfqItem.bendDetails?.pipeStandard ||
+          rfqItem.fittingDetails?.fittingStandard ||
+          ''
+        )
+      : '';
 
     Object.entries(pricingInputs.steelSpecs).forEach(([spec, pricePerKg]) => {
-      if (pricePerKg > 0 && description.includes(spec.toUpperCase())) {
-        const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
-        basePrice += weightPerUnit * pricePerKg;
+      if (pricePerKg > 0) {
+        const normalizedSpec = spec.toUpperCase();
+        if (description.includes(normalizedSpec) || itemSteelSpec === normalizedSpec) {
+          basePrice += weightPerUnit * pricePerKg;
+        }
       }
     });
 
     if (basePrice === 0) {
       const defaultSteelPrice = Object.values(pricingInputs.steelSpecs)[0] || 0;
       if (defaultSteelPrice > 0) {
-        const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
         basePrice = weightPerUnit * defaultSteelPrice;
       }
     }
 
-    let weldPrice = 0;
-    Object.entries(pricingInputs.weldThicknesses).forEach(([thickness, pricePerMeter]) => {
-      if (pricePerMeter > 0) {
-        const thicknessValue = thickness.replace('mm', '');
-        if (description.includes(`${thicknessValue}MM`) || description.includes(`W/T ${thicknessValue}`) || description.includes(`${thicknessValue} MM`)) {
-          const totalWeldLength = (item.welds?.pipeWeld || 0) + (item.welds?.flangeWeld || 0) +
-                                  (item.welds?.mitreWeld || 0) + (item.welds?.teeWeld || 0);
-          const weldPerUnit = item.qty > 0 ? (totalWeldLength / item.qty) : 0;
-          weldPrice += weldPerUnit * pricePerMeter;
+    let flangePrice = 0;
+    if (rfqItem) {
+      const endConfig = rfqItem.straightPipeDetails?.pipeEndConfiguration ||
+                        rfqItem.bendDetails?.bendEndConfiguration ||
+                        rfqItem.fittingDetails?.pipeEndConfiguration || '';
+
+      if (endConfig && endConfig !== 'PE') {
+        const flangeCount = flangeCountFromConfig(endConfig, rfqItem.itemType);
+        if (isRotatingFlange(endConfig)) {
+          flangePrice += (pricingInputs.flangeTypes['rotating'] || 0) * flangeCount;
+        } else {
+          flangePrice += (pricingInputs.flangeTypes['slipOn'] || 0) * flangeCount;
         }
       }
-    });
 
-    let flangePrice = 0;
-    Object.entries(pricingInputs.flangeTypes).forEach(([flangeType, price]) => {
-      if (price > 0 && description.includes(flangeType)) {
-        flangePrice += price;
+      if (rfqItem.fittingDetails?.addBlankFlange && rfqItem.fittingDetails.blankFlangeCount) {
+        flangePrice += (pricingInputs.flangeTypes['blank'] || 0) * rfqItem.fittingDetails.blankFlangeCount;
       }
-    });
+    }
 
-    const subtotal = basePrice + weldPrice + flangePrice;
+    const subtotal = basePrice + flangePrice;
     const labourExtras = subtotal * (pricingInputs.labourExtrasPercent / 100);
 
     return subtotal + labourExtras;
@@ -945,7 +1546,6 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
   );
 
   const totals = {
-    pipeWeld: section.items.reduce((sum, item) => sum + (item.welds?.pipeWeld || 0), 0),
     flangeWeld: section.items.reduce((sum, item) => sum + (item.welds?.flangeWeld || 0), 0),
     mitreWeld: section.items.reduce((sum, item) => sum + (item.welds?.mitreWeld || 0), 0),
     teeWeld: section.items.reduce((sum, item) => sum + (item.welds?.teeWeld || 0), 0),
@@ -980,7 +1580,6 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
               </th>
               {hasWelds && (
                 <>
-                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Pipe Weld (m)</th>
                   <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Flange Weld (m)</th>
                   <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Mitre Weld (m)</th>
                   <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tee Weld (m)</th>
@@ -1002,63 +1601,73 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
               const currentUnitPrice = effectiveUnitPrice(idx, item);
               const lineTotalValue = lineTotal(idx, item);
               const isAutoCalculated = (manualPrice === undefined || manualPrice === 0) && suggestedPrice > 0;
+              const totalWeldLm = (item.welds?.flangeWeld || 0) +
+                                  (item.welds?.mitreWeld || 0) + (item.welds?.teeWeld || 0);
 
               return (
-                <tr key={idx}>
-                  <td className="w-12 px-3 py-2 text-sm text-gray-500">{idx + 1}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900">{item.description}</td>
-                  <td className="w-16 px-3 py-2 text-sm text-gray-900 text-right">{item.qty}</td>
-                  <td className="w-16 px-3 py-2 text-sm text-gray-500">{item.unit}</td>
-                  <td className="w-32 px-2 py-1">
-                    <div className="flex items-center">
-                      <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={manualPrice || ''}
-                        onChange={(e) => onUnitPriceChange(idx, parseFloat(e.target.value) || 0)}
-                        placeholder={suggestedPrice > 0 ? suggestedPrice.toFixed(2) : '0.00'}
-                        className={`w-full px-2 py-1 text-sm text-right border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isAutoCalculated ? 'border-green-300 bg-green-50' : 'border-gray-300'}`}
-                      />
-                    </div>
-                    {isAutoCalculated && (
-                      <div className="text-xs text-green-600 text-right mt-0.5">Auto</div>
+                <React.Fragment key={idx}>
+                  <tr>
+                    <td className="w-12 px-3 py-2 text-sm text-gray-500">{idx + 1}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{item.description}</td>
+                    <td className="w-16 px-3 py-2 text-sm text-gray-900 text-right">{item.qty}</td>
+                    <td className="w-16 px-3 py-2 text-sm text-gray-500">{item.unit}</td>
+                    <td className="w-32 px-2 py-1">
+                      <div className="flex items-center">
+                        <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={manualPrice || ''}
+                          onChange={(e) => onUnitPriceChange(idx, parseFloat(e.target.value) || 0)}
+                          placeholder={suggestedPrice > 0 ? suggestedPrice.toFixed(2) : '0.00'}
+                          className={`w-full px-2 py-1 text-sm text-right border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isAutoCalculated ? 'border-green-300 bg-green-50' : 'border-gray-300'}`}
+                        />
+                      </div>
+                      {isAutoCalculated && (
+                        <div className="text-xs text-green-600 text-right mt-0.5">Auto</div>
+                      )}
+                    </td>
+                    <td className="w-32 px-3 py-2 text-sm text-gray-900 text-right font-medium">
+                      {currencySymbol} {formatCurrency(lineTotalValue)}
+                    </td>
+                    {hasWelds && (
+                      <>
+                        <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                          {item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-'}
+                        </td>
+                        <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                          {item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-'}
+                        </td>
+                        <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                          {item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'}
+                        </td>
+                      </>
                     )}
-                  </td>
-                  <td className="w-32 px-3 py-2 text-sm text-gray-900 text-right font-medium">
-                    {currencySymbol} {formatCurrency(lineTotalValue)}
-                  </td>
-                  {hasWelds && (
-                    <>
-                      <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                        {item.welds?.pipeWeld ? Number(item.welds.pipeWeld).toFixed(3) : '-'}
+                    {hasAreas && (
+                      <>
+                        <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
+                          {item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-'}
+                        </td>
+                        <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
+                          {item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'}
+                        </td>
+                      </>
+                    )}
+                    <td className="w-28 px-3 py-2 text-sm text-gray-900 text-right font-medium">
+                      {Number(item.weightKg || 0).toFixed(2)}
+                    </td>
+                  </tr>
+                  {isFabricatedSection && totalWeldLm > 0 && (
+                    <tr className="bg-blue-50 border-b border-blue-100">
+                      <td className="w-12"></td>
+                      <td className="px-3 py-1 text-xs text-blue-700" colSpan={hasWelds ? 9 : hasAreas ? 7 : 5}>
+                        <span className="font-medium">Total Weld Length:</span> {totalWeldLm.toFixed(3)} Lm
                       </td>
-                      <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                        {item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-'}
-                      </td>
-                      <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                        {item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-'}
-                      </td>
-                      <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                        {item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'}
-                      </td>
-                    </>
+                      <td className="w-28"></td>
+                    </tr>
                   )}
-                  {hasAreas && (
-                    <>
-                      <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
-                        {item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-'}
-                      </td>
-                      <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
-                        {item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'}
-                      </td>
-                    </>
-                  )}
-                  <td className="w-28 px-3 py-2 text-sm text-gray-900 text-right font-medium">
-                    {Number(item.weightKg || 0).toFixed(2)}
-                  </td>
-                </tr>
+                </React.Fragment>
               );
             })}
             {/* Totals row */}
@@ -1076,7 +1685,6 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
               </td>
               {hasWelds && (
                 <>
-                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.pipeWeld || 0).toFixed(3)}</td>
                   <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.flangeWeld || 0).toFixed(3)}</td>
                   <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.mitreWeld || 0).toFixed(3)}</td>
                   <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.teeWeld || 0).toFixed(3)}</td>
@@ -1241,23 +1849,6 @@ function RfqItemsDetailedView({ items, sections }: { items: RfqItemDetail[]; sec
     100: 7.5, 125: 10.5, 150: 13.0, 200: 18.0, 250: 28.0, 300: 38.0,
     350: 48.0, 400: 58.0, 450: 68.0, 500: 65.0, 600: 95.0, 700: 120.0,
     750: 135.0, 800: 150.0, 900: 180.0, 1000: 220.0, 1050: 240.0, 1200: 300.0,
-  };
-
-  const flangeCountFromConfig = (config: string | undefined, itemType: string): number => {
-    if (!config || config === 'PE') return 0;
-    if (itemType === 'bend' || itemType === 'straight_pipe') {
-      const counts: Record<string, number> = {
-        'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, 'LF_BE': 4,
-      };
-      return counts[config] || 0;
-    }
-    if (itemType === 'fitting') {
-      const counts: Record<string, number> = {
-        'FAE': 3, 'FFF': 3, 'F2E': 2, 'F2E_RF': 2, 'F2E_LF': 2, 'FFP': 2, 'PFF': 2, 'PPF': 1, 'FPP': 1, 'PFP': 1,
-      };
-      return counts[config] || 0;
-    }
-    return 0;
   };
 
   const calculateFlangeWeight = (nb: number, config: string | undefined, itemType: string, qty: number): number => {

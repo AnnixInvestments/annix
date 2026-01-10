@@ -223,7 +223,11 @@ export interface RfqItemDetail {
     quantityType?: string;
     quantityValue?: number;
     pipeEndConfiguration?: string;
-    outsideDiameterMm?: number;
+    calculatedOdMm?: number;
+    numberOfButtWelds?: number;
+    totalButtWeldLengthM?: number;
+    numberOfFlangeWelds?: number;
+    totalFlangeWeldLengthM?: number;
     calculationData?: Record<string, any>;
   };
   bendDetails?: {
@@ -234,11 +238,16 @@ export interface RfqItemDetail {
     bendDegrees?: number;
     bendType?: string;
     bendEndConfiguration?: string;
-    outsideDiameterMm?: number;
+    numberOfTangents?: number;
+    numberOfFlangeWelds?: number;
+    totalFlangeWeldLengthM?: number;
+    numberOfButtWelds?: number;
+    totalButtWeldLengthM?: number;
     calculationData?: Record<string, any>;
   };
   fittingDetails?: {
     nominalDiameterMm: number;
+    branchNominalDiameterMm?: number;
     scheduleNumber?: string;
     wallThicknessMm?: number;
     fittingType?: string;
@@ -248,6 +257,9 @@ export interface RfqItemDetail {
     pipeEndConfiguration?: string;
     addBlankFlange?: boolean;
     blankFlangeCount?: number;
+    numberOfFlangeWelds?: number;
+    numberOfTeeWelds?: number;
+    numberOfFlanges?: number;
     calculationData?: Record<string, any>;
   };
 }

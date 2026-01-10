@@ -36,8 +36,19 @@ export interface PipeWallThicknessResult {
 @Injectable()
 export class WeldThicknessService {
   /**
+   * Round a thickness to the nearest 1.5mm increment.
+   * Welding is done in 1.5mm runs, so thicknesses should be multiples of 1.5mm.
+   */
+  roundToWeldIncrement(thicknessMm: number): number {
+    if (thicknessMm <= 0) return 0;
+    const increment = 1.5;
+    return Math.round(thicknessMm / increment) * increment;
+  }
+
+  /**
    * Get the weld thickness for a given DN and schedule
    * Weld thickness is determined by the fitting wall thickness from CARBON_STEEL_FITTINGS
+   * The result is rounded to the nearest 1.5mm increment for practical welding
    */
   getWeldThickness(
     dn: number,
@@ -84,7 +95,7 @@ export class WeldThicknessService {
 
     return {
       found: true,
-      weldThicknessMm: fitting.wallMm,
+      weldThicknessMm: this.roundToWeldIncrement(fitting.wallMm),
       fittingClass,
       dn,
       odMm: fitting.odMm,
@@ -111,7 +122,7 @@ export class WeldThicknessService {
       if (fitting) {
         results.push({
           found: true,
-          weldThicknessMm: fitting.wallMm,
+          weldThicknessMm: this.roundToWeldIncrement(fitting.wallMm),
           fittingClass,
           dn,
           odMm: fitting.odMm,
@@ -145,7 +156,7 @@ export class WeldThicknessService {
       if (fitting && fitting.pressuresBar[tempIdx] >= designPressureBar) {
         return {
           found: true,
-          weldThicknessMm: fitting.wallMm,
+          weldThicknessMm: this.roundToWeldIncrement(fitting.wallMm),
           fittingClass,
           dn,
           odMm: fitting.odMm,
@@ -164,7 +175,7 @@ export class WeldThicknessService {
     if (xxhFitting) {
       return {
         found: true,
-        weldThicknessMm: xxhFitting.wallMm,
+        weldThicknessMm: this.roundToWeldIncrement(xxhFitting.wallMm),
         fittingClass: 'XXH',
         dn,
         odMm: xxhFitting.odMm,

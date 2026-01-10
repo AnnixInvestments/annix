@@ -1,11 +1,24 @@
 'use client'
 
 import React from 'react'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import AmixLogo from './AmixLogo'
 import { ThemeToggle } from './ThemeToggle'
 
+const isPortalRoute = (pathname: string): boolean => {
+  return pathname.startsWith('/customer/portal') ||
+         pathname.startsWith('/supplier/portal') ||
+         pathname.startsWith('/admin/portal');
+};
+
 export default function Navigation() {
+  const pathname = usePathname();
+
+  if (isPortalRoute(pathname)) {
+    return null;
+  }
+
   return (
     <nav
       className="sticky top-0 z-50 shadow-lg amix-toolbar"
@@ -21,18 +34,15 @@ export default function Navigation() {
               <AmixLogo size="sm" showText useSignatureFont />
             </Link>
 
-            <div className="flex gap-4">
+            <div className="flex gap-1">
               <Link
                 href="/"
-                className="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap hover:bg-[#003366] text-[#FFA500]"
+                className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
+                  pathname === '/' ? 'bg-[#FFA500]' : 'hover:bg-[#003366]'
+                }`}
+                style={{ color: pathname === '/' ? '#001F3F' : '#FFA500' }}
               >
                 Home
-              </Link>
-              <Link
-                href="/pricing"
-                className="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap hover:bg-[#003366] text-[#FFA500]"
-              >
-                Pricing
               </Link>
             </div>
           </div>
