@@ -14,7 +14,7 @@ import {
 } from '@/app/lib/api/supplierApi';
 import { useToast } from '@/app/components/Toast';
 import { formatDateTimeZA, nowISO } from '@/app/lib/datetime';
-import { currencyByCode, DEFAULT_CURRENCY } from '@/app/lib/currencies';
+import { currencyByCode, DEFAULT_CURRENCY, vatRateForCurrency } from '@/app/lib/currencies';
 
 interface PricingInputs {
   steelSpecs: Record<string, number>;
@@ -455,9 +455,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       if (bnwSection && bnwSection.items.length > 0) {
         const firstItemDesc = bnwSection.items[0].description.toUpperCase();
         const gradeMatch = firstItemDesc.match(/GRADE\s*([\d.]+)/i) || firstItemDesc.match(/GR\s*([\d.]+)/i);
-        if (gradeMatch) {
-          bnwGrade = `Grade ${gradeMatch[1]}`;
-        }
+        bnwGrade = gradeMatch ? `Grade ${gradeMatch[1]}` : 'Standard';
       }
 
       setExtractedSpecs((prev) => ({
@@ -1340,22 +1338,33 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode,
   const subtotal = sectionsSubtotal + weldingTotal;
 
   const contingenciesAmount = subtotal * (pricingInputs.contingenciesPercent / 100);
-  const grandTotal = subtotal + contingenciesAmount;
+  const grandTotalExVat = subtotal + contingenciesAmount;
+  const vatRate = vatRateForCurrency(currencyCode);
+  const vatAmount = grandTotalExVat * (vatRate / 100);
+  const grandTotalIncVat = grandTotalExVat + vatAmount;
 
   return (
     <div className="mt-8 border-t-2 border-gray-300 pt-6">
       <div className="flex flex-col items-end space-y-2">
-        <div className="flex justify-between w-72 text-sm">
+        <div className="flex justify-between w-80 text-sm">
           <span className="text-gray-600">Subtotal:</span>
           <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(subtotal)}</span>
         </div>
-        <div className="flex justify-between w-72 text-sm">
+        <div className="flex justify-between w-80 text-sm">
           <span className="text-gray-600">Contingencies ({pricingInputs.contingenciesPercent}%):</span>
           <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(contingenciesAmount)}</span>
         </div>
-        <div className="flex justify-between w-72 text-lg font-bold border-t border-gray-300 pt-2 mt-2">
+        <div className="flex justify-between w-80 text-sm font-semibold border-t border-gray-300 pt-2 mt-2">
           <span className="text-gray-900">Grand Total (ex VAT):</span>
-          <span className="text-green-700">{currencySymbol} {formatCurrency(grandTotal)}</span>
+          <span className="text-gray-900">{currencySymbol} {formatCurrency(grandTotalExVat)}</span>
+        </div>
+        <div className="flex justify-between w-80 text-sm">
+          <span className="text-gray-600">VAT ({vatRate}%):</span>
+          <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(vatAmount)}</span>
+        </div>
+        <div className="flex justify-between w-80 text-lg font-bold border-t border-gray-300 pt-2 mt-2">
+          <span className="text-gray-900">Total (inc VAT):</span>
+          <span className="text-green-700">{currencySymbol} {formatCurrency(grandTotalIncVat)}</span>
         </div>
       </div>
     </div>
