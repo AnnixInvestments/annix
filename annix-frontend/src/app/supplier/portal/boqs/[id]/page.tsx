@@ -447,24 +447,34 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         (section) => section.sectionType === 'blank_flanges' && section.items.length > 0
       );
 
+      const hasFlangesSection = boqDetail.sections.some(
+        (section) => (section.sectionType === 'flanges' || section.sectionType === 'blank_flanges') && section.items.length > 0
+      );
+
       const bnwSection = boqDetail.sections.find(
         (section) => section.sectionType === 'bnw_sets' && section.items.length > 0
       );
 
-      let bnwGrade: string | null = null;
-      if (bnwSection && bnwSection.items.length > 0) {
-        const firstItemDesc = bnwSection.items[0].description.toUpperCase();
-        const gradeMatch = firstItemDesc.match(/GRADE\s*([\d.]+)/i) || firstItemDesc.match(/GR\s*([\d.]+)/i);
-        bnwGrade = gradeMatch ? `Grade ${gradeMatch[1]}` : 'Standard';
-      }
+      setExtractedSpecs((prev) => {
+        const hasFlangesFromItems = prev.flangeTypes.slipOn || prev.flangeTypes.rotating || prev.flangeTypes.blank;
 
-      setExtractedSpecs((prev) => ({
-        ...prev,
-        flangeTypes: hasBlankFlangesSection ? { ...prev.flangeTypes, blank: true } : prev.flangeTypes,
-        bnwGrade: bnwGrade || prev.bnwGrade,
-      }));
+        let bnwGrade: string | null = null;
+        if (bnwSection && bnwSection.items.length > 0) {
+          const firstItemDesc = bnwSection.items[0].description.toUpperCase();
+          const gradeMatch = firstItemDesc.match(/GRADE\s*([\d.]+)/i) || firstItemDesc.match(/GR\s*([\d.]+)/i);
+          bnwGrade = gradeMatch ? `Grade ${gradeMatch[1]}` : 'Standard';
+        } else if (hasFlangesSection || hasFlangesFromItems) {
+          bnwGrade = 'Standard';
+        }
+
+        return {
+          ...prev,
+          flangeTypes: hasBlankFlangesSection ? { ...prev.flangeTypes, blank: true } : prev.flangeTypes,
+          bnwGrade: bnwGrade || prev.bnwGrade,
+        };
+      });
     }
-  }, [boqDetail]);
+  }, [boqDetail, rfqItems]);
 
   const loadSupplierCurrency = async () => {
     try {
@@ -493,7 +503,10 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       const items = await supplierPortalApi.getRfqItems(boqId);
       setRfqItems(items);
       const specs = extractUniqueSpecs(items);
-      setExtractedSpecs(specs);
+      setExtractedSpecs((prev) => ({
+        ...specs,
+        bnwGrade: prev.bnwGrade,
+      }));
     } catch (err) {
       console.error('Failed to load RFQ items:', err);
     } finally {
