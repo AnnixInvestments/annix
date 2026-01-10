@@ -1249,17 +1249,10 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode,
     const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
 
     if (isBnwSection) {
-      const rfqItem = item.entries.length > 0
-        ? rfqItems.find(ri => ri.lineNumber === item.entries[0] || ri.id === item.entries[0])
-        : null;
-
-      const calcData = rfqItem?.straightPipeDetails?.calculationData ||
-                       rfqItem?.bendDetails?.calculationData ||
-                       rfqItem?.fittingDetails?.calculationData;
-
-      const boltWeight = (calcData?.totalBoltWeight || 0) / (rfqItem?.quantity || 1);
-      const nutWeight = (calcData?.totalNutWeight || 0) / (rfqItem?.quantity || 1);
-      const washerWeight = nutWeight * 0.3;
+      const totalBnwWeight = weightPerUnit;
+      const boltWeight = totalBnwWeight * 0.55;
+      const nutWeight = totalBnwWeight * 0.30;
+      const washerWeight = totalBnwWeight * 0.15;
 
       const boltPrice = (pricingInputs.bnwTypes['bolts'] || 0) * boltWeight;
       const nutPrice = (pricingInputs.bnwTypes['nuts'] || 0) * nutWeight;
@@ -1573,17 +1566,10 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
     const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
 
     if (isBnwSection) {
-      const rfqItem = item.entries.length > 0
-        ? rfqItems.find(ri => ri.lineNumber === item.entries[0] || ri.id === item.entries[0])
-        : null;
-
-      const calcData = rfqItem?.straightPipeDetails?.calculationData ||
-                       rfqItem?.bendDetails?.calculationData ||
-                       rfqItem?.fittingDetails?.calculationData;
-
-      const boltWeight = (calcData?.totalBoltWeight || 0) / (rfqItem?.quantity || 1);
-      const nutWeight = (calcData?.totalNutWeight || 0) / (rfqItem?.quantity || 1);
-      const washerWeight = nutWeight * 0.3;
+      const totalBnwWeight = weightPerUnit;
+      const boltWeight = totalBnwWeight * 0.55;
+      const nutWeight = totalBnwWeight * 0.30;
+      const washerWeight = totalBnwWeight * 0.15;
 
       const boltPrice = (pricingInputs.bnwTypes['bolts'] || 0) * boltWeight;
       const nutPrice = (pricingInputs.bnwTypes['nuts'] || 0) * nutWeight;
