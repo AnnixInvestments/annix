@@ -83,17 +83,57 @@ export default function SupplierPortalLayout({
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
+            <div className="flex items-center gap-6">
               <Link href="/supplier/portal/dashboard" className="flex items-center">
                 <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold mr-3">
                   A
                 </div>
                 <span className="text-xl font-semibold text-gray-900">Supplier Portal</span>
               </Link>
+
+              {/* Horizontal Navigation */}
+              <nav className="flex items-center gap-1">
+                {navigation.map((item) => {
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`}
+                    >
+                      <span className={isActive ? 'text-blue-600' : 'text-gray-400'}>
+                        {icons[item.icon]}
+                      </span>
+                      <span className="ml-2">{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
             </div>
             <div className="flex items-center space-x-4">
+              {/* Onboarding Status Badge */}
+              {supplier?.onboardingStatus && (
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    supplier.onboardingStatus === 'approved'
+                      ? 'bg-green-100 text-green-800'
+                      : supplier.onboardingStatus === 'rejected'
+                      ? 'bg-red-100 text-red-800'
+                      : supplier.onboardingStatus === 'submitted' ||
+                        supplier.onboardingStatus === 'under_review'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {supplier.onboardingStatus.replace(/_/g, ' ').toUpperCase()}
+                </span>
+              )}
               <Link
                 href="/supplier/portal/boqs"
                 className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
@@ -117,62 +157,9 @@ export default function SupplierPortalLayout({
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-8">
-          {/* Sidebar */}
-          <nav className="w-64 flex-shrink-0">
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <ul className="space-y-1">
-                {navigation.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <li key={item.name}>
-                      <Link
-                        href={item.href}
-                        className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                          isActive
-                            ? 'bg-blue-50 text-blue-700'
-                            : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
-                      >
-                        <span className={isActive ? 'text-blue-600' : 'text-gray-400'}>
-                          {icons[item.icon]}
-                        </span>
-                        <span className="ml-3">{item.name}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-
-              {/* Onboarding Status Badge */}
-              {supplier?.onboardingStatus && (
-                <div className="mt-6 pt-6 border-t">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                    Onboarding Status
-                  </p>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      supplier.onboardingStatus === 'approved'
-                        ? 'bg-green-100 text-green-800'
-                        : supplier.onboardingStatus === 'rejected'
-                        ? 'bg-red-100 text-red-800'
-                        : supplier.onboardingStatus === 'submitted' ||
-                          supplier.onboardingStatus === 'under_review'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {supplier.onboardingStatus.replace(/_/g, ' ').toUpperCase()}
-                  </span>
-                </div>
-              )}
-            </div>
-          </nav>
-
-          {/* Main Content */}
-          <main className="flex-1 min-w-0">{children}</main>
-        </div>
+      {/* Main Content - Full Width */}
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="w-full">{children}</main>
       </div>
     </div>
   );
