@@ -733,66 +733,45 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Project & Customer Info */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {boqDetail.projectInfo && (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Project Information</h2>
-            <dl className="space-y-3">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Project Name</dt>
-                <dd className="text-sm text-gray-900">{boqDetail.projectInfo.name}</dd>
-              </div>
-              {boqDetail.projectInfo.description && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Description</dt>
-                  <dd className="text-sm text-gray-900">{boqDetail.projectInfo.description}</dd>
-                </div>
-              )}
-              {boqDetail.projectInfo.requiredDate && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Required Date</dt>
-                  <dd className="text-sm text-gray-900">
-                    {formatDate(boqDetail.projectInfo.requiredDate)}
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </div>
-        )}
-
-        {boqDetail.customerInfo && (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Customer Information</h2>
-            <dl className="space-y-3">
-              {boqDetail.customerInfo.company && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Company</dt>
-                  <dd className="text-sm text-gray-900">{boqDetail.customerInfo.company}</dd>
-                </div>
-              )}
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Contact Name</dt>
-                <dd className="text-sm text-gray-900">{boqDetail.customerInfo.name}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Email</dt>
-                <dd className="text-sm text-gray-900">
+      {/* Project & Customer Info - Compact 3-column layout */}
+      {(boqDetail.projectInfo || boqDetail.customerInfo) && (
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="grid grid-cols-3 gap-x-6 gap-y-2">
+            {/* Row 1 */}
+            <div>
+              <span className="text-xs font-medium text-gray-500">Project</span>
+              <p className="text-sm text-gray-900">{boqDetail.projectInfo?.name || '-'}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-gray-500">Description</span>
+              <p className="text-sm text-gray-900 truncate">{boqDetail.projectInfo?.description || '-'}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-gray-500">Required Date</span>
+              <p className="text-sm text-gray-900">{boqDetail.projectInfo?.requiredDate ? formatDate(boqDetail.projectInfo.requiredDate) : '-'}</p>
+            </div>
+            {/* Row 2 */}
+            <div>
+              <span className="text-xs font-medium text-gray-500">Customer</span>
+              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.company || '-'}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-gray-500">Contact</span>
+              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.name || '-'}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-gray-500">Email</span>
+              <p className="text-sm text-gray-900">
+                {boqDetail.customerInfo?.email ? (
                   <a href={`mailto:${boqDetail.customerInfo.email}`} className="text-blue-600 hover:underline">
                     {boqDetail.customerInfo.email}
                   </a>
-                </dd>
-              </div>
-              {boqDetail.customerInfo.phone && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Phone</dt>
-                  <dd className="text-sm text-gray-900">{boqDetail.customerInfo.phone}</dd>
-                </div>
-              )}
-            </dl>
+                ) : '-'}
+              </p>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Pricing Inputs Section */}
       <PricingInputsSection
