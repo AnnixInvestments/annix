@@ -967,7 +967,7 @@ function PricingInputsSection({
 
         {/* Weld Types - only show types used in this RFQ */}
         {(extractedSpecs.weldTypes.flangeWeld ||
-          extractedSpecs.weldTypes.mitreWeld || extractedSpecs.weldTypes.teeWeld) && (
+          extractedSpecs.weldTypes.mitreWeld || extractedSpecs.weldTypes.teeWeld || extractedSpecs.weldTypes.tackWeld) && (
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Weld Types (Price/Lm)</h3>
             {extractedSpecs.weldTypes.flangeWeld && (
@@ -1017,6 +1017,24 @@ function PricingInputsSection({
                     step="0.01"
                     value={pricingInputs.weldTypes['teeWeld'] || ''}
                     onChange={(e) => onPricingInputChange('weldTypes', 'teeWeld', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-xs text-gray-500 ml-1">/Lm</span>
+                </div>
+              </div>
+            )}
+            {extractedSpecs.weldTypes.tackWeld && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">Tack Weld (Loose Flange)</label>
+                <div className="flex items-center">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.weldTypes['tackWeld'] || ''}
+                    onChange={(e) => onPricingInputChange('weldTypes', 'tackWeld', parseFloat(e.target.value) || 0)}
                     placeholder="0.00"
                     className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
