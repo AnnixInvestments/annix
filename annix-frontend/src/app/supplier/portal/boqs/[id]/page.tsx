@@ -20,6 +20,7 @@ interface PricingInputs {
   steelSpecs: Record<string, number>;
   weldTypes: Record<string, number>;
   flangeTypes: Record<string, number>;
+  bnwTypes: Record<string, number>;
   labourExtrasPercent: number;
   contingenciesPercent: number;
 }
@@ -37,6 +38,7 @@ interface ExtractedSpecs {
     rotating: boolean;
     blank: boolean;
   };
+  bnwGrade: string | null;
 }
 
 interface WeldTotals {
@@ -150,6 +152,7 @@ const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
     steelSpecs: Array.from(steelSpecs).sort(),
     weldTypes: { flangeWeld: false, mitreWeld: false, teeWeld: false, tackWeld: false },
     flangeTypes,
+    bnwGrade: null,
   };
 };
 
@@ -370,6 +373,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     steelSpecs: [],
     weldTypes: { flangeWeld: false, mitreWeld: false, teeWeld: false, tackWeld: false },
     flangeTypes: { slipOn: false, rotating: false, blank: false },
+    bnwGrade: null,
   });
   const [weldTotals, setWeldTotals] = useState<WeldTotals>({
     flangeWeld: 0,
@@ -386,6 +390,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
           steelSpecs: parsed.steelSpecs || {},
           weldTypes: parsed.weldTypes || {},
           flangeTypes: parsed.flangeTypes || {},
+          bnwTypes: parsed.bnwTypes || {},
           labourExtrasPercent: parsed.labourExtrasPercent || 0,
           contingenciesPercent: parsed.contingenciesPercent ?? 5,
         };
@@ -395,6 +400,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       steelSpecs: {},
       weldTypes: {},
       flangeTypes: {},
+      bnwTypes: {},
       labourExtrasPercent: 0,
       contingenciesPercent: 5,
     };
@@ -440,12 +446,25 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       const hasBlankFlangesSection = boqDetail.sections.some(
         (section) => section.sectionType === 'blank_flanges' && section.items.length > 0
       );
-      if (hasBlankFlangesSection) {
-        setExtractedSpecs((prev) => ({
-          ...prev,
-          flangeTypes: { ...prev.flangeTypes, blank: true },
-        }));
+
+      const bnwSection = boqDetail.sections.find(
+        (section) => section.sectionType === 'bnw_sets' && section.items.length > 0
+      );
+
+      let bnwGrade: string | null = null;
+      if (bnwSection && bnwSection.items.length > 0) {
+        const firstItemDesc = bnwSection.items[0].description.toUpperCase();
+        const gradeMatch = firstItemDesc.match(/GRADE\s*([\d.]+)/i) || firstItemDesc.match(/GR\s*([\d.]+)/i);
+        if (gradeMatch) {
+          bnwGrade = `Grade ${gradeMatch[1]}`;
+        }
       }
+
+      setExtractedSpecs((prev) => ({
+        ...prev,
+        flangeTypes: hasBlankFlangesSection ? { ...prev.flangeTypes, blank: true } : prev.flangeTypes,
+        bnwGrade: bnwGrade || prev.bnwGrade,
+      }));
     }
   }, [boqDetail]);
 
@@ -485,7 +504,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   };
 
   const handlePricingInputChange = (
-    category: 'steelSpecs' | 'weldTypes' | 'flangeTypes',
+    category: 'steelSpecs' | 'weldTypes' | 'flangeTypes' | 'bnwTypes',
     key: string,
     value: number
   ) => {
@@ -896,7 +915,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 interface PricingInputsSectionProps {
   extractedSpecs: ExtractedSpecs;
   pricingInputs: PricingInputs;
-  onPricingInputChange: (category: 'steelSpecs' | 'weldTypes' | 'flangeTypes', key: string, value: number) => void;
+  onPricingInputChange: (category: 'steelSpecs' | 'weldTypes' | 'flangeTypes' | 'bnwTypes', key: string, value: number) => void;
   onPercentageChange: (field: 'labourExtrasPercent' | 'contingenciesPercent', value: number) => void;
   currencyCode: string;
 }
@@ -1103,6 +1122,63 @@ function PricingInputsSection({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Bolts, Nuts & Washers Pricing - only show if BNW section exists */}
+        {extractedSpecs.bnwGrade && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">
+              Bolts, Nuts & Washers - {extractedSpecs.bnwGrade} (Price/Kg)
+            </h3>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 flex-1">Bolts</label>
+              <div className="flex items-center">
+                <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={pricingInputs.bnwTypes['bolts'] || ''}
+                  onChange={(e) => onPricingInputChange('bnwTypes', 'bolts', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="text-xs text-gray-500 ml-1">/Kg</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 flex-1">Nuts</label>
+              <div className="flex items-center">
+                <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={pricingInputs.bnwTypes['nuts'] || ''}
+                  onChange={(e) => onPricingInputChange('bnwTypes', 'nuts', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="text-xs text-gray-500 ml-1">/Kg</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 flex-1">Washers</label>
+              <div className="flex items-center">
+                <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={pricingInputs.bnwTypes['washers'] || ''}
+                  onChange={(e) => onPricingInputChange('bnwTypes', 'washers', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="text-xs text-gray-500 ml-1">/Kg</span>
+              </div>
+            </div>
           </div>
         )}
       </div>
