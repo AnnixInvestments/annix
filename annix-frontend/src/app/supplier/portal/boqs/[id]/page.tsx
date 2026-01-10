@@ -253,11 +253,11 @@ const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: Extr
         totals.flangeWeld += circumference * flangeCount * qty;
       }
 
-      if (hasLoose && circumference > 0) {
+      if (hasLoose) {
         const looseFlangeCount = countLooseFlanges(details.pipeEndConfiguration, 'straight_pipe');
         if (looseFlangeCount > 0) {
           weldTypes.tackWeld = true;
-          totals.tackWeld += circumference * looseFlangeCount * qty;
+          totals.tackWeld += 0.08 * looseFlangeCount * qty;
         }
       }
     }
@@ -291,11 +291,11 @@ const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: Extr
         totals.flangeWeld += circumference * flangeCount * qty;
       }
 
-      if (hasLoose && circumference > 0) {
+      if (hasLoose) {
         const looseFlangeCount = countLooseFlanges(details.bendEndConfiguration, 'bend');
         if (looseFlangeCount > 0) {
           weldTypes.tackWeld = true;
-          totals.tackWeld += circumference * looseFlangeCount * qty;
+          totals.tackWeld += 0.08 * looseFlangeCount * qty;
         }
       }
     }
@@ -324,11 +324,11 @@ const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: Extr
         totals.teeWeld += branchCircumference * qty;
       }
 
-      if (hasLoose && mainCircumference > 0) {
+      if (hasLoose) {
         const looseFlangeCount = countLooseFlanges(details.pipeEndConfiguration, 'fitting');
         if (looseFlangeCount > 0) {
           weldTypes.tackWeld = true;
-          totals.tackWeld += mainCircumference * looseFlangeCount * qty;
+          totals.tackWeld += 0.08 * looseFlangeCount * qty;
         }
       }
     }
