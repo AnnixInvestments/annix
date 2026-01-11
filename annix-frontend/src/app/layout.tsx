@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Great_Vibes } from "next/font/google";
 import "./globals.css";
 import ConditionalNavigation from "./components/ConditionalNavigation";
 import { Providers } from "./components/Providers";
+import SessionExpiredModal from "./components/SessionExpiredModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,6 +40,7 @@ export default function RootLayout({
         <Providers>
           <ConditionalNavigation />
           {children}
+          <SessionExpiredModal />
         </Providers>
       </body>
     </html>
