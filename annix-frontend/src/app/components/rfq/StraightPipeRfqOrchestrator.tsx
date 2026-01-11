@@ -450,15 +450,6 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         setCurrentDraftId(draft.id);
         setDraftNumber(draft.draftNumber);
 
-        // Save initial state for dirty checking
-        setTimeout(() => {
-          initialDraftDataRef.current = JSON.stringify({
-            items: draft.straightPipeEntries || [],
-            globalSpecs: draft.globalSpecs || {},
-            formData: draft.formData || {},
-          });
-        }, 100);
-
         log.debug(`✅ Loaded draft ${draft.draftNumber}`);
       } catch (error) {
         console.error('Failed to load draft:', error);
@@ -470,6 +461,26 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
     loadDraft();
   }, [searchParams, restoreFromDraft]);
+
+  // Capture initial draft state after loading completes for dirty checking
+  useEffect(() => {
+    if (!isLoadingDraft && currentDraftId && !initialDraftDataRef.current) {
+      // Wait a bit for React state to settle after restoreFromDraft
+      const timer = setTimeout(() => {
+        initialDraftDataRef.current = JSON.stringify({
+          items: rfqData.items || [],
+          straightPipeEntries: rfqData.straightPipeEntries || [],
+          globalSpecs: rfqData.globalSpecs || {},
+          projectType: rfqData.projectType,
+          description: rfqData.description,
+          notes: rfqData.notes,
+          requiredProducts: rfqData.requiredProducts || [],
+        });
+        log.info('📸 Captured initial draft state for dirty checking');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoadingDraft, currentDraftId, rfqData]);
 
   // Temperature derating factors for flange pressure classes
   // SABS 1123 / EN 1092-1 / PN standards: No significant derating below 200°C for carbon steel
@@ -2155,16 +2166,21 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                     // For drafts, check if data has changed since loading
                     const currentData = JSON.stringify({
                       items: rfqData.items || [],
+                      straightPipeEntries: rfqData.straightPipeEntries || [],
                       globalSpecs: rfqData.globalSpecs || {},
-                      formData: {
-                        projectType: rfqData.projectType,
-                        description: rfqData.description,
-                        notes: rfqData.notes,
-                        requiredProducts: rfqData.requiredProducts,
-                      },
+                      projectType: rfqData.projectType,
+                      description: rfqData.description,
+                      notes: rfqData.notes,
+                      requiredProducts: rfqData.requiredProducts || [],
                     });
                     const hasChanges = currentData !== initialDraftDataRef.current;
-                    log.info('Draft dirty check - hasChanges:', hasChanges);
+
+                    log.info('🔍 Draft dirty check:', {
+                      hasChanges,
+                      itemsCount: rfqData.items?.length,
+                      straightPipesCount: rfqData.straightPipeEntries?.length,
+                      globalSpecsKeys: Object.keys(rfqData.globalSpecs || {}).length,
+                    });
 
                     if (hasChanges) {
                       setShowCloseConfirmation(true);
