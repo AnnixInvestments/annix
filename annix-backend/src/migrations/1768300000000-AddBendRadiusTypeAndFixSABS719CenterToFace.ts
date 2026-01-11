@@ -17,7 +17,7 @@ export class AddBendRadiusTypeAndFixSABS719CenterToFace1768300000000
     `);
 
     const sabs719Bends = await queryRunner.query(`
-      SELECT br.id, br.nominal_bore_mm, br.number_of_segments, br.bend_degrees, br.center_to_face_mm,
+      SELECT br.id, br.nominal_bore_mm, br.bend_degrees, br.center_to_face_mm,
              br.calculation_data, br.steel_specification_id
       FROM bend_rfqs br
       WHERE br.steel_specification_id = 8
@@ -79,8 +79,8 @@ export class AddBendRadiusTypeAndFixSABS719CenterToFace1768300000000
 
     for (const bend of sabs719Bends) {
       const nominalBore = Number(bend.nominal_bore_mm);
-      const segments = Number(bend.number_of_segments) || 5;
       const calcData = bend.calculation_data || {};
+      const segments = Number(calcData.numberOfSegments) || 5;
 
       let bendRadiusType = calcData.bendRadiusType || 'long';
 
