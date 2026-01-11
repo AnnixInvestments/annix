@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { CreateStraightPipeRfqDto, StraightPipeCalculationResult } from '@/app/lib/api/client';
 import type { AirSaltContentResult, TimeOfWetnessResult, FloodRiskLevel } from '../services/environmentalIntelligence';
 import { addDaysFromNowISODate, generateUniqueId } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
 
 export interface StraightPipeEntry {
   id: string;
@@ -489,11 +490,11 @@ export const useRfqForm = () => {
     straightPipeEntries?: any[];
     currentStep?: number;
   }) => {
-    console.log('🔄 restoreFromDraft called');
-    console.log('🔄 Draft input:', JSON.stringify(draft, null, 2));
-    console.log('🔄 formData:', JSON.stringify(draft.formData, null, 2));
-    console.log('🔄 requiredProducts:', draft.requiredProducts);
-    console.log('🔄 globalSpecs keys:', draft.globalSpecs ? Object.keys(draft.globalSpecs) : 'none');
+    log.debug('🔄 restoreFromDraft called');
+    log.debug('🔄 Draft input:', JSON.stringify(draft, null, 2));
+    log.debug('🔄 formData:', JSON.stringify(draft.formData, null, 2));
+    log.debug('🔄 requiredProducts:', draft.requiredProducts);
+    log.debug('🔄 globalSpecs keys:', draft.globalSpecs ? Object.keys(draft.globalSpecs) : 'none');
 
     const formData = draft.formData || {};
 
@@ -532,21 +533,21 @@ export const useRfqForm = () => {
       straightPipeEntries: (draft.straightPipeEntries ?? []).filter((e: any) => e.itemType === 'straight_pipe' || !e.itemType),
     };
 
-    console.log('📦 Restored RfqFormData:', JSON.stringify(restored, null, 2));
-    console.log('📦 Restored projectType:', restored.projectType);
-    console.log('📦 Restored requiredProducts:', restored.requiredProducts);
-    console.log('📦 Restored globalSpecs.soilTexture:', restored.globalSpecs?.soilTexture);
+    log.debug('📦 Restored RfqFormData:', JSON.stringify(restored, null, 2));
+    log.debug('📦 Restored projectType:', restored.projectType);
+    log.debug('📦 Restored requiredProducts:', restored.requiredProducts);
+    log.debug('📦 Restored globalSpecs.soilTexture:', restored.globalSpecs?.soilTexture);
 
     // Set the state
     setRfqData(restored);
 
     // Set the step after form data is restored
     if (draft.currentStep) {
-      console.log('📦 Setting currentStep to:', draft.currentStep);
+      log.debug('📦 Setting currentStep to:', draft.currentStep);
       setCurrentStep(draft.currentStep);
     }
 
-    console.log('✅ restoreFromDraft complete');
+    log.debug('✅ restoreFromDraft complete');
   }, []);
 
   return {

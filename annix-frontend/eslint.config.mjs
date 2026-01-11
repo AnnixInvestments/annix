@@ -26,6 +26,18 @@ export default tseslint.config(
           name: 'Date',
           message: "Use DateTime from '@/app/lib/datetime' instead of native Date. See docs/LIBRARY_AUDIT.md for details.",
         },
+        {
+          name: 'confirm',
+          message: 'Use a custom modal component instead of browser confirm() for better UX.',
+        },
+        {
+          name: 'alert',
+          message: 'Use a toast notification or modal instead of browser alert() for better UX.',
+        },
+        {
+          name: 'prompt',
+          message: 'Use a custom input modal instead of browser prompt() for better UX.',
+        },
       ],
 
       'no-restricted-syntax': [

@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Center, Environment, Line, ContactShadows, Text } from "@react-three/drei";
 import * as THREE from "three";
+import { log } from "@/app/lib/logger";
 
 interface StubData {
   nominalBoreMm?: number;
@@ -749,7 +750,7 @@ const BendScene = ({
   const showOutletFlange = ['FBE', 'FOE_LF', '2xLF', 'FOE_RF', '2X_RF'].includes(configUpper); // Flange at top (outlet)
 
   // Debug logging
-  console.log('BendScene:', { flangeConfig, showOutletFlange, showInletFlange, isLooseFlangeOutlet, isLooseFlangeInlet, closureLengthMm, numberOfStubs, stubs: safeStubs });
+  log.debug('BendScene:', { flangeConfig, showOutletFlange, showInletFlange, isLooseFlangeOutlet, isLooseFlangeInlet, closureLengthMm, numberOfStubs, stubs: safeStubs });
 
   const isSABS719 = Boolean(isSegmented ||
     materialName?.toLowerCase().includes("sabs 719") ||
@@ -1363,7 +1364,7 @@ const BendScene = ({
           // Stub length in scene units
           const stubLen = (stub1.length || 100) / scaleFactor;
 
-          console.log('Rendering Stub 1:', { stubX, stubY, stubLocation, stubLen, outerRadius });
+          log.debug('Rendering Stub 1:', { stubX, stubY, stubLocation, stubLen, outerRadius });
 
           return (
             <StubPipe
@@ -1388,7 +1389,7 @@ const BendScene = ({
           // Stub length in scene units
           const stubLen = (stub2.length || 100) / scaleFactor;
 
-          console.log('Rendering Stub 2:', { stubY, stubLocation, stubLen, outerRadius });
+          log.debug('Rendering Stub 2:', { stubY, stubLocation, stubLen, outerRadius });
 
           return (
             <StubPipe

@@ -28,6 +28,7 @@ import {
   recommendWallThicknessCarbonPipe
 } from '@/app/lib/utils/weldThicknessLookup';
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
+import { log } from '@/app/lib/logger';
 import {
   SABS62_NB_OPTIONS,
   SABS62_BEND_RADIUS,
@@ -198,6 +199,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const isEditing = editRfqId !== undefined;
   const { showToast } = useToast();
   const searchParams = useSearchParams();
+  const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
   const {
     currentStep,
     setCurrentStep,
@@ -222,6 +224,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const [currentDraftId, setCurrentDraftId] = useState<number | null>(null);
   const [draftNumber, setDraftNumber] = useState<string | null>(null);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const initialDraftDataRef = useRef<string | null>(null);
   const [isLoadingDraft, setIsLoadingDraft] = useState(false);
 
   const [masterData, setMasterData] = useState<MasterData>({
@@ -422,16 +425,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     const draftId = searchParams?.get('draft') || searchParams?.get('draftId');
     if (!draftId) return;
 
-    console.log('📥 Draft parameter detected:', draftId);
+    log.debug('📥 Draft parameter detected:', draftId);
 
     const loadDraft = async () => {
       setIsLoadingDraft(true);
       try {
         const draft = await draftsApi.getById(parseInt(draftId, 10));
-        console.log('📦 Loading draft:', draft);
-        console.log('📦 Draft formData:', draft.formData);
-        console.log('📦 Draft requiredProducts:', draft.requiredProducts);
-        console.log('📦 Draft globalSpecs:', draft.globalSpecs);
+        log.debug('📦 Loading draft:', draft);
+        log.debug('📦 Draft formData:', draft.formData);
+        log.debug('📦 Draft requiredProducts:', draft.requiredProducts);
+        log.debug('📦 Draft globalSpecs:', draft.globalSpecs);
 
         // Use the bulk restore function to set all form data at once
         // This avoids React batching issues with multiple individual updates
@@ -447,7 +450,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         setCurrentDraftId(draft.id);
         setDraftNumber(draft.draftNumber);
 
-        console.log(`✅ Loaded draft ${draft.draftNumber}`);
+        // Save initial state for dirty checking
+        setTimeout(() => {
+          initialDraftDataRef.current = JSON.stringify({
+            items: draft.straightPipeEntries || [],
+            globalSpecs: draft.globalSpecs || {},
+            formData: draft.formData || {},
+          });
+        }, 100);
+
+        log.debug(`✅ Loaded draft ${draft.draftNumber}`);
       } catch (error) {
         console.error('Failed to load draft:', error);
         showToast('Failed to load the saved draft. Starting with a new form.', 'error');
@@ -610,7 +622,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     });
 
     // Log all available classes for debugging
-    console.log(`Available pressure classes for ${workingPressureBar} bar at ${temperatureCelsius ?? 'ambient'}°C (derating: ${deratingFactor.toFixed(2)}):`,
+    log.debug(`Available pressure classes for ${workingPressureBar} bar at ${temperatureCelsius ?? 'ambient'}°C (derating: ${deratingFactor.toFixed(2)}):`,
       classesWithRating.map(pc => `${pc.designation}=${pc.barRating.toFixed(1)}bar`).join(', '));
 
     // Find the lowest rating that meets or exceeds the working pressure at operating temperature
@@ -618,9 +630,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     const recommended = classesWithRating.find(pc => pc.barRating >= workingPressureBar - 0.01);
 
     if (recommended) {
-      console.log(`Selected: ${recommended.designation} (${recommended.barRating.toFixed(1)} bar capacity) for ${workingPressureBar} bar working pressure`);
+      log.debug(`Selected: ${recommended.designation} (${recommended.barRating.toFixed(1)} bar capacity) for ${workingPressureBar} bar working pressure`);
     } else {
-      console.log(`No suitable class found for ${workingPressureBar} bar, using highest available`);
+      log.debug(`No suitable class found for ${workingPressureBar} bar, using highest available`);
     }
 
     return recommended || classesWithRating[classesWithRating.length - 1]; // Return highest if none match
@@ -793,7 +805,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
       // Log what we got from the API
       const standardName = masterData.flangeStandards?.find((s: any) => s.id === standardId)?.code || standardId;
-      console.log(`Fetched ${classes.length} pressure classes for ${standardName}:`, classes.map((c: any) => `${c.designation}(id=${c.id})`).join(', '));
+      log.debug(`Fetched ${classes.length} pressure classes for ${standardName}:`, classes.map((c: any) => `${c.designation}(id=${c.id})`).join(', '));
 
       setAvailablePressureClasses(classes);
 
@@ -1217,7 +1229,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     const initializePressureClasses = async () => {
       const standardId = rfqData.globalSpecs?.flangeStandardId;
       if (standardId && availablePressureClasses.length === 0) {
-        console.log(`Initializing pressure classes for standard ${standardId}`);
+        log.debug(`Initializing pressure classes for standard ${standardId}`);
         const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === rfqData.globalSpecs?.steelSpecificationId);
         const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
         const recommendedId = await fetchAndSelectPressureClass(
@@ -2112,37 +2124,105 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         </div>
       )}
 
-      {/* Fixed Top Header Bar */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-bold text-gray-900">Create RFQ</h1>
-            <span className="text-sm text-gray-500">•</span>
-            <span className="text-sm font-medium text-blue-600">
-              {steps.find(s => s.number === currentStep)?.title || 'RFQ'}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            {draftNumber && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                {draftNumber}
-              </span>
-            )}
-            <div className="text-sm text-gray-500">
-              {rfqData?.projectName || 'New RFQ'}
-            </div>
-            <button
-              onClick={onCancel}
-              className="text-gray-400 hover:text-gray-600 text-xl px-2"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Scrollable Content - grows to fill space, with padding for fixed bottom bar */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-20">
+        {/* Sticky Top Header Bar */}
+        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h1 className="text-lg font-bold text-gray-900">Create RFQ</h1>
+              <span className="text-sm text-gray-500">•</span>
+              <span className="text-sm font-medium text-blue-600">
+                {steps.find(s => s.number === currentStep)?.title || 'RFQ'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              {draftNumber && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                  {draftNumber}
+                </span>
+              )}
+              <div className="text-sm text-gray-500">
+                {rfqData?.projectName || 'New RFQ'}
+              </div>
+              <button
+                onClick={() => {
+                  const isDraft = searchParams?.get('draft') || searchParams?.get('draftId');
+                  log.debug('Close button clicked - isDraft:', isDraft);
+                  log.debug('searchParams:', searchParams);
+
+                  if (isDraft && initialDraftDataRef.current) {
+                    // For drafts, check if data has changed since loading
+                    const currentData = JSON.stringify({
+                      items: rfqData.items || [],
+                      globalSpecs: rfqData.globalSpecs || {},
+                      formData: {
+                        projectType: rfqData.projectType,
+                        description: rfqData.description,
+                        notes: rfqData.notes,
+                        requiredProducts: rfqData.requiredProducts,
+                      },
+                    });
+                    const hasChanges = currentData !== initialDraftDataRef.current;
+                    log.info('Draft dirty check - hasChanges:', hasChanges);
+
+                    if (hasChanges) {
+                      setShowCloseConfirmation(true);
+                    } else {
+                      onCancel();
+                    }
+                  } else if (!isDraft) {
+                    // For a new RFQ (not a draft), check if user has made any meaningful changes
+                    // Skip auto-filled fields (customer name/email from profile, auto-generated project name)
+                    const hasChanges =
+                      // Items/entries added
+                      (rfqData.items?.length ?? 0) > 0 ||
+                      (rfqData.straightPipeEntries?.length ?? 0) > 0 ||
+                      // User-selected fields on step 1
+                      (rfqData.projectType && rfqData.projectType !== 'standard') ||
+                      (rfqData.description?.trim().length ?? 0) > 0 ||
+                      (rfqData.notes?.trim().length ?? 0) > 0 ||
+                      (rfqData.siteAddress?.trim().length ?? 0) > 0 ||
+                      (rfqData.mineId !== undefined && rfqData.mineId !== null) ||
+                      (rfqData.skipDocuments === true) ||
+                      // User progressed to step 2+ (selected products, location, specs)
+                      (currentStep > 1 && (
+                        (rfqData.requiredProducts && rfqData.requiredProducts.length > 0) ||
+                        (rfqData.latitude !== undefined && rfqData.latitude !== null) ||
+                        (rfqData.longitude !== undefined && rfqData.longitude !== null)
+                      )) ||
+                      // User progressed to step 3+ (entered specs)
+                      (currentStep > 2 && rfqData.globalSpecs && Object.keys(rfqData.globalSpecs).length > 0);
+
+                    log.info('Dirty check - hasChanges:', hasChanges, 'rfqData:', {
+                      items: rfqData.items?.length,
+                      straightPipes: rfqData.straightPipeEntries?.length,
+                      projectType: rfqData.projectType,
+                      description: rfqData.description,
+                      notes: rfqData.notes,
+                      currentStep,
+                    });
+                    if (hasChanges) {
+                      log.debug('Has changes, showing confirmation modal');
+                      setShowCloseConfirmation(true);
+                    } else {
+                      log.debug('No changes, calling onCancel');
+                      onCancel();
+                    }
+                  } else {
+                    // Draft but initial state not yet captured, just close
+                    onCancel();
+                  }
+                }}
+                className="text-gray-400 hover:text-gray-600 text-xl px-2"
+                title="Close RFQ"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="p-4">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="px-4 py-4">
@@ -2288,6 +2368,61 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           </div>
         </div>
       </div>
+
+      {showCloseConfirmation && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowCloseConfirmation(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="px-8 py-6">
+              <div className="mx-auto w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-4">
+                <svg
+                  className="w-8 h-8 text-orange-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+
+              <h2 className="text-xl font-bold text-gray-900 mb-2 text-center">
+                Unsaved Changes
+              </h2>
+
+              <p className="text-gray-600 mb-6 text-center">
+                You have unsaved changes. Are you sure you want to close this RFQ?
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCloseConfirmation(false)}
+                  className="flex-1 py-3 px-6 rounded-lg font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all duration-200"
+                >
+                  Continue Editing
+                </button>
+                <button
+                  onClick={() => {
+                    log.debug('Close Anyway clicked, calling onCancel()');
+                    setShowCloseConfirmation(false);
+                    onCancel();
+                  }}
+                  className="flex-1 py-3 px-6 rounded-lg font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
+                >
+                  Close Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

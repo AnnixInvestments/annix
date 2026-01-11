@@ -51,7 +51,7 @@ export default function CustomerDashboardPage() {
   }, [fetchData]);
 
   const handleResumeDraft = (draft: RfqDraftResponse) => {
-    // Navigate to RFQ form with draft ID - use 'draft' param to match form component
+    sessionStorage.setItem('rfq_return_path', '/customer/portal/dashboard');
     router.push(`/rfq?draft=${draft.id}`);
   };
 

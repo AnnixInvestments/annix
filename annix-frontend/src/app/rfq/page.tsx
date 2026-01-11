@@ -1,22 +1,43 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import UnifiedMultiStepRfqForm from '@/app/components/rfq/UnifiedMultiStepRfqForm';
 import { CustomerAuthProvider } from '@/app/context/CustomerAuthContext';
+import { log } from '@/app/lib/logger';
 
 export default function RfqPage() {
+  const router = useRouter();
   const [showForm, setShowForm] = useState(true);
   const [submissionResult, setSubmissionResult] = useState<string | null>(null);
+  const [returnPath, setReturnPath] = useState<string>('/customer/portal/dashboard');
+
+  useEffect(() => {
+    const storedPath = sessionStorage.getItem('rfq_return_path');
+    if (storedPath) {
+      log.info('Return path from sessionStorage:', storedPath);
+      setReturnPath(storedPath);
+    } else {
+      log.info('No return path in sessionStorage, using default dashboard');
+      setReturnPath('/customer/portal/dashboard');
+    }
+  }, []);
 
   const handleFormSuccess = (rfqId: string) => {
-    console.log('RFQ submitted successfully:', rfqId);
+    log.info('RFQ submitted successfully:', rfqId);
     setSubmissionResult(`RFQ submitted successfully! ID: ${rfqId}`);
     setShowForm(false);
   };
 
   const handleFormCancel = () => {
-    console.log('Form cancelled');
-    setShowForm(false);
+    log.debug('Form cancelled, navigating to:', returnPath);
+    sessionStorage.removeItem('rfq_return_path');
+    router.push(returnPath);
+  };
+
+  const handleBackNavigation = () => {
+    sessionStorage.removeItem('rfq_return_path');
+    router.push(returnPath);
   };
 
   const resetForm = () => {
@@ -43,10 +64,10 @@ export default function RfqPage() {
               Create Another RFQ
             </button>
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={handleBackNavigation}
               className="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-semibold"
             >
-              Back to Home
+              Back to Dashboard
             </button>
           </div>
         </div>
@@ -68,10 +89,10 @@ export default function RfqPage() {
               Start New RFQ
             </button>
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={handleBackNavigation}
               className="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-semibold"
             >
-              Back to Home
+              Back to Dashboard
             </button>
           </div>
         </div>

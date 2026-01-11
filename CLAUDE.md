@@ -48,9 +48,16 @@
 - When logging errors inside browser evaluation (e.g. Puppeteer), capture messages and surface them to the Node logger after evaluation
 
 ## Git Commits
-- Write comprehensive, detailed semantic commit messages
-- Do not include AI attribution
-- Pre-push hook in `.githooks/pre-push` automatically builds both apps and runs migrations before push
+- **Wait for approval**: Do NOT commit changes until explicitly approved by the user
+- **Stage changes only**: Use `git add` to stage files, but do NOT run `git commit` without approval
+- **Complete features only**: Each commit should represent a complete, logical feature - not intermediate iterations
+- **Clean git history**: Avoid cluttering history with iteration commits that don't make sense to others
+- **Tests must pass**: Never commit unless all tests pass - commits should take the system from one working state to another
+- **Semantic commit messages**: Write comprehensive, detailed semantic commit messages when approved to commit
+- **Issue references**: Add issue reference at end of first line: `feat: add navigation (ref #20)`
+- **Workflow keywords**: Only use `closes #20`, `fixes #20`, or `resolves #20` when the ticket is actually complete and ready to close by the user
+- **No AI attribution**: Do not include AI attribution in commit messages
+- **Pre-push hook**: `.githooks/pre-push` automatically builds both apps and runs migrations before push
 
 ## Communication
 - Be concise and direct

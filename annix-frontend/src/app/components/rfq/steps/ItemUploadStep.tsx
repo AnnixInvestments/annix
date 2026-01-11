@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { log } from '@/app/lib/logger';
 import {
   flangesPerPipe as getFlangesPerPipe,
   blankFlangeWeight as getBlankFlangeWeight,
@@ -219,7 +220,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
 
     if (!steelSpecId) {
       // No steel spec selected, show all NBs
-      console.log('[ItemUploadStep] No steel spec selected, showing all NBs');
+      log.debug('[ItemUploadStep] No steel spec selected, showing all NBs');
       setAvailableNominalBores(allNominalBores);
       return;
     }
@@ -228,18 +229,18 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
     const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
     const steelSpecName = steelSpec?.steelSpecName || '';
 
-    console.log(`[ItemUploadStep] Steel spec selected: ${steelSpecId} - "${steelSpecName}"`);
+    log.debug(`[ItemUploadStep] Steel spec selected: ${steelSpecId} - "${steelSpecName}"`);
 
     // ALWAYS use the fallback mapping based on steel spec name
     // This ensures proper filtering (e.g., SABS 719 only shows 200mm+)
     const filteredNBs = getFallbackNBsForSteelSpec(steelSpecName);
 
     if (filteredNBs && filteredNBs.length > 0) {
-      console.log(`[ItemUploadStep] Filtered NBs for "${steelSpecName}":`, filteredNBs);
+      log.debug(`[ItemUploadStep] Filtered NBs for "${steelSpecName}":`, filteredNBs);
       setAvailableNominalBores(filteredNBs);
     } else {
       // No specific mapping found - show all NBs as fallback
-      console.log(`[ItemUploadStep] No NB mapping for "${steelSpecName}", showing all NBs`);
+      log.debug(`[ItemUploadStep] No NB mapping for "${steelSpecName}", showing all NBs`);
       setAvailableNominalBores(allNominalBores);
     }
   }, [globalSpecs?.steelSpecificationId, masterData.steelSpecs]);
