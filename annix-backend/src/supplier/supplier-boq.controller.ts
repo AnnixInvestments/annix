@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
 import { now } from '../lib/datetime';
 import {
   ApiTags,
@@ -24,11 +25,40 @@ import { BoqDistributionService } from '../boq/boq-distribution.service';
 import { SupplierBoqStatus } from '../boq/entities/boq-supplier-access.entity';
 
 class DeclineBoqDto {
+  @IsString()
+  @IsNotEmpty()
   reason: string;
 }
 
 class SetReminderDto {
+  @IsOptional()
   reminderDays: number | null;
+}
+
+class SaveQuoteDto {
+  @IsObject()
+  pricingInputs: Record<string, any>;
+
+  @IsObject()
+  unitPrices: Record<string, Record<number, number>>;
+
+  @IsObject()
+  weldUnitPrices: Record<string, number>;
+}
+
+class SubmitQuoteDto {
+  @IsObject()
+  pricingInputs: Record<string, any>;
+
+  @IsObject()
+  unitPrices: Record<string, Record<number, number>>;
+
+  @IsObject()
+  weldUnitPrices: Record<string, number>;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 @ApiTags('Supplier BOQs')
@@ -221,5 +251,56 @@ export class SupplierBoqController {
       bendDetails: item.bendDetails,
       fittingDetails: item.fittingDetails,
     }));
+  }
+
+  @Post(':id/quote/save')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Save quote progress' })
+  @ApiResponse({
+    status: 200,
+    description: 'Quote progress saved',
+  })
+  async saveQuoteProgress(
+    @Request() req: any,
+    @Param('id', ParseIntPipe) boqId: number,
+    @Body() body: SaveQuoteDto,
+  ) {
+    const supplierProfileId = req.supplier.supplierId;
+    const access = await this.distributionService.saveQuoteProgress(
+      boqId,
+      supplierProfileId,
+      body,
+    );
+
+    return {
+      success: true,
+      savedAt: access.quoteSavedAt,
+    };
+  }
+
+  @Post(':id/quote/submit')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Submit quote for BOQ' })
+  @ApiResponse({
+    status: 200,
+    description: 'Quote submitted',
+  })
+  async submitQuote(
+    @Request() req: any,
+    @Param('id', ParseIntPipe) boqId: number,
+    @Body() body: SubmitQuoteDto,
+  ) {
+    const supplierProfileId = req.supplier.supplierId;
+    const access = await this.distributionService.submitQuote(
+      boqId,
+      supplierProfileId,
+      body,
+    );
+
+    return {
+      success: true,
+      status: access.status,
+      submittedAt: access.quoteSubmittedAt,
+    };
   }
 }

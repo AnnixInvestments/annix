@@ -444,9 +444,12 @@ export class BoqDistributionService {
       throw new NotFoundException(`BOQ with ID ${boqId} not found`);
     }
 
-    // Get ALL sections for this BOQ so supplier can see complete picture for quoting
+    // Get only sections the supplier has capability for
     const sections = await this.sectionRepository.find({
-      where: { boqId },
+      where: {
+        boqId,
+        sectionType: In(access.allowedSections),
+      },
       order: { id: 'ASC' },
     });
 
@@ -561,6 +564,67 @@ export class BoqDistributionService {
 
     access.reminderDays = reminderDays ?? undefined;
     access.reminderSent = false;
+
+    await this.accessRepository.save(access);
+    return access;
+  }
+
+  /**
+   * Save quote progress for a BOQ
+   */
+  async saveQuoteProgress(
+    boqId: number,
+    supplierProfileId: number,
+    quoteData: {
+      pricingInputs: Record<string, any>;
+      unitPrices: Record<string, Record<number, number>>;
+      weldUnitPrices: Record<string, number>;
+    },
+  ): Promise<BoqSupplierAccess> {
+    const access = await this.accessRepository.findOne({
+      where: { boqId, supplierProfileId },
+    });
+
+    if (!access) {
+      throw new NotFoundException(
+        `Supplier ${supplierProfileId} does not have access to BOQ ${boqId}`,
+      );
+    }
+
+    access.quoteData = quoteData;
+    access.quoteSavedAt = now().toJSDate();
+
+    await this.accessRepository.save(access);
+    return access;
+  }
+
+  /**
+   * Submit quote for a BOQ
+   */
+  async submitQuote(
+    boqId: number,
+    supplierProfileId: number,
+    quoteData: {
+      pricingInputs: Record<string, any>;
+      unitPrices: Record<string, Record<number, number>>;
+      weldUnitPrices: Record<string, number>;
+    },
+  ): Promise<BoqSupplierAccess> {
+    const access = await this.accessRepository.findOne({
+      where: { boqId, supplierProfileId },
+    });
+
+    if (!access) {
+      throw new NotFoundException(
+        `Supplier ${supplierProfileId} does not have access to BOQ ${boqId}`,
+      );
+    }
+
+    access.quoteData = quoteData;
+    access.quoteSavedAt = now().toJSDate();
+    access.quoteSubmittedAt = now().toJSDate();
+    access.respondedAt = now().toJSDate();
+    access.status = SupplierBoqStatus.QUOTED;
 
     await this.accessRepository.save(access);
     return access;
@@ -736,5 +800,59 @@ export class BoqDistributionService {
     }
 
     return notifiedCount;
+  }
+
+  /**
+   * Update allowed sections for all non-submitted BOQs when supplier capabilities change
+   */
+  async updateSupplierAllowedSections(
+    supplierProfileId: number,
+    newCapabilities: string[],
+  ): Promise<{ updated: number; removed: number }> {
+    const capabilitySections = getSectionsForCapabilities(newCapabilities);
+
+    const accessRecords = await this.accessRepository.find({
+      where: {
+        supplierProfileId,
+        status: In([
+          SupplierBoqStatus.PENDING,
+          SupplierBoqStatus.VIEWED,
+          SupplierBoqStatus.DECLINED,
+        ]),
+      },
+    });
+
+    let updated = 0;
+    let removed = 0;
+
+    for (const access of accessRecords) {
+      const boqSections = await this.sectionRepository.find({
+        where: { boqId: access.boqId },
+        select: ['sectionType'],
+      });
+
+      const boqSectionTypes = boqSections.map((s) => s.sectionType);
+      const newAllowedSections = boqSectionTypes.filter((sectionType) =>
+        capabilitySections.includes(sectionType),
+      );
+
+      if (newAllowedSections.length === 0) {
+        await this.accessRepository.remove(access);
+        removed++;
+      } else if (
+        JSON.stringify(newAllowedSections.sort()) !==
+        JSON.stringify(access.allowedSections.sort())
+      ) {
+        access.allowedSections = newAllowedSections;
+        await this.accessRepository.save(access);
+        updated++;
+      }
+    }
+
+    this.logger.log(
+      `Updated allowed sections for supplier ${supplierProfileId}: ${updated} updated, ${removed} removed`,
+    );
+
+    return { updated, removed };
   }
 }

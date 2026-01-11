@@ -4,6 +4,7 @@ import {
   BadRequestException,
   Logger,
   Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -29,6 +30,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
+import { BoqDistributionService } from '../boq/boq-distribution.service';
 
 // Required documents for onboarding
 const REQUIRED_DOCUMENT_TYPES = [
@@ -56,6 +58,8 @@ export class SupplierService {
     private readonly storageService: IStorageService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    @Inject(forwardRef(() => BoqDistributionService))
+    private readonly boqDistributionService: BoqDistributionService,
   ) {}
 
   /**
@@ -684,6 +688,11 @@ export class SupplierService {
       newValues: { capabilities: newCategories },
       ipAddress: clientIp,
     });
+
+    await this.boqDistributionService.updateSupplierAllowedSections(
+      supplierId,
+      newCategories,
+    );
 
     return {
       capabilities: newCategories,

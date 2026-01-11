@@ -212,6 +212,7 @@ export default function SupplierOnboardingPage() {
       await supplierPortalApi.saveCapabilities(selectedCapabilities);
       setSuccess('Products & Services updated successfully');
       await refreshDashboard();
+      setTimeout(() => router.push('/supplier/portal/dashboard'), 1000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update capabilities');
     } finally {

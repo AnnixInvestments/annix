@@ -113,6 +113,22 @@ export class BoqSupplierAccess {
     requiredDate?: string;
   };
 
+  @ApiProperty({ description: 'Quote data including pricing inputs and unit prices' })
+  @Column({ type: 'jsonb', name: 'quote_data', nullable: true })
+  quoteData?: {
+    pricingInputs: Record<string, any>;
+    unitPrices: Record<string, Record<number, number>>;
+    weldUnitPrices: Record<string, number>;
+  };
+
+  @ApiProperty({ description: 'When quote progress was last saved' })
+  @Column({ name: 'quote_saved_at', type: 'timestamp', nullable: true })
+  quoteSavedAt?: Date;
+
+  @ApiProperty({ description: 'When quote was submitted' })
+  @Column({ name: 'quote_submitted_at', type: 'timestamp', nullable: true })
+  quoteSubmittedAt?: Date;
+
   @ApiProperty({ description: 'Creation date' })
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

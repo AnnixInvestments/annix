@@ -626,6 +626,29 @@ class SupplierApiClient {
   async getRfqItems(boqId: number): Promise<RfqItemDetail[]> {
     return this.request<RfqItemDetail[]>(`/supplier/boqs/${boqId}/rfq-items`);
   }
+
+  async saveQuoteProgress(boqId: number, data: {
+    pricingInputs: Record<string, any>;
+    unitPrices: Record<string, Record<number, number>>;
+    weldUnitPrices: Record<string, number>;
+  }): Promise<{ success: boolean; savedAt: string }> {
+    return this.request(`/supplier/boqs/${boqId}/quote/save`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async submitQuote(boqId: number, data: {
+    pricingInputs: Record<string, any>;
+    unitPrices: Record<string, Record<number, number>>;
+    weldUnitPrices: Record<string, number>;
+    notes?: string;
+  }): Promise<{ success: boolean; status: string; submittedAt: string }> {
+    return this.request(`/supplier/boqs/${boqId}/quote/submit`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export const supplierApiClient = new SupplierApiClient();
@@ -663,4 +686,8 @@ export const supplierPortalApi = {
   declineBoq: (boqId: number, reason: string) => supplierApiClient.declineBoq(boqId, reason),
   setBoqReminder: (boqId: number, reminderDays: string) => supplierApiClient.setBoqReminder(boqId, reminderDays),
   getRfqItems: (boqId: number) => supplierApiClient.getRfqItems(boqId),
+  saveQuoteProgress: (boqId: number, data: { pricingInputs: Record<string, any>; unitPrices: Record<string, Record<number, number>>; weldUnitPrices: Record<string, number> }) =>
+    supplierApiClient.saveQuoteProgress(boqId, data),
+  submitQuote: (boqId: number, data: { pricingInputs: Record<string, any>; unitPrices: Record<string, Record<number, number>>; weldUnitPrices: Record<string, number>; notes?: string }) =>
+    supplierApiClient.submitQuote(boqId, data),
 };
