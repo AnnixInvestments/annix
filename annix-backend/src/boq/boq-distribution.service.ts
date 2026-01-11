@@ -22,6 +22,8 @@ import {
 } from '../supplier/entities/supplier-onboarding.entity';
 import { EmailService } from '../email/email.service';
 import { RfqItem } from '../rfq/entities/rfq-item.entity';
+import { FlangeStandard } from '../flange-standard/entities/flange-standard.entity';
+import { FlangePressureClass } from '../flange-pressure-class/entities/flange-pressure-class.entity';
 import {
   BOQ_SECTION_TO_CAPABILITY,
   CAPABILITY_TO_SECTIONS,
@@ -132,6 +134,10 @@ export class BoqDistributionService {
     private onboardingRepository: Repository<SupplierOnboarding>,
     @InjectRepository(RfqItem)
     private rfqItemRepository: Repository<RfqItem>,
+    @InjectRepository(FlangeStandard)
+    private flangeStandardRepository: Repository<FlangeStandard>,
+    @InjectRepository(FlangePressureClass)
+    private flangePressureClassRepository: Repository<FlangePressureClass>,
     private emailService: EmailService,
   ) {}
 
@@ -463,7 +469,12 @@ export class BoqDistributionService {
   async getRfqItemsForBoq(
     boqId: number,
     supplierProfileId: number,
-  ): Promise<RfqItem[]> {
+  ): Promise<
+    (RfqItem & {
+      flangeStandardCode?: string;
+      flangePressureClassDesignation?: string;
+    })[]
+  > {
     const access = await this.accessRepository.findOne({
       where: { boqId, supplierProfileId },
     });
@@ -489,7 +500,46 @@ export class BoqDistributionService {
       order: { lineNumber: 'ASC' },
     });
 
-    return rfqItems;
+    const flangeStandardIds = new Set<number>();
+    const flangePressureClassIds = new Set<number>();
+
+    rfqItems.forEach((item) => {
+      if (item.bendDetails?.flangeStandardId) {
+        flangeStandardIds.add(item.bendDetails.flangeStandardId);
+      }
+      if (item.bendDetails?.flangePressureClassId) {
+        flangePressureClassIds.add(item.bendDetails.flangePressureClassId);
+      }
+    });
+
+    const flangeStandardsMap = new Map<number, string>();
+    const flangePressureClassesMap = new Map<number, string>();
+
+    if (flangeStandardIds.size > 0) {
+      const standards = await this.flangeStandardRepository.find({
+        where: { id: In([...flangeStandardIds]) },
+      });
+      standards.forEach((s) => flangeStandardsMap.set(s.id, s.code));
+    }
+
+    if (flangePressureClassIds.size > 0) {
+      const pressureClasses = await this.flangePressureClassRepository.find({
+        where: { id: In([...flangePressureClassIds]) },
+      });
+      pressureClasses.forEach((pc) =>
+        flangePressureClassesMap.set(pc.id, pc.designation),
+      );
+    }
+
+    return rfqItems.map((item) => ({
+      ...item,
+      flangeStandardCode: item.bendDetails?.flangeStandardId
+        ? flangeStandardsMap.get(item.bendDetails.flangeStandardId)
+        : undefined,
+      flangePressureClassDesignation: item.bendDetails?.flangePressureClassId
+        ? flangePressureClassesMap.get(item.bendDetails.flangePressureClassId)
+        : undefined,
+    }));
   }
 
   /**

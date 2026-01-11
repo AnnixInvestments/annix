@@ -13,6 +13,8 @@ import { SupplierModule } from '../supplier/supplier.module';
 import { EmailModule } from '../email/email.module';
 import { Rfq } from '../rfq/entities/rfq.entity';
 import { RfqItem } from '../rfq/entities/rfq-item.entity';
+import { FlangeStandard } from '../flange-standard/entities/flange-standard.entity';
+import { FlangePressureClass } from '../flange-pressure-class/entities/flange-pressure-class.entity';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { RfqItem } from '../rfq/entities/rfq-item.entity';
       BoqSupplierAccess,
       Rfq,
       RfqItem,
+      FlangeStandard,
+      FlangePressureClass,
     ]),
     MulterModule.register({
       limits: {

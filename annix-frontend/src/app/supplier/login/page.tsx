@@ -30,7 +30,7 @@ export default function SupplierLoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password, fingerprint, browserInfo ?? undefined);
+      await login(email, password, fingerprint, browserInfo ?? undefined, rememberMe);
       router.push('/supplier/portal/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');

@@ -11,7 +11,7 @@ interface SupplierAuthState {
 }
 
 interface SupplierAuthContextType extends SupplierAuthState {
-  login: (email: string, password: string, deviceFingerprint: string, browserInfo?: Record<string, any>) => Promise<void>;
+  login: (email: string, password: string, deviceFingerprint: string, browserInfo?: Record<string, any>, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refreshDashboard: () => Promise<void>;
 }
@@ -72,7 +72,8 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     deviceFingerprint: string,
-    browserInfo?: Record<string, any>
+    browserInfo?: Record<string, any>,
+    rememberMe: boolean = false
   ) => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
@@ -82,7 +83,7 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
         password,
         deviceFingerprint,
         browserInfo,
-      });
+      }, rememberMe);
 
       const dashboard = await supplierApiClient.getDashboard();
 

@@ -92,9 +92,15 @@ export class UnifiedBendDto {
   @IsNumber()
   wallThicknessMm?: number;
 
-  @ApiProperty({ description: 'Bend type (1D, 3D, 5D)', example: '3D' })
+  @ApiProperty({ description: 'Bend type (1D, 1.5D, 2D, 3D, 5D) - for pulled bends', example: '3D', required: false })
+  @IsOptional()
   @IsString()
-  bendType: string;
+  bendType?: string;
+
+  @ApiProperty({ description: 'Bend radius type (elbow, medium, long) - for SABS 719 segmented bends', example: 'long', required: false })
+  @IsOptional()
+  @IsString()
+  bendRadiusType?: string;
 
   @ApiProperty({ description: 'Bend degrees', example: 90 })
   @IsNumber()
@@ -112,6 +118,20 @@ export class UnifiedBendDto {
   @ApiProperty({ description: 'Tangent lengths in mm', example: [1500] })
   @IsArray()
   tangentLengths: number[];
+
+  @ApiProperty({ description: 'Center to face dimension in mm', required: false })
+  @IsOptional()
+  @IsNumber()
+  centerToFaceMm?: number;
+
+  @ApiProperty({ description: 'Number of segments (for segmented bends)', required: false })
+  @IsOptional()
+  @IsNumber()
+  numberOfSegments?: number;
+
+  @ApiProperty({ description: 'Calculation data JSON', required: false })
+  @IsOptional()
+  calculationData?: Record<string, any>;
 
   @ApiProperty({ description: 'Quantity type', example: 'number_of_items' })
   @IsString()

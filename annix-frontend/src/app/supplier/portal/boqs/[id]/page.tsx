@@ -15,7 +15,7 @@ import {
 import { useToast } from '@/app/components/Toast';
 import { formatDateTimeZA, nowISO } from '@/app/lib/datetime';
 import { currencyByCode, DEFAULT_CURRENCY, vatRateForCurrency } from '@/app/lib/currencies';
-import { NB_TO_OD_LOOKUP } from '@/app/lib/config/rfq/flangeWeights';
+import { NB_TO_OD_LOOKUP, flangeWeight, blankFlangeWeight, sansBlankFlangeWeight } from '@/app/lib/config/rfq/flangeWeights';
 import { weldCountPerPipe, weldCountPerBend, weldCountPerFitting } from '@/app/lib/config/rfq/pipeEndOptions';
 
 interface PricingInputs {
@@ -70,17 +70,39 @@ const flangeCountFromConfig = (config: string | undefined, itemType: string): nu
   if (!config || config === 'PE') return 0;
   if (itemType === 'bend' || itemType === 'straight_pipe') {
     const counts: Record<string, number> = {
-      'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, '2xLF': 4,
+      'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, '2xLF': 2,
     };
     return counts[config] || 0;
   }
   if (itemType === 'fitting') {
     const counts: Record<string, number> = {
-      'FAE': 3, 'FFF': 3, 'F2E': 2, 'F2E_RF': 2, 'F2E_LF': 2, 'FFP': 2, 'PFF': 2, 'PPF': 1, 'FPP': 1, 'PFP': 1,
+      'FAE': 3, 'FFF': 3, 'F2E': 2, 'F2E_RF': 3, 'F2E_LF': 3, '3X_RF': 3, '2X_RF_FOE': 3,
+      'FFP': 2, 'PFF': 2, 'PPF': 1, 'FPP': 1, 'PFP': 1,
     };
     return counts[config] || 0;
   }
   return 0;
+};
+
+const recalculateFlangeWeight = (description: string, qty: number, isBlankFlange: boolean): number => {
+  const nbMatch = description.match(/(\d+)\s*NB/i);
+  const nb = nbMatch ? parseInt(nbMatch[1]) : 0;
+  if (nb === 0) return 0;
+
+  const pressureClassMatch = description.match(/(\d+\/\d)/);
+  const pressureClass = pressureClassMatch ? pressureClassMatch[1] : 'PN16';
+
+  const isSans = description.toUpperCase().includes('SABS') || description.toUpperCase().includes('SANS') || pressureClassMatch;
+  const flangeStandard = isSans ? 'SANS 1123' : '';
+
+  if (isBlankFlange || description.toUpperCase().includes('BLANK')) {
+    if (isSans) {
+      return sansBlankFlangeWeight(nb, pressureClass) * qty;
+    }
+    return blankFlangeWeight(nb, pressureClass) * qty;
+  }
+
+  return flangeWeight(nb, pressureClass, flangeStandard) * qty;
 };
 
 const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
@@ -196,7 +218,10 @@ const countFlangesFromConfig = (config: string | undefined, itemType: string): n
     return counts[config] || 0;
   }
   if (itemType === 'fitting') {
-    const counts: Record<string, number> = { 'FAE': 3, 'FFF': 3, 'F2E': 2, 'F2E_RF': 2, 'F2E_LF': 2, 'FFP': 2, 'PFF': 2, 'PPF': 1, 'FPP': 1, 'PFP': 1 };
+    const counts: Record<string, number> = {
+      'FAE': 3, 'FFF': 3, 'F2E': 2, 'F2E_RF': 3, 'F2E_LF': 3, '3X_RF': 3, '2X_RF_FOE': 3,
+      'FFP': 2, 'PFF': 2, 'PPF': 1, 'FPP': 1, 'PFP': 1
+    };
     return counts[config] || 0;
   }
   return 0;
@@ -615,73 +640,114 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 
     const workbook = XLSX.utils.book_new();
 
-    // Create a sheet for each section
-    boqDetail.sections.forEach((section) => {
-      const hasWelds = section.items.some(
-        (item) =>
-          item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld
-      );
-      const hasAreas = section.items.some((item) => item.areas?.intAreaM2 || item.areas?.extAreaM2);
+    if (viewMode === 'rfq' && rfqItems.length > 0) {
+      const headers = [
+        'Line #', 'Type', 'Description', 'Qty', 'NB (mm)', 'Wall/Sch',
+        'End Config', 'Weight/Unit (kg)', 'Total Weight (kg)', 'Notes'
+      ];
 
-      // Build headers
-      const headers = ['#', 'Description', 'Qty', 'Unit'];
-      if (hasWelds) {
-        headers.push('Flange Weld (m)', 'Mitre Weld (m)', 'Tee Weld (m)');
-      }
-      if (hasAreas) {
-        headers.push('Int Area (m²)', 'Ext Area (m²)');
-      }
-      headers.push('Weight (kg)');
+      const rows = rfqItems.map((item) => {
+        const details = item.straightPipeDetails || item.bendDetails || item.fittingDetails;
+        const nb = item.straightPipeDetails?.nominalBoreMm ||
+                   item.bendDetails?.nominalBoreMm ||
+                   item.fittingDetails?.nominalDiameterMm || '-';
+        const wallSch = details?.scheduleNumber
+          ? `Sch ${details.scheduleNumber}`
+          : details?.wallThicknessMm
+            ? `${details.wallThicknessMm}mm`
+            : '-';
+        const endConfig = item.straightPipeDetails?.pipeEndConfiguration ||
+                          item.bendDetails?.bendEndConfiguration ||
+                          item.fittingDetails?.pipeEndConfiguration || '-';
 
-      // Build rows
-      const rows = section.items.map((item, idx) => {
-        const row: (string | number)[] = [idx + 1, item.description, item.qty, item.unit];
-        if (hasWelds) {
-          row.push(
-            item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-',
-            item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-',
-            item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'
-          );
-        }
-        if (hasAreas) {
-          row.push(
-            item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-',
-            item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'
-          );
-        }
-        row.push(Number(item.weightKg || 0).toFixed(2));
-        return row;
+        return [
+          item.lineNumber,
+          item.itemType,
+          item.description,
+          item.quantity,
+          nb,
+          wallSch,
+          endConfig,
+          Number(item.weightPerUnitKg || 0).toFixed(2),
+          Number(item.totalWeightKg || 0).toFixed(2),
+          item.notes || ''
+        ];
       });
 
-      // Add totals row
-      const totalWeightIdx = headers.indexOf('Weight (kg)');
-      const totalsRow: (string | number)[] = headers.map((_, idx) => {
-        if (idx === 1) return 'TOTAL';
-        if (idx === totalWeightIdx) return Number(section.totalWeightKg || 0).toFixed(2);
-        return '';
-      });
-      rows.push(totalsRow);
+      const totalWeight = rfqItems.reduce((sum, item) => sum + Number(item.totalWeightKg || 0), 0);
+      rows.push(['', '', 'TOTAL', '', '', '', '', '', totalWeight.toFixed(2), '']);
 
       const wsData = [headers, ...rows];
       const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-      // Set column widths
       ws['!cols'] = [
-        { wch: 5 },
-        { wch: 50 },
-        { wch: 8 },
-        { wch: 8 },
-        ...Array(headers.length - 4).fill({ wch: 15 }),
+        { wch: 6 }, { wch: 12 }, { wch: 60 }, { wch: 6 }, { wch: 8 },
+        { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 30 }
       ];
+      XLSX.utils.book_append_sheet(workbook, ws, 'RFQ Items');
 
-      // Clean sheet name (max 31 chars, no special chars)
-      const sheetName = section.sectionTitle.substring(0, 31).replace(/[\\/*?:[\]]/g, '');
-      XLSX.utils.book_append_sheet(workbook, ws, sheetName);
-    });
+      const fileName = `RFQ_${boqDetail.boq.boqNumber}_${nowISO().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+    } else {
+      boqDetail.sections.forEach((section) => {
+        const hasWelds = section.items.some(
+          (item) =>
+            item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld
+        );
+        const hasAreas = section.items.some((item) => item.areas?.intAreaM2 || item.areas?.extAreaM2);
 
-    // Download
-    const fileName = `BOQ_${boqDetail.boq.boqNumber}_${nowISO().split('T')[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
+        const headers = ['#', 'Description', 'Qty', 'Unit'];
+        if (hasWelds) {
+          headers.push('Flange Weld (m)', 'Mitre Weld (m)', 'Tee Weld (m)');
+        }
+        if (hasAreas) {
+          headers.push('Int Area (m²)', 'Ext Area (m²)');
+        }
+        headers.push('Weight (kg)');
+
+        const rows = section.items.map((item, idx) => {
+          const row: (string | number)[] = [idx + 1, item.description, item.qty, item.unit];
+          if (hasWelds) {
+            row.push(
+              item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-',
+              item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-',
+              item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'
+            );
+          }
+          if (hasAreas) {
+            row.push(
+              item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-',
+              item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'
+            );
+          }
+          row.push(Number(item.weightKg || 0).toFixed(2));
+          return row;
+        });
+
+        const totalWeightIdx = headers.indexOf('Weight (kg)');
+        const totalsRow: (string | number)[] = headers.map((_, idx) => {
+          if (idx === 1) return 'TOTAL';
+          if (idx === totalWeightIdx) return Number(section.totalWeightKg || 0).toFixed(2);
+          return '';
+        });
+        rows.push(totalsRow);
+
+        const wsData = [headers, ...rows];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = [
+          { wch: 5 },
+          { wch: 50 },
+          { wch: 8 },
+          { wch: 8 },
+          ...Array(headers.length - 4).fill({ wch: 15 }),
+        ];
+
+        const sheetName = section.sectionTitle.substring(0, 31).replace(/[\\/*?:[\]]/g, '');
+        XLSX.utils.book_append_sheet(workbook, ws, sheetName);
+      });
+
+      const fileName = `BOQ_${boqDetail.boq.boqNumber}_${nowISO().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+    }
   };
 
   const formatDate = (dateString?: string) => {
@@ -720,7 +786,56 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Project & Customer Info - Compact 3-column layout */}
+      {(boqDetail.projectInfo || boqDetail.customerInfo) && (
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="grid grid-cols-3 gap-x-6 gap-y-2">
+            {/* Row 1 */}
+            <div>
+              <span className="text-xs font-medium text-gray-500">Project</span>
+              <p className="text-sm text-gray-900">{boqDetail.projectInfo?.name || '-'}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-gray-500">Description</span>
+              <p className="text-sm text-gray-900 truncate">{boqDetail.projectInfo?.description || '-'}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-gray-500">Required Date</span>
+              <p className="text-sm text-gray-900">{boqDetail.projectInfo?.requiredDate ? formatDate(boqDetail.projectInfo.requiredDate) : '-'}</p>
+            </div>
+            {/* Row 2 */}
+            <div>
+              <span className="text-xs font-medium text-gray-500">Customer</span>
+              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.company || '-'}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-gray-500">Contact</span>
+              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.name || '-'}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-gray-500">Email</span>
+              <p className="text-sm text-gray-900">
+                {boqDetail.customerInfo?.email ? (
+                  <a href={`mailto:${boqDetail.customerInfo.email}`} className="text-blue-600 hover:underline">
+                    {boqDetail.customerInfo.email}
+                  </a>
+                ) : '-'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pricing Inputs Section */}
+      <PricingInputsSection
+        extractedSpecs={extractedSpecs}
+        pricingInputs={pricingInputs}
+        onPricingInputChange={handlePricingInputChange}
+        onPercentageChange={handlePercentageChange}
+        currencyCode={supplierCurrency}
+      />
+
+      {/* Header with BOQ Number and Action Buttons */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -776,55 +891,6 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
-
-      {/* Project & Customer Info - Compact 3-column layout */}
-      {(boqDetail.projectInfo || boqDetail.customerInfo) && (
-        <div className="bg-white rounded-lg shadow-sm p-4">
-          <div className="grid grid-cols-3 gap-x-6 gap-y-2">
-            {/* Row 1 */}
-            <div>
-              <span className="text-xs font-medium text-gray-500">Project</span>
-              <p className="text-sm text-gray-900">{boqDetail.projectInfo?.name || '-'}</p>
-            </div>
-            <div>
-              <span className="text-xs font-medium text-gray-500">Description</span>
-              <p className="text-sm text-gray-900 truncate">{boqDetail.projectInfo?.description || '-'}</p>
-            </div>
-            <div>
-              <span className="text-xs font-medium text-gray-500">Required Date</span>
-              <p className="text-sm text-gray-900">{boqDetail.projectInfo?.requiredDate ? formatDate(boqDetail.projectInfo.requiredDate) : '-'}</p>
-            </div>
-            {/* Row 2 */}
-            <div>
-              <span className="text-xs font-medium text-gray-500">Customer</span>
-              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.company || '-'}</p>
-            </div>
-            <div>
-              <span className="text-xs font-medium text-gray-500">Contact</span>
-              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.name || '-'}</p>
-            </div>
-            <div>
-              <span className="text-xs font-medium text-gray-500">Email</span>
-              <p className="text-sm text-gray-900">
-                {boqDetail.customerInfo?.email ? (
-                  <a href={`mailto:${boqDetail.customerInfo.email}`} className="text-blue-600 hover:underline">
-                    {boqDetail.customerInfo.email}
-                  </a>
-                ) : '-'}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pricing Inputs Section */}
-      <PricingInputsSection
-        extractedSpecs={extractedSpecs}
-        pricingInputs={pricingInputs}
-        onPricingInputChange={handlePricingInputChange}
-        onPercentageChange={handlePercentageChange}
-        currencyCode={supplierCurrency}
-      />
 
       {/* BOQ/RFQ Content */}
       {viewMode === 'boq' ? (
@@ -1625,9 +1691,17 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
   const isBlankFlangesSection = section.sectionType === 'blank_flanges';
   const isBnwSection = section.sectionType === 'bnw_sets';
 
+  const effectiveItemWeight = (item: ConsolidatedItem): number => {
+    if (isFlangesSection) {
+      return recalculateFlangeWeight(item.description, item.qty, isBlankFlangesSection);
+    }
+    return Number(item.weightKg || 0);
+  };
+
   const calculateSuggestedPrice = (item: ConsolidatedItem): number => {
     const description = item.description.toUpperCase();
-    const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
+    const itemWeight = effectiveItemWeight(item);
+    const weightPerUnit = item.qty > 0 ? (itemWeight / item.qty) : 0;
 
     if (isBnwSection) {
       const totalBnwWeight = weightPerUnit;
@@ -1738,7 +1812,9 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
     teeWeld: section.items.reduce((sum, item) => sum + (item.welds?.teeWeld || 0), 0),
     intArea: section.items.reduce((sum, item) => sum + (item.areas?.intAreaM2 || 0), 0),
     extArea: section.items.reduce((sum, item) => sum + (item.areas?.extAreaM2 || 0), 0),
-    weight: Number(section.totalWeightKg) || 0,
+    weight: isFlangesSection
+      ? section.items.reduce((sum, item) => sum + effectiveItemWeight(item), 0)
+      : Number(section.totalWeightKg) || 0,
   };
 
   const formatCurrency = (value: number): string => {
@@ -1842,7 +1918,7 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
                       </>
                     )}
                     <td className="w-28 px-3 py-2 text-sm text-gray-900 text-right font-medium">
-                      {Number(item.weightKg || 0).toFixed(2)}
+                      {effectiveItemWeight(item).toFixed(2)}
                     </td>
                   </tr>
                   {isFabricatedSection && totalWeldLm > 0 && (
@@ -2014,7 +2090,7 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
     return value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const accessorySectionOrder = ['blank_flanges', 'bnw_sets', 'gaskets'];
+  const accessorySectionOrder = ['bnw_sets', 'gaskets'];
   const accessorySections = sections?.filter(s =>
     accessorySectionOrder.includes(s.sectionType)
   ).sort((a, b) => accessorySectionOrder.indexOf(a.sectionType) - accessorySectionOrder.indexOf(b.sectionType)) || [];
@@ -2043,6 +2119,10 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
       return wt && !isNaN(wt) ? `${wt.toFixed(2)}mm W/T` : (scheduleNumber || '-');
     }
     return scheduleNumber || (wallThicknessMm ? `${Number(wallThicknessMm).toFixed(2)}mm W/T` : '-');
+  };
+
+  const roundToNearestWeldThickness = (wt: number): number => {
+    return Math.round(wt / 1.5) * 1.5;
   };
 
   interface WeldBreakdown {
@@ -2245,20 +2325,11 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
     return null;
   };
 
-  const flangeWeightByNB: Record<number, number> = {
-    15: 0.8, 20: 1.1, 25: 1.4, 32: 1.8, 40: 2.2, 50: 2.8, 65: 4.2, 80: 5.0,
-    100: 7.5, 125: 10.5, 150: 13.0, 200: 18.0, 250: 28.0, 300: 38.0,
-    350: 48.0, 400: 58.0, 450: 68.0, 500: 65.0, 600: 95.0, 700: 120.0,
-    750: 135.0, 800: 150.0, 900: 180.0, 1000: 220.0, 1050: 240.0, 1200: 300.0,
-  };
-
-  const calculateFlangeWeight = (nb: number, config: string | undefined, itemType: string, qty: number): number => {
+  const calculateFlangeWeight = (nb: number, config: string | undefined, itemType: string, qty: number, pressureClass?: string, flangeStandard?: string): number => {
     const flangeCount = flangeCountFromConfig(config, itemType);
     if (flangeCount === 0) return 0;
-    const closestNB = Object.keys(flangeWeightByNB)
-      .map(Number)
-      .reduce((prev, curr) => Math.abs(curr - nb) < Math.abs(prev - nb) ? curr : prev);
-    return flangeCount * (flangeWeightByNB[closestNB] || 0) * qty;
+    const singleFlangeWt = flangeWeight(nb, pressureClass || 'PN16', flangeStandard);
+    return flangeCount * singleFlangeWt * qty;
   };
 
   const calculateItemUnitPrice = (item: RfqItemDetail): number => {
@@ -2287,10 +2358,9 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
           item.bendDetails?.nominalBoreMm ||
           item.fittingDetails?.nominalDiameterMm || 0;
         const flangeCount = flangeCountFromConfig(endConfig, item.itemType);
-        const closestNB = Object.keys(flangeWeightByNB)
-          .map(Number)
-          .reduce((prev, curr) => Math.abs(curr - nb) < Math.abs(prev - nb) ? curr : prev);
-        const flangeWeightPerUnit = flangeCount * (flangeWeightByNB[closestNB] || 0);
+        const flangeStandard = item.flangeStandardCode || 'SANS 1123';
+        const pressureClass = item.flangePressureClassDesignation || '1000/3';
+        const flangeWeightPerUnit = flangeCount * flangeWeight(nb, pressureClass, flangeStandard);
 
         if (isRotatingFlange(endConfig)) {
           flangePrice = flangeWeightPerUnit * (pricingInputs.flangeTypes['rotating'] || 0);
@@ -2301,11 +2371,14 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
 
       if (item.fittingDetails?.addBlankFlange && item.fittingDetails.blankFlangeCount) {
         const blankNb = item.fittingDetails.nominalDiameterMm || 0;
-        const closestBlankNB = Object.keys(flangeWeightByNB)
-          .map(Number)
-          .reduce((prev, curr) => Math.abs(curr - blankNb) < Math.abs(prev - blankNb) ? curr : prev);
-        const blankFlangeWeight = (flangeWeightByNB[closestBlankNB] || 0) * 0.6 * item.fittingDetails.blankFlangeCount;
-        flangePrice += blankFlangeWeight * (pricingInputs.flangeTypes['blank'] || 0);
+        const flangeStandard = item.flangeStandardCode || 'SANS 1123';
+        const pressureClass = item.flangePressureClassDesignation || '1000/3';
+        const isSans = flangeStandard.toUpperCase().includes('SANS');
+        const singleBlankWt = isSans
+          ? sansBlankFlangeWeight(blankNb, pressureClass)
+          : blankFlangeWeight(blankNb, pressureClass);
+        const blankWt = singleBlankWt * item.fittingDetails.blankFlangeCount;
+        flangePrice += blankWt * (pricingInputs.flangeTypes['blank'] || 0);
       }
 
       const weldInfo = calculateWeldLinearMeterage(item);
@@ -2336,7 +2409,7 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
   return (
     <div className="space-y-6">
       {/* Items List */}
-      <div className="space-y-4">
+      <div className="space-y-2">
         {items.map((item, index) => {
           const colors = itemTypeColors[item.itemType] || itemTypeColors.straight_pipe;
           const details = item.straightPipeDetails || item.bendDetails || item.fittingDetails;
@@ -2345,13 +2418,13 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
           const qty = item.quantity || 1;
 
           return (
-            <div key={item.id} className={`border border-gray-200 rounded-lg p-4 ${colors.bg}`}>
-              <div className="flex justify-between items-start mb-3">
+            <div key={item.id} className={`border border-gray-200 rounded-lg p-3 ${colors.bg}`}>
+              <div className="flex justify-between items-start mb-1">
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 text-xs font-semibold rounded ${colors.badge} ${colors.badgeText}`}>
+                  <span className={`px-2 py-0.5 text-xs font-semibold rounded ${colors.badge} ${colors.badgeText}`}>
                     {formatItemType(item.itemType)}
                   </span>
-                  <h4 className="font-medium text-gray-800">Item #{item.lineNumber || index + 1}</h4>
+                  <h4 className="font-medium text-gray-800 text-sm">Item #{item.lineNumber || index + 1}</h4>
                 </div>
                 <div className="text-right">
                   <span className="text-sm font-semibold text-gray-700">
@@ -2360,10 +2433,10 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                 </div>
               </div>
 
-              <p className="text-sm text-gray-700 mb-3 font-medium">{item.description}</p>
+              <p className="text-xs text-gray-700 mb-2 font-medium">{item.description}</p>
 
               {/* Item Details Grid - Consistent format for all item types */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-x-3 gap-y-1 text-xs">
                 {item.straightPipeDetails && (
                   <>
                     <div>
@@ -2401,17 +2474,21 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                       <span className="font-medium">{Number(item.weightPerUnitKg || 0).toFixed(2)} kg</span>
                     </div>
                     {item.straightPipeDetails.pipeEndConfiguration && item.straightPipeDetails.pipeEndConfiguration !== 'PE' && (() => {
-                      const flangeWt = calculateFlangeWeight(
-                        Number(item.straightPipeDetails.nominalBoreMm),
-                        item.straightPipeDetails.pipeEndConfiguration,
-                        'straight_pipe',
-                        item.quantity || item.straightPipeDetails.quantityValue || 1
-                      );
+                      const nb = Math.round(Number(item.straightPipeDetails.nominalBoreMm));
+                      const qty = item.quantity || item.straightPipeDetails.quantityValue || 1;
                       const flangeCount = flangeCountFromConfig(item.straightPipeDetails.pipeEndConfiguration, 'straight_pipe');
-                      return flangeWt > 0 ? (
-                        <div>
-                          <span className="text-gray-500">Flanges ({flangeCount}x):</span>{' '}
-                          <span className="font-medium text-amber-600">{flangeWt.toFixed(2)} kg</span>
+                      const totalFlanges = flangeCount * qty;
+                      const flangeStandard = item.flangeStandardCode || 'SANS 1123';
+                      const pressureClass = item.flangePressureClassDesignation || '1000/3';
+                      const singleFlangeWt = flangeWeight(nb, pressureClass, flangeStandard);
+                      const totalFlangeWt = singleFlangeWt * totalFlanges;
+                      return totalFlanges > 0 ? (
+                        <div className="col-span-2">
+                          <span className="text-gray-500">Flanges:</span>{' '}
+                          <span className="font-medium">
+                            {totalFlanges}x {nb}NB {flangeStandard} {pressureClass} = {totalFlangeWt.toFixed(2)} kg
+                          </span>
+                          <span className="text-gray-500 text-xs ml-2">({singleFlangeWt.toFixed(2)} kg each)</span>
                         </div>
                       ) : null;
                     })()}
@@ -2426,7 +2503,7 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                         <div className="col-span-2">
                           <span className="text-gray-500">Weld L/m:</span>{' '}
                           <span className="font-medium text-purple-600">
-                            {parts.join(' + ')} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m ({Number(weldInfo.wallThicknessMm).toFixed(1)}mm WT)
+                            {parts.join(' + ')} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m ({roundToNearestWeldThickness(Number(weldInfo.wallThicknessMm)).toFixed(1)}mm WT)
                           </span>
                         </div>
                       );
@@ -2452,19 +2529,26 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                     </div>
                     <div>
                       <span className="text-gray-500">Type:</span>{' '}
-                      <span className="font-medium">{item.bendDetails.bendType || '1.5D'}</span>
+                      <span className="font-medium">
+                        {item.bendDetails.bendRadiusType
+                          ? `${item.bendDetails.bendRadiusType.charAt(0).toUpperCase() + item.bendDetails.bendRadiusType.slice(1)} Radius`
+                          : item.bendDetails.bendType || '1.5D'}
+                      </span>
                     </div>
                     {(() => {
                       const nb = Number(item.bendDetails.nominalBoreMm) || 0;
+                      const isSABS719 = !!item.bendDetails.bendRadiusType;
                       const bendType = item.bendDetails.bendType || '1.5D';
-                      const radiusFactor = parseFloat(bendType.replace('D', '')) || 1.5;
-                      const bendRadiusMm = nb * radiusFactor;
+                      const radiusFactor = isSABS719 ? 0 : (parseFloat(bendType.replace('D', '')) || 1.5);
+                      const bendRadiusMm = isSABS719 ? Number(item.bendDetails.centerToFaceMm) || 0 : nb * radiusFactor;
                       const bendAngleRad = ((Number(item.bendDetails.bendDegrees) || 90) * Math.PI) / 180;
                       const arcLengthMm = bendRadiusMm * bendAngleRad;
                       const calcData = item.bendDetails.calculationData;
-                      const tangents = calcData?.tangentLengths || [];
-                      const numberOfTangents = item.bendDetails.numberOfTangents || tangents.length || 0;
+                      const storedTangents = calcData?.tangentLengths || [];
+                      const numberOfTangents = item.bendDetails.numberOfTangents || storedTangents.length || 0;
                       const numberOfSegments = calcData?.numberOfSegments || 0;
+                      const centerToFace = Number(item.bendDetails.centerToFaceMm) || 0;
+                      const actualTangents = storedTangents.map((t: number) => Math.max(0, t - centerToFace));
                       return (
                         <>
                           <div>
@@ -2479,7 +2563,7 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                             <div>
                               <span className="text-gray-500">Tangents:</span>{' '}
                               <span className="font-medium text-blue-600">
-                                {numberOfTangents}x ({tangents.length > 0 ? tangents.map((t: number) => `${t}mm`).join(', ') : 'N/A'})
+                                {numberOfTangents}x ({actualTangents.length > 0 ? actualTangents.map((t: number) => `${Math.round(t)}mm`).join(', ') : 'N/A'})
                               </span>
                             </div>
                           )}
@@ -2506,20 +2590,64 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                       <span className="text-gray-500">Weight/Unit:</span>{' '}
                       <span className="font-medium">{Number(item.weightPerUnitKg || 0).toFixed(2)} kg</span>
                     </div>
-                    {item.bendDetails.bendEndConfiguration && item.bendDetails.bendEndConfiguration !== 'PE' && (() => {
-                      const flangeWt = calculateFlangeWeight(
-                        Number(item.bendDetails.nominalBoreMm),
-                        item.bendDetails.bendEndConfiguration,
-                        'bend',
-                        item.quantity || 1
+                    {(() => {
+                      const nb = Math.round(Number(item.bendDetails.nominalBoreMm));
+                      const qty = item.quantity || 1;
+                      const flangeStandard = item.flangeStandardCode || 'SANS 1123';
+                      const pressureClass = item.flangePressureClassDesignation || '1000/3';
+                      const calcData = item.bendDetails.calculationData;
+                      const stubs = calcData?.stubs || [];
+
+                      if (!item.bendDetails.bendEndConfiguration || item.bendDetails.bendEndConfiguration === 'PE') {
+                        return null;
+                      }
+
+                      const flangeItems: Array<{nb: number; count: number; weight: number; singleWeight: number}> = [];
+                      const mainFlangeCount = flangeCountFromConfig(item.bendDetails.bendEndConfiguration, 'bend');
+                      const stubsWithFlanges = stubs.filter((s: {nominalBoreMm?: number}) =>
+                        s.nominalBoreMm && s.nominalBoreMm > 0
                       );
-                      const flangeCount = flangeCountFromConfig(item.bendDetails.bendEndConfiguration, 'bend');
-                      return flangeWt > 0 ? (
-                        <div>
-                          <span className="text-gray-500">Flanges ({flangeCount}x):</span>{' '}
-                          <span className="font-medium text-amber-600">{flangeWt.toFixed(2)} kg</span>
+                      const stubFlangeCount = stubsWithFlanges.length;
+                      const actualMainFlanges = Math.max(0, mainFlangeCount - stubFlangeCount);
+
+                      if (actualMainFlanges > 0) {
+                        const singleFlangeWt = flangeWeight(nb, pressureClass, flangeStandard);
+                        flangeItems.push({
+                          nb,
+                          count: actualMainFlanges * qty,
+                          weight: singleFlangeWt * actualMainFlanges * qty,
+                          singleWeight: singleFlangeWt
+                        });
+                      }
+
+                      stubsWithFlanges.forEach((stub: {nominalBoreMm?: number}) => {
+                        if (stub.nominalBoreMm && stub.nominalBoreMm > 0) {
+                          const stubNb = Math.round(Number(stub.nominalBoreMm));
+                          const singleFlangeWt = flangeWeight(stubNb, pressureClass, flangeStandard);
+                          flangeItems.push({
+                            nb: stubNb,
+                            count: qty,
+                            weight: singleFlangeWt * qty,
+                            singleWeight: singleFlangeWt
+                          });
+                        }
+                      });
+
+                      if (flangeItems.length === 0) return null;
+
+                      return (
+                        <div className="col-span-2 space-y-1">
+                          {flangeItems.map((fi, idx) => (
+                            <div key={idx}>
+                              <span className="text-gray-500">Flanges:</span>{' '}
+                              <span className="font-medium">
+                                {fi.count}x {fi.nb}NB {flangeStandard} {pressureClass} = {fi.weight.toFixed(2)} kg
+                              </span>
+                              <span className="text-gray-500 text-xs ml-2">({fi.singleWeight.toFixed(2)} kg each)</span>
+                            </div>
+                          ))}
                         </div>
-                      ) : null;
+                      );
                     })()}
                     {(() => {
                       const weldInfo = calculateWeldLinearMeterage(item);
@@ -2528,12 +2656,13 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                       if (Number(weldInfo.flangeWeldMeters) > 0) parts.push(`Flange: ${Number(weldInfo.flangeWeldMeters).toFixed(2)}m`);
                       if (Number(weldInfo.buttWeldMeters) > 0) parts.push(`Butt: ${Number(weldInfo.buttWeldMeters).toFixed(2)}m`);
                       if (Number(weldInfo.mitreWeldMeters) > 0) parts.push(`Mitre: ${Number(weldInfo.mitreWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.teeWeldMeters) > 0) parts.push(`Tee: ${Number(weldInfo.teeWeldMeters).toFixed(2)}m`);
                       if (Number(weldInfo.tackWeldMeters) > 0) parts.push(`Tack: ${Number(weldInfo.tackWeldMeters).toFixed(2)}m`);
                       return (
                         <div className="col-span-2">
                           <span className="text-gray-500">Weld L/m:</span>{' '}
                           <span className="font-medium text-purple-600">
-                            {parts.join(' + ')} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m ({Number(weldInfo.wallThicknessMm).toFixed(1)}mm WT)
+                            {parts.join(' + ')} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m ({roundToNearestWeldThickness(Number(weldInfo.wallThicknessMm)).toFixed(1)}mm WT)
                           </span>
                         </div>
                       );
@@ -2578,18 +2707,6 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                       <span className="text-gray-500">Qty:</span>{' '}
                       <span className="font-medium">{item.quantity || 1}</span>
                     </div>
-                    {item.fittingDetails.pipeLengthAMm && (
-                      <div>
-                        <span className="text-gray-500">Length A:</span>{' '}
-                        <span className="font-medium text-blue-600">{Math.round(Number(item.fittingDetails.pipeLengthAMm))}mm</span>
-                      </div>
-                    )}
-                    {item.fittingDetails.pipeLengthBMm && (
-                      <div>
-                        <span className="text-gray-500">Length B:</span>{' '}
-                        <span className="font-medium text-blue-600">{Math.round(Number(item.fittingDetails.pipeLengthBMm))}mm</span>
-                      </div>
-                    )}
                     {item.fittingDetails.pipeEndConfiguration && item.fittingDetails.pipeEndConfiguration !== 'PE' && (
                       <div>
                         <span className="text-gray-500">End Config:</span>{' '}
@@ -2601,30 +2718,69 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                       <span className="font-medium">{Number(item.weightPerUnitKg || 0).toFixed(2)} kg</span>
                     </div>
                     {item.fittingDetails.pipeEndConfiguration && item.fittingDetails.pipeEndConfiguration !== 'PE' && (() => {
-                      const flangeWt = calculateFlangeWeight(
-                        Number(item.fittingDetails.nominalDiameterMm),
-                        item.fittingDetails.pipeEndConfiguration,
-                        'fitting',
-                        item.quantity || 1
-                      );
-                      const flangeCount = flangeCountFromConfig(item.fittingDetails.pipeEndConfiguration, 'fitting');
-                      return flangeWt > 0 ? (
-                        <div>
-                          <span className="text-gray-500">Flanges ({flangeCount}x):</span>{' '}
-                          <span className="font-medium text-amber-600">{flangeWt.toFixed(2)} kg</span>
+                      const flangeStandard = item.flangeStandardCode || 'SANS 1123';
+                      const pressureClass = item.flangePressureClassDesignation || '1000/3';
+                      const mainNb = Math.round(Number(item.fittingDetails.nominalDiameterMm));
+                      const branchNb = Math.round(Number(item.fittingDetails.branchNominalDiameterMm || mainNb));
+                      const qty = item.quantity || 1;
+                      const calcData = item.fittingDetails.calculationData;
+
+                      const flangeItems: Array<{nb: number; count: number; weight: number; singleWeight: number}> = [];
+
+                      const mainFlangeCount = calcData?.mainFlangeCount || 2;
+                      if (mainFlangeCount > 0) {
+                        const singleFlangeWt = flangeWeight(mainNb, pressureClass, flangeStandard);
+                        flangeItems.push({
+                          nb: mainNb,
+                          count: mainFlangeCount * qty,
+                          weight: singleFlangeWt * mainFlangeCount * qty,
+                          singleWeight: singleFlangeWt
+                        });
+                      }
+
+                      const branchFlangeCount = calcData?.branchFlangeCount || (branchNb !== mainNb ? 1 : 0);
+                      if (branchFlangeCount > 0 && branchNb !== mainNb) {
+                        const singleFlangeWt = flangeWeight(branchNb, pressureClass, flangeStandard);
+                        flangeItems.push({
+                          nb: branchNb,
+                          count: branchFlangeCount * qty,
+                          weight: singleFlangeWt * branchFlangeCount * qty,
+                          singleWeight: singleFlangeWt
+                        });
+                      }
+
+                      if (flangeItems.length === 0) return null;
+
+                      return (
+                        <div className="col-span-2 space-y-1">
+                          {flangeItems.map((fi, idx) => (
+                            <div key={idx}>
+                              <span className="text-gray-500">Flanges:</span>{' '}
+                              <span className="font-medium">
+                                {fi.count}x {fi.nb}NB {flangeStandard} {pressureClass} = {fi.weight.toFixed(2)} kg
+                              </span>
+                              <span className="text-gray-500 text-xs ml-2">({fi.singleWeight.toFixed(2)} kg each)</span>
+                            </div>
+                          ))}
                         </div>
-                      ) : null;
+                      );
                     })()}
                     {item.fittingDetails.addBlankFlange && item.fittingDetails.blankFlangeCount && (() => {
                       const blankFlangeNB = Math.round(Number(item.fittingDetails.nominalDiameterMm));
-                      const closestNB = Object.keys(flangeWeightByNB)
-                        .map(Number)
-                        .reduce((prev, curr) => Math.abs(curr - blankFlangeNB) < Math.abs(prev - blankFlangeNB) ? curr : prev);
-                      const blankWt = (flangeWeightByNB[closestNB] || 0) * 0.6 * item.fittingDetails.blankFlangeCount;
+                      const flangeStandard = item.flangeStandardCode || 'SANS 1123';
+                      const pressureClass = item.flangePressureClassDesignation || '1000/3';
+                      const isSans = flangeStandard.toUpperCase().includes('SANS');
+                      const singleBlankWt = isSans
+                        ? sansBlankFlangeWeight(blankFlangeNB, pressureClass)
+                        : blankFlangeWeight(blankFlangeNB, pressureClass);
+                      const totalBlankWt = singleBlankWt * item.fittingDetails.blankFlangeCount;
                       return (
-                        <div>
-                          <span className="text-gray-500">Blank Flange ({item.fittingDetails.blankFlangeCount}x):</span>{' '}
-                          <span className="font-medium text-orange-600">{blankWt.toFixed(2)} kg</span>
+                        <div className="col-span-2">
+                          <span className="text-gray-500">Blank Flanges:</span>{' '}
+                          <span className="font-medium">
+                            {item.fittingDetails.blankFlangeCount}x {blankFlangeNB}NB {flangeStandard} {pressureClass} = {totalBlankWt.toFixed(2)} kg
+                          </span>
+                          <span className="text-gray-500 text-xs ml-2">({singleBlankWt.toFixed(2)} kg each)</span>
                         </div>
                       );
                     })()}
@@ -2639,7 +2795,7 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                         <div className="col-span-2">
                           <span className="text-gray-500">Weld L/m:</span>{' '}
                           <span className="font-medium text-purple-600">
-                            {parts.join(' + ')} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m ({Number(weldInfo.wallThicknessMm).toFixed(1)}mm WT)
+                            {parts.join(' + ')} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m ({roundToNearestWeldThickness(Number(weldInfo.wallThicknessMm)).toFixed(1)}mm WT)
                           </span>
                         </div>
                       );
@@ -2662,8 +2818,84 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                 )}
               </div>
 
+              {/* Dimensions Section for Bends and Fittings */}
+              {item.bendDetails && (
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="text-xs text-gray-500 mb-1 font-medium">Dimensions:</div>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-x-3 gap-y-1 text-xs">
+                    {item.bendDetails.centerToFaceMm && (
+                      <div>
+                        <span className="text-gray-500">C/F:</span>{' '}
+                        <span className="font-medium text-indigo-600">{Math.round(Number(item.bendDetails.centerToFaceMm))}mm</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-gray-500">Angle:</span>{' '}
+                      <span className="font-medium text-indigo-600">{Number(item.bendDetails.bendDegrees || 90).toFixed(0)}°</span>
+                      {(() => {
+                        const segments = item.bendDetails?.numberOfSegments || item.bendDetails?.calculationData?.numberOfSegments;
+                        return segments && segments > 1 ? (
+                          <span className="font-medium text-orange-600"> ({segments} segments)</span>
+                        ) : null;
+                      })()}
+                    </div>
+                    {(() => {
+                      const storedTangents = item.bendDetails?.tangentLengths || item.bendDetails?.calculationData?.tangentLengths || [];
+                      const numTangents = item.bendDetails?.numberOfTangents || storedTangents.length || 0;
+                      if (numTangents === 0 || storedTangents.length === 0) return null;
+                      const centerToFace = Number(item.bendDetails?.centerToFaceMm) || 0;
+                      const actualTangents = storedTangents.map((t: number) => Math.max(0, t - centerToFace));
+                      const allSame = actualTangents.every((t: number) => t === actualTangents[0]);
+                      const formatted = allSame && actualTangents.length > 1
+                        ? `${actualTangents.length} x ${Math.round(actualTangents[0])}mm`
+                        : actualTangents.map((t: number) => `${Math.round(t)}mm`).join(', ');
+                      return (
+                        <div>
+                          <span className="text-gray-500">Tangents:</span>{' '}
+                          <span className="font-medium text-blue-600">{formatted}</span>
+                        </div>
+                      );
+                    })()}
+                    {(() => {
+                      const stubs = item.bendDetails?.stubLengths || item.bendDetails?.calculationData?.stubLengths || [];
+                      if (stubs.length === 0) return null;
+                      const allSame = stubs.every((s: number) => s === stubs[0]);
+                      const formatted = allSame && stubs.length > 1
+                        ? `${stubs.length} x ${Math.round(stubs[0])}mm`
+                        : stubs.map((s: number) => `${Math.round(s)}mm`).join(', ');
+                      return (
+                        <div>
+                          <span className="text-gray-500">Stubs:</span>{' '}
+                          <span className="font-medium text-green-600">{formatted}</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {item.fittingDetails && (item.fittingDetails.pipeLengthAMm || item.fittingDetails.pipeLengthBMm) && (
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="text-xs text-gray-500 mb-1 font-medium">Dimensions:</div>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-x-3 gap-y-1 text-xs">
+                    {item.fittingDetails.pipeLengthAMm && (
+                      <div>
+                        <span className="text-gray-500">Length A:</span>{' '}
+                        <span className="font-medium text-indigo-600">{Math.round(Number(item.fittingDetails.pipeLengthAMm))}mm</span>
+                      </div>
+                    )}
+                    {item.fittingDetails.pipeLengthBMm && (
+                      <div>
+                        <span className="text-gray-500">Length B:</span>{' '}
+                        <span className="font-medium text-blue-600">{Math.round(Number(item.fittingDetails.pipeLengthBMm))}mm</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {item.notes && (
-                <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="mt-2 pt-2 border-t border-gray-200">
                   <span className="text-xs text-gray-500">Notes:</span>{' '}
                   <span className="text-xs text-gray-700">{item.notes}</span>
                 </div>
@@ -2689,18 +2921,66 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                 let flangePricePerKg = 0;
                 let flangeCost = 0;
                 if (endConfig && endConfig !== 'PE') {
-                  const nb = item.straightPipeDetails?.nominalBoreMm ||
-                    item.bendDetails?.nominalBoreMm ||
-                    item.fittingDetails?.nominalDiameterMm || 0;
-                  const flangeCount = flangeCountFromConfig(endConfig, item.itemType);
-                  const closestNB = Object.keys(flangeWeightByNB)
-                    .map(Number)
-                    .reduce((prev, curr) => Math.abs(curr - nb) < Math.abs(prev - nb) ? curr : prev);
-                  flangeWeightKg = flangeCount * (flangeWeightByNB[closestNB] || 0);
+                  const flangeStandard = item.flangeStandardCode || 'SANS 1123';
+                  const pressureClass = item.flangePressureClassDesignation || '1000/3';
                   flangePricePerKg = isRotatingFlange(endConfig)
                     ? (pricingInputs.flangeTypes['rotating'] || 0)
                     : (pricingInputs.flangeTypes['slipOn'] || 0);
+
+                  if (item.bendDetails) {
+                    const mainNb = Math.round(Number(item.bendDetails.nominalBoreMm));
+                    const calcData = item.bendDetails.calculationData;
+                    const stubs = calcData?.stubs || [];
+                    const totalFlangeCount = flangeCountFromConfig(endConfig, 'bend');
+                    const stubFlangeCount = stubs.filter((s: { nominalBoreMm?: number }) => s.nominalBoreMm && s.nominalBoreMm > 0).length;
+                    const mainFlangeCount = Math.max(0, totalFlangeCount - stubFlangeCount);
+
+                    if (mainFlangeCount > 0) {
+                      flangeWeightKg += mainFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
+                    }
+                    stubs.forEach((stub: { nominalBoreMm?: number }) => {
+                      if (stub.nominalBoreMm && stub.nominalBoreMm > 0) {
+                        const stubNb = Math.round(Number(stub.nominalBoreMm));
+                        flangeWeightKg += flangeWeight(stubNb, pressureClass, flangeStandard);
+                      }
+                    });
+                  } else if (item.fittingDetails) {
+                    const mainNb = Math.round(Number(item.fittingDetails.nominalDiameterMm));
+                    const branchNb = Math.round(Number(item.fittingDetails.branchNominalDiameterMm || mainNb));
+                    const fittingConfig = item.fittingDetails.pipeEndConfiguration || '';
+                    const mainFlangeCount = ['FAE', 'FFF', 'F2E', 'FFP'].includes(fittingConfig) ? 2 :
+                                           ['F2E_RF', 'F2E_LF', 'PFF', 'FPP', 'PFP'].includes(fittingConfig) ? 1 : 0;
+                    const branchFlangeCount = ['FAE', 'FFF', 'F2E_RF', 'F2E_LF', 'PFF', 'PPF'].includes(fittingConfig) ? 1 : 0;
+
+                    if (mainFlangeCount > 0) {
+                      flangeWeightKg += mainFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
+                    }
+                    if (branchFlangeCount > 0 && branchNb !== mainNb) {
+                      flangeWeightKg += branchFlangeCount * flangeWeight(branchNb, pressureClass, flangeStandard);
+                    } else if (branchFlangeCount > 0) {
+                      flangeWeightKg += branchFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
+                    }
+                  } else if (item.straightPipeDetails) {
+                    const nb = Math.round(Number(item.straightPipeDetails.nominalBoreMm));
+                    const flangeCount = flangeCountFromConfig(endConfig, 'straight_pipe');
+                    flangeWeightKg = flangeCount * flangeWeight(nb, pressureClass, flangeStandard);
+                  }
+
                   flangeCost = flangeWeightKg * flangePricePerKg;
+                }
+
+                let blankFlangeWeightKg = 0;
+                let blankFlangeCost = 0;
+                if (item.fittingDetails?.addBlankFlange && item.fittingDetails.blankFlangeCount) {
+                  const blankNb = Math.round(Number(item.fittingDetails.nominalDiameterMm || 0));
+                  const flangeStandard = item.flangeStandardCode || 'SANS 1123';
+                  const pressureClass = item.flangePressureClassDesignation || '1000/3';
+                  const isSans = flangeStandard.toUpperCase().includes('SANS');
+                  const singleBlankWt = isSans
+                    ? sansBlankFlangeWeight(blankNb, pressureClass)
+                    : blankFlangeWeight(blankNb, pressureClass);
+                  blankFlangeWeightKg = singleBlankWt * item.fittingDetails.blankFlangeCount;
+                  blankFlangeCost = blankFlangeWeightKg * (pricingInputs.flangeTypes['blank'] || 0);
                 }
 
                 const weldInfo = calculateWeldLinearMeterage(item);
@@ -2712,12 +2992,12 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                 const weldRate = flangeWeldRate || mitreWeldRate || teeWeldRate || tackWeldRate;
                 const weldCost = totalWeldMeters * weldRate;
 
-                const subtotal = steelCost + flangeCost + weldCost;
+                const subtotal = steelCost + flangeCost + blankFlangeCost + weldCost;
                 const labourExtras = subtotal * (pricingInputs.labourExtrasPercent / 100);
 
                 return (
-                  <div className="mt-3 pt-3 border-t border-gray-300">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-3">
+                  <div className="mt-2 pt-2 border-t border-gray-300">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-2">
                       <div>
                         <span className="text-gray-500">Steel:</span>{' '}
                         <span className="font-medium">{weightPerUnit.toFixed(0)}kg × R{steelPricePerKg.toFixed(2)} = </span>
@@ -2728,6 +3008,13 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                           <span className="text-gray-500">Flanges:</span>{' '}
                           <span className="font-medium">{flangeWeightKg.toFixed(0)}kg × R{flangePricePerKg.toFixed(2)} = </span>
                           <span className="font-semibold text-amber-600">{currencySymbol}{formatCurrency(flangeCost)}</span>
+                        </div>
+                      )}
+                      {blankFlangeWeightKg > 0 && (
+                        <div>
+                          <span className="text-gray-500">Blank Flanges:</span>{' '}
+                          <span className="font-medium">{blankFlangeWeightKg.toFixed(0)}kg × R{(pricingInputs.flangeTypes['blank'] || 0).toFixed(2)} = </span>
+                          <span className="font-semibold text-orange-600">{currencySymbol}{formatCurrency(blankFlangeCost)}</span>
                         </div>
                       )}
                       {totalWeldMeters > 0 && (

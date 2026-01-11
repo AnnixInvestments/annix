@@ -193,6 +193,67 @@ export const boltSetCountPerPipe = (pipeEndConfig: string): number => {
   }
 };
 
+export interface StubFlangeConfig {
+  nominalBoreMm: number;
+  flangeSpec: string;
+}
+
+export const formatStubFlangeCode = (flangeSpec: string): string => {
+  if (!flangeSpec || flangeSpec === 'PE' || flangeSpec === '') return 'OE';
+  if (flangeSpec === '2xLF' || flangeSpec.toLowerCase().includes('lf')) return 'L/F';
+  if (flangeSpec === '2X_RF' || flangeSpec.toLowerCase().includes('rf')) return 'R/F';
+  if (flangeSpec === 'FBE' || flangeSpec === 'FOE') return 'S/O';
+  return flangeSpec;
+};
+
+export const formatCombinedEndConfig = (
+  mainEndConfig: string,
+  stubs: StubFlangeConfig[]
+): string => {
+  if (!stubs || stubs.length === 0) {
+    return mainEndConfig;
+  }
+
+  const flangedStubs = stubs.filter(s => s.flangeSpec && s.flangeSpec !== 'PE' && s.flangeSpec !== '');
+
+  if (flangedStubs.length === 0) {
+    return mainEndConfig;
+  }
+
+  const stubCodes = flangedStubs.map(s => {
+    const code = formatStubFlangeCode(s.flangeSpec);
+    return `${s.nominalBoreMm}NB ${code}`;
+  });
+
+  return `${mainEndConfig} + ${stubCodes.join(' + ')}`;
+};
+
+export const formatEndConfigForDescription = (
+  mainEndConfig: string,
+  stubs: StubFlangeConfig[]
+): string => {
+  const mainLabel = BEND_END_OPTIONS.find(o => o.value === mainEndConfig)?.label?.split(' - ')[0] ||
+                    PIPE_END_OPTIONS.find(o => o.value === mainEndConfig)?.label?.split(' - ')[0] ||
+                    mainEndConfig;
+
+  if (!stubs || stubs.length === 0) {
+    return mainLabel;
+  }
+
+  const flangedStubs = stubs.filter(s => s.flangeSpec && s.flangeSpec !== 'PE' && s.flangeSpec !== '');
+
+  if (flangedStubs.length === 0) {
+    return mainLabel;
+  }
+
+  const stubDescriptions = flangedStubs.map(s => {
+    const code = formatStubFlangeCode(s.flangeSpec);
+    return `${s.nominalBoreMm}NB Stub ${code}`;
+  });
+
+  return `${mainLabel} + ${stubDescriptions.join(' + ')}`;
+};
+
 // Bolt set count for fittings (tees/laterals)
 // Each flanged end needs a bolt set for its connection
 // FAE (3 flanged ends) = 3 bolt sets

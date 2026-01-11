@@ -32,9 +32,13 @@ export class BendRfq {
   })
   wallThicknessMm?: number;
 
-  @ApiProperty({ description: 'Bend type', example: '3D' })
-  @Column({ name: 'bend_type', type: 'varchar', length: 10 })
-  bendType: string;
+  @ApiProperty({ description: 'Bend type (for pulled bends)', example: '3D' })
+  @Column({ name: 'bend_type', type: 'varchar', length: 10, nullable: true })
+  bendType?: string;
+
+  @ApiProperty({ description: 'Bend radius type (for SABS 719 segmented bends)', example: 'long' })
+  @Column({ name: 'bend_radius_type', type: 'varchar', length: 20, nullable: true })
+  bendRadiusType?: string;
 
   @ApiProperty({ description: 'Bend angle in degrees', example: 45 })
   @Column({ name: 'bend_degrees', type: 'decimal', precision: 5, scale: 2 })
@@ -56,6 +60,10 @@ export class BendRfq {
   @ApiProperty({ description: 'Tangent lengths in mm', example: '[400]' })
   @Column({ name: 'tangent_lengths', type: 'json' })
   tangentLengths: number[];
+
+  @ApiProperty({ description: 'Number of segments (for segmented bends)', example: 5 })
+  @Column({ name: 'number_of_segments', type: 'int', nullable: true })
+  numberOfSegments?: number;
 
   @ApiProperty({ description: 'Quantity value', example: 1 })
   @Column({ name: 'quantity_value', type: 'decimal', precision: 10, scale: 2 })
@@ -136,6 +144,10 @@ export class BendRfq {
   @ApiProperty({ description: 'Lead time in days', example: 21 })
   @Column({ name: 'lead_time_days', type: 'int', nullable: true })
   leadTimeDays?: number;
+
+  @ApiProperty({ description: 'Calculation data as JSON', required: false })
+  @Column({ name: 'calculation_data', type: 'jsonb', nullable: true })
+  calculationData?: Record<string, any>;
 
   // Relationship to RfqItem
   @OneToOne(() => RfqItem, (rfqItem) => rfqItem.bendDetails)

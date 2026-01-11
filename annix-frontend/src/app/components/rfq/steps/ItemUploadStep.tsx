@@ -396,7 +396,13 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
         }
       }
 
-      description += ` ${bendAngle}° ${bendType} Bend`;
+      // Add segment count for SABS 719 segmented bends
+      const numSegments = entry.specs?.numberOfSegments || 0;
+      if (numSegments > 1) {
+        description += ` ${bendAngle}° ${bendType} ${numSegments} Seg Bend`;
+      } else {
+        description += ` ${bendAngle}° ${bendType} Bend`;
+      }
 
       // Add C/F - if tangents are present, show C/F + tangent for each end
       const tangentLengths = entry.specs?.tangentLengths || [];
@@ -447,24 +453,42 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
       }
 
       // Add flange config and specs if not plain ended
-      // Modify config label if stubs have flanges: FBE becomes FAE, or F2E+OE if no stub flange
+      // Format: F2E+R/F when stub has rotating flange, F2E+L/F for loose flange, etc.
       if (bendEndConfig && bendEndConfig !== 'PE') {
         let configLabel = bendEndConfig === 'FBE' ? 'FBE' :
                            bendEndConfig === 'FOE' ? 'FOE' :
                            bendEndConfig === 'FOE_LF' ? 'FOE+L/F' :
                            bendEndConfig === 'FOE_RF' ? 'FOE+R/F' :
+                           bendEndConfig === '2xLF' ? '2xL/F' :
                            bendEndConfig === '2X_RF' ? '2xR/F' : bendEndConfig;
 
-        // If stubs are present, modify the end config label
-        if (numStubs > 0) {
-          const anyStubHasFlange = stub1HasFlange || stub2HasFlange;
-          if (anyStubHasFlange) {
-            // FAE = Flanged All Ends (bend ends + stub flanges)
-            configLabel = 'FAE';
-          } else {
-            // F2E+OE = Flanged 2 Ends + Open Ended stubs
-            configLabel = bendEndConfig === 'FBE' ? 'F2E+OE' : configLabel;
+        // If stubs have flanges, add the stub flange type to the config label
+        if (numStubs > 0 && (stub1HasFlange || stub2HasFlange)) {
+          const stub1FlangeType = stubs[0]?.flangeType || 'S/O';
+          const stub2FlangeType = stubs[1]?.flangeType || 'S/O';
+
+          // Build stub flange suffix
+          const stubFlangeLabels: string[] = [];
+          if (stub1HasFlange && stubs[0]?.nominalBoreMm) {
+            stubFlangeLabels.push(stub1FlangeType);
           }
+          if (stub2HasFlange && stubs[1]?.nominalBoreMm) {
+            stubFlangeLabels.push(stub2FlangeType);
+          }
+
+          if (stubFlangeLabels.length > 0) {
+            // Convert main config to F2E format if FBE
+            const mainConfigLabel = bendEndConfig === 'FBE' ? 'F2E' :
+                                    bendEndConfig === 'FOE' ? 'FOE' :
+                                    bendEndConfig === 'FOE_LF' ? 'FOE+L/F' :
+                                    bendEndConfig === 'FOE_RF' ? 'FOE+R/F' :
+                                    bendEndConfig === '2xLF' ? '2xL/F' :
+                                    bendEndConfig === '2X_RF' ? '2xR/F' : bendEndConfig;
+            configLabel = `${mainConfigLabel}+${stubFlangeLabels.join('+')}`;
+          }
+        } else if (numStubs > 0) {
+          // Stubs without flanges: F2E+OE
+          configLabel = bendEndConfig === 'FBE' ? 'F2E+OE' : configLabel;
         }
 
         description += ` ${configLabel}`;

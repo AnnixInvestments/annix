@@ -250,6 +250,8 @@ export class SupplierBoqController {
       straightPipeDetails: item.straightPipeDetails,
       bendDetails: item.bendDetails,
       fittingDetails: item.fittingDetails,
+      flangeStandardCode: item.flangeStandardCode,
+      flangePressureClassDesignation: item.flangePressureClassDesignation,
     }));
   }
 

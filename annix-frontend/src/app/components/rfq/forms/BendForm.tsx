@@ -7,6 +7,7 @@ import {
   BEND_END_OPTIONS,
   SABS719_BEND_TYPES,
   sabs719CenterToFaceBySegments as getSABS719CenterToFaceBySegments,
+  sabs719CenterToFaceByWT as getSABS719CenterToFaceByWT,
   weldCountPerBend as getWeldCountPerBend,
   hasLooseFlange,
   getScheduleListForSpec,
@@ -250,11 +251,11 @@ export default function BendForm({
                               let newCenterToFace: number | undefined = undefined;
                               let newBendRadius: number | undefined = undefined;
 
-                              if (isSABS719 && entry.specs?.bendRadiusType && entry.specs?.numberOfSegments) {
-                                const cfResult = getSABS719CenterToFaceBySegments(
+                              if (isSABS719 && entry.specs?.bendRadiusType && matchedWT) {
+                                const cfResult = getSABS719CenterToFaceByWT(
                                   entry.specs.bendRadiusType,
                                   nominalBore,
-                                  entry.specs.numberOfSegments
+                                  matchedWT
                                 );
                                 if (cfResult) {
                                   newCenterToFace = cfResult.centerToFace;
@@ -329,12 +330,35 @@ export default function BendForm({
                             onChange={(schedule) => {
                               if (!schedule) return;
                               const scheduleData = schedules.find((s: any) => s.scheduleDesignation === schedule);
+                              const newWT = scheduleData?.wallThicknessMm;
+                              let newCenterToFace = entry.specs?.centerToFaceMm;
+                              let newBendRadius = entry.specs?.bendRadiusMm;
+                              if (isSABS719 && entry.specs?.bendRadiusType && entry.specs?.nominalBoreMm && newWT) {
+                                const cfResult = getSABS719CenterToFaceByWT(
+                                  entry.specs.bendRadiusType,
+                                  entry.specs.nominalBoreMm,
+                                  newWT
+                                );
+                                if (cfResult) {
+                                  newCenterToFace = cfResult.centerToFace;
+                                  newBendRadius = cfResult.radius;
+                                }
+                              }
                               const updatedEntry: any = {
                                 ...entry,
-                                specs: { ...entry.specs, scheduleNumber: schedule, wallThicknessMm: scheduleData?.wallThicknessMm }
+                                specs: {
+                                  ...entry.specs,
+                                  scheduleNumber: schedule,
+                                  wallThicknessMm: newWT,
+                                  centerToFaceMm: newCenterToFace,
+                                  bendRadiusMm: newBendRadius
+                                }
                               };
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
+                              if (entry.specs?.bendDegrees && entry.specs?.nominalBoreMm) {
+                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              }
                             }}
                             options={options}
                             placeholder={entry.specs?.nominalBoreMm ? 'Select Schedule' : 'Select NB first'}
@@ -567,7 +591,10 @@ export default function BendForm({
 
                         if (isAutoFill && entry.specs?.numberOfSegments !== 2) {
                           setTimeout(() => {
-                            const cfResult = getSABS719CenterToFaceBySegments(bendRadiusType, nominalBore, 2);
+                            const wallThickness = entry.specs?.wallThicknessMm;
+                            const cfResult = wallThickness
+                              ? getSABS719CenterToFaceByWT(bendRadiusType, nominalBore, wallThickness)
+                              : null;
                             const updatedEntry: any = {
                               ...entry,
                               specs: {
@@ -610,8 +637,9 @@ export default function BendForm({
                                 const segments = e.target.value ? parseInt(e.target.value) : undefined;
                                 let centerToFace: number | undefined;
                                 let bendRadius: number | undefined;
-                                if (segments && bendRadiusType && nominalBore) {
-                                  const cfResult = getSABS719CenterToFaceBySegments(bendRadiusType, nominalBore, segments);
+                                const wallThickness = entry.specs?.wallThicknessMm;
+                                if (segments && bendRadiusType && nominalBore && wallThickness) {
+                                  const cfResult = getSABS719CenterToFaceByWT(bendRadiusType, nominalBore, wallThickness);
                                   if (cfResult) { centerToFace = cfResult.centerToFace; bendRadius = cfResult.radius; }
                                 }
                                 const updatedEntry: any = {
@@ -926,8 +954,13 @@ export default function BendForm({
                       // Stub flange info - also use SABS 719 logic for stubs
                       const stub1NB = stubs[0]?.nominalBoreMm;
                       const stub2NB = stubs[1]?.nominalBoreMm;
-                      const stub1HasFlange = stubs[0]?.hasFlangeOverride || (stubs[0]?.flangeStandardId && stubs[0]?.flangePressureClassId);
-                      const stub2HasFlange = stubs[1]?.hasFlangeOverride || (stubs[1]?.flangeStandardId && stubs[1]?.flangePressureClassId);
+                      // Check if stub has flange - either via override or using global flange specs
+                      const stub1HasFlange = stubs[0]?.hasFlangeOverride
+                        || (stubs[0]?.flangeStandardId && stubs[0]?.flangePressureClassId)
+                        || (globalSpecs?.flangeStandardId && globalSpecs?.flangePressureClassId && stubs[0]?.nominalBoreMm);
+                      const stub2HasFlange = stubs[1]?.hasFlangeOverride
+                        || (stubs[1]?.flangeStandardId && stubs[1]?.flangePressureClassId)
+                        || (globalSpecs?.flangeStandardId && globalSpecs?.flangePressureClassId && stubs[1]?.nominalBoreMm);
                       const stub1OD = stub1NB ? (NB_TO_OD_LOOKUP[stub1NB] || (stub1NB * 1.05)) : 0;
                       const stub2OD = stub2NB ? (NB_TO_OD_LOOKUP[stub2NB] || (stub2NB * 1.05)) : 0;
                       const stub1Circumference = Math.PI * stub1OD;
@@ -1649,6 +1682,21 @@ export default function BendForm({
                                     ));
                                   })()}
                                 </select>
+                                <select
+                                  value={entry.specs?.stubs?.[0]?.flangeType || 'S/O'}
+                                  onChange={(e) => {
+                                    const stubs = [...(entry.specs?.stubs || [])];
+                                    stubs[0] = { ...stubs[0], flangeType: e.target.value };
+                                    const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                    updatedEntry.description = generateItemDescription(updatedEntry);
+                                    onUpdateEntry(entry.id, updatedEntry);
+                                  }}
+                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                >
+                                  <option value="S/O">S/O (Slip-On)</option>
+                                  <option value="L/F">L/F (Loose)</option>
+                                  <option value="R/F">R/F (Rotating)</option>
+                                </select>
                               </div>
                             ) : (
                               <p className="text-xs text-orange-700">Set in Global Specs</p>
@@ -1805,6 +1853,21 @@ export default function BendForm({
                                       <option key={p.id} value={p.id}>{p.designation}</option>
                                     ));
                                   })()}
+                                </select>
+                                <select
+                                  value={entry.specs?.stubs?.[1]?.flangeType || 'S/O'}
+                                  onChange={(e) => {
+                                    const stubs = [...(entry.specs?.stubs || [])];
+                                    stubs[1] = { ...stubs[1], flangeType: e.target.value };
+                                    const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                    updatedEntry.description = generateItemDescription(updatedEntry);
+                                    onUpdateEntry(entry.id, updatedEntry);
+                                  }}
+                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                >
+                                  <option value="S/O">S/O (Slip-On)</option>
+                                  <option value="L/F">L/F (Loose)</option>
+                                  <option value="R/F">R/F (Rotating)</option>
                                 </select>
                               </div>
                             ) : (

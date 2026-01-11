@@ -531,10 +531,14 @@ export class RfqService {
           scheduleNumber: item.bend.scheduleNumber,
           wallThicknessMm: item.bend.wallThicknessMm,
           bendType: item.bend.bendType,
+          bendRadiusType: item.bend.bendRadiusType,
           bendDegrees: item.bend.bendDegrees,
           bendEndConfiguration: item.bend.bendEndConfiguration,
           numberOfTangents: item.bend.numberOfTangents || 0,
           tangentLengths: item.bend.tangentLengths || [],
+          numberOfSegments: item.bend.numberOfSegments,
+          centerToFaceMm: item.bend.centerToFaceMm,
+          calculationData: item.bend.calculationData,
           quantityValue: item.bend.quantityValue || 1,
           quantityType: item.bend.quantityType || 'number_of_items',
           workingPressureBar: item.bend.workingPressureBar || 10,
@@ -687,14 +691,15 @@ export class RfqService {
   }
 
   private calculateCenterToFace(dto: CreateBendRfqDto): number {
-    // Simplified center-to-face calculation
-    // This should use proper bend tables in production
+    if (!dto.bendType) {
+      return dto.nominalBoreMm * 1.5;
+    }
     const radius = this.getBendRadius(dto.bendType, dto.nominalBoreMm);
     return radius * Math.sin((dto.bendDegrees * Math.PI) / 180 / 2);
   }
 
   private getBendRadius(bendType: string, nominalBoreMm: number): number {
-    const multiplier = parseFloat(bendType.replace('D', ''));
+    const multiplier = parseFloat(bendType.replace('D', '')) || 1.5;
     return nominalBoreMm * multiplier;
   }
 

@@ -1819,6 +1819,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         const calculation = entry.calculation || {};
 
         if (entry.itemType === 'bend') {
+          const stubLengths = (specs.stubs || []).map((stub: any) => stub?.length || 0).filter((l: number) => l > 0);
           return {
             itemType: 'bend' as const,
             description: entry.description || 'Bend Item',
@@ -1827,10 +1828,23 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             bend: {
               nominalBoreMm: specs.nominalBoreMm,
               scheduleNumber: specs.scheduleNumber,
+              wallThicknessMm: specs.wallThicknessMm,
               bendType: specs.bendType,
+              bendRadiusType: specs.bendRadiusType,
               bendDegrees: specs.bendDegrees,
+              bendEndConfiguration: specs.bendEndConfiguration,
               numberOfTangents: specs.numberOfTangents || 0,
               tangentLengths: specs.tangentLengths || [],
+              numberOfSegments: specs.numberOfSegments,
+              centerToFaceMm: specs.centerToFaceMm,
+              calculationData: {
+                ...(calculation || {}),
+                bendRadiusType: specs.bendRadiusType,
+                stubs: specs.stubs || [],
+                stubLengths,
+                numberOfSegments: specs.numberOfSegments,
+                tangentLengths: specs.tangentLengths || [],
+              },
               quantityType: specs.quantityType || 'number_of_items',
               quantityValue: specs.quantityValue || 1,
               workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,

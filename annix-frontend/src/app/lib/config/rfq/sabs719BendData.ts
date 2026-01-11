@@ -31,6 +31,21 @@ export const SABS719_BEND_TYPES = [
   { value: 'long', label: 'Long Radius Bend', segments: { A: '5-7', B: '3-5', C: '2-3' } },
 ] as const;
 
+export const SABS719_WT_COLUMN_MAP: Record<number, 'A' | 'B' | 'C'> = {
+  4.5: 'A',
+  5: 'A',
+  6: 'B',
+  8: 'C',
+  10: 'C',
+  12: 'C',
+};
+
+export const sabs719ColumnByWT = (wallThickness: number): 'A' | 'B' | 'C' => {
+  if (wallThickness <= 5) return 'A';
+  if (wallThickness <= 6) return 'B';
+  return 'C';
+};
+
 export const sabs719ValidSegments = (bendRadiusType: string, bendDegrees: number): number[] => {
   const ranges: Record<string, { A: number[]; B: number[]; C: number[] }> = {
     elbow: { A: [3, 4], B: [2, 3], C: [2] },
@@ -62,5 +77,19 @@ export const sabs719CenterToFaceBySegments = (
   const data = table[nominalBoreMm];
   if (!data) return null;
   const column = sabs719ColumnBySegments(bendRadiusType, segments);
+  return { centerToFace: data[column], radius: data.R, column };
+};
+
+export const sabs719CenterToFaceByWT = (
+  bendRadiusType: string, nominalBoreMm: number, wallThickness: number
+): { centerToFace: number; radius: number; column: 'A' | 'B' | 'C' } | null => {
+  const tables: Record<string, Record<number, { A: number; B: number; C: number; R: number }>> = {
+    elbow: SABS719_ELBOWS, medium: SABS719_MEDIUM_RADIUS, long: SABS719_LONG_RADIUS
+  };
+  const table = tables[bendRadiusType];
+  if (!table) return null;
+  const data = table[nominalBoreMm];
+  if (!data) return null;
+  const column = sabs719ColumnByWT(wallThickness);
   return { centerToFace: data[column], radius: data.R, column };
 };

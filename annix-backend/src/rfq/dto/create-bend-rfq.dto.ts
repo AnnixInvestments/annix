@@ -39,12 +39,24 @@ export class CreateBendRfqDto {
   wallThicknessMm?: number;
 
   @ApiProperty({
-    description: 'Type of bend (1.5D, 2D, 3D, 5D)',
+    description: 'Type of bend (1D, 1.5D, 2D, 3D, 5D) - for pulled bends',
     example: '3D',
-    enum: ['1.5D', '2D', '3D', '5D'],
+    enum: ['1D', '1.5D', '2D', '3D', '5D'],
+    required: false,
   })
+  @IsOptional()
   @IsString()
-  bendType: string;
+  bendType?: string;
+
+  @ApiProperty({
+    description: 'Bend radius type (elbow, medium, long) - for SABS 719 segmented bends',
+    example: 'long',
+    enum: ['elbow', 'medium', 'long'],
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  bendRadiusType?: string;
 
   @ApiProperty({
     description: 'Bend end configuration',

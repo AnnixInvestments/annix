@@ -213,6 +213,8 @@ export interface RfqItemDetail {
   totalWeightKg: number;
   weightPerUnitKg?: number;
   notes?: string;
+  flangeStandardCode?: string;
+  flangePressureClassDesignation?: string;
   straightPipeDetails?: {
     nominalBoreMm: number;
     scheduleNumber?: string;
@@ -237,8 +239,13 @@ export interface RfqItemDetail {
     pipeStandard?: string;
     bendDegrees?: number;
     bendType?: string;
+    bendRadiusType?: string;
     bendEndConfiguration?: string;
     numberOfTangents?: number;
+    tangentLengths?: number[];
+    centerToFaceMm?: number;
+    numberOfSegments?: number;
+    stubLengths?: number[];
     numberOfFlangeWelds?: number;
     totalFlangeWeldLengthM?: number;
     numberOfButtWelds?: number;
@@ -268,14 +275,25 @@ class SupplierApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
+  private rememberMe: boolean = false;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
 
-    // Load tokens from storage
+    // Load tokens from storage - check localStorage first (remember me), then sessionStorage
     if (typeof window !== 'undefined') {
-      this.accessToken = localStorage.getItem('supplierAccessToken');
-      this.refreshToken = localStorage.getItem('supplierRefreshToken');
+      const localAccessToken = localStorage.getItem('supplierAccessToken');
+      const sessionAccessToken = sessionStorage.getItem('supplierAccessToken');
+
+      if (localAccessToken) {
+        this.accessToken = localAccessToken;
+        this.refreshToken = localStorage.getItem('supplierRefreshToken');
+        this.rememberMe = true;
+      } else if (sessionAccessToken) {
+        this.accessToken = sessionAccessToken;
+        this.refreshToken = sessionStorage.getItem('supplierRefreshToken');
+        this.rememberMe = false;
+      }
     }
   }
 
@@ -296,21 +314,29 @@ class SupplierApiClient {
     return headers;
   }
 
-  private setTokens(accessToken: string, refreshToken: string) {
+  private setTokens(accessToken: string, refreshToken: string, rememberMe: boolean = false) {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
+    this.rememberMe = rememberMe;
     if (typeof window !== 'undefined') {
-      localStorage.setItem('supplierAccessToken', accessToken);
-      localStorage.setItem('supplierRefreshToken', refreshToken);
+      const storage = rememberMe ? localStorage : sessionStorage;
+      const otherStorage = rememberMe ? sessionStorage : localStorage;
+      otherStorage.removeItem('supplierAccessToken');
+      otherStorage.removeItem('supplierRefreshToken');
+      storage.setItem('supplierAccessToken', accessToken);
+      storage.setItem('supplierRefreshToken', refreshToken);
     }
   }
 
   clearTokens() {
     this.accessToken = null;
     this.refreshToken = null;
+    this.rememberMe = false;
     if (typeof window !== 'undefined') {
       localStorage.removeItem('supplierAccessToken');
       localStorage.removeItem('supplierRefreshToken');
+      sessionStorage.removeItem('supplierAccessToken');
+      sessionStorage.removeItem('supplierRefreshToken');
     }
   }
 
@@ -413,13 +439,13 @@ class SupplierApiClient {
     });
   }
 
-  async login(data: SupplierLoginDto): Promise<SupplierAuthResponse> {
+  async login(data: SupplierLoginDto, rememberMe: boolean = false): Promise<SupplierAuthResponse> {
     const result = await this.request<SupplierAuthResponse>('/supplier/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
     });
 
-    this.setTokens(result.accessToken, result.refreshToken);
+    this.setTokens(result.accessToken, result.refreshToken, rememberMe);
     return result;
   }
 
@@ -544,12 +570,11 @@ class SupplierApiClient {
   }
 
   private async fetchDocumentBlob(documentId: number): Promise<{ blob: Blob; filename: string }> {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('supplierAccessToken') : null;
     const url = `${this.baseURL}/supplier/onboarding/documents/${documentId}/download`;
 
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${this.accessToken}`,
       },
     });
 
@@ -658,7 +683,7 @@ export const supplierAuthApi = {
   registerFull: (formData: FormData) => supplierApiClient.registerFull(formData),
   verifyEmail: (token: string) => supplierApiClient.verifyEmail(token),
   resendVerification: (email: string) => supplierApiClient.resendVerification(email),
-  login: (data: SupplierLoginDto) => supplierApiClient.login(data),
+  login: (data: SupplierLoginDto, rememberMe: boolean = false) => supplierApiClient.login(data, rememberMe),
   logout: () => supplierApiClient.logout(),
   refresh: () => supplierApiClient.refreshAccessToken(),
   isAuthenticated: () => supplierApiClient.isAuthenticated(),
