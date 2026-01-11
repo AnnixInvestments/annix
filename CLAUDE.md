@@ -55,3 +55,30 @@
 ## Communication
 - Be concise and direct
 - Do not use emojis unless requested
+
+## Project Context
+
+### Domain
+This is a piping/fabrication quoting system for industrial suppliers. Key concepts:
+- **RFQ (Request for Quote)**: Customer requests containing pipe specifications
+- **BOQ (Bill of Quantities)**: Consolidated view of RFQ items for supplier pricing
+- **Item Types**: Straight pipes, bends (segmented/smooth), fittings (tees, laterals, reducers)
+
+### Weld Calculations
+Weld linear meterage is calculated per item type:
+- **Flange welds**: 2 welds per flanged connection (inside + outside) × circumference
+- **Butt welds**: Where tangents connect to bends (numberOfTangents × circumference)
+- **Mitre welds**: For segmented bends (numberOfSegments - 1) × circumference
+- **Tee welds**: Where stubs/branches connect to main pipe (stub circumference)
+- **Tack welds**: 8 × 20mm per loose flange
+
+### Pricing Calculations
+Fabricated item pricing uses:
+- Steel weight × price per kg
+- Flange weight × price per kg (by weight, not count)
+- Weld linear meters × price per meter
+- Labour & extras percentage (typically 3.5%)
+
+### Key Config Files
+- `annix-frontend/src/app/lib/config/rfq/pipeEndOptions.ts` - End configurations and weld counts
+- `annix-frontend/src/app/lib/config/rfq/flangeWeights.ts` - NB to OD lookup, flange weights by NB
