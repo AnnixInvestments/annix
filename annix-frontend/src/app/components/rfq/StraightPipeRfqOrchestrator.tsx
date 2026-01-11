@@ -1748,6 +1748,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
       console.log(`✅ RFQ progress saved as ${result.draftNumber}`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      if (errorMessage.includes('converted to an RFQ')) {
+        log.info('Draft has been converted to RFQ - clearing draft state');
+        setCurrentDraftId(null);
+        setDraftNumber(null);
+        localStorage.removeItem('annix_rfq_draft');
+        return;
+      }
+
       console.error('Failed to save progress:', error);
 
       if (error instanceof SessionExpiredError) {
