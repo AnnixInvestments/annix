@@ -2038,6 +2038,250 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     }
   };
 
+  const handleResubmit = async () => {
+    if (!editRfqId) {
+      showToast('Cannot re-submit: No RFQ ID found', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setValidationErrors({});
+
+    try {
+      const allItems = rfqData.items || rfqData.straightPipeEntries || [];
+
+      if (allItems.length === 0) {
+        setValidationErrors({ submit: 'Please add at least one item before re-submitting.' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      for (let i = 0; i < allItems.length; i++) {
+        const entry = allItems[i];
+        if (!entry.calculation) {
+          const itemType = entry.itemType === 'bend' ? 'Bend' : entry.itemType === 'fitting' ? 'Fitting' : 'Pipe';
+          setValidationErrors({
+            submit: `${itemType} #${i + 1} (${entry.description}) has not been calculated. Please calculate all items before re-submitting.`
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      const { unifiedRfqApi } = await import('@/app/lib/api/client');
+
+      const unifiedItems = allItems.map((entry: any) => {
+        const specs = entry.specs || {};
+        const calculation = entry.calculation || {};
+
+        if (entry.itemType === 'bend') {
+          const stubLengths = (specs.stubs || []).map((stub: any) => stub?.length || 0).filter((l: number) => l > 0);
+          return {
+            itemType: 'bend' as const,
+            description: entry.description || 'Bend Item',
+            notes: entry.notes,
+            totalWeightKg: calculation.totalWeight || calculation.bendWeight,
+            bend: {
+              nominalBoreMm: specs.nominalBoreMm,
+              scheduleNumber: specs.scheduleNumber,
+              wallThicknessMm: specs.wallThicknessMm,
+              bendType: specs.bendType,
+              bendRadiusType: specs.bendRadiusType,
+              bendDegrees: specs.bendDegrees,
+              bendEndConfiguration: specs.bendEndConfiguration,
+              numberOfTangents: specs.numberOfTangents || 0,
+              tangentLengths: specs.tangentLengths || [],
+              numberOfSegments: specs.numberOfSegments,
+              centerToFaceMm: specs.centerToFaceMm,
+              calculationData: {
+                ...(calculation || {}),
+                bendRadiusType: specs.bendRadiusType,
+                stubs: specs.stubs || [],
+                stubLengths,
+                numberOfSegments: specs.numberOfSegments,
+                tangentLengths: specs.tangentLengths || [],
+              },
+              quantityType: specs.quantityType || 'number_of_items',
+              quantityValue: specs.quantityValue || 1,
+              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC || 20,
+              steelSpecificationId: specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId || 2,
+              useGlobalFlangeSpecs: specs.useGlobalFlangeSpecs ?? true,
+              flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
+              flangePressureClassId: specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+            },
+          };
+        } else if (entry.itemType === 'fitting') {
+          return {
+            itemType: 'fitting' as const,
+            description: entry.description || 'Fitting Item',
+            notes: entry.notes,
+            totalWeightKg: calculation.totalWeight || calculation.pipeWeight,
+            fitting: {
+              nominalDiameterMm: specs.nominalDiameterMm,
+              scheduleNumber: specs.scheduleNumber,
+              wallThicknessMm: specs.wallThicknessMm,
+              fittingType: specs.fittingType,
+              fittingStandard: specs.fittingStandard,
+              pipeLengthAMm: specs.pipeLengthAMm,
+              pipeLengthBMm: specs.pipeLengthBMm,
+              pipeEndConfiguration: specs.pipeEndConfiguration,
+              addBlankFlange: specs.addBlankFlange || false,
+              blankFlangeCount: specs.blankFlangeCount,
+              blankFlangePositions: specs.blankFlangePositions,
+              quantityType: specs.quantityType || 'number_of_items',
+              quantityValue: specs.quantityValue || 1,
+              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar,
+              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+              calculationData: calculation,
+            },
+          };
+        } else {
+          return {
+            itemType: 'straight_pipe' as const,
+            description: entry.description || 'Pipe Item',
+            notes: entry.notes,
+            totalWeightKg: calculation.totalSystemWeight || calculation.totalPipeWeight,
+            straightPipe: {
+              nominalBoreMm: specs.nominalBoreMm,
+              scheduleType: specs.scheduleType,
+              scheduleNumber: specs.scheduleNumber,
+              wallThicknessMm: specs.wallThicknessMm,
+              pipeEndConfiguration: specs.pipeEndConfiguration,
+              individualPipeLength: specs.individualPipeLength,
+              lengthUnit: specs.lengthUnit,
+              quantityType: specs.quantityType,
+              quantityValue: specs.quantityValue,
+              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+              steelSpecificationId: specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId,
+              flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
+              flangePressureClassId: specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+            },
+          };
+        }
+      });
+
+      const unifiedPayload = {
+        rfq: {
+          projectName: rfqData.projectName,
+          description: rfqData.description,
+          customerName: rfqData.customerName,
+          customerEmail: rfqData.customerEmail,
+          customerPhone: rfqData.customerPhone,
+          requiredDate: rfqData.requiredDate,
+          status: 'submitted' as const,
+          notes: rfqData.notes,
+        },
+        items: unifiedItems,
+      };
+
+      console.log('📦 Re-submitting unified RFQ payload:', unifiedPayload);
+
+      const result = await unifiedRfqApi.update(editRfqId, unifiedPayload);
+      console.log(`✅ Unified RFQ updated successfully:`, result);
+
+      const existingBoq = await boqApi.getByRfqId(editRfqId);
+      if (existingBoq) {
+        console.log(`📦 Updating BOQ ${existingBoq.boqNumber} for RFQ ${editRfqId}...`);
+
+        const consolidatedData = consolidateBoqData({
+          entries: allItems,
+          globalSpecs: {
+            gasketType: rfqData.globalSpecs?.gasketType,
+            pressureClassDesignation: masterData?.pressureClasses?.find(
+              (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId
+            )?.designation,
+            flangeStandardId: rfqData.globalSpecs?.flangeStandardId,
+            flangePressureClassId: rfqData.globalSpecs?.flangePressureClassId,
+          },
+          masterData: {
+            flangeStandards: masterData?.flangeStandards,
+            pressureClasses: masterData?.pressureClasses,
+            steelSpecs: masterData?.steelSpecs,
+          },
+        });
+
+        console.log(`📊 Consolidated data for update:`, consolidatedData);
+
+        const updateResult = await boqApi.updateSubmittedBoq(existingBoq.id, {
+          boqData: consolidatedData,
+          customerInfo: {
+            name: rfqData.customerName || 'Unknown',
+            email: rfqData.customerEmail || '',
+            phone: rfqData.customerPhone,
+          },
+          projectInfo: {
+            name: rfqData.projectName || 'Untitled Project',
+            description: rfqData.description,
+            requiredDate: rfqData.requiredDate,
+          },
+        });
+
+        console.log(`✅ BOQ updated and suppliers re-notified: ${updateResult.sectionsCreated} sections updated, ${updateResult.suppliersNotified} suppliers notified`);
+      } else {
+        console.log(`📦 No existing BOQ found, creating new BOQ for RFQ ${editRfqId}...`);
+        const boq = await boqApi.create({
+          title: `BOQ for ${rfqData.projectName || 'Untitled Project'}`,
+          description: rfqData.description,
+          rfqId: editRfqId,
+        });
+        console.log(`✅ BOQ ${boq.boqNumber} created with ID ${boq.id}`);
+
+        const consolidatedData = consolidateBoqData({
+          entries: allItems,
+          globalSpecs: {
+            gasketType: rfqData.globalSpecs?.gasketType,
+            pressureClassDesignation: masterData?.pressureClasses?.find(
+              (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId
+            )?.designation,
+            flangeStandardId: rfqData.globalSpecs?.flangeStandardId,
+            flangePressureClassId: rfqData.globalSpecs?.flangePressureClassId,
+          },
+          masterData: {
+            flangeStandards: masterData?.flangeStandards,
+            pressureClasses: masterData?.pressureClasses,
+            steelSpecs: masterData?.steelSpecs,
+          },
+        });
+
+        const submitResult = await boqApi.submitForQuotation(boq.id, {
+          boqData: consolidatedData,
+          customerInfo: {
+            name: rfqData.customerName || 'Unknown',
+            email: rfqData.customerEmail || '',
+            phone: rfqData.customerPhone,
+          },
+          projectInfo: {
+            name: rfqData.projectName || 'Untitled Project',
+            description: rfqData.description,
+            requiredDate: rfqData.requiredDate,
+          },
+        });
+
+        console.log(`✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`);
+      }
+
+      showToast(`Success! RFQ ${result.rfq?.rfqNumber} updated with ${result.itemsUpdated} item(s). Suppliers have been notified.`, 'success');
+      onSuccess(result.rfq?.id?.toString() || 'success');
+
+    } catch (error: any) {
+      console.error('Re-submission error:', error);
+
+      let errorMessage = 'Failed to re-submit RFQ. Please try again.';
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+
+      setValidationErrors({ submit: errorMessage });
+      showToast(`Re-submission failed: ${errorMessage}. Please check the console for more details.`, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const steps = [
     { number: 1, title: 'Project/RFQ Details', description: 'Basic project and customer information' },
     { number: 2, title: 'Specifications', description: 'Working conditions and material specs' },
@@ -2123,6 +2367,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             masterData={masterData}
             onPrevStep={handlePrevStep}
             onSubmit={handleSubmit}
+            onResubmit={handleResubmit}
+            isEditing={isEditing}
             loading={isSubmitting}
           />
         );

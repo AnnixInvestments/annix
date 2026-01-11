@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
-import { now } from '../lib/datetime';
+import { now, fromISO } from '../lib/datetime';
 import { Rfq, RfqStatus } from './entities/rfq.entity';
 import { RfqItem, RfqItemType } from './entities/rfq-item.entity';
 import {
@@ -607,6 +607,196 @@ export class RfqService {
     });
 
     return { rfq: finalRfq!, itemsCreated: lineNumber };
+  }
+
+  async updateUnifiedRfq(
+    id: number,
+    dto: CreateUnifiedRfqDto,
+    userId: number,
+  ): Promise<{ rfq: Rfq; itemsUpdated: number }> {
+    const existingRfq = await this.rfqRepository.findOne({
+      where: { id },
+      relations: ['items'],
+    });
+
+    if (!existingRfq) {
+      throw new NotFoundException(`RFQ with ID ${id} not found`);
+    }
+
+    if (existingRfq.items && existingRfq.items.length > 0) {
+      await this.rfqItemRepository.delete({ rfq: { id } });
+      this.logger.log(`Deleted ${existingRfq.items.length} existing items from RFQ ${id}`);
+    }
+
+    let totalWeight = 0;
+    dto.items.forEach((item) => {
+      if (item.totalWeightKg) {
+        totalWeight += item.totalWeightKg;
+      }
+    });
+
+    existingRfq.projectName = dto.rfq.projectName;
+    existingRfq.description = dto.rfq.description;
+    existingRfq.customerName = dto.rfq.customerName;
+    existingRfq.customerEmail = dto.rfq.customerEmail;
+    existingRfq.customerPhone = dto.rfq.customerPhone;
+    existingRfq.requiredDate = dto.rfq.requiredDate
+      ? fromISO(dto.rfq.requiredDate).toJSDate()
+      : undefined;
+    existingRfq.notes = dto.rfq.notes;
+    existingRfq.totalWeightKg = totalWeight;
+    existingRfq.status = RfqStatus.SUBMITTED;
+
+    const savedRfq = await this.rfqRepository.save(existingRfq);
+    this.logger.log(`Updated RFQ ${existingRfq.rfqNumber} with ${dto.items.length} new items`);
+
+    let lineNumber = 0;
+    for (const item of dto.items) {
+      lineNumber++;
+
+      if (item.itemType === 'straight_pipe' && item.straightPipe) {
+        const calculation = await this.calculateStraightPipeRequirements(
+          item.straightPipe as any,
+        );
+
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.STRAIGHT_PIPE,
+          quantity: calculation.calculatedPipeCount,
+          weightPerUnitKg:
+            calculation.totalSystemWeight / calculation.calculatedPipeCount,
+          totalWeightKg: calculation.totalSystemWeight,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const straightPipeRfq = this.straightPipeRfqRepository.create({
+          nominalBoreMm: item.straightPipe.nominalBoreMm,
+          scheduleType: item.straightPipe.scheduleType as ScheduleType,
+          scheduleNumber: item.straightPipe.scheduleNumber,
+          wallThicknessMm: item.straightPipe.wallThicknessMm,
+          pipeEndConfiguration: item.straightPipe.pipeEndConfiguration,
+          individualPipeLength: item.straightPipe.individualPipeLength,
+          lengthUnit: item.straightPipe.lengthUnit as LengthUnit,
+          quantityType: item.straightPipe.quantityType as QuantityType,
+          quantityValue: item.straightPipe.quantityValue,
+          workingPressureBar: item.straightPipe.workingPressureBar,
+          workingTemperatureC: item.straightPipe.workingTemperatureC,
+          rfqItem: savedRfqItem,
+          calculatedOdMm: calculation.outsideDiameterMm,
+          calculatedWtMm: calculation.wallThicknessMm,
+          pipeWeightPerMeterKg: calculation.pipeWeightPerMeter,
+          totalPipeWeightKg: calculation.totalPipeWeight,
+          calculatedPipeCount: calculation.calculatedPipeCount,
+          calculatedTotalLengthM: calculation.calculatedTotalLength,
+          numberOfFlanges: calculation.numberOfFlanges,
+          numberOfButtWelds: calculation.numberOfButtWelds,
+          totalButtWeldLengthM: calculation.totalButtWeldLength,
+          numberOfFlangeWelds: calculation.numberOfFlangeWelds,
+          totalFlangeWeldLengthM: calculation.totalFlangeWeldLength,
+        });
+
+        if (item.straightPipe.steelSpecificationId) {
+          const steelSpec = await this.steelSpecRepository.findOne({
+            where: { id: item.straightPipe.steelSpecificationId },
+          });
+          if (steelSpec) {
+            straightPipeRfq.steelSpecification = steelSpec;
+          }
+        }
+
+        await this.straightPipeRfqRepository.save(straightPipeRfq);
+      } else if (item.itemType === 'bend' && item.bend) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.BEND,
+          quantity: item.bend.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const bendRfq = this.bendRfqRepository.create({
+          nominalBoreMm: item.bend.nominalBoreMm,
+          scheduleNumber: item.bend.scheduleNumber,
+          wallThicknessMm: item.bend.wallThicknessMm,
+          bendType: item.bend.bendType,
+          bendRadiusType: item.bend.bendRadiusType,
+          bendDegrees: item.bend.bendDegrees,
+          bendEndConfiguration: item.bend.bendEndConfiguration,
+          numberOfTangents: item.bend.numberOfTangents || 0,
+          tangentLengths: item.bend.tangentLengths || [],
+          numberOfSegments: item.bend.numberOfSegments,
+          centerToFaceMm: item.bend.centerToFaceMm,
+          calculationData: item.bend.calculationData,
+          quantityValue: item.bend.quantityValue || 1,
+          quantityType: item.bend.quantityType || 'number_of_items',
+          workingPressureBar: item.bend.workingPressureBar || 10,
+          workingTemperatureC: item.bend.workingTemperatureC || 20,
+          steelSpecificationId: item.bend.steelSpecificationId || 2,
+          useGlobalFlangeSpecs: item.bend.useGlobalFlangeSpecs ?? true,
+          flangeStandardId: item.bend.flangeStandardId,
+          flangePressureClassId: item.bend.flangePressureClassId,
+          totalWeightKg: item.totalWeightKg,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.bendRfqRepository.save(bendRfq);
+      } else if (item.itemType === 'fitting' && item.fitting) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.FITTING,
+          quantity: item.fitting.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const fittingRfq = this.fittingRfqRepository.create({
+          nominalDiameterMm: item.fitting.nominalDiameterMm,
+          scheduleNumber: item.fitting.scheduleNumber,
+          wallThicknessMm: item.fitting.wallThicknessMm,
+          fittingType: item.fitting.fittingType,
+          fittingStandard: item.fitting.fittingStandard,
+          pipeLengthAMm: item.fitting.pipeLengthAMm,
+          pipeLengthBMm: item.fitting.pipeLengthBMm,
+          pipeEndConfiguration: item.fitting.pipeEndConfiguration,
+          addBlankFlange: item.fitting.addBlankFlange || false,
+          blankFlangeCount: item.fitting.blankFlangeCount,
+          blankFlangePositions: item.fitting.blankFlangePositions,
+          quantityValue: item.fitting.quantityValue || 1,
+          quantityType: item.fitting.quantityType || 'number_of_items',
+          workingPressureBar: item.fitting.workingPressureBar,
+          workingTemperatureC: item.fitting.workingTemperatureC,
+          totalWeightKg: item.totalWeightKg,
+          calculationData: item.fitting.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.fittingRfqRepository.save(fittingRfq);
+      }
+    }
+
+    const finalRfq = await this.rfqRepository.findOne({
+      where: { id: savedRfq.id },
+      relations: [
+        'items',
+        'items.straightPipeDetails',
+        'items.bendDetails',
+        'items.fittingDetails',
+      ],
+    });
+
+    return { rfq: finalRfq!, itemsUpdated: lineNumber };
   }
 
   async findAllRfqs(userId?: number): Promise<RfqResponseDto[]> {

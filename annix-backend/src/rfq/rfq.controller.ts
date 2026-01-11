@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Delete,
   Body,
   Param,
@@ -262,6 +263,46 @@ export class RfqController {
   ): Promise<{ rfq: Rfq; itemsCreated: number }> {
     const userId = (req as any).customer?.userId;
     return this.rfqService.createUnifiedRfq(dto, userId);
+  }
+
+  @Put('unified/:id')
+  @ApiOperation({
+    summary: 'Update existing RFQ with all items (re-submit)',
+    description:
+      'Update an existing RFQ with new items and data. This is used when a customer re-submits an RFQ with changes.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'RFQ updated successfully with all items',
+    schema: {
+      type: 'object',
+      properties: {
+        rfq: { $ref: '#/components/schemas/Rfq' },
+        itemsUpdated: { type: 'number', example: 3 },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'RFQ not found',
+  })
+  @ApiBody({
+    description: 'Updated RFQ data with all items',
+    type: CreateUnifiedRfqDto,
+  })
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  async updateUnifiedRfq(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateUnifiedRfqDto,
+    @Req() req: Request,
+  ): Promise<{ rfq: Rfq; itemsUpdated: number }> {
+    const userId = (req as any).customer?.userId;
+    return this.rfqService.updateUnifiedRfq(id, dto, userId);
   }
 
   @Post('bend/calculate')

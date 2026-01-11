@@ -573,6 +573,16 @@ class ApiClient {
     });
   }
 
+  async updateUnifiedRfq(
+    id: number,
+    data: CreateUnifiedRfqDto
+  ): Promise<{ rfq: any; itemsUpdated: number }> {
+    return this.request(`/rfq/unified/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   async getRfqs(): Promise<RfqResponse[]> {
     return this.request<RfqResponse[]>('/rfq');
   }
@@ -1013,6 +1023,8 @@ export const bendRfqApi = {
 export const unifiedRfqApi = {
   create: (data: CreateUnifiedRfqDto) =>
     apiClient.createUnifiedRfq(data),
+  update: (id: number, data: CreateUnifiedRfqDto) =>
+    apiClient.updateUnifiedRfq(id, data),
 };
 
 export const masterDataApi = {
@@ -1235,5 +1247,24 @@ export const boqApi = {
     }
 
     return response.json();
+  },
+
+  getByRfqId: async (rfqId: number): Promise<BoqResponse | null> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${API_BASE_URL}/boq?rfqId=${rfqId}&limit=1`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to get BOQ by RFQ ID: ${errorText}`);
+    }
+
+    const result = await response.json();
+    return result.data && result.data.length > 0 ? result.data[0] : null;
   },
 };
