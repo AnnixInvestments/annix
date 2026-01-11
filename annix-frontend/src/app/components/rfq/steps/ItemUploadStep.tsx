@@ -13,6 +13,8 @@ import {
   boltSetCountPerBend as getBoltSetCountPerBend,
   boltSetCountPerPipe as getBoltSetCountPerPipe,
   boltSetCountPerFitting as getBoltSetCountPerFitting,
+  sabs719CenterToFaceByWT as getSABS719CenterToFaceByWT,
+  getScheduleListForSpec,
 } from '@/app/lib/config/rfq';
 import {
   calculateTotalSurfaceArea,
@@ -244,6 +246,53 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
       setAvailableNominalBores(allNominalBores);
     }
   }, [globalSpecs?.steelSpecificationId, masterData.steelSpecs]);
+
+  // Recalculate C/F values for SABS 719 bends when entries are loaded (e.g., when editing an existing RFQ)
+  // This ensures C/F is calculated based on WT even if the onChange handlers didn't fire
+  const recalculatedBendsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    entries.forEach((entry: any) => {
+      if (entry.itemType !== 'bend') return;
+      if (recalculatedBendsRef.current.has(entry.id)) return;
+
+      const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+      const isSABS719 = effectiveSteelSpecId === 8;
+
+      if (!isSABS719) return;
+
+      const { bendRadiusType, nominalBoreMm, scheduleNumber } = entry.specs || {};
+
+      if (!bendRadiusType || !nominalBoreMm || !scheduleNumber) return;
+
+      let wallThicknessMm = entry.specs?.wallThicknessMm;
+
+      if (!wallThicknessMm) {
+        const schedules = getScheduleListForSpec(nominalBoreMm, effectiveSteelSpecId);
+        const scheduleData = schedules.find((s: any) => s.scheduleDesignation === scheduleNumber);
+        wallThicknessMm = scheduleData?.wallThicknessMm;
+      }
+
+      if (!wallThicknessMm) return;
+
+      const cfResult = getSABS719CenterToFaceByWT(bendRadiusType, nominalBoreMm, wallThicknessMm);
+
+      if (cfResult && (!entry.specs?.centerToFaceMm || entry.specs.centerToFaceMm !== cfResult.centerToFace)) {
+        recalculatedBendsRef.current.add(entry.id);
+        log.debug(`[ItemUploadStep] Recalculating C/F for bend ${entry.id}: ${cfResult.centerToFace}mm`);
+        onUpdateEntry(entry.id, {
+          ...entry,
+          specs: {
+            ...entry.specs,
+            wallThicknessMm,
+            centerToFaceMm: cfResult.centerToFace,
+            bendRadiusMm: cfResult.radius,
+          },
+        });
+      } else {
+        recalculatedBendsRef.current.add(entry.id);
+      }
+    });
+  }, [entries, globalSpecs?.steelSpecificationId, onUpdateEntry]);
 
   const formatWeight = (weight: number | undefined) => {
     if (weight === undefined) return 'Not calculated';
