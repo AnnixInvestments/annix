@@ -1106,7 +1106,7 @@ export default function BendForm({
                       })()}
                       {entry.specs?.bendEndConfiguration && entry.specs.bendEndConfiguration !== 'PE' && (
                         <p className="mt-1 text-xs text-purple-600 font-medium">
-                          {entry.specs.bendEndConfiguration === 'LF_BE'
+                          {entry.specs.bendEndConfiguration === '2xLF'
                             ? '2 x tack weld ends (no flange welds)'
                             : `${getWeldCountPerBend(entry.specs.bendEndConfiguration)} weld${getWeldCountPerBend(entry.specs.bendEndConfiguration) !== 1 ? 's' : ''} per bend`}
                         </p>
@@ -1115,7 +1115,7 @@ export default function BendForm({
 
                     {/* Closure Length Field - Only shown when L/F configuration is selected */}
                     {hasLooseFlange(entry.specs?.bendEndConfiguration || '') && (() => {
-                      const isLFBothEnds = entry.specs?.bendEndConfiguration === 'LF_BE';
+                      const isLFBothEnds = entry.specs?.bendEndConfiguration === '2xLF';
                       return (
                         <div>
                           <label className="block text-xs font-semibold text-gray-900 mb-1">
@@ -1177,8 +1177,8 @@ export default function BendForm({
                       const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
                       const configUpper = bendEndConfig.toUpperCase();
                       // Determine available flange positions based on config
-                      const hasInletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', 'LF_BE'].includes(configUpper);
-                      const hasOutletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', 'LF_BE'].includes(configUpper);
+                      const hasInletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2xLF'].includes(configUpper);
+                      const hasOutletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2xLF'].includes(configUpper);
 
                       const availablePositions: { key: string; label: string; hasFlange: boolean }[] = [
                         { key: 'inlet', label: 'Inlet (Bottom)', hasFlange: hasInletFlange },
@@ -1946,9 +1946,9 @@ export default function BendForm({
                         }
 
                         // Count total flanges from all sources
-                        // FBE = Flanged Both Ends (2), LF_BE = Loose Flange Both Ends (2), 2X_RF = 2x Rotating Flange (2)
+                        // FBE = Flanged Both Ends (2), 2xLF = Loose Flange Both Ends (2), 2X_RF = 2x Rotating Flange (2)
                         // FOE = Flanged One End (1), FOE_LF = Flanged One End Loose Flange (1), FOE_RF = Flanged One End Rotating Flange (1)
-                        const bendFlangeCount = ['FBE', 'LF_BE', '2X_RF'].includes(bendEndConfig) ? 2
+                        const bendFlangeCount = ['FBE', '2xLF', '2X_RF'].includes(bendEndConfig) ? 2
                           : ['FOE', 'FOE_LF', 'FOE_RF'].includes(bendEndConfig) ? 1 : 0;
                         const stub1FlangeCount = stub1HasFlange ? 1 : 0;
                         const stub2FlangeCount = stub2HasFlange ? 1 : 0;

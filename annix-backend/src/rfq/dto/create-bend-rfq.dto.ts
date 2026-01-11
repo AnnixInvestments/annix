@@ -48,7 +48,7 @@ export class CreateBendRfqDto {
 
   @ApiProperty({
     description: 'Bend end configuration',
-    example: 'LF_BE',
+    example: '2xLF',
     required: false,
   })
   @IsOptional()

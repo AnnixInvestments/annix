@@ -733,20 +733,20 @@ const BendScene = ({
   // FBE = Flanged Both Ends
   // PE = Plain End (no flanges)
   // FOE_LF = Fixed flange at bottom (inlet), Loose flange at top (outlet) with closure extension
-  // LF_BE = Loose flanges both ends (both with closure extensions, same length)
+  // 2xLF = Loose flanges both ends (both with closure extensions, same length)
   const configUpper = (flangeConfig || 'PE').toUpperCase();
 
   // For FOE_LF: Fixed flange at bottom (inlet), Loose flange at top (outlet)
-  // For LF_BE: Loose flanges at both ends with same closure length
+  // For 2xLF: Loose flanges at both ends with same closure length
   // For FOE: Only one fixed flange at inlet (bottom)
   // For FBE: Fixed flanges at both ends
-  const isLooseFlangeOutlet = configUpper === 'FOE_LF' || configUpper === 'LF_BE';
-  const isLooseFlangeInlet = configUpper === 'LF_BE';
+  const isLooseFlangeOutlet = configUpper === 'FOE_LF' || configUpper === '2xLF';
+  const isLooseFlangeInlet = configUpper === '2xLF';
   // Rotating flange detection - FOE_RF has rotating at outlet, 2X_RF has rotating at both ends
   const isRotatingFlangeOutlet = configUpper === 'FOE_RF' || configUpper === '2X_RF';
   const isRotatingFlangeInlet = configUpper === '2X_RF';
-  const showInletFlange = ['FOE', 'FBE', 'FOE_LF', 'LF_BE', 'FOE_RF', '2X_RF'].includes(configUpper); // Flange at bottom (inlet)
-  const showOutletFlange = ['FBE', 'FOE_LF', 'LF_BE', 'FOE_RF', '2X_RF'].includes(configUpper); // Flange at top (outlet)
+  const showInletFlange = ['FOE', 'FBE', 'FOE_LF', '2xLF', 'FOE_RF', '2X_RF'].includes(configUpper); // Flange at bottom (inlet)
+  const showOutletFlange = ['FBE', 'FOE_LF', '2xLF', 'FOE_RF', '2X_RF'].includes(configUpper); // Flange at top (outlet)
 
   // Debug logging
   console.log('BendScene:', { flangeConfig, showOutletFlange, showInletFlange, isLooseFlangeOutlet, isLooseFlangeInlet, closureLengthMm, numberOfStubs, stubs: safeStubs });
@@ -1909,7 +1909,7 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
                 {configUpper === '2X_RF' && (
                   <div className="text-orange-600 font-semibold mt-0.5">2x R/F = Both Rotating</div>
                 )}
-                {configUpper === 'LF_BE' && (
+                {configUpper === '2xLF' && (
                   <div className="text-blue-600 font-semibold mt-0.5">L/F BE = Loose Both Ends</div>
                 )}
               </>

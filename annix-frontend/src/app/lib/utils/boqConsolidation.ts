@@ -62,7 +62,7 @@ function getFlangeCountFromConfig(config: string, itemType: string): { main: num
       case 'FOE_LF': return { main: 2, branch: 0 };
       case 'FOE_RF': return { main: 2, branch: 0 };
       case '2X_RF': return { main: 2, branch: 0 };
-      case 'LF_BE': return { main: 4, branch: 0 };
+      case '2xLF': return { main: 4, branch: 0 };
       default: return { main: 0, branch: 0 };
     }
   }

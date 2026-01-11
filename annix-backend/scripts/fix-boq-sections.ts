@@ -47,7 +47,7 @@ function parseFlangeConfigFromDescription(description: string, itemType: string)
     if (lfMatch) result.mainFlanges += parseInt(lfMatch[1]);
   } else if (itemType === 'bend') {
     if (description.includes('C/F')) result.mainFlanges += 1;
-    if (description.includes('LF_BE')) {
+    if (description.includes('2xLF')) {
       const stubInfo = parseStubFromDescription(description);
       if (stubInfo) {
         result.branchFlanges = 2;
@@ -215,7 +215,7 @@ async function fixBoqSections() {
         });
       }
 
-      if (stubInfo && (stubInfo.flangeConfig === 'LF_BE' || stubInfo.flangeConfig === 'FBE')) {
+      if (stubInfo && (stubInfo.flangeConfig === '2xLF' || stubInfo.flangeConfig === 'FBE')) {
         const stubFlangeCount = 2;
         addToMap(consolidatedFlanges, `FLANGE_${stubInfo.nb}`, {
           description: `${stubInfo.nb}NB Weld Neck Flange ${flangeStandard}`,

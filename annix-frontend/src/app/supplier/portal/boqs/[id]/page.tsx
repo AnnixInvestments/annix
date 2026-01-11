@@ -70,7 +70,7 @@ const flangeCountFromConfig = (config: string | undefined, itemType: string): nu
   if (!config || config === 'PE') return 0;
   if (itemType === 'bend' || itemType === 'straight_pipe') {
     const counts: Record<string, number> = {
-      'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, 'LF_BE': 4,
+      'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, '2xLF': 4,
     };
     return counts[config] || 0;
   }
@@ -188,11 +188,11 @@ const calculateWeldCircumference = (diameterMm: number | undefined): number => {
 const countFlangesFromConfig = (config: string | undefined, itemType: string): number => {
   if (!config || config === 'PE') return 0;
   if (itemType === 'straight_pipe') {
-    const counts: Record<string, number> = { 'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, 'LF_BE': 4 };
+    const counts: Record<string, number> = { 'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, '2xLF': 4 };
     return counts[config] || 0;
   }
   if (itemType === 'bend') {
-    const counts: Record<string, number> = { 'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, 'LF_BE': 4 };
+    const counts: Record<string, number> = { 'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, '2xLF': 4 };
     return counts[config] || 0;
   }
   if (itemType === 'fitting') {
@@ -204,14 +204,14 @@ const countFlangesFromConfig = (config: string | undefined, itemType: string): n
 
 const hasLooseFlanges = (config: string | undefined): boolean => {
   if (!config) return false;
-  return config.includes('LF') || config.includes('_L') || config === 'LF_BE';
+  return config.includes('LF') || config.includes('_L') || config === '2xLF';
 };
 
 const countLooseFlanges = (config: string | undefined, itemType: string): number => {
   if (!config) return 0;
   if (itemType === 'straight_pipe' || itemType === 'bend') {
     const counts: Record<string, number> = {
-      'FOE_LF': 1, 'LF_BE': 2, '2X_RF': 0,
+      'FOE_LF': 1, '2xLF': 2, '2X_RF': 0,
     };
     if (counts[config] !== undefined) return counts[config];
     if (config.includes('LF')) return 1;
@@ -2060,7 +2060,7 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
     const TACK_WELDS_PER_LOOSE_FLANGE = 8;
 
     const getLooseFlangeCount = (endConfig: string): number => {
-      if (endConfig === 'LF_BE') return 2;
+      if (endConfig === '2xLF') return 2;
       if (endConfig === 'FOE_LF' || endConfig === 'F2E_LF') return 1;
       return 0;
     };

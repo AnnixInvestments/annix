@@ -816,8 +816,8 @@ export default function StraightPipeForm({
                     const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
                     const configUpper = pipeEndConfig.toUpperCase();
                     // Determine available flange positions based on config
-                    const hasInletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', 'LF_BE'].includes(configUpper);
-                    const hasOutletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', 'LF_BE'].includes(configUpper);
+                    const hasInletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2xLF'].includes(configUpper);
+                    const hasOutletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2xLF'].includes(configUpper);
 
                     const availablePositions: { key: string; label: string; hasFlange: boolean }[] = [
                       { key: 'inlet', label: 'End A (Inlet)', hasFlange: hasInletFlange },

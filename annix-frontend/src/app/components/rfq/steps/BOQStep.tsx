@@ -88,7 +88,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         case 'FOE_LF': return { fixed: 1, loose: 1, rotating: 0 }; // 1 fixed + 1 loose = 2 physical flanges
         case 'FOE_RF': return { fixed: 1, loose: 0, rotating: 1 }; // 1 fixed + 1 rotating = 2 physical flanges
         case '2X_RF': return { fixed: 0, loose: 0, rotating: 2 }; // 2 rotating flanges
-        case 'LF_BE': return { fixed: 0, loose: 4, rotating: 0 }; // 2 stub-on + 2 loose backing flanges = 4 flanges
+        case '2xLF': return { fixed: 0, loose: 4, rotating: 0 }; // 2 stub-on + 2 loose backing flanges = 4 flanges
         default: return { fixed: 0, loose: 0, rotating: 0 };
       }
     }

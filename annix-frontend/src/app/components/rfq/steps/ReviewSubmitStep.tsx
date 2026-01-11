@@ -313,8 +313,8 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
                       if (bendEndConfig === 'PE') return null;
                       const flangeCount = bendEndConfig === 'FBE' ? 2 :
-                        ['FOE', 'FOE_LF', 'FOE_RF', 'LF_BE', '2X_RF'].includes(bendEndConfig) ?
-                          (bendEndConfig === 'LF_BE' || bendEndConfig === '2X_RF' ? 2 :
+                        ['FOE', 'FOE_LF', 'FOE_RF', '2xLF', '2X_RF'].includes(bendEndConfig) ?
+                          (bendEndConfig === '2xLF' || bendEndConfig === '2X_RF' ? 2 :
                            bendEndConfig === 'FOE_LF' || bendEndConfig === 'FOE_RF' ? 2 : 1) : 1;
                       return (
                         <div className="text-blue-600 col-span-2">
@@ -490,8 +490,8 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
                       if (pipeEndConfig === 'PE') return null;
                       const flangeCount = pipeEndConfig === 'FBE' ? 2 :
-                        ['FOE', 'FOE_LF', 'FOE_RF', 'LF_BE', '2X_RF'].includes(pipeEndConfig) ?
-                          (pipeEndConfig === 'LF_BE' || pipeEndConfig === '2X_RF' || pipeEndConfig === 'FOE_LF' || pipeEndConfig === 'FOE_RF' ? 2 : 1) : 1;
+                        ['FOE', 'FOE_LF', 'FOE_RF', '2xLF', '2X_RF'].includes(pipeEndConfig) ?
+                          (pipeEndConfig === '2xLF' || pipeEndConfig === '2X_RF' || pipeEndConfig === 'FOE_LF' || pipeEndConfig === 'FOE_RF' ? 2 : 1) : 1;
                       return (
                         <div className="text-blue-600 col-span-2">
                           Flanges/pipe: {flangeCount}x {nb}NB {pressureClass}
@@ -683,7 +683,7 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                   const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
                   if (bendEndConfig !== 'PE') {
                     const flangeCount = bendEndConfig === 'FBE' ? 2 :
-                      (bendEndConfig === 'LF_BE' || bendEndConfig === '2X_RF' || bendEndConfig === 'FOE_LF' || bendEndConfig === 'FOE_RF' ? 2 : 1);
+                      (bendEndConfig === '2xLF' || bendEndConfig === '2X_RF' || bendEndConfig === 'FOE_LF' || bendEndConfig === 'FOE_RF' ? 2 : 1);
                     const key = `${nb}NB`;
                     flangesBySize[key] = (flangesBySize[key] || 0) + (flangeCount * itemQty);
                   }
@@ -711,7 +711,7 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                   const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
                   if (pipeEndConfig !== 'PE') {
                     const flangeCount = pipeEndConfig === 'FBE' ? 2 :
-                      (pipeEndConfig === 'LF_BE' || pipeEndConfig === '2X_RF' || pipeEndConfig === 'FOE_LF' || pipeEndConfig === 'FOE_RF' ? 2 : 1);
+                      (pipeEndConfig === '2xLF' || pipeEndConfig === '2X_RF' || pipeEndConfig === 'FOE_LF' || pipeEndConfig === 'FOE_RF' ? 2 : 1);
                     const key = `${nb}NB`;
                     flangesBySize[key] = (flangesBySize[key] || 0) + (flangeCount * itemQty);
                   }

@@ -12,7 +12,7 @@ export const BEND_END_OPTIONS = [
   { value: 'FOE', label: 'FOE - Flanged one end (1 weld)', weldCount: 1 },
   { value: 'FBE', label: 'FBE - Flanged both ends (2 flange welds)', weldCount: 2 },
   { value: 'FOE_LF', label: 'FOE + L/F - Flanged one end + loose flange (1 flange weld)', weldCount: 1 },
-  { value: 'LF_BE', label: 'L/F Both Ends - Loose flanges both ends (2 x tack weld)', weldCount: 0, tackWeldEnds: 2 },
+  { value: '2xLF', label: 'L/F Both Ends - Loose flanges both ends (2 x tack weld)', weldCount: 0, tackWeldEnds: 2 },
   { value: 'FOE_RF', label: 'FOE + R/F - Flanged one end + rotating flange (2 flange welds)', weldCount: 2 },
   { value: '2X_RF', label: '2 x R/F - Rotating flanges both ends (2 flange welds)', weldCount: 2 },
 ] as const;
@@ -59,7 +59,7 @@ export const fittingFlangeConfig = (fittingEndConfig: string): {
 };
 
 export const hasLooseFlange = (endConfig: string): boolean => {
-  return endConfig.includes('_LF') || endConfig.includes('FOE_LF') || endConfig === 'LF_BE';
+  return endConfig.includes('_LF') || endConfig.includes('FOE_LF') || endConfig === '2xLF';
 };
 
 export const fixedFlangeCount = (endConfig: string): { count: number; positions: { inlet: boolean; outlet: boolean; branch: boolean } } => {
@@ -88,7 +88,7 @@ export const fixedFlangeCount = (endConfig: string): { count: number; positions:
         return { count: 1, positions: { inlet: false, outlet: true, branch: false } };
       case '2X_RF':
         return { count: 0, positions: { inlet: false, outlet: false, branch: false } };
-      case 'LF_BE':
+      case '2xLF':
         return { count: 0, positions: { inlet: false, outlet: false, branch: false } };
       default:
         return { count: 0, positions: { inlet: false, outlet: false, branch: false } };
@@ -117,7 +117,7 @@ export const flangesPerPipe = (pipeEndConfig: string): number => {
       return 1;
     case '2X_RF':
       return 2;
-    case 'LF_BE':
+    case '2xLF':
       return 2;
     default:
       return 0;
@@ -138,7 +138,7 @@ export const physicalFlangeCount = (pipeEndConfig: string): number => {
       return 2;
     case '2X_RF':
       return 2;
-    case 'LF_BE':
+    case '2xLF':
       return 4;
     default:
       return 0;
@@ -164,7 +164,7 @@ export const boltSetCountPerBend = (bendEndConfig: string): number => {
       return 2;
     case '2X_RF':
       return 2;
-    case 'LF_BE':
+    case '2xLF':
       return 2;
     default:
       return 0;
@@ -186,7 +186,7 @@ export const boltSetCountPerPipe = (pipeEndConfig: string): number => {
       return 2;
     case '2X_RF':
       return 2;
-    case 'LF_BE':
+    case '2xLF':
       return 2;
     default:
       return 0;

@@ -967,7 +967,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                   } else if (entry.itemType === 'bend') {
                     // Calculate main bend flanges based on bendEndConfiguration
                     const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                    if (bendEndConfig === 'FBE' || bendEndConfig === 'FOE_RF' || bendEndConfig === '2X_RF' || bendEndConfig === 'LF_BE') {
+                    if (bendEndConfig === 'FBE' || bendEndConfig === 'FOE_RF' || bendEndConfig === '2X_RF' || bendEndConfig === '2xLF') {
                       flangesPerPipe = 2;
                     } else if (bendEndConfig === 'FOE' || bendEndConfig === 'FOE_LF') {
                       flangesPerPipe = 1;

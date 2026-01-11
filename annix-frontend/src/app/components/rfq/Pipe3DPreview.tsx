@@ -256,9 +256,9 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
 
   // Detect loose flanges from configuration
   // FOE_LF = Fixed End B (right) + Loose End A (left)
-  // LF_BE = Loose both ends
-  const hasLooseLeftFlange = configUpper === 'FOE_LF' || configUpper.includes('LF_BE');
-  const hasLooseRightFlange = configUpper.includes('LF_BE');
+  // 2xLF = Loose both ends
+  const hasLooseLeftFlange = configUpper === 'FOE_LF' || configUpper.includes('2xLF');
+  const hasLooseRightFlange = configUpper.includes('2xLF');
 
   // Detect rotating flanges - R/F patterns
   // FOE_RF = Fixed End B (right) + Rotating End A (left)
@@ -267,11 +267,11 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
   const hasRotatingRightFlange = configUpper.includes('2X_RF');
 
   // hasRightFlange = any configuration with flange on End B (right)
-  // FOE, FBE, FOE_LF, FOE_RF, 2X_RF, LF_BE all have flange on right
-  const hasRightFlange = configUpper.includes('FOE') || configUpper.includes('FBE') || configUpper.includes('2X_RF') || configUpper.includes('LF_BE');
+  // FOE, FBE, FOE_LF, FOE_RF, 2X_RF, 2xLF all have flange on right
+  const hasRightFlange = configUpper.includes('FOE') || configUpper.includes('FBE') || configUpper.includes('2X_RF') || configUpper.includes('2xLF');
   // hasLeftFlange = any configuration with flange on End A (left)
-  // FBE, FOE_LF, FOE_RF, 2X_RF, LF_BE all have flange on left
-  const hasLeftFlange = configUpper.includes('FBE') || configUpper === 'FOE_LF' || configUpper === 'FOE_RF' || configUpper.includes('2X_RF') || configUpper.includes('LF_BE');
+  // FBE, FOE_LF, FOE_RF, 2X_RF, 2xLF all have flange on left
+  const hasLeftFlange = configUpper.includes('FBE') || configUpper === 'FOE_LF' || configUpper === 'FOE_RF' || configUpper.includes('2X_RF') || configUpper.includes('2xLF');
   const flangeThickness = odSceneUnits * 0.15;
 
   // Closure and gap dimensions
@@ -607,7 +607,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
               case 'FOE_LF': return 'Fixed + Loose Flange';
               case 'FOE_RF': return 'Fixed + Rotating Flange';
               case '2X_RF': return '2x Rotating Flanges';
-              case 'LF_BE': return 'Loose Flanges Both Ends';
+              case '2xLF': return 'Loose Flanges Both Ends';
               default: return 'Plain Ended';
             }
           };

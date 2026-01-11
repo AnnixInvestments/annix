@@ -100,7 +100,7 @@ export class UnifiedBendDto {
   @IsNumber()
   bendDegrees: number;
 
-  @ApiProperty({ description: 'Bend end configuration', example: 'LF_BE', required: false })
+  @ApiProperty({ description: 'Bend end configuration', example: '2xLF', required: false })
   @IsOptional()
   @IsString()
   bendEndConfiguration?: string;

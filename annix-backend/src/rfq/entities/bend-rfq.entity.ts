@@ -40,7 +40,7 @@ export class BendRfq {
   @Column({ name: 'bend_degrees', type: 'decimal', precision: 5, scale: 2 })
   bendDegrees: number;
 
-  @ApiProperty({ description: 'Bend end configuration', example: 'LF_BE' })
+  @ApiProperty({ description: 'Bend end configuration', example: '2xLF' })
   @Column({
     name: 'bend_end_configuration',
     type: 'varchar',
