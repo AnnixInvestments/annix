@@ -26,7 +26,7 @@ export default function Navigation() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4">
             <Link
               href="/"
               className="flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
@@ -43,6 +43,15 @@ export default function Navigation() {
                 style={{ color: pathname === '/' ? '#001F3F' : '#FFA500' }}
               >
                 Home
+              </Link>
+              <Link
+                href="/pricing"
+                className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
+                  pathname === '/pricing' ? 'bg-[#FFA500]' : 'hover:bg-[#003366]'
+                }`}
+                style={{ color: pathname === '/pricing' ? '#001F3F' : '#FFA500' }}
+              >
+                Pricing
               </Link>
             </div>
           </div>
