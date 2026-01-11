@@ -2454,6 +2454,44 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                       <span className="text-gray-500">Type:</span>{' '}
                       <span className="font-medium">{item.bendDetails.bendType || '1.5D'}</span>
                     </div>
+                    {(() => {
+                      const nb = Number(item.bendDetails.nominalBoreMm) || 0;
+                      const bendType = item.bendDetails.bendType || '1.5D';
+                      const radiusFactor = parseFloat(bendType.replace('D', '')) || 1.5;
+                      const bendRadiusMm = nb * radiusFactor;
+                      const bendAngleRad = ((Number(item.bendDetails.bendDegrees) || 90) * Math.PI) / 180;
+                      const arcLengthMm = bendRadiusMm * bendAngleRad;
+                      const calcData = item.bendDetails.calculationData;
+                      const tangents = calcData?.tangentLengths || [];
+                      const numberOfTangents = item.bendDetails.numberOfTangents || tangents.length || 0;
+                      const numberOfSegments = calcData?.numberOfSegments || 0;
+                      return (
+                        <>
+                          <div>
+                            <span className="text-gray-500">Bend Radius:</span>{' '}
+                            <span className="font-medium text-indigo-600">{bendRadiusMm.toFixed(0)}mm</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Arc Length:</span>{' '}
+                            <span className="font-medium text-indigo-600">{arcLengthMm.toFixed(0)}mm</span>
+                          </div>
+                          {numberOfTangents > 0 && (
+                            <div>
+                              <span className="text-gray-500">Tangents:</span>{' '}
+                              <span className="font-medium text-blue-600">
+                                {numberOfTangents}x ({tangents.length > 0 ? tangents.map((t: number) => `${t}mm`).join(', ') : 'N/A'})
+                              </span>
+                            </div>
+                          )}
+                          {numberOfSegments > 1 && (
+                            <div>
+                              <span className="text-gray-500">Segments:</span>{' '}
+                              <span className="font-medium text-orange-600">{numberOfSegments}</span>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                     <div>
                       <span className="text-gray-500">Qty:</span>{' '}
                       <span className="font-medium">{item.quantity || 1}</span>
@@ -2519,6 +2557,23 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                       <span className="text-gray-500">Type:</span>{' '}
                       <span className="font-medium">{item.fittingDetails.fittingType || 'Tee'}</span>
                     </div>
+                    {item.fittingDetails.branchNominalDiameterMm &&
+                     Number(item.fittingDetails.branchNominalDiameterMm) !== Number(item.fittingDetails.nominalDiameterMm) && (
+                      <div>
+                        <span className="text-gray-500">Branch NB:</span>{' '}
+                        <span className="font-medium text-indigo-600">{Math.round(Number(item.fittingDetails.branchNominalDiameterMm))}mm</span>
+                      </div>
+                    )}
+                    {(() => {
+                      const calcData = item.fittingDetails.calculationData;
+                      const teeHeight = calcData?.teeHeightMm || calcData?.branchHeightMm;
+                      return teeHeight ? (
+                        <div>
+                          <span className="text-gray-500">Tee Height:</span>{' '}
+                          <span className="font-medium text-indigo-600">{Math.round(Number(teeHeight))}mm</span>
+                        </div>
+                      ) : null;
+                    })()}
                     <div>
                       <span className="text-gray-500">Qty:</span>{' '}
                       <span className="font-medium">{item.quantity || 1}</span>
@@ -2526,13 +2581,13 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                     {item.fittingDetails.pipeLengthAMm && (
                       <div>
                         <span className="text-gray-500">Length A:</span>{' '}
-                        <span className="font-medium">{Math.round(Number(item.fittingDetails.pipeLengthAMm))}mm</span>
+                        <span className="font-medium text-blue-600">{Math.round(Number(item.fittingDetails.pipeLengthAMm))}mm</span>
                       </div>
                     )}
                     {item.fittingDetails.pipeLengthBMm && (
                       <div>
                         <span className="text-gray-500">Length B:</span>{' '}
-                        <span className="font-medium">{Math.round(Number(item.fittingDetails.pipeLengthBMm))}mm</span>
+                        <span className="font-medium text-blue-600">{Math.round(Number(item.fittingDetails.pipeLengthBMm))}mm</span>
                       </div>
                     )}
                     {item.fittingDetails.pipeEndConfiguration && item.fittingDetails.pipeEndConfiguration !== 'PE' && (
