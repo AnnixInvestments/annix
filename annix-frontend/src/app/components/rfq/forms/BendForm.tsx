@@ -443,15 +443,36 @@ export default function BendForm({
                             id={selectId}
                             value={entry.specs?.bendRadiusType || ''}
                             onChange={(radiusType) => {
+                              let newCenterToFace: number | undefined = undefined;
+                              let newBendRadius: number | undefined = undefined;
+                              if (radiusType && entry.specs?.nominalBoreMm && entry.specs?.wallThicknessMm) {
+                                const cfResult = getSABS719CenterToFaceByWT(
+                                  radiusType,
+                                  entry.specs.nominalBoreMm,
+                                  entry.specs.wallThicknessMm
+                                );
+                                if (cfResult) {
+                                  newCenterToFace = cfResult.centerToFace;
+                                  newBendRadius = cfResult.radius;
+                                }
+                              }
                               const updatedEntry: any = {
                                 ...entry,
-                                specs: { ...entry.specs, bendRadiusType: radiusType || undefined, bendType: undefined, numberOfSegments: undefined, centerToFaceMm: undefined, bendDegrees: undefined }
+                                specs: {
+                                  ...entry.specs,
+                                  bendRadiusType: radiusType || undefined,
+                                  bendType: undefined,
+                                  numberOfSegments: undefined,
+                                  centerToFaceMm: newCenterToFace,
+                                  bendRadiusMm: newBendRadius,
+                                  bendDegrees: undefined
+                                }
                               };
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
 
                               if (radiusType) {
-                                setTimeout(() => focusAndOpenSelect(`bend-nb-${entry.id}`), 100);
+                                setTimeout(() => focusAndOpenSelect(`bend-angle-${entry.id}`), 100);
                               }
                             }}
                             options={options}
@@ -512,7 +533,17 @@ export default function BendForm({
                               const bendDegrees = value ? parseFloat(value) : undefined;
                               let centerToFaceMm: number | undefined;
                               let bendRadiusMm: number | undefined;
-                              if (!isSABS719 && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
+                              if (isSABS719 && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendRadiusType && entry.specs?.wallThicknessMm) {
+                                const cfResult = getSABS719CenterToFaceByWT(
+                                  entry.specs.bendRadiusType,
+                                  entry.specs.nominalBoreMm,
+                                  entry.specs.wallThicknessMm
+                                );
+                                if (cfResult) {
+                                  centerToFaceMm = cfResult.centerToFace;
+                                  bendRadiusMm = cfResult.radius;
+                                }
+                              } else if (!isSABS719 && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
                                 const bendType = entry.specs.bendType as SABS62BendType;
                                 centerToFaceMm = getSabs62CFInterpolated(bendType, bendDegrees, entry.specs.nominalBoreMm);
                                 bendRadiusMm = SABS62_BEND_RADIUS[bendType]?.[entry.specs.nominalBoreMm];
@@ -523,7 +554,7 @@ export default function BendForm({
                               };
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
-                              if (bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType) {
+                              if (bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber) {
                                 setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                               }
                             }}
