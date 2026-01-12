@@ -560,15 +560,14 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
         </button>
       </div>
 
-      <div className="h-full w-full">
-        <Canvas
-          shadows
-          dpr={[1, 2]}
-          camera={{
-            position: cameraTargets.iso.pos as [number, number, number],
-            fov: 45
-          }}
-        >
+      <Canvas
+        shadows
+        dpr={[1, 2]}
+        camera={{
+          position: cameraTargets.iso.pos as [number, number, number],
+          fov: 45
+        }}
+      >
           <ambientLight intensity={0.8} />
           <spotLight position={[10, 10, 5]} angle={0.5} penumbra={1} intensity={1} />
           <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />
@@ -589,10 +588,10 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           />
 
           <CameraRig viewMode={viewMode} targets={cameraTargets} />
-        </Canvas>
+      </Canvas>
 
-        {/* HTML Info Box - top right corner */}
-        {(() => {
+      {/* HTML Info Box - top right corner */}
+      {(() => {
           const idMm = props.outerDiameter - (2 * props.wallThickness);
           const matProps = getMaterialProps(props.materialName);
           const configUpper = (props.endConfiguration || 'PE').toUpperCase();
@@ -668,10 +667,10 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
               )}
             </div>
           );
-        })()}
+      })()}
 
-        {/* Bottom toolbar - Expand, Drag hint, and Hide button in horizontal row */}
-        <div className="absolute bottom-2 right-2 flex flex-row items-center gap-2">
+      {/* Bottom toolbar - Expand, Drag hint, and Hide button in horizontal row */}
+      <div className="absolute bottom-2 right-2 flex flex-row items-center gap-2">
           <button
             onClick={() => setIsExpanded(true)}
             className="text-[10px] text-blue-600 bg-white/90 px-2 py-1 rounded shadow-sm hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-1"
@@ -693,7 +692,6 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
             </svg>
             Hide Drawing
           </button>
-        </div>
       </div>
 
       {/* Expanded Modal */}
