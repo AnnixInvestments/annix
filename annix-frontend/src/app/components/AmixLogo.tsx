@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { log } from '@/app/lib/logger';
 
 interface AmixLogoProps {
   /** Size variant: 'sm' (32px), 'md' (48px), 'lg' (64px), 'xl' (96px) */
@@ -40,74 +41,49 @@ export default function AmixLogo({
   className = '',
   useSignatureFont = true,
 }: AmixLogoProps) {
-  const { logo: logoSize, text: textSize } = sizeMap[size];
+  const { logo: logoSize } = sizeMap[size];
+
+  if (showText) {
+    const iconSize = logoSize * 1.5;
+    const textHeight = 48.4;
+    const textWidth = Math.round(textHeight * 2.5);
+
+    log.debug('AmixLogo rendering inline parts', { size, logoSize, iconSize, textWidth, textHeight });
+
+    return (
+      <div className={`flex items-center ${className}`}>
+        <Image
+          src="/images/annix-icon.png"
+          alt="Annix"
+          width={iconSize}
+          height={iconSize}
+          priority
+          style={{ width: iconSize, height: iconSize }}
+        />
+        <Image
+          src="/images/annix-text.png"
+          alt="Annix Investments"
+          width={textWidth}
+          height={textHeight}
+          priority
+          style={{ width: 'auto', height: textHeight }}
+        />
+      </div>
+    );
+  }
+
+  log.debug('AmixLogo rendering icon only', { size, logoSize });
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      {/* Logo Image - Replace SVG with actual image when available */}
-      <div
-        className="relative flex-shrink-0"
+    <div className={`inline-block ${className}`}>
+      <Image
+        src="/images/annix-icon.png"
+        alt="Annix"
+        width={logoSize}
+        height={logoSize}
+        priority
         style={{ width: logoSize, height: logoSize }}
-      >
-        {/*
-          TODO: Replace this SVG with the actual logo image:
-          <Image
-            src="/images/annix-logo.png"
-            alt="Annix App"
-            width={logoSize}
-            height={logoSize}
-            priority
-          />
-        */}
-        {/* Placeholder SVG - Orange tree emblem on navy */}
-        <svg
-          viewBox="0 0 100 100"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full"
-        >
-          {/* Navy background circle */}
-          <circle cx="50" cy="50" r="48" fill="#001F3F" stroke="#FFA500" strokeWidth="2" />
-          {/* Stylized tree/branch emblem in orange */}
-          <path
-            d="M50 20 C50 20, 30 40, 35 55 C38 63, 45 65, 50 75 C55 65, 62 63, 65 55 C70 40, 50 20, 50 20"
-            fill="#FFA500"
-            opacity="0.9"
-          />
-          <path
-            d="M50 75 L50 85"
-            stroke="#FFA500"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
-          {/* Decorative leaves */}
-          <circle cx="35" cy="45" r="5" fill="#FFA500" opacity="0.7" />
-          <circle cx="65" cy="45" r="5" fill="#FFA500" opacity="0.7" />
-          <circle cx="42" cy="35" r="4" fill="#FFA500" opacity="0.6" />
-          <circle cx="58" cy="35" r="4" fill="#FFA500" opacity="0.6" />
-          <circle cx="50" cy="28" r="4" fill="#FFA500" opacity="0.8" />
-        </svg>
-      </div>
-
-      {/* Text */}
-      {showText && (
-        <div className="flex flex-col">
-          <span
-            className={`${textSize} font-bold leading-tight ${
-              useSignatureFont ? 'font-amix-signature' : ''
-            }`}
-            style={{ color: '#FFA500' }}
-          >
-            Annix
-          </span>
-          <span
-            className="text-xs tracking-wider uppercase"
-            style={{ color: '#FFA500', opacity: 0.8 }}
-          >
-            App
-          </span>
-        </div>
-      )}
+      />
     </div>
   );
 }
