@@ -2530,7 +2530,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       {/* Fixed Bottom Navigation Toolbar - always visible at bottom */}
       <div
         className="fixed bottom-0 left-0 right-0 z-[9999] px-4 py-3 shadow-2xl border-t border-gray-700"
-        style={{ backgroundColor: '#001F3F' }}
+        style={{ backgroundColor: '#323288' }}
       >
         <div className="flex items-center justify-between max-w-full">
           {/* Left side - Previous button */}
@@ -2540,7 +2540,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               disabled={currentStep === 1}
               className="px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                backgroundColor: currentStep === 1 ? 'transparent' : '#003366',
+                backgroundColor: currentStep === 1 ? 'transparent' : '#4a4da3',
                 color: '#FFA500',
                 border: '1px solid #FFA500'
               }}
@@ -2560,7 +2560,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                     backgroundColor: step.number === currentStep
                       ? '#FFA500'
                       : step.number < currentStep
-                      ? '#003366'
+                      ? '#4a4da3'
                       : 'transparent',
                     border: step.number === currentStep
                       ? '2px solid #FFA500'
@@ -2573,7 +2573,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                     className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
                     style={{
                       backgroundColor: step.number === currentStep
-                        ? '#001F3F'
+                        ? '#323288'
                         : step.number < currentStep
                         ? '#4CAF50'
                         : 'rgba(255, 165, 0, 0.3)',
@@ -2586,7 +2586,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                     className="text-sm font-medium hidden md:inline"
                     style={{
                       color: step.number === currentStep
-                        ? '#001F3F'
+                        ? '#323288'
                         : step.number < currentStep
                         ? '#4CAF50'
                         : 'rgba(255, 165, 0, 0.6)'
@@ -2612,7 +2612,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               disabled={isSavingDraft}
               className="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                backgroundColor: '#003366',
+                backgroundColor: '#4a4da3',
                 color: '#FFA500',
                 border: '1px solid #FFA500'
               }}
@@ -2638,7 +2638,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               <button
                 onClick={nextStep}
                 className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
-                style={{ backgroundColor: '#FFA500', color: '#001F3F' }}
+                style={{ backgroundColor: '#FFA500', color: '#323288' }}
               >
                 Next →
               </button>

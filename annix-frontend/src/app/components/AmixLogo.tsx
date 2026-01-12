@@ -98,7 +98,7 @@ export function AmixLogoWithBackground({
   return (
     <div
       className={`inline-flex items-center rounded-lg px-4 py-2 ${className}`}
-      style={{ backgroundColor: '#001F3F' }}
+      style={{ backgroundColor: '#323288' }}
     >
       <AmixLogo size={size} showText useSignatureFont />
     </div>

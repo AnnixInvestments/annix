@@ -38,18 +38,18 @@ export default function Navigation() {
               <Link
                 href="/"
                 className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
-                  pathname === '/' ? 'bg-[#FFA500]' : 'hover:bg-[#003366]'
+                  pathname === '/' ? 'bg-[#FFA500]' : 'hover:bg-[#4a4da3]'
                 }`}
-                style={{ color: pathname === '/' ? '#001F3F' : '#FFA500' }}
+                style={{ color: pathname === '/' ? '#323288' : '#FFA500' }}
               >
                 Home
               </Link>
               <Link
                 href="/pricing"
                 className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
-                  pathname === '/pricing' ? 'bg-[#FFA500]' : 'hover:bg-[#003366]'
+                  pathname === '/pricing' ? 'bg-[#FFA500]' : 'hover:bg-[#4a4da3]'
                 }`}
-                style={{ color: pathname === '/pricing' ? '#001F3F' : '#FFA500' }}
+                style={{ color: pathname === '/pricing' ? '#323288' : '#FFA500' }}
               >
                 Pricing
               </Link>

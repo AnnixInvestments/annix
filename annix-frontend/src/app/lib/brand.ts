@@ -8,9 +8,9 @@
 // Brand Colors
 export const brandColors = {
   // Primary navy blue background
-  navy: '#001F3F',
-  navyLight: '#003366',
-  navyDark: '#001529',
+  navy: '#323288',
+  navyLight: '#4a4da3',
+  navyDark: '#252560',
 
   // Accent orange color
   orange: '#FFA500',
@@ -23,7 +23,7 @@ export const brandColors = {
 
   // Text colors
   textOnNavy: '#FFFFFF',
-  textOnWhite: '#001F3F',
+  textOnWhite: '#323288',
 } as const;
 
 // CSS class names for brand styling
@@ -75,6 +75,6 @@ export const brandStyles = {
 
 // Tailwind-compatible color values for use in className strings
 export const tw = {
-  navy: '[#001F3F]',
+  navy: '[#323288]',
   orange: '[#FFA500]',
 } as const;

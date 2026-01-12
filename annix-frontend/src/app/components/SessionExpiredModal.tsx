@@ -74,7 +74,7 @@ export default function SessionExpiredModal({ loginUrl = '/customer/login' }: Se
         {/* Navy header with logo */}
         <div
           className="px-8 py-6 flex flex-col items-center"
-          style={{ backgroundColor: '#001F3F' }}
+          style={{ backgroundColor: '#323288' }}
         >
           <AmixLogo size="lg" showText useSignatureFont />
         </div>

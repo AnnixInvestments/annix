@@ -12,9 +12,9 @@ const config: Config = {
       colors: {
         amix: {
           navy: {
-            DEFAULT: '#001F3F',
-            light: '#003366',
-            dark: '#001529',
+            DEFAULT: '#323288',
+            light: '#4a4da3',
+            dark: '#252560',
           },
           orange: {
             DEFAULT: '#FFA500',
