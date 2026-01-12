@@ -7,7 +7,6 @@ import {
   BEND_END_OPTIONS,
   SABS719_BEND_TYPES,
   sabs719CenterToFaceBySegments as getSABS719CenterToFaceBySegments,
-  sabs719CenterToFaceByWT as getSABS719CenterToFaceByWT,
   weldCountPerBend as getWeldCountPerBend,
   hasLooseFlange,
   getScheduleListForSpec,
@@ -251,11 +250,11 @@ export default function BendForm({
                               let newCenterToFace: number | undefined = undefined;
                               let newBendRadius: number | undefined = undefined;
 
-                              if (isSABS719 && entry.specs?.bendRadiusType && matchedWT) {
-                                const cfResult = getSABS719CenterToFaceByWT(
+                              if (isSABS719 && entry.specs?.bendRadiusType && entry.specs?.numberOfSegments) {
+                                const cfResult = getSABS719CenterToFaceBySegments(
                                   entry.specs.bendRadiusType,
                                   nominalBore,
-                                  matchedWT
+                                  entry.specs.numberOfSegments
                                 );
                                 if (cfResult) {
                                   newCenterToFace = cfResult.centerToFace;
@@ -330,35 +329,12 @@ export default function BendForm({
                             onChange={(schedule) => {
                               if (!schedule) return;
                               const scheduleData = schedules.find((s: any) => s.scheduleDesignation === schedule);
-                              const newWT = scheduleData?.wallThicknessMm;
-                              let newCenterToFace = entry.specs?.centerToFaceMm;
-                              let newBendRadius = entry.specs?.bendRadiusMm;
-                              if (isSABS719 && entry.specs?.bendRadiusType && entry.specs?.nominalBoreMm && newWT) {
-                                const cfResult = getSABS719CenterToFaceByWT(
-                                  entry.specs.bendRadiusType,
-                                  entry.specs.nominalBoreMm,
-                                  newWT
-                                );
-                                if (cfResult) {
-                                  newCenterToFace = cfResult.centerToFace;
-                                  newBendRadius = cfResult.radius;
-                                }
-                              }
                               const updatedEntry: any = {
                                 ...entry,
-                                specs: {
-                                  ...entry.specs,
-                                  scheduleNumber: schedule,
-                                  wallThicknessMm: newWT,
-                                  centerToFaceMm: newCenterToFace,
-                                  bendRadiusMm: newBendRadius
-                                }
+                                specs: { ...entry.specs, scheduleNumber: schedule, wallThicknessMm: scheduleData?.wallThicknessMm }
                               };
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
-                              if (entry.specs?.bendDegrees && entry.specs?.nominalBoreMm) {
-                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                              }
                             }}
                             options={options}
                             placeholder={entry.specs?.nominalBoreMm ? 'Select Schedule' : 'Select NB first'}
@@ -443,19 +419,6 @@ export default function BendForm({
                             id={selectId}
                             value={entry.specs?.bendRadiusType || ''}
                             onChange={(radiusType) => {
-                              let newCenterToFace: number | undefined = undefined;
-                              let newBendRadius: number | undefined = undefined;
-                              if (radiusType && entry.specs?.nominalBoreMm && entry.specs?.wallThicknessMm) {
-                                const cfResult = getSABS719CenterToFaceByWT(
-                                  radiusType,
-                                  entry.specs.nominalBoreMm,
-                                  entry.specs.wallThicknessMm
-                                );
-                                if (cfResult) {
-                                  newCenterToFace = cfResult.centerToFace;
-                                  newBendRadius = cfResult.radius;
-                                }
-                              }
                               const updatedEntry: any = {
                                 ...entry,
                                 specs: {
@@ -463,8 +426,8 @@ export default function BendForm({
                                   bendRadiusType: radiusType || undefined,
                                   bendType: undefined,
                                   numberOfSegments: undefined,
-                                  centerToFaceMm: newCenterToFace,
-                                  bendRadiusMm: newBendRadius,
+                                  centerToFaceMm: undefined,
+                                  bendRadiusMm: undefined,
                                   bendDegrees: undefined
                                 }
                               };
@@ -533,17 +496,7 @@ export default function BendForm({
                               const bendDegrees = value ? parseFloat(value) : undefined;
                               let centerToFaceMm: number | undefined;
                               let bendRadiusMm: number | undefined;
-                              if (isSABS719 && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendRadiusType && entry.specs?.wallThicknessMm) {
-                                const cfResult = getSABS719CenterToFaceByWT(
-                                  entry.specs.bendRadiusType,
-                                  entry.specs.nominalBoreMm,
-                                  entry.specs.wallThicknessMm
-                                );
-                                if (cfResult) {
-                                  centerToFaceMm = cfResult.centerToFace;
-                                  bendRadiusMm = cfResult.radius;
-                                }
-                              } else if (!isSABS719 && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
+                              if (!isSABS719 && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
                                 const bendType = entry.specs.bendType as SABS62BendType;
                                 centerToFaceMm = getSabs62CFInterpolated(bendType, bendDegrees, entry.specs.nominalBoreMm);
                                 bendRadiusMm = SABS62_BEND_RADIUS[bendType]?.[entry.specs.nominalBoreMm];
@@ -622,10 +575,7 @@ export default function BendForm({
 
                         if (isAutoFill && entry.specs?.numberOfSegments !== 2) {
                           setTimeout(() => {
-                            const wallThickness = entry.specs?.wallThicknessMm;
-                            const cfResult = wallThickness
-                              ? getSABS719CenterToFaceByWT(bendRadiusType, nominalBore, wallThickness)
-                              : null;
+                            const cfResult = getSABS719CenterToFaceBySegments(bendRadiusType, nominalBore, 2);
                             const updatedEntry: any = {
                               ...entry,
                               specs: {
@@ -668,9 +618,8 @@ export default function BendForm({
                                 const segments = e.target.value ? parseInt(e.target.value) : undefined;
                                 let centerToFace: number | undefined;
                                 let bendRadius: number | undefined;
-                                const wallThickness = entry.specs?.wallThicknessMm;
-                                if (segments && bendRadiusType && nominalBore && wallThickness) {
-                                  const cfResult = getSABS719CenterToFaceByWT(bendRadiusType, nominalBore, wallThickness);
+                                if (segments && bendRadiusType && nominalBore) {
+                                  const cfResult = getSABS719CenterToFaceBySegments(bendRadiusType, nominalBore, segments);
                                   if (cfResult) { centerToFace = cfResult.centerToFace; bendRadius = cfResult.radius; }
                                 }
                                 const updatedEntry: any = {
