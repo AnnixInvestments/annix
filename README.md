@@ -5,61 +5,21 @@ This repository houses the NestJS API (`annix-backend`) and the Next.js applicat
 > **Current runtime targets**
 >
 > - Node.js **22.21.1**
-> - Yarn **1.22.x** (bundled with the repo)
+> - pnpm **9.x** (package manager)
 > - npm **10.x** (ships with Node 22)
 > - PostgreSQL **15.x**
 > - Bash (for `run-dev.sh`) or PowerShell 5+/7 (for `run-dev.ps1`)
 
 ---
 
-## 🎨 New Feature Available: 3D Pipe Visualization
+## 🎨 3D Pipe Visualization
 
-There's an optional **3D visualization feature** ready for review on the `feature/3d-pipe-visualization` branch.
-
-### What It Does
-- Interactive 3D previews of pipes and bends in the RFQ form
-- Real-time visualization as users configure specifications
+The application includes interactive **3D visualization** for pipes and bends in the RFQ form:
+- Real-time 3D previews as users configure specifications
 - Multiple camera angles, drag-to-rotate, zoom controls
 - Shows flanges, welds, dimensions, and material properties
 
-### How to Review & Decide
-
-**Option 1: Try it out first (recommended)**
-```bash
-# Switch to the feature branch
-git checkout feature/3d-pipe-visualization
-
-# Run the app
-./run-dev.sh  # or run-dev.ps1
-
-# Navigate to RFQ form → Add Item → Configure a pipe or bend
-# The 3D preview appears automatically
-```
-
-**Option 2: If you like it - Cherry-pick into main**
-```bash
-# Switch back to main
-git checkout main
-
-# Cherry-pick all 4 commits from the feature branch
-git cherry-pick b2826fa 7082c5d a11360e ee2b5fa
-
-# Continue working from main with 3D features included
-```
-
-**Option 3: If you don't want it - Just use main**
-```bash
-# Switch to main and ignore the feature branch
-git checkout main
-
-# Continue working normally (no 3D features)
-```
-
-### More Information
-- **Detailed docs**: See `3D_VISUALIZATION_GUIDE.md` for full usage guide
-- **Commits**: 4 clean, logical commits (components → dependencies → docs → integration)
-- **Database safe**: No schema changes, safe to switch branches anytime
-- **Easily removable**: Delete the feature branch if not needed
+For implementation details, see `3D_VISUALIZATION_GUIDE.md`.
 
 ---
 

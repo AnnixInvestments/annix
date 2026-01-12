@@ -32,6 +32,8 @@ import { BendDimensionModule } from './bend-dimension/bend-dimension.module';
 import { WeldTypeModule } from './weld-type/weld-type.module';
 import { WeldJointEfficiencyModule } from './weld-joint-efficiency/weld-joint-efficiency.module';
 import { WeldThicknessModule } from './weld-thickness/weld-thickness.module';
+import { MaterialValidationModule } from './material-validation/material-validation.module';
+import { GasketWeightModule } from './gasket-weight/gasket-weight.module';
 import { PipeEndConfigurationModule } from './pipe-end-configuration/pipe-end-configuration.module';
 import { BendCenterToFaceModule } from './bend-center-to-face/bend-center-to-face.module';
 import { RfqModule } from './rfq/rfq.module';
@@ -85,6 +87,8 @@ import typeormConfig from './config/typeorm';
     WeldTypeModule,
     WeldJointEfficiencyModule,
     WeldThicknessModule,
+    MaterialValidationModule,
+    GasketWeightModule,
     PipeEndConfigurationModule,
     BendCenterToFaceModule,
     RfqModule,

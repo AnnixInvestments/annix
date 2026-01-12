@@ -74,9 +74,6 @@ import {
   MATERIAL_LIMITS,
   type MaterialLimits,
   materialLimits as getMaterialLimits,
-  type MaterialSuitabilityResult,
-  checkMaterialSuitability,
-  suitableMaterials as getSuitableMaterials,
   getScheduleListForSpec,
 } from '@/app/lib/config/rfq';
 import { generateUniqueId, nowISO } from '@/app/lib/datetime';

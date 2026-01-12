@@ -340,6 +340,54 @@ export interface CreateSaMineDto {
   longitude?: number;
 }
 
+// Material Validation Types
+export interface MaterialLimit {
+  id: number;
+  steelSpecificationId: number | null;
+  steelSpecName: string;
+  minTemperatureCelsius: number;
+  maxTemperatureCelsius: number;
+  maxPressureBar: number;
+  materialType: string;
+  recommendedForSourService: boolean;
+  notes: string | null;
+}
+
+export interface MaterialSuitabilityResult {
+  isSuitable: boolean;
+  warnings: string[];
+  recommendation?: string;
+  limits?: {
+    minTempC: number;
+    maxTempC: number;
+    maxPressureBar: number;
+    materialType: string;
+    notes?: string;
+  };
+}
+
+// Weld Thickness Types
+export interface WeldThicknessResult {
+  found: boolean;
+  weldThicknessMm: number | null;
+  fittingClass: string | null;
+  dn: number;
+  odMm: number | null;
+  maxPressureBar: number | null;
+  temperatureC: number;
+  schedule: string;
+  notes?: string;
+}
+
+export interface PipeWallThicknessResult {
+  found: boolean;
+  wallThicknessMm: number | null;
+  maxPressureBar: number | null;
+  schedule: string;
+  dn: number;
+  temperatureC: number;
+}
+
 class ApiClient {
   private baseURL: string;
 
@@ -998,6 +1046,81 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // ==================== Material Validation Methods ====================
+
+  async getAllMaterialLimits(): Promise<MaterialLimit[]> {
+    return this.request('/material-validation');
+  }
+
+  async getMaterialLimitsBySpecName(specName: string): Promise<MaterialLimit | null> {
+    return this.request(`/material-validation/by-spec-name/${encodeURIComponent(specName)}`);
+  }
+
+  async checkMaterialSuitability(
+    specName: string,
+    temperature?: number,
+    pressure?: number
+  ): Promise<MaterialSuitabilityResult> {
+    const params = new URLSearchParams({ specName });
+    if (temperature !== undefined) params.append('temperature', temperature.toString());
+    if (pressure !== undefined) params.append('pressure', pressure.toString());
+    return this.request(`/material-validation/check-suitability?${params.toString()}`);
+  }
+
+  async getSuitableMaterials(temperature?: number, pressure?: number): Promise<string[]> {
+    const params = new URLSearchParams();
+    if (temperature !== undefined) params.append('temperature', temperature.toString());
+    if (pressure !== undefined) params.append('pressure', pressure.toString());
+    return this.request(`/material-validation/suitable-materials?${params.toString()}`);
+  }
+
+  // ==================== Weld Thickness Methods ====================
+
+  async getWeldThickness(
+    dn: number,
+    schedule: string,
+    temperature?: number
+  ): Promise<WeldThicknessResult> {
+    const params = new URLSearchParams({
+      dn: dn.toString(),
+      schedule,
+    });
+    if (temperature !== undefined) params.append('temperature', temperature.toString());
+    return this.request(`/weld-thickness/lookup?${params.toString()}`);
+  }
+
+  async getRecommendedWeldThickness(
+    dn: number,
+    pressure: number,
+    temperature?: number
+  ): Promise<WeldThicknessResult> {
+    const params = new URLSearchParams({
+      dn: dn.toString(),
+      pressure: pressure.toString(),
+    });
+    if (temperature !== undefined) params.append('temperature', temperature.toString());
+    return this.request(`/weld-thickness/recommend?${params.toString()}`);
+  }
+
+  async getAllWeldThicknessesForDn(dn: number, temperature?: number): Promise<WeldThicknessResult[]> {
+    const params = new URLSearchParams({ dn: dn.toString() });
+    if (temperature !== undefined) params.append('temperature', temperature.toString());
+    return this.request(`/weld-thickness/all-for-dn?${params.toString()}`);
+  }
+
+  async getPipeWallThickness(
+    dn: number,
+    schedule: string,
+    temperature?: number
+  ): Promise<PipeWallThicknessResult> {
+    const params = new URLSearchParams({
+      dn: dn.toString(),
+      schedule,
+    });
+    if (temperature !== undefined) params.append('temperature', temperature.toString());
+    return this.request(`/weld-thickness/pipe-wall?${params.toString()}`);
+  }
 }
 
 // Create and export the API client instance
@@ -1075,6 +1198,26 @@ export const pipeScheduleApi = {
   recommend: (params: Parameters<typeof apiClient.recommendPipeSchedule>[0]) =>
     apiClient.recommendPipeSchedule(params),
   getSchedulesByNb: (nbMm: number) => apiClient.getSchedulesByNb(nbMm),
+};
+
+export const materialValidationApi = {
+  getAllMaterialLimits: () => apiClient.getAllMaterialLimits(),
+  getMaterialLimitsBySpecName: (specName: string) => apiClient.getMaterialLimitsBySpecName(specName),
+  checkMaterialSuitability: (specName: string, temperature?: number, pressure?: number) =>
+    apiClient.checkMaterialSuitability(specName, temperature, pressure),
+  getSuitableMaterials: (temperature?: number, pressure?: number) =>
+    apiClient.getSuitableMaterials(temperature, pressure),
+};
+
+export const weldThicknessApi = {
+  getWeldThickness: (dn: number, schedule: string, temperature?: number) =>
+    apiClient.getWeldThickness(dn, schedule, temperature),
+  getRecommendedWeldThickness: (dn: number, pressure: number, temperature?: number) =>
+    apiClient.getRecommendedWeldThickness(dn, pressure, temperature),
+  getAllWeldThicknessesForDn: (dn: number, temperature?: number) =>
+    apiClient.getAllWeldThicknessesForDn(dn, temperature),
+  getPipeWallThickness: (dn: number, schedule: string, temperature?: number) =>
+    apiClient.getPipeWallThickness(dn, schedule, temperature),
 };
 
 export const rfqDocumentApi = {

@@ -10,7 +10,7 @@ export class WeldThicknessController {
    * GET /weld-thickness/lookup?dn=100&schedule=STD&temperature=20
    */
   @Get('lookup')
-  getWeldThickness(
+  async getWeldThickness(
     @Query('dn') dn: string,
     @Query('schedule') schedule: string,
     @Query('temperature') temperature?: string,
@@ -34,7 +34,7 @@ export class WeldThicknessController {
    * GET /weld-thickness/recommend?dn=100&pressure=150&temperature=200
    */
   @Get('recommend')
-  getRecommendedWeldThickness(
+  async getRecommendedWeldThickness(
     @Query('dn') dn: string,
     @Query('pressure') pressure: string,
     @Query('temperature') temperature?: string,
@@ -47,7 +47,7 @@ export class WeldThicknessController {
     const pressureBar = parseFloat(pressure);
     const tempC = temperature ? parseFloat(temperature) : 20;
 
-    const result = this.weldThicknessService.getRecommendedWeldThickness(
+    const result = await this.weldThicknessService.getRecommendedWeldThickness(
       dnNum,
       pressureBar,
       tempC,
@@ -68,7 +68,7 @@ export class WeldThicknessController {
    * GET /weld-thickness/all-for-dn?dn=100&temperature=20
    */
   @Get('all-for-dn')
-  getAllWeldThicknessesForDn(
+  async getAllWeldThicknessesForDn(
     @Query('dn') dn: string,
     @Query('temperature') temperature?: string,
   ) {
@@ -87,7 +87,7 @@ export class WeldThicknessController {
    * GET /weld-thickness/pipe-wall?dn=100&schedule=STD&temperature=20
    */
   @Get('pipe-wall')
-  getPipeWallThickness(
+  async getPipeWallThickness(
     @Query('dn') dn: string,
     @Query('schedule') schedule: string,
     @Query('temperature') temperature?: string,
@@ -111,7 +111,7 @@ export class WeldThicknessController {
    * GET /weld-thickness/fittings
    */
   @Get('fittings')
-  getAllFittingsData() {
+  async getAllFittingsData() {
     return this.weldThicknessService.getAllFittingsData();
   }
 
@@ -120,7 +120,7 @@ export class WeldThicknessController {
    * GET /weld-thickness/carbon-steel-pipes
    */
   @Get('carbon-steel-pipes')
-  getAllCarbonSteelPipes() {
+  async getAllCarbonSteelPipes() {
     return this.weldThicknessService.getAllCarbonSteelPipes();
   }
 
@@ -129,7 +129,7 @@ export class WeldThicknessController {
    * GET /weld-thickness/stainless-steel-pipes
    */
   @Get('stainless-steel-pipes')
-  getAllStainlessSteelPipes() {
+  async getAllStainlessSteelPipes() {
     return this.weldThicknessService.getAllStainlessSteelPipes();
   }
 
@@ -138,7 +138,7 @@ export class WeldThicknessController {
    * GET /weld-thickness/available-dns
    */
   @Get('available-dns')
-  getAvailableFittingDns() {
+  async getAvailableFittingDns() {
     return this.weldThicknessService.getAvailableFittingDns();
   }
 
@@ -147,7 +147,7 @@ export class WeldThicknessController {
    * GET /weld-thickness/temperature-breakpoints
    */
   @Get('temperature-breakpoints')
-  getTemperatureBreakpoints() {
+  async getTemperatureBreakpoints() {
     return this.weldThicknessService.getTemperatureBreakpoints();
   }
 }

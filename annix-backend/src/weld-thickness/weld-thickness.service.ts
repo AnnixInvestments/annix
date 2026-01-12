@@ -1,16 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import {
-  CARBON_STEEL_PIPES,
-  CARBON_STEEL_FITTINGS,
-  STAINLESS_STEEL_PIPES,
-  SCHEDULE_TO_FITTING_CLASS,
-  DN_TO_OD_MM,
-  CARBON_STEEL_TEMP_BREAKPOINTS,
-  FITTING_TEMP_BREAKPOINTS,
-  CarbonSteelPipeData,
-  StainlessSteelPipeData,
-  FittingData,
-} from './weld-thickness.data';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { WeldThicknessPipeRecommendation } from './entities/weld-thickness-pipe-recommendation.entity';
+import { WeldThicknessFittingRecommendation } from './entities/weld-thickness-fitting-recommendation.entity';
 
 export interface WeldThicknessResult {
   found: boolean;
@@ -35,6 +27,13 @@ export interface PipeWallThicknessResult {
 
 @Injectable()
 export class WeldThicknessService {
+  constructor(
+    @InjectRepository(WeldThicknessPipeRecommendation)
+    private pipeRecommendationRepository: Repository<WeldThicknessPipeRecommendation>,
+    @InjectRepository(WeldThicknessFittingRecommendation)
+    private fittingRecommendationRepository: Repository<WeldThicknessFittingRecommendation>,
+  ) {}
+
   /**
    * Round a thickness to the nearest 1.5mm increment.
    * Welding is done in 1.5mm runs, so thicknesses should be multiples of 1.5mm.
@@ -47,24 +46,23 @@ export class WeldThicknessService {
 
   /**
    * Get the weld thickness for a given DN and schedule
-   * Weld thickness is determined by the fitting wall thickness from CARBON_STEEL_FITTINGS
+   * Weld thickness is determined by the fitting wall thickness
    * The result is rounded to the nearest 1.5mm increment for practical welding
    */
-  getWeldThickness(
+  async getWeldThickness(
     dn: number,
     schedule: string,
     temperatureC: number = 20,
-  ): WeldThicknessResult {
-    // Normalize schedule to fitting class (STD, XH, XXH)
+  ): Promise<WeldThicknessResult> {
     const fittingClass = this.normalizeFittingClass(schedule);
 
-    if (!fittingClass || !CARBON_STEEL_FITTINGS[fittingClass]) {
+    if (!fittingClass) {
       return {
         found: false,
         weldThicknessMm: null,
         fittingClass: null,
         dn,
-        odMm: DN_TO_OD_MM[dn] || null,
+        odMm: null,
         maxPressureBar: null,
         temperatureC,
         schedule,
@@ -72,8 +70,15 @@ export class WeldThicknessService {
       };
     }
 
-    const fittings = CARBON_STEEL_FITTINGS[fittingClass];
-    const fitting = fittings.find((f) => f.dn === dn);
+    const closestTemp = this.findClosestTemperature(temperatureC);
+
+    const fitting = await this.fittingRecommendationRepository.findOne({
+      where: {
+        nominal_bore_mm: dn,
+        fitting_class: fittingClass,
+        temperature_celsius: closestTemp,
+      },
+    });
 
     if (!fitting) {
       return {
@@ -81,7 +86,7 @@ export class WeldThicknessService {
         weldThicknessMm: null,
         fittingClass,
         dn,
-        odMm: DN_TO_OD_MM[dn] || null,
+        odMm: null,
         maxPressureBar: null,
         temperatureC,
         schedule,
@@ -89,17 +94,13 @@ export class WeldThicknessService {
       };
     }
 
-    // Get temperature index for fitting pressure lookup
-    const tempIdx = this.getFittingTempIndex(temperatureC);
-    const maxPressure = fitting.pressuresBar[tempIdx];
-
     return {
       found: true,
-      weldThicknessMm: this.roundToWeldIncrement(fitting.wallMm),
+      weldThicknessMm: this.roundToWeldIncrement(Number(fitting.wall_thickness_mm)),
       fittingClass,
       dn,
-      odMm: fitting.odMm,
-      maxPressureBar: maxPressure,
+      odMm: null, // OD not stored in new schema
+      maxPressureBar: Number(fitting.max_pressure_bar),
       temperatureC,
       schedule,
     };
@@ -108,59 +109,59 @@ export class WeldThicknessService {
   /**
    * Get all available weld thicknesses for a given DN
    */
-  getAllWeldThicknessesForDn(
+  async getAllWeldThicknessesForDn(
     dn: number,
     temperatureC: number = 20,
-  ): WeldThicknessResult[] {
-    const results: WeldThicknessResult[] = [];
-    const tempIdx = this.getFittingTempIndex(temperatureC);
+  ): Promise<WeldThicknessResult[]> {
+    const closestTemp = this.findClosestTemperature(temperatureC);
 
-    for (const [fittingClass, fittings] of Object.entries(
-      CARBON_STEEL_FITTINGS,
-    )) {
-      const fitting = fittings.find((f) => f.dn === dn);
-      if (fitting) {
-        results.push({
-          found: true,
-          weldThicknessMm: this.roundToWeldIncrement(fitting.wallMm),
-          fittingClass,
-          dn,
-          odMm: fitting.odMm,
-          maxPressureBar: fitting.pressuresBar[tempIdx],
-          temperatureC,
-          schedule: fittingClass,
-        });
-      }
-    }
+    const fittings = await this.fittingRecommendationRepository.find({
+      where: {
+        nominal_bore_mm: dn,
+        temperature_celsius: closestTemp,
+      },
+    });
 
-    return results;
+    return fittings.map((fitting) => ({
+      found: true,
+      weldThicknessMm: this.roundToWeldIncrement(Number(fitting.wall_thickness_mm)),
+      fittingClass: fitting.fitting_class,
+      dn,
+      odMm: null,
+      maxPressureBar: Number(fitting.max_pressure_bar),
+      temperatureC,
+      schedule: fitting.fitting_class,
+    }));
   }
 
   /**
    * Get recommended weld thickness based on design pressure
    */
-  getRecommendedWeldThickness(
+  async getRecommendedWeldThickness(
     dn: number,
     designPressureBar: number,
     temperatureC: number = 20,
-  ): WeldThicknessResult | null {
-    const tempIdx = this.getFittingTempIndex(temperatureC);
-
-    // Check each fitting class in order of increasing thickness
+  ): Promise<WeldThicknessResult | null> {
+    const closestTemp = this.findClosestTemperature(temperatureC);
     const classOrder = ['STD', 'XH', 'XXH'];
 
     for (const fittingClass of classOrder) {
-      const fittings = CARBON_STEEL_FITTINGS[fittingClass];
-      const fitting = fittings.find((f) => f.dn === dn);
+      const fitting = await this.fittingRecommendationRepository.findOne({
+        where: {
+          nominal_bore_mm: dn,
+          fitting_class: fittingClass,
+          temperature_celsius: closestTemp,
+        },
+      });
 
-      if (fitting && fitting.pressuresBar[tempIdx] >= designPressureBar) {
+      if (fitting && Number(fitting.max_pressure_bar) >= designPressureBar) {
         return {
           found: true,
-          weldThicknessMm: this.roundToWeldIncrement(fitting.wallMm),
+          weldThicknessMm: this.roundToWeldIncrement(Number(fitting.wall_thickness_mm)),
           fittingClass,
           dn,
-          odMm: fitting.odMm,
-          maxPressureBar: fitting.pressuresBar[tempIdx],
+          odMm: null,
+          maxPressureBar: Number(fitting.max_pressure_bar),
           temperatureC,
           schedule: fittingClass,
           notes: `Minimum fitting class for ${designPressureBar} bar at ${temperatureC}°C`,
@@ -168,21 +169,25 @@ export class WeldThicknessService {
       }
     }
 
-    // If no standard class can handle the pressure, return the XXH with a warning
-    const xxhFittings = CARBON_STEEL_FITTINGS['XXH'];
-    const xxhFitting = xxhFittings.find((f) => f.dn === dn);
+    const xxhFitting = await this.fittingRecommendationRepository.findOne({
+      where: {
+        nominal_bore_mm: dn,
+        fitting_class: 'XXH',
+        temperature_celsius: closestTemp,
+      },
+    });
 
     if (xxhFitting) {
       return {
         found: true,
-        weldThicknessMm: this.roundToWeldIncrement(xxhFitting.wallMm),
+        weldThicknessMm: this.roundToWeldIncrement(Number(xxhFitting.wall_thickness_mm)),
         fittingClass: 'XXH',
         dn,
-        odMm: xxhFitting.odMm,
-        maxPressureBar: xxhFitting.pressuresBar[tempIdx],
+        odMm: null,
+        maxPressureBar: Number(xxhFitting.max_pressure_bar),
         temperatureC,
         schedule: 'XXH',
-        notes: `WARNING: Design pressure ${designPressureBar} bar exceeds XXH rating of ${xxhFitting.pressuresBar[tempIdx]} bar at ${temperatureC}°C. Special design required.`,
+        notes: `WARNING: Design pressure ${designPressureBar} bar exceeds XXH rating of ${xxhFitting.max_pressure_bar} bar at ${temperatureC}°C. Special design required.`,
       };
     }
 
@@ -192,15 +197,21 @@ export class WeldThicknessService {
   /**
    * Get pipe wall thickness for carbon steel pipes
    */
-  getPipeWallThickness(
+  async getPipeWallThickness(
     dn: number,
     schedule: string,
     temperatureC: number = 20,
-  ): PipeWallThicknessResult {
-    const tempIdx = this.getCarbonSteelTempIndex(temperatureC);
-    const pipe = CARBON_STEEL_PIPES.find(
-      (p) => p.dn === dn && this.scheduleMatches(p.schedule, schedule),
-    );
+  ): Promise<PipeWallThicknessResult> {
+    const closestTemp = this.findClosestTemperature(temperatureC);
+
+    const pipe = await this.pipeRecommendationRepository.findOne({
+      where: {
+        nominal_bore_mm: dn,
+        schedule,
+        steel_type: 'CARBON_STEEL',
+        temperature_celsius: closestTemp,
+      },
+    });
 
     if (!pipe) {
       return {
@@ -215,8 +226,8 @@ export class WeldThicknessService {
 
     return {
       found: true,
-      wallThicknessMm: pipe.wallMm,
-      maxPressureBar: pipe.pressuresBar[tempIdx],
+      wallThicknessMm: Number(pipe.wall_thickness_mm),
+      maxPressureBar: Number(pipe.max_pressure_bar),
       schedule: pipe.schedule,
       dn,
       temperatureC,
@@ -226,47 +237,64 @@ export class WeldThicknessService {
   /**
    * Get all fittings data
    */
-  getAllFittingsData(): Record<string, FittingData[]> {
-    return CARBON_STEEL_FITTINGS;
+  async getAllFittingsData(): Promise<WeldThicknessFittingRecommendation[]> {
+    return this.fittingRecommendationRepository.find();
   }
 
   /**
    * Get all carbon steel pipes data
    */
-  getAllCarbonSteelPipes(): CarbonSteelPipeData[] {
-    return CARBON_STEEL_PIPES;
+  async getAllCarbonSteelPipes(): Promise<WeldThicknessPipeRecommendation[]> {
+    return this.pipeRecommendationRepository.find({
+      where: { steel_type: 'CARBON_STEEL' },
+    });
   }
 
   /**
    * Get all stainless steel pipes data
    */
-  getAllStainlessSteelPipes(): StainlessSteelPipeData[] {
-    return STAINLESS_STEEL_PIPES;
+  async getAllStainlessSteelPipes(): Promise<WeldThicknessPipeRecommendation[]> {
+    return this.pipeRecommendationRepository.find({
+      where: { steel_type: 'STAINLESS_STEEL' },
+    });
   }
 
   /**
    * Get available DNs for fittings
    */
-  getAvailableFittingDns(): number[] {
-    const dns = new Set<number>();
-    for (const fittings of Object.values(CARBON_STEEL_FITTINGS)) {
-      for (const fitting of fittings) {
-        dns.add(fitting.dn);
-      }
-    }
-    return Array.from(dns).sort((a, b) => a - b);
+  async getAvailableFittingDns(): Promise<number[]> {
+    const result = await this.fittingRecommendationRepository
+      .createQueryBuilder('fitting')
+      .select('DISTINCT fitting.nominal_bore_mm', 'dn')
+      .orderBy('fitting.nominal_bore_mm', 'ASC')
+      .getRawMany();
+
+    return result.map((r) => r.dn);
   }
 
   /**
    * Get temperature breakpoints
    */
-  getTemperatureBreakpoints(): {
-    carbonSteelPipes: number[];
+  async getTemperatureBreakpoints(): Promise<{
+    pipes: number[];
     fittings: number[];
-  } {
+  }> {
+    const [pipeTemps, fittingTemps] = await Promise.all([
+      this.pipeRecommendationRepository
+        .createQueryBuilder('pipe')
+        .select('DISTINCT pipe.temperature_celsius', 'temp')
+        .orderBy('pipe.temperature_celsius', 'ASC')
+        .getRawMany(),
+      this.fittingRecommendationRepository
+        .createQueryBuilder('fitting')
+        .select('DISTINCT fitting.temperature_celsius', 'temp')
+        .orderBy('fitting.temperature_celsius', 'ASC')
+        .getRawMany(),
+    ]);
+
     return {
-      carbonSteelPipes: [...CARBON_STEEL_TEMP_BREAKPOINTS],
-      fittings: [...FITTING_TEMP_BREAKPOINTS],
+      pipes: pipeTemps.map((t) => t.temp),
+      fittings: fittingTemps.map((t) => t.temp),
     };
   }
 
@@ -275,11 +303,6 @@ export class WeldThicknessService {
     if (!schedule) return 'STD';
 
     const upper = schedule.toUpperCase().replace(/\s+/g, ' ').trim();
-
-    // Direct match
-    if (SCHEDULE_TO_FITTING_CLASS[upper]) {
-      return SCHEDULE_TO_FITTING_CLASS[upper];
-    }
 
     // Try partial matching
     if (
@@ -296,41 +319,30 @@ export class WeldThicknessService {
       return 'STD';
     }
 
-    // Default to STD
     return 'STD';
   }
 
-  private getFittingTempIndex(tempC: number): number {
-    // Temperature breakpoints: [20-343, 371, 399, 427]
-    if (tempC <= 343) return 0;
-    if (tempC <= 371) return 1;
-    if (tempC <= 399) return 2;
-    return 3;
-  }
+  /**
+   * Find the closest temperature in the database
+   * Available temperatures: 20, 100, 200, 343, 371, 399, 427
+   */
+  private findClosestTemperature(tempC: number): number {
+    const availableTemps = [20, 100, 200, 343, 371, 399, 427];
 
-  private getCarbonSteelTempIndex(tempC: number): number {
-    // Temperature breakpoints: [-29 to 38, 205, 260, 350, 370, 400, 430, 450]
-    if (tempC <= 38) return 0;
-    if (tempC <= 205) return 1;
-    if (tempC <= 260) return 2;
-    if (tempC <= 350) return 3;
-    if (tempC <= 370) return 4;
-    if (tempC <= 400) return 5;
-    if (tempC <= 430) return 6;
-    return 7;
-  }
+    if (tempC <= 20) return 20;
+    if (tempC >= 427) return 427;
 
-  private scheduleMatches(
-    pipeSchedule: string,
-    targetSchedule: string,
-  ): boolean {
-    const normalizedPipe = pipeSchedule.toUpperCase().replace(/\s+/g, '');
-    const normalizedTarget = targetSchedule.toUpperCase().replace(/\s+/g, '');
+    let closest = availableTemps[0];
+    let minDiff = Math.abs(tempC - closest);
 
-    return (
-      normalizedPipe === normalizedTarget ||
-      normalizedPipe.includes(normalizedTarget) ||
-      normalizedTarget.includes(normalizedPipe)
-    );
+    for (const temp of availableTemps) {
+      const diff = Math.abs(tempC - temp);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = temp;
+      }
+    }
+
+    return closest;
   }
 }

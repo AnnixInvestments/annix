@@ -1,10 +1,12 @@
-# 3D Pipe Visualization Feature Guide
+# 3D Pipe Visualization Guide
 
-This guide explains the 3D visualization components added to the project and how to use or remove them.
+This guide explains the 3D visualization components integrated into the RFQ forms.
 
-## What Was Added
+## Overview
 
-Two new React components for interactive 3D visualization:
+The application includes interactive 3D visualization for pipes and bends, integrated directly into the RFQ item configuration workflow.
+
+## Components
 
 ### 1. **Pipe3DPreview** (`annix-frontend/src/app/components/rfq/Pipe3DPreview.tsx`)
 - Interactive 3D rendering of straight pipes
@@ -23,9 +25,14 @@ Two new React components for interactive 3D visualization:
 - `@react-three/fiber@9.4.2` - React wrapper for Three.js
 - `@react-three/drei@10.7.7` - Helper components
 
-## How to Use
+## Where It's Used
 
-These components are **standalone and optional**. They don't automatically appear in your forms yet.
+These components are **automatically integrated** into the RFQ forms:
+- **ItemUploadStep.tsx**: Shows 3D previews for each configured item
+- **StraightPipeForm.tsx**: Real-time preview as pipe specifications are entered
+- **BendForm.tsx**: Real-time preview as bend specifications are entered
+
+## Component Usage
 
 ### Basic Usage - Pipe3DPreview
 
@@ -67,39 +74,15 @@ function MyComponent() {
 }
 ```
 
-### Integration Example
+### Current Integration
 
-To add 3D preview to the RFQ form, you could add it like this:
+The 3D visualization is already integrated into the RFQ workflow:
 
-```tsx
-// In StraightPipeRfqOrchestrator.tsx
-import Pipe3DPreview from './Pipe3DPreview';
-import Bend3DPreview from './Bend3DPreview';
+- **ItemUploadStep** dynamically loads the components using Next.js `dynamic()` to avoid SSR issues
+- **StraightPipeForm** and **BendForm** receive the components as props and display them automatically
+- Users see real-time 3D previews as they configure pipe specifications
 
-// Then in your item rendering:
-{entry.itemType === 'pipe' && entry.specs && (
-  <Pipe3DPreview
-    length={entry.specs.totalLength || 1000}
-    outerDiameter={entry.specs.outsideDiameter || 100}
-    wallThickness={entry.specs.wallThickness || 5}
-    endConfiguration={entry.specs.pipeEndConfig || 'PE'}
-    materialName={entry.specs.steelSpecName}
-  />
-)}
-
-{entry.itemType === 'bend' && entry.specs && (
-  <Bend3DPreview
-    nominalBore={entry.specs.nominalBore || 100}
-    outerDiameter={entry.specs.outsideDiameter || 114.3}
-    wallThickness={entry.specs.wallThickness || 6}
-    bendAngle={entry.specs.bendAngle || 90}
-    bendType={entry.specs.bendType || '3D'}
-    tangent1={entry.specs.tangent1Length}
-    tangent2={entry.specs.tangent2Length}
-    schedule={entry.specs.scheduleNumber}
-  />
-)}
-```
+No additional integration work is required - the feature is live in the application.
 
 ## Features
 

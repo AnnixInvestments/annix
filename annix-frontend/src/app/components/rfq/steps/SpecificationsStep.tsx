@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { type MaterialLimits, materialLimits as getMaterialLimits, checkMaterialSuitability } from '@/app/lib/config/rfq';
+import { materialValidationApi } from '@/app/lib/api/client';
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
 import { nowISO } from '@/app/lib/datetime';
 
@@ -761,13 +762,22 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
 
                   // Check material suitability for current pressure/temperature
                   if (specName && (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC)) {
-                    const suitability = checkMaterialSuitability(
+                    const suitability = await materialValidationApi.checkMaterialSuitability(
                       specName,
                       globalSpecs?.workingTemperatureC,
                       globalSpecs?.workingPressureBar
                     );
 
                     if (!suitability.isSuitable) {
+                      // Map API response to local MaterialLimits interface
+                      const mappedLimits = suitability.limits ? {
+                        minTempC: suitability.limits.minTempC,
+                        maxTempC: suitability.limits.maxTempC,
+                        maxPressureBar: suitability.limits.maxPressureBar,
+                        type: suitability.limits.materialType,
+                        notes: suitability.limits.notes
+                      } : undefined;
+
                       // Show warning popup for unsuitable material
                       setMaterialWarning({
                         show: true,
@@ -775,7 +785,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                         specId: newSpecId,
                         warnings: suitability.warnings,
                         recommendation: suitability.recommendation,
-                        limits: suitability.limits
+                        limits: mappedLimits
                       });
                       return; // Don't update yet - wait for user decision
                     }
