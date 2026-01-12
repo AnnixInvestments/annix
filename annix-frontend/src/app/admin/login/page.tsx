@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAdminAuth } from '@/app/context/AdminAuthContext';
 
 export default function AdminLoginPage() {
@@ -204,6 +205,12 @@ export default function AdminLoginPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="mt-6 text-center">
+          <Link href="/" className="text-sm text-blue-200 hover:text-white">
+            ← Back to Home
+          </Link>
         </div>
       </div>
     </div>

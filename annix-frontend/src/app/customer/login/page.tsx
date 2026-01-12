@@ -311,6 +311,12 @@ export default function CustomerLoginPage() {
             </div>
           </div>
         </div>
+
+        <div className="mt-6 text-center">
+          <Link href="/" className="text-sm text-blue-200 hover:text-white">
+            ← Back to Home
+          </Link>
+        </div>
       </div>
     </div>
   );
