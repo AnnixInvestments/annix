@@ -878,8 +878,8 @@ export default function StraightPipeForm({
                       step="0.001"
                       value={
                         entry.specs.quantityType === 'total_length'
-                          ? Number(entry.specs.quantityValue || 0).toFixed(3)
-                          : Number((entry.specs.quantityValue || 1) * (entry.specs.individualPipeLength || 0)).toFixed(3)
+                          ? entry.specs.quantityValue || ''
+                          : (entry.specs.quantityValue || 1) * (entry.specs.individualPipeLength || 0)
                       }
                       onChange={(e) => {
                         const totalLength = Number(e.target.value);
