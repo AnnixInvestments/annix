@@ -4,7 +4,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
   name = 'AddSABS719ERWPipeAndFittingData1762268000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log('🔧 Adding SABS 719 ERW pipe and fitting data...');
+    console.warn('🔧 Adding SABS 719 ERW pipe and fitting data...');
 
     // Get SABS 719 ERW steel specification ID
     const sabs719Result = await queryRunner.query(`
@@ -46,7 +46,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
             WHERE steel_specification_id = ${steelSpecId}
         `);
 
-    console.log('🗑️  Cleared existing SABS 719 ERW data');
+    console.warn('🗑️  Cleared existing SABS 719 ERW data');
 
     // SABS 719 ERW pipe data: [nominalDiameter, outsideDiameter, wallThickness, massPerMeter]
     const sabs719PipeData = [
@@ -342,7 +342,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
             `);
     }
 
-    console.log('📏 Ensured all SABS 719 ERW nominal outside diameters exist');
+    console.warn('📏 Ensured all SABS 719 ERW nominal outside diameters exist');
 
     // Insert pipe dimensions
     for (const [
@@ -382,7 +382,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
       }
     }
 
-    console.log(
+    console.warn(
       `✅ Inserted SABS 719 ERW pipe data (${sabs719PipeData.length} entries)`,
     );
 
@@ -405,7 +405,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
             `);
     }
 
-    console.log('✅ Ensured SABS 719 ERW fitting types exist');
+    console.warn('✅ Ensured SABS 719 ERW fitting types exist');
 
     // Get fitting type IDs
     const fittingTypeIds = {};
@@ -568,7 +568,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
       }
     }
 
-    console.log(
+    console.warn(
       `✅ Inserted SABS 719 ERW fitting dimensions (${sabs719FittingData.length} entries)`,
     );
   }
@@ -613,7 +613,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
                 WHERE steel_specification_id = ${steelSpecId}
             `);
 
-      console.log('🗑️  Removed SABS 719 ERW pipe and fitting data');
+      console.warn('🗑️  Removed SABS 719 ERW pipe and fitting data');
     }
   }
 }

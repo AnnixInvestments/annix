@@ -4,7 +4,7 @@ export class CorrectAstmA106GradeBData1762267850000 implements MigrationInterfac
   name = 'CorrectAstmA106GradeBData1762267850000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log('🔧 Correcting ASTM A106 Grade B pipe data...');
+    console.warn('🔧 Correcting ASTM A106 Grade B pipe data...');
 
     // Get ASTM A106 Grade B steel specification ID
     const astmA106BResult = await queryRunner.query(`
@@ -24,7 +24,7 @@ export class CorrectAstmA106GradeBData1762267850000 implements MigrationInterfac
             WHERE steel_specification_id = ${steelSpecId}
         `);
 
-    console.log('🗑️  Removed existing ASTM A106 Grade B data');
+    console.warn('🗑️  Removed existing ASTM A106 Grade B data');
 
     // Complete ASTM A106 Grade B data from specification
     // [nominalBore, outsideDiameter, wallThickness, internalDiameter, massPerMeter, schedule]
@@ -184,7 +184,7 @@ export class CorrectAstmA106GradeBData1762267850000 implements MigrationInterfac
             `);
     }
 
-    console.log('📏 Ensured all nominal outside diameters exist');
+    console.warn('📏 Ensured all nominal outside diameters exist');
 
     // Insert pipe dimensions
     for (const [
@@ -229,7 +229,7 @@ export class CorrectAstmA106GradeBData1762267850000 implements MigrationInterfac
       }
     }
 
-    console.log(
+    console.warn(
       `✅ Inserted complete ASTM A106 Grade B pipe data (${astmA106Data.length} entries)`,
     );
   }
@@ -249,7 +249,7 @@ export class CorrectAstmA106GradeBData1762267850000 implements MigrationInterfac
                 WHERE steel_specification_id = ${steelSpecId}
             `);
 
-      console.log('🗑️  Removed ASTM A106 Grade B pipe data');
+      console.warn('🗑️  Removed ASTM A106 Grade B pipe data');
     }
   }
 }

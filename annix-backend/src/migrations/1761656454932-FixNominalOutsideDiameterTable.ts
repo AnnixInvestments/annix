@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class FixNominalOutsideDiameterTable1761656454932 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log('🔍 Checking nominal_outside_diameters table...');
+    console.warn('🔍 Checking nominal_outside_diameters table...');
 
     // Check if table exists with wrong name (nominal_outside_diameter_mm)
     const wrongTableExists = await queryRunner.hasTable(
@@ -13,15 +13,15 @@ export class FixNominalOutsideDiameterTable1761656454932 implements MigrationInt
     );
 
     if (wrongTableExists && !correctTableExists) {
-      console.log(
+      console.warn(
         '📝 Renaming nominal_outside_diameter_mm to nominal_outside_diameters...',
       );
       await queryRunner.query(
         `ALTER TABLE "nominal_outside_diameter_mm" RENAME TO "nominal_outside_diameters"`,
       );
-      console.log('✅ Table renamed successfully');
+      console.warn('✅ Table renamed successfully');
     } else if (!correctTableExists) {
-      console.log('🏗️ Creating nominal_outside_diameters table...');
+      console.warn('🏗️ Creating nominal_outside_diameters table...');
       await queryRunner.query(`
                 CREATE TABLE "nominal_outside_diameters" (
                     "id" SERIAL NOT NULL,
@@ -31,15 +31,15 @@ export class FixNominalOutsideDiameterTable1761656454932 implements MigrationInt
                     CONSTRAINT "PK_aecffa012808ca87b79520261d4" PRIMARY KEY ("id")
                 )
             `);
-      console.log('✅ Table created successfully');
+      console.warn('✅ Table created successfully');
     } else {
-      console.log('✅ Table already exists with correct name');
+      console.warn('✅ Table already exists with correct name');
     }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Don't do anything on rollback - we don't want to break existing data
-    console.log(
+    console.warn(
       '⏮️ Rollback: No action needed for nominal_outside_diameters table',
     );
   }

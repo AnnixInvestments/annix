@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log(
+    console.warn(
       '🔧 Adding ASME flange standards and comprehensive P-T ratings...',
     );
 
@@ -25,7 +25,7 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
           `INSERT INTO flange_standards (code) VALUES ($1)`,
           [code],
         );
-        console.log(`  ✓ Added flange standard: ${code}`);
+        console.warn(`  ✓ Added flange standard: ${code}`);
       }
     }
 
@@ -41,7 +41,7 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
     );
 
     if (b165Result.length === 0) {
-      console.log('⚠️ ASME B16.5 standard not found after insert, skipping...');
+      console.warn('⚠️ ASME B16.5 standard not found after insert, skipping...');
       return;
     }
 
@@ -67,7 +67,7 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
         );
       }
     }
-    console.log(
+    console.warn(
       '  ✓ Added ASME B16.5 pressure classes: 150, 300, 400, 600, 900, 1500, 2500',
     );
 
@@ -88,7 +88,7 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
         }
       }
     }
-    console.log(
+    console.warn(
       '  ✓ Added ASME B16.47 pressure classes: 75, 150, 300, 400, 600, 900',
     );
 
@@ -106,7 +106,7 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
         [id],
       );
     }
-    console.log('  ✓ Cleared existing P-T ratings for ASME B16.5');
+    console.warn('  ✓ Cleared existing P-T ratings for ASME B16.5');
 
     // ============================================
     // 4. INSERT COMPREHENSIVE P-T RATINGS
@@ -253,7 +253,7 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
       'Carbon Steel A105 (Group 1.1)',
       carbonSteelA105,
     );
-    console.log('  ✓ Added P-T ratings for Carbon Steel A105 (Group 1.1)');
+    console.warn('  ✓ Added P-T ratings for Carbon Steel A105 (Group 1.1)');
 
     // -----------------------------------------
     // Stainless Steel 316 (Group 2.2)
@@ -345,7 +345,7 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
       'Stainless Steel 316 (Group 2.2)',
       ss316,
     );
-    console.log('  ✓ Added P-T ratings for Stainless Steel 316 (Group 2.2)');
+    console.warn('  ✓ Added P-T ratings for Stainless Steel 316 (Group 2.2)');
 
     // -----------------------------------------
     // Stainless Steel 304 (Group 2.1)
@@ -449,7 +449,7 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
       'Stainless Steel 304 (Group 2.1)',
       ss304,
     );
-    console.log('  ✓ Added P-T ratings for Stainless Steel 304 (Group 2.1)');
+    console.warn('  ✓ Added P-T ratings for Stainless Steel 304 (Group 2.1)');
 
     // ============================================
     // 5. ADD B16.47 P-T RATINGS (same as B16.5 up to Class 900)
@@ -500,9 +500,9 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
         carbonSteelB47,
       );
     }
-    console.log('  ✓ Added P-T ratings for ASME B16.47 Series A & B');
+    console.warn('  ✓ Added P-T ratings for ASME B16.47 Series A & B');
 
-    console.log('✅ ASME flange standards and P-T ratings added successfully!');
+    console.warn('✅ ASME flange standards and P-T ratings added successfully!');
   }
 
   private async insertPTRatings(
@@ -531,7 +531,7 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.log('⏮️ Rolling back ASME flange standards and P-T ratings...');
+    console.warn('⏮️ Rolling back ASME flange standards and P-T ratings...');
 
     // Delete P-T ratings for the new material groups
     await queryRunner.query(`
@@ -551,6 +551,6 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
             DELETE FROM flange_standards WHERE code IN ('ASME B16.47 A', 'ASME B16.47 B')
         `);
 
-    console.log('✅ Rollback complete');
+    console.warn('✅ Rollback complete');
   }
 }

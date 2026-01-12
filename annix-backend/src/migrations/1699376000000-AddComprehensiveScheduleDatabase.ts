@@ -209,7 +209,7 @@ export class AddComprehensiveScheduleDatabase1699376000000 implements MigrationI
     await insertPipeDimension(250, 'XXS', null, 30.18, 133.22);
     await insertPipeDimension(300, 'XXS', null, 34.93, 180.72);
 
-    console.log(
+    console.warn(
       'Successfully added comprehensive schedule database with all standard schedules',
     );
   }
@@ -224,6 +224,6 @@ export class AddComprehensiveScheduleDatabase1699376000000 implements MigrationI
             ) OR schedule_number IN (10, 20, 30, 60, 100, 120, 140, 160)
         `);
 
-    console.log('Removed comprehensive schedule database data');
+    console.warn('Removed comprehensive schedule database data');
   }
 }

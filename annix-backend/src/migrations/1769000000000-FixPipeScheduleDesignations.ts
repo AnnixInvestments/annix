@@ -4,7 +4,7 @@ export class FixPipeScheduleDesignations1769000000000 implements MigrationInterf
   name = 'FixPipeScheduleDesignations1769000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log('🔧 Fixing pipe schedule designations...');
+    console.warn('🔧 Fixing pipe schedule designations...');
 
     // Fix Schedule 40 (Sch40 → STD with schedule_number 40)
     await queryRunner.query(`
@@ -79,11 +79,11 @@ export class FixPipeScheduleDesignations1769000000000 implements MigrationInterf
       WHERE schedule_designation = 'Sch140'
     `);
 
-    console.log('✅ Schedule designations fixed: STD (40), XS (80), XXS (160)');
+    console.warn('✅ Schedule designations fixed: STD (40), XS (80), XXS (160)');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.log('⏮️  Reverting schedule designation fixes...');
+    console.warn('⏮️  Reverting schedule designation fixes...');
 
     // Revert Schedule 40
     await queryRunner.query(`
@@ -117,6 +117,6 @@ export class FixPipeScheduleDesignations1769000000000 implements MigrationInterf
       WHERE schedule_number IN (10, 20, 30, 60, 100, 120, 140)
     `);
 
-    console.log('✅ Reverted to Sch40/Sch80/Sch160 format');
+    console.warn('✅ Reverted to Sch40/Sch80/Sch160 format');
   }
 }

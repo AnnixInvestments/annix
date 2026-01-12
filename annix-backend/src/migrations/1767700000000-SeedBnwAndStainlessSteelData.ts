@@ -679,7 +679,7 @@ export class SeedBnwAndStainlessSteelData1767700000000 implements MigrationInter
     `);
 
     if (ssSpecResult.length === 0) {
-      console.log(
+      console.warn(
         'Stainless steel specification not found, skipping pipe dimensions',
       );
       return;
@@ -993,7 +993,7 @@ export class SeedBnwAndStainlessSteelData1767700000000 implements MigrationInter
       }
     }
 
-    console.log('BNW and Stainless Steel data seeded successfully');
+    console.warn('BNW and Stainless Steel data seeded successfully');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

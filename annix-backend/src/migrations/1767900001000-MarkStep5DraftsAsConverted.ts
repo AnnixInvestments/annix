@@ -11,7 +11,7 @@ export class MarkStep5DraftsAsConverted1767900001000 implements MigrationInterfa
       WHERE d.current_step = 5 AND d.is_converted = false
     `);
 
-    console.log(`Found ${draftsAtStep5.length} drafts at step 5 to convert`);
+    console.warn(`Found ${draftsAtStep5.length} drafts at step 5 to convert`);
 
     for (const draft of draftsAtStep5) {
       if (draft.rfq_id) {
@@ -19,7 +19,7 @@ export class MarkStep5DraftsAsConverted1767900001000 implements MigrationInterfa
           `UPDATE rfq_drafts SET is_converted = true, converted_rfq_id = $1 WHERE id = $2`,
           [draft.rfq_id, draft.id],
         );
-        console.log(
+        console.warn(
           `Marked draft ${draft.draft_number} as converted to RFQ ${draft.rfq_number}`,
         );
       } else {
@@ -27,7 +27,7 @@ export class MarkStep5DraftsAsConverted1767900001000 implements MigrationInterfa
           `UPDATE rfq_drafts SET is_converted = true WHERE id = $1`,
           [draft.id],
         );
-        console.log(
+        console.warn(
           `Marked draft ${draft.draft_number} as converted (no matching RFQ found)`,
         );
       }

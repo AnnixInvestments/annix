@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateFlangePtRatingsTable1766001300000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log('🏗️ Creating flange_pt_ratings table...');
+    console.warn('🏗️ Creating flange_pt_ratings table...');
 
     // Create flange_pt_ratings table
     await queryRunner.query(`
@@ -22,10 +22,10 @@ export class CreateFlangePtRatingsTable1766001300000 implements MigrationInterfa
             )
         `);
 
-    console.log('✅ flange_pt_ratings table created successfully');
+    console.warn('✅ flange_pt_ratings table created successfully');
 
     // Now populate with ASME B16.5 Carbon Steel A105 data
-    console.log(
+    console.warn(
       '📊 Populating ASME B16.5 P/T ratings for Carbon Steel A105...',
     );
 
@@ -35,7 +35,7 @@ export class CreateFlangePtRatingsTable1766001300000 implements MigrationInterfa
         `);
 
     if (asmeStandard.length === 0) {
-      console.log(
+      console.warn(
         '⚠️ ASME B16.5 standard not found, skipping P/T data population',
       );
       return;
@@ -54,7 +54,7 @@ export class CreateFlangePtRatingsTable1766001300000 implements MigrationInterfa
     );
 
     if (pressureClasses.length === 0) {
-      console.log(
+      console.warn(
         '⚠️ No ASME B16.5 pressure classes found, skipping P/T data population',
       );
       return;
@@ -199,7 +199,7 @@ export class CreateFlangePtRatingsTable1766001300000 implements MigrationInterfa
     for (const [designation, ratings] of Object.entries(ptData)) {
       const classId = classMap[designation];
       if (!classId) {
-        console.log(`⚠️ Pressure class ${designation} not found, skipping`);
+        console.warn(`⚠️ Pressure class ${designation} not found, skipping`);
         continue;
       }
 
@@ -216,15 +216,15 @@ export class CreateFlangePtRatingsTable1766001300000 implements MigrationInterfa
         );
       }
 
-      console.log(`  ✓ Added P/T ratings for Class ${designation}`);
+      console.warn(`  ✓ Added P/T ratings for Class ${designation}`);
     }
 
-    console.log('✅ ASME B16.5 P/T ratings populated successfully');
+    console.warn('✅ ASME B16.5 P/T ratings populated successfully');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.log('⏮️ Dropping flange_pt_ratings table...');
+    console.warn('⏮️ Dropping flange_pt_ratings table...');
     await queryRunner.query(`DROP TABLE IF EXISTS "flange_pt_ratings" CASCADE`);
-    console.log('✅ Rollback complete');
+    console.warn('✅ Rollback complete');
   }
 }

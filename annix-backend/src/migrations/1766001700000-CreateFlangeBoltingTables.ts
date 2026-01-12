@@ -488,7 +488,7 @@ export class CreateFlangeBoltingTables1766001700000 implements MigrationInterfac
       `);
     }
 
-    console.log('Flange bolting tables created and populated successfully');
+    console.warn('Flange bolting tables created and populated successfully');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

@@ -4,7 +4,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
   name = 'PopulateSabs719FittingDimension1762340000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log('🔧 Populating SABS 719 fitting dimension table...');
+    console.warn('🔧 Populating SABS 719 fitting dimension table...');
 
     // Clear existing data to avoid duplicates
     await queryRunner.query(`DELETE FROM sabs719_fitting_dimension`);
@@ -43,7 +43,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.log(`✅ Inserted ${shortTeeData.length} Short Tee dimensions`);
+    console.warn(`✅ Inserted ${shortTeeData.length} Short Tee dimensions`);
 
     // Gusset Tee dimensions - C/F values from SABS 719 table
     // For Gusset Tee: Pipe Length A = C/F × 2 (run), Pipe Length B = C/F (branch)
@@ -78,7 +78,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.log(`✅ Inserted ${gussetTeeCfData.length} Gusset Tee dimensions`);
+    console.warn(`✅ Inserted ${gussetTeeCfData.length} Gusset Tee dimensions`);
 
     // Long Radius Elbow dimensions [nb, od, A (90°), A (45°)]
     const longRadiusElbowData = [
@@ -109,7 +109,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.log(
+    console.warn(
       `✅ Inserted ${longRadiusElbowData.length} Long Radius Elbow dimensions`,
     );
 
@@ -142,7 +142,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.log(
+    console.warn(
       `✅ Inserted ${mediumRadiusElbowData.length} Medium Radius Elbow dimensions`,
     );
 
@@ -175,7 +175,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.log(
+    console.warn(
       `✅ Inserted ${shortRadiusElbowData.length} Short Radius Elbow dimensions`,
     );
 
@@ -192,7 +192,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.log(`✅ Inserted ${shortTeeData.length} Lateral dimensions`);
+    console.warn(`✅ Inserted ${shortTeeData.length} Lateral dimensions`);
 
     // Reducer dimensions [nb, od, length]
     const reducerData = [
@@ -233,7 +233,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.log(`✅ Inserted ${reducerData.length * 2} Reducer dimensions`);
+    console.warn(`✅ Inserted ${reducerData.length * 2} Reducer dimensions`);
 
     // Sweep Tee types (using gusset tee CF dimensions, apply × 2 for run)
     for (const [nb, od, cf] of gussetTeeCfData) {
@@ -264,7 +264,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.log(`✅ Inserted ${gussetTeeCfData.length * 3} Sweep dimensions`);
+    console.warn(`✅ Inserted ${gussetTeeCfData.length * 3} Sweep dimensions`);
 
     // Duckfoot types - using Short Tee formula
     for (const [nb, od, cf] of shortTeeData) {
@@ -292,7 +292,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.log(`✅ Inserted Duckfoot dimensions`);
+    console.warn(`✅ Inserted Duckfoot dimensions`);
 
     // Unequal tee variants (using gusset CF dimensions)
     for (const [nb, od, cf] of gussetTeeCfData) {
@@ -315,13 +315,13 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.log(`✅ Inserted Unequal Tee dimensions`);
+    console.warn(`✅ Inserted Unequal Tee dimensions`);
 
-    console.log('🎉 SABS 719 fitting dimension table populated successfully!');
+    console.warn('🎉 SABS 719 fitting dimension table populated successfully!');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DELETE FROM sabs719_fitting_dimension`);
-    console.log('🗑️ Cleared SABS 719 fitting dimension table');
+    console.warn('🗑️ Cleared SABS 719 fitting dimension table');
   }
 }

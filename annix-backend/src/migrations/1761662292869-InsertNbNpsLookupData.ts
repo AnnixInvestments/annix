@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class InsertNbNpsLookupData1761662292869 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log('🔧 Inserting NB-NPS lookup data...');
+    console.warn('🔧 Inserting NB-NPS lookup data...');
 
     // First, check if data already exists
     const result = await queryRunner.query(
@@ -11,7 +11,7 @@ export class InsertNbNpsLookupData1761662292869 implements MigrationInterface {
     const count = parseInt(result[0].count);
 
     if (count > 0) {
-      console.log('✅ NB-NPS lookup data already exists, skipping...');
+      console.warn('✅ NB-NPS lookup data already exists, skipping...');
       return;
     }
 
@@ -65,11 +65,11 @@ export class InsertNbNpsLookupData1761662292869 implements MigrationInterface {
             (1900, 76, 1930.4)     -- 76"
         `);
 
-    console.log('✅ NB-NPS lookup data inserted successfully');
+    console.warn('✅ NB-NPS lookup data inserted successfully');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.log('⏮️ Removing NB-NPS lookup data...');
+    console.warn('⏮️ Removing NB-NPS lookup data...');
 
     await queryRunner.query(`
             DELETE FROM nb_nps_lookup 
@@ -79,6 +79,6 @@ export class InsertNbNpsLookupData1761662292869 implements MigrationInterface {
                            1600, 1800, 1900)
         `);
 
-    console.log('✅ NB-NPS lookup data removed');
+    console.warn('✅ NB-NPS lookup data removed');
   }
 }

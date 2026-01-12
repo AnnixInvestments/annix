@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddPipeEndConfigurationColumn1761663467548 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log(
+    console.warn(
       '🔧 Adding pipe_end_configuration column to straight_pipe_rfqs...',
     );
 
@@ -17,9 +17,9 @@ export class AddPipeEndConfigurationColumn1761663467548 implements MigrationInte
                 ALTER TABLE "straight_pipe_rfqs" 
                 ADD COLUMN "pipe_end_configuration" character varying(20)
             `);
-      console.log('✅ pipe_end_configuration column added successfully');
+      console.warn('✅ pipe_end_configuration column added successfully');
     } else {
-      console.log('✅ pipe_end_configuration column already exists');
+      console.warn('✅ pipe_end_configuration column already exists');
     }
   }
 

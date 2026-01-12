@@ -2,10 +2,10 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddFlangeSpecificationData1762269000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log('🔩 Adding comprehensive flange specification data...');
+    console.warn('🔩 Adding comprehensive flange specification data...');
 
     // First, add bolt specifications found in the flange data
-    console.log('Adding bolt specifications...');
+    console.warn('Adding bolt specifications...');
     const boltInserts = [
       'M10',
       'M12',
@@ -36,7 +36,7 @@ export class AddFlangeSpecificationData1762269000000 implements MigrationInterfa
     }
 
     // Add flange standards
-    console.log('Adding flange standards...');
+    console.warn('Adding flange standards...');
     const standards = ['BS 4504', 'SABS 1123', 'BS 10'];
     for (const standard of standards) {
       const existing = await queryRunner.query(
@@ -65,7 +65,7 @@ export class AddFlangeSpecificationData1762269000000 implements MigrationInterfa
     const bs10Id = bs10Result[0].id;
 
     // Add pressure classes for each standard
-    console.log('Adding pressure classes...');
+    console.warn('Adding pressure classes...');
 
     // BS 4504 pressure classes
     const bs4504Classes = [
@@ -122,7 +122,7 @@ export class AddFlangeSpecificationData1762269000000 implements MigrationInterfa
     }
 
     // Now add the comprehensive flange dimension data
-    console.log('Adding flange dimension data...');
+    console.warn('Adding flange dimension data...');
 
     // Helper function to get nominal diameter ID
     const getNominalId = async (nominalMm: number, outsideMm: number) => {
@@ -1032,7 +1032,7 @@ export class AddFlangeSpecificationData1762269000000 implements MigrationInterfa
         outsideMm as number,
       );
       if (!nominalId) {
-        console.log(
+        console.warn(
           `⚠️ Warning: Nominal size ${nominalMm}NB ${outsideMm}mm not found, skipping...`,
         );
         continue;
@@ -1049,7 +1049,7 @@ export class AddFlangeSpecificationData1762269000000 implements MigrationInterfa
         standardId,
       );
       if (!pressureClassId) {
-        console.log(
+        console.warn(
           `⚠️ Warning: Pressure class ${pressureClass} for ${standard} not found, skipping...`,
         );
         continue;
@@ -1069,11 +1069,11 @@ export class AddFlangeSpecificationData1762269000000 implements MigrationInterfa
             `);
     }
 
-    console.log('✅ Flange specification data added successfully');
+    console.warn('✅ Flange specification data added successfully');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.log('⏮️ Removing flange specification data...');
+    console.warn('⏮️ Removing flange specification data...');
 
     // Remove flange dimensions
     await queryRunner.query(`DELETE FROM flange_dimensions`);
@@ -1093,6 +1093,6 @@ export class AddFlangeSpecificationData1762269000000 implements MigrationInterfa
             )
         `);
 
-    console.log('✅ Flange specification data removed');
+    console.warn('✅ Flange specification data removed');
   }
 }

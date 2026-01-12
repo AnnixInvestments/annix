@@ -304,15 +304,15 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       },
     ];
 
-    console.log(
+    console.warn(
       'SABS 719 fitting types and basic fitting entries created successfully',
     );
-    console.log('Detailed dimensional data available for:');
-    console.log('- Tee dimensions (Short and Gusset types)');
-    console.log('- Reducer dimensions with size ranges');
-    console.log('- Bellmouth dimensions');
-    console.log('- Elbow dimensions (Short, Medium, Long radius)');
-    console.log(
+    console.warn('Detailed dimensional data available for:');
+    console.warn('- Tee dimensions (Short and Gusset types)');
+    console.warn('- Reducer dimensions with size ranges');
+    console.warn('- Bellmouth dimensions');
+    console.warn('- Elbow dimensions (Short, Medium, Long radius)');
+    console.warn(
       'Note: Detailed fitting dimensions can be added to fitting_dimensions table as needed',
     );
   }

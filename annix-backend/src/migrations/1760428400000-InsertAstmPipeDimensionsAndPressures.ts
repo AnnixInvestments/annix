@@ -4,7 +4,7 @@ export class InsertAstmPipeDimensionsAndPressures1760428400000 implements Migrat
   name = 'InsertAstmPipeDimensionsAndPressures1760428400000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log('🚀 Starting ASTM pipe data insertion...');
+    console.warn('🚀 Starting ASTM pipe data insertion...');
 
     // First, ensure we have the ASTM steel specifications
     await queryRunner.query(`
@@ -264,13 +264,13 @@ export class InsertAstmPipeDimensionsAndPressures1760428400000 implements Migrat
       }
     }
 
-    console.log(
+    console.warn(
       '✅ ASTM pipe dimensions and pressure data inserted successfully',
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.log('🗑️ Removing ASTM pipe data...');
+    console.warn('🗑️ Removing ASTM pipe data...');
 
     // Remove ASTM pressure data (connected to ASTM pipe dimensions)
     await queryRunner.query(`
@@ -298,6 +298,6 @@ export class InsertAstmPipeDimensionsAndPressures1760428400000 implements Migrat
             )
         `);
 
-    console.log('✅ ASTM pipe data removed successfully');
+    console.warn('✅ ASTM pipe data removed successfully');
   }
 }

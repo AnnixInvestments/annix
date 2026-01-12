@@ -335,7 +335,7 @@ export class CreateCoatingSpecificationTables1766001800000 implements MigrationI
       [envIds['Offshore Atmospheric / Splash Zone / Immersion']],
     );
 
-    console.log(
+    console.warn(
       'Coating specification tables created and populated successfully',
     );
   }

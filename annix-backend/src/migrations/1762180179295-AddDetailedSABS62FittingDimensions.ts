@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddDetailedSABS62FittingDimensions1762180179295 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log('🔧 Adding detailed SABS 62 fitting dimensions...');
+    console.warn('🔧 Adding detailed SABS 62 fitting dimensions...');
 
     // Get SABS 62 steel specification IDs
     const sabs62Medium = await queryRunner.query(
@@ -39,7 +39,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     await this.insertGussettedTees(queryRunner, mediumId);
     await this.insertBullheadTees(queryRunner, mediumId);
 
-    console.log('✅ SABS 62 detailed fitting dimensions added successfully');
+    console.warn('✅ SABS 62 detailed fitting dimensions added successfully');
   }
 
   private async insertFittingTypes(queryRunner: QueryRunner): Promise<void> {
@@ -72,7 +72,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     mediumId: number,
     heavyId: number,
   ): Promise<void> {
-    console.log('  📐 Adding 90° Pulled Bends...');
+    console.warn('  📐 Adding 90° Pulled Bends...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Pulled Bend 90°');
 
@@ -181,7 +181,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     queryRunner: QueryRunner,
     heavyId: number,
   ): Promise<void> {
-    console.log('  🌸 Adding Spring Bends 5D...');
+    console.warn('  🌸 Adding Spring Bends 5D...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Spring Bend 5D');
 
@@ -248,7 +248,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     queryRunner: QueryRunner,
     heavyId: number,
   ): Promise<void> {
-    console.log('  🌿 Adding Spring Bends 3D...');
+    console.warn('  🌿 Adding Spring Bends 3D...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Spring Bend 3D');
 
@@ -316,7 +316,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     queryRunner: QueryRunner,
     mediumId: number,
   ): Promise<void> {
-    console.log('  🔀 Adding Equal Tees...');
+    console.warn('  🔀 Adding Equal Tees...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Equal Tee');
 
@@ -378,7 +378,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     queryRunner: QueryRunner,
     mediumId: number,
   ): Promise<void> {
-    console.log('  🔀 Adding Unequal Tees...');
+    console.warn('  🔀 Adding Unequal Tees...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Unequal Tee');
 
@@ -440,7 +440,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     queryRunner: QueryRunner,
     mediumId: number,
   ): Promise<void> {
-    console.log('  📐 Adding Laterals...');
+    console.warn('  📐 Adding Laterals...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Lateral');
 
@@ -569,7 +569,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     queryRunner: QueryRunner,
     mediumId: number,
   ): Promise<void> {
-    console.log('  🌊 Adding Sweep Tees...');
+    console.warn('  🌊 Adding Sweep Tees...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Sweep Tee');
 
@@ -631,7 +631,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     queryRunner: QueryRunner,
     mediumId: number,
   ): Promise<void> {
-    console.log('  ✚ Adding Equal Crosses...');
+    console.warn('  ✚ Adding Equal Crosses...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Equal Cross');
 
@@ -694,7 +694,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     queryRunner: QueryRunner,
     mediumId: number,
   ): Promise<void> {
-    console.log('  ✚ Adding Unequal Crosses...');
+    console.warn('  ✚ Adding Unequal Crosses...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Unequal Cross');
 
@@ -755,7 +755,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     queryRunner: QueryRunner,
     mediumId: number,
   ): Promise<void> {
-    console.log('  🔀 Adding Y Pieces...');
+    console.warn('  🔀 Adding Y Pieces...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Y Piece');
 
@@ -884,7 +884,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     queryRunner: QueryRunner,
     mediumId: number,
   ): Promise<void> {
-    console.log('  🔧 Adding Gussetted Tees...');
+    console.warn('  🔧 Adding Gussetted Tees...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Gussetted Tee');
 
@@ -938,7 +938,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     queryRunner: QueryRunner,
     mediumId: number,
   ): Promise<void> {
-    console.log('  🐂 Adding Bullhead Tees...');
+    console.warn('  🐂 Adding Bullhead Tees...');
 
     const typeId = await this.getFittingTypeId(queryRunner, 'Bullhead Tee');
 

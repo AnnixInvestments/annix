@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log(
+    console.warn(
       '📊 Adding additional pipe schedules (Sch 10, 20, 30, 60, 100, 140)...',
     );
 
@@ -151,11 +151,11 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
           ],
         );
       }
-      console.log(`  ✓ Added/updated schedules for NPS ${nps}`);
+      console.warn(`  ✓ Added/updated schedules for NPS ${nps}`);
     }
 
     // Add SABS 62 pipe schedules (South African standard) - commonly used locally
-    console.log('📊 Adding SABS 62 pipe schedule data...');
+    console.warn('📊 Adding SABS 62 pipe schedule data...');
 
     const sabs62Data: {
       nbMm: number;
@@ -304,10 +304,10 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
         ],
       );
     }
-    console.log('  ✓ Added SABS 62 schedules (Light, Medium, Heavy)');
+    console.warn('  ✓ Added SABS 62 schedules (Light, Medium, Heavy)');
 
     // Add SABS 719 ERW pipe schedules
-    console.log('📊 Adding SABS 719 pipe schedule data...');
+    console.warn('📊 Adding SABS 719 pipe schedule data...');
 
     const sabs719Data: {
       nbMm: number;
@@ -503,18 +503,18 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
         ],
       );
     }
-    console.log('  ✓ Added SABS 719 schedules (Class 4, 6, 10, 16)');
+    console.warn('  ✓ Added SABS 719 schedules (Class 4, 6, 10, 16)');
 
-    console.log('✅ Additional pipe schedules migration complete!');
+    console.warn('✅ Additional pipe schedules migration complete!');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.log('⏮️ Removing additional schedules...');
+    console.warn('⏮️ Removing additional schedules...');
     // Remove SABS standards
     await queryRunner.query(
       `DELETE FROM pipe_schedules WHERE standard_code IN ('SABS 62', 'SABS 719')`,
     );
     // Remove additional ASME schedules (would need more specific criteria)
-    console.log('✅ Rollback complete');
+    console.warn('✅ Rollback complete');
   }
 }

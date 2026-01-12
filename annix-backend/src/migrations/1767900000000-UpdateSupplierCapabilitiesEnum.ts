@@ -29,7 +29,7 @@ export class UpdateSupplierCapabilitiesEnum1767900000000 implements MigrationInt
     // Note: PostgreSQL doesn't support removing enum values directly
     // To remove, you'd need to create a new enum without the values and migrate data
     // This is intentionally left as a no-op for safety
-    console.log(
+    console.warn(
       'Note: Enum values cannot be easily removed in PostgreSQL. Manual intervention required if needed.',
     );
   }

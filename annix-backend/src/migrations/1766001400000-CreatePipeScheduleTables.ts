@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreatePipeScheduleTables1766001400000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.log('🏗️ Creating pipe schedule tables...');
+    console.warn('🏗️ Creating pipe schedule tables...');
 
     // Create pipe_schedules table
     await queryRunner.query(`
@@ -37,10 +37,10 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
             )
         `);
 
-    console.log('✅ Tables created successfully');
+    console.warn('✅ Tables created successfully');
 
     // Populate pipe schedule data
-    console.log('📊 Populating pipe schedule data (ASME B36.10)...');
+    console.warn('📊 Populating pipe schedule data (ASME B36.10)...');
 
     // NPS to OD and NB mapping
     const npsData: {
@@ -322,13 +322,13 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
           ],
         );
       }
-      console.log(`  ✓ Added schedules for NPS ${npsInfo.nps}`);
+      console.warn(`  ✓ Added schedules for NPS ${npsInfo.nps}`);
     }
 
-    console.log('✅ Pipe schedule data populated');
+    console.warn('✅ Pipe schedule data populated');
 
     // Populate material allowable stress data
-    console.log('📊 Populating material allowable stress data...');
+    console.warn('📊 Populating material allowable stress data...');
 
     // ASTM A106 Grade B (Carbon Steel - most common for high temp)
     // Values from ASME B31.3 Table A-1
@@ -373,7 +373,7 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
         ],
       );
     }
-    console.log('  ✓ Added ASTM A106 Grade B stresses');
+    console.warn('  ✓ Added ASTM A106 Grade B stresses');
 
     // ASTM A53 Grade B (ERW Carbon Steel)
     const a53GradeBStresses: {
@@ -411,7 +411,7 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
         ],
       );
     }
-    console.log('  ✓ Added ASTM A53 Grade B stresses');
+    console.warn('  ✓ Added ASTM A53 Grade B stresses');
 
     // API 5L Grade B (Line Pipe)
     const api5lGradeBStresses: {
@@ -447,7 +447,7 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
         ],
       );
     }
-    console.log('  ✓ Added API 5L Grade B stresses');
+    console.warn('  ✓ Added API 5L Grade B stresses');
 
     // ASTM A312 TP304 (Stainless Steel)
     const a312Tp304Stresses: {
@@ -492,7 +492,7 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
         ],
       );
     }
-    console.log('  ✓ Added ASTM A312 TP304 stresses');
+    console.warn('  ✓ Added ASTM A312 TP304 stresses');
 
     // ASTM A312 TP316 (316 Stainless Steel)
     const a312Tp316Stresses: {
@@ -537,7 +537,7 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
         ],
       );
     }
-    console.log('  ✓ Added ASTM A312 TP316 stresses');
+    console.warn('  ✓ Added ASTM A312 TP316 stresses');
 
     // ASTM A335 P11 (Chrome-Moly)
     const a335P11Stresses: {
@@ -581,7 +581,7 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
         ],
       );
     }
-    console.log('  ✓ Added ASTM A335 P11 stresses');
+    console.warn('  ✓ Added ASTM A335 P11 stresses');
 
     // ASTM A335 P22 (2-1/4Cr-1Mo Chrome-Moly)
     const a335P22Stresses: {
@@ -625,18 +625,18 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
         ],
       );
     }
-    console.log('  ✓ Added ASTM A335 P22 stresses');
+    console.warn('  ✓ Added ASTM A335 P22 stresses');
 
-    console.log('✅ Material allowable stress data populated');
-    console.log('✅ Migration complete!');
+    console.warn('✅ Material allowable stress data populated');
+    console.warn('✅ Migration complete!');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.log('⏮️ Dropping pipe schedule tables...');
+    console.warn('⏮️ Dropping pipe schedule tables...');
     await queryRunner.query(
       `DROP TABLE IF EXISTS "material_allowable_stresses" CASCADE`,
     );
     await queryRunner.query(`DROP TABLE IF EXISTS "pipe_schedules" CASCADE`);
-    console.log('✅ Rollback complete');
+    console.warn('✅ Rollback complete');
   }
 }
