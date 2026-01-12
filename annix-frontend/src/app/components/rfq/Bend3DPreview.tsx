@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import React, { useMemo, useState, useRef, useCallback } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Center, Environment, Line, ContactShadows, Text } from "@react-three/drei";
+import { Geometry, Base, Subtraction, Addition } from '@react-three/csg';
 import * as THREE from "three";
 import { log } from "@/app/lib/logger";
 
@@ -33,6 +34,9 @@ interface Bend3DPreviewProps {
   addBlankFlange?: boolean;
   blankFlangeCount?: number;
   blankFlangePositions?: string[]; // ['inlet', 'outlet']
+  savedCameraPosition?: [number, number, number];
+  savedCameraTarget?: [number, number, number];
+  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
 }
 
 // SABS 719 ERW Pipe Wall Thickness Table (Class B - Standard)
@@ -252,7 +256,7 @@ const Flange = ({ position, rotation, outerRadius, pipeRadius, nominalBore, mate
       {/* Center bore - inner cylinder (cut through flange) */}
       <mesh>
         <cylinderGeometry args={[centerBoreRadius, centerBoreRadius, flangeThickness + 0.02, 32]} />
-        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+        <meshStandardMaterial color="#444444" side={THREE.BackSide} />
       </mesh>
 
       {/* Raised face ring on outer face */}
@@ -417,7 +421,8 @@ const StubPipe = ({
   innerRadius,
   material,
   stubNB,
-  hasFlange = false
+  hasFlange = false,
+  mainPipeRadius
 }: any) => {
   if (!length || length <= 0) return null;
 
@@ -437,23 +442,28 @@ const StubPipe = ({
   const stubBoltHoleRadius = (stubFlangeSpecs.holeID / 2) / scaleFactor;
   const stubFlangeThickness = stubFlangeSpecs.thickness / scaleFactor;
 
+  const penetration = stubOuterR * 0.6;
+
   return (
     <group position={position} rotation={rotation}>
-      {/* Stub pipe body */}
-      <mesh>
-        <cylinderGeometry args={[stubOuterR, stubOuterR, stubLength, 24, 1, false]} />
+      <mesh position={[0, -penetration / 2, 0]}>
+        <cylinderGeometry args={[stubOuterR, stubOuterR, stubLength + penetration, 32, 1, false]} />
         <meshStandardMaterial {...material} />
       </mesh>
-      {/* Inner bore */}
-      <mesh>
-        <cylinderGeometry args={[stubInnerR, stubInnerR, stubLength - 0.02, 24, 1, false]} />
-        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+      <mesh position={[0, -penetration / 2, 0]}>
+        <cylinderGeometry args={[stubInnerR, stubInnerR, stubLength + penetration - 0.02, 32, 1, false]} />
+        <meshStandardMaterial color="#222222" side={THREE.BackSide} />
       </mesh>
-      {/* Weld ring at base (connection to main pipe) */}
-      <mesh position={[0, -stubLength / 2 + 0.01, 0]}>
-        <torusGeometry args={[stubOuterR * 1.05, stubOuterR * 0.1, 8, 24]} />
-        <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.8} />
+      <mesh position={[0, stubLength / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[stubInnerR, stubOuterR, 32]} />
+        <meshStandardMaterial {...material} />
       </mesh>
+      {mainPipeRadius && (
+        <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[1, 1, mainPipeRadius / stubOuterR]}>
+          <torusGeometry args={[stubOuterR * 1.01, stubOuterR * 0.07, 8, 32]} />
+          <meshStandardMaterial color="#1a1a1a" metalness={0.2} roughness={0.9} />
+        </mesh>
+      )}
       {/* Stub flange at end - using proper SABS 1123 specs */}
       {hasFlange && (
         <group position={[0, stubLength / 2 + stubFlangeThickness / 2, 0]}>
@@ -529,15 +539,15 @@ const VerticalTangentPipe = ({ length, outerRadius, innerRadius, material, start
 
   return (
     <group position={[startX, centerY, 0]}>
-      {/* Outer cylinder - solid closed ends */}
+      {/* Outer cylinder */}
       <mesh>
         <cylinderGeometry args={[outerRadius, outerRadius, length, 32, 1, false]} />
         <meshStandardMaterial {...material} />
       </mesh>
-      {/* Inner bore - slightly shorter to not poke through */}
+      {/* Inner bore */}
       <mesh>
         <cylinderGeometry args={[innerRadius, innerRadius, length - 0.02, 32, 1, false]} />
-        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+        <meshStandardMaterial color="#222222" side={THREE.BackSide} />
       </mesh>
       {/* End cap rings to show pipe wall thickness */}
       <mesh position={[0, length / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -571,15 +581,15 @@ const HorizontalTangentPipe = ({ length, outerRadius, innerRadius, material, sta
 
   return (
     <group position={[centerX, centerY, 0]} rotation={[0, 0, rotZ]}>
-      {/* Outer cylinder - solid closed ends */}
+      {/* Outer cylinder */}
       <mesh>
         <cylinderGeometry args={[outerRadius, outerRadius, length, 32, 1, false]} />
         <meshStandardMaterial {...material} />
       </mesh>
-      {/* Inner bore - slightly shorter to not poke through */}
+      {/* Inner bore */}
       <mesh>
         <cylinderGeometry args={[innerRadius, innerRadius, length - 0.02, 32, 1, false]} />
-        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+        <meshStandardMaterial color="#222222" side={THREE.BackSide} />
       </mesh>
       {/* End cap rings to show pipe wall thickness */}
       <mesh position={[0, length / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -607,7 +617,7 @@ const MiteredSegment = ({ position, tangentAngle, length, outerRadius, innerRadi
       </mesh>
       <mesh>
         <cylinderGeometry args={[innerRadius, innerRadius, length, 24, 1, true]} />
-        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+        <meshStandardMaterial color="#222222" side={THREE.BackSide} />
       </mesh>
       <group position={[0, length/2, 0]} rotation={[miterAngle, 0, 0]}>
         <mesh rotation={[-Math.PI/2, 0, 0]}>
@@ -713,6 +723,51 @@ const SegmentedBend = ({
       ))}
     </group>
   );
+};
+
+const CameraTracker = ({
+  onCameraUpdate,
+  onCameraChange,
+  onRotationUpdate
+}: {
+  onCameraUpdate: (distance: number) => void;
+  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
+  onRotationUpdate?: (rotation: number) => void;
+}) => {
+  const { camera, controls } = useThree();
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useFrame(() => {
+    const distance = Math.sqrt(
+      camera.position.x ** 2 +
+      camera.position.y ** 2 +
+      camera.position.z ** 2
+    );
+    onCameraUpdate(distance);
+
+    if (onRotationUpdate) {
+      const rotationZ = camera.rotation.z * (180 / Math.PI);
+      onRotationUpdate(rotationZ);
+    }
+
+    if (onCameraChange && controls) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(() => {
+        const target = (controls as any).target;
+        if (target) {
+          onCameraChange(
+            [camera.position.x, camera.position.y, camera.position.z],
+            [target.x, target.y, target.z]
+          );
+        }
+      }, 500);
+    }
+  });
+
+  return null;
 };
 
 const BendScene = ({
@@ -1376,6 +1431,7 @@ const BendScene = ({
               material={matProps}
               stubNB={stub1.nominalBoreMm}
               hasFlange={true}
+              mainPipeRadius={outerRadius}
             />
           );
         })()}
@@ -1401,6 +1457,7 @@ const BendScene = ({
               material={matProps}
               stubNB={stub2.nominalBoreMm}
               hasFlange={true}
+              mainPipeRadius={outerRadius}
             />
           );
         })()}
@@ -1771,6 +1828,8 @@ const BendScene = ({
 export default function Bend3DPreview(props: Bend3DPreviewProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
+  const [currentZoom, setCurrentZoom] = useState(0);
+  const [currentRotation, setCurrentRotation] = useState(0);
 
   // Only SABS 719 bends are segmented - SABS 62 are always pulled bends
   const isSegmentedBend = props.isSegmented ||
@@ -1780,10 +1839,41 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
   const scaleFactor = 100;
   const t1 = (props.tangent1 || 0) / scaleFactor;
   const t2 = (props.tangent2 || 0) / scaleFactor;
-  const bendSize = (props.nominalBore || 50) / scaleFactor * 2;
-  const maxExtent = Math.max(t1, t2, bendSize, 1);
-  // Closer camera distance to make pipe fill more of the viewport
-  const cameraZ = Math.max(6, maxExtent * 1.8 + 4);
+  const nb = props.nominalBore / scaleFactor;
+  const outerRadius = (props.outerDiameter / 2) / scaleFactor;
+  const bt = props.bendType?.toLowerCase() || "";
+  let multiplier = 3;
+  if (bt.includes("1.5d") || bt.includes("1.5 d")) multiplier = 1.5;
+  else if (bt.includes("3d")) multiplier = 3;
+  else if (bt.includes("5d")) multiplier = 5;
+  const bendRadius = Math.max(nb * multiplier, outerRadius + 0.05);
+  const angleRad = ((props.bendAngle || 90) * Math.PI) / 180;
+
+  const inletX = bendRadius;
+  const inletY = 0;
+  const outletX = bendRadius * Math.cos(angleRad);
+  const outletY = bendRadius * Math.sin(angleRad);
+
+  const inletTangentEndX = inletX;
+  const inletTangentEndY = inletY - t1;
+
+  const outletDirX = -Math.sin(angleRad);
+  const outletDirY = Math.cos(angleRad);
+  const outletTangentEndX = outletX + outletDirX * t2;
+  const outletTangentEndY = outletY + outletDirY * t2;
+
+  const minX = Math.min(0, inletX, outletX, inletTangentEndX, outletTangentEndX);
+  const maxX = Math.max(0, inletX, outletX, inletTangentEndX, outletTangentEndX);
+  const minY = Math.min(0, inletY, outletY, inletTangentEndY, outletTangentEndY);
+  const maxY = Math.max(0, inletY, outletY, inletTangentEndY, outletTangentEndY);
+
+  const boundingWidth = maxX - minX;
+  const boundingHeight = maxY - minY;
+  const diagonalExtent = Math.sqrt(boundingWidth ** 2 + boundingHeight ** 2);
+
+  const autoCameraDistance = Math.max(diagonalExtent * 1.5, 8);
+  const autoCameraHeight = autoCameraDistance * 0.5;
+  const cameraZ = autoCameraDistance;
 
   // Calculate pipe dimensions for info display using proper wall thickness lookup
   const odRaw = getOuterDiameter(props.nominalBore, props.outerDiameter);
@@ -1823,7 +1913,8 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
 
   return (
     <div className="h-full w-full min-h-[300px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 0, cameraZ], fov: 50 }}>
+      <Canvas shadows dpr={[1, 2]} camera={{ position: props.savedCameraPosition || [0, autoCameraHeight, cameraZ], fov: 50 }}>
+        <CameraTracker onCameraUpdate={setCurrentZoom} onCameraChange={props.onCameraChange} onRotationUpdate={setCurrentRotation} />
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
         <Environment preset="city" />
@@ -1831,10 +1922,10 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
           <BendScene {...props} />
         </group>
         <ContactShadows position={[0, -5, 0]} opacity={0.3} scale={20} blur={2} />
-        <OrbitControls makeDefault enablePan={false} minDistance={2} maxDistance={30} />
+        <OrbitControls makeDefault enablePan={false} minDistance={2} maxDistance={80} />
       </Canvas>
 
-      {/* Badge - top left */}
+
       <div className="absolute top-2 left-2 text-[10px] bg-white/90 px-2 py-1 rounded shadow-sm">
         <div className={isSegmentedBend ? "text-purple-700" : "text-blue-700"} style={{fontWeight: 500}}>
           <div>{props.materialName || (isSegmentedBend ? "SABS 719" : "SABS 62")}</div>
@@ -1921,7 +2012,7 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
 
 
       {/* Bottom-left info container - Stubs and Tangent lengths */}
-      <div className="absolute bottom-2 left-2 flex flex-col gap-1">
+      <div className="absolute bottom-3 left-3 flex flex-col gap-1">
         {/* Stub info with flange details - yellow background like in image */}
         {props.numberOfStubs && props.numberOfStubs > 0 && props.stubs && (
           <div className="text-[10px] bg-yellow-100 px-2 py-1.5 rounded shadow-md border border-yellow-400">
@@ -1960,6 +2051,9 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
 
       {/* Bottom toolbar - Expand, Drag hint, and Hide button in horizontal row */}
       <div className="absolute bottom-2 right-2 flex flex-row items-center gap-2">
+        <div className="text-[10px] text-slate-600 bg-white/90 px-2 py-1 rounded shadow-sm font-mono">
+          z:{currentZoom.toFixed(1)}, cam:[0,{autoCameraHeight.toFixed(1)},{cameraZ.toFixed(1)}], bbox:{boundingWidth.toFixed(1)}x{boundingHeight.toFixed(1)}, rot:{currentRotation.toFixed(1)}°
+        </div>
         <button
           onClick={() => setIsExpanded(true)}
           className="text-[10px] text-blue-600 bg-white/90 px-2 py-1 rounded shadow-sm hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-1"
@@ -1998,7 +2092,7 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
             </button>
 
             {/* Expanded Canvas */}
-            <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 0, cameraZ * 1.2], fov: 45 }}>
+            <Canvas shadows dpr={[1, 2]} camera={{ position: [0, autoCameraHeight * 1.2, cameraZ * 1.2], fov: 45 }}>
               <ambientLight intensity={0.7} />
               <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
               <Environment preset="city" />
@@ -2006,7 +2100,7 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
                 <BendScene {...props} />
               </group>
               <ContactShadows position={[0, -5, 0]} opacity={0.3} scale={20} blur={2} />
-              <OrbitControls makeDefault enablePan={true} minDistance={1} maxDistance={50} />
+              <OrbitControls makeDefault enablePan={true} minDistance={1} maxDistance={80} />
             </Canvas>
 
             {/* Info overlay in expanded view */}

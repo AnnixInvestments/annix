@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { type MaterialLimits, materialLimits as getMaterialLimits, checkMaterialSuitability } from '@/app/lib/config/rfq';
 import { materialValidationApi } from '@/app/lib/api/client';
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
+import { log } from '@/app/lib/logger';
 import { nowISO } from '@/app/lib/datetime';
 
 interface MaterialProperties {
@@ -928,7 +929,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                     ? recommendedPressureClassId  // Only use new recommendation when switching standards
                     : (recommendedPressureClassId || globalSpecs?.flangePressureClassId);
 
-                  console.log(`Flange standard changed to ${standardId}, recommended class: ${recommendedPressureClassId}, final: ${newPressureClassId}`);
+                  log.debug(`Flange standard changed to ${standardId}, recommended class: ${recommendedPressureClassId}, final: ${newPressureClassId}`);
 
                   onUpdateGlobalSpecs({
                     ...globalSpecs,

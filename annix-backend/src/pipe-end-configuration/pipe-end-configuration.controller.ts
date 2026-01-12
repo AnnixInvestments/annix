@@ -140,9 +140,7 @@ export class PipeEndConfigurationController {
     status: 200,
     description: 'Fixed flange count and positions',
   })
-  async getFixedFlangeCount(
-    @Param('configCode') configCode: string,
-  ): Promise<{
+  async getFixedFlangeCount(@Param('configCode') configCode: string): Promise<{
     count: number;
     positions: { inlet: boolean; outlet: boolean; branch: boolean };
   }> {
@@ -180,11 +178,10 @@ export class PipeEndConfigurationController {
       stubs: StubFlangeConfig[];
     },
   ): Promise<{ formatted: string }> {
-    const formatted =
-      this.pipeEndConfigurationService.formatCombinedEndConfig(
-        body.mainEndConfig,
-        body.stubs,
-      );
+    const formatted = this.pipeEndConfigurationService.formatCombinedEndConfig(
+      body.mainEndConfig,
+      body.stubs,
+    );
     return { formatted };
   }
 

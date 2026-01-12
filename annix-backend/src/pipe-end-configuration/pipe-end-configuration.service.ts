@@ -75,21 +75,9 @@ export class PipeEndConfigurationService {
 
     // Verify the config applies to the item type
     if (itemType) {
-      if (
-        itemType === 'pipe' &&
-        !config.applies_to_pipe
-      )
-        return 0;
-      if (
-        itemType === 'bend' &&
-        !config.applies_to_bend
-      )
-        return 0;
-      if (
-        itemType === 'fitting' &&
-        !config.applies_to_fitting
-      )
-        return 0;
+      if (itemType === 'pipe' && !config.applies_to_pipe) return 0;
+      if (itemType === 'bend' && !config.applies_to_bend) return 0;
+      if (itemType === 'fitting' && !config.applies_to_fitting) return 0;
     }
 
     return config.weld_count;

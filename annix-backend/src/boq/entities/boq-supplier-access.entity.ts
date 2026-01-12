@@ -113,7 +113,9 @@ export class BoqSupplierAccess {
     requiredDate?: string;
   };
 
-  @ApiProperty({ description: 'Quote data including pricing inputs and unit prices' })
+  @ApiProperty({
+    description: 'Quote data including pricing inputs and unit prices',
+  })
   @Column({ type: 'jsonb', name: 'quote_data', nullable: true })
   quoteData?: {
     pricingInputs: Record<string, any>;

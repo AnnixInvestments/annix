@@ -58,6 +58,7 @@ import {
 } from '../api/externalApis';
 
 import { nowISO } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
 
 import {
   getMarineEnvironmentalData,
@@ -289,7 +290,7 @@ export async function fetchEnvironmentalData(
   metadata.marineEnvironmental = initialMarineData;
   dataSources.push('Coastline calculation');
 
-  console.log('[Environmental] Step 1 - Marine data calculated:', {
+  log.debug('[Environmental] Step 1 - Marine data calculated:', {
     distanceToCoast: data.distanceToCoastFormatted,
     marineInfluence: data.detailedMarineInfluence,
     airSaltContent: data.airSaltContent?.level,
@@ -311,7 +312,7 @@ export async function fetchEnvironmentalData(
 
   // Check if location is in Africa (prefer iSDAsoil for African locations)
   const inAfrica = isInAfrica(location.lat, location.lng);
-  console.log(`[Environmental] Step 2 - Location in Africa: ${inAfrica}, coords: ${location.lat}, ${location.lng}`);
+  log.debug(`[Environmental] Step 2 - Location in Africa: ${inAfrica}, coords: ${location.lat}, ${location.lng}`);
 
   // Fetch SoilGrids endpoints in parallel - these now return null on error instead of throwing
   const [textureResponse, classResponse] = await Promise.all([
@@ -319,14 +320,14 @@ export async function fetchEnvironmentalData(
     fetchSoilGridsClassification(location.lat, location.lng),
   ]);
 
-  console.log('[Environmental] SoilGrids texture response:', textureResponse ? 'received' : 'null');
-  console.log('[Environmental] SoilGrids class response:', classResponse ? 'received' : 'null');
+  log.debug('[Environmental] SoilGrids texture response:', textureResponse ? 'received' : 'null');
+  log.debug('[Environmental] SoilGrids class response:', classResponse ? 'received' : 'null');
 
   // Process SoilGrids texture response if available
   if (textureResponse) {
     soilTextureData = extractSoilTexture(textureResponse);
     metadata.soilTexture = soilTextureData;
-    console.log('[Environmental] Extracted SoilGrids texture:', soilTextureData);
+    log.debug('[Environmental] Extracted SoilGrids texture:', soilTextureData);
 
     // Determine USDA Soil Texture from SoilGrids
     if (soilTextureData.clay !== null &&
@@ -339,18 +340,18 @@ export async function fetchEnvironmentalData(
       );
       soilTextureSource = 'ISRIC SoilGrids';
       dataSources.push('ISRIC SoilGrids');
-      console.log(`[Environmental] Soil texture from SoilGrids: ${data.soilTexture}`);
+      log.debug(`[Environmental] Soil texture from SoilGrids: ${data.soilTexture}`);
     } else {
-      console.log('[Environmental] SoilGrids returned incomplete texture data');
+      log.debug('[Environmental] SoilGrids returned incomplete texture data');
     }
   }
 
   // If SoilGrids texture failed or returned incomplete data, try iSDAsoil as fallback
   // iSDAsoil is especially useful for African locations
   if (!data.soilTexture) {
-    console.log('[Environmental] Trying iSDAsoil fallback...');
+    log.debug('[Environmental] Trying iSDAsoil fallback...');
     iSDAsoilData = await fetchISDAsoilTexture(location.lat, location.lng);
-    console.log('[Environmental] iSDAsoil response:', iSDAsoilData);
+    log.debug('[Environmental] iSDAsoil response:', iSDAsoilData);
 
     if (iSDAsoilData &&
         iSDAsoilData.clay !== null &&
@@ -378,7 +379,7 @@ export async function fetchEnvironmentalData(
         dataSources.push('iSDAsoil');
       }
 
-      console.log(`[Environmental] Soil texture from iSDAsoil: ${data.soilTexture} (clay: ${iSDAsoilData.clay}%, sand: ${iSDAsoilData.sand}%, silt: ${iSDAsoilData.silt}%)`);
+      log.debug(`[Environmental] Soil texture from iSDAsoil: ${data.soilTexture} (clay: ${iSDAsoilData.clay}%, sand: ${iSDAsoilData.sand}%, silt: ${iSDAsoilData.silt}%)`);
     }
   }
 
@@ -408,7 +409,7 @@ export async function fetchEnvironmentalData(
             bulkDensity: derivedTexture.bulkDensity,
             organicCarbon: null,
           };
-          console.log(`[Environmental] Soil texture derived from WRB class (${wrbClass}): ${data.soilTexture}`);
+          log.debug(`[Environmental] Soil texture derived from WRB class (${wrbClass}): ${data.soilTexture}`);
         }
       }
     }
@@ -416,7 +417,7 @@ export async function fetchEnvironmentalData(
 
   // Add error message if no soil texture data available from any source
   if (!data.soilTexture) {
-    console.log('[Environmental] No soil texture available from any source');
+    log.debug('[Environmental] No soil texture available from any source');
     if (inAfrica) {
       errors.push('Soil texture data unavailable (SoilGrids and iSDAsoil failed)');
     } else {
@@ -547,7 +548,7 @@ export async function fetchEnvironmentalData(
     if (wrbDerived) {
       data.soilDrainage = wrbDerived.drainage;
       data.soilDrainageSource = 'WRB-derived';
-      console.log(`[Environmental] Soil drainage derived from WRB class (${wrbClass}): ${data.soilDrainage}`);
+      log.debug(`[Environmental] Soil drainage derived from WRB class (${wrbClass}): ${data.soilDrainage}`);
     }
   }
 
@@ -560,7 +561,7 @@ export async function fetchEnvironmentalData(
     const weatherResponse = await fetchOpenWeatherMapData(location.lat, location.lng);
     weatherData = extractWeatherData(weatherResponse);
     if (weatherData) {
-      console.log('[Environmental] Step 5 - OpenWeatherMap data fetched successfully');
+      log.debug('[Environmental] Step 5 - OpenWeatherMap data fetched successfully');
     }
   } catch (error) {
     console.warn('[Environmental] OpenWeatherMap API error, will try Open-Meteo fallback:', error);
@@ -569,11 +570,11 @@ export async function fetchEnvironmentalData(
   // Fallback to Open-Meteo if OpenWeatherMap failed or returned no data
   if (!weatherData) {
     try {
-      console.log('[Environmental] Step 5 - Using Open-Meteo (free) for weather data');
+      log.debug('[Environmental] Step 5 - Using Open-Meteo (free) for weather data');
       const openMeteoResponse = await fetchOpenMeteoData(location.lat, location.lng);
       weatherData = extractOpenMeteoWeatherData(openMeteoResponse);
       if (weatherData) {
-        console.log('[Environmental] Step 5 - Open-Meteo data fetched successfully');
+        log.debug('[Environmental] Step 5 - Open-Meteo data fetched successfully');
       }
     } catch (error) {
       console.error('[Environmental] Open-Meteo API error:', error);
@@ -624,7 +625,7 @@ export async function fetchEnvironmentalData(
 
     dataSources.push(weatherData.source);
 
-    console.log('[Environmental] Step 5 - Weather data applied:', {
+    log.debug('[Environmental] Step 5 - Weather data applied:', {
       source: weatherData.source,
       temp: weatherData.temperature,
       humidity: weatherData.humidity,
@@ -702,7 +703,7 @@ export async function fetchEnvironmentalData(
     data.soilMoisture !== undefined &&
     data.soilDrainage !== undefined;
 
-  console.log('[Environmental] Final data to apply:', {
+  log.debug('[Environmental] Final data to apply:', {
     fieldsPopulated: Object.keys(data).filter(k => data[k as keyof EnvironmentalData] !== undefined),
     dataSources,
     errors,

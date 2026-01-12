@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, Center, Text, Line } from '@react-three/drei';
+import { Geometry, Base, Subtraction, Addition } from '@react-three/csg';
 import * as THREE from 'three';
 import {
   getSabs719TeeDimensions,
@@ -527,16 +528,22 @@ function TeeScene(props: Tee3DPreviewProps) {
             ) : inletFlangeType === 'loose' ? (
               <>
                 {/* Loose flange: Closure piece attached to tee, then 100mm gap, then flange floating */}
-                {/* Closure pipe piece attached to tee end */}
-                <mesh position={[-halfRunLength - (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32]} />
-                  <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
-                </mesh>
-                {/* Inner bore of closure pipe */}
-                <mesh position={[-halfRunLength - (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
-                  <meshStandardMaterial color="#1a1a1a" />
-                </mesh>
+                {/* Hollow closure pipe piece attached to tee end using CSG */}
+                <group position={[-halfRunLength - (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                  <Geometry>
+                    <Base>
+                      <mesh>
+                        <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32]} />
+                        <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
+                      </mesh>
+                    </Base>
+                    <Subtraction>
+                      <mesh>
+                        <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
+                      </mesh>
+                    </Subtraction>
+                  </Geometry>
+                </group>
                 {/* Loose flange floating 100mm (1.0 scene units) away from closure piece */}
                 <FlangeComponent
                   position={[-halfRunLength - closureLengthMm / scaleFactor - 1.0, 0, 0]}
@@ -649,16 +656,22 @@ function TeeScene(props: Tee3DPreviewProps) {
             ) : outletFlangeType === 'loose' ? (
               <>
                 {/* Loose flange: Closure piece attached to tee, then 100mm gap, then flange floating */}
-                {/* Closure pipe piece attached to tee end */}
-                <mesh position={[halfRunLength + (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32]} />
-                  <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
-                </mesh>
-                {/* Inner bore of closure pipe */}
-                <mesh position={[halfRunLength + (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
-                  <meshStandardMaterial color="#1a1a1a" />
-                </mesh>
+                {/* Hollow closure pipe piece attached to tee end using CSG */}
+                <group position={[halfRunLength + (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                  <Geometry>
+                    <Base>
+                      <mesh>
+                        <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32]} />
+                        <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
+                      </mesh>
+                    </Base>
+                    <Subtraction>
+                      <mesh>
+                        <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
+                      </mesh>
+                    </Subtraction>
+                  </Geometry>
+                </group>
                 {/* Loose flange floating 100mm (1.0 scene units) away from closure piece */}
                 <FlangeComponent
                   position={[halfRunLength + closureLengthMm / scaleFactor + 1.0, 0, 0]}
@@ -771,16 +784,22 @@ function TeeScene(props: Tee3DPreviewProps) {
             ) : branchFlangeType === 'loose' ? (
               <>
                 {/* Loose flange: Closure piece attached to branch, then 100mm gap, then flange floating */}
-                {/* Closure pipe piece attached to branch top */}
-                <mesh position={[branchOffsetX, height + (closureLengthMm / scaleFactor / 2), 0]}>
-                  <cylinderGeometry args={[branchOuterRadius, branchOuterRadius, closureLengthMm / scaleFactor, 32]} />
-                  <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
-                </mesh>
-                {/* Inner bore of closure pipe */}
-                <mesh position={[branchOffsetX, height + (closureLengthMm / scaleFactor / 2), 0]}>
-                  <cylinderGeometry args={[branchInnerRadius, branchInnerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
-                  <meshStandardMaterial color="#1a1a1a" />
-                </mesh>
+                {/* Hollow closure pipe piece attached to branch top using CSG */}
+                <group position={[branchOffsetX, height + (closureLengthMm / scaleFactor / 2), 0]}>
+                  <Geometry>
+                    <Base>
+                      <mesh>
+                        <cylinderGeometry args={[branchOuterRadius, branchOuterRadius, closureLengthMm / scaleFactor, 32]} />
+                        <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
+                      </mesh>
+                    </Base>
+                    <Subtraction>
+                      <mesh>
+                        <cylinderGeometry args={[branchInnerRadius, branchInnerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
+                      </mesh>
+                    </Subtraction>
+                  </Geometry>
+                </group>
                 {/* Loose flange floating 100mm (1.0 scene units) above closure piece */}
                 <FlangeComponent
                   position={[branchOffsetX, height + closureLengthMm / scaleFactor + 1.0, 0]}

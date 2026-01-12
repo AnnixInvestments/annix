@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class PopulateBendCalculationData1768500000000
-  implements MigrationInterface
-{
+export class PopulateBendCalculationData1768500000000 implements MigrationInterface {
   name = 'PopulateBendCalculationData1768500000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

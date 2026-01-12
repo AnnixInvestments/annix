@@ -19,16 +19,20 @@ export default function SplitPaneLayout({
 }: SplitPaneLayoutProps) {
   const [splitPaneEnabledState, setSplitPaneEnabledState] = useState<Record<string, boolean>>({});
   const [splitPaneWidthState, setSplitPaneWidthState] = useState<Record<string, number>>({});
+  const [splitPaneHeightState, setSplitPaneHeightState] = useState<Record<string, number>>({});
   const [defaultEnabled, setDefaultEnabled] = useState<boolean>(false);
   const [defaultWidth, setDefaultWidth] = useState<number>(50);
+  const [defaultHeight, setDefaultHeight] = useState<number>(600);
 
   // Load split pane preferences from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedEnabled = localStorage.getItem('rfq-split-pane-enabled');
       const savedWidth = localStorage.getItem('rfq-split-pane-width');
+      const savedHeight = localStorage.getItem('rfq-split-pane-height');
       const savedDefaultEnabled = localStorage.getItem('rfq-split-pane-default-enabled');
       const savedDefaultWidth = localStorage.getItem('rfq-split-pane-default-width');
+      const savedDefaultHeight = localStorage.getItem('rfq-split-pane-default-height');
 
       if (savedEnabled) {
         try {
@@ -46,6 +50,14 @@ export default function SplitPaneLayout({
         }
       }
 
+      if (savedHeight) {
+        try {
+          setSplitPaneHeightState(JSON.parse(savedHeight));
+        } catch (e) {
+          console.error('Failed to parse split pane height from localStorage', e);
+        }
+      }
+
       if (savedDefaultEnabled) {
         try {
           setDefaultEnabled(JSON.parse(savedDefaultEnabled));
@@ -59,6 +71,14 @@ export default function SplitPaneLayout({
           setDefaultWidth(JSON.parse(savedDefaultWidth));
         } catch (e) {
           console.error('Failed to parse split pane default width from localStorage', e);
+        }
+      }
+
+      if (savedDefaultHeight) {
+        try {
+          setDefaultHeight(JSON.parse(savedDefaultHeight));
+        } catch (e) {
+          console.error('Failed to parse split pane default height from localStorage', e);
         }
       }
     }
@@ -94,9 +114,25 @@ export default function SplitPaneLayout({
     });
   };
 
+  const setSplitPaneHeight = (updater: React.SetStateAction<Record<string, number>>) => {
+    setSplitPaneHeightState(prev => {
+      const newState = typeof updater === 'function' ? updater(prev) : updater;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('rfq-split-pane-height', JSON.stringify(newState));
+        const currentHeight = newState[entryId];
+        if (currentHeight) {
+          localStorage.setItem('rfq-split-pane-default-height', JSON.stringify(currentHeight));
+          setDefaultHeight(currentHeight);
+        }
+      }
+      return newState;
+    });
+  };
+
   const hasExplicitSetting = entryId in splitPaneEnabledState;
   const isEnabled = hasExplicitSetting ? splitPaneEnabledState[entryId] : defaultEnabled;
   const width = splitPaneWidthState[entryId] || defaultWidth;
+  const height = splitPaneHeightState[entryId] || defaultHeight;
 
   // Color scheme based on item type
   const colorScheme = {
@@ -190,12 +226,58 @@ export default function SplitPaneLayout({
       {/* Right Pane - 3D Preview */}
       {isEnabled && showSplitToggle && (
         <div
-          className="flex-shrink-0 sticky top-4"
-          style={{ width: `${100 - width}%`, height: 'calc(100vh - 280px)', minHeight: '350px', maxHeight: '700px' }}
+          className="flex-shrink-0 sticky top-4 relative"
+          style={{ width: `${100 - width}%`, height: `${height}px`, minHeight: '350px' }}
         >
           <div className="h-full w-full">
             {previewContent}
           </div>
+          <div
+            className={`absolute bottom-0 left-0 w-4 h-4 cursor-nesw-resize bg-gradient-to-br ${colorScheme.from} ${colorScheme.to} opacity-60 hover:opacity-100 transition-opacity`}
+            style={{
+              clipPath: 'polygon(0 0, 0 100%, 100% 100%)'
+            }}
+            title="Drag to resize width and height"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const startX = e.clientX;
+              const startY = e.clientY;
+              const startWidth = width;
+              const startHeight = height;
+
+              let rafId: number | null = null;
+              const onMouseMove = (moveEvent: MouseEvent) => {
+                const container = (e.target as HTMLElement).closest('.flex') as HTMLElement;
+                if (container) {
+                  const containerWidth = container.offsetWidth;
+                  const deltaX = moveEvent.clientX - startX;
+                  const deltaY = moveEvent.clientY - startY;
+                  const deltaPercent = (deltaX / containerWidth) * 100;
+                  const newWidth = Math.min(Math.max(startWidth + deltaPercent, 10), 90);
+                  const newHeight = Math.max(startHeight + deltaY, 350);
+
+                  setSplitPaneWidth(prev => ({ ...prev, [entryId]: newWidth }));
+                  setSplitPaneHeight(prev => ({ ...prev, [entryId]: newHeight }));
+
+                  if (!rafId) {
+                    rafId = requestAnimationFrame(() => {
+                      window.dispatchEvent(new Event('resize'));
+                      rafId = null;
+                    });
+                  }
+                }
+              };
+
+              const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+              };
+
+              document.addEventListener('mousemove', onMouseMove);
+              document.addEventListener('mouseup', onMouseUp);
+            }}
+          />
         </div>
       )}
 

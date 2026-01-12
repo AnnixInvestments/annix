@@ -96,7 +96,9 @@ export class WeldThicknessService {
 
     return {
       found: true,
-      weldThicknessMm: this.roundToWeldIncrement(Number(fitting.wall_thickness_mm)),
+      weldThicknessMm: this.roundToWeldIncrement(
+        Number(fitting.wall_thickness_mm),
+      ),
       fittingClass,
       dn,
       odMm: null, // OD not stored in new schema
@@ -124,7 +126,9 @@ export class WeldThicknessService {
 
     return fittings.map((fitting) => ({
       found: true,
-      weldThicknessMm: this.roundToWeldIncrement(Number(fitting.wall_thickness_mm)),
+      weldThicknessMm: this.roundToWeldIncrement(
+        Number(fitting.wall_thickness_mm),
+      ),
       fittingClass: fitting.fitting_class,
       dn,
       odMm: null,
@@ -157,7 +161,9 @@ export class WeldThicknessService {
       if (fitting && Number(fitting.max_pressure_bar) >= designPressureBar) {
         return {
           found: true,
-          weldThicknessMm: this.roundToWeldIncrement(Number(fitting.wall_thickness_mm)),
+          weldThicknessMm: this.roundToWeldIncrement(
+            Number(fitting.wall_thickness_mm),
+          ),
           fittingClass,
           dn,
           odMm: null,
@@ -180,7 +186,9 @@ export class WeldThicknessService {
     if (xxhFitting) {
       return {
         found: true,
-        weldThicknessMm: this.roundToWeldIncrement(Number(xxhFitting.wall_thickness_mm)),
+        weldThicknessMm: this.roundToWeldIncrement(
+          Number(xxhFitting.wall_thickness_mm),
+        ),
         fittingClass: 'XXH',
         dn,
         odMm: null,
@@ -253,7 +261,9 @@ export class WeldThicknessService {
   /**
    * Get all stainless steel pipes data
    */
-  async getAllStainlessSteelPipes(): Promise<WeldThicknessPipeRecommendation[]> {
+  async getAllStainlessSteelPipes(): Promise<
+    WeldThicknessPipeRecommendation[]
+  > {
     return this.pipeRecommendationRepository.find({
       where: { steel_type: 'STAINLESS_STEEL' },
     });

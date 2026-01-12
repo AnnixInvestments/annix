@@ -1,6 +1,7 @@
 'use client';
 
 import { getYear, nowMillis } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
 
 /**
  * System number generation utilities
@@ -122,19 +123,19 @@ export async function calculateScheduleFromPressureAndNB(
   try {
     // Validate inputs before making API call
     if (!nominalBore || nominalBore <= 0) {
-      console.warn('Invalid nominal bore for API call:', nominalBore);
+      log.debug('Invalid nominal bore for API call:', nominalBore);
       throw new Error(`Invalid nominal bore: ${nominalBore}`);
     }
     
     if (!workingPressure || workingPressure <= 0) {
-      console.warn('Invalid working pressure for API call:', workingPressure);
+      log.debug('Invalid working pressure for API call:', workingPressure);
       throw new Error(`Invalid working pressure: ${workingPressure}`);
     }
     
-    console.log('Calling pipe recommendation API with:', { 
-      nominalBore, 
-      workingPressure, 
-      steelSpecId 
+    log.debug('Calling pipe recommendation API with:', {
+      nominalBore,
+      workingPressure,
+      steelSpecId
     });
     
     // Import API client dynamically to avoid circular dependencies

@@ -36,8 +36,16 @@ export class BendRfq {
   @Column({ name: 'bend_type', type: 'varchar', length: 10, nullable: true })
   bendType?: string;
 
-  @ApiProperty({ description: 'Bend radius type (for SABS 719 segmented bends)', example: 'long' })
-  @Column({ name: 'bend_radius_type', type: 'varchar', length: 20, nullable: true })
+  @ApiProperty({
+    description: 'Bend radius type (for SABS 719 segmented bends)',
+    example: 'long',
+  })
+  @Column({
+    name: 'bend_radius_type',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   bendRadiusType?: string;
 
   @ApiProperty({ description: 'Bend angle in degrees', example: 45 })
@@ -61,7 +69,10 @@ export class BendRfq {
   @Column({ name: 'tangent_lengths', type: 'json' })
   tangentLengths: number[];
 
-  @ApiProperty({ description: 'Number of segments (for segmented bends)', example: 5 })
+  @ApiProperty({
+    description: 'Number of segments (for segmented bends)',
+    example: 5,
+  })
   @Column({ name: 'number_of_segments', type: 'int', nullable: true })
   numberOfSegments?: number;
 

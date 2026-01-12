@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FlangePtRating } from './entities/flange-pt-rating.entity';
@@ -9,6 +9,8 @@ import {
 
 @Injectable()
 export class FlangePtRatingService {
+  private readonly logger = new Logger(FlangePtRatingService.name);
+
   constructor(
     @InjectRepository(FlangePtRating)
     private readonly ptRatingRepository: Repository<FlangePtRating>,
@@ -201,7 +203,7 @@ export class FlangePtRatingService {
     // Find the lowest pressure class that can handle the working pressure
     for (const { classId, maxPressure, designation } of classCapacities) {
       if (maxPressure >= workingPressureBar) {
-        console.log(
+        this.logger.log(
           `P/T Rating: Selected ${designation} (${maxPressure.toFixed(1)} bar at ${temperatureCelsius}°C) for ${workingPressureBar} bar`,
         );
         return classId;
@@ -211,7 +213,7 @@ export class FlangePtRatingService {
     // Return the highest class if none can handle it
     const highest = classCapacities[classCapacities.length - 1];
     if (highest) {
-      console.log(
+      this.logger.log(
         `P/T Rating: Using highest class ${highest.designation} (${highest.maxPressure.toFixed(1)} bar) for ${workingPressureBar} bar`,
       );
       return highest.classId;

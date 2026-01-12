@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class FixPipeScheduleDesignations1769000000000
-  implements MigrationInterface
-{
+export class FixPipeScheduleDesignations1769000000000 implements MigrationInterface {
   name = 'FixPipeScheduleDesignations1769000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -81,9 +79,7 @@ export class FixPipeScheduleDesignations1769000000000
       WHERE schedule_designation = 'Sch140'
     `);
 
-    console.log(
-      '✅ Schedule designations fixed: STD (40), XS (80), XXS (160)',
-    );
+    console.log('✅ Schedule designations fixed: STD (40), XS (80), XXS (160)');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

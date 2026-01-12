@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddNumberOfSegmentsToBendRfq1768400000000
-  implements MigrationInterface
-{
+export class AddNumberOfSegmentsToBendRfq1768400000000 implements MigrationInterface {
   name = 'AddNumberOfSegmentsToBendRfq1768400000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

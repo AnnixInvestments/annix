@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  generateClientItemNumber, 
+import {
+  generateClientItemNumber,
   getWallThicknessForSchedule,
-  getPipeEndConfigurationDetails 
+  getPipeEndConfigurationDetails
 } from '@/app/lib/utils/systemUtils';
+import { log } from '@/app/lib/logger';
 
 // Types
 interface BendEntry {
@@ -109,7 +110,7 @@ export default function BendItemsStep({
     const nominalBore = entry.specs.nominalBoreMm;
     const steelSpecId = globalSpecs?.steelSpecificationId;
     
-    console.log('🔍 Auto-calculating bend specs:', { pressure, nominalBore, steelSpecId });
+    log.debug('🔍 Auto-calculating bend specs:', { pressure, nominalBore, steelSpecId });
     
     if (pressure && nominalBore) {
       try {
@@ -118,7 +119,7 @@ export default function BendItemsStep({
         // Convert pressure from bar to MPa for API
         const pressureMpa = pressure * 0.1;
         
-        console.log('📡 Calling bend API with:', { nominalBore, pressureMpa });
+        log.debug('📡 Calling bend API with:', { nominalBore, pressureMpa });
         
         const recommended = await masterDataApi.getRecommendedSpecs(
           nominalBore,
@@ -127,7 +128,7 @@ export default function BendItemsStep({
           steelSpecId
         );
         
-        console.log('✅ Bend API returned:', recommended);
+        log.debug('✅ Bend API returned:', recommended);
         
         return {
           scheduleNumber: recommended.schedule,
@@ -161,7 +162,7 @@ export default function BendItemsStep({
           fallbackWallThickness = Math.max(8.0, nominalBore * 0.10);
         }
         
-        console.log(`🔧 Using fallback for bend: ${fallbackSchedule} (${fallbackWallThickness}mm) for ${nominalBore}NB at ${pressure} bar`);
+        log.debug(`🔧 Using fallback for bend: ${fallbackSchedule} (${fallbackWallThickness}mm) for ${nominalBore}NB at ${pressure} bar`);
         
         return {
           scheduleNumber: fallbackSchedule,
@@ -173,7 +174,7 @@ export default function BendItemsStep({
         };
       }
     } else {
-      console.log('⚠️ Skipping bend auto-calculation - missing pressure or nominal bore:', { pressure, nominalBore });
+      log.debug('⚠️ Skipping bend auto-calculation - missing pressure or nominal bore:', { pressure, nominalBore });
     }
     return {};
   };
@@ -218,11 +219,11 @@ export default function BendItemsStep({
           : entry.specs.flangePressureClassId
       };
 
-      console.log('🔧 Calculating bend with params:', calculationParams);
+      log.debug('🔧 Calculating bend with params:', calculationParams);
 
       const calculation = await masterDataApi.calculateBendSpecifications(calculationParams);
       
-      console.log('✅ Bend calculation result:', calculation);
+      log.debug('✅ Bend calculation result:', calculation);
 
       onUpdateEntry(entry.id, {
         calculation: calculation

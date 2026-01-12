@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Center, Environment, Text, Line, ContactShadows } from '@react-three/drei';
+import { Geometry, Base, Subtraction } from '@react-three/csg';
 import * as THREE from 'three';
 
 interface Pipe3DPreviewProps {
@@ -112,7 +113,7 @@ const SimpleFlange = ({ position, outerDiameter, holeDiameter, thickness }: { po
     return geo;
   }, [flangeOD, holeDiameter, thickness]);
 
-  // Inner bore radius for visible center hole
+  // Inner bore outerRadius for visible center hole
   const boreRadius = holeDiameter / 2;
 
   return (
@@ -278,71 +279,80 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
   const closureLength = (closureLengthMm || 150) / 1000; // Convert mm to scene units
   const gapLength = 0.1; // 100mm in scene units (meters)
 
-  const geometry = useMemo(() => {
-    const outerRadius = odSceneUnits / 2;
-    const innerRadius = Math.max(0, (odSceneUnits - (2 * wtSceneUnits)) / 2);
-    const shape = new THREE.Shape();
-    shape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
-    const hole = new THREE.Path();
-    hole.absarc(0, 0, Math.max(0.0001, innerRadius), 0, Math.PI * 2, true);
-    shape.holes.push(hole);
-    return new THREE.ExtrudeGeometry(shape, { depth: safeLength, bevelEnabled: false, curveSegments: 32 });
-  }, [safeLength, odSceneUnits, wtSceneUnits]);
-
+  // Use CSG for proper hollow pipe geometry
+  const outerRadius = odSceneUnits / 2;
+  const innerRadius = Math.max(0.001, (odSceneUnits - (2 * wtSceneUnits)) / 2);
   const halfLen = safeLength / 2;
-  const radius = odSceneUnits / 2;
-  const innerRadius = Math.max(0, (odSceneUnits - (2 * wtSceneUnits)) / 2);
-  const offsetDist = radius + 0.3;
+  const offsetDist = outerRadius + 0.3;
 
   return (
     <group>
-      <mesh rotation={[0, Math.PI / 2, 0]} position={[-halfLen, 0, 0]} geometry={geometry}>
-        <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
-      </mesh>
+      {/* Hollow pipe using CSG - shows wall thickness */}
+      <group rotation={[0, Math.PI / 2, 0]} position={[-halfLen, 0, 0]}>
+        <Geometry>
+          <Base>
+            <mesh>
+              <cylinderGeometry args={[outerRadius, outerRadius, safeLength, 32]} />
+              <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
+            </mesh>
+          </Base>
+          <Subtraction>
+            <mesh>
+              <cylinderGeometry args={[innerRadius, innerRadius, safeLength + 0.01, 32]} />
+            </mesh>
+          </Subtraction>
+        </Geometry>
+      </group>
 
       {/* Left flange */}
       {hasLeftFlange && (
         <>
           {hasLooseLeftFlange ? (
             <>
-              {/* Closure piece (attached to pipe end) */}
-              <mesh rotation={[0, 0, Math.PI / 2]} position={[-halfLen - closureLength / 2, 0, 0]}>
-                <cylinderGeometry args={[radius, radius, closureLength, 32]} />
-                <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
-              </mesh>
-              {/* Inner bore of closure */}
-              <mesh rotation={[0, 0, Math.PI / 2]} position={[-halfLen - closureLength / 2, 0, 0]}>
-                <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32]} />
-                <meshStandardMaterial color="#1a1a1a" />
-              </mesh>
+              {/* Hollow closure piece (attached to pipe end) */}
+              <group rotation={[0, 0, Math.PI / 2]} position={[-halfLen - closureLength / 2, 0, 0]}>
+                <Geometry>
+                  <Base>
+                    <mesh>
+                      <cylinderGeometry args={[outerRadius, outerRadius, closureLength, 32]} />
+                      <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
+                    </mesh>
+                  </Base>
+                  <Subtraction>
+                    <mesh>
+                      <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32]} />
+                    </mesh>
+                  </Subtraction>
+                </Geometry>
+              </group>
               {/* Loose flange positioned 100mm after closure piece */}
               <SimpleFlange position={[-halfLen - closureLength - gapLength, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
               {/* L/F dimension line */}
-              <Line points={[[-halfLen, -radius - 0.1, 0], [-halfLen - closureLength, -radius - 0.1, 0]]} color="#2563eb" lineWidth={2} />
-              <Line points={[[-halfLen, -radius - 0.05, 0], [-halfLen, -radius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
-              <Line points={[[-halfLen - closureLength, -radius - 0.05, 0], [-halfLen - closureLength, -radius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
-              <Text position={[-halfLen - closureLength / 2, -radius - 0.22, 0]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Line points={[[-halfLen, -outerRadius - 0.1, 0], [-halfLen - closureLength, -outerRadius - 0.1, 0]]} color="#2563eb" lineWidth={2} />
+              <Line points={[[-halfLen, -outerRadius - 0.05, 0], [-halfLen, -outerRadius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
+              <Line points={[[-halfLen - closureLength, -outerRadius - 0.05, 0], [-halfLen - closureLength, -outerRadius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
+              <Text position={[-halfLen - closureLength / 2, -outerRadius - 0.22, 0]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
                 {`L/F ${closureLengthMm}mm`}
               </Text>
               {/* 100mm gap indicator */}
-              <Line points={[[-halfLen - closureLength, -radius - 0.25, 0], [-halfLen - closureLength - gapLength, -radius - 0.25, 0]]} color="#9333ea" lineWidth={1} dashed />
-              <Text position={[-halfLen - closureLength - gapLength / 2, -radius - 0.35, 0]} fontSize={0.1} color="#9333ea" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Line points={[[-halfLen - closureLength, -outerRadius - 0.25, 0], [-halfLen - closureLength - gapLength, -outerRadius - 0.25, 0]]} color="#9333ea" lineWidth={1} dashed />
+              <Text position={[-halfLen - closureLength - gapLength / 2, -outerRadius - 0.35, 0]} fontSize={0.1} color="#9333ea" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
                 100mm gap
               </Text>
             </>
           ) : hasRotatingLeftFlange ? (
             <>
               {/* Retaining ring welded to pipe end - prevents flange from sliding off */}
-              <RetainingRing position={[-halfLen, 0, 0]} pipeOuterRadius={radius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
+              <RetainingRing position={[-halfLen, 0, 0]} pipeOuterRadius={outerRadius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
               {/* Rotating flange positioned 50mm back from ring (on the pipe)
                   Hole diameter is slightly larger than pipe OD to allow rotation */}
               <SimpleFlange position={[-halfLen + 0.05, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} />
               {/* 50mm gap dimension line */}
-              <Line points={[[-halfLen, -radius - 0.1, 0], [-halfLen + 0.05, -radius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
-              <Line points={[[-halfLen, -radius - 0.05, 0], [-halfLen, -radius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
-              <Line points={[[-halfLen + 0.05, -radius - 0.05, 0], [-halfLen + 0.05, -radius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
+              <Line points={[[-halfLen, -outerRadius - 0.1, 0], [-halfLen + 0.05, -outerRadius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
+              <Line points={[[-halfLen, -outerRadius - 0.05, 0], [-halfLen, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
+              <Line points={[[-halfLen + 0.05, -outerRadius - 0.05, 0], [-halfLen + 0.05, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
               {/* R/F label with gap dimension */}
-              <Text position={[-halfLen + 0.025, -radius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Text position={[-halfLen + 0.025, -outerRadius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
                 R/F 50mm
               </Text>
             </>
@@ -360,44 +370,50 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
         <>
           {hasLooseRightFlange ? (
             <>
-              {/* Closure piece (attached to pipe end) */}
-              <mesh rotation={[0, 0, Math.PI / 2]} position={[halfLen + closureLength / 2, 0, 0]}>
-                <cylinderGeometry args={[radius, radius, closureLength, 32]} />
-                <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
-              </mesh>
-              {/* Inner bore of closure */}
-              <mesh rotation={[0, 0, Math.PI / 2]} position={[halfLen + closureLength / 2, 0, 0]}>
-                <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32]} />
-                <meshStandardMaterial color="#1a1a1a" />
-              </mesh>
+              {/* Hollow closure piece (attached to pipe end) */}
+              <group rotation={[0, 0, Math.PI / 2]} position={[halfLen + closureLength / 2, 0, 0]}>
+                <Geometry>
+                  <Base>
+                    <mesh>
+                      <cylinderGeometry args={[outerRadius, outerRadius, closureLength, 32]} />
+                      <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
+                    </mesh>
+                  </Base>
+                  <Subtraction>
+                    <mesh>
+                      <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32]} />
+                    </mesh>
+                  </Subtraction>
+                </Geometry>
+              </group>
               {/* Loose flange positioned 100mm after closure piece */}
               <SimpleFlange position={[halfLen + closureLength + gapLength, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
               {/* L/F dimension line */}
-              <Line points={[[halfLen, -radius - 0.1, 0], [halfLen + closureLength, -radius - 0.1, 0]]} color="#2563eb" lineWidth={2} />
-              <Line points={[[halfLen, -radius - 0.05, 0], [halfLen, -radius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
-              <Line points={[[halfLen + closureLength, -radius - 0.05, 0], [halfLen + closureLength, -radius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
-              <Text position={[halfLen + closureLength / 2, -radius - 0.22, 0]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Line points={[[halfLen, -outerRadius - 0.1, 0], [halfLen + closureLength, -outerRadius - 0.1, 0]]} color="#2563eb" lineWidth={2} />
+              <Line points={[[halfLen, -outerRadius - 0.05, 0], [halfLen, -outerRadius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
+              <Line points={[[halfLen + closureLength, -outerRadius - 0.05, 0], [halfLen + closureLength, -outerRadius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
+              <Text position={[halfLen + closureLength / 2, -outerRadius - 0.22, 0]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
                 {`L/F ${closureLengthMm}mm`}
               </Text>
               {/* 100mm gap indicator */}
-              <Line points={[[halfLen + closureLength, -radius - 0.25, 0], [halfLen + closureLength + gapLength, -radius - 0.25, 0]]} color="#9333ea" lineWidth={1} dashed />
-              <Text position={[halfLen + closureLength + gapLength / 2, -radius - 0.35, 0]} fontSize={0.1} color="#9333ea" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Line points={[[halfLen + closureLength, -outerRadius - 0.25, 0], [halfLen + closureLength + gapLength, -outerRadius - 0.25, 0]]} color="#9333ea" lineWidth={1} dashed />
+              <Text position={[halfLen + closureLength + gapLength / 2, -outerRadius - 0.35, 0]} fontSize={0.1} color="#9333ea" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
                 100mm gap
               </Text>
             </>
           ) : hasRotatingRightFlange ? (
             <>
               {/* Retaining ring welded to pipe end - prevents flange from sliding off */}
-              <RetainingRing position={[halfLen, 0, 0]} pipeOuterRadius={radius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
+              <RetainingRing position={[halfLen, 0, 0]} pipeOuterRadius={outerRadius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
               {/* Rotating flange positioned 50mm back from ring (on the pipe)
                   Hole diameter is slightly larger than pipe OD to allow rotation */}
               <SimpleFlange position={[halfLen - 0.05, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} />
               {/* 50mm gap dimension line */}
-              <Line points={[[halfLen - 0.05, -radius - 0.1, 0], [halfLen, -radius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
-              <Line points={[[halfLen - 0.05, -radius - 0.05, 0], [halfLen - 0.05, -radius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
-              <Line points={[[halfLen, -radius - 0.05, 0], [halfLen, -radius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
+              <Line points={[[halfLen - 0.05, -outerRadius - 0.1, 0], [halfLen, -outerRadius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
+              <Line points={[[halfLen - 0.05, -outerRadius - 0.05, 0], [halfLen - 0.05, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
+              <Line points={[[halfLen, -outerRadius - 0.05, 0], [halfLen, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
               {/* R/F label with gap dimension */}
-              <Text position={[halfLen - 0.025, -radius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Text position={[halfLen - 0.025, -outerRadius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
                 R/F 50mm
               </Text>
             </>
@@ -418,7 +434,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
             outerDiameter={odSceneUnits}
             thickness={flangeThickness}
           />
-          <Text position={[-halfLen - flangeThickness - 0.05, -radius - 0.15, 0]} fontSize={0.1} color="#cc3300" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+          <Text position={[-halfLen - flangeThickness - 0.05, -outerRadius - 0.15, 0]} fontSize={0.1} color="#cc3300" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
             BLANK
           </Text>
         </>
@@ -430,7 +446,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
             outerDiameter={odSceneUnits}
             thickness={flangeThickness}
           />
-          <Text position={[halfLen + flangeThickness + 0.15, -radius - 0.15, 0]} fontSize={0.1} color="#cc3300" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+          <Text position={[halfLen + flangeThickness + 0.15, -outerRadius - 0.15, 0]} fontSize={0.1} color="#cc3300" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
             BLANK
           </Text>
         </>
@@ -480,16 +496,22 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   const safeLen = lengthSceneUnits || 1;
   const halfLen = safeLen / 2;
 
+  // Auto-calculate camera distance based on pipe length for better framing
+  // Formula: camera distance = max(pipe length * 0.8, 2.5) to ensure good view of entire pipe
+  const autoCameraDistance = Math.max(safeLen * 0.8, 2.5);
+  const autoCameraHeight = autoCameraDistance * 0.4;
+
   const cameraTargets = {
-    iso: { pos: [0, 1.5, 5], lookAt: [0, 0, 0] },
+    iso: {
+      pos: [0, autoCameraHeight, autoCameraDistance],
+      lookAt: [0, 0, 0]
+    },
     inlet: {
-      //adjust - val or default zoom level
-      pos: [-halfLen - 0, 0, 0],
+      pos: [-halfLen - (safeLen * 0.3), 0, 0],
       lookAt: [-halfLen, 0, 0]
     },
     outlet: {
-      //adjust - val or default zoom level
-      pos: [halfLen + 0, 0, 0],
+      pos: [halfLen + (safeLen * 0.3), 0, 0],
       lookAt: [halfLen, 0, 0]
     }
   };
@@ -539,7 +561,14 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
       </div>
 
       <div className="h-full w-full min-h-[300px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
-        <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 1, 3.5], fov: 45 }}>
+        <Canvas
+          shadows
+          dpr={[1, 2]}
+          camera={{
+            position: cameraTargets.iso.pos as [number, number, number],
+            fov: 45
+          }}
+        >
           <ambientLight intensity={0.8} />
           <spotLight position={[10, 10, 5]} angle={0.5} penumbra={1} intensity={1} />
           <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />

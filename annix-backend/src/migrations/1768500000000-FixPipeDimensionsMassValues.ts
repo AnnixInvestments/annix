@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class FixPipeDimensionsMassValues1768500000000
-  implements MigrationInterface
-{
+export class FixPipeDimensionsMassValues1768500000000 implements MigrationInterface {
   name = 'FixPipeDimensionsMassValues1768500000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -16,10 +14,14 @@ export class FixPipeDimensionsMassValues1768500000000
       WHERE nod.id = pd.nominal_outside_diameter_id
     `);
 
-    console.log('Updated pipe_dimensions mass_kgm values using formula: ((OD - WT) * WT) * 0.02466');
+    console.log(
+      'Updated pipe_dimensions mass_kgm values using formula: ((OD - WT) * WT) * 0.02466',
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.log('Cannot revert mass values - would need original values stored');
+    console.log(
+      'Cannot revert mass values - would need original values stored',
+    );
   }
 }

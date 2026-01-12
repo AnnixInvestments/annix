@@ -10,6 +10,7 @@ import { AutoFilledInput, AutoFilledSelect, AutoFilledDisplay } from '@/app/comp
 import AddMineModal from '@/app/components/rfq/AddMineModal';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
+import { log } from '@/app/lib/logger';
 import { useToast } from '@/app/components/Toast';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -123,7 +124,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
     // Fetch environmental data and auto-fill fields
     if (onUpdateGlobalSpecs) {
       try {
-        console.log('[Form] Fetching environmental data for:', location);
+        log.debug('[Form] Fetching environmental data for:', location);
         const environmentalData = await fetchEnvironmentalData(
           location.lat,
           location.lng,
@@ -131,15 +132,15 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
           addressComponents?.country
         );
 
-        console.log('[Form] Environmental data received:', environmentalData);
-        console.log('[Form] Current globalSpecs:', globalSpecs);
+        log.debug('[Form] Environmental data received:', environmentalData);
+        log.debug('[Form] Current globalSpecs:', globalSpecs);
 
         // Update globalSpecs with environmental data
         const updatedSpecs = {
           ...globalSpecs,
           ...environmentalData,
         };
-        console.log('[Form] Updated globalSpecs:', updatedSpecs);
+        log.debug('[Form] Updated globalSpecs:', updatedSpecs);
         onUpdateGlobalSpecs(updatedSpecs);
       } catch (error) {
         // Silently handle - user can still fill in manually
@@ -413,14 +414,14 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
         // Also fetch environmental/weather data based on mine location
         if (mine.latitude && mine.longitude) {
           try {
-            console.log('[Mine Selection] Fetching environmental data for:', mine.mineName);
+            log.debug('[Mine Selection] Fetching environmental data for:', mine.mineName);
             const environmentalData = await fetchEnvironmentalData(
               mine.latitude,
               mine.longitude,
               mine.province,
               'South Africa'
             );
-            console.log('[Mine Selection] Environmental data received:', environmentalData);
+            log.debug('[Mine Selection] Environmental data received:', environmentalData);
 
             // Merge environmental data with slurry profile data
             Object.assign(updatedSpecs, environmentalData);
@@ -436,14 +437,14 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
       } else if (mine.latitude && mine.longitude && onUpdateGlobalSpecs) {
         // Even without slurry profile, fetch environmental data if we have coordinates
         try {
-          console.log('[Mine Selection] Fetching environmental data (no slurry profile):', mine.mineName);
+          log.debug('[Mine Selection] Fetching environmental data (no slurry profile):', mine.mineName);
           const environmentalData = await fetchEnvironmentalData(
             mine.latitude,
             mine.longitude,
             mine.province,
             'South Africa'
           );
-          console.log('[Mine Selection] Environmental data received:', environmentalData);
+          log.debug('[Mine Selection] Environmental data received:', environmentalData);
           onUpdateGlobalSpecs({
             ...globalSpecs,
             mineSelected: mine.mineName,
@@ -457,12 +458,12 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
         }
       }
 
-      console.log('[Mine Selection] Auto-filled from mine:', mine.mineName);
+      log.debug('[Mine Selection] Auto-filled from mine:', mine.mineName);
     } catch (error) {
       // When backend is unavailable, use fallback mine data from local list
       const fallbackMine = fallbackMines.find(m => m.id === mineId);
       if (fallbackMine) {
-        console.log('[Mine Selection] Using fallback data for:', fallbackMine.mineName);
+        log.debug('[Mine Selection] Using fallback data for:', fallbackMine.mineName);
 
         // Auto-fill location fields from fallback data
         if (fallbackMine.latitude && fallbackMine.longitude) {
@@ -572,7 +573,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
             'timeOfWetness',
           ]);
 
-          console.log('[Mine Selection] Auto-filled with fallback data for:', fallbackMine.mineName);
+          log.debug('[Mine Selection] Auto-filled with fallback data for:', fallbackMine.mineName);
         }
       } else if (error instanceof Error && error.message !== 'Backend unavailable') {
         console.error('Failed to fetch mine environmental data:', error);
@@ -633,7 +634,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
   // Helper to update environmental fields in globalSpecs (not rfqData)
   // This ensures they get saved properly since save function saves globalSpecs
   const updateEnvironmentalField = useCallback((field: string, value: any) => {
-    console.log(`🌍 Environmental field updated: ${field} =`, value);
+    log.debug(`🌍 Environmental field updated: ${field} =`, value);
     if (onUpdateGlobalSpecs) {
       onUpdateGlobalSpecs({
         ...globalSpecs,
@@ -904,7 +905,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
                   value={type.value}
                   checked={rfqData.projectType === type.value}
                   onChange={(e) => {
-                    console.log('🔘 Project type selected:', e.target.value);
+                    log.debug('🔘 Project type selected:', e.target.value);
                     onUpdate('projectType', e.target.value);
                   }}
                   className="sr-only"
@@ -949,7 +950,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
                       } else {
                         newProducts = currentProducts.filter((p: string) => p !== product.value);
                       }
-                      console.log('☑️ Required products updated:', newProducts);
+                      log.debug('☑️ Required products updated:', newProducts);
                       onUpdate('requiredProducts', newProducts);
                     }}
                     className="sr-only"
@@ -983,7 +984,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
                   showToast('Please select at least one Required Product/Service before confirming.', 'error');
                   return;
                 }
-                console.log('✅ Project type & products confirmed:', {
+                log.debug('✅ Project type & products confirmed:', {
                   projectType: rfqData.projectType,
                   requiredProducts: rfqData.requiredProducts
                 });
@@ -1509,7 +1510,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
                     value={globalSpecs?.ecpIso12944Category || ''}
                     onChange={(e) => {
                       const value = e.target.value || undefined;
-                      console.log('🌍 ISO 12944 Category selected:', value);
+                      log.debug('🌍 ISO 12944 Category selected:', value);
                       updateEnvironmentalField('ecpIso12944Category', value);
                     }}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
@@ -1852,7 +1853,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
               <button
                 type="button"
                 onClick={() => {
-                  console.log('📄 User confirmed: Skip documents');
+                  log.debug('📄 User confirmed: Skip documents');
                   setShowNoDocumentsPopup(false);
                   setDocumentsConfirmed(true);
                   onUpdate('skipDocuments', true);

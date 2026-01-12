@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateMaterialLimitsTable1768800000000
-  implements MigrationInterface
-{
+export class CreateMaterialLimitsTable1768800000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create material limits table
     await queryRunner.query(`

@@ -25,7 +25,7 @@ export default tseslint.config(
       'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-
+      'no-console': ['error', { allow: ['warn', 'error'] }],
       'no-restricted-globals': [
         'error',
         {
@@ -45,7 +45,6 @@ export default tseslint.config(
           message: 'Use a custom input modal instead of browser prompt() for better UX.',
         },
       ],
-
       'no-restricted-syntax': [
         'error',
         {
@@ -61,7 +60,6 @@ export default tseslint.config(
           message: "Use DateTime from '@/app/lib/datetime' instead of Date properties",
         },
       ],
-
       'no-restricted-imports': [
         'error',
         {

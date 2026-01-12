@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddCalculationDataToBendRfqAndUpdateLfBeDescriptions1768300000000
-  implements MigrationInterface
-{
+export class AddCalculationDataToBendRfqAndUpdateLfBeDescriptions1768300000000 implements MigrationInterface {
   name = 'AddCalculationDataToBendRfqAndUpdateLfBeDescriptions1768300000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

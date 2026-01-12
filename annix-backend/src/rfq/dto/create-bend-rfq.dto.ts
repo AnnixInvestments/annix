@@ -49,7 +49,8 @@ export class CreateBendRfqDto {
   bendType?: string;
 
   @ApiProperty({
-    description: 'Bend radius type (elbow, medium, long) - for SABS 719 segmented bends',
+    description:
+      'Bend radius type (elbow, medium, long) - for SABS 719 segmented bends',
     example: 'long',
     enum: ['elbow', 'medium', 'long'],
     required: false,

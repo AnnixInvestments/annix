@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class ExpandPipeEndConfigurations1768600000000
-  implements MigrationInterface
-{
+export class ExpandPipeEndConfigurations1768600000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Add new columns to pipe_end_configurations table
     await queryRunner.query(`

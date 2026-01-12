@@ -8,6 +8,7 @@ import {
 import { masterDataApi, bendRfqApi } from '@/app/lib/api/client';
 import { useToast } from '@/app/components/Toast';
 import { addDaysFromNowISODate, generateUniqueId } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
 
 // Types
 interface BendEntry {
@@ -111,7 +112,7 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
           ],
         });
       } catch (error) {
-        console.error('Failed to load master data:', error);
+        log.debug('Failed to load master data:', error);
       }
     };
 
@@ -136,7 +137,7 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
       
       return options;
     } catch (error) {
-      console.error(`Error fetching bend options for ${bendType}:`, error);
+      log.debug(`Error fetching bend options for ${bendType}:`, error);
       return { nominalBores: [], degrees: [] };
     }
   };
@@ -193,11 +194,11 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
             )
           }));
 
-          console.log(`Auto-selected pressure class ${recommended.designation} for ${workingPressureBar} bar`);
+          log.debug(`Auto-selected pressure class ${recommended.designation} for ${workingPressureBar} bar`);
         }
       }
     } catch (error) {
-      console.error('Error auto-selecting flange specs:', error);
+      log.debug('Error auto-selecting flange specs:', error);
     }
   };
 
@@ -290,7 +291,7 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
       });
 
     } catch (error) {
-      console.error('Bend calculation failed:', error);
+      log.debug('Bend calculation failed:', error);
       showToast('Bend calculation failed. Please check your specifications.', 'error');
     } finally {
       setLoading(false);
@@ -391,7 +392,7 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
       onSuccess(response.rfq.rfqNumber);
       
     } catch (error) {
-      console.error('Submission failed:', error);
+      log.debug('Submission failed:', error);
       showToast('Failed to submit bend RFQ. Please try again.', 'error');
     } finally {
       setLoading(false);

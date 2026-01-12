@@ -5,6 +5,7 @@ import { Select } from '@/app/components/ui/Select';
 import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
 import { getPipeEndConfigurationDetails } from '@/app/lib/utils/systemUtils';
 import { masterDataApi } from '@/app/lib/api/client';
+import { log } from '@/app/lib/logger';
 import {
   FITTING_END_OPTIONS,
   getScheduleListForSpec,
@@ -280,7 +281,7 @@ export default function FittingForm({
                                     }
                                   }
                                 }).catch((err) => {
-                                  console.log('Could not fetch fitting dimensions:', err);
+                                  log.debug('Could not fetch fitting dimensions:', err);
                                 });
                               }
 
@@ -388,7 +389,7 @@ export default function FittingForm({
                                     }
                                   }
                                 }).catch((err) => {
-                                  console.log('Could not fetch fitting dimensions:', err);
+                                  log.debug('Could not fetch fitting dimensions:', err);
                                 });
                               }
 
@@ -499,7 +500,7 @@ export default function FittingForm({
                             onUpdateEntry(entry.id, updates);
                           }
                         } catch (err) {
-                          console.log('Could not fetch fitting dimensions:', err);
+                          log.debug('Could not fetch fitting dimensions:', err);
                         }
                       };
 
@@ -650,7 +651,7 @@ export default function FittingForm({
                                   }
                                 }
                               } catch (err) {
-                                console.log('Could not fetch fitting dimensions:', err);
+                                log.debug('Could not fetch fitting dimensions:', err);
                               }
                             }
 

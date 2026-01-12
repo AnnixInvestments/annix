@@ -705,7 +705,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
           const newDescription = generateItemDescription(entry);
           // Only update if description actually changed
           if (newDescription !== entry.description) {
-            console.log(`[Description Update] Updating description for entry ${entry.id} with new pressure: ${globalSpecs.workingPressureBar} bar`);
+            log.debug(`[Description Update] Updating description for entry ${entry.id} with new pressure: ${globalSpecs.workingPressureBar} bar`);
             onUpdateEntry(entry.id, { description: newDescription });
           }
         }

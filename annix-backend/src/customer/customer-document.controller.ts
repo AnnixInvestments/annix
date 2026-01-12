@@ -69,7 +69,9 @@ export class CustomerDocumentController {
   ) {
     const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
-    const expiryDate = body.expiryDate ? fromISO(body.expiryDate).toJSDate() : null;
+    const expiryDate = body.expiryDate
+      ? fromISO(body.expiryDate).toJSDate()
+      : null;
 
     return this.documentService.uploadDocument(
       customerId,

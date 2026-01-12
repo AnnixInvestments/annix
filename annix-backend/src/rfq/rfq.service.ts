@@ -625,7 +625,9 @@ export class RfqService {
 
     if (existingRfq.items && existingRfq.items.length > 0) {
       await this.rfqItemRepository.delete({ rfq: { id } });
-      this.logger.log(`Deleted ${existingRfq.items.length} existing items from RFQ ${id}`);
+      this.logger.log(
+        `Deleted ${existingRfq.items.length} existing items from RFQ ${id}`,
+      );
     }
 
     let totalWeight = 0;
@@ -648,7 +650,9 @@ export class RfqService {
     existingRfq.status = RfqStatus.SUBMITTED;
 
     const savedRfq = await this.rfqRepository.save(existingRfq);
-    this.logger.log(`Updated RFQ ${existingRfq.rfqNumber} with ${dto.items.length} new items`);
+    this.logger.log(
+      `Updated RFQ ${existingRfq.rfqNumber} with ${dto.items.length} new items`,
+    );
 
     let lineNumber = 0;
     for (const item of dto.items) {

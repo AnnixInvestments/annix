@@ -92,12 +92,21 @@ export class UnifiedBendDto {
   @IsNumber()
   wallThicknessMm?: number;
 
-  @ApiProperty({ description: 'Bend type (1D, 1.5D, 2D, 3D, 5D) - for pulled bends', example: '3D', required: false })
+  @ApiProperty({
+    description: 'Bend type (1D, 1.5D, 2D, 3D, 5D) - for pulled bends',
+    example: '3D',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   bendType?: string;
 
-  @ApiProperty({ description: 'Bend radius type (elbow, medium, long) - for SABS 719 segmented bends', example: 'long', required: false })
+  @ApiProperty({
+    description:
+      'Bend radius type (elbow, medium, long) - for SABS 719 segmented bends',
+    example: 'long',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   bendRadiusType?: string;
@@ -106,7 +115,11 @@ export class UnifiedBendDto {
   @IsNumber()
   bendDegrees: number;
 
-  @ApiProperty({ description: 'Bend end configuration', example: '2xLF', required: false })
+  @ApiProperty({
+    description: 'Bend end configuration',
+    example: '2xLF',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   bendEndConfiguration?: string;
@@ -119,12 +132,18 @@ export class UnifiedBendDto {
   @IsArray()
   tangentLengths: number[];
 
-  @ApiProperty({ description: 'Center to face dimension in mm', required: false })
+  @ApiProperty({
+    description: 'Center to face dimension in mm',
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   centerToFaceMm?: number;
 
-  @ApiProperty({ description: 'Number of segments (for segmented bends)', required: false })
+  @ApiProperty({
+    description: 'Number of segments (for segmented bends)',
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   numberOfSegments?: number;

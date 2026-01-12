@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateGasketWeightsTable1768900000000
-  implements MigrationInterface
-{
+export class CreateGasketWeightsTable1768900000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create gasket weights table
     await queryRunner.query(`

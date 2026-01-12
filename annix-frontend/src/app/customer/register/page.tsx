@@ -14,6 +14,7 @@ import {
 import DocumentIssueModal from '@/app/components/customer/DocumentIssueModal';
 import { CurrencySelect, DEFAULT_CURRENCY } from '@/app/components/ui/CurrencySelect';
 import { currencyCodeForCountry } from '@/app/lib/currencies';
+import { log } from '@/app/lib/logger';
 
 type Step = 'company' | 'documents' | 'profile' | 'security' | 'complete';
 
@@ -199,11 +200,11 @@ export default function CustomerRegistrationPage() {
 
       const result = await customerAuthApi.validateDocument(file, documentType, expectedData);
 
-      console.log('=== VALIDATION RESULT ===');
-      console.log('Document Type:', documentType);
-      console.log('Expected Data:', expectedData);
-      console.log('Validation Result:', result);
-      console.log('=========================');
+      log.debug('=== VALIDATION RESULT ===');
+      log.debug('Document Type:', documentType);
+      log.debug('Expected Data:', expectedData);
+      log.debug('Validation Result:', result);
+      log.debug('=========================');
 
       if (result.ocrFailed) {
         // OCR failed - show modal with option to go back or proceed with manual review

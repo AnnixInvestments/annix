@@ -4,6 +4,7 @@ import React from 'react';
 import { Select } from '@/app/components/ui/Select';
 import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
 import { getPipeEndConfigurationDetails } from '@/app/lib/utils/systemUtils';
+import { log } from '@/app/lib/logger';
 import {
   PIPE_END_OPTIONS,
   getScheduleListForSpec,
@@ -239,7 +240,7 @@ export default function StraightPipeForm({
                         const nominalBore = Number(value);
                         if (!nominalBore) return;
 
-                        console.log(`[NB onChange] Selected NB: ${nominalBore}mm`);
+                        log.debug(`[NB onChange] Selected NB: ${nominalBore}mm`);
 
                         const steelSpecId = entry.specs.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
                         const pressure = globalSpecs?.workingPressureBar || 0;
@@ -247,14 +248,14 @@ export default function StraightPipeForm({
 
                         const nbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                         const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId);
-                        console.log(`[NB onChange] Using ${schedules.length} fallback schedules for ${nominalBore}mm`);
+                        log.debug(`[NB onChange] Using ${schedules.length} fallback schedules for ${nominalBore}mm`);
 
                         if (schedules.length > 0) {
                           setAvailableSchedulesMap((prev: Record<string, any[]>) => ({
                             ...prev,
                             [entry.id]: schedules
                           }));
-                          console.log(`[NB onChange] Set availableSchedulesMap for entry ${entry.id} with ${schedules.length} schedules`);
+                          log.debug(`[NB onChange] Set availableSchedulesMap for entry ${entry.id} with ${schedules.length} schedules`);
                         }
 
                         let matchedSchedule: string | null = null;
@@ -266,7 +267,7 @@ export default function StraightPipeForm({
                             const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
                             const materialCode = steelSpecId === 1 ? 'ASTM_A53_Grade_B' : 'ASTM_A106_Grade_B';
                             minWT = calculateMinWallThickness(od, pressure, materialCode, temperature, 1.0, 0, 1.2);
-                            console.log(`[NB onChange] ASME B31.3 calc minWT: ${minWT.toFixed(2)}mm for ${pressure} bar @ ${temperature}°C, OD=${od}mm`);
+                            log.debug(`[NB onChange] ASME B31.3 calc minWT: ${minWT.toFixed(2)}mm for ${pressure} bar @ ${temperature}°C, OD=${od}mm`);
 
                             const recommendation = findRecommendedSchedule(schedules, od, pressure, materialCode, temperature, 1.2);
 
@@ -275,7 +276,7 @@ export default function StraightPipeForm({
                               matchedWT = recommendation.schedule.wallThicknessMm;
                               const maxPressure = recommendation.validation?.maxAllowablePressure || 0;
                               const margin = recommendation.validation?.safetyMargin || 0;
-                              console.log(`[NB onChange] ASME B31.3 recommended: ${matchedSchedule} (${matchedWT}mm), max ${maxPressure.toFixed(1)} bar, ${margin.toFixed(1)}x margin`);
+                              log.debug(`[NB onChange] ASME B31.3 recommended: ${matchedSchedule} (${matchedWT}mm), max ${maxPressure.toFixed(1)} bar, ${margin.toFixed(1)}x margin`);
                             } else {
                               const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
                               matchedSchedule = sorted[0].scheduleDesignation;
@@ -287,7 +288,7 @@ export default function StraightPipeForm({
                             const sorted = [...schedules].sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
                             matchedSchedule = sorted[0].scheduleDesignation;
                             matchedWT = sorted[0].wallThicknessMm;
-                            console.log(`[NB onChange] No pressure set, using lightest schedule: ${matchedSchedule}`);
+                            log.debug(`[NB onChange] No pressure set, using lightest schedule: ${matchedSchedule}`);
                           }
                         }
 
@@ -305,7 +306,7 @@ export default function StraightPipeForm({
                         };
 
                         updatedEntry.description = generateItemDescription(updatedEntry);
-                        console.log(`[NB onChange] Updating entry ${entry.id} with schedule: ${matchedSchedule}, WT: ${matchedWT}mm`);
+                        log.debug(`[NB onChange] Updating entry ${entry.id} with schedule: ${matchedSchedule}, WT: ${matchedWT}mm`);
                         onUpdateEntry(entry.id, updatedEntry);
                         fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
                       };

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { customerApiClient, CustomerProfileResponse } from '@/app/lib/api/customerApi';
+import { log } from '@/app/lib/logger';
 
 interface CustomerInfo {
   id: number;
@@ -67,7 +68,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       setAuthenticatedWithProfile(profile);
     } catch (error) {
       // Profile fetch failed - try refreshing the token before giving up
-      console.log('[CustomerAuth] Profile fetch failed, attempting token refresh...');
+      log.debug('[CustomerAuth] Profile fetch failed, attempting token refresh...');
       const refreshed = await customerApiClient.refreshAccessToken();
 
       if (refreshed) {
@@ -78,10 +79,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           return;
         } catch {
           // Still failed after refresh - clear tokens
-          console.log('[CustomerAuth] Profile fetch failed even after token refresh');
+          log.debug('[CustomerAuth] Profile fetch failed even after token refresh');
         }
       } else {
-        console.log('[CustomerAuth] Token refresh failed');
+        log.debug('[CustomerAuth] Token refresh failed');
       }
 
       // Both attempts failed - user is not authenticated

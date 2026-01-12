@@ -39,7 +39,7 @@ export class MaterialValidationService {
 
   async findBySpecName(steelSpecName: string): Promise<MaterialLimit | null> {
     // Try exact match first
-    let limit = await this.materialLimitRepository.findOne({
+    const limit = await this.materialLimitRepository.findOne({
       where: { steel_spec_name: steelSpecName },
       relations: ['steelSpecification'],
     });
@@ -62,7 +62,9 @@ export class MaterialValidationService {
     return reverseMatch || null;
   }
 
-  async findBySpecId(steelSpecificationId: number): Promise<MaterialLimit | null> {
+  async findBySpecId(
+    steelSpecificationId: number,
+  ): Promise<MaterialLimit | null> {
     return this.materialLimitRepository.findOne({
       where: { steel_specification_id: steelSpecificationId },
       relations: ['steelSpecification'],

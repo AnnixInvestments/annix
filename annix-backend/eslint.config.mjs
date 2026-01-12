@@ -29,7 +29,7 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
-
+      'no-console': ['error', { allow: ['warn', 'error'] }],
       'no-restricted-globals': [
         'error',
         {
@@ -37,7 +37,6 @@ export default tseslint.config(
           message: "Use DateTime from 'src/lib/datetime' instead of native Date.",
         },
       ],
-
       'no-restricted-syntax': [
         'error',
         {
@@ -53,7 +52,6 @@ export default tseslint.config(
           message: "Use DateTime from 'src/lib/datetime' instead of Date properties",
         },
       ],
-
       'no-restricted-imports': [
         'error',
         {

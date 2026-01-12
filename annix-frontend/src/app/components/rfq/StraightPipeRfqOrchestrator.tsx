@@ -6,6 +6,7 @@ import { StraightPipeEntry, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/l
 import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, boqApi, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
 import { consolidateBoqData } from '@/app/lib/utils/boqConsolidation';
 import { useToast } from '@/app/components/Toast';
+import { log } from '@/app/lib/logger';
 import {
   validatePage1RequiredFields,
   validatePage2Specifications,
@@ -28,7 +29,6 @@ import {
   recommendWallThicknessCarbonPipe
 } from '@/app/lib/utils/weldThicknessLookup';
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
-import { log } from '@/app/lib/logger';
 import {
   SABS62_NB_OPTIONS,
   SABS62_BEND_RADIUS,
@@ -834,7 +834,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                   const recommendedClassId = JSON.parse(text);
                   if (recommendedClassId) {
                     const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
-                    console.log(`P/T rating: Selected class ID ${recommendedClassId} for ${standard?.code || standardId} at ${workingPressureBar} bar, ${temperatureCelsius}°C (${ptMaterialGroup})`);
+                    log.debug(`P/T rating: Selected class ID ${recommendedClassId} for ${standard?.code || standardId} at ${workingPressureBar} bar, ${temperatureCelsius}°C (${ptMaterialGroup})`);
                     return recommendedClassId;
                   }
                 } catch {
@@ -887,13 +887,13 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     // This prevents API data with different schedule names from breaking the selection
     const existingSchedules = availableSchedulesMap[entryId];
     if (existingSchedules && existingSchedules.length > 0) {
-      console.log(`[fetchAvailableSchedules] Entry ${entryId} already has ${existingSchedules.length} schedules, skipping API fetch`);
+      log.debug(`[fetchAvailableSchedules] Entry ${entryId} already has ${existingSchedules.length} schedules, skipping API fetch`);
       return existingSchedules;
     }
 
     // Use fallback data - it's reliable and consistent
     if (fallbackSchedules.length > 0) {
-      console.log(`[fetchAvailableSchedules] Using ${fallbackSchedules.length} fallback schedules for ${nominalBoreMm}mm`);
+      log.debug(`[fetchAvailableSchedules] Using ${fallbackSchedules.length} fallback schedules for ${nominalBoreMm}mm`);
       setAvailableSchedulesMap(prev => ({
         ...prev,
         [entryId]: fallbackSchedules
@@ -905,7 +905,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     try {
       const { masterDataApi } = await import('@/app/lib/api/client');
 
-      console.log(`[fetchAvailableSchedules] Entry: ${entryId}, Steel: ${steelSpecId}, NB: ${nominalBoreMm}mm`);
+      log.debug(`[fetchAvailableSchedules] Entry: ${entryId}, Steel: ${steelSpecId}, NB: ${nominalBoreMm}mm`);
 
       // Find the nominal outside diameter ID from nominalBoreMm
       const nominalBore = masterData.nominalBores?.find((nb: any) => {
@@ -918,11 +918,11 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         return [];
       }
 
-      console.log(`[fetchAvailableSchedules] Found nominalBore ID: ${nominalBore.id}`);
+      log.debug(`[fetchAvailableSchedules] Found nominalBore ID: ${nominalBore.id}`);
 
       const dimensions = await masterDataApi.getPipeDimensionsAll(steelSpecId, nominalBore.id);
 
-      console.log(`[fetchAvailableSchedules] Got ${dimensions?.length || 0} dimensions from API`);
+      log.debug(`[fetchAvailableSchedules] Got ${dimensions?.length || 0} dimensions from API`);
 
       if (dimensions && dimensions.length > 0) {
         setAvailableSchedulesMap(prev => ({
@@ -970,7 +970,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   // Fetch center-to-face dimension from API based on bend type, NB, and angle
   const fetchCenterToFace = async (entryId: string, bendType: string, nominalBoreMm: number, degrees: number) => {
     if (!bendType || !nominalBoreMm || !degrees) {
-      console.log('[CenterToFace] Missing required parameters:', { bendType, nominalBoreMm, degrees });
+      log.debug('[CenterToFace] Missing required parameters:', { bendType, nominalBoreMm, degrees });
       return null;
     }
 
@@ -979,7 +979,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       const result = await masterDataApi.getBendCenterToFace(bendType, nominalBoreMm, degrees);
 
       if (result && result.centerToFaceMm) {
-        console.log(`[CenterToFace] Found: ${result.centerToFaceMm}mm for ${bendType} ${nominalBoreMm}NB @ ${degrees}°`);
+        log.debug(`[CenterToFace] Found: ${result.centerToFaceMm}mm for ${bendType} ${nominalBoreMm}NB @ ${degrees}°`);
 
         // Find the current entry to merge specs
         const currentEntry = rfqData.items.find((item: any) => item.id === entryId);
@@ -1043,7 +1043,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                       flangePressureClassId: recommendedId,
                       autoSelectedPressureClass: true
                     });
-                    console.log(`Auto-selected pressure class ${recommendedClass?.designation || recommendedId} for ${workingPressureBar} bar at ${temperatureCelsius}°C (${ptMaterialGroup})`);
+                    log.debug(`Auto-selected pressure class ${recommendedClass?.designation || recommendedId} for ${workingPressureBar} bar at ${temperatureCelsius}°C (${ptMaterialGroup})`);
                     return;
                   }
                 } catch {
@@ -1063,7 +1063,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             flangePressureClassId: recommended.id,
             autoSelectedPressureClass: true
           });
-          console.log(`Auto-selected pressure class ${recommended.designation} for ${workingPressureBar} bar at ${temperatureCelsius ?? 'ambient'}°C`);
+          log.debug(`Auto-selected pressure class ${recommended.designation} for ${workingPressureBar} bar at ${temperatureCelsius ?? 'ambient'}°C`);
         }
       }
     } catch (error) {
@@ -1107,7 +1107,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         workingPressureBar;
 
       // Debug logging
-      console.log('📊 Auto-calculate check:', {
+      log.debug('📊 Auto-calculate check:', {
         entryId: entry.id,
         nominalBoreMm: entry.specs.nominalBoreMm,
         scheduleNumber: entry.specs.scheduleNumber,
@@ -1119,7 +1119,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       });
 
       if (!hasRequiredFields) {
-        console.log('❌ Missing required fields, skipping calculation');
+        log.debug('❌ Missing required fields, skipping calculation');
         return;
       }
 
@@ -1134,9 +1134,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           flangeStandardId,
           flangePressureClassId,
         };
-        console.log('🔄 Calling API with:', calculationData);
+        log.debug('🔄 Calling API with:', calculationData);
         const result = await rfqApi.calculate(calculationData);
-        console.log('✅ Calculation result:', result);
+        log.debug('✅ Calculation result:', result);
 
         // Recalculate flange weight based on actual pressure class used (may be overridden)
         const pressureClassDesignation = masterData.pressureClasses?.find(
@@ -1148,7 +1148,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           const totalFlangeWeight = result.numberOfFlanges * flangeWeightPerUnit;
           const totalSystemWeight = (result.totalPipeWeight || 0) + totalFlangeWeight;
 
-          console.log(`🔧 Recalculating flange weight for ${pressureClassDesignation}: ${flangeWeightPerUnit}kg/flange × ${result.numberOfFlanges} = ${totalFlangeWeight}kg`);
+          log.debug(`🔧 Recalculating flange weight for ${pressureClassDesignation}: ${flangeWeightPerUnit}kg/flange × ${result.numberOfFlanges} = ${totalFlangeWeight}kg`);
 
           updateEntryCalculation(entry.id, {
             ...result,
@@ -1165,7 +1165,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
         // If API returns 404 (NB/schedule combination not in database), use local calculation silently
         if (errorMessage.includes('API Error (404)') || errorMessage.includes('not available in the database')) {
-          console.log('⚠️ API 404 - Using local calculation fallback for', entry.specs.nominalBoreMm, 'NB');
+          log.debug('⚠️ API 404 - Using local calculation fallback for', entry.specs.nominalBoreMm, 'NB');
           const wallThickness = entry.specs.wallThicknessMm || 6.35; // Default wall thickness
 
           // Get pressure class designation for accurate flange weights
@@ -1182,7 +1182,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             entry.specs.pipeEndConfiguration || 'PE',
             pressureClassDesignation
           );
-          console.log('✅ Local calculation result:', localResult);
+          log.debug('✅ Local calculation result:', localResult);
           updateEntryCalculation(entry.id, localResult);
           return;
         }
@@ -1441,9 +1441,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             flangePressureClassId,
           };
 
-          console.log('🔄 Manual calculate for entry:', entry.id, calculationData);
+          log.debug('🔄 Manual calculate for entry:', entry.id, calculationData);
           const result = await rfqApi.calculate(calculationData);
-          console.log('✅ Manual calculation result:', result);
+          log.debug('✅ Manual calculation result:', result);
           updateEntryCalculation(entry.id, result);
         } catch (error: any) {
           console.error(`Calculation error for entry ${entry.id}:`, error);
@@ -1451,7 +1451,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
           // If API returns 404, use local calculation fallback
           if (errorMessage.includes('404') || errorMessage.includes('not found') || errorMessage.includes('not available')) {
-            console.log('⚠️ API 404 - Using local calculation fallback for entry:', entry.id);
+            log.debug('⚠️ API 404 - Using local calculation fallback for entry:', entry.id);
             const wallThickness = entry.specs.wallThicknessMm || 6.35;
 
             // Get pressure class designation for accurate flange weights
@@ -1469,7 +1469,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               entry.specs.pipeEndConfiguration || 'PE',
               pressureClassDesignation
             );
-            console.log('✅ Local calculation result:', localResult);
+            log.debug('✅ Local calculation result:', localResult);
             updateEntryCalculation(entry.id, localResult);
           } else {
             showToast(
@@ -1495,7 +1495,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
       // API requires minimum 15° - for smaller angles, use local calculation
       if (bendDegrees < 15) {
-        console.log(`Bend angle ${bendDegrees}° is below API minimum (15°), using local calculation`);
+        log.debug(`Bend angle ${bendDegrees}° is below API minimum (15°), using local calculation`);
 
         // Local calculation for small angle bends
         const nominalBoreMm = bendEntry.specs?.nominalBoreMm || 40;
@@ -1568,7 +1568,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   };
 
   const handleCalculateFitting = async (entryId: string) => {
-    console.log('handleCalculateFitting called with entryId:', entryId);
+    log.debug('handleCalculateFitting called with entryId:', entryId);
     try {
       const { masterDataApi } = await import('@/app/lib/api/client');
       
@@ -1589,39 +1589,39 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
       // Validation for required fields
       if (!fittingEntry.specs?.fittingType) {
-        console.log('Fitting calculation skipped: No fitting type selected');
+        log.debug('Fitting calculation skipped: No fitting type selected');
         return;
       }
 
       // Validate fitting type is compatible with the effective standard
       const validTypes = effectiveFittingStandard === 'SABS719' ? SABS719_FITTING_TYPES : SABS62_FITTING_TYPES;
       if (!validTypes.includes(fittingEntry.specs.fittingType)) {
-        console.log(`Fitting type "${fittingEntry.specs.fittingType}" not valid for ${effectiveFittingStandard}, clearing`);
+        log.debug(`Fitting type "${fittingEntry.specs.fittingType}" not valid for ${effectiveFittingStandard}, clearing`);
         // Clear the invalid fitting type
         updateItem(entryId, { specs: { ...fittingEntry.specs, fittingType: undefined } });
         return;
       }
 
       if (!fittingEntry.specs?.nominalDiameterMm) {
-        console.log('Fitting calculation skipped: No nominal diameter selected');
+        log.debug('Fitting calculation skipped: No nominal diameter selected');
         return;
       }
 
       // Additional validation for SABS719
       if (effectiveFittingStandard === 'SABS719') {
         if (!fittingEntry.specs.scheduleNumber) {
-          console.log('Fitting calculation skipped: No schedule number for SABS719');
+          log.debug('Fitting calculation skipped: No schedule number for SABS719');
           return;
         }
         if (fittingEntry.specs.pipeLengthAMm === undefined || fittingEntry.specs.pipeLengthBMm === undefined) {
-          console.log('Fitting calculation skipped: Missing pipe lengths for SABS719');
+          log.debug('Fitting calculation skipped: Missing pipe lengths for SABS719');
           return;
         }
       }
 
       const apiFittingType = normalizeFittingTypeForApi(fittingEntry.specs.fittingType);
       if (!apiFittingType) {
-        console.log('Fitting calculation skipped: Unable to map fitting type for API');
+        log.debug('Fitting calculation skipped: Unable to map fitting type for API');
         return;
       }
 
@@ -1641,14 +1641,14 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         flangePressureClassId: fittingEntry.specs.flangePressureClassId || rfqData.globalSpecs.flangePressureClassId,
       };
 
-      console.log('Calling API with:', calculationData);
+      log.debug('Calling API with:', calculationData);
       const result = await masterDataApi.calculateFitting(calculationData);
-      console.log('API result:', result);
+      log.debug('API result:', result);
 
       updateItem(entryId, {
         calculation: result,
       });
-      console.log('Updated entry with calculation');
+      log.debug('Updated entry with calculation');
 
     } catch (error: any) {
       console.error('Fitting calculation failed:', error);
@@ -1675,13 +1675,13 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
   // Save progress handler - saves current RFQ data to server
   const handleSaveProgress = async () => {
-    console.log('💾 handleSaveProgress called');
-    console.log('💾 rfqData.projectType:', rfqData.projectType);
-    console.log('💾 rfqData.requiredProducts:', rfqData.requiredProducts);
-    console.log('💾 rfqData.skipDocuments:', rfqData.skipDocuments);
-    console.log('💾 rfqData.latitude:', rfqData.latitude);
-    console.log('💾 rfqData.longitude:', rfqData.longitude);
-    console.log('💾 rfqData.globalSpecs:', rfqData.globalSpecs);
+    log.debug('💾 handleSaveProgress called');
+    log.debug('💾 rfqData.projectType:', rfqData.projectType);
+    log.debug('💾 rfqData.requiredProducts:', rfqData.requiredProducts);
+    log.debug('💾 rfqData.skipDocuments:', rfqData.skipDocuments);
+    log.debug('💾 rfqData.latitude:', rfqData.latitude);
+    log.debug('💾 rfqData.longitude:', rfqData.longitude);
+    log.debug('💾 rfqData.globalSpecs:', rfqData.globalSpecs);
 
     setIsSavingDraft(true);
     try {
@@ -1722,9 +1722,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         })),
       };
 
-      console.log('💾 Complete saveData being sent to API:', saveData);
-      console.log('💾 saveData.formData:', saveData.formData);
-      console.log('💾 saveData.requiredProducts:', saveData.requiredProducts);
+      log.debug('💾 Complete saveData being sent to API:', saveData);
+      log.debug('💾 saveData.formData:', saveData.formData);
+      log.debug('💾 saveData.requiredProducts:', saveData.requiredProducts);
 
       const result = await draftsApi.save(saveData);
 
@@ -1743,7 +1743,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       setShowSaveConfirmation(true);
       setTimeout(() => setShowSaveConfirmation(false), 5000);
 
-      console.log(`✅ RFQ progress saved as ${result.draftNumber}`);
+      log.debug(`✅ RFQ progress saved as ${result.draftNumber}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -1764,7 +1764,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             currentStep,
             savedAt: nowISO(),
           }));
-          console.log('✅ RFQ progress saved to localStorage (session expired, will sync after login)');
+          log.debug('✅ RFQ progress saved to localStorage (session expired, will sync after login)');
         } catch (e) {
           console.error('Failed to save to localStorage:', e);
         }
@@ -1779,7 +1779,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         }));
         setShowSaveConfirmation(true);
         setTimeout(() => setShowSaveConfirmation(false), 3000);
-        console.log('✅ RFQ progress saved to localStorage (server unavailable)');
+        log.debug('✅ RFQ progress saved to localStorage (server unavailable)');
       } catch (e) {
         showToast('Failed to save progress. Please try again.', 'error');
       }
@@ -1805,7 +1805,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       const bendItems = allItems.filter((item: any) => item.itemType === 'bend');
       const fittingItems = allItems.filter((item: any) => item.itemType === 'fitting');
 
-      console.log(`📊 Submitting unified RFQ: ${straightPipeItems.length} pipe(s), ${bendItems.length} bend(s), ${fittingItems.length} fitting(s)`);
+      log.debug(`📊 Submitting unified RFQ: ${straightPipeItems.length} pipe(s), ${bendItems.length} bend(s), ${fittingItems.length} fitting(s)`);
 
       for (let i = 0; i < allItems.length; i++) {
         const entry = allItems[i];
@@ -1927,14 +1927,14 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         items: unifiedItems,
       };
 
-      console.log('📦 Submitting unified RFQ payload:', unifiedPayload);
+      log.debug('📦 Submitting unified RFQ payload:', unifiedPayload);
 
       const result = await unifiedRfqApi.create(unifiedPayload);
-      console.log(`✅ Unified RFQ created successfully:`, result);
+      log.debug(`✅ Unified RFQ created successfully:`, result);
 
       if (pendingDocuments.length > 0 && result.rfq?.id) {
         const rfqId = result.rfq.id;
-        console.log(`📎 Uploading ${pendingDocuments.length} document(s) to RFQ #${rfqId}...`);
+        log.debug(`📎 Uploading ${pendingDocuments.length} document(s) to RFQ #${rfqId}...`);
 
         let uploadedCount = 0;
         let failedCount = 0;
@@ -1943,7 +1943,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           try {
             await rfqDocumentApi.upload(rfqId, doc.file);
             uploadedCount++;
-            console.log(`✅ Uploaded: ${doc.file.name}`);
+            log.debug(`✅ Uploaded: ${doc.file.name}`);
           } catch (uploadError) {
             failedCount++;
             console.error(`❌ Failed to upload ${doc.file.name}:`, uploadError);
@@ -1959,13 +1959,13 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
       if (result.rfq?.id) {
         try {
-          console.log(`📦 Creating BOQ for RFQ ${result.rfq.id}...`);
+          log.debug(`📦 Creating BOQ for RFQ ${result.rfq.id}...`);
           const boq = await boqApi.create({
             title: `BOQ for ${rfqData.projectName || 'Untitled Project'}`,
             description: rfqData.description,
             rfqId: result.rfq.id,
           });
-          console.log(`✅ BOQ ${boq.boqNumber} created with ID ${boq.id}`);
+          log.debug(`✅ BOQ ${boq.boqNumber} created with ID ${boq.id}`);
 
           const consolidatedData = consolidateBoqData({
             entries: allItems,
@@ -1984,7 +1984,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             },
           });
 
-          console.log(`📊 Consolidated data:`, consolidatedData);
+          log.debug(`📊 Consolidated data:`, consolidatedData);
 
           const submitResult = await boqApi.submitForQuotation(boq.id, {
             boqData: consolidatedData,
@@ -2000,7 +2000,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             },
           });
 
-          console.log(`✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`);
+          log.debug(`✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`);
         } catch (boqError) {
           console.error('Failed to create/submit BOQ:', boqError);
         }
@@ -2009,7 +2009,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       if (currentDraftId && result.rfq?.id) {
         try {
           await draftsApi.markAsConverted(currentDraftId, result.rfq.id);
-          console.log(`✅ Draft ${currentDraftId} marked as converted to RFQ ${result.rfq.id}`);
+          log.debug(`✅ Draft ${currentDraftId} marked as converted to RFQ ${result.rfq.id}`);
         } catch (convertError) {
           console.error('Failed to mark draft as converted:', convertError);
         }
@@ -2173,14 +2173,14 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         items: unifiedItems,
       };
 
-      console.log('📦 Re-submitting unified RFQ payload:', unifiedPayload);
+      log.debug('📦 Re-submitting unified RFQ payload:', unifiedPayload);
 
       const result = await unifiedRfqApi.update(editRfqId, unifiedPayload);
-      console.log(`✅ Unified RFQ updated successfully:`, result);
+      log.debug(`✅ Unified RFQ updated successfully:`, result);
 
       const existingBoq = await boqApi.getByRfqId(editRfqId);
       if (existingBoq) {
-        console.log(`📦 Updating BOQ ${existingBoq.boqNumber} for RFQ ${editRfqId}...`);
+        log.debug(`📦 Updating BOQ ${existingBoq.boqNumber} for RFQ ${editRfqId}...`);
 
         const consolidatedData = consolidateBoqData({
           entries: allItems,
@@ -2199,7 +2199,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           },
         });
 
-        console.log(`📊 Consolidated data for update:`, consolidatedData);
+        log.debug(`📊 Consolidated data for update:`, consolidatedData);
 
         const updateResult = await boqApi.updateSubmittedBoq(existingBoq.id, {
           boqData: consolidatedData,
@@ -2215,15 +2215,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           },
         });
 
-        console.log(`✅ BOQ updated and suppliers re-notified: ${updateResult.sectionsCreated} sections updated, ${updateResult.suppliersNotified} suppliers notified`);
+        log.debug(`✅ BOQ updated and suppliers re-notified: ${updateResult.sectionsCreated} sections updated, ${updateResult.suppliersNotified} suppliers notified`);
       } else {
-        console.log(`📦 No existing BOQ found, creating new BOQ for RFQ ${editRfqId}...`);
+        log.debug(`📦 No existing BOQ found, creating new BOQ for RFQ ${editRfqId}...`);
         const boq = await boqApi.create({
           title: `BOQ for ${rfqData.projectName || 'Untitled Project'}`,
           description: rfqData.description,
           rfqId: editRfqId,
         });
-        console.log(`✅ BOQ ${boq.boqNumber} created with ID ${boq.id}`);
+        log.debug(`✅ BOQ ${boq.boqNumber} created with ID ${boq.id}`);
 
         const consolidatedData = consolidateBoqData({
           entries: allItems,
@@ -2256,7 +2256,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           },
         });
 
-        console.log(`✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`);
+        log.debug(`✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`);
       }
 
       showToast(`Success! RFQ ${result.rfq?.rfqNumber} updated with ${result.itemsUpdated} item(s). Suppliers have been notified.`, 'success');
