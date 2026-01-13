@@ -236,7 +236,7 @@ importers:
         version: 0.182.0
       three-bvh-csg:
         specifier: ^0.0.17
-        version: 0.0.17(three-mesh-bvh@0.6.8(three@0.182.0))(three@0.182.0)
+        version: 0.0.17(three-mesh-bvh@0.8.3(three@0.182.0))(three@0.182.0)
       xlsx:
         specifier: ^0.18.5
         version: 0.18.5
@@ -11383,10 +11383,10 @@ snapshots:
       three: 0.182.0
       three-mesh-bvh: 0.6.8(three@0.182.0)
 
-  three-bvh-csg@0.0.17(three-mesh-bvh@0.6.8(three@0.182.0))(three@0.182.0):
+  three-bvh-csg@0.0.17(three-mesh-bvh@0.8.3(three@0.182.0))(three@0.182.0):
     dependencies:
       three: 0.182.0
-      three-mesh-bvh: 0.6.8(three@0.182.0)
+      three-mesh-bvh: 0.8.3(three@0.182.0)
 
   three-mesh-bvh@0.6.8(three@0.182.0):
     dependencies:
