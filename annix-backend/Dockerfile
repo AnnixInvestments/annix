@@ -3,8 +3,8 @@ FROM node:24-slim AS builder
 
 WORKDIR /usr/src/app
 
-# Install all dependencies for build (no frozen-lockfile for standalone package deploy)
-COPY package.json ./
+# Install all dependencies for build
+COPY package.json pnpm-lock.yaml* ./
 RUN corepack enable pnpm && pnpm install
 
 # Copy and build
