@@ -185,4 +185,117 @@ export class CoatingSpecificationService {
       description: env.description,
     }));
   }
+
+  /**
+   * Get paint systems filtered by category and durability (ISO 12944-5:2018)
+   * Returns recommended system first, then alternatives
+   */
+  async systemsByDurability(
+    category: string,
+    durability: 'L' | 'M' | 'H' | 'VH',
+  ): Promise<{
+    recommended: CoatingSpecification | null;
+    alternatives: CoatingSpecification[];
+  }> {
+    const environment = await this.environmentRepository.findOne({
+      where: {
+        standard: { code: 'ISO 12944' },
+        category,
+      },
+    });
+
+    if (!environment) {
+      return { recommended: null, alternatives: [] };
+    }
+
+    const allSpecs = await this.specificationRepository.find({
+      where: {
+        environmentId: environment.id,
+        coatingType: 'external',
+      },
+      relations: ['environment', 'environment.standard'],
+      order: { systemCode: 'ASC' },
+    });
+
+    const matchingSpecs = allSpecs.filter((spec) => {
+      const durabilities = spec.supportedDurabilities?.split(',') || [];
+      return durabilities.includes(durability);
+    });
+
+    const recommended =
+      matchingSpecs.find((spec) => spec.isRecommended) || matchingSpecs[0] || null;
+    const alternatives = matchingSpecs.filter((spec) => spec !== recommended);
+
+    return { recommended, alternatives };
+  }
+
+  /**
+   * Get all paint systems for a category (ISO 12944-5:2018)
+   */
+  async systemsByCategory(
+    category: string,
+  ): Promise<CoatingSpecification[]> {
+    const environment = await this.environmentRepository.findOne({
+      where: {
+        standard: { code: 'ISO 12944' },
+        category,
+      },
+    });
+
+    if (!environment) {
+      return [];
+    }
+
+    return this.specificationRepository.find({
+      where: {
+        environmentId: environment.id,
+        coatingType: 'external',
+      },
+      relations: ['environment', 'environment.standard'],
+      order: { systemCode: 'ASC' },
+    });
+  }
+
+  /**
+   * Get available durability options for a category
+   */
+  async availableDurabilitiesForCategory(
+    category: string,
+  ): Promise<{ code: string; label: string; years: string }[]> {
+    const specs = await this.systemsByCategory(category);
+
+    const durabilitySet = new Set<string>();
+    for (const spec of specs) {
+      const durabilities = spec.supportedDurabilities?.split(',') || [];
+      for (const d of durabilities) {
+        durabilitySet.add(d);
+      }
+    }
+
+    const durabilityMap: { [key: string]: { label: string; years: string } } = {
+      L: { label: 'Low', years: '2-7 years' },
+      M: { label: 'Medium', years: '7-15 years' },
+      H: { label: 'High', years: '15-25 years' },
+      VH: { label: 'Very High', years: '>25 years' },
+    };
+
+    const orderedCodes = ['L', 'M', 'H', 'VH'];
+    return orderedCodes
+      .filter((code) => durabilitySet.has(code))
+      .map((code) => ({
+        code,
+        label: durabilityMap[code].label,
+        years: durabilityMap[code].years,
+      }));
+  }
+
+  /**
+   * Get a specific paint system by its ISO code
+   */
+  async systemByCode(systemCode: string): Promise<CoatingSpecification | null> {
+    return this.specificationRepository.findOne({
+      where: { systemCode },
+      relations: ['environment', 'environment.standard'],
+    });
+  }
 }

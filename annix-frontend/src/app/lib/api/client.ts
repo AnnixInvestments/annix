@@ -1220,6 +1220,76 @@ export const weldThicknessApi = {
     apiClient.getPipeWallThickness(dn, schedule, temperature),
 };
 
+// ISO 12944-5 Coating Specification Types
+export interface ISO12944System {
+  id: number;
+  systemCode: string | null;
+  binderType: string | null;
+  primerType: string | null;
+  primerNdftUm: string | null;
+  subsequentBinder: string | null;
+  system: string;
+  coats: string;
+  totalDftUmRange: string;
+  supportedDurabilities: string | null;
+  isRecommended: boolean;
+  applications: string;
+}
+
+export interface ISO12944SystemsByDurabilityResult {
+  recommended: ISO12944System | null;
+  alternatives: ISO12944System[];
+}
+
+export interface ISO12944DurabilityOption {
+  code: string;
+  label: string;
+  years: string;
+}
+
+export const coatingSpecificationApi = {
+  getCorrosivityCategories: async (): Promise<{ category: string; description: string }[]> => {
+    const response = await fetch(`${API_BASE_URL}/coating-specifications/corrosivity-categories`);
+    if (!response.ok) throw new Error('Failed to fetch corrosivity categories');
+    return response.json();
+  },
+
+  systemsByDurability: async (
+    category: string,
+    durability: 'L' | 'M' | 'H' | 'VH'
+  ): Promise<ISO12944SystemsByDurabilityResult> => {
+    const response = await fetch(
+      `${API_BASE_URL}/coating-specifications/iso12944/systems-by-durability?category=${category}&durability=${durability}`
+    );
+    if (!response.ok) throw new Error('Failed to fetch systems by durability');
+    return response.json();
+  },
+
+  systemsByCategory: async (category: string): Promise<ISO12944System[]> => {
+    const response = await fetch(
+      `${API_BASE_URL}/coating-specifications/iso12944/systems-by-category?category=${category}`
+    );
+    if (!response.ok) throw new Error('Failed to fetch systems by category');
+    return response.json();
+  },
+
+  availableDurabilities: async (category: string): Promise<ISO12944DurabilityOption[]> => {
+    const response = await fetch(
+      `${API_BASE_URL}/coating-specifications/iso12944/durabilities?category=${category}`
+    );
+    if (!response.ok) throw new Error('Failed to fetch available durabilities');
+    return response.json();
+  },
+
+  systemByCode: async (systemCode: string): Promise<ISO12944System | null> => {
+    const response = await fetch(
+      `${API_BASE_URL}/coating-specifications/iso12944/system-by-code?systemCode=${systemCode}`
+    );
+    if (!response.ok) throw new Error('Failed to fetch system by code');
+    return response.json();
+  },
+};
+
 export const rfqDocumentApi = {
   upload: (rfqId: number, file: File) => apiClient.uploadRfqDocument(rfqId, file),
   getByRfqId: (rfqId: number) => apiClient.getRfqDocuments(rfqId),

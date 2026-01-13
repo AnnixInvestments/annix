@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { type MaterialLimits, materialLimits as getMaterialLimits, checkMaterialSuitability } from '@/app/lib/config/rfq';
-import { materialValidationApi } from '@/app/lib/api/client';
+import { materialValidationApi, coatingSpecificationApi, type ISO12944System, type ISO12944SystemsByDurabilityResult } from '@/app/lib/api/client';
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
 import { log } from '@/app/lib/logger';
 import { nowISO } from '@/app/lib/datetime';
@@ -527,6 +527,11 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
     limits?: MaterialLimits;
   }>({ show: false, specName: '', specId: undefined, warnings: [] });
 
+  // ISO 12944-5 paint system state
+  const [iso12944Systems, setIso12944Systems] = useState<ISO12944SystemsByDurabilityResult | null>(null);
+  const [iso12944Loading, setIso12944Loading] = useState(false);
+  const [selectedIso12944SystemCode, setSelectedIso12944SystemCode] = useState<string | null>(null);
+
   const hasErrors = errors && (errors.workingPressure || errors.workingTemperature || errors.steelPipesConfirmation || errors.fastenersConfirmation);
 
   // Derive temperature category from working temperature if not manually set
@@ -581,6 +586,61 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
     isAutoFilled
       ? 'border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold'
       : 'border border-gray-300 text-gray-900';
+
+  // Map Service Life to ISO 12944-5 durability codes
+  const serviceLifeToDurability = (serviceLife: string | undefined): 'L' | 'M' | 'H' | 'VH' | null => {
+    switch (serviceLife) {
+      case 'Short': return 'L';
+      case 'Medium': return 'M';
+      case 'Long': return 'H';
+      case 'Extended': return 'VH';
+      default: return null;
+    }
+  };
+
+  const effectiveDurability = serviceLifeToDurability(globalSpecs?.ecpServiceLife);
+
+  // Fetch ISO 12944-5 paint systems when category and durability are selected
+  useEffect(() => {
+    const fetchIso12944Systems = async () => {
+      if (!effectiveIso12944 || !effectiveDurability) {
+        setIso12944Systems(null);
+        setSelectedIso12944SystemCode(null);
+        return;
+      }
+
+      // Only fetch for C1-C5 categories
+      if (!['C1', 'C2', 'C3', 'C4', 'C5'].includes(effectiveIso12944)) {
+        setIso12944Systems(null);
+        setSelectedIso12944SystemCode(null);
+        return;
+      }
+
+      setIso12944Loading(true);
+      try {
+        const result = await coatingSpecificationApi.systemsByDurability(effectiveIso12944, effectiveDurability);
+        setIso12944Systems(result);
+        // Auto-select the recommended system
+        if (result.recommended?.systemCode) {
+          setSelectedIso12944SystemCode(result.recommended.systemCode);
+        }
+      } catch (error) {
+        log.error('Failed to fetch ISO 12944-5 systems', { error });
+        setIso12944Systems(null);
+      } finally {
+        setIso12944Loading(false);
+      }
+    };
+
+    fetchIso12944Systems();
+  }, [effectiveIso12944, effectiveDurability]);
+
+  // Get the currently selected ISO 12944 system
+  const selectedIso12944System = selectedIso12944SystemCode
+    ? (iso12944Systems?.recommended?.systemCode === selectedIso12944SystemCode
+        ? iso12944Systems.recommended
+        : iso12944Systems?.alternatives.find(s => s.systemCode === selectedIso12944SystemCode))
+    : iso12944Systems?.recommended;
 
   return (
     <div>
@@ -1429,6 +1489,82 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                             ))}
                           </ul>
                         </details>
+
+                        {/* ISO 12944-5 Paint System Selection */}
+                        {['C1', 'C2', 'C3', 'C4', 'C5'].includes(effectiveIso12944 || '') && globalSpecs?.ecpServiceLife && (
+                          <div className="bg-blue-50 rounded p-2 border border-blue-200 mb-2">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold">ISO</span>
+                                <h6 className="text-[10px] font-bold text-blue-900">ISO 12944-5:2018 Paint System</h6>
+                              </div>
+                              {iso12944Loading && (
+                                <span className="text-[9px] text-blue-600 animate-pulse">Loading...</span>
+                              )}
+                            </div>
+
+                            {selectedIso12944System && (
+                              <>
+                                <div className="grid grid-cols-4 gap-1.5 mb-2">
+                                  <div className="bg-white rounded p-1.5 border border-blue-200">
+                                    <div className="text-[9px] font-medium text-gray-500">System Code</div>
+                                    <div className="text-xs font-bold text-blue-800">{selectedIso12944System.systemCode}</div>
+                                  </div>
+                                  <div className="bg-white rounded p-1.5 border border-blue-200">
+                                    <div className="text-[9px] font-medium text-gray-500">Binder</div>
+                                    <div className="text-[10px] text-gray-700">{selectedIso12944System.binderType}</div>
+                                  </div>
+                                  <div className="bg-white rounded p-1.5 border border-blue-200">
+                                    <div className="text-[9px] font-medium text-gray-500">Primer</div>
+                                    <div className="text-[10px] text-gray-700">{selectedIso12944System.primerType}</div>
+                                  </div>
+                                  <div className="bg-white rounded p-1.5 border border-blue-200">
+                                    <div className="text-[9px] font-medium text-gray-500">Total DFT</div>
+                                    <div className="text-xs font-semibold text-blue-800">{selectedIso12944System.totalDftUmRange}μm</div>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-1.5 mb-2">
+                                  <div className="bg-white rounded p-1.5 border border-blue-200">
+                                    <div className="text-[9px] font-medium text-gray-500">System Description</div>
+                                    <div className="text-[10px] text-gray-700">{selectedIso12944System.system}</div>
+                                  </div>
+                                  <div className="bg-white rounded p-1.5 border border-blue-200">
+                                    <div className="text-[9px] font-medium text-gray-500">Coats / Primer DFT</div>
+                                    <div className="text-[10px] text-gray-700">{selectedIso12944System.coats} coats | Primer: {selectedIso12944System.primerNdftUm}μm</div>
+                                  </div>
+                                </div>
+
+                                {/* Alternative Systems Selector */}
+                                {iso12944Systems && iso12944Systems.alternatives.length > 0 && (
+                                  <div className="flex items-center gap-2">
+                                    <label className="text-[9px] font-medium text-gray-600 whitespace-nowrap">Alternative Systems:</label>
+                                    <select
+                                      value={selectedIso12944SystemCode || ''}
+                                      onChange={(e) => setSelectedIso12944SystemCode(e.target.value)}
+                                      className="flex-1 px-2 py-1 text-[10px] border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                                    >
+                                      {iso12944Systems.recommended && (
+                                        <option value={iso12944Systems.recommended.systemCode || ''}>
+                                          {iso12944Systems.recommended.systemCode} - {iso12944Systems.recommended.system} ({iso12944Systems.recommended.totalDftUmRange}μm) [Recommended]
+                                        </option>
+                                      )}
+                                      {iso12944Systems.alternatives.map((sys) => (
+                                        <option key={sys.systemCode} value={sys.systemCode || ''}>
+                                          {sys.systemCode} - {sys.system} ({sys.totalDftUmRange}μm)
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
+                              </>
+                            )}
+
+                            {!selectedIso12944System && !iso12944Loading && (
+                              <p className="text-[10px] text-blue-700">No ISO 12944-5 systems available for this category/durability combination.</p>
+                            )}
+                          </div>
+                        )}
 
                         {/* Colour Selection - more compact */}
                         <div className="bg-white rounded p-1.5 border border-emerald-200 mb-2">
