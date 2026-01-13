@@ -1199,6 +1199,13 @@ export default function StraightPipeForm({
                     pressureClass={globalSpecs?.pressureClassDesignation || 'PN16'}
                     addBlankFlange={entry.specs?.addBlankFlange}
                     blankFlangePositions={entry.specs?.blankFlangePositions}
+                    savedCameraPosition={entry.specs?.savedCameraPosition}
+                    savedCameraTarget={entry.specs?.savedCameraTarget}
+                    onCameraChange={(position: [number, number, number], target: [number, number, number]) => {
+                      onUpdateEntry(entry.id, {
+                        specs: { ...entry.specs, savedCameraPosition: position, savedCameraTarget: target }
+                      });
+                    }}
                   />
                 }
               />

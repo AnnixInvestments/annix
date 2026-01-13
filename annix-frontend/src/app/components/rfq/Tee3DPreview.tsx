@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, Center, Text, Line } from '@react-three/drei';
+import { log } from '@/app/lib/logger';
 import * as THREE from 'three';
 import {
   getSabs719TeeDimensions,
@@ -64,6 +65,10 @@ interface Tee3DPreviewProps {
   addBlankFlange?: boolean;
   blankFlangeCount?: number;
   blankFlangePositions?: string[]; // ['inlet', 'outlet', 'branch']
+  // Camera persistence
+  savedCameraPosition?: [number, number, number];
+  savedCameraTarget?: [number, number, number];
+  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
 }
 
 // Standard Pipe OD Lookup Table (NB to OD in mm)
@@ -1034,6 +1039,98 @@ function TeeScene(props: Tee3DPreviewProps) {
   );
 }
 
+const CameraTracker = ({
+  onCameraChange,
+  savedPosition,
+  savedTarget
+}: {
+  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void
+  savedPosition?: [number, number, number]
+  savedTarget?: [number, number, number]
+}) => {
+  const { camera, controls } = useThree();
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedRef = useRef<string>('');
+  const pendingSaveKeyRef = useRef<string>('');
+  const hasRestoredRef = useRef(false);
+
+  useEffect(() => {
+    log.debug('Tee CameraTracker useEffect', JSON.stringify({
+      savedPosition,
+      savedTarget,
+      hasRestored: hasRestoredRef.current,
+      hasControls: !!controls
+    }));
+    if (savedPosition && controls && !hasRestoredRef.current) {
+      log.debug('Tee CameraTracker restoring camera position', JSON.stringify({
+        position: savedPosition,
+        target: savedTarget
+      }));
+      camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2]);
+      if (savedTarget) {
+        const orbitControls = controls as any;
+        if (orbitControls.target) {
+          orbitControls.target.set(savedTarget[0], savedTarget[1], savedTarget[2]);
+          orbitControls.update();
+        }
+      }
+      hasRestoredRef.current = true;
+      const restoredKey = `${savedPosition[0].toFixed(2)},${savedPosition[1].toFixed(2)},${savedPosition[2].toFixed(2)}`;
+      lastSavedRef.current = restoredKey;
+      pendingSaveKeyRef.current = '';
+    }
+  }, [camera, controls, savedPosition, savedTarget]);
+
+  const frameCountRef = useRef(0);
+
+  useFrame(() => {
+    frameCountRef.current++;
+    if (frameCountRef.current % 60 === 0) {
+      log.debug('Tee CameraTracker useFrame check', JSON.stringify({
+        hasOnCameraChange: !!onCameraChange,
+        hasControls: !!controls,
+        cameraPos: [camera.position.x.toFixed(2), camera.position.y.toFixed(2), camera.position.z.toFixed(2)],
+        lastSaved: lastSavedRef.current
+      }));
+    }
+
+    if (onCameraChange && controls) {
+      const target = (controls as any).target;
+      if (target) {
+        const currentKey = `${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}`;
+
+        const needsNewSave = currentKey !== lastSavedRef.current && currentKey !== pendingSaveKeyRef.current;
+
+        if (needsNewSave) {
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+          }
+
+          const posToSave = [camera.position.x, camera.position.y, camera.position.z] as [number, number, number];
+          const targetToSave = [target.x, target.y, target.z] as [number, number, number];
+          const keyToSave = currentKey;
+          pendingSaveKeyRef.current = keyToSave;
+
+          log.debug('Tee CameraTracker setting timeout for', keyToSave);
+
+          saveTimeoutRef.current = setTimeout(() => {
+            log.debug('Tee CameraTracker timeout fired, saving', JSON.stringify({
+              position: posToSave,
+              target: targetToSave,
+              key: keyToSave
+            }));
+            lastSavedRef.current = keyToSave;
+            pendingSaveKeyRef.current = '';
+            onCameraChange(posToSave, targetToSave);
+          }, 500);
+        }
+      }
+    }
+  });
+
+  return null;
+};
+
 // Main Preview component
 export default function Tee3DPreview(props: Tee3DPreviewProps) {
   const [isHidden, setIsHidden] = useState(false);
@@ -1155,6 +1252,11 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
           minDistance={defaultControls.min}
           maxDistance={defaultControls.max}
         />
+        <CameraTracker
+          onCameraChange={props.onCameraChange}
+          savedPosition={props.savedCameraPosition}
+          savedTarget={props.savedCameraTarget}
+        />
       </Canvas>
 
       {/* Badge - top left */}
@@ -1259,6 +1361,11 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
                 enablePan
                 minDistance={expandedControls.min}
                 maxDistance={expandedControls.max}
+              />
+              <CameraTracker
+                onCameraChange={props.onCameraChange}
+                savedPosition={props.savedCameraPosition}
+                savedTarget={props.savedCameraTarget}
               />
             </Canvas>
 

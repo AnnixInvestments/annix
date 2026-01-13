@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Center, Environment, Text, Line, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
+import { log } from '@/app/lib/logger';
 
 const useDebouncedProps = <T extends Record<string, any>>(props: T, delay: number = 150): T => {
   const [debouncedProps, setDebouncedProps] = useState(props);
@@ -33,13 +34,15 @@ interface Pipe3DPreviewProps {
   wallThickness: number;
   endConfiguration?: string;
   materialName?: string;
-  closureLengthMm?: number; // Closure length for L/F configurations
-  nominalBoreMm?: number; // Nominal bore for flange info
-  pressureClass?: string; // Flange pressure class (e.g., PN16)
-  // Blank flange options
+  closureLengthMm?: number;
+  nominalBoreMm?: number;
+  pressureClass?: string;
   addBlankFlange?: boolean;
   blankFlangeCount?: number;
-  blankFlangePositions?: string[]; // ['inlet', 'outlet']
+  blankFlangePositions?: string[];
+  savedCameraPosition?: [number, number, number];
+  savedCameraTarget?: [number, number, number];
+  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
 }
 
 // Standard flange dimensions based on SABS 1123 Table 1000/4 (PN16) - Slip-on flanges
@@ -478,8 +481,100 @@ const CameraRig = ({ viewMode, targets }: { viewMode: string, targets: any }) =>
   return null;
 };
 
+const CameraTracker = ({
+  onCameraChange,
+  savedPosition,
+  savedTarget
+}: {
+  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void
+  savedPosition?: [number, number, number]
+  savedTarget?: [number, number, number]
+}) => {
+  const { camera, controls } = useThree();
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedRef = useRef<string>('');
+  const pendingSaveKeyRef = useRef<string>('');
+  const hasRestoredRef = useRef(false);
+
+  useEffect(() => {
+    log.debug('Pipe CameraTracker useEffect', JSON.stringify({
+      savedPosition,
+      savedTarget,
+      hasRestored: hasRestoredRef.current,
+      hasControls: !!controls
+    }));
+    if (savedPosition && controls && !hasRestoredRef.current) {
+      log.debug('Pipe CameraTracker restoring camera position', JSON.stringify({
+        position: savedPosition,
+        target: savedTarget
+      }));
+      camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2]);
+      if (savedTarget) {
+        const orbitControls = controls as any;
+        if (orbitControls.target) {
+          orbitControls.target.set(savedTarget[0], savedTarget[1], savedTarget[2]);
+          orbitControls.update();
+        }
+      }
+      hasRestoredRef.current = true;
+      const restoredKey = `${savedPosition[0].toFixed(2)},${savedPosition[1].toFixed(2)},${savedPosition[2].toFixed(2)}`;
+      lastSavedRef.current = restoredKey;
+      pendingSaveKeyRef.current = '';
+    }
+  }, [camera, controls, savedPosition, savedTarget]);
+
+  const frameCountRef = useRef(0);
+
+  useFrame(() => {
+    frameCountRef.current++;
+    if (frameCountRef.current % 60 === 0) {
+      log.debug('Pipe CameraTracker useFrame check', JSON.stringify({
+        hasOnCameraChange: !!onCameraChange,
+        hasControls: !!controls,
+        cameraPos: [camera.position.x.toFixed(2), camera.position.y.toFixed(2), camera.position.z.toFixed(2)],
+        lastSaved: lastSavedRef.current
+      }));
+    }
+
+    if (onCameraChange && controls) {
+      const target = (controls as any).target;
+      if (target) {
+        const currentKey = `${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}`;
+
+        const needsNewSave = currentKey !== lastSavedRef.current && currentKey !== pendingSaveKeyRef.current;
+
+        if (needsNewSave) {
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+          }
+
+          const posToSave = [camera.position.x, camera.position.y, camera.position.z] as [number, number, number];
+          const targetToSave = [target.x, target.y, target.z] as [number, number, number];
+          const keyToSave = currentKey;
+          pendingSaveKeyRef.current = keyToSave;
+
+          log.debug('Pipe CameraTracker setting timeout for', keyToSave);
+
+          saveTimeoutRef.current = setTimeout(() => {
+            log.debug('Pipe CameraTracker timeout fired, saving', JSON.stringify({
+              position: posToSave,
+              target: targetToSave,
+              key: keyToSave
+            }));
+            lastSavedRef.current = keyToSave;
+            pendingSaveKeyRef.current = '';
+            onCameraChange(posToSave, targetToSave);
+          }, 500);
+        }
+      }
+    }
+  });
+
+  return null;
+};
+
 export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
-  const [viewMode, setViewMode] = useState('iso'); //'iso', 'inlet', 'outlet', 'free'
+  const [viewMode, setViewMode] = useState(props.savedCameraPosition ? 'free' : 'iso'); //'iso', 'inlet', 'outlet', 'free'
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
 
@@ -582,6 +677,11 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           />
 
           <CameraRig viewMode={viewMode} targets={cameraTargets} />
+          <CameraTracker
+            onCameraChange={props.onCameraChange}
+            savedPosition={props.savedCameraPosition}
+            savedTarget={props.savedCameraTarget}
+          />
       </Canvas>
 
       {/* HTML Info Box - top right corner */}
@@ -712,6 +812,11 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
               <HollowPipeScene {...debouncedProps} />
               <ContactShadows position={[0, -0.6, 0]} opacity={0.4} scale={10} blur={2} far={4} color="#000000" />
               <OrbitControls makeDefault enablePan={true} minDistance={0.3} maxDistance={30} />
+              <CameraTracker
+                onCameraChange={props.onCameraChange}
+                savedPosition={props.savedCameraPosition}
+                savedTarget={props.savedCameraTarget}
+              />
             </Canvas>
 
             {/* Info overlay in expanded view */}

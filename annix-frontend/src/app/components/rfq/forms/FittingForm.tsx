@@ -1240,6 +1240,13 @@ export default function FittingForm({
                           addBlankFlange={entry.specs?.addBlankFlange}
                           blankFlangeCount={entry.specs?.blankFlangeCount}
                           blankFlangePositions={entry.specs?.blankFlangePositions}
+                          savedCameraPosition={entry.specs?.savedCameraPosition}
+                          savedCameraTarget={entry.specs?.savedCameraTarget}
+                          onCameraChange={(position: [number, number, number], target: [number, number, number]) => {
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, savedCameraPosition: position, savedCameraTarget: target }
+                            });
+                          }}
                         />
                       );
                     })()}
