@@ -13,8 +13,9 @@ const config: DataSourceOptions = {
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  synchronize: false, // Use synchronize for development, disable for production
-  logging: true,
+  synchronize: false,
+  logging: process.env.NODE_ENV !== 'production',
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
 };
 
 export default registerAs('typeorm', () => config as TypeOrmModuleOptions);
