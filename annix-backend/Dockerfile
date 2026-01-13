@@ -3,9 +3,9 @@ FROM node:24-slim AS builder
 
 WORKDIR /usr/src/app
 
-# Install all dependencies for build
-COPY package.json pnpm-lock.yaml ./
-RUN corepack enable pnpm && pnpm install --frozen-lockfile
+# Install all dependencies for build (no frozen-lockfile for standalone package deploy)
+COPY package.json ./
+RUN corepack enable pnpm && pnpm install
 
 # Copy and build
 COPY . .
@@ -17,8 +17,8 @@ FROM node:24-slim AS runner
 WORKDIR /usr/src/app
 
 # Copy package files and install production deps + ts-node for migrations
-COPY package.json pnpm-lock.yaml ./
-RUN corepack enable pnpm && pnpm install --frozen-lockfile --prod && pnpm add -D ts-node typescript
+COPY package.json ./
+RUN corepack enable pnpm && pnpm install --prod && pnpm add -D ts-node typescript
 
 # Copy built app from builder
 COPY --from=builder /usr/src/app/dist ./dist

@@ -48,9 +48,6 @@ jobs:
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Copy root lockfile to backend
-        run: cp pnpm-lock.yaml annix-backend/
-
       - name: Deploy Backend to Fly.io
         working-directory: ./annix-backend
         run: flyctl deploy
@@ -65,9 +62,6 @@ jobs:
 
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Copy root lockfile to frontend
-        run: cp pnpm-lock.yaml annix-frontend/
 
       - name: Deploy Frontend to Fly.io
         working-directory: ./annix-frontend

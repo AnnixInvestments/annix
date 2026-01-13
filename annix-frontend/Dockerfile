@@ -11,8 +11,8 @@ RUN apk add --no-cache \
   libusb-dev eudev-dev libc6-compat
 ENV npm_config_python=/usr/bin/python3
 ENV NEXT_PUBLIC_API_URL=/api
-COPY package.json pnpm-lock.yaml* .npmrc* ./
-RUN corepack enable pnpm && pnpm install --frozen-lockfile
+COPY package.json .npmrc* ./
+RUN corepack enable pnpm && pnpm install
 
 # ---------- builder ----------
 FROM base AS builder
