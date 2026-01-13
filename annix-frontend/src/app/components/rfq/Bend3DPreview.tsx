@@ -1859,7 +1859,7 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
         <CameraTracker onCameraUpdate={setCurrentZoom} onCameraChange={props.onCameraChange} onRotationUpdate={setCurrentRotation} />
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
-        <Environment preset="city" />
+        <Environment preset="sunset" />
         <group scale={1.2}>
           <BendScene {...debouncedProps} />
         </group>
@@ -2046,7 +2046,7 @@ export default function Bend3DPreview(props: Bend3DPreviewProps) {
             <Canvas shadows dpr={[1, 2]} camera={{ position: [0, autoCameraHeight * 1.2, cameraZ * 1.2], fov: 45 }}>
               <ambientLight intensity={0.7} />
               <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
-              <Environment preset="city" />
+              <Environment preset="sunset" />
               <group scale={0.75}>
                 <BendScene {...debouncedProps} />
               </group>

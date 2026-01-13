@@ -567,7 +567,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />
           <pointLight position={[halfLen + 5, 0, 0]} intensity={0.5} />
 
-          <Environment preset="city" />
+          <Environment preset="sunset" />
 
           <HollowPipeScene {...debouncedProps} />
 
@@ -708,7 +708,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
               <spotLight position={[10, 10, 5]} angle={0.5} penumbra={1} intensity={1} />
               <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />
               <pointLight position={[halfLen + 5, 0, 0]} intensity={0.5} />
-              <Environment preset="city" />
+              <Environment preset="sunset" />
               <HollowPipeScene {...debouncedProps} />
               <ContactShadows position={[0, -0.6, 0]} opacity={0.4} scale={10} blur={2} far={4} color="#000000" />
               <OrbitControls makeDefault enablePan={true} minDistance={0.3} maxDistance={30} />

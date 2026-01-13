@@ -1144,7 +1144,7 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
       <Canvas shadows dpr={[1, 2]} camera={{ position: defaultCameraPosition, fov: 50 }} style={{ width: '100%', height: '100%' }}>
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
-        <Environment preset="city" />
+        <Environment preset="sunset" />
         <group scale={PREVIEW_SCALE}>
           <TeeScene {...debouncedProps} />
         </group>
@@ -1249,7 +1249,7 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
             <Canvas shadows dpr={[1, 2]} camera={{ position: expandedCameraPosition, fov: 45 }}>
               <ambientLight intensity={0.7} />
               <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
-              <Environment preset="city" />
+              <Environment preset="sunset" />
               <group scale={PREVIEW_SCALE}>
                 <TeeScene {...debouncedProps} />
               </group>
