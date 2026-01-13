@@ -49,7 +49,8 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy Backend to Fly.io
-        run: flyctl deploy --config ./annix-backend/fly.toml --dockerfile ./annix-backend/Dockerfile ./annix-backend
+        working-directory: ./annix-backend
+        run: flyctl deploy
 
   deploy-frontend:
     name: Deploy Frontend
@@ -63,4 +64,5 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy Frontend to Fly.io
-        run: flyctl deploy --config ./annix-frontend/fly.toml --dockerfile ./annix-frontend/Dockerfile ./annix-frontend
+        working-directory: ./annix-frontend
+        run: flyctl deploy
