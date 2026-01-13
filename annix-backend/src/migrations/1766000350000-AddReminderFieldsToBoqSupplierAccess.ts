@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AddReminderFieldsToBoqSupplierAccess1736450000000 implements MigrationInterface {
-  name = 'AddReminderFieldsToBoqSupplierAccess1736450000000';
+export class AddReminderFieldsToBoqSupplierAccess1766000350000 implements MigrationInterface {
+  name = 'AddReminderFieldsToBoqSupplierAccess1766000350000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.addColumn(
