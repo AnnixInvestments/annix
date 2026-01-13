@@ -12,7 +12,7 @@ COPY . .
 RUN corepack enable pnpm && pnpm run build
 
 # Debug: verify build output
-RUN echo "=== Builder: Contents of dist ===" && ls -la dist/ && echo "=== Builder: main.js ===" && ls -la dist/main.js
+RUN echo "=== Builder: Contents of dist ===" && ls -la dist/ && echo "=== Contents of dist/src ===" && ls -la dist/src/ | head -20
 
 # ---- Runtime stage ----
 FROM node:24-slim AS runner
@@ -30,8 +30,8 @@ COPY --from=builder /usr/src/app/src/migrations ./src/migrations
 COPY --from=builder /usr/src/app/tsconfig.json ./tsconfig.json
 
 # Debug: verify dist contents
-RUN echo "=== Contents of dist ===" && ls -la dist/ && echo "=== Looking for main.js ===" && ls -la dist/main.js || echo "main.js NOT FOUND"
+RUN echo "=== Contents of dist/src ===" && ls -la dist/src/ | head -20
 
 EXPOSE 4000
 
-CMD ["sh", "-c", "node dist/main"]
+CMD ["sh", "-c", "node dist/src/main"]
