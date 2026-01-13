@@ -1487,11 +1487,14 @@ export default function BendForm({
                               onChange={(value) => {
                                 const count = parseInt(value) || 0;
                                 const currentStubs = entry.specs?.stubs || [];
+                                const mainNB = entry.specs?.nominalBoreMm || 50;
+                                const defaultStubNB = mainNB <= 50 ? mainNB : 50;
+                                const defaultStub = { nominalBoreMm: defaultStubNB, length: 150, orientation: 'outside', flangeSpec: '' };
                                 const newStubs = count === 0 ? [] :
-                                                count === 1 ? [currentStubs[0] || { nominalBoreMm: 40, length: 150, flangeSpec: '' }] :
+                                                count === 1 ? [currentStubs[0] || defaultStub] :
                                                 [
-                                                  currentStubs[0] || { nominalBoreMm: 40, length: 150, flangeSpec: '' },
-                                                  currentStubs[1] || { nominalBoreMm: 40, length: 150, flangeSpec: '' }
+                                                  currentStubs[0] || defaultStub,
+                                                  currentStubs[1] || defaultStub
                                                 ];
                                 const updatedEntry = {
                                   ...entry,
@@ -1516,7 +1519,7 @@ export default function BendForm({
                       {(entry.specs?.numberOfStubs || 0) >= 1 && (
                         <div className="mt-2 p-2 bg-white rounded border border-green-300">
                           <p className="text-xs font-medium text-green-900 mb-1">Stub 1 <span className="text-gray-500 font-normal">(on horizontal tangent - vertical stub)</span></p>
-                          <div className="grid grid-cols-3 gap-2 mb-2">
+                          <div className="grid grid-cols-1 gap-2 mb-2">
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">NB</label>
                               {(() => {
@@ -1546,6 +1549,35 @@ export default function BendForm({
                                     }}
                                     options={options}
                                     placeholder="Select NB"
+                                    open={openSelects[selectId] || false}
+                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                  />
+                                );
+                              })()}
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">Orientation</label>
+                              {(() => {
+                                const selectId = `bend-stub1-orientation-${entry.id}`;
+                                const orientationOptions = [
+                                  { value: 'top', label: 'Top' },
+                                  { value: 'bottom', label: 'Bottom' },
+                                  { value: 'inside', label: 'Inside (bend)' },
+                                  { value: 'outside', label: 'Outside (bend)' }
+                                ];
+                                return (
+                                  <Select
+                                    id={selectId}
+                                    value={entry.specs?.stubs?.[0]?.orientation || 'outside'}
+                                    onChange={(value) => {
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      stubs[0] = { ...stubs[0], orientation: value };
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                      updatedEntry.description = generateItemDescription(updatedEntry);
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    options={orientationOptions}
+                                    placeholder="Select"
                                     open={openSelects[selectId] || false}
                                     onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
                                   />
@@ -1689,8 +1721,8 @@ export default function BendForm({
 
                       {(entry.specs?.numberOfStubs || 0) >= 2 && (
                         <div className="mt-2 p-2 bg-white rounded border border-green-300">
-                          <p className="text-xs font-medium text-green-900 mb-1">Stub 2 <span className="text-gray-500 font-normal">(on vertical tangent - horizontal stub)</span></p>
-                          <div className="grid grid-cols-3 gap-2 mb-2">
+                          <p className="text-xs font-medium text-green-900 mb-1">Stub 2 <span className="text-gray-500 font-normal">(on angled tangent)</span></p>
+                          <div className="grid grid-cols-1 gap-2 mb-2">
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">NB</label>
                               {(() => {
@@ -1720,6 +1752,35 @@ export default function BendForm({
                                     }}
                                     options={options}
                                     placeholder="Select NB"
+                                    open={openSelects[selectId] || false}
+                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                  />
+                                );
+                              })()}
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">Orientation</label>
+                              {(() => {
+                                const selectId = `bend-stub2-orientation-${entry.id}`;
+                                const orientationOptions = [
+                                  { value: 'top', label: 'Top' },
+                                  { value: 'bottom', label: 'Bottom' },
+                                  { value: 'inside', label: 'Inside (bend)' },
+                                  { value: 'outside', label: 'Outside (bend)' }
+                                ];
+                                return (
+                                  <Select
+                                    id={selectId}
+                                    value={entry.specs?.stubs?.[1]?.orientation || 'outside'}
+                                    onChange={(value) => {
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      stubs[1] = { ...stubs[1], orientation: value };
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                      updatedEntry.description = generateItemDescription(updatedEntry);
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    options={orientationOptions}
+                                    placeholder="Select"
                                     open={openSelects[selectId] || false}
                                     onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
                                   />

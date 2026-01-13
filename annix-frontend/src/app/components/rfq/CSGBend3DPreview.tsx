@@ -4,11 +4,16 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Center, Environment, ContactShadows, Tube } from '@react-three/drei'
 import * as THREE from 'three'
+import { log } from '@/app/lib/logger'
+
+type StubOrientation = 'top' | 'bottom' | 'inside' | 'outside'
 
 interface StubData {
   nominalBoreMm?: number
   length?: number
   locationFromFlange?: number
+  hasFlange?: boolean
+  orientation?: StubOrientation
 }
 
 interface Props {
@@ -46,32 +51,6 @@ const pipeInnerMat = { color: '#1a3a1a', metalness: 0.2, roughness: 0.7 }
 const pipeEndMat = { color: '#4ADE80', metalness: 0.5, roughness: 0.3 }
 const weldColor = { color: '#1a1a1a', metalness: 0.2, roughness: 0.9 }
 const flangeColor = { color: '#444444', metalness: 0.6, roughness: 0.4 }
-
-class SaddleCurve extends THREE.Curve<THREE.Vector3> {
-  mainPipeR: number
-  stubR: number
-  stubCenter: THREE.Vector3
-
-  constructor(mainPipeR: number, stubR: number, stubCenter: THREE.Vector3) {
-    super()
-    this.mainPipeR = mainPipeR
-    this.stubR = stubR
-    this.stubCenter = stubCenter
-  }
-
-  getPoint(t: number): THREE.Vector3 {
-    const theta = t * Math.PI * 2
-    const y = this.stubR * Math.cos(theta)
-    const z = this.stubR * Math.sin(theta)
-    const x = Math.sqrt(Math.max(0, this.mainPipeR * this.mainPipeR - y * y))
-
-    return new THREE.Vector3(
-      x,
-      this.stubCenter.y + y,
-      this.stubCenter.z + z
-    )
-  }
-}
 
 class ArcCurve extends THREE.Curve<THREE.Vector3> {
   center: THREE.Vector3
@@ -199,30 +178,60 @@ const WeldRing = ({
   radius: number
   tube: number
 }) => {
-  const yRotation = Math.atan2(normal.x, normal.z)
+  const quaternion = useMemo(() => {
+    const q = new THREE.Quaternion()
+    q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal.clone().normalize())
+    return q
+  }, [normal.x, normal.y, normal.z])
 
   return (
-    <mesh position={[center.x, center.y, center.z]} rotation={[0, yRotation, 0]}>
+    <mesh position={[center.x, center.y, center.z]} quaternion={quaternion}>
       <torusGeometry args={[radius, tube, 12, 32]} />
       <meshStandardMaterial {...weldColor} />
     </mesh>
   )
 }
 
+class SaddleCurve extends THREE.Curve<THREE.Vector3> {
+  stubRadius: number
+  mainPipeRadius: number
+  useXAxis: boolean
+
+  constructor(stubRadius: number, mainPipeRadius: number, useXAxis: boolean = false) {
+    super()
+    this.stubRadius = stubRadius
+    this.mainPipeRadius = mainPipeRadius
+    this.useXAxis = useXAxis
+  }
+
+  getPoint(t: number): THREE.Vector3 {
+    const theta = t * Math.PI * 2
+    const r = this.stubRadius
+    const R = this.mainPipeRadius
+
+    const x = r * Math.cos(theta)
+    const y = r * Math.sin(theta)
+    const saddleCoord = this.useXAxis ? y : x
+    const z = Math.sqrt(Math.max(0, R * R - saddleCoord * saddleCoord))
+
+    return new THREE.Vector3(x, y, z)
+  }
+}
+
 const SaddleWeld = ({
-  mainPipeR,
-  stubR,
-  stubCenterZ,
+  stubRadius,
+  mainPipeRadius,
+  useXAxis,
   tube
 }: {
-  mainPipeR: number
-  stubR: number
-  stubCenterZ: number
+  stubRadius: number
+  mainPipeRadius: number
+  useXAxis: boolean
   tube: number
 }) => {
   const curve = useMemo(() => {
-    return new SaddleCurve(mainPipeR, stubR * 1.02, new THREE.Vector3(0, 0, stubCenterZ))
-  }, [mainPipeR, stubR, stubCenterZ])
+    return new SaddleCurve(stubRadius * 1.05, mainPipeRadius, useXAxis)
+  }, [stubRadius, mainPipeRadius, useXAxis])
 
   return (
     <Tube args={[curve, 64, tube, 8, true]}>
@@ -310,13 +319,170 @@ const Flange = ({
   )
 }
 
+const SaddleCutStubPipe = ({
+  baseCenter,
+  direction,
+  length,
+  outerR,
+  innerR,
+  mainPipeOuterR,
+  nb,
+  hasFlange = true
+}: {
+  baseCenter: THREE.Vector3
+  direction: THREE.Vector3
+  length: number
+  outerR: number
+  innerR: number
+  mainPipeOuterR: number
+  nb: number
+  hasFlange?: boolean
+}) => {
+  const dir = direction.clone().normalize()
+  const weldTube = outerR * 0.06
+  const flangeOffset = outerR * 0.18
+
+  const saddleAxis = useMemo(() => {
+    const isVertical = Math.abs(dir.y) > 0.7
+    return isVertical ? 'y' : 'x'
+  }, [dir.y])
+
+  const outerTubeGeom = useMemo(() => {
+    const segments = 32
+    const radialSegments = 32
+    const positions: number[] = []
+    const indices: number[] = []
+
+    const endZ = mainPipeOuterR + length
+
+    for (let i = 0; i <= segments; i++) {
+      const v = i / segments
+
+      for (let j = 0; j <= radialSegments; j++) {
+        const theta = (j / radialSegments) * Math.PI * 2
+        const x = outerR * Math.cos(theta)
+        const y = outerR * Math.sin(theta)
+
+        const saddleCoord = saddleAxis === 'x' ? y : x
+        const baseSaddleZ = Math.sqrt(Math.max(0, mainPipeOuterR * mainPipeOuterR - saddleCoord * saddleCoord))
+        const z = baseSaddleZ + v * (endZ - baseSaddleZ)
+
+        positions.push(x, y, z)
+      }
+    }
+
+    for (let i = 0; i < segments; i++) {
+      for (let j = 0; j < radialSegments; j++) {
+        const a = i * (radialSegments + 1) + j
+        const b = a + radialSegments + 1
+        const c = a + 1
+        const d = b + 1
+
+        indices.push(a, b, c)
+        indices.push(b, d, c)
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geometry.setIndex(indices)
+    geometry.computeVertexNormals()
+    return geometry
+  }, [outerR, mainPipeOuterR, length, saddleAxis])
+
+  const innerTubeGeom = useMemo(() => {
+    const segments = 32
+    const radialSegments = 32
+    const positions: number[] = []
+    const indices: number[] = []
+
+    const endZ = mainPipeOuterR + length
+
+    for (let i = 0; i <= segments; i++) {
+      const v = i / segments
+
+      for (let j = 0; j <= radialSegments; j++) {
+        const theta = (j / radialSegments) * Math.PI * 2
+        const x = innerR * Math.cos(theta)
+        const y = innerR * Math.sin(theta)
+
+        const saddleCoord = saddleAxis === 'x' ? y : x
+        const baseSaddleZ = Math.sqrt(Math.max(0, mainPipeOuterR * mainPipeOuterR - saddleCoord * saddleCoord))
+        const z = baseSaddleZ + v * (endZ - baseSaddleZ)
+
+        positions.push(x, y, z)
+      }
+    }
+
+    for (let i = 0; i < segments; i++) {
+      for (let j = 0; j < radialSegments; j++) {
+        const a = i * (radialSegments + 1) + j
+        const b = a + radialSegments + 1
+        const c = a + 1
+        const d = b + 1
+
+        indices.push(a, c, b)
+        indices.push(b, c, d)
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geometry.setIndex(indices)
+    geometry.computeVertexNormals()
+    return geometry
+  }, [innerR, mainPipeOuterR, length, saddleAxis])
+
+  const quaternion = useMemo(() => {
+    const q = new THREE.Quaternion()
+    q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir)
+    return q
+  }, [dir.x, dir.y, dir.z])
+
+  const endCenter = baseCenter.clone().add(dir.clone().multiplyScalar(length))
+
+  return (
+    <group position={[baseCenter.x, baseCenter.y, baseCenter.z]} quaternion={quaternion}>
+      <mesh geometry={outerTubeGeom}>
+        <meshStandardMaterial {...pipeOuterMat} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh geometry={innerTubeGeom}>
+        <meshStandardMaterial {...pipeInnerMat} side={THREE.DoubleSide} />
+      </mesh>
+      <SaddleWeld
+        stubRadius={outerR}
+        mainPipeRadius={mainPipeOuterR}
+        useXAxis={saddleAxis === 'x'}
+        tube={weldTube}
+      />
+      {hasFlange && (
+        <Flange
+          center={new THREE.Vector3(0, 0, mainPipeOuterR + length + flangeOffset)}
+          normal={new THREE.Vector3(0, 0, 1)}
+          pipeR={outerR}
+          innerR={innerR}
+          nb={nb}
+        />
+      )}
+      {!hasFlange && (
+        <mesh position={[0, 0, mainPipeOuterR + length]} rotation={[0, 0, 0]}>
+          <ringGeometry args={[innerR, outerR, 32]} />
+          <meshStandardMaterial {...pipeEndMat} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+    </group>
+  )
+}
+
 const StubPipe = ({
   baseCenter,
   direction,
   length,
   outerR,
   innerR,
-  mainPipeOuterR
+  mainPipeOuterR,
+  nb,
+  hasFlange = true
 }: {
   baseCenter: THREE.Vector3
   direction: THREE.Vector3
@@ -324,10 +490,28 @@ const StubPipe = ({
   outerR: number
   innerR: number
   mainPipeOuterR?: number
+  nb: number
+  hasFlange?: boolean
 }) => {
+  if (mainPipeOuterR) {
+    return (
+      <SaddleCutStubPipe
+        baseCenter={baseCenter}
+        direction={direction}
+        length={length}
+        outerR={outerR}
+        innerR={innerR}
+        mainPipeOuterR={mainPipeOuterR}
+        nb={nb}
+        hasFlange={hasFlange}
+      />
+    )
+  }
+
   const dir = direction.clone().normalize()
   const endCenter = baseCenter.clone().add(dir.clone().multiplyScalar(length))
-  const weldTube = outerR * 0.05
+  const weldTube = outerR * 0.06
+  const flangeOffset = outerR * 0.18
 
   return (
     <>
@@ -337,23 +521,17 @@ const StubPipe = ({
         outerR={outerR}
         innerR={innerR}
         capStart={false}
-        capEnd={true}
+        capEnd={!hasFlange}
       />
-      {mainPipeOuterR ? (
-        <>
-          <SaddleWeld
-            mainPipeR={mainPipeOuterR}
-            stubR={outerR}
-            stubCenterZ={baseCenter.z}
-            tube={weldTube}
-          />
-          <mesh position={[mainPipeOuterR + 0.001, 0, baseCenter.z]} rotation={[0, Math.PI / 2, 0]}>
-            <circleGeometry args={[innerR, 32]} />
-            <meshStandardMaterial color="#050505" side={THREE.FrontSide} />
-          </mesh>
-        </>
-      ) : (
-        <WeldRing center={baseCenter} normal={dir} radius={outerR * 1.02} tube={weldTube} />
+      <WeldRing center={baseCenter} normal={dir} radius={outerR * 1.05} tube={weldTube} />
+      {hasFlange && (
+        <Flange
+          center={endCenter.clone().add(dir.clone().multiplyScalar(flangeOffset))}
+          normal={dir}
+          pipeR={outerR}
+          innerR={innerR}
+          nb={nb}
+        />
       )}
     </>
   )
@@ -362,16 +540,29 @@ const StubPipe = ({
 const Scene = (props: Props) => {
   const {
     nominalBore,
+    outerDiameter,
     wallThickness,
     bendAngle,
     tangent1 = 0,
     tangent2 = 0,
-    numberOfSegments = 4,
+    numberOfSegments,
     stubs = [],
     flangeConfig = 'PE'
   } = props
 
-  const odMm = nbToOd(nominalBore)
+  log.debug('CSGBend3DPreview Scene props', {
+    nominalBore,
+    outerDiameter,
+    wallThickness,
+    bendAngle,
+    tangent1,
+    tangent2,
+    numberOfSegments,
+    stubCount: stubs.length,
+    flangeConfig
+  })
+
+  const odMm = outerDiameter || nbToOd(nominalBore)
   const wtMm = visualWallThickness(odMm, wallThickness || 6)
 
   const outerR = odMm / SCALE / 2
@@ -412,7 +603,7 @@ const Scene = (props: Props) => {
 
   const stubsData = useMemo(() => {
     return stubs
-      .filter((s) => s.locationFromFlange && s.length && s.nominalBoreMm)
+      .filter((s) => s.locationFromFlange != null && s.length != null && s.nominalBoreMm != null)
       .map((s) => {
         const sOd = nbToOd(s.nominalBoreMm!)
         const sWt = visualWallThickness(sOd, wtMm * 0.8)
@@ -423,7 +614,8 @@ const Scene = (props: Props) => {
           outerR: sOd / SCALE / 2,
           innerR: (sOd - 2 * sWt) / SCALE / 2,
           length: s.length! / SCALE,
-          nb: s.nominalBoreMm!
+          nb: s.nominalBoreMm!,
+          orientation: s.orientation || 'outside'
         }
       })
   }, [stubs, wtMm])
@@ -454,7 +646,7 @@ const Scene = (props: Props) => {
           innerR={innerR}
         />
 
-        {Array.from({ length: numberOfSegments - 1 }).map((_, i) => {
+        {numberOfSegments && numberOfSegments > 1 && Array.from({ length: numberOfSegments - 1 }).map((_, i) => {
           const segAngle = angleRad / numberOfSegments
           const weldAngle = (i + 1) * segAngle
           const weldPos = new THREE.Vector3(
@@ -493,22 +685,46 @@ const Scene = (props: Props) => {
         )}
 
         {stubsData.map((stub, i) => {
-          const zPos = stub.distFromFlange
-          const saddleMinX = Math.sqrt(Math.max(0, outerR * outerR - stub.outerR * stub.outerR))
-          const minXForBore = Math.sqrt(Math.max(0, innerR * innerR - stub.outerR * stub.outerR))
-          const stubBaseX = Math.max(saddleMinX, minXForBore + 0.001)
-          const stubBase = new THREE.Vector3(stubBaseX, 0, zPos)
-          const stubDir = new THREE.Vector3(1, 0, 0)
+          const isOutletStub = i === 1
+          const tangentLength = isOutletStub ? t2 : t1
+
+          if (tangentLength <= 0) return null
+
+          const tangentStart = isOutletStub ? bendEndPoint : inletStart
+          const tangentDir = isOutletStub ? outletDir : inletDir
+          const stubCenterOnAxis = tangentStart.clone().add(tangentDir.clone().multiplyScalar(stub.distFromFlange))
+
+          const orientationDir = (() => {
+            const orientation = stub.orientation
+            if (orientation === 'top') return new THREE.Vector3(0, 1, 0)
+            if (orientation === 'bottom') return new THREE.Vector3(0, -1, 0)
+
+            const yUp = new THREE.Vector3(0, 1, 0)
+            const perpHorizontal = new THREE.Vector3().crossVectors(tangentDir, yUp).normalize()
+
+            const toCenter = bendCenter.clone().sub(stubCenterOnAxis)
+            toCenter.y = 0
+            const dotToCenter = perpHorizontal.dot(toCenter.normalize())
+
+            if (orientation === 'inside') {
+              return dotToCenter > 0 ? perpHorizontal : perpHorizontal.clone().negate()
+            }
+            if (orientation === 'outside') {
+              return dotToCenter > 0 ? perpHorizontal.clone().negate() : perpHorizontal
+            }
+            return new THREE.Vector3(0, 1, 0)
+          })()
 
           return (
             <StubPipe
               key={i}
-              baseCenter={stubBase}
-              direction={stubDir}
+              baseCenter={stubCenterOnAxis}
+              direction={orientationDir}
               length={stub.length}
               outerR={stub.outerR}
               innerR={stub.innerR}
               mainPipeOuterR={outerR}
+              nb={stub.nb}
             />
           )
         })}
@@ -561,7 +777,7 @@ export default function CSGBend3DPreview(props: Props) {
   }
 
   return (
-    <div className="w-full bg-slate-50 rounded-md border overflow-hidden relative" style={{ height: '500px' }}>
+    <div className="w-full h-full min-h-[400px] bg-slate-50 rounded-md border overflow-hidden relative">
       <Canvas shadows dpr={[1, 2]} camera={{ position: [5, 4, 12], fov: 45 }}>
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} intensity={1} castShadow />
@@ -579,7 +795,9 @@ export default function CSGBend3DPreview(props: Props) {
 
       <div className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1 rounded shadow border">
         <div className="font-bold text-blue-800">{props.nominalBore}NB | {props.bendAngle}°</div>
-        <div className="text-gray-600">WT: {props.wallThickness}mm | {props.numberOfSegments} seg</div>
+        <div className="text-gray-600">WT: {props.wallThickness}mm{props.numberOfSegments ? ` | ${props.numberOfSegments} seg` : ''}</div>
+        <div className="text-gray-600">T1: {props.tangent1 || 0}mm | T2: {props.tangent2 || 0}mm</div>
+        <div className="text-gray-600">Config: {props.flangeConfig || 'PE'}</div>
         {props.stubs && props.stubs.length > 0 && (
           <div className="text-gray-600">{props.stubs.length} stub(s)</div>
         )}

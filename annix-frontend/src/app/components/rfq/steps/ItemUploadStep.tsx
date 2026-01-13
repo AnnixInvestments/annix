@@ -20,7 +20,7 @@ import {
 } from '@/app/lib/utils/pipeCalculations';
 
 const Pipe3DPreview = dynamic(() => import('@/app/components/rfq/Pipe3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
-const Bend3DPreview = dynamic(() => import('@/app/components/rfq/Bend3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
+const Bend3DPreview = dynamic(() => import('@/app/components/rfq/CSGBend3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 const Tee3DPreview = dynamic(() => import('@/app/components/rfq/Tee3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 import { BendForm, FittingForm, StraightPipeForm } from '@/app/components/rfq/forms';
 
