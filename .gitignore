@@ -29,6 +29,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Subdirectory lockfiles (use root lockfile only)
+annix-backend/pnpm-lock.yaml
+annix-frontend/pnpm-lock.yaml
+
 # Build outputs
 dist/
 build/
