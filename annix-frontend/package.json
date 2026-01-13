@@ -29,6 +29,7 @@
     "react-dom": "19.1.0",
     "react-hook-form": "^7.65.0",
     "three": "^0.182.0",
+    "three-bvh-csg": "^0.0.17",
     "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },

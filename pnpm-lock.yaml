@@ -234,6 +234,9 @@ importers:
       three:
         specifier: ^0.182.0
         version: 0.182.0
+      three-bvh-csg:
+        specifier: ^0.0.17
+        version: 0.0.17(three-mesh-bvh@0.6.8(three@0.182.0))(three@0.182.0)
       xlsx:
         specifier: ^0.18.5
         version: 0.18.5
@@ -5143,6 +5146,12 @@ packages:
 
   three-bvh-csg@0.0.16:
     resolution: {integrity: sha512-RgC5dY0hAKdfd1bmD3o2CDfmK9GTkvsA1ECzoqTMhSkjSc2zp1z4Wpa5+emLi/EosF5P6+aK2veTxTLZA9+Mhw==}
+    peerDependencies:
+      three: '>=0.151.0'
+      three-mesh-bvh: '>=0.6.6'
+
+  three-bvh-csg@0.0.17:
+    resolution: {integrity: sha512-iEkHDF8GRfGM6593Cuw8SnF1vfENCp46gIAtRzuL4nGXGWPcR1sbTBwM9ptDONb5twqlZp5WkAKya5aBKe2qcA==}
     peerDependencies:
       three: '>=0.151.0'
       three-mesh-bvh: '>=0.6.6'
@@ -11370,6 +11379,11 @@ snapshots:
       minimatch: 3.1.2
 
   three-bvh-csg@0.0.16(three-mesh-bvh@0.6.8(three@0.182.0))(three@0.182.0):
+    dependencies:
+      three: 0.182.0
+      three-mesh-bvh: 0.6.8(three@0.182.0)
+
+  three-bvh-csg@0.0.17(three-mesh-bvh@0.6.8(three@0.182.0))(three@0.182.0):
     dependencies:
       three: 0.182.0
       three-mesh-bvh: 0.6.8(three@0.182.0)
