@@ -5,7 +5,7 @@ primary_region = 'jnb'
 
 [deploy]
   release_command = 'npx ts-node --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run'
-  release_command_timeout = '20m'
+  release_command_timeout = '40m'
 
 [env]
   NODE_ENV = 'production'

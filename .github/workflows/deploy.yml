@@ -50,7 +50,7 @@ jobs:
 
       - name: Deploy Backend to Fly.io
         working-directory: ./annix-backend
-        run: flyctl deploy --no-cache
+        run: flyctl deploy
 
   deploy-frontend:
     name: Deploy Frontend
