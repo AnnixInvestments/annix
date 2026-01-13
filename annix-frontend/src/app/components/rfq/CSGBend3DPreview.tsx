@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useMemo, useState, useEffect } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
+import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, Center, Environment, ContactShadows, Tube } from '@react-three/drei'
 import * as THREE from 'three'
 import { log } from '@/app/lib/logger'
@@ -29,6 +29,11 @@ interface Props {
   stubs?: StubData[]
   flangeConfig?: string
   closureLengthMm?: number
+  addBlankFlange?: boolean
+  blankFlangePositions?: string[]
+  savedCameraPosition?: [number, number, number]
+  savedCameraTarget?: [number, number, number]
+  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void
 }
 
 const SCALE = 200
@@ -537,6 +542,176 @@ const StubPipe = ({
   )
 }
 
+const CameraTracker = ({
+  onCameraChange,
+  onCameraUpdate,
+  savedPosition,
+  savedTarget
+}: {
+  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void
+  onCameraUpdate?: (position: [number, number, number], zoom: number) => void
+  savedPosition?: [number, number, number]
+  savedTarget?: [number, number, number]
+}) => {
+  const { camera, controls } = useThree()
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lastSavedRef = useRef<string>('')
+  const pendingSaveKeyRef = useRef<string>('')
+  const hasRestoredRef = useRef(false)
+
+  useEffect(() => {
+    log.debug('CameraTracker useEffect', JSON.stringify({
+      savedPosition,
+      savedTarget,
+      hasRestored: hasRestoredRef.current,
+      hasControls: !!controls
+    }))
+    if (savedPosition && controls && !hasRestoredRef.current) {
+      log.debug('CameraTracker restoring camera position', JSON.stringify({
+        position: savedPosition,
+        target: savedTarget
+      }))
+      camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2])
+      if (savedTarget) {
+        const orbitControls = controls as any
+        if (orbitControls.target) {
+          orbitControls.target.set(savedTarget[0], savedTarget[1], savedTarget[2])
+          orbitControls.update()
+        }
+      }
+      hasRestoredRef.current = true
+      const restoredKey = `${savedPosition[0].toFixed(2)},${savedPosition[1].toFixed(2)},${savedPosition[2].toFixed(2)}`
+      lastSavedRef.current = restoredKey
+      pendingSaveKeyRef.current = ''
+    }
+  }, [camera, controls, savedPosition, savedTarget])
+
+  const frameCountRef = useRef(0)
+
+  useFrame(() => {
+    const distance = camera.position.length()
+    if (onCameraUpdate) {
+      onCameraUpdate(
+        [camera.position.x, camera.position.y, camera.position.z],
+        distance
+      )
+    }
+
+    frameCountRef.current++
+    if (frameCountRef.current % 60 === 0) {
+      log.debug('CameraTracker useFrame check', JSON.stringify({
+        hasOnCameraChange: !!onCameraChange,
+        hasControls: !!controls,
+        cameraPos: [camera.position.x.toFixed(2), camera.position.y.toFixed(2), camera.position.z.toFixed(2)],
+        lastSaved: lastSavedRef.current
+      }))
+    }
+
+    if (onCameraChange && controls) {
+      const target = (controls as any).target
+      if (target) {
+        const currentKey = `${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}`
+
+        const needsNewSave = currentKey !== lastSavedRef.current && currentKey !== pendingSaveKeyRef.current
+
+        if (needsNewSave) {
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current)
+          }
+
+          const posToSave = [camera.position.x, camera.position.y, camera.position.z] as [number, number, number]
+          const targetToSave = [target.x, target.y, target.z] as [number, number, number]
+          const keyToSave = currentKey
+          pendingSaveKeyRef.current = keyToSave
+
+          log.debug('CameraTracker setting timeout for', keyToSave)
+
+          saveTimeoutRef.current = setTimeout(() => {
+            log.debug('CameraTracker timeout fired, saving', JSON.stringify({
+              position: posToSave,
+              target: targetToSave,
+              key: keyToSave
+            }))
+            lastSavedRef.current = keyToSave
+            pendingSaveKeyRef.current = ''
+            onCameraChange(posToSave, targetToSave)
+          }, 500)
+        }
+      }
+    }
+  })
+
+  return null
+}
+
+const BlankFlange = ({
+  center,
+  normal,
+  pipeR,
+  nb
+}: {
+  center: THREE.Vector3
+  normal: THREE.Vector3
+  pipeR: number
+  nb: number
+}) => {
+  const flangeR = pipeR * 2.2
+  const thick = pipeR * 0.4
+  const boltR = pipeR * 1.65
+  const holeR = pipeR * 0.12
+  const boltCount = nb <= 100 ? 4 : nb <= 200 ? 8 : nb <= 350 ? 12 : 20
+
+  const faceGeometry = useMemo(() => {
+    const shape = new THREE.Shape()
+    shape.absarc(0, 0, flangeR, 0, Math.PI * 2, false)
+
+    for (let i = 0; i < boltCount; i++) {
+      const angle = (i / boltCount) * Math.PI * 2
+      const x = Math.cos(angle) * boltR
+      const y = Math.sin(angle) * boltR
+      const boltHole = new THREE.Path()
+      boltHole.absarc(x, y, holeR, 0, Math.PI * 2, true)
+      shape.holes.push(boltHole)
+    }
+
+    return new THREE.ShapeGeometry(shape, 32)
+  }, [flangeR, boltR, holeR, boltCount])
+
+  const quaternion = useMemo(() => {
+    const q = new THREE.Quaternion()
+    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal.clone().normalize())
+    return q
+  }, [normal.x, normal.y, normal.z])
+
+  const euler = new THREE.Euler().setFromQuaternion(quaternion)
+
+  return (
+    <group position={[center.x, center.y, center.z]} rotation={[euler.x, euler.y, euler.z]}>
+      <mesh>
+        <cylinderGeometry args={[flangeR, flangeR, thick, 32, 1, true]} />
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
+      </mesh>
+      {Array.from({ length: boltCount }).map((_, i) => {
+        const angle = (i / boltCount) * Math.PI * 2
+        const hx = Math.cos(angle) * boltR
+        const hz = Math.sin(angle) * boltR
+        return (
+          <mesh key={i} position={[hx, 0, hz]}>
+            <cylinderGeometry args={[holeR, holeR, thick * 1.02, 16, 1, true]} />
+            <meshStandardMaterial color="#000" side={THREE.BackSide} />
+          </mesh>
+        )
+      })}
+      <mesh geometry={faceGeometry} position={[0, thick / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh geometry={faceGeometry} position={[0, -thick / 2 - 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  )
+}
+
 const Scene = (props: Props) => {
   const {
     nominalBore,
@@ -547,7 +722,9 @@ const Scene = (props: Props) => {
     tangent2 = 0,
     numberOfSegments,
     stubs = [],
-    flangeConfig = 'PE'
+    flangeConfig = 'PE',
+    addBlankFlange = false,
+    blankFlangePositions = []
   } = props
 
   log.debug('CSGBend3DPreview Scene props', {
@@ -749,23 +926,46 @@ const Scene = (props: Props) => {
           />
         )}
 
+        {addBlankFlange && blankFlangePositions.includes('inlet') && hasInletFlange && (() => {
+          const flangeThick = outerR * 0.4
+          const flangeOffset = outerR * 0.18
+          const blankOffset = flangeOffset + flangeThick * 2 + 0.05
+          return (
+            <BlankFlange
+              center={new THREE.Vector3(0, 0, -blankOffset)}
+              normal={new THREE.Vector3(0, 0, -1)}
+              pipeR={outerR}
+              nb={nominalBore}
+            />
+          )
+        })()}
+
+        {addBlankFlange && blankFlangePositions.includes('outlet') && hasOutletFlange && t2 > 0 && (() => {
+          const flangeThick = outerR * 0.4
+          const flangeOffset = outerR * 0.18
+          const blankOffset = flangeOffset + flangeThick * 2 + 0.05
+          return (
+            <BlankFlange
+              center={outletEnd.clone().add(outletDir.clone().multiplyScalar(blankOffset))}
+              normal={outletDir}
+              pipeR={outerR}
+              nb={nominalBore}
+            />
+          )
+        })()}
+
         <axesHelper args={[1]} />
       </group>
     </Center>
   )
 }
 
-const CameraSetup = () => {
-  const { camera } = useThree()
-  useEffect(() => {
-    camera.position.set(5, 4, 12)
-  }, [camera])
-  return null
-}
-
 export default function CSGBend3DPreview(props: Props) {
   const [hidden, setHidden] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [showDebug, setShowDebug] = useState(false)
+  const [currentZoom, setCurrentZoom] = useState(0)
+  const [liveCamera, setLiveCamera] = useState<[number, number, number]>([0, 0, 0])
 
   if (hidden) {
     return (
@@ -776,9 +976,36 @@ export default function CSGBend3DPreview(props: Props) {
     )
   }
 
+  const odMm = props.outerDiameter || nbToOd(props.nominalBore)
+  const bendR = (props.nominalBore * 1.5) / SCALE
+  const t1 = (props.tangent1 || 0) / SCALE
+  const t2 = (props.tangent2 || 0) / SCALE
+  const angleRad = (props.bendAngle * Math.PI) / 180
+
+  const bendEndX = -bendR + bendR * Math.cos(angleRad)
+  const bendEndZ = t1 + bendR * Math.sin(angleRad)
+  const outletEndZ = bendEndZ + Math.cos(angleRad) * t2
+  const outletEndX = bendEndX + (-Math.sin(angleRad)) * t2
+
+  const minX = Math.min(0, bendEndX, outletEndX, -bendR)
+  const maxX = Math.max(0, bendEndX, outletEndX, odMm / SCALE)
+  const minZ = Math.min(0, bendEndZ, outletEndZ)
+  const maxZ = Math.max(t1, bendEndZ, outletEndZ)
+
+  const boundingWidth = maxX - minX
+  const boundingDepth = maxZ - minZ
+  const diagonalExtent = Math.sqrt(boundingWidth ** 2 + boundingDepth ** 2)
+
+  const autoCameraDistance = Math.max(diagonalExtent * 2, 5)
+  const autoCameraHeight = autoCameraDistance * 0.6
+  const autoCameraZ = autoCameraDistance * 1.2
+
+  const autoCameraPosition: [number, number, number] = [autoCameraDistance * 0.5, autoCameraHeight, autoCameraZ]
+  const cameraPosition = props.savedCameraPosition || autoCameraPosition
+
   return (
     <div className="w-full h-full min-h-[400px] bg-slate-50 rounded-md border overflow-hidden relative">
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [5, 4, 12], fov: 45 }}>
+      <Canvas shadows dpr={[1, 2]} camera={{ position: cameraPosition, fov: 45 }}>
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} intensity={1} castShadow />
         <pointLight position={[-5, 5, -5]} intensity={0.5} />
@@ -786,7 +1013,15 @@ export default function CSGBend3DPreview(props: Props) {
         <Scene {...props} />
         <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={15} />
         <OrbitControls makeDefault enablePan />
-        <CameraSetup />
+        <CameraTracker
+          onCameraChange={props.onCameraChange}
+          onCameraUpdate={(pos, zoom) => {
+            setLiveCamera(pos)
+            setCurrentZoom(zoom)
+          }}
+          savedPosition={props.savedCameraPosition}
+          savedTarget={props.savedCameraTarget}
+        />
       </Canvas>
 
       <div className="absolute top-2 left-2 text-[10px] bg-white/90 px-2 py-1 rounded">
@@ -803,16 +1038,28 @@ export default function CSGBend3DPreview(props: Props) {
         )}
       </div>
 
-      <div className="absolute bottom-2 right-2 flex gap-2">
+      <div className="absolute bottom-2 right-2 flex items-center gap-2">
+        {showDebug && (
+          <div className="text-[10px] text-slate-600 bg-white/90 px-2 py-1 rounded shadow-sm font-mono">
+            z:{currentZoom.toFixed(1)}, cam:[{liveCamera[0].toFixed(1)},{liveCamera[1].toFixed(1)},{liveCamera[2].toFixed(1)}], bbox:{boundingWidth.toFixed(1)}x{boundingDepth.toFixed(1)}
+          </div>
+        )}
+        <button
+          onClick={() => setShowDebug(!showDebug)}
+          className="text-[10px] text-slate-500 bg-white/90 px-2 py-1 rounded shadow-sm hover:bg-slate-100"
+          title={showDebug ? 'Hide debug info' : 'Show debug info'}
+        >
+          dbg
+        </button>
         <button onClick={() => setExpanded(true)} className="text-xs text-blue-600 bg-white px-2 py-1 rounded shadow">Expand</button>
         <button onClick={() => setHidden(true)} className="text-xs text-gray-500 bg-white px-2 py-1 rounded shadow">Hide</button>
       </div>
 
       {expanded && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8" onClick={() => setExpanded(false)}>
-          <div className="relative w-full h-full max-w-6xl bg-slate-100 rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setExpanded(false)}>
+          <div className="relative w-full h-full max-w-[95vw] max-h-[90vh] bg-slate-100 rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setExpanded(false)} className="absolute top-4 right-4 z-50 bg-white p-2 rounded-full shadow">✕</button>
-            <Canvas shadows dpr={[1, 2]} camera={{ position: [8, 6, 18], fov: 40 }}>
+            <Canvas shadows dpr={[1, 2]} camera={{ position: cameraPosition, fov: 40 }}>
               <ambientLight intensity={0.7} />
               <spotLight position={[10, 10, 10]} intensity={1} castShadow />
               <pointLight position={[-5, 5, -5]} intensity={0.5} />
@@ -820,6 +1067,15 @@ export default function CSGBend3DPreview(props: Props) {
               <Scene {...props} />
               <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={15} />
               <OrbitControls makeDefault enablePan />
+              <CameraTracker
+                onCameraChange={props.onCameraChange}
+                onCameraUpdate={(pos, zoom) => {
+                  setLiveCamera(pos)
+                  setCurrentZoom(zoom)
+                }}
+                savedPosition={props.savedCameraPosition}
+                savedTarget={props.savedCameraTarget}
+              />
             </Canvas>
           </div>
         </div>

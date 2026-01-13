@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { log } from '@/app/lib/logger';
 import { Select } from '@/app/components/ui/Select';
 import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
 import {
@@ -2398,6 +2399,18 @@ export default function BendForm({
                     closureLengthMm={entry.specs?.closureLengthMm || 0}
                     addBlankFlange={entry.specs?.addBlankFlange}
                     blankFlangePositions={entry.specs?.blankFlangePositions}
+                    savedCameraPosition={entry.specs?.savedCameraPosition}
+                    savedCameraTarget={entry.specs?.savedCameraTarget}
+                    onCameraChange={(position: [number, number, number], target: [number, number, number]) => {
+                      log.debug('BendForm onCameraChange called', JSON.stringify({ position, target, entryId: entry.id }))
+                      onUpdateEntry(entry.id, {
+                        specs: {
+                          ...entry.specs,
+                          savedCameraPosition: position,
+                          savedCameraTarget: target
+                        }
+                      })
+                    }}
                   />
                 }
               />
