@@ -48,8 +48,21 @@
 - When logging errors inside browser evaluation (e.g. Puppeteer), capture messages and surface them to the Node logger after evaluation
 
 ## Git Commits
-- **Wait for approval**: Do NOT commit changes until explicitly approved by the user
-- **Stage changes only**: Use `git add` to stage files, but do NOT run `git commit` without approval
+
+### CRITICAL: Always Ask Permission
+- **ALWAYS ask before committing**: Before running `git commit`, you MUST ask "May I commit these changes?" and wait for explicit "yes" approval
+- **No exceptions**: Even if the user says "commit and push", you must first show the proposed commit message and ask for confirmation
+- **This is non-negotiable**: Do not assume permission. Do not commit without asking first. Every single time.
+
+### Commit Process
+1. Stage changes with `git add`
+2. Show the user what will be committed (`git status`, `git diff --staged`)
+3. Propose a commit message
+4. **ASK**: "May I commit with this message?"
+5. Wait for explicit "yes" before running `git commit`
+6. Then ask before pushing: "May I push to remote?"
+
+### Commit Standards
 - **Complete features only**: Each commit should represent a complete, logical feature - not intermediate iterations
 - **Clean git history**: Avoid cluttering history with iteration commits that don't make sense to others
 - **Tests must pass**: Never commit unless all tests pass - commits should take the system from one working state to another

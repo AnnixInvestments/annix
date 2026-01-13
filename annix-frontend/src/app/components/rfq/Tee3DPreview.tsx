@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, Center, Text, Line } from '@react-three/drei';
-import { Geometry, Base, Subtraction, Addition } from '@react-three/csg';
 import * as THREE from 'three';
 import {
   getSabs719TeeDimensions,
@@ -12,10 +11,32 @@ import {
   Sabs719TeeType
 } from '@/app/lib/utils/sabs719TeeData';
 
+const useDebouncedProps = <T extends Record<string, any>>(props: T, delay: number = 150): T => {
+  const [debouncedProps, setDebouncedProps] = useState(props);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      setDebouncedProps(props);
+    }, delay);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [props, delay]);
+
+  return debouncedProps;
+};
+
 const SCALE_FACTOR = 100;
 const PREVIEW_SCALE = 1.1;
 const MIN_CAMERA_DISTANCE = 1.2;
-const MAX_CAMERA_DISTANCE = 40;
+const MAX_CAMERA_DISTANCE = 120;
 
 // Flange type for rendering
 type FlangeType = 'fixed' | 'loose' | 'rotating' | null;
@@ -306,32 +327,33 @@ function FlangeComponent({
 }
 
 // Gusset plate component (triangular reinforcement)
+// Simplified to not use CSG as it causes rendering issues
 function GussetPlate({
   position,
   rotation,
   size,
-  thickness
+  thickness,
 }: {
   position: [number, number, number];
   rotation: [number, number, number];
   size: number;
   thickness: number;
+  branchRadius?: number;
+  branchLocalOffset?: [number, number, number];
 }) {
   const geometry = useMemo(() => {
-    // Create triangular shape for gusset
     const shape = new THREE.Shape();
     shape.moveTo(0, 0);
     shape.lineTo(size, 0);
     shape.lineTo(0, size);
     shape.lineTo(0, 0);
-
     const extrudeSettings = { depth: thickness, bevelEnabled: false };
     return new THREE.ExtrudeGeometry(shape, extrudeSettings);
   }, [size, thickness]);
 
   return (
     <mesh position={position} rotation={rotation} geometry={geometry} castShadow receiveShadow>
-      <meshStandardMaterial color="#7a7a7a" metalness={0.6} roughness={0.4} />
+      <meshStandardMaterial color="#7a7a7a" metalness={0.6} roughness={0.4} side={THREE.DoubleSide} />
     </mesh>
   );
 }
@@ -382,10 +404,12 @@ function TeeScene(props: Tee3DPreviewProps) {
 
   // Scale factor for 3D scene (convert mm to scene units)
   const scaleFactor = SCALE_FACTOR;
-  const outerRadius = (od / scaleFactor) / 2;
-  const innerRadius = (id / scaleFactor) / 2;
-  const branchOuterRadius = (branchOD / scaleFactor) / 2;
-  const branchInnerRadius = (branchID / scaleFactor) / 2;
+  const outerRadius = Math.max(0.01, (od / scaleFactor) / 2);
+  const rawInnerRadius = (id / scaleFactor) / 2;
+  const innerRadius = Math.max(0.001, Math.min(rawInnerRadius, outerRadius - 0.001));
+  const branchOuterRadius = Math.max(0.01, (branchOD / scaleFactor) / 2);
+  const rawBranchInnerRadius = (branchID / scaleFactor) / 2;
+  const branchInnerRadius = Math.max(0.001, Math.min(rawBranchInnerRadius, branchOuterRadius - 0.001));
   const height = teeHeight / scaleFactor;
   const gussetSize = gussetSection / scaleFactor;
 
@@ -449,36 +473,26 @@ function TeeScene(props: Tee3DPreviewProps) {
           <meshStandardMaterial color="#808080" metalness={0.6} roughness={0.3} />
         </mesh>
 
-        {/* Gusset plates for Gusset Tees */}
+        {/* Gusset plates for Gusset Tees - 2 vertical triangular plates along run pipe axis */}
         {teeType === 'gusset' && gussetSize > 0 && (
           <>
-            {/* Front gusset */}
+            {/* Inlet side gusset (-X side) - local coords: origin at gusset position, rotation applied */}
             <GussetPlate
-              position={[branchOffsetX + branchOuterRadius + gussetThickness / 2, outerRadius, 0]}
-              rotation={[0, -Math.PI / 2, 0]}
-              size={gussetSize}
-              thickness={gussetThickness}
-            />
-            {/* Back gusset */}
-            <GussetPlate
-              position={[branchOffsetX - branchOuterRadius - gussetThickness / 2, outerRadius, 0]}
-              rotation={[0, Math.PI / 2, 0]}
-              size={gussetSize}
-              thickness={gussetThickness}
-            />
-            {/* Left gusset */}
-            <GussetPlate
-              position={[branchOffsetX, outerRadius, branchOuterRadius + gussetThickness / 2]}
+              position={[branchOffsetX - branchOuterRadius, outerRadius, gussetThickness / 2]}
               rotation={[0, Math.PI, 0]}
               size={gussetSize}
               thickness={gussetThickness}
+              branchRadius={branchOuterRadius}
+              branchLocalOffset={[-branchOuterRadius, 0, gussetThickness / 2]}
             />
-            {/* Right gusset */}
+            {/* Outlet side gusset (+X side) */}
             <GussetPlate
-              position={[branchOffsetX, outerRadius, -branchOuterRadius - gussetThickness / 2]}
+              position={[branchOffsetX + branchOuterRadius, outerRadius, -gussetThickness / 2]}
               rotation={[0, 0, 0]}
               size={gussetSize}
               thickness={gussetThickness}
+              branchRadius={branchOuterRadius}
+              branchLocalOffset={[-branchOuterRadius, 0, gussetThickness / 2]}
             />
           </>
         )}
@@ -528,21 +542,16 @@ function TeeScene(props: Tee3DPreviewProps) {
             ) : inletFlangeType === 'loose' ? (
               <>
                 {/* Loose flange: Closure piece attached to tee, then 100mm gap, then flange floating */}
-                {/* Hollow closure pipe piece attached to tee end using CSG */}
+                {/* Hollow closure pipe piece - simple geometry approach */}
                 <group position={[-halfRunLength - (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                  <Geometry>
-                    <Base>
-                      <mesh>
-                        <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32]} />
-                        <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
-                      </mesh>
-                    </Base>
-                    <Subtraction>
-                      <mesh>
-                        <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
-                      </mesh>
-                    </Subtraction>
-                  </Geometry>
+                  <mesh>
+                    <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32, 1, true]} />
+                    <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} side={THREE.DoubleSide} />
+                  </mesh>
+                  <mesh>
+                    <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32, 1, true]} />
+                    <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                  </mesh>
                 </group>
                 {/* Loose flange floating 100mm (1.0 scene units) away from closure piece */}
                 <FlangeComponent
@@ -656,21 +665,16 @@ function TeeScene(props: Tee3DPreviewProps) {
             ) : outletFlangeType === 'loose' ? (
               <>
                 {/* Loose flange: Closure piece attached to tee, then 100mm gap, then flange floating */}
-                {/* Hollow closure pipe piece attached to tee end using CSG */}
+                {/* Hollow closure pipe piece - simple geometry approach */}
                 <group position={[halfRunLength + (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                  <Geometry>
-                    <Base>
-                      <mesh>
-                        <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32]} />
-                        <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
-                      </mesh>
-                    </Base>
-                    <Subtraction>
-                      <mesh>
-                        <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
-                      </mesh>
-                    </Subtraction>
-                  </Geometry>
+                  <mesh>
+                    <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32, 1, true]} />
+                    <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} side={THREE.DoubleSide} />
+                  </mesh>
+                  <mesh>
+                    <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32, 1, true]} />
+                    <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                  </mesh>
                 </group>
                 {/* Loose flange floating 100mm (1.0 scene units) away from closure piece */}
                 <FlangeComponent
@@ -784,21 +788,16 @@ function TeeScene(props: Tee3DPreviewProps) {
             ) : branchFlangeType === 'loose' ? (
               <>
                 {/* Loose flange: Closure piece attached to branch, then 100mm gap, then flange floating */}
-                {/* Hollow closure pipe piece attached to branch top using CSG */}
+                {/* Hollow closure pipe piece - simple geometry approach */}
                 <group position={[branchOffsetX, height + (closureLengthMm / scaleFactor / 2), 0]}>
-                  <Geometry>
-                    <Base>
-                      <mesh>
-                        <cylinderGeometry args={[branchOuterRadius, branchOuterRadius, closureLengthMm / scaleFactor, 32]} />
-                        <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />
-                      </mesh>
-                    </Base>
-                    <Subtraction>
-                      <mesh>
-                        <cylinderGeometry args={[branchInnerRadius, branchInnerRadius, closureLengthMm / scaleFactor + 0.01, 32]} />
-                      </mesh>
-                    </Subtraction>
-                  </Geometry>
+                  <mesh>
+                    <cylinderGeometry args={[branchOuterRadius, branchOuterRadius, closureLengthMm / scaleFactor, 32, 1, true]} />
+                    <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} side={THREE.DoubleSide} />
+                  </mesh>
+                  <mesh>
+                    <cylinderGeometry args={[branchInnerRadius, branchInnerRadius, closureLengthMm / scaleFactor + 0.01, 32, 1, true]} />
+                    <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                  </mesh>
                 </group>
                 {/* Loose flange floating 100mm (1.0 scene units) above closure piece */}
                 <FlangeComponent
@@ -854,8 +853,8 @@ function TeeScene(props: Tee3DPreviewProps) {
               </>
             ) : (
               <FlangeComponent
-                position={[branchOffsetX, height, 0]}
-                rotation={[-Math.PI / 2, 0, 0]}
+                position={[branchOffsetX, height + branchFlangeSpecs.thickness / scaleFactor, 0]}
+                rotation={[Math.PI / 2, 0, 0]}
                 outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
                 innerDiameter={branchID / scaleFactor}
                 thickness={branchFlangeSpecs.thickness / scaleFactor}
@@ -1040,6 +1039,8 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   const [isHidden, setIsHidden] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const debouncedProps = useDebouncedProps(props, 100);
+
   // Handle escape key to close expanded modal
   useEffect(() => {
     if (!isExpanded) return;
@@ -1055,27 +1056,27 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   }, [isExpanded]);
 
   // Get dimensions using proper lookup tables
-  const dims = getSabs719TeeDimensions(props.nominalBore);
-  const branchDims = props.branchNominalBore ? getSabs719TeeDimensions(props.branchNominalBore) : null;
-  const od = getOuterDiameter(props.nominalBore, props.outerDiameter || dims?.outsideDiameterMm || 0);
-  const wt = getWallThickness(props.nominalBore, props.wallThickness || 0);
+  const dims = getSabs719TeeDimensions(debouncedProps.nominalBore);
+  const branchDims = debouncedProps.branchNominalBore ? getSabs719TeeDimensions(debouncedProps.branchNominalBore) : null;
+  const od = getOuterDiameter(debouncedProps.nominalBore, debouncedProps.outerDiameter || dims?.outsideDiameterMm || 0);
+  const wt = getWallThickness(debouncedProps.nominalBore, debouncedProps.wallThickness || 0);
   const id = od - (2 * wt);
   // Branch dimensions for reducing tees
-  const branchOD = props.branchNominalBore
-    ? getOuterDiameter(props.branchNominalBore, props.branchOuterDiameter || branchDims?.outsideDiameterMm || 0)
+  const branchOD = debouncedProps.branchNominalBore
+    ? getOuterDiameter(debouncedProps.branchNominalBore, debouncedProps.branchOuterDiameter || branchDims?.outsideDiameterMm || 0)
     : od;
-  const branchWT = props.branchNominalBore ? getWallThickness(props.branchNominalBore) : wt;
+  const branchWT = debouncedProps.branchNominalBore ? getWallThickness(debouncedProps.branchNominalBore) : wt;
   const branchID = branchOD - (2 * branchWT);
-  const teeHeight = getTeeHeight(props.nominalBore, props.teeType);
-  const gussetSection = props.teeType === 'gusset' ? getGussetSection(props.nominalBore) : 0;
+  const teeHeight = getTeeHeight(debouncedProps.nominalBore, debouncedProps.teeType);
+  const gussetSection = debouncedProps.teeType === 'gusset' ? getGussetSection(debouncedProps.nominalBore) : 0;
   // Get flange specs for display
-  const runFlangeSpecs = getFlangeSpecs(props.nominalBore);
-  const branchFlangeSpecs = getFlangeSpecs(props.branchNominalBore || props.nominalBore);
-  const closureLength = props.closureLengthMm ?? 150;
-  const baseRunLengthMm = props.runLength || od * 3;
-  const runLengthMm = baseRunLengthMm + (props.hasInletFlange ? closureLength : 0) + (props.hasOutletFlange ? closureLength : 0);
-  const branchHeightMm = teeHeight + (props.hasBranchFlange ? closureLength : 0);
-  const depthMm = od + ((props.hasInletFlange || props.hasOutletFlange) ? runFlangeSpecs.thickness : 0);
+  const runFlangeSpecs = getFlangeSpecs(debouncedProps.nominalBore);
+  const branchFlangeSpecs = getFlangeSpecs(debouncedProps.branchNominalBore || debouncedProps.nominalBore);
+  const closureLength = debouncedProps.closureLengthMm ?? 150;
+  const baseRunLengthMm = debouncedProps.runLength || od * 3;
+  const runLengthMm = baseRunLengthMm + (debouncedProps.hasInletFlange ? closureLength : 0) + (debouncedProps.hasOutletFlange ? closureLength : 0);
+  const branchHeightMm = teeHeight + (debouncedProps.hasBranchFlange ? closureLength : 0);
+  const depthMm = od + ((debouncedProps.hasInletFlange || debouncedProps.hasOutletFlange) ? runFlangeSpecs.thickness : 0);
   const runExtent = (runLengthMm / SCALE_FACTOR) * PREVIEW_SCALE;
   const heightExtent = (branchHeightMm / SCALE_FACTOR) * PREVIEW_SCALE;
   const depthExtent = (depthMm / SCALE_FACTOR) * PREVIEW_SCALE;
@@ -1145,7 +1146,7 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
         <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
         <Environment preset="city" />
         <group scale={PREVIEW_SCALE}>
-          <TeeScene {...props} />
+          <TeeScene {...debouncedProps} />
         </group>
         <ContactShadows position={[0, -3, 0]} opacity={0.3} scale={20} blur={2} />
         <OrbitControls
@@ -1250,7 +1251,7 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
               <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
               <Environment preset="city" />
               <group scale={PREVIEW_SCALE}>
-                <TeeScene {...props} />
+                <TeeScene {...debouncedProps} />
               </group>
               <ContactShadows position={[0, -3, 0]} opacity={0.3} scale={20} blur={2} />
               <OrbitControls

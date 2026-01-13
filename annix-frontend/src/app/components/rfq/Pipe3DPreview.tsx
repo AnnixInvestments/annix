@@ -1,10 +1,31 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Center, Environment, Text, Line, ContactShadows } from '@react-three/drei';
-import { Geometry, Base, Subtraction } from '@react-three/csg';
 import * as THREE from 'three';
+
+const useDebouncedProps = <T extends Record<string, any>>(props: T, delay: number = 150): T => {
+  const [debouncedProps, setDebouncedProps] = useState(props);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      setDebouncedProps(props);
+    }, delay);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [props, delay]);
+
+  return debouncedProps;
+};
 
 interface Pipe3DPreviewProps {
   length: number;
@@ -67,7 +88,7 @@ const getMaterialProps = (name: string = '') => {
 
 const WeldBead = ({ position, diameter }: { position: [number, number, number], diameter: number }) => {
   return (
-    <mesh position={position} rotation={[0, Math.PI / 2, 0]}>
+    <mesh position={position} rotation={[0, 0, Math.PI / 2]}>
       <torusGeometry args={[diameter / 2, diameter * 0.02, 8, 32]} />
       <meshStandardMaterial color="#333" roughness={0.9} metalness={0.4} />
     </mesh>
@@ -76,102 +97,74 @@ const WeldBead = ({ position, diameter }: { position: [number, number, number], 
 
 const SimpleFlange = ({ position, outerDiameter, holeDiameter, thickness }: { position: [number, number, number], outerDiameter: number, holeDiameter: number, thickness: number }) => {
   const flangeOD = outerDiameter * 1.6;
-
-  //Calculate simulated bolt holes
-  //Heuristic: 4 holes for small pipes, 8 for medium, 12 for large
-  const numHoles = outerDiameter < 0.1 ? 4 : outerDiameter < 0.25 ? 8 : 12;
-  const boltCircleRadius = (flangeOD + outerDiameter) / 4; //Midpoint between OD and Pipe OD
-  const boltHoleSize = thickness * 0.4;
-
-  // Generate Hole Positions
-  const holes = useMemo(() => {
-    const holeMeshes = [];
-    for (let i = 0; i < numHoles; i++) {
-      const angle = (i / numHoles) * Math.PI * 2;
-      const x = Math.cos(angle) * boltCircleRadius;
-      const y = Math.sin(angle) * boltCircleRadius;
-      holeMeshes.push(
-        <mesh key={i} position={[x, y, 0]} rotation={[Math.PI / 2, 0, 0]}>
-           {/* Cylinder representing the hole (colored dark grey to look empty) */}
-           <cylinderGeometry args={[boltHoleSize, boltHoleSize, thickness * 1.05, 8]} />
-           <meshBasicMaterial color="#222" />
-        </mesh>
-      );
-    }
-    return holeMeshes;
-  }, [numHoles, boltCircleRadius, boltHoleSize, thickness]);
-
-  const geometry = useMemo(() => {
-    const shape = new THREE.Shape();
-    shape.absarc(0, 0, flangeOD / 2, 0, Math.PI * 2, false);
-    const hole = new THREE.Path();
-    hole.absarc(0, 0, holeDiameter / 2, 0, Math.PI * 2, true);
-    shape.holes.push(hole);
-    const extrudeSettings = { depth: thickness, bevelEnabled: true, bevelSize: 0.005, bevelThickness: 0.005, curveSegments: 32 };
-    const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    geo.center();
-    return geo;
-  }, [flangeOD, holeDiameter, thickness]);
-
-  // Inner bore outerRadius for visible center hole
+  const flangeRadius = flangeOD / 2;
   const boreRadius = holeDiameter / 2;
 
+  const numHoles = outerDiameter < 0.1 ? 4 : outerDiameter < 0.25 ? 8 : 12;
+  const boltCircleRadius = (flangeOD + outerDiameter) / 4;
+  const boltHoleSize = thickness * 0.4;
+
+  const boltHoles = useMemo(() => {
+    const holes = [];
+    for (let i = 0; i < numHoles; i++) {
+      const angle = (i / numHoles) * Math.PI * 2;
+      holes.push({ x: Math.cos(angle) * boltCircleRadius, z: Math.sin(angle) * boltCircleRadius });
+    }
+    return holes;
+  }, [numHoles, boltCircleRadius]);
+
   return (
-    <group position={position} rotation={[0, Math.PI / 2, 0]}>
-      {/* The Flange Disk */}
-      <mesh geometry={geometry}>
+    <group position={position} rotation={[0, 0, Math.PI / 2]}>
+      <mesh>
+        <cylinderGeometry args={[flangeRadius, flangeRadius, thickness, 32]} />
         <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} />
       </mesh>
-      {/* Center bore - dark cylinder to show the through hole */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
+      <mesh>
         <cylinderGeometry args={[boreRadius, boreRadius, thickness + 0.01, 32]} />
         <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
       </mesh>
-      {/* Top annular face ring */}
-      <mesh position={[0, 0, thickness / 2]} rotation={[0, 0, 0]}>
-        <ringGeometry args={[boreRadius, flangeOD / 2, 32]} />
+      <mesh position={[0, thickness / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[boreRadius, flangeRadius, 32]} />
         <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} />
       </mesh>
-      {/* Bottom annular face ring */}
-      <mesh position={[0, 0, -thickness / 2]} rotation={[Math.PI, 0, 0]}>
-        <ringGeometry args={[boreRadius, flangeOD / 2, 32]} />
+      <mesh position={[0, -thickness / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[boreRadius, flangeRadius, 32]} />
         <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} />
       </mesh>
-      {/* The Simulated Bolt Holes */}
-      {holes}
+      {boltHoles.map((hole, i) => (
+        <mesh key={i} position={[hole.x, 0, hole.z]}>
+          <cylinderGeometry args={[boltHoleSize, boltHoleSize, thickness + 0.02, 16]} />
+          <meshStandardMaterial color="#111" />
+        </mesh>
+      ))}
+      <mesh position={[0, thickness / 2 + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[boreRadius * 1.1, boreRadius * 1.4, 32]} />
+        <meshStandardMaterial color="#888" metalness={0.6} roughness={0.4} />
+      </mesh>
     </group>
   );
 };
 
 // Retaining ring component for rotating flanges
-// This ring is welded to the pipe end to prevent the rotating flange from sliding off
 const RetainingRing = ({ position, pipeOuterRadius, pipeInnerRadius, wallThickness }: {
   position: [number, number, number];
   pipeOuterRadius: number;
   pipeInnerRadius: number;
   wallThickness: number;
 }) => {
-  // Ring OD should be larger than pipe OD but smaller than the flange
-  const ringOuterRadius = pipeOuterRadius * 1.15; // 15% larger than pipe OD
-  const ringInnerRadius = pipeInnerRadius; // Same ID as pipe (same wall thickness)
-  const ringThickness = wallThickness; // Same thickness as pipe wall
-
-  const geometry = useMemo(() => {
-    const shape = new THREE.Shape();
-    shape.absarc(0, 0, ringOuterRadius, 0, Math.PI * 2, false);
-    const hole = new THREE.Path();
-    hole.absarc(0, 0, ringInnerRadius, 0, Math.PI * 2, true);
-    shape.holes.push(hole);
-    const extrudeSettings = { depth: ringThickness, bevelEnabled: false, curveSegments: 32 };
-    const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    geo.center();
-    return geo;
-  }, [ringOuterRadius, ringInnerRadius, ringThickness]);
+  const ringOuterRadius = pipeOuterRadius * 1.15;
+  const ringInnerRadius = pipeInnerRadius;
+  const ringThickness = wallThickness;
 
   return (
-    <group position={position} rotation={[0, Math.PI / 2, 0]}>
-      <mesh geometry={geometry}>
+    <group position={position} rotation={[0, 0, Math.PI / 2]}>
+      <mesh>
+        <cylinderGeometry args={[ringOuterRadius, ringOuterRadius, ringThickness, 32]} />
         <meshStandardMaterial color="#606060" metalness={0.6} roughness={0.4} />
+      </mesh>
+      <mesh>
+        <cylinderGeometry args={[ringInnerRadius, ringInnerRadius, ringThickness + 0.01, 32]} />
+        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
       </mesh>
     </group>
   );
@@ -180,42 +173,32 @@ const RetainingRing = ({ position, pipeOuterRadius, pipeInnerRadius, wallThickne
 // Blank Flange component (solid disc with bolt holes, no center bore)
 const BlankFlange = ({ position, outerDiameter, thickness }: { position: [number, number, number], outerDiameter: number, thickness: number }) => {
   const flangeOD = outerDiameter * 1.6;
+  const flangeRadius = flangeOD / 2;
   const numHoles = outerDiameter < 0.1 ? 4 : outerDiameter < 0.25 ? 8 : 12;
   const boltCircleRadius = (flangeOD + outerDiameter) / 4;
   const boltHoleSize = thickness * 0.4;
 
-  const holes = useMemo(() => {
-    const holeMeshes = [];
+  const boltHoles = useMemo(() => {
+    const holes = [];
     for (let i = 0; i < numHoles; i++) {
       const angle = (i / numHoles) * Math.PI * 2;
-      const x = Math.cos(angle) * boltCircleRadius;
-      const y = Math.sin(angle) * boltCircleRadius;
-      holeMeshes.push(
-        <mesh key={i} position={[x, y, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[boltHoleSize, boltHoleSize, thickness * 1.05, 8]} />
-          <meshBasicMaterial color="#222" />
-        </mesh>
-      );
+      holes.push({ x: Math.cos(angle) * boltCircleRadius, z: Math.sin(angle) * boltCircleRadius });
     }
-    return holeMeshes;
-  }, [numHoles, boltCircleRadius, boltHoleSize, thickness]);
-
-  const geometry = useMemo(() => {
-    const shape = new THREE.Shape();
-    shape.absarc(0, 0, flangeOD / 2, 0, Math.PI * 2, false);
-    // No center hole - it's a blank/blind flange
-    const extrudeSettings = { depth: thickness, bevelEnabled: true, bevelSize: 0.005, bevelThickness: 0.005, curveSegments: 32 };
-    const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    geo.center();
-    return geo;
-  }, [flangeOD, thickness]);
+    return holes;
+  }, [numHoles, boltCircleRadius]);
 
   return (
-    <group position={position} rotation={[0, Math.PI / 2, 0]}>
-      <mesh geometry={geometry}>
+    <group position={position} rotation={[0, 0, Math.PI / 2]}>
+      <mesh>
+        <cylinderGeometry args={[flangeRadius, flangeRadius, thickness, 32]} />
         <meshStandardMaterial color="#cc3300" metalness={0.6} roughness={0.4} />
       </mesh>
-      {holes}
+      {boltHoles.map((hole, i) => (
+        <mesh key={i} position={[hole.x, 0, hole.z]}>
+          <cylinderGeometry args={[boltHoleSize, boltHoleSize, thickness + 0.02, 16]} />
+          <meshStandardMaterial color="#111" />
+        </mesh>
+      ))}
     </group>
   );
 };
@@ -244,14 +227,22 @@ const DimensionLine = ({ start, end, label }: { start: [number, number, number],
   );
 };
 
-const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguration = 'PE', materialName, closureLengthMm = 0, addBlankFlange = false, blankFlangePositions = [] }: Pipe3DPreviewProps) => {
-  const isInputMeters = length < 50;
-  const lengthSceneUnits = isInputMeters ? length : length / 1000;
-  const safeLength = lengthSceneUnits || 1;
-  const odSceneUnits = (outerDiameter || 100) / 1000;
-  const wtSceneUnits = (wallThickness || 5) / 1000;
+const isValidNumber = (value: number): boolean => {
+  return typeof value === 'number' && !Number.isNaN(value) && Number.isFinite(value) && value > 0;
+};
 
-  const idMm = outerDiameter - (2 * wallThickness);
+const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguration = 'PE', materialName, closureLengthMm = 0, addBlankFlange = false, blankFlangePositions = [] }: Pipe3DPreviewProps) => {
+  const safeOD = isValidNumber(outerDiameter) ? outerDiameter : 100;
+  const safeWT = isValidNumber(wallThickness) ? wallThickness : 5;
+  const safeLen = isValidNumber(length) ? length : 1;
+
+  const isInputMeters = safeLen < 50;
+  const lengthSceneUnits = isInputMeters ? safeLen : safeLen / 1000;
+  const safeLength = lengthSceneUnits || 1;
+  const odSceneUnits = safeOD / 1000;
+  const wtSceneUnits = safeWT / 1000;
+
+  const idMm = safeOD - (2 * safeWT);
   const matProps = getMaterialProps(materialName);
   const configUpper = (endConfiguration || 'PE').toUpperCase();
 
@@ -279,29 +270,40 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
   const closureLength = (closureLengthMm || 150) / 1000; // Convert mm to scene units
   const gapLength = 0.1; // 100mm in scene units (meters)
 
-  // Use CSG for proper hollow pipe geometry
-  const outerRadius = odSceneUnits / 2;
-  const innerRadius = Math.max(0.001, (odSceneUnits - (2 * wtSceneUnits)) / 2);
+  const outerRadius = Math.max(0.01, odSceneUnits / 2);
+  const rawInnerRadius = (odSceneUnits - (2 * wtSceneUnits)) / 2;
+  const innerRadius = Math.max(0.001, Math.min(rawInnerRadius, outerRadius - 0.001));
   const halfLen = safeLength / 2;
   const offsetDist = outerRadius + 0.3;
 
   return (
     <group>
-      {/* Hollow pipe using CSG - shows wall thickness */}
-      <group rotation={[0, Math.PI / 2, 0]} position={[-halfLen, 0, 0]}>
-        <Geometry>
-          <Base>
-            <mesh>
-              <cylinderGeometry args={[outerRadius, outerRadius, safeLength, 32]} />
-              <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
-            </mesh>
-          </Base>
-          <Subtraction>
-            <mesh>
-              <cylinderGeometry args={[innerRadius, innerRadius, safeLength + 0.01, 32]} />
-            </mesh>
-          </Subtraction>
-        </Geometry>
+      {/* Hollow pipe - outer cylinder + inner bore + end caps */}
+      <group rotation={[0, 0, Math.PI / 2]} position={[0, 0, 0]}>
+        {/* Outer pipe surface */}
+        <mesh>
+          <cylinderGeometry args={[outerRadius, outerRadius, safeLength, 32, 1, true]} />
+          <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} side={THREE.DoubleSide} />
+        </mesh>
+        {/* Inner bore - BackSide material to show dark interior */}
+        <mesh>
+          <cylinderGeometry args={[innerRadius, innerRadius, safeLength + 0.01, 32, 1, true]} />
+          <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+        </mesh>
+        {/* Left end cap ring - only if no left flange */}
+        {!hasLeftFlange && (
+          <mesh position={[0, -safeLength / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[innerRadius, outerRadius, 32]} />
+            <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
+          </mesh>
+        )}
+        {/* Right end cap ring - only if no right flange */}
+        {!hasRightFlange && (
+          <mesh position={[0, safeLength / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[innerRadius, outerRadius, 32]} />
+            <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
+          </mesh>
+        )}
       </group>
 
       {/* Left flange */}
@@ -309,21 +311,16 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
         <>
           {hasLooseLeftFlange ? (
             <>
-              {/* Hollow closure piece (attached to pipe end) */}
+              {/* Hollow closure piece - simple geometry approach */}
               <group rotation={[0, 0, Math.PI / 2]} position={[-halfLen - closureLength / 2, 0, 0]}>
-                <Geometry>
-                  <Base>
-                    <mesh>
-                      <cylinderGeometry args={[outerRadius, outerRadius, closureLength, 32]} />
-                      <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
-                    </mesh>
-                  </Base>
-                  <Subtraction>
-                    <mesh>
-                      <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32]} />
-                    </mesh>
-                  </Subtraction>
-                </Geometry>
+                <mesh>
+                  <cylinderGeometry args={[outerRadius, outerRadius, closureLength, 32, 1, true]} />
+                  <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} side={THREE.DoubleSide} />
+                </mesh>
+                <mesh>
+                  <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32, 1, true]} />
+                  <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                </mesh>
               </group>
               {/* Loose flange positioned 100mm after closure piece */}
               <SimpleFlange position={[-halfLen - closureLength - gapLength, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
@@ -370,21 +367,16 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
         <>
           {hasLooseRightFlange ? (
             <>
-              {/* Hollow closure piece (attached to pipe end) */}
+              {/* Hollow closure piece - simple geometry approach */}
               <group rotation={[0, 0, Math.PI / 2]} position={[halfLen + closureLength / 2, 0, 0]}>
-                <Geometry>
-                  <Base>
-                    <mesh>
-                      <cylinderGeometry args={[outerRadius, outerRadius, closureLength, 32]} />
-                      <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} />
-                    </mesh>
-                  </Base>
-                  <Subtraction>
-                    <mesh>
-                      <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32]} />
-                    </mesh>
-                  </Subtraction>
-                </Geometry>
+                <mesh>
+                  <cylinderGeometry args={[outerRadius, outerRadius, closureLength, 32, 1, true]} />
+                  <meshStandardMaterial color={matProps.color} metalness={matProps.metalness} roughness={matProps.roughness} side={THREE.DoubleSide} />
+                </mesh>
+                <mesh>
+                  <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32, 1, true]} />
+                  <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                </mesh>
               </group>
               {/* Loose flange positioned 100mm after closure piece */}
               <SimpleFlange position={[halfLen + closureLength + gapLength, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
@@ -491,8 +483,10 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
 
-  const isInputMeters = props.length < 50;
-  const lengthSceneUnits = isInputMeters ? props.length : props.length / 1000;
+  const debouncedProps = useDebouncedProps(props, 100);
+
+  const isInputMeters = debouncedProps.length < 50;
+  const lengthSceneUnits = isInputMeters ? debouncedProps.length : debouncedProps.length / 1000;
   const safeLen = lengthSceneUnits || 1;
   const halfLen = safeLen / 2;
 
@@ -575,7 +569,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
 
           <Environment preset="city" />
 
-          <HollowPipeScene {...props} />
+          <HollowPipeScene {...debouncedProps} />
 
           <ContactShadows position={[0, -0.6, 0]} opacity={0.4} scale={10} blur={2} far={4} color="#000000" />
 
@@ -715,7 +709,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
               <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />
               <pointLight position={[halfLen + 5, 0, 0]} intensity={0.5} />
               <Environment preset="city" />
-              <HollowPipeScene {...props} />
+              <HollowPipeScene {...debouncedProps} />
               <ContactShadows position={[0, -0.6, 0]} opacity={0.4} scale={10} blur={2} far={4} color="#000000" />
               <OrbitControls makeDefault enablePan={true} minDistance={0.3} maxDistance={30} />
             </Canvas>

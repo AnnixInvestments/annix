@@ -24,9 +24,27 @@ const Bend3DPreview = dynamic(() => import('@/app/components/rfq/Bend3DPreview')
 const Tee3DPreview = dynamic(() => import('@/app/components/rfq/Tee3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 import { BendForm, FittingForm, StraightPipeForm } from '@/app/components/rfq/forms';
 
-export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses }: any) {
+export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses }: any) {
   const autoFocusedEntriesRef = useRef<Set<string>>(new Set());
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
+  const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
+
+  const copyItemToClipboard = useCallback(async (entry: any) => {
+    const itemData = JSON.stringify(entry, null, 2);
+    try {
+      await navigator.clipboard.writeText(itemData);
+      setCopiedItemId(entry.id);
+      setTimeout(() => setCopiedItemId(null), 2000);
+    } catch (err) {
+      log.error('Failed to copy item to clipboard:', err);
+    }
+  }, []);
+
+  const duplicateItem = useCallback((entry: any, index: number) => {
+    if (onDuplicateEntry) {
+      onDuplicateEntry(entry, index);
+    }
+  }, [onDuplicateEntry]);
 
   const pendingFocusRef = useRef<Set<string>>(new Set());
   const [openSelects, setOpenSelects] = useState<Record<string, boolean>>({});
@@ -825,6 +843,45 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                     <span>Sequential (e.g., {entry.clientItemNumber || `#${index + 1}`}-01, -02)</span>
                   </label>
                 )}
+              </div>
+              <div className="flex items-center gap-1">
+                {/* Duplicate button */}
+                <button
+                  onClick={() => duplicateItem(entry, index)}
+                  className="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                  title="Duplicate this item"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                  </svg>
+                  Duplicate
+                </button>
+                {/* Copy to clipboard button */}
+                <button
+                  onClick={() => copyItemToClipboard(entry)}
+                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                    copiedItemId === entry.id
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+                  }`}
+                  title="Copy item data to clipboard"
+                >
+                  {copiedItemId === entry.id ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Copy
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 

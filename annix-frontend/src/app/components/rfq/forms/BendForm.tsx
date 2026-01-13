@@ -1525,7 +1525,9 @@ export default function BendForm({
                                 const stub1SteelSpec = masterData.steelSpecs?.find((s: any) => s.id === stub1EffectiveSpecId);
                                 const stub1SteelSpecName = stub1SteelSpec?.steelSpecName || '';
                                 const stub1FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => stub1SteelSpecName.includes(pattern))?.[1];
-                                const stub1Nbs = stub1FallbackNBs || [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300];
+                                const allStub1Nbs = stub1FallbackNBs || [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300];
+                                const mainBendNB = entry.specs?.nominalBoreMm || 0;
+                                const stub1Nbs = allStub1Nbs.filter((nb: number) => nb <= mainBendNB);
                                 const options = stub1Nbs.map((nb: number) => ({
                                   value: String(nb),
                                   label: `${nb} NB`
@@ -1697,7 +1699,9 @@ export default function BendForm({
                                 const stub2SteelSpec = masterData.steelSpecs?.find((s: any) => s.id === stub2EffectiveSpecId);
                                 const stub2SteelSpecName = stub2SteelSpec?.steelSpecName || '';
                                 const stub2FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => stub2SteelSpecName.includes(pattern))?.[1];
-                                const stub2Nbs = stub2FallbackNBs || [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300];
+                                const allStub2Nbs = stub2FallbackNBs || [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300];
+                                const mainBendNB = entry.specs?.nominalBoreMm || 0;
+                                const stub2Nbs = allStub2Nbs.filter((nb: number) => nb <= mainBendNB);
                                 const options = stub2Nbs.map((nb: number) => ({
                                   value: String(nb),
                                   label: `${nb} NB`

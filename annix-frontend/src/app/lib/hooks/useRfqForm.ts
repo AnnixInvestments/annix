@@ -550,6 +550,60 @@ export const useRfqForm = () => {
     log.debug('✅ restoreFromDraft complete');
   }, []);
 
+  const duplicateItem = useCallback((entryToDuplicate: PipeItem, insertAfterIndex?: number) => {
+    const newId = generateUniqueId();
+    const baseItemNumber = entryToDuplicate.clientItemNumber || '';
+    const existingNumbers = rfqData.items.map(e => e.clientItemNumber || '');
+
+    let newItemNumber = '';
+    if (baseItemNumber) {
+      const numericMatch = baseItemNumber.match(/^(.+?)(\d+)$/);
+      if (numericMatch) {
+        const prefix = numericMatch[1];
+        const currentNum = parseInt(numericMatch[2], 10);
+        const numLength = numericMatch[2].length;
+        let nextNum = currentNum + 1;
+        newItemNumber = `${prefix}${String(nextNum).padStart(numLength, '0')}`;
+        while (existingNumbers.includes(newItemNumber)) {
+          nextNum++;
+          newItemNumber = `${prefix}${String(nextNum).padStart(numLength, '0')}`;
+        }
+      } else {
+        newItemNumber = `${baseItemNumber}-copy`;
+        let copyIndex = 1;
+        while (existingNumbers.includes(newItemNumber)) {
+          copyIndex++;
+          newItemNumber = `${baseItemNumber}-copy${copyIndex}`;
+        }
+      }
+    }
+
+    const duplicatedEntry = {
+      ...entryToDuplicate,
+      id: newId,
+      clientItemNumber: newItemNumber || undefined,
+      useSequentialNumbering: false,
+    };
+
+    setRfqData(prev => {
+      const newItems = [...prev.items];
+      const insertIndex = insertAfterIndex !== undefined ? insertAfterIndex + 1 : newItems.length;
+      newItems.splice(insertIndex, 0, duplicatedEntry);
+
+      if (entryToDuplicate.itemType === 'straight_pipe') {
+        const newStraightPipeEntries = [...prev.straightPipeEntries];
+        const straightPipeIndex = prev.straightPipeEntries.findIndex(e => e.id === entryToDuplicate.id);
+        const insertStraightPipeIndex = straightPipeIndex !== -1 ? straightPipeIndex + 1 : newStraightPipeEntries.length;
+        newStraightPipeEntries.splice(insertStraightPipeIndex, 0, duplicatedEntry as StraightPipeEntry);
+        return { ...prev, items: newItems, straightPipeEntries: newStraightPipeEntries };
+      }
+
+      return { ...prev, items: newItems };
+    });
+
+    return newId;
+  }, [rfqData.items]);
+
   return {
     currentStep,
     setCurrentStep,
@@ -567,6 +621,7 @@ export const useRfqForm = () => {
     addFittingEntry,
     updateItem,
     removeItem,
+    duplicateItem,
     getTotalWeight,
     getTotalValue,
     nextStep,

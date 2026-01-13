@@ -209,6 +209,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     updateStraightPipeEntry,
     updateItem,
     removeStraightPipeEntry,
+    duplicateItem,
     updateEntryCalculation,
     getTotalWeight,
     getTotalValue,
@@ -2326,6 +2327,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             onAddFittingEntry={addFittingEntry}
             onUpdateEntry={handleUpdateEntry}
             onRemoveEntry={removeStraightPipeEntry}
+            onDuplicateEntry={duplicateItem}
             onCalculate={handleCalculateAll}
             onCalculateBend={handleCalculateBend}
             onCalculateFitting={handleCalculateFitting}
