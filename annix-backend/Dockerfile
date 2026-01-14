@@ -20,7 +20,7 @@ FROM node:24-slim AS runner
 WORKDIR /usr/src/app
 
 # Copy package files and install production deps + ts-node for migrations
-COPY package.json ./
+COPY package.json pnpm-lock.yaml* ./
 RUN corepack enable pnpm && pnpm install --prod && pnpm add -D ts-node typescript
 
 # Copy built app from builder
