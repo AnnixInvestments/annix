@@ -2,6 +2,8 @@
 FROM node:24-alpine AS base
 WORKDIR /app
 ENV NEXT_PUBLIC_API_URL=https://annix-backend.fly.dev
+ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
 
 # ---------- deps ----------
 FROM base AS deps

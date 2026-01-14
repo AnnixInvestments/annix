@@ -4,6 +4,7 @@ primary_region = 'jnb'
 [build]
   [build.args]
     NEXT_PUBLIC_API_URL = 'https://annix-backend.fly.dev'
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = 'AIzaSyB2DjAWNJBQkFg9zTyRZL3dGRlV75fh22w'
 
 [env]
   NODE_ENV = 'production'
