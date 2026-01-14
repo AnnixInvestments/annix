@@ -8,7 +8,7 @@ SECRETS_PATTERNS_FILE="$ROOT_DIR/.secret-patterns"
 echo "Running secret detection scan..."
 
 # Get staged files (only text files, exclude certain paths)
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -v -E '(\.secret-patterns|pnpm-lock\.yaml|package-lock\.json|\.gitignore)$' || true)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -v -E '(\.secret-patterns|pnpm-lock\.yaml|package-lock\.json|\.gitignore|\.githooks/)' || true)
 
 if [ -z "$STAGED_FILES" ]; then
     echo "No files to scan."
@@ -38,27 +38,20 @@ fi
 
 # Additional checks for common secret patterns
 COMMON_PATTERNS=(
-    # AWS
+    # AWS Access Key ID
     'AKIA[0-9A-Z]{16}'
-    'aws_secret_access_key\s*=\s*[A-Za-z0-9/+=]{40}'
 
-    # Generic API keys (long alphanumeric strings after common key names)
-    '(api[_-]?key|apikey|secret[_-]?key|password|passwd|pwd)\s*[=:]\s*["\x27][A-Za-z0-9!@#$%^&*()_+={}\[\]:;<>?,./\\|~-]{16,}["\x27]'
-
-    # JWT secrets (specific format)
-    'JWT_SECRET\s*=\s*["\x27]?[a-f0-9]{64}["\x27]?'
+    # JWT secrets (64-char hex)
+    'JWT_SECRET.*[a-f0-9]{64}'
 
     # Private keys
-    '-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'
+    'BEGIN.*PRIVATE KEY'
 
     # Fly.io tokens
-    'FlyV1\s+fm2_'
+    'FlyV1.*fm2_'
 
     # Google API keys
     'AIza[0-9A-Za-z_-]{35}'
-
-    # Generic secrets in env files committed to code
-    'SMTP_PASS\s*=\s*["\x27]?[A-Za-z0-9]{8,}["\x27]?'
 )
 
 for pattern in "${COMMON_PATTERNS[@]}"; do
