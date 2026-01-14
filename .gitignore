@@ -48,3 +48,6 @@ annix-backend/uploads/
 *.js
 !*.config.js
 !*.config.mjs
+
+# Deployment docs with secrets - DO NOT COMMIT
+FLY_DEPLOYMENT_TECHNICAL_DOCS.md
