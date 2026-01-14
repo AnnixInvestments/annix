@@ -51,3 +51,6 @@ annix-backend/uploads/
 
 # Deployment docs with secrets - DO NOT COMMIT
 FLY_DEPLOYMENT_TECHNICAL_DOCS.md
+
+# Secret patterns file - contains actual secrets for detection
+.secret-patterns
