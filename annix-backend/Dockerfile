@@ -11,9 +11,6 @@ RUN corepack enable pnpm && pnpm install
 COPY . .
 RUN corepack enable pnpm && pnpm run build
 
-# Debug: verify build output
-RUN echo "=== Builder: Contents of dist ===" && ls -la dist/ && echo "=== Contents of dist/src ===" && ls -la dist/src/ | head -20
-
 # ---- Runtime stage ----
 FROM node:24-slim AS runner
 
@@ -28,9 +25,6 @@ COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/src/config/data-source.ts ./src/config/data-source.ts
 COPY --from=builder /usr/src/app/src/migrations ./src/migrations
 COPY --from=builder /usr/src/app/tsconfig.json ./tsconfig.json
-
-# Debug: verify dist contents
-RUN echo "=== Contents of dist/src ===" && ls -la dist/src/ | head -20
 
 EXPOSE 4000
 
