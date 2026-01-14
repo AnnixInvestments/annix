@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# Pre-commit hook for secret detection
+# Requirements: bash, grep (works with Git Bash on Windows, native on macOS/Linux)
+#
 
 set -e
 
@@ -17,16 +21,18 @@ fi
 
 FOUND_SECRETS=0
 
-# Check for patterns from the secrets pattern file
+# Check for literal patterns from the secrets pattern file (fixed-string matching)
 if [ -f "$SECRETS_PATTERNS_FILE" ]; then
     while IFS= read -r pattern || [ -n "$pattern" ]; do
         # Skip empty lines and comments
-        [[ -z "$pattern" || "$pattern" =~ ^# ]] && continue
+        case "$pattern" in
+            ''|\#*) continue ;;
+        esac
 
         for file in $STAGED_FILES; do
             if [ -f "$file" ]; then
-                # Search for the pattern in the staged version of the file
-                if git show ":$file" 2>/dev/null | grep -qE "$pattern"; then
+                # Search for literal string in the staged version of the file (-F = fixed strings)
+                if git show ":$file" 2>/dev/null | grep -qF "$pattern"; then
                     echo "ERROR: Potential secret found in $file"
                     echo "  Pattern: $pattern"
                     FOUND_SECRETS=1
@@ -59,7 +65,7 @@ for pattern in "${COMMON_PATTERNS[@]}"; do
         if [ -f "$file" ]; then
             if git show ":$file" 2>/dev/null | grep -qE "$pattern"; then
                 echo "ERROR: Potential secret pattern found in $file"
-                echo "  Pattern type: ${pattern:0:50}..."
+                echo "  Pattern type: $(printf '%.50s' "$pattern")..."
                 FOUND_SECRETS=1
             fi
         fi
