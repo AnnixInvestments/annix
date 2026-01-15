@@ -101,6 +101,7 @@ export class ExcelExtractorService {
     let projectReference: string | null = null;
     let currentDescription: string | null = null;
     let currentDescriptionRow: number | null = null;
+    let currentSpecHeader: string | null = null;
 
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber <= 4) return;
@@ -110,9 +111,21 @@ export class ExcelExtractorService {
 
       if (!description || description.trim().length < 3) return;
 
+      const isSpecificationHeader = /^SP\d+\s+Specification\s*[-–]\s*/i.test(description.trim()) ||
+        /^(Bill|Section)\s+\d+.*Specification/i.test(description.trim()) ||
+        /Specification\s*[-–]\s*(CARBON|STAINLESS|MILD)\s*STEEL/i.test(description);
+
+      if (isSpecificationHeader) {
+        currentSpecHeader = description.trim();
+        this.logger.log(`📋 Found specification header at row ${rowNumber}: ${description.substring(0, 80)}`);
+      }
+
       const contextUpdate = this.extractContextFromDescription(description);
-      if (contextUpdate.material) currentContext.material = contextUpdate.material;
-      if (contextUpdate.materialGrade) currentContext.materialGrade = contextUpdate.materialGrade;
+      if (contextUpdate.material) {
+        currentContext.material = contextUpdate.material;
+        currentContext.materialGrade = contextUpdate.materialGrade;
+        this.logger.debug(`📋 Context updated - Material: ${contextUpdate.material}, Grade: ${contextUpdate.materialGrade}`);
+      }
       if (contextUpdate.standard) currentContext.standard = contextUpdate.standard;
       if (contextUpdate.coating) currentContext.coating = contextUpdate.coating;
       if (contextUpdate.wallThickness) currentContext.wallThickness = contextUpdate.wallThickness;
@@ -127,7 +140,7 @@ export class ExcelExtractorService {
         if (hasDiameter && !/^(Carried|Brought)\s+(Forward|Back)/i.test(descText)) {
           currentDescription = descText;
           currentDescriptionRow = rowNumber;
-          this.logger.debug(`Found description row ${rowNumber}: ${descText.substring(0, 60)}...`);
+          this.logger.debug(`Found item description row ${rowNumber}: ${descText.substring(0, 60)}...`);
         }
         return;
       }
@@ -144,10 +157,11 @@ export class ExcelExtractorService {
             itemData,
             currentDescription,
             currentContext,
+            currentSpecHeader,
           );
           if (item) {
             items.push(item);
-            this.logger.debug(`Extracted item from row ${currentDescriptionRow}: ${item.itemType} ${item.diameter}mm`);
+            this.logger.debug(`Extracted item from row ${currentDescriptionRow}: ${item.itemType} ${item.diameter}mm (${item.material || 'no material'})`);
           }
         }
         return;
@@ -156,7 +170,7 @@ export class ExcelExtractorService {
       const isLineItem = this.isLineItem(rowData, description);
       if (!isLineItem) return;
 
-      const item = this.extractItemFromRow(rowNumber, rowData, description, currentContext);
+      const item = this.extractItemFromRow(rowNumber, rowData, description, currentContext, currentSpecHeader);
       if (item) {
         items.push(item);
       }
@@ -303,10 +317,13 @@ export class ExcelExtractorService {
       standard: string | null;
       coating: string | null;
       wallThickness: number | null;
-    }
+    },
+    specHeader: string | null = null,
   ): ExtractedItem | null {
     const itemType = this.detectItemType(description);
-    const material = this.extractMaterial(description) || context.material;
+    const directMaterial = this.extractMaterial(description);
+    const material = directMaterial || context.material;
+    const materialFromContext = !directMaterial && !!context.material;
     const materialGrade = this.extractMaterialGrade(description) || context.materialGrade;
     const diameter = this.extractDiameter(description);
     const secondaryDiameter = this.extractSecondaryDiameter(description);
@@ -323,10 +340,11 @@ export class ExcelExtractorService {
     if (diameter) confidence += 0.15;
     if (itemType !== 'unknown') confidence += 0.1;
     if (quantity > 0) confidence += 0.1;
+    if (materialFromContext) confidence += 0.05;
 
     if (!material) {
       needsClarification = true;
-      clarificationReason = 'Could not determine material type (Stainless Steel or Mild Steel)';
+      clarificationReason = 'Could not determine material type from item or specification header';
       confidence -= 0.2;
     }
 
@@ -353,6 +371,10 @@ export class ExcelExtractorService {
     }
 
     confidence = Math.max(0.1, Math.min(1.0, confidence));
+
+    if (specHeader && materialFromContext) {
+      this.logger.debug(`Item at row ${rowNumber} using material "${material}" from spec header`);
+    }
 
     return {
       rowNumber,
