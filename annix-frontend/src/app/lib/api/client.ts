@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '@/lib/api-config';
+import { API_BASE_URL, browserBaseUrl } from '@/lib/api-config';
 import { sessionExpiredEvent } from '@/app/components/SessionExpiredModal';
 
 export class SessionExpiredError extends Error {
@@ -1533,13 +1533,14 @@ export interface NixProcessResponse {
 
 export const nixApi = {
   uploadAndProcess: async (file: File, userId?: number, rfqId?: number): Promise<NixProcessResponse> => {
+    const baseUrl = browserBaseUrl();
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const formData = new FormData();
     formData.append('file', file);
     if (userId) formData.append('userId', userId.toString());
     if (rfqId) formData.append('rfqId', rfqId.toString());
 
-    const response = await fetch(`${API_BASE_URL}/nix/upload`, {
+    const response = await fetch(`${baseUrl}/nix/upload`, {
       method: 'POST',
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -1556,8 +1557,9 @@ export const nixApi = {
   },
 
   getExtraction: async (extractionId: number): Promise<NixProcessResponse> => {
+    const baseUrl = browserBaseUrl();
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const response = await fetch(`${API_BASE_URL}/nix/extraction/${extractionId}`, {
+    const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -1574,8 +1576,9 @@ export const nixApi = {
   },
 
   getPendingClarifications: async (extractionId: number): Promise<NixClarificationDto[]> => {
+    const baseUrl = browserBaseUrl();
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const response = await fetch(`${API_BASE_URL}/nix/extraction/${extractionId}/clarifications`, {
+    const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}/clarifications`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -1596,8 +1599,9 @@ export const nixApi = {
     responseText: string,
     allowLearning: boolean = true
   ): Promise<{ success: boolean; remainingClarifications: number }> => {
+    const baseUrl = browserBaseUrl();
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const response = await fetch(`${API_BASE_URL}/nix/clarification`, {
+    const response = await fetch(`${baseUrl}/nix/clarification`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1620,8 +1624,9 @@ export const nixApi = {
   },
 
   skipClarification: async (clarificationId: number): Promise<{ success: boolean }> => {
+    const baseUrl = browserBaseUrl();
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const response = await fetch(`${API_BASE_URL}/nix/clarification`, {
+    const response = await fetch(`${baseUrl}/nix/clarification`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
