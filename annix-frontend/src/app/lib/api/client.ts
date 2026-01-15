@@ -1523,11 +1523,20 @@ export interface NixClarificationDto {
   };
 }
 
+export interface NixExtractionMetadata {
+  projectReference?: string | null;
+  projectLocation?: string | null;
+  projectName?: string | null;
+  standard?: string | null;
+  coating?: string | null;
+}
+
 export interface NixProcessResponse {
   extractionId: number;
   status: string;
   items?: NixExtractedItem[];
   pendingClarifications?: NixClarificationDto[];
+  metadata?: NixExtractionMetadata;
   error?: string;
 }
 
@@ -1659,6 +1668,33 @@ export const nixApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to skip clarification: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  submitCorrection: async (correction: {
+    extractionId?: number;
+    itemDescription: string;
+    fieldName: string;
+    originalValue: string | number | null;
+    correctedValue: string | number;
+    userId?: number;
+  }): Promise<{ success: boolean }> => {
+    const baseUrl = browserBaseUrl();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${baseUrl}/nix/learning/correction`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(correction),
+    });
+
+    if (!response.ok) {
+      console.warn('[Nix] Failed to submit correction:', await response.text());
+      return { success: false };
     }
 
     return response.json();

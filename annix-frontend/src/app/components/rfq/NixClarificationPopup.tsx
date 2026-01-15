@@ -59,6 +59,13 @@ export default function NixClarificationPopup({
     setIsSubmitting(false);
   };
 
+  const handleConfirm = async () => {
+    setIsSubmitting(true);
+    await onSubmit(clarification.id, 'Confirmed - correct as extracted');
+    setResponse('');
+    setIsSubmitting(false);
+  };
+
   const ctx = clarification.context;
 
   return (
@@ -100,7 +107,7 @@ export default function NixClarificationPopup({
           </button>
         </div>
 
-        <div className="px-4 py-3 overflow-y-auto flex-1">
+        <div className="px-4 py-3 overflow-y-auto flex-1 min-h-0">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             {ctx.rowNumber && (
               <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
@@ -161,14 +168,23 @@ export default function NixClarificationPopup({
             rows={2}
             disabled={isSubmitting}
           />
+        </div>
 
-          <div className="flex gap-2 mt-3">
+        <div className="px-4 py-3 border-t border-gray-200 flex-shrink-0 bg-white">
+          <div className="flex gap-2">
             <button
               onClick={handleSkip}
               disabled={isSubmitting}
               className="flex-1 py-2 px-3 rounded-lg font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 text-sm"
             >
               Skip
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={isSubmitting}
+              className="flex-1 py-2 px-3 rounded-lg font-medium text-white transition-colors disabled:opacity-50 hover:opacity-90 text-sm bg-green-600 hover:bg-green-700"
+            >
+              {isSubmitting ? 'Confirming...' : 'Yes, Correct'}
             </button>
             <button
               onClick={handleSubmit}

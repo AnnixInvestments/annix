@@ -977,96 +977,100 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
           {errors.projectType && <p className="mt-1 text-xs text-red-600">{errors.projectType}</p>}
         </div>
 
-        {/* Required Products/Services Selection - Compact */}
-        <div data-field="requiredProducts" className={projectTypeConfirmed ? 'opacity-75' : ''}>
-          <label className="block text-xs font-semibold text-gray-900 mb-1">
-            Required Products & Services <span className="text-red-600">*</span>
-            {projectTypeConfirmed && <span className="ml-2 text-green-600 text-xs font-normal">(Locked)</span>}
-          </label>
-          <div className={`grid grid-cols-4 gap-2 ${projectTypeConfirmed ? 'pointer-events-none' : ''}`}>
-            {PRODUCTS_AND_SERVICES.map((product) => {
-              const isSelected = rfqData.requiredProducts?.includes(product.value);
-              return (
-                <label
-                  key={product.value}
-                  className={`flex items-center gap-2 px-2 py-2 border-2 rounded-lg cursor-pointer transition-all text-xs ${
-                    isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={(e) => {
-                      const currentProducts = rfqData.requiredProducts || [];
-                      let newProducts: string[];
-                      if (e.target.checked) {
-                        newProducts = [...currentProducts, product.value];
-                      } else {
-                        newProducts = currentProducts.filter((p: string) => p !== product.value);
-                      }
-                      log.debug('☑️ Required products updated:', newProducts);
-                      onUpdate('requiredProducts', newProducts);
-                    }}
-                    className="sr-only"
-                    disabled={projectTypeConfirmed}
-                  />
-                  <div className={`w-4 h-4 border-2 rounded flex items-center justify-center flex-shrink-0 ${
-                    isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
-                  }`}>
-                    {isSelected && <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
-                  </div>
-                  <span>{product.icon}</span>
-                  <span className="font-medium text-gray-900">{product.label}</span>
-                </label>
-              );
-            })}
+        {/* Required Products/Services Selection - Hidden when using Nix */}
+        {!useNix && (
+          <div data-field="requiredProducts" className={projectTypeConfirmed ? 'opacity-75' : ''}>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              Required Products & Services <span className="text-red-600">*</span>
+              {projectTypeConfirmed && <span className="ml-2 text-green-600 text-xs font-normal">(Locked)</span>}
+            </label>
+            <div className={`grid grid-cols-4 gap-2 ${projectTypeConfirmed ? 'pointer-events-none' : ''}`}>
+              {PRODUCTS_AND_SERVICES.map((product) => {
+                const isSelected = rfqData.requiredProducts?.includes(product.value);
+                return (
+                  <label
+                    key={product.value}
+                    className={`flex items-center gap-2 px-2 py-2 border-2 rounded-lg cursor-pointer transition-all text-xs ${
+                      isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        const currentProducts = rfqData.requiredProducts || [];
+                        let newProducts: string[];
+                        if (e.target.checked) {
+                          newProducts = [...currentProducts, product.value];
+                        } else {
+                          newProducts = currentProducts.filter((p: string) => p !== product.value);
+                        }
+                        log.debug('☑️ Required products updated:', newProducts);
+                        onUpdate('requiredProducts', newProducts);
+                      }}
+                      className="sr-only"
+                      disabled={projectTypeConfirmed}
+                    />
+                    <div className={`w-4 h-4 border-2 rounded flex items-center justify-center flex-shrink-0 ${
+                      isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
+                    }`}>
+                      {isSelected && <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+                    </div>
+                    <span>{product.icon}</span>
+                    <span className="font-medium text-gray-900">{product.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+            {errors.requiredProducts && <p className="mt-1 text-xs text-red-600">{errors.requiredProducts}</p>}
           </div>
-          {errors.requiredProducts && <p className="mt-1 text-xs text-red-600">{errors.requiredProducts}</p>}
-        </div>
+        )}
 
-        {/* Project Type & Products Confirmation Button */}
-        <div className="flex justify-end">
-          {!projectTypeConfirmed ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (!rfqData.projectType) {
-                  showToast('Please select a Project Type before confirming.', 'error');
-                  return;
-                }
-                if (!rfqData.requiredProducts || rfqData.requiredProducts.length === 0) {
-                  showToast('Please select at least one Required Product/Service before confirming.', 'error');
-                  return;
-                }
-                log.debug('✅ Project type & products confirmed:', {
-                  projectType: rfqData.projectType,
-                  requiredProducts: rfqData.requiredProducts
-                });
-                setProjectTypeConfirmed(true);
-              }}
-              disabled={!rfqData.projectType || !rfqData.requiredProducts || rfqData.requiredProducts.length === 0}
-              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 text-white hover:bg-green-700"
-            >
-              ✓ Confirm Project Type & Products
-            </button>
-          ) : (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-green-600 font-medium flex items-center gap-1">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                Project Type & Products Confirmed
-              </span>
+        {/* Project Type & Products Confirmation Button - Hidden when using Nix */}
+        {!useNix && (
+          <div className="flex justify-end">
+            {!projectTypeConfirmed ? (
               <button
                 type="button"
-                onClick={() => setProjectTypeConfirmed(false)}
-                className="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                onClick={() => {
+                  if (!rfqData.projectType) {
+                    showToast('Please select a Project Type before confirming.', 'error');
+                    return;
+                  }
+                  if (!rfqData.requiredProducts || rfqData.requiredProducts.length === 0) {
+                    showToast('Please select at least one Required Product/Service before confirming.', 'error');
+                    return;
+                  }
+                  log.debug('✅ Project type & products confirmed:', {
+                    projectType: rfqData.projectType,
+                    requiredProducts: rfqData.requiredProducts
+                  });
+                  setProjectTypeConfirmed(true);
+                }}
+                disabled={!rfqData.projectType || !rfqData.requiredProducts || rfqData.requiredProducts.length === 0}
+                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 text-white hover:bg-green-700"
               >
-                Edit
+                ✓ Confirm Project Type & Products
               </button>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Project Type & Products Confirmed
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setProjectTypeConfirmed(false)}
+                  className="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Edit
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Additional Notes - Compact */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

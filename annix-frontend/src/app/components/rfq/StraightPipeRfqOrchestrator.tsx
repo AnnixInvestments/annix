@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { StraightPipeEntry, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
+import { StraightPipeEntry, BendEntry, FittingEntry, PipeItem, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
 import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, boqApi, nixApi, RfqDraftResponse, SessionExpiredError, NixExtractedItem, NixClarificationDto } from '@/app/lib/api/client';
 import { consolidateBoqData } from '@/app/lib/utils/boqConsolidation';
 import { useToast } from '@/app/components/Toast';
@@ -284,6 +284,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const handleNixYes = () => {
     updateRfqField('useNix', true);
     updateRfqField('nixPopupShown', true);
+    updateRfqField('requiredProducts', ['fabricated_steel']);
     setShowNixPopup(false);
   };
 
@@ -327,6 +328,17 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           setShowNixClarification(true);
           log.debug(`🤖 ${result.pendingClarifications.length} clarification(s) needed`);
         }
+
+        if (result.metadata) {
+          if (result.metadata.projectLocation && !rfqData.siteAddress) {
+            updateRfqField('siteAddress', result.metadata.projectLocation);
+            log.debug(`🤖 Auto-populated location: ${result.metadata.projectLocation}`);
+          }
+          if (result.metadata.projectName && !rfqData.projectName) {
+            updateRfqField('projectName', result.metadata.projectName);
+            log.debug(`🤖 Auto-populated project name: ${result.metadata.projectName}`);
+          }
+        }
       }
 
       showToast(`Nix processed ${pendingDocuments.length} document(s) successfully!`, 'success');
@@ -340,24 +352,31 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
   const convertNixItemsToRfqItems = (nixItems: NixExtractedItem[]) => {
     const customerName = rfqData.customerName || 'NIX';
-    const newItems: StraightPipeEntry[] = nixItems
-      .filter(item => item.itemType === 'pipe' && item.diameter && item.material)
-      .map((item, index) => {
-        const flangeMap: Record<string, 'FBE' | 'FOE' | 'PE'> = {
-          'one_end': 'FOE',
-          'both_ends': 'FBE',
-          'none': 'PE',
-          'puddle': 'FBE',
-          'blind': 'FBE',
-        };
+    const allItems: PipeItem[] = [];
+    let itemIndex = 0;
 
-        return {
+    const flangeMap: Record<string, 'FBE' | 'FOE' | 'PE'> = {
+      'one_end': 'FOE',
+      'both_ends': 'FBE',
+      'none': 'PE',
+      'puddle': 'FBE',
+      'blind': 'FBE',
+    };
+
+    for (const item of nixItems) {
+      if (!item.diameter) continue;
+
+      itemIndex++;
+      const nixNote = `Extracted by Nix from Row ${item.rowNumber} (${Math.round(item.confidence * 100)}% confidence)`;
+
+      if (item.itemType === 'pipe' || item.itemType === 'flange') {
+        const pipeEntry: StraightPipeEntry = {
           id: generateUniqueId(),
           itemType: 'straight_pipe' as const,
-          clientItemNumber: generateClientItemNumber(customerName, index + 1),
+          clientItemNumber: generateClientItemNumber(customerName, itemIndex),
           description: item.description,
           specs: {
-            nominalBoreMm: item.diameter || 100,
+            nominalBoreMm: item.diameter,
             scheduleType: item.schedule ? 'schedule' : 'wall_thickness',
             scheduleNumber: item.schedule || undefined,
             wallThicknessMm: item.wallThickness || undefined,
@@ -370,30 +389,84 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
             steelSpecificationId: rfqData.globalSpecs?.steelSpecificationId,
           },
-          notes: `Extracted by Nix from Row ${item.rowNumber} (${Math.round(item.confidence * 100)}% confidence)`,
-        } as StraightPipeEntry;
-      });
+          notes: nixNote,
+        };
+        allItems.push(pipeEntry);
+      } else if (item.itemType === 'bend') {
+        const bendEntry: BendEntry = {
+          id: generateUniqueId(),
+          itemType: 'bend' as const,
+          clientItemNumber: generateClientItemNumber(customerName, itemIndex),
+          description: item.description,
+          specs: {
+            nominalBoreMm: item.diameter,
+            scheduleNumber: item.schedule || undefined,
+            wallThicknessMm: item.wallThickness || undefined,
+            bendType: '1.5D',
+            bendDegrees: item.angle || 90,
+            numberOfTangents: 0,
+            numberOfStubs: 0,
+            quantityValue: item.quantity || 1,
+            quantityType: 'number_of_items' as const,
+            workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
+            workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
+            steelSpecificationId: rfqData.globalSpecs?.steelSpecificationId,
+          },
+          notes: nixNote,
+        };
+        allItems.push(bendEntry);
+      } else if (item.itemType === 'tee' || item.itemType === 'reducer' || item.itemType === 'expansion_joint') {
+        const fittingType = item.itemType === 'tee' ? 'EQUAL_TEE'
+          : item.itemType === 'reducer' ? 'CONCENTRIC_REDUCER'
+          : 'EXPANSION_LOOP';
 
-    if (newItems.length > 0) {
-      log.debug(`🤖 Converting ${newItems.length} Nix items to RFQ items`);
-      updateRfqField('items', [...(rfqData.items || []), ...newItems]);
+        const fittingEntry: FittingEntry = {
+          id: generateUniqueId(),
+          itemType: 'fitting' as const,
+          clientItemNumber: generateClientItemNumber(customerName, itemIndex),
+          description: item.description,
+          specs: {
+            fittingStandard: 'SABS719',
+            fittingType: fittingType,
+            nominalDiameterMm: item.diameter,
+            scheduleNumber: item.schedule || undefined,
+            quantityValue: item.quantity || 1,
+            quantityType: 'number_of_items' as const,
+            workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
+            workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
+            steelSpecificationId: rfqData.globalSpecs?.steelSpecificationId,
+          },
+          notes: nixNote,
+        };
+        allItems.push(fittingEntry);
+      }
+    }
+
+    if (allItems.length > 0) {
+      log.debug(`🤖 Converting ${allItems.length} Nix items to RFQ items (${nixItems.filter(i => i.itemType === 'pipe' || i.itemType === 'flange').length} pipes, ${nixItems.filter(i => i.itemType === 'bend').length} bends, ${nixItems.filter(i => ['tee', 'reducer', 'expansion_joint'].includes(i.itemType)).length} fittings)`);
+      updateRfqField('items', [...(rfqData.items || []), ...allItems]);
     }
   };
 
   const handleClarificationSubmit = async (clarificationId: number, response: string) => {
+    const isLastQuestion = currentClarificationIndex >= nixClarifications.length - 1;
+    log.debug(`🤖 Submitting clarification ${clarificationId}, index ${currentClarificationIndex} of ${nixClarifications.length}, isLast: ${isLastQuestion}`);
+
     try {
       const result = await nixApi.submitClarification(clarificationId, response, true);
       log.debug('🤖 Clarification submitted:', result);
-
-      if (currentClarificationIndex < nixClarifications.length - 1) {
-        setCurrentClarificationIndex(prev => prev + 1);
-      } else {
-        setShowNixClarification(false);
-        showToast('All clarifications completed! Nix has learned from your responses.', 'success');
-      }
     } catch (error) {
       log.error('🤖 Failed to submit clarification:', error);
-      showToast('Failed to submit response', 'error');
+      console.error('Clarification submit error:', error);
+    }
+
+    if (!isLastQuestion) {
+      setCurrentClarificationIndex(prev => prev + 1);
+    } else {
+      log.debug('🤖 Closing clarification popup and returning to step 1');
+      setShowNixClarification(false);
+      setCurrentStep(1);
+      showToast('All clarifications completed! Please confirm the project location before continuing.', 'success');
     }
   };
 
@@ -406,6 +479,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         setCurrentClarificationIndex(prev => prev + 1);
       } else {
         setShowNixClarification(false);
+        setCurrentStep(1);
+        showToast('Clarifications skipped. Please confirm the project location before continuing.', 'info');
       }
     } catch (error) {
       log.error('🤖 Failed to skip clarification:', error);
@@ -1817,9 +1892,42 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     }
   };
 
-  // Unified update handler for all item types
+  const isNixExtractedItem = (item: PipeItem | undefined): boolean => {
+    return item?.notes?.includes('Extracted by Nix') || false;
+  };
+
+  const trackNixCorrection = async (item: PipeItem, fieldName: string, originalValue: any, newValue: any) => {
+    if (originalValue === newValue) return;
+    if (!isNixExtractedItem(item)) return;
+
+    try {
+      await nixApi.submitCorrection({
+        extractionId: nixExtractionId || undefined,
+        itemDescription: item.description || `${item.itemType} item`,
+        fieldName,
+        originalValue,
+        correctedValue: newValue,
+      });
+      log.debug(`🤖 Nix learned: ${fieldName} changed from "${originalValue}" to "${newValue}"`);
+    } catch (error) {
+      log.warn('🤖 Failed to record Nix correction:', error);
+    }
+  };
+
   const handleUpdateEntry = (id: string, updates: any) => {
     const entry = rfqData.items.find(e => e.id === id);
+
+    if (entry && isNixExtractedItem(entry) && updates.specs) {
+      const fieldsToTrack = ['nominalBoreMm', 'nominalDiameterMm', 'scheduleNumber', 'wallThicknessMm', 'pipeEndConfiguration', 'bendType', 'bendDegrees', 'fittingType'];
+      const currentSpecs = entry.specs || {};
+
+      fieldsToTrack.forEach(field => {
+        if (updates.specs[field] !== undefined && updates.specs[field] !== (currentSpecs as any)[field]) {
+          trackNixCorrection(entry, field, (currentSpecs as any)[field], updates.specs[field]);
+        }
+      });
+    }
+
     if (entry?.itemType === 'bend' || entry?.itemType === 'fitting') {
       updateItem(id, updates);
     } else {
@@ -1840,45 +1948,42 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     log.debug('💾 rfqData.longitude:', rfqData.longitude);
     log.debug('💾 rfqData.globalSpecs:', rfqData.globalSpecs);
 
+    const saveData = {
+      draftId: currentDraftId || undefined,
+      projectName: rfqData.projectName,
+      currentStep,
+      formData: {
+        projectName: rfqData.projectName,
+        projectType: rfqData.projectType,
+        description: rfqData.description,
+        customerName: rfqData.customerName,
+        customerEmail: rfqData.customerEmail,
+        customerPhone: rfqData.customerPhone,
+        requiredDate: rfqData.requiredDate,
+        notes: rfqData.notes,
+        latitude: rfqData.latitude,
+        longitude: rfqData.longitude,
+        siteAddress: rfqData.siteAddress,
+        region: rfqData.region,
+        country: rfqData.country,
+        mineId: rfqData.mineId,
+        mineName: rfqData.mineName,
+        skipDocuments: rfqData.skipDocuments,
+        useNix: rfqData.useNix,
+        nixPopupShown: rfqData.nixPopupShown,
+      },
+      globalSpecs: rfqData.globalSpecs,
+      requiredProducts: rfqData.requiredProducts || ['fabricated_steel'],
+      straightPipeEntries: rfqData.items?.length > 0 ? rfqData.items : rfqData.straightPipeEntries,
+      pendingDocuments: pendingDocuments.map((doc: any) => ({
+        name: doc.name || doc.file?.name,
+        size: doc.size || doc.file?.size,
+        type: doc.type || doc.file?.type,
+      })),
+    };
+
     setIsSavingDraft(true);
     try {
-      const saveData = {
-        draftId: currentDraftId || undefined,
-        projectName: rfqData.projectName,
-        currentStep,
-        formData: {
-          // Basic project info
-          projectName: rfqData.projectName,
-          projectType: rfqData.projectType,
-          description: rfqData.description,
-          // Customer info
-          customerName: rfqData.customerName,
-          customerEmail: rfqData.customerEmail,
-          customerPhone: rfqData.customerPhone,
-          requiredDate: rfqData.requiredDate,
-          notes: rfqData.notes,
-          // Location fields
-          latitude: rfqData.latitude,
-          longitude: rfqData.longitude,
-          siteAddress: rfqData.siteAddress,
-          region: rfqData.region,
-          country: rfqData.country,
-          // Mine selection
-          mineId: rfqData.mineId,
-          mineName: rfqData.mineName,
-          // Document upload preference
-          skipDocuments: rfqData.skipDocuments,
-        },
-        globalSpecs: rfqData.globalSpecs,
-        requiredProducts: rfqData.requiredProducts,
-        straightPipeEntries: rfqData.items?.length > 0 ? rfqData.items : rfqData.straightPipeEntries,
-        pendingDocuments: pendingDocuments.map((doc: any) => ({
-          name: doc.name || doc.file?.name,
-          size: doc.size || doc.file?.size,
-          type: doc.type || doc.file?.type,
-        })),
-      };
-
       log.debug('💾 Complete saveData being sent to API:', saveData);
       log.debug('💾 saveData.formData:', saveData.formData);
       log.debug('💾 saveData.requiredProducts:', saveData.requiredProducts);
@@ -1930,13 +2035,13 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
       try {
         localStorage.setItem('annix_rfq_draft', JSON.stringify({
-          rfqData,
-          currentStep,
+          ...saveData,
           savedAt: nowISO(),
         }));
         setShowSaveConfirmation(true);
         setTimeout(() => setShowSaveConfirmation(false), 3000);
         log.debug('✅ RFQ progress saved to localStorage (server unavailable)');
+        showToast('Progress saved locally. Will sync when connection restored.', 'info');
       } catch (e) {
         showToast('Failed to save progress. Please try again.', 'error');
       }
@@ -2638,14 +2743,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       />
 
       {/* Nix Clarification Popup - shows when Nix needs user input */}
-      <NixClarificationPopup
-        clarification={nixClarifications[currentClarificationIndex] || null}
-        totalClarifications={nixClarifications.length}
-        currentIndex={currentClarificationIndex}
-        onSubmit={handleClarificationSubmit}
-        onSkip={handleClarificationSkip}
-        onClose={handleCloseClarification}
-      />
+      {showNixClarification && (
+        <NixClarificationPopup
+          clarification={nixClarifications[currentClarificationIndex] || null}
+          totalClarifications={nixClarifications.length}
+          currentIndex={currentClarificationIndex}
+          onSubmit={handleClarificationSubmit}
+          onSkip={handleClarificationSkip}
+          onClose={handleCloseClarification}
+        />
+      )}
 
       {/* Save Progress Confirmation Toast */}
       {showSaveConfirmation && (

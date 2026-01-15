@@ -135,7 +135,7 @@ export const addMinutes = (iso: string, minutes: number): string => {
 
 export const toJSDate = (iso: string): Date => DateTime.fromISO(iso).toJSDate();
 
-export const generateUniqueId = (): string => DateTime.now().toMillis().toString();
+export const generateUniqueId = (): string => `${DateTime.now().toMillis()}-${Math.random().toString(36).substr(2, 9)}`;
 
 export const getYear = (): number => DateTime.now().year;
 

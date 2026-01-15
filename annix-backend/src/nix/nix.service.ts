@@ -401,4 +401,52 @@ export class NixService {
       order: { createdAt: 'DESC' },
     });
   }
+
+  async recordCorrection(correction: {
+    extractionId?: number;
+    itemDescription: string;
+    fieldName: string;
+    originalValue: string | number | null;
+    correctedValue: string | number;
+    userId?: number;
+  }): Promise<{ success: boolean }> {
+    const patternKey = `${correction.itemDescription}::${correction.fieldName}`;
+
+    const existingRule = await this.learningRepo.findOne({
+      where: {
+        patternKey,
+        learningType: LearningType.CORRECTION,
+      },
+    });
+
+    if (existingRule) {
+      if (existingRule.learnedValue === String(correction.correctedValue)) {
+        existingRule.confirmationCount += 1;
+        existingRule.confidence = Math.min(1, existingRule.confidence + 0.05);
+      } else {
+        existingRule.learnedValue = String(correction.correctedValue);
+        existingRule.originalValue = correction.originalValue != null ? String(correction.originalValue) : undefined;
+        existingRule.confirmationCount = 1;
+        existingRule.confidence = 0.6;
+      }
+      await this.learningRepo.save(existingRule);
+      this.logger.log(`Updated learning rule for pattern: ${patternKey}`);
+    } else {
+      const newRule = this.learningRepo.create({
+        learningType: LearningType.CORRECTION,
+        source: LearningSource.USER_CORRECTION,
+        patternKey,
+        category: correction.fieldName,
+        originalValue: correction.originalValue != null ? String(correction.originalValue) : undefined,
+        learnedValue: String(correction.correctedValue),
+        confidence: 0.6,
+        confirmationCount: 1,
+        isActive: true,
+      });
+      await this.learningRepo.save(newRule);
+      this.logger.log(`Created new learning rule for pattern: ${patternKey}`);
+    }
+
+    return { success: true };
+  }
 }

@@ -31,6 +31,8 @@ export interface ExtractionResult {
   clarificationsNeeded: number;
   metadata: {
     projectReference: string | null;
+    projectLocation: string | null;
+    projectName: string | null;
     standard: string | null;
     coating: string | null;
   };
@@ -99,11 +101,43 @@ export class ExcelExtractorService {
     };
 
     let projectReference: string | null = null;
+    let projectLocation: string | null = null;
+    let projectName: string | null = null;
     let currentDescription: string | null = null;
     let currentDescriptionRow: number | null = null;
     let currentSpecHeader: string | null = null;
 
     worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber <= 10) {
+        const headerText = this.extractHeaderText(row);
+        if (headerText) {
+          const locationMatch = headerText.match(/(?:site|location|project\s+site|address)[:\s]+(.+)/i);
+          if (locationMatch && !projectLocation) {
+            projectLocation = locationMatch[1].trim();
+            this.logger.debug(`📍 Found project location: ${projectLocation}`);
+          }
+
+          const projectMatch = headerText.match(/(?:project|contract|tender)[:\s]+(.+)/i);
+          if (projectMatch && !projectName) {
+            projectName = projectMatch[1].trim();
+            this.logger.debug(`📋 Found project name: ${projectName}`);
+          }
+
+          const locationPatterns = [
+            /\b(johannesburg|pretoria|cape\s*town|durban|port\s*elizabeth|bloemfontein|east\s*london|kimberley|polokwane|nelspruit|rustenburg|potchefstroom|vereeniging|welkom|pietermaritzburg|richards\s*bay|midrand|sandton|centurion)\b/i,
+            /\b(gauteng|western\s*cape|kwazulu[\s-]*natal|eastern\s*cape|free\s*state|mpumalanga|limpopo|north\s*west|northern\s*cape)\b/i,
+          ];
+          for (const pattern of locationPatterns) {
+            const match = headerText.match(pattern);
+            if (match && !projectLocation) {
+              projectLocation = match[1].trim();
+              this.logger.debug(`📍 Found location from city/province: ${projectLocation}`);
+              break;
+            }
+          }
+        }
+      }
+
       if (rowNumber <= 4) return;
 
       const rowData = this.extractRowData(row);
@@ -185,10 +219,28 @@ export class ExcelExtractorService {
       clarificationsNeeded,
       metadata: {
         projectReference,
+        projectLocation,
+        projectName,
         standard: currentContext.standard,
         coating: currentContext.coating,
       },
     };
+  }
+
+  private extractHeaderText(row: ExcelJS.Row): string | null {
+    const texts: string[] = [];
+    row.eachCell((cell) => {
+      const value = cell.value;
+      if (value && typeof value === 'string' && value.trim().length > 3) {
+        texts.push(value.trim());
+      } else if (value && typeof value === 'object' && 'text' in value) {
+        const richText = value as { text: string };
+        if (richText.text && richText.text.trim().length > 3) {
+          texts.push(richText.text.trim());
+        }
+      }
+    });
+    return texts.length > 0 ? texts.join(' ') : null;
   }
 
   private extractRowData(row: ExcelJS.Row): Record<string, any> {

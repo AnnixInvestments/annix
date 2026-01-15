@@ -142,4 +142,20 @@ export class NixController {
   async adminLearningRules(): Promise<NixLearning[]> {
     return this.nixService.adminLearningRules();
   }
+
+  @Post('learning/correction')
+  @ApiOperation({ summary: 'Submit a user correction for learning' })
+  @ApiResponse({ status: 201, description: 'Correction recorded for learning' })
+  async submitCorrection(
+    @Body() body: {
+      extractionId?: number;
+      itemDescription: string;
+      fieldName: string;
+      originalValue: string | number | null;
+      correctedValue: string | number;
+      userId?: number;
+    },
+  ): Promise<{ success: boolean }> {
+    return this.nixService.recordCorrection(body);
+  }
 }
