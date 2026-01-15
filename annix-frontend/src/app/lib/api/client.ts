@@ -1481,3 +1481,165 @@ export const boqApi = {
     return result.data && result.data.length > 0 ? result.data[0] : null;
   },
 };
+
+export interface NixExtractedItem {
+  rowNumber: number;
+  itemNumber: string;
+  description: string;
+  itemType: 'pipe' | 'bend' | 'reducer' | 'tee' | 'flange' | 'expansion_joint' | 'unknown';
+  material: string | null;
+  materialGrade: string | null;
+  diameter: number | null;
+  diameterUnit: 'mm' | 'inch';
+  secondaryDiameter: number | null;
+  length: number | null;
+  wallThickness: number | null;
+  schedule: string | null;
+  angle: number | null;
+  flangeConfig: 'none' | 'one_end' | 'both_ends' | 'puddle' | 'blind' | null;
+  quantity: number;
+  unit: string;
+  confidence: number;
+  needsClarification: boolean;
+  clarificationReason: string | null;
+}
+
+export interface NixClarificationDto {
+  id: number;
+  question: string;
+  context: {
+    rowNumber?: number;
+    itemNumber?: string;
+    itemDescription?: string;
+    itemType?: string;
+    extractedMaterial?: string | null;
+    extractedDiameter?: number | null;
+    extractedLength?: number | null;
+    extractedAngle?: number | null;
+    extractedFlangeConfig?: string | null;
+    extractedQuantity?: number;
+    confidence?: number;
+    clarificationReason?: string | null;
+  };
+}
+
+export interface NixProcessResponse {
+  extractionId: number;
+  status: string;
+  items?: NixExtractedItem[];
+  pendingClarifications?: NixClarificationDto[];
+  error?: string;
+}
+
+export const nixApi = {
+  uploadAndProcess: async (file: File, userId?: number, rfqId?: number): Promise<NixProcessResponse> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const formData = new FormData();
+    formData.append('file', file);
+    if (userId) formData.append('userId', userId.toString());
+    if (rfqId) formData.append('rfqId', rfqId.toString());
+
+    const response = await fetch(`${API_BASE_URL}/nix/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to process document: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  getExtraction: async (extractionId: number): Promise<NixProcessResponse> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${API_BASE_URL}/nix/extraction/${extractionId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to get extraction: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  getPendingClarifications: async (extractionId: number): Promise<NixClarificationDto[]> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${API_BASE_URL}/nix/extraction/${extractionId}/clarifications`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to get clarifications: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  submitClarification: async (
+    clarificationId: number,
+    responseText: string,
+    allowLearning: boolean = true
+  ): Promise<{ success: boolean; remainingClarifications: number }> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${API_BASE_URL}/nix/clarification`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        clarificationId,
+        responseType: 'text',
+        responseText,
+        allowLearning,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to submit clarification: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  skipClarification: async (clarificationId: number): Promise<{ success: boolean }> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${API_BASE_URL}/nix/clarification`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        clarificationId,
+        responseType: 'text',
+        responseText: '[SKIPPED]',
+        allowLearning: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to skip clarification: ${errorText}`);
+    }
+
+    return response.json();
+  },
+};

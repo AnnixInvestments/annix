@@ -81,6 +81,17 @@ export class NixClarification {
     sectionName?: string;
     extractedValue?: string;
     suggestedOptions?: string[];
+    rowNumber?: number;
+    itemNumber?: string;
+    itemType?: string;
+    extractedMaterial?: string | null;
+    extractedDiameter?: number | null;
+    extractedLength?: number | null;
+    extractedAngle?: number | null;
+    extractedFlangeConfig?: string | null;
+    extractedQuantity?: number;
+    confidence?: number;
+    clarificationReason?: string | null;
   };
 
   @ApiProperty({ description: 'Type of response received', enum: ResponseType })

@@ -7,6 +7,7 @@ import { NixExtraction } from './entities/nix-extraction.entity';
 import { NixLearning } from './entities/nix-learning.entity';
 import { NixUserPreference } from './entities/nix-user-preference.entity';
 import { NixClarification } from './entities/nix-clarification.entity';
+import { ExcelExtractorService } from './services/excel-extractor.service';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { NixClarification } from './entities/nix-clarification.entity';
     }),
   ],
   controllers: [NixController],
-  providers: [NixService],
+  providers: [NixService, ExcelExtractorService],
   exports: [NixService],
 })
 export class NixModule {}

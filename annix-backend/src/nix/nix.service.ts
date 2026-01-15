@@ -25,6 +25,7 @@ import {
   SubmitClarificationDto,
   SubmitClarificationResponseDto,
 } from './dto/submit-clarification.dto';
+import { ExcelExtractorService, ExtractedItem } from './services/excel-extractor.service';
 
 @Injectable()
 export class NixService {
@@ -39,6 +40,7 @@ export class NixService {
     private readonly preferenceRepo: Repository<NixUserPreference>,
     @InjectRepository(NixClarification)
     private readonly clarificationRepo: Repository<NixClarification>,
+    private readonly excelExtractor: ExcelExtractorService,
   ) {}
 
   async processDocument(dto: ProcessDocumentDto): Promise<ProcessDocumentResponseDto> {
@@ -223,16 +225,24 @@ export class NixService {
   }
 
   private async extractFromExcel(
-    _documentPath: string,
+    documentPath: string,
   ): Promise<{ extractedData: Record<string, any>; extractedItems: Array<any> }> {
-    this.logger.log('Excel extraction - placeholder implementation');
+    this.logger.log(`Excel extraction starting for: ${documentPath}`);
+
+    const result = await this.excelExtractor.extractFromExcel(documentPath);
+
+    this.logger.log(`Extracted ${result.items.length} items from sheet "${result.sheetName}"`);
+    this.logger.log(`Items needing clarification: ${result.clarificationsNeeded}`);
 
     return {
       extractedData: {
-        sheetCount: 0,
-        hasFormulas: false,
+        sheetName: result.sheetName,
+        totalRows: result.totalRows,
+        itemCount: result.items.length,
+        clarificationsNeeded: result.clarificationsNeeded,
+        metadata: result.metadata,
       },
-      extractedItems: [],
+      extractedItems: result.items,
     };
   }
 
@@ -278,19 +288,49 @@ export class NixService {
   ): Promise<NixClarification[]> {
     const clarifications: NixClarification[] = [];
 
-    const lowConfidenceItems = items.filter(item => (item.confidence || 0) < 0.7);
+    const itemsNeedingClarification = items.filter(
+      (item: ExtractedItem) => item.needsClarification || (item.confidence || 0) < 0.7
+    );
 
-    for (const item of lowConfidenceItems.slice(0, 5)) {
+    for (const item of itemsNeedingClarification.slice(0, 10)) {
+      const extractedItem = item as ExtractedItem;
+
+      let question = '';
+      let clarificationType = ClarificationType.AMBIGUOUS;
+
+      if (extractedItem.clarificationReason) {
+        question = `Row ${extractedItem.rowNumber}: ${extractedItem.clarificationReason}\n\nDescription: "${extractedItem.description}"\n\nPlease provide the missing information or correct any errors.`;
+        clarificationType = ClarificationType.MISSING_INFO;
+      } else if (!extractedItem.material) {
+        question = `Row ${extractedItem.rowNumber}: I couldn't determine the material type for this item.\n\nDescription: "${extractedItem.description}"\n\nIs this Stainless Steel (SS) or Mild Steel (MS)?`;
+        clarificationType = ClarificationType.MISSING_INFO;
+      } else if (!extractedItem.diameter) {
+        question = `Row ${extractedItem.rowNumber}: I couldn't determine the pipe diameter.\n\nDescription: "${extractedItem.description}"\n\nWhat is the diameter in mm?`;
+        clarificationType = ClarificationType.MISSING_INFO;
+      } else {
+        question = `Row ${extractedItem.rowNumber}: Please verify this extracted item:\n\nDescription: "${extractedItem.description}"\n\nExtracted:\n- Type: ${extractedItem.itemType}\n- Material: ${extractedItem.material || 'Unknown'}\n- Diameter: ${extractedItem.diameter || 'Unknown'}mm\n- Quantity: ${extractedItem.quantity}\n\nIs this correct?`;
+        clarificationType = ClarificationType.CONFIRMATION;
+      }
+
       const clarification = this.clarificationRepo.create({
         extractionId: extraction.id,
         userId: extraction.userId,
-        clarificationType: ClarificationType.AMBIGUOUS,
+        clarificationType,
         status: ClarificationStatus.PENDING,
-        question: `Please confirm or correct this extracted item: "${item.description}"`,
+        question,
         context: {
-          itemDescription: item.description,
-          pageNumber: item.pageReference,
-          extractedValue: JSON.stringify(item.specifications || {}),
+          rowNumber: extractedItem.rowNumber,
+          itemNumber: extractedItem.itemNumber,
+          itemDescription: extractedItem.description,
+          itemType: extractedItem.itemType,
+          extractedMaterial: extractedItem.material,
+          extractedDiameter: extractedItem.diameter,
+          extractedLength: extractedItem.length,
+          extractedAngle: extractedItem.angle,
+          extractedFlangeConfig: extractedItem.flangeConfig,
+          extractedQuantity: extractedItem.quantity,
+          confidence: extractedItem.confidence,
+          clarificationReason: extractedItem.clarificationReason,
         },
       });
 
