@@ -43,18 +43,23 @@ export class ExcelExtractorService {
   private readonly materialPatterns = [
     { pattern: /\bS\.?S\.?\b|\bstainless\s*steel\b/i, material: 'Stainless Steel', grade: '316' },
     { pattern: /\bM\.?S\.?\b|\bmild\s*steel\b/i, material: 'Mild Steel', grade: null },
-    { pattern: /\bAPI\s*5L\s*(Grade\s*)?(X\d+)/i, material: 'Carbon Steel', grade: 'API 5L' },
+    { pattern: /\bAPI\s*5L[-\s]?[A-Z]?\b/i, material: 'Carbon Steel', grade: 'API 5L' },
     { pattern: /\bSABS\s*719\b/i, material: 'Stainless Steel', grade: 'SABS 719' },
     { pattern: /\bcarbon\s*steel\b/i, material: 'Carbon Steel', grade: null },
+    { pattern: /\bASTM\s*A234\s*WPB\b/i, material: 'Carbon Steel', grade: 'A234 WPB' },
+    { pattern: /\bASTM\s*A105\b/i, material: 'Carbon Steel', grade: 'A105' },
+    { pattern: /\bERW\b/i, material: 'Carbon Steel', grade: 'ERW' },
   ];
 
   private readonly itemTypePatterns = [
+    { pattern: /\belbow\b/i, type: 'bend' as const },
     { pattern: /\bs[-\s]?bend\b/i, type: 'bend' as const },
     { pattern: /\bbend\b|\bdeg\b|\bdegree\b/i, type: 'bend' as const },
     { pattern: /\breducer\b|\breducing\b(?!\s*tee)/i, type: 'reducer' as const },
     { pattern: /\btee\b/i, type: 'tee' as const },
-    { pattern: /\bblind\s*flange\b/i, type: 'flange' as const },
+    { pattern: /\bflange\b(?!.*gasket)/i, type: 'flange' as const },
     { pattern: /\bexpansion\s*joint\b/i, type: 'expansion_joint' as const },
+    { pattern: /\b\d+\s*NB\s+PIPE\b/i, type: 'pipe' as const },
     { pattern: /\bpipe\b|\bdia\s*pipe\b/i, type: 'pipe' as const },
     { pattern: /\d+\s*mm\s*(steel|stainless)/i, type: 'pipe' as const },
   ];
@@ -94,9 +99,11 @@ export class ExcelExtractorService {
     };
 
     let projectReference: string | null = null;
+    let currentDescription: string | null = null;
+    let currentDescriptionRow: number | null = null;
 
     worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return;
+      if (rowNumber <= 4) return;
 
       const rowData = this.extractRowData(row);
       const description = rowData.description?.toString() || '';
@@ -112,6 +119,38 @@ export class ExcelExtractorService {
 
       if (rowData.paymentReference && !projectReference) {
         projectReference = rowData.paymentReference.toString();
+      }
+
+      if (rowData._isDescriptionRow) {
+        const descText = description.trim();
+        const hasDiameter = /\d+\s*(NB|mm|dia)/i.test(descText);
+        if (hasDiameter && !/^(Carried|Brought)\s+(Forward|Back)/i.test(descText)) {
+          currentDescription = descText;
+          currentDescriptionRow = rowNumber;
+          this.logger.debug(`Found description row ${rowNumber}: ${descText.substring(0, 60)}...`);
+        }
+        return;
+      }
+
+      if (rowData._isQuantityRow && currentDescription) {
+        const actionType = description.toLowerCase();
+        if (actionType === 'supply') {
+          const itemData = {
+            ...rowData,
+            description: currentDescription,
+          };
+          const item = this.extractItemFromRow(
+            currentDescriptionRow || rowNumber,
+            itemData,
+            currentDescription,
+            currentContext,
+          );
+          if (item) {
+            items.push(item);
+            this.logger.debug(`Extracted item from row ${currentDescriptionRow}: ${item.itemType} ${item.diameter}mm`);
+          }
+        }
+        return;
       }
 
       const isLineItem = this.isLineItem(rowData, description);
@@ -139,16 +178,68 @@ export class ExcelExtractorService {
   }
 
   private extractRowData(row: ExcelJS.Row): Record<string, any> {
+    const col1 = row.getCell(1).value;
+    const col2 = row.getCell(2).value;
+    const col3 = row.getCell(3).value;
+    const col4 = row.getCell(4).value;
+    const col5 = row.getCell(5).value;
+    const col6 = row.getCell(6).value;
+    const col7 = row.getCell(7).value;
+    const col8 = row.getCell(8).value;
+    const col9 = row.getCell(9).value;
+
+    const col3Str = col3?.toString() || '';
+    const isSupplyInstallRow = /^(Supply|Install)$/i.test(col3Str.trim());
+    const isItemNoDescUnitQty = col1 !== null && typeof col1 === 'number' && isSupplyInstallRow;
+
+    if (isItemNoDescUnitQty) {
+      return {
+        itemNumber: col1,
+        paymentReference: col2,
+        description: col3,
+        unit: col4,
+        quantity: col5,
+        rate: col6,
+        total: col7,
+        _isQuantityRow: true,
+      };
+    }
+
+    const col1Str = col1?.toString() || '';
+    const col5Str = col5?.toString() || '';
+    if (col5Str.length > 3) {
+      return {
+        trade: col1,
+        page: col2,
+        itemNumber: col3,
+        paymentReference: col4,
+        description: col5,
+        unit: col6,
+        quantity: col7,
+        rate: col8,
+        total: col9,
+      };
+    }
+
+    if (col3Str.length > 3 && col1 === null) {
+      return {
+        description: col3,
+        unit: col4,
+        quantity: col5,
+        _isDescriptionRow: true,
+      };
+    }
+
     return {
-      trade: row.getCell(1).value,
-      page: row.getCell(2).value,
-      itemNumber: row.getCell(3).value,
-      paymentReference: row.getCell(4).value,
-      description: row.getCell(5).value,
-      unit: row.getCell(6).value,
-      quantity: row.getCell(7).value,
-      rate: row.getCell(8).value,
-      total: row.getCell(9).value,
+      trade: col1,
+      page: col2,
+      itemNumber: col3,
+      paymentReference: col4,
+      description: col5,
+      unit: col6,
+      quantity: col7,
+      rate: col8,
+      total: col9,
     };
   }
 
@@ -319,6 +410,7 @@ export class ExcelExtractorService {
 
   private extractDiameter(description: string): number | null {
     const patterns = [
+      /(\d+)\s*NB\b/i,
       /(\d+)\s*mm\s*(?:dia|diameter)/i,
       /(\d+)mm\s+(?:dia|steel|pipe|bend)/i,
       /(?:^|\s)(\d{3,4})\s*mm\b/i,

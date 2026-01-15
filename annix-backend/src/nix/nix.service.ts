@@ -45,9 +45,9 @@ export class NixService {
 
   async processDocument(dto: ProcessDocumentDto): Promise<ProcessDocumentResponseDto> {
     const startTime = Date.now();
-    this.logger.log(`Processing document: ${dto.documentPath}`);
+    this.logger.log(`Processing document: ${dto.documentPath} (${dto.documentName})`);
 
-    const documentType = this.detectDocumentType(dto.documentPath);
+    const documentType = this.detectDocumentType(dto.documentName || dto.documentPath);
 
     const extraction = this.extractionRepo.create({
       documentName: dto.documentName || dto.documentPath.split('/').pop() || 'unknown',
