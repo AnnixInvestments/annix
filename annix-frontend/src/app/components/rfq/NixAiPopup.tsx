@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import AmixLogo from '../AmixLogo';
 
 interface NixAiPopupProps {
@@ -28,20 +29,15 @@ export default function NixAiPopup({ isVisible, onYes, onNo }: NixAiPopupProps) 
         </div>
 
         <div className="px-8 py-6 text-center">
-          <div className="mx-auto w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-4">
-            <svg
-              className="w-8 h-8 text-orange-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
-            </svg>
+          <div className="mx-auto w-24 h-24 rounded-full overflow-hidden mb-4 shadow-lg border-4 border-orange-400">
+            <Image
+              src="/nix-avatar.png"
+              alt="Nix AI Assistant"
+              width={96}
+              height={96}
+              className="object-cover object-top scale-125"
+              priority
+            />
           </div>
 
           <h2 className="text-xl font-bold text-gray-900 mb-2">

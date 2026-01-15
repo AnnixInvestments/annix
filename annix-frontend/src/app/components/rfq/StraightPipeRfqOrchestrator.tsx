@@ -83,6 +83,7 @@ import ItemUploadStep from './steps/ItemUploadStep';
 import ReviewSubmitStep from './steps/ReviewSubmitStep';
 import BOQStep from './steps/BOQStep';
 import NixAiPopup from './NixAiPopup';
+import NixFloatingAvatar from './NixFloatingAvatar';
 
 const normalizeFittingTypeForApi = (type?: string | null) => {
   if (!type) return type;
@@ -2499,6 +2500,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         isVisible={showNixPopup}
         onYes={handleNixYes}
         onNo={handleNixNo}
+      />
+
+      {/* Nix Floating Avatar - shows when Nix is active */}
+      <NixFloatingAvatar
+        isVisible={rfqData.useNix === true}
+        onStopUsingNix={handleStopUsingNix}
       />
 
       {/* Save Progress Confirmation Toast */}
