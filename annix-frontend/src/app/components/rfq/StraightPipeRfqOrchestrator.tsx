@@ -82,6 +82,7 @@ import SpecificationsStep from './steps/SpecificationsStep';
 import ItemUploadStep from './steps/ItemUploadStep';
 import ReviewSubmitStep from './steps/ReviewSubmitStep';
 import BOQStep from './steps/BOQStep';
+import NixAiPopup from './NixAiPopup';
 
 const normalizeFittingTypeForApi = (type?: string | null) => {
   if (!type) return type;
@@ -244,6 +245,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const [bendOptionsCache, setBendOptionsCache] = useState<Record<string, { nominalBores: number[]; degrees: number[] }>>({});
   // Store pending documents to upload
   const [pendingDocuments, setPendingDocuments] = useState<PendingDocument[]>([]);
+  // Nix AI Assistant popup visibility
+  const [showNixPopup, setShowNixPopup] = useState(false);
   // Ref for scrollable content container
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -258,6 +261,31 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
   const handleRemoveDocument = (id: string) => {
     setPendingDocuments(prev => prev.filter(doc => doc.id !== id));
+  };
+
+  // Nix AI Assistant handlers
+  const handleShowNixPopup = () => {
+    log.debug('🤖 handleShowNixPopup called, nixPopupShown:', rfqData.nixPopupShown);
+    if (!rfqData.nixPopupShown) {
+      log.debug('🤖 Setting showNixPopup to true');
+      setShowNixPopup(true);
+    }
+  };
+
+  const handleNixYes = () => {
+    updateRfqField('useNix', true);
+    updateRfqField('nixPopupShown', true);
+    setShowNixPopup(false);
+  };
+
+  const handleNixNo = () => {
+    updateRfqField('useNix', false);
+    updateRfqField('nixPopupShown', true);
+    setShowNixPopup(false);
+  };
+
+  const handleStopUsingNix = () => {
+    updateRfqField('useNix', false);
   };
 
   // Get filtered pressure classes for a specific standard (with caching)
@@ -2280,104 +2308,199 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     }
   };
 
-  const steps = [
-    { number: 1, title: 'Project/RFQ Details', description: 'Basic project and customer information' },
-    { number: 2, title: 'Specifications', description: 'Working conditions and material specs' },
-    { number: 3, title: 'Items', description: 'Add pipes, bends, and fittings' },
-    { number: 4, title: 'Review & Submit', description: 'Final review and submission' },
-    { number: 5, title: 'BOQ', description: 'Bill of Quantities summary' }
-  ];
+  const steps = rfqData.useNix
+    ? [
+        { number: 1, title: 'Project/RFQ Details', description: 'Basic project and customer information' },
+        { number: 2, title: 'Items', description: 'Add pipes, bends, and fittings' },
+        { number: 3, title: 'Review & Submit', description: 'Final review and submission' },
+        { number: 4, title: 'BOQ', description: 'Bill of Quantities summary' }
+      ]
+    : [
+        { number: 1, title: 'Project/RFQ Details', description: 'Basic project and customer information' },
+        { number: 2, title: 'Specifications', description: 'Working conditions and material specs' },
+        { number: 3, title: 'Items', description: 'Add pipes, bends, and fittings' },
+        { number: 4, title: 'Review & Submit', description: 'Final review and submission' },
+        { number: 5, title: 'BOQ', description: 'Bill of Quantities summary' }
+      ];
 
   const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <ProjectDetailsStep
-            rfqData={rfqData}
-            onUpdate={updateRfqField as (field: string, value: any) => void}
-            errors={validationErrors}
-            globalSpecs={rfqData.globalSpecs}
-            onUpdateGlobalSpecs={updateGlobalSpecs}
-            pendingDocuments={pendingDocuments}
-            onAddDocument={handleAddDocument}
-            onRemoveDocument={handleRemoveDocument}
-          />
-        );
-      case 2:
-        return (
-          <SpecificationsStep
-            globalSpecs={rfqData.globalSpecs}
-            onUpdateGlobalSpecs={updateGlobalSpecs}
-            masterData={masterData}
-            errors={validationErrors}
-            fetchAndSelectPressureClass={fetchAndSelectPressureClass}
-            availablePressureClasses={availablePressureClasses}
-            requiredProducts={rfqData.requiredProducts}
-            rfqData={rfqData}
-          />
-        );
-      case 3:
-        return (
-          <ItemUploadStep
-            entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
-            globalSpecs={rfqData.globalSpecs}
-            masterData={masterData}
-            onAddEntry={addStraightPipeEntry}
-            onAddBendEntry={addBendEntry}
-            onAddFittingEntry={addFittingEntry}
-            onUpdateEntry={handleUpdateEntry}
-            onRemoveEntry={removeStraightPipeEntry}
-            onDuplicateEntry={duplicateItem}
-            onCalculate={handleCalculateAll}
-            onCalculateBend={handleCalculateBend}
-            onCalculateFitting={handleCalculateFitting}
-            errors={validationErrors}
-            loading={false}
-            fetchAvailableSchedules={fetchAvailableSchedules}
-            availableSchedulesMap={availableSchedulesMap}
-            setAvailableSchedulesMap={setAvailableSchedulesMap}
-            fetchBendOptions={fetchBendOptions}
-            fetchCenterToFace={fetchCenterToFace}
-            bendOptionsCache={bendOptionsCache}
-            autoSelectFlangeSpecs={autoSelectFlangeSpecs}
-            requiredProducts={rfqData.requiredProducts}
-            pressureClassesByStandard={pressureClassesByStandard}
-            getFilteredPressureClasses={getFilteredPressureClasses}
-          />
-        );
-      case 4:
-        return (
-          <ReviewSubmitStep
-            entries={rfqData.straightPipeEntries}
-            rfqData={rfqData}
-            onNextStep={handleNextStep}
-            onPrevStep={handlePrevStep}
-            errors={validationErrors}
-            loading={isSubmitting}
-          />
-        );
-      case 5:
-        return (
-          <BOQStep
-            rfqData={rfqData}
-            entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
-            globalSpecs={rfqData.globalSpecs}
-            requiredProducts={rfqData.requiredProducts || []}
-            masterData={masterData}
-            onPrevStep={handlePrevStep}
-            onSubmit={handleSubmit}
-            onResubmit={handleResubmit}
-            isEditing={isEditing}
-            loading={isSubmitting}
-          />
-        );
-      default:
-        return null;
+    if (rfqData.useNix) {
+      switch (currentStep) {
+        case 1:
+          return (
+            <ProjectDetailsStep
+              rfqData={rfqData}
+              onUpdate={updateRfqField as (field: string, value: any) => void}
+              errors={validationErrors}
+              globalSpecs={rfqData.globalSpecs}
+              onUpdateGlobalSpecs={updateGlobalSpecs}
+              pendingDocuments={pendingDocuments}
+              onAddDocument={handleAddDocument}
+              onRemoveDocument={handleRemoveDocument}
+              useNix={rfqData.useNix}
+              onShowNixPopup={handleShowNixPopup}
+              onStopUsingNix={handleStopUsingNix}
+            />
+          );
+        case 2:
+          return (
+            <ItemUploadStep
+              entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
+              globalSpecs={rfqData.globalSpecs}
+              masterData={masterData}
+              onAddEntry={addStraightPipeEntry}
+              onAddBendEntry={addBendEntry}
+              onAddFittingEntry={addFittingEntry}
+              onUpdateEntry={handleUpdateEntry}
+              onRemoveEntry={removeStraightPipeEntry}
+              onDuplicateEntry={duplicateItem}
+              onCalculate={handleCalculateAll}
+              onCalculateBend={handleCalculateBend}
+              onCalculateFitting={handleCalculateFitting}
+              errors={validationErrors}
+              loading={false}
+              fetchAvailableSchedules={fetchAvailableSchedules}
+              availableSchedulesMap={availableSchedulesMap}
+              setAvailableSchedulesMap={setAvailableSchedulesMap}
+              fetchBendOptions={fetchBendOptions}
+              fetchCenterToFace={fetchCenterToFace}
+              bendOptionsCache={bendOptionsCache}
+              autoSelectFlangeSpecs={autoSelectFlangeSpecs}
+              requiredProducts={rfqData.requiredProducts}
+              pressureClassesByStandard={pressureClassesByStandard}
+              getFilteredPressureClasses={getFilteredPressureClasses}
+            />
+          );
+        case 3:
+          return (
+            <ReviewSubmitStep
+              entries={rfqData.straightPipeEntries}
+              rfqData={rfqData}
+              onNextStep={handleNextStep}
+              onPrevStep={handlePrevStep}
+              errors={validationErrors}
+              loading={isSubmitting}
+            />
+          );
+        case 4:
+          return (
+            <BOQStep
+              rfqData={rfqData}
+              entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
+              globalSpecs={rfqData.globalSpecs}
+              requiredProducts={rfqData.requiredProducts || []}
+              masterData={masterData}
+              onPrevStep={handlePrevStep}
+              onSubmit={handleSubmit}
+              onResubmit={handleResubmit}
+              isEditing={isEditing}
+              loading={isSubmitting}
+            />
+          );
+        default:
+          return null;
+      }
+    } else {
+      switch (currentStep) {
+        case 1:
+          return (
+            <ProjectDetailsStep
+              rfqData={rfqData}
+              onUpdate={updateRfqField as (field: string, value: any) => void}
+              errors={validationErrors}
+              globalSpecs={rfqData.globalSpecs}
+              onUpdateGlobalSpecs={updateGlobalSpecs}
+              pendingDocuments={pendingDocuments}
+              onAddDocument={handleAddDocument}
+              onRemoveDocument={handleRemoveDocument}
+              useNix={rfqData.useNix}
+              onShowNixPopup={handleShowNixPopup}
+              onStopUsingNix={handleStopUsingNix}
+            />
+          );
+        case 2:
+          return (
+            <SpecificationsStep
+              globalSpecs={rfqData.globalSpecs}
+              onUpdateGlobalSpecs={updateGlobalSpecs}
+              masterData={masterData}
+              errors={validationErrors}
+              fetchAndSelectPressureClass={fetchAndSelectPressureClass}
+              availablePressureClasses={availablePressureClasses}
+              requiredProducts={rfqData.requiredProducts}
+              rfqData={rfqData}
+            />
+          );
+        case 3:
+          return (
+            <ItemUploadStep
+              entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
+              globalSpecs={rfqData.globalSpecs}
+              masterData={masterData}
+              onAddEntry={addStraightPipeEntry}
+              onAddBendEntry={addBendEntry}
+              onAddFittingEntry={addFittingEntry}
+              onUpdateEntry={handleUpdateEntry}
+              onRemoveEntry={removeStraightPipeEntry}
+              onDuplicateEntry={duplicateItem}
+              onCalculate={handleCalculateAll}
+              onCalculateBend={handleCalculateBend}
+              onCalculateFitting={handleCalculateFitting}
+              errors={validationErrors}
+              loading={false}
+              fetchAvailableSchedules={fetchAvailableSchedules}
+              availableSchedulesMap={availableSchedulesMap}
+              setAvailableSchedulesMap={setAvailableSchedulesMap}
+              fetchBendOptions={fetchBendOptions}
+              fetchCenterToFace={fetchCenterToFace}
+              bendOptionsCache={bendOptionsCache}
+              autoSelectFlangeSpecs={autoSelectFlangeSpecs}
+              requiredProducts={rfqData.requiredProducts}
+              pressureClassesByStandard={pressureClassesByStandard}
+              getFilteredPressureClasses={getFilteredPressureClasses}
+            />
+          );
+        case 4:
+          return (
+            <ReviewSubmitStep
+              entries={rfqData.straightPipeEntries}
+              rfqData={rfqData}
+              onNextStep={handleNextStep}
+              onPrevStep={handlePrevStep}
+              errors={validationErrors}
+              loading={isSubmitting}
+            />
+          );
+        case 5:
+          return (
+            <BOQStep
+              rfqData={rfqData}
+              entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
+              globalSpecs={rfqData.globalSpecs}
+              requiredProducts={rfqData.requiredProducts || []}
+              masterData={masterData}
+              onPrevStep={handlePrevStep}
+              onSubmit={handleSubmit}
+              onResubmit={handleResubmit}
+              isEditing={isEditing}
+              loading={isSubmitting}
+            />
+          );
+        default:
+          return null;
+      }
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex flex-col">
+      {/* Nix AI Assistant Popup */}
+      <NixAiPopup
+        isVisible={showNixPopup}
+        onYes={handleNixYes}
+        onNo={handleNixNo}
+      />
+
       {/* Save Progress Confirmation Toast */}
       {showSaveConfirmation && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in-right">

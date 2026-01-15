@@ -29,9 +29,12 @@ interface ProjectDetailsStepProps {
   pendingDocuments: PendingDocument[];
   onAddDocument: (file: File) => void;
   onRemoveDocument: (id: string) => void;
+  useNix?: boolean;
+  onShowNixPopup?: () => void;
+  onStopUsingNix?: () => void;
 }
 
-export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGlobalSpecs, pendingDocuments, onAddDocument, onRemoveDocument }: ProjectDetailsStepProps) {
+export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGlobalSpecs, pendingDocuments, onAddDocument, onRemoveDocument, useNix, onShowNixPopup, onStopUsingNix }: ProjectDetailsStepProps) {
   const { showToast } = useToast();
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);
@@ -227,6 +230,20 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
     };
     fetchMines();
   }, []);
+
+  useEffect(() => {
+    const nixProjectTypes = ['phase1', 'retender', 'feasibility'];
+    log.debug('🤖 Nix popup check:', {
+      projectType: rfqData.projectType,
+      isNixType: nixProjectTypes.includes(rfqData.projectType as string),
+      hasCallback: !!onShowNixPopup,
+      nixPopupShown: rfqData.nixPopupShown
+    });
+    if (nixProjectTypes.includes(rfqData.projectType as string) && onShowNixPopup && !rfqData.nixPopupShown) {
+      log.debug('🤖 Triggering Nix popup!');
+      onShowNixPopup();
+    }
+  }, [rfqData.projectType, rfqData.nixPopupShown, onShowNixPopup]);
 
   // Fallback slurry profiles by commodity when API is unavailable
   const fallbackSlurryProfiles: Record<string, any> = {
@@ -760,6 +777,34 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
     <div>
       <h2 className="text-lg font-bold text-gray-900 mb-2">Project/RFQ Details</h2>
 
+      {/* Nix AI Assistant Active Banner */}
+      {useNix && (
+        <div className="mb-3 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-300 rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-500 rounded-lg">
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">Nix AI Assistant is Active</p>
+                <p className="text-xs text-gray-600">Nix will analyze your documents to auto-populate the RFQ form</p>
+              </div>
+            </div>
+            {onStopUsingNix && (
+              <button
+                type="button"
+                onClick={onStopUsingNix}
+                className="text-sm text-orange-700 hover:text-orange-900 underline font-medium"
+              >
+                Stop using Nix
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-2">
         {/* Customer Information - Required fields */}
         <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
@@ -905,8 +950,15 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
                   value={type.value}
                   checked={rfqData.projectType === type.value}
                   onChange={(e) => {
-                    log.debug('🔘 Project type selected:', e.target.value);
-                    onUpdate('projectType', e.target.value);
+                    const selectedType = e.target.value;
+                    log.debug('🔘 Project type selected:', selectedType);
+                    onUpdate('projectType', selectedType);
+
+                    const nixProjectTypes = ['phase1', 'retender', 'feasibility'];
+                    if (nixProjectTypes.includes(selectedType) && onShowNixPopup && !rfqData.nixPopupShown) {
+                      log.debug('🤖 Triggering Nix popup from onChange');
+                      onShowNixPopup();
+                    }
                   }}
                   className="sr-only"
                   disabled={projectTypeConfirmed}
@@ -1060,6 +1112,84 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
             />
           </div>
         </div>
+
+        {/* Document Upload - Moved above Project Location when Nix is enabled */}
+        {useNix && (
+          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-3 border border-purple-200">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 bg-purple-600 rounded">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Upload Documents for Nix</h3>
+                <p className="text-xs text-gray-600">Tender documents and drawings for AI analysis</p>
+              </div>
+            </div>
+
+            {!documentsConfirmed ? (
+              <>
+                <RfqDocumentUpload
+                  documents={pendingDocuments || []}
+                  onAddDocument={onAddDocument}
+                  onRemoveDocument={onRemoveDocument}
+                  maxDocuments={10}
+                  maxFileSizeMB={50}
+                />
+
+                <div className="mt-3 pt-2 border-t border-purple-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!pendingDocuments || pendingDocuments.length === 0) {
+                        setShowNoDocumentsPopup(true);
+                      } else {
+                        setDocumentsConfirmed(true);
+                      }
+                    }}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold flex items-center gap-2 transition-colors text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Confirm Documents
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="bg-green-50 border border-green-400 rounded-lg p-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Confirmed ({pendingDocuments?.length || 0} file{(pendingDocuments?.length || 0) !== 1 ? 's' : ''})
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDocumentsConfirmed(false)}
+                    className="text-blue-600 hover:text-blue-800 text-xs font-medium underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+                {pendingDocuments && pendingDocuments.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {pendingDocuments.map((doc: any, idx: number) => (
+                      <span key={idx} className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        {(doc.name || doc.file?.name)?.substring(0, 20)}...
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Project Location - Compact */}
         <div className="bg-white rounded-lg p-3 border border-gray-200">
@@ -1753,83 +1883,85 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
         </div>
       </div>
 
-      {/* Supporting Documents Section - At Bottom - Compact */}
-      <div className="mt-4 pt-4 border-t border-gray-300">
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-3 border border-purple-200">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-purple-600 rounded">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+      {/* Supporting Documents Section - At Bottom - Only shown when Nix is NOT enabled */}
+      {!useNix && (
+        <div className="mt-4 pt-4 border-t border-gray-300">
+          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-3 border border-purple-200">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 bg-purple-600 rounded">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Supporting Documents</h3>
+                <p className="text-xs text-gray-600">Specifications, drawings, or requirements</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-gray-900">Supporting Documents</h3>
-              <p className="text-xs text-gray-600">Specifications, drawings, or requirements</p>
-            </div>
+
+            {!documentsConfirmed ? (
+              <>
+                <RfqDocumentUpload
+                  documents={pendingDocuments || []}
+                  onAddDocument={onAddDocument}
+                  onRemoveDocument={onRemoveDocument}
+                  maxDocuments={10}
+                  maxFileSizeMB={50}
+                />
+
+                <div className="mt-3 pt-2 border-t border-purple-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!pendingDocuments || pendingDocuments.length === 0) {
+                        setShowNoDocumentsPopup(true);
+                      } else {
+                        setDocumentsConfirmed(true);
+                      }
+                    }}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold flex items-center gap-2 transition-colors text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Confirm Documents
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="bg-green-50 border border-green-400 rounded-lg p-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Confirmed ({pendingDocuments?.length || 0} file{(pendingDocuments?.length || 0) !== 1 ? 's' : ''})
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDocumentsConfirmed(false)}
+                    className="text-blue-600 hover:text-blue-800 text-xs font-medium underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+                {pendingDocuments && pendingDocuments.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {pendingDocuments.map((doc: any, idx: number) => (
+                      <span key={idx} className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        {(doc.name || doc.file?.name)?.substring(0, 20)}...
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-
-          {!documentsConfirmed ? (
-            <>
-              <RfqDocumentUpload
-                documents={pendingDocuments || []}
-                onAddDocument={onAddDocument}
-                onRemoveDocument={onRemoveDocument}
-                maxDocuments={10}
-                maxFileSizeMB={50}
-              />
-
-              <div className="mt-3 pt-2 border-t border-purple-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!pendingDocuments || pendingDocuments.length === 0) {
-                      setShowNoDocumentsPopup(true);
-                    } else {
-                      setDocumentsConfirmed(true);
-                    }
-                  }}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold flex items-center gap-2 transition-colors text-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Confirm Documents
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="bg-green-50 border border-green-400 rounded-lg p-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Confirmed ({pendingDocuments?.length || 0} file{(pendingDocuments?.length || 0) !== 1 ? 's' : ''})
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDocumentsConfirmed(false)}
-                  className="text-blue-600 hover:text-blue-800 text-xs font-medium underline"
-                >
-                  Edit
-                </button>
-              </div>
-              {pendingDocuments && pendingDocuments.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {pendingDocuments.map((doc: any, idx: number) => (
-                    <span key={idx} className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                      {(doc.name || doc.file?.name)?.substring(0, 20)}...
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
       {/* No Documents Confirmation Popup */}
       {showNoDocumentsPopup && (

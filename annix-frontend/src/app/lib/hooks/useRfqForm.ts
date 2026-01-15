@@ -238,6 +238,9 @@ export interface RfqFormData {
   mineName?: string;
   // Document upload preference
   skipDocuments?: boolean;
+  // Nix AI Assistant mode
+  useNix?: boolean;
+  nixPopupShown?: boolean;
   // Global specs for page 2
   globalSpecs: GlobalSpecs;
   items: PipeItem[]; // Unified array for all item types
@@ -274,6 +277,8 @@ export const useRfqForm = () => {
     globalSpecs: {},
     items: [],
     straightPipeEntries: [],
+    useNix: false,
+    nixPopupShown: false,
   });
 
   const updateRfqField = useCallback(<K extends keyof Omit<RfqFormData, 'straightPipeEntries'>>(field: K, value: RfqFormData[K]) => {
@@ -524,6 +529,10 @@ export const useRfqForm = () => {
 
       // Document upload preference
       skipDocuments: formData.skipDocuments,
+
+      // Nix AI Assistant mode
+      useNix: formData.useNix ?? false,
+      nixPopupShown: formData.nixPopupShown ?? false,
 
       // Restore globalSpecs
       globalSpecs: draft.globalSpecs ?? {},
