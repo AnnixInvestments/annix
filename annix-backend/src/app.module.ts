@@ -54,6 +54,7 @@ import { StructuralSteelModule } from './structural-steel/structural-steel.modul
 import { HdpeModule } from './hdpe/hdpe.module';
 import { PvcModule } from './pvc/pvc.module';
 import { AdminModule } from './admin/admin.module';
+import { NixModule } from './nix/nix.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -109,6 +110,7 @@ import typeormConfig from './config/typeorm';
     HdpeModule,
     PvcModule,
     AdminModule,
+    NixModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],
