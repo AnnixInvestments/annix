@@ -62,30 +62,30 @@ export default function NixClarificationPopup({
   const ctx = clarification.context;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+    <div className="fixed inset-x-0 top-16 bottom-16 z-[9999] flex items-center justify-center px-4">
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-300">
+      <div className="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden animate-in fade-in zoom-in duration-300 max-h-full flex flex-col">
         <div
-          className="px-6 py-4 flex items-center justify-between"
+          className="px-4 py-2 flex items-center justify-between flex-shrink-0"
           style={{ backgroundColor: '#323288' }}
         >
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-orange-400">
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-orange-400 flex-shrink-0">
               <Image
                 src="/nix-avatar.png"
                 alt="Nix"
-                width={48}
-                height={48}
+                width={40}
+                height={40}
                 className="object-cover object-top scale-125"
               />
             </div>
             <div>
-              <h3 className="text-white font-semibold">Nix needs your help</h3>
-              <p className="text-white/70 text-sm">
+              <h3 className="text-white font-semibold text-sm">Nix needs your help</h3>
+              <p className="text-white/70 text-xs">
                 Question {currentIndex + 1} of {totalClarifications}
               </p>
             </div>
@@ -94,127 +94,94 @@ export default function NixClarificationPopup({
             onClick={onClose}
             className="text-white/70 hover:text-white transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="px-6 py-5">
-          {ctx.rowNumber && (
-            <div className="mb-3 flex items-center gap-2">
-              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm font-medium">
+        <div className="px-4 py-3 overflow-y-auto flex-1">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            {ctx.rowNumber && (
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
                 Row {ctx.rowNumber}
               </span>
-              {ctx.itemNumber && (
-                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm">
-                  {ctx.itemNumber}
-                </span>
-              )}
-              {ctx.itemType && (
-                <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm capitalize">
-                  {ctx.itemType}
-                </span>
-              )}
-            </div>
-          )}
+            )}
+            {ctx.itemNumber && (
+              <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
+                {ctx.itemNumber}
+              </span>
+            )}
+            {ctx.itemType && (
+              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs capitalize">
+                {ctx.itemType}
+              </span>
+            )}
+          </div>
 
           {ctx.itemDescription && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-500 mb-1">From document:</p>
-              <p className="text-gray-800 text-sm font-mono">
+            <div className="mb-3 p-2 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-gray-800 text-xs font-mono line-clamp-2">
                 {ctx.itemDescription}
               </p>
             </div>
           )}
 
-          <div className="mb-4">
-            <p className="text-gray-800 whitespace-pre-wrap">
-              {clarification.question.split('\n').map((line, i) => (
-                <span key={i}>
-                  {line}
-                  <br />
-                </span>
-              ))}
-            </p>
-          </div>
+          <p className="text-gray-800 text-sm mb-3">
+            {clarification.question}
+          </p>
 
           {(ctx.extractedMaterial || ctx.extractedDiameter) && (
-            <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
-              <p className="text-sm text-orange-700 font-medium mb-2">What I extracted:</p>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="mb-3 p-2 bg-orange-50 rounded-lg border border-orange-200">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
                 {ctx.extractedMaterial && (
-                  <div>
-                    <span className="text-gray-500">Material:</span>{' '}
-                    <span className="font-medium">{ctx.extractedMaterial}</span>
-                  </div>
+                  <span><span className="text-gray-500">Material:</span> <span className="font-medium">{ctx.extractedMaterial}</span></span>
                 )}
                 {ctx.extractedDiameter && (
-                  <div>
-                    <span className="text-gray-500">Diameter:</span>{' '}
-                    <span className="font-medium">{ctx.extractedDiameter}mm</span>
-                  </div>
+                  <span><span className="text-gray-500">Dia:</span> <span className="font-medium">{ctx.extractedDiameter}mm</span></span>
                 )}
                 {ctx.extractedLength && (
-                  <div>
-                    <span className="text-gray-500">Length:</span>{' '}
-                    <span className="font-medium">{ctx.extractedLength}mm</span>
-                  </div>
+                  <span><span className="text-gray-500">Len:</span> <span className="font-medium">{ctx.extractedLength}mm</span></span>
                 )}
                 {ctx.extractedAngle && (
-                  <div>
-                    <span className="text-gray-500">Angle:</span>{' '}
-                    <span className="font-medium">{ctx.extractedAngle}deg</span>
-                  </div>
+                  <span><span className="text-gray-500">Angle:</span> <span className="font-medium">{ctx.extractedAngle}°</span></span>
                 )}
                 {ctx.extractedQuantity && (
-                  <div>
-                    <span className="text-gray-500">Quantity:</span>{' '}
-                    <span className="font-medium">{ctx.extractedQuantity}</span>
-                  </div>
+                  <span><span className="text-gray-500">Qty:</span> <span className="font-medium">{ctx.extractedQuantity}</span></span>
                 )}
               </div>
             </div>
           )}
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Your response:
-            </label>
-            <textarea
-              value={response}
-              onChange={(e) => setResponse(e.target.value)}
-              placeholder="Type your answer here to help Nix understand..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
-              rows={3}
-              disabled={isSubmitting}
-            />
-          </div>
+          <textarea
+            value={response}
+            onChange={(e) => setResponse(e.target.value)}
+            placeholder="Type your answer..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none text-sm"
+            rows={2}
+            disabled={isSubmitting}
+          />
 
-          <div className="flex gap-3">
+          <div className="flex gap-2 mt-3">
             <button
               onClick={handleSkip}
               disabled={isSubmitting}
-              className="flex-1 py-3 px-4 rounded-lg font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="flex-1 py-2 px-3 rounded-lg font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 text-sm"
             >
-              Skip this one
+              Skip
             </button>
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || !response.trim()}
-              className="flex-1 py-3 px-4 rounded-lg font-medium text-white transition-colors disabled:opacity-50 hover:opacity-90"
+              className="flex-1 py-2 px-3 rounded-lg font-medium text-white transition-colors disabled:opacity-50 hover:opacity-90 text-sm"
               style={{ backgroundColor: '#FFA500' }}
             >
-              {isSubmitting ? 'Submitting...' : 'Submit Answer'}
+              {isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
           </div>
-
-          <p className="mt-3 text-xs text-gray-400 text-center">
-            Your answers help Nix learn and improve for future extractions
-          </p>
         </div>
 
-        <div className="h-1" style={{ backgroundColor: '#FFA500' }} />
+        <div className="h-1 flex-shrink-0" style={{ backgroundColor: '#FFA500' }} />
       </div>
     </div>
   );

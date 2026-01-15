@@ -1533,18 +1533,34 @@ export interface NixProcessResponse {
 
 export const nixApi = {
   uploadAndProcess: async (file: File, userId?: number, rfqId?: number): Promise<NixProcessResponse> => {
-    const baseUrl = browserBaseUrl();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!file || !(file instanceof File)) {
+      throw new Error('Invalid file object provided to Nix upload');
+    }
+
+    if (file.size === 0) {
+      throw new Error('Cannot upload empty file to Nix');
+    }
+
+    let fileData: ArrayBuffer;
+    try {
+      fileData = await file.arrayBuffer();
+    } catch {
+      throw new Error(
+        `Cannot read "${file.name}". The file may be open in another application (like Excel). Please close it and try again.`
+      );
+    }
+
+    const blob = new Blob([fileData], { type: file.type });
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', blob, file.name);
     if (userId) formData.append('userId', userId.toString());
     if (rfqId) formData.append('rfqId', rfqId.toString());
 
-    const response = await fetch(`${baseUrl}/nix/upload`, {
+    const uploadUrl = '/api/nix/upload';
+    console.log('[Nix] Uploading via API route:', uploadUrl, 'File:', file.name, 'Size:', file.size);
+
+    const response = await fetch(uploadUrl, {
       method: 'POST',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
       body: formData,
     });
 
