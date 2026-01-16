@@ -86,7 +86,7 @@ const getMaterialProps = (name: string = '') => {
   if (n.includes('sabs 62')) return { color: '#C0C0C0', metalness: 0.4, roughness: 0.5, name: 'Galvanized Steel' };
   if (n.includes('stainless') || n.includes('304') || n.includes('316')) return { color: '#E0E0E0', metalness: 0.9, roughness: 0.15, name: 'Stainless Steel' };
   if (n.includes('pvc') || n.includes('plastic')) return { color: '#E6F2FF', metalness: 0.1, roughness: 0.9, name: 'PVC/Plastic' };
-  return { color: '#4A4A4A', metalness: 0.6, roughness: 0.7, name: 'Carbon Steel' };
+  return { color: '#1e3a5f', metalness: 0.6, roughness: 0.7, name: 'Carbon Steel' };
 };
 
 const WeldBead = ({ position, diameter }: { position: [number, number, number], diameter: number }) => {

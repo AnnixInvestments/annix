@@ -740,10 +740,10 @@ export default function StraightPipeForm({
                     const currentPositions = entry.specs?.blankFlangePositions || [];
 
                     return (
-                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                      <div className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg p-3">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-semibold text-green-800">Add Blank Flange(s)</span>
-                          <span className="text-xs text-slate-500">({availablePositions.length} positions available)</span>
+                          <span className="text-sm font-semibold text-green-800 dark:text-green-400">Add Blank Flange(s)</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">({availablePositions.length} positions available)</span>
                         </div>
                         <div className="flex flex-wrap gap-4">
                           {availablePositions.map(pos => (
@@ -768,9 +768,9 @@ export default function StraightPipeForm({
                                     }
                                   });
                                 }}
-                                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                className="w-4 h-4 text-green-600 border-gray-300 dark:border-slate-500 rounded focus:ring-green-500"
                               />
-                              <span className="text-sm text-slate-700">{pos.label}</span>
+                              <span className="text-sm text-slate-700 dark:text-slate-300">{pos.label}</span>
                             </label>
                           ))}
                         </div>
