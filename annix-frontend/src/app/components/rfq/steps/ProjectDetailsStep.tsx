@@ -1434,8 +1434,8 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
             />
           )}
 
-          {/* Environmental Intelligence Loading/Status */}
-          {isLoadingEnvironmental && (
+          {/* Environmental Intelligence Loading/Status - Hidden when using Nix */}
+          {!useNix && isLoadingEnvironmental && (
             <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 mt-4">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
               <span className="text-sm text-blue-700">
@@ -1445,7 +1445,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
           )}
 
 
-          {!isLoadingEnvironmental && environmentalErrors.length > 0 && (
+          {!useNix && !isLoadingEnvironmental && environmentalErrors.length > 0 && (
             <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mt-4">
               <div className="flex items-center gap-2 mb-1">
                 <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1467,7 +1467,8 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
           )}
         </div>
 
-        {/* Environmental Intelligence Section - Compact */}
+        {/* Environmental Intelligence Section - Hidden when using Nix */}
+        {!useNix && (
         <div className="mt-4 pt-4 border-t border-gray-300">
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
             <div className="flex items-center gap-2 mb-2">
@@ -1903,6 +1904,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Supporting Documents Section - At Bottom - Only shown when Nix is NOT enabled */}
