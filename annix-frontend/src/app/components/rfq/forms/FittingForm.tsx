@@ -12,6 +12,7 @@ import {
   weldCountPerFitting as getWeldCountPerFitting,
   fittingFlangeConfig as getFittingFlangeConfig,
   hasLooseFlange,
+  retainingRingWeight,
 } from '@/app/lib/config/rfq';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 
@@ -557,10 +558,11 @@ export default function FittingForm({
                   {(() => {
                     const fittingType = entry.specs?.fittingType;
                     const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
+                    const isUnequalTee = ['UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE'].includes(fittingType || '');
                     const isAutoA = entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
 
                     return (
-                      <div>
+                      <div className={isUnequalTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
                         <label className="block text-xs font-semibold text-gray-900 mb-1">
                           Pipe Length A (mm) *
                           {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(C/F)</span>}
@@ -587,6 +589,9 @@ export default function FittingForm({
                           min="0"
                           readOnly={isEqualTee}
                         />
+                        {isUnequalTee && (
+                          <p className="text-xs text-blue-600 mt-1 font-medium">Can Change Lengths</p>
+                        )}
                       </div>
                     );
                   })()}
@@ -595,10 +600,11 @@ export default function FittingForm({
                   {(() => {
                     const fittingType = entry.specs?.fittingType;
                     const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
+                    const isUnequalTee = ['UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE'].includes(fittingType || '');
                     const isAutoB = entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
 
                     return (
-                      <div>
+                      <div className={isUnequalTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
                         <label className="block text-xs font-semibold text-gray-900 mb-1">
                           Pipe Length B (mm) *
                           {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(C/F)</span>}
@@ -625,6 +631,9 @@ export default function FittingForm({
                           min="0"
                           readOnly={isEqualTee}
                         />
+                        {isUnequalTee && (
+                          <p className="text-xs text-blue-600 mt-1 font-medium">Can Change Lengths</p>
+                        )}
                       </div>
                     );
                   })()}
@@ -941,6 +950,13 @@ export default function FittingForm({
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* Column 3 - Flanges */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
+                      Flanges
+                    </h4>
 
                     {/* Blank Flange Option for Fittings - with position selection */}
                     {(() => {
@@ -1184,6 +1200,158 @@ export default function FittingForm({
                     placeholder="Any special requirements or notes..."
                   />
                 </div>
+
+                {/* Calculation Results - Compact Layout matching Bend style */}
+                {entry.calculation && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-bold text-gray-900 border-b-2 border-green-500 pb-1.5 mb-3">
+                      Calculation Results
+                    </h4>
+                    <div className="bg-green-50 border border-green-200 p-3 rounded-md">
+                      {(() => {
+                        const fittingType = entry.specs?.fittingType || 'Tee';
+                        const nominalBore = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 0;
+                        const branchNB = entry.specs?.branchNominalDiameterMm || entry.specs?.branchNominalBoreMm || nominalBore;
+                        const pipeALength = entry.specs?.pipeLengthAMm || 0;
+                        const pipeBLength = entry.specs?.pipeLengthBMm || 0;
+                        const teeHeight = entry.specs?.teeHeightMm || 0;
+                        const quantity = entry.specs?.quantityValue || 1;
+
+                        const flangeConfig = getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || 'PE');
+                        const numFlanges = (flangeConfig.hasInlet ? 1 : 0) + (flangeConfig.hasOutlet ? 1 : 0) + (flangeConfig.hasBranch ? 1 : 0);
+
+                        const schedule = entry.specs?.scheduleNumber || '';
+                        const pipeWallThickness = entry.calculation?.wallThicknessMm;
+
+                        const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                        const steelSpec = masterData?.steelSpecs?.find((s: any) => s.id === steelSpecId);
+                        const steelSpecName = steelSpec?.steelSpecName || '';
+                        const isSABS719 = steelSpecName.includes('SABS 719') || steelSpecName.includes('SANS 719');
+
+                        const scheduleUpper = schedule.toUpperCase();
+                        const fittingClass = scheduleUpper.includes('160') || scheduleUpper.includes('XXS') ? 'XXH' : scheduleUpper.includes('80') || scheduleUpper.includes('XS') ? 'XH' : 'STD';
+
+                        const FITTING_WT: Record<string, Record<number, number>> = {
+                          'STD': { 50: 3.91, 65: 5.16, 80: 5.49, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53 },
+                          'XH': { 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70 },
+                          'XXH': { 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
+                        };
+
+                        const fittingWeldThickness = isSABS719
+                          ? roundToWeldIncrement(pipeWallThickness || 6)
+                          : (FITTING_WT[fittingClass]?.[nominalBore] || pipeWallThickness || 6);
+                        const branchWeldThickness = isSABS719
+                          ? roundToWeldIncrement(pipeWallThickness || 6)
+                          : (FITTING_WT[fittingClass]?.[branchNB] || fittingWeldThickness);
+
+                        const rotatingFlangeCount =
+                          (flangeConfig.inletType === 'rotating' ? 1 : 0) +
+                          (flangeConfig.outletType === 'rotating' ? 1 : 0) +
+                          (flangeConfig.branchType === 'rotating' ? 1 : 0);
+
+                        const mainRingWeight = (flangeConfig.inletType === 'rotating' || flangeConfig.outletType === 'rotating')
+                          ? retainingRingWeight(nominalBore, entry.calculation?.outsideDiameterMm)
+                          : 0;
+                        const branchRingWeight = flangeConfig.branchType === 'rotating'
+                          ? retainingRingWeight(branchNB)
+                          : 0;
+
+                        const mainRingsCount = (flangeConfig.inletType === 'rotating' ? 1 : 0) + (flangeConfig.outletType === 'rotating' ? 1 : 0);
+                        const totalRingWeight = (mainRingsCount * mainRingWeight) + (flangeConfig.branchType === 'rotating' ? branchRingWeight : 0);
+
+                        const baseWeight = entry.calculation.totalWeight ||
+                          ((entry.calculation.fittingWeight || 0) + (entry.calculation.pipeWeight || 0) +
+                           (entry.calculation.flangeWeight || 0) + (entry.calculation.boltWeight || 0) +
+                           (entry.calculation.nutWeight || 0));
+
+                        const totalWeight = baseWeight + totalRingWeight;
+
+                        return (
+                          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
+                            {/* Qty & Dimensions */}
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-xs text-gray-600 font-medium">Qty & Dimensions</p>
+                              <p className="text-lg font-bold text-gray-900">{quantity} × {fittingType.replace(/_/g, ' ')}</p>
+                              <div className="mt-1 space-y-0.5 text-left">
+                                <p className="text-[10px] text-gray-700">Main: {nominalBore}NB</p>
+                                {branchNB !== nominalBore && (
+                                  <p className="text-[10px] text-gray-700">Branch: {branchNB}NB</p>
+                                )}
+                                {pipeALength > 0 && (
+                                  <p className="text-[10px] text-gray-700">Pipe A: {pipeALength}mm</p>
+                                )}
+                                {pipeBLength > 0 && (
+                                  <p className="text-[10px] text-gray-700">Pipe B: {pipeBLength}mm</p>
+                                )}
+                                {teeHeight > 0 && (
+                                  <p className="text-[10px] text-gray-700">Height: {teeHeight}mm</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Total Weight */}
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-xs text-gray-600 font-medium">Total Weight</p>
+                              <p className="text-lg font-bold text-green-900">{totalWeight.toFixed(1)} kg</p>
+                              <p className="text-[10px] text-gray-500">per fitting</p>
+                            </div>
+
+                            {/* Weight Breakdown */}
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-xs text-gray-600 font-medium">Weight Breakdown</p>
+                              <div className="text-left mt-1 space-y-0.5">
+                                {(entry.calculation.fittingWeight || 0) > 0 && (
+                                  <p className="text-[10px] text-gray-700">Fitting: {entry.calculation.fittingWeight.toFixed(1)}kg</p>
+                                )}
+                                {(entry.calculation.pipeWeight || 0) > 0 && (
+                                  <p className="text-[10px] text-gray-700">Pipe: {entry.calculation.pipeWeight.toFixed(1)}kg</p>
+                                )}
+                                {(entry.calculation.flangeWeight || 0) > 0 && (
+                                  <p className="text-[10px] text-gray-700">Flanges: {entry.calculation.flangeWeight.toFixed(1)}kg</p>
+                                )}
+                                {totalRingWeight > 0 && (
+                                  <p className="text-[10px] text-orange-700 font-medium">R/F Rings: {totalRingWeight.toFixed(2)}kg ({rotatingFlangeCount}×)</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Flanges */}
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-xs text-gray-600 font-medium">Total Flanges</p>
+                              <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfFlanges || numFlanges}</p>
+                              <div className="text-left mt-1 space-y-0.5">
+                                {flangeConfig.hasInlet && (
+                                  <p className="text-[10px] text-gray-700">1 x {nominalBore}NB {flangeConfig.inletType === 'loose' ? 'L/F' : flangeConfig.inletType === 'rotating' ? 'R/F' : 'Flange'}</p>
+                                )}
+                                {flangeConfig.hasOutlet && (
+                                  <p className="text-[10px] text-gray-700">1 x {nominalBore}NB {flangeConfig.outletType === 'loose' ? 'L/F' : flangeConfig.outletType === 'rotating' ? 'R/F' : 'Flange'}</p>
+                                )}
+                                {flangeConfig.hasBranch && (
+                                  <p className="text-[10px] text-gray-700">1 x {branchNB}NB {flangeConfig.branchType === 'loose' ? 'L/F' : flangeConfig.branchType === 'rotating' ? 'R/F' : 'Flange'}</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Weld Summary */}
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-xs text-gray-600 font-medium">Weld Summary</p>
+                              <div className="text-left mt-1 space-y-0.5">
+                                <p className="text-[10px] text-blue-700 font-medium">
+                                  Tee Junction: 1 weld @ {branchWeldThickness?.toFixed(1)}mm
+                                </p>
+                                {numFlanges > 0 && (
+                                  <p className="text-[10px] text-green-700 font-medium">
+                                    Flange Welds: {numFlanges * 2} @ {fittingWeldThickness?.toFixed(1)}mm
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
                   </>
                 }
                 previewContent={
@@ -1242,361 +1410,6 @@ export default function FittingForm({
                   </>
                 }
               />
-
-                {/* Calculate button removed - calculation happens automatically on spec changes */}
-
-                {/* Calculation Results - Compact Layout matching Bend style */}
-                {entry.calculation && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-bold text-gray-900 border-b-2 border-green-500 pb-1.5 mb-3">
-                      📊 Calculation Results
-                    </h4>
-                    <div className="bg-green-50 border border-green-200 p-3 rounded-md">
-                      {(() => {
-                        // Get fitting configuration values
-                        const fittingType = entry.specs?.fittingType || 'Tee';
-                        const nominalBore = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 0;
-                        const branchNB = entry.specs?.branchNominalDiameterMm || entry.specs?.branchNominalBoreMm || nominalBore;
-                        const pipeALength = entry.specs?.pipeLengthAMm || 0;
-                        const pipeBLength = entry.specs?.pipeLengthBMm || 0;
-                        const teeHeight = entry.specs?.teeHeightMm || 0;
-                        const quantity = entry.specs?.quantityValue || 1;
-
-                        // Get flange configuration
-                        const flangeConfig = getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || 'PE');
-                        const numFlanges = (flangeConfig.hasInlet ? 1 : 0) + (flangeConfig.hasOutlet ? 1 : 0) + (flangeConfig.hasBranch ? 1 : 0);
-
-                        // Weld thickness lookup
-                        const schedule = entry.specs?.scheduleNumber || '';
-                        const pipeWallThickness = entry.calculation?.wallThicknessMm;
-
-                        // Check for SABS 719 - use item-level steel spec with global fallback
-                        const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                        const isSABS719 = steelSpecId === 8;
-
-                        const scheduleUpper = schedule.toUpperCase();
-                        const fittingClass = scheduleUpper.includes('160') || scheduleUpper.includes('XXS') ? 'XXH' : scheduleUpper.includes('80') || scheduleUpper.includes('XS') ? 'XH' : 'STD';
-
-                        // SABS 719 ERW Pipe Wall Thickness Table (Class B - Standard)
-                        const SABS_719_WT: Record<number, number> = {
-                          200: 5.2, 250: 5.2, 300: 6.4, 350: 6.4, 400: 6.4, 450: 6.4, 500: 6.4,
-                          550: 6.4, 600: 6.4, 650: 8.0, 700: 8.0, 750: 8.0, 800: 8.0, 850: 9.5,
-                          900: 9.5, 1000: 9.5, 1050: 9.5, 1200: 12.7
-                        };
-
-                        // ASTM/ASME Carbon Steel Weld Fittings wall thickness (WPB Grade)
-                        const FITTING_WT: Record<string, Record<number, number>> = {
-                          'STD': { 50: 3.91, 65: 5.16, 80: 5.49, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53 },
-                          'XH': { 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70 },
-                          'XXH': { 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
-                        };
-
-                        // Get SABS 719 wall thickness with closest size lookup
-                        const getSabs719Wt = (nb: number): number => {
-                          const sizes = Object.keys(SABS_719_WT).map(Number).sort((a, b) => a - b);
-                          let closest = sizes[0];
-                          for (const size of sizes) {
-                            if (size <= nb) closest = size;
-                            else break;
-                          }
-                          return SABS_719_WT[closest] || 6.4;
-                        };
-
-                        // For SABS 719: use SABS 719 WT table rounded to 1.5mm increments; for ASTM/ASME: use fitting lookup
-                        const fittingWeldThickness = isSABS719
-                          ? roundToWeldIncrement(getSabs719Wt(nominalBore))
-                          : (FITTING_WT[fittingClass]?.[nominalBore] || pipeWallThickness || 6);
-                        const branchWeldThickness = isSABS719
-                          ? roundToWeldIncrement(getSabs719Wt(branchNB))
-                          : (FITTING_WT[fittingClass]?.[branchNB] || fittingWeldThickness);
-
-                        return (
-                          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
-                            {/* Qty & Dimensions Combined */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Qty & Dimensions</p>
-                              <p className="text-lg font-bold text-gray-900">{quantity} × {fittingType}</p>
-                              <div className="mt-1 space-y-0.5 text-left">
-                                <p className="text-[10px] text-gray-700">Main: {nominalBore}NB</p>
-                                {branchNB !== nominalBore && (
-                                  <p className="text-[10px] text-gray-700">Branch: {branchNB}NB</p>
-                                )}
-                                {pipeALength > 0 && (
-                                  <p className="text-[10px] text-gray-700">Pipe A: {pipeALength}mm</p>
-                                )}
-                                {pipeBLength > 0 && (
-                                  <p className="text-[10px] text-gray-700">Pipe B: {pipeBLength}mm</p>
-                                )}
-                                {teeHeight > 0 && (
-                                  <p className="text-[10px] text-gray-700">Height: {teeHeight}mm</p>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Total Weight - Use API value directly */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Total Weight</p>
-                              <p className="text-lg font-bold text-green-900">
-                                {(entry.calculation.totalWeight || ((entry.calculation.fittingWeight || 0) + (entry.calculation.pipeWeight || 0) + (entry.calculation.flangeWeight || 0) + (entry.calculation.boltWeight || 0) + (entry.calculation.nutWeight || 0))).toFixed(1)} kg
-                              </p>
-                              <p className="text-[10px] text-gray-500">per fitting</p>
-                            </div>
-
-                            {/* Weight Breakdown - Use API values directly */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Weight Breakdown</p>
-                              <div className="text-left mt-1 space-y-0.5">
-                                {(entry.calculation.fittingWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-gray-700">Fitting Body: {entry.calculation.fittingWeight.toFixed(1)}kg</p>
-                                )}
-                                {(entry.calculation.pipeWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-gray-700">Pipe Sections: {entry.calculation.pipeWeight.toFixed(1)}kg</p>
-                                )}
-                                {(entry.calculation.flangeWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-gray-700">Flanges: {entry.calculation.flangeWeight.toFixed(1)}kg</p>
-                                )}
-                                {(entry.calculation.boltWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-gray-700">Bolts: {entry.calculation.boltWeight.toFixed(1)}kg</p>
-                                )}
-                                {(entry.calculation.nutWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-gray-700">Nuts: {entry.calculation.nutWeight.toFixed(1)}kg</p>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Total Flanges - Use API value */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Total Flanges</p>
-                              <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfFlanges || numFlanges}</p>
-                              <div className="text-left mt-1 space-y-0.5">
-                                {flangeConfig.hasInlet && (
-                                  <p className="text-[10px] text-gray-700">1 x {nominalBore}NB {flangeConfig.inletType === 'loose' ? 'L/F' : flangeConfig.inletType === 'rotating' ? 'R/F' : 'Flange'}</p>
-                                )}
-                                {flangeConfig.hasOutlet && (
-                                  <p className="text-[10px] text-gray-700">1 x {nominalBore}NB {flangeConfig.outletType === 'loose' ? 'L/F' : flangeConfig.outletType === 'rotating' ? 'R/F' : 'Flange'}</p>
-                                )}
-                                {flangeConfig.hasBranch && (
-                                  <p className="text-[10px] text-green-700">1 x {branchNB}NB {flangeConfig.branchType === 'loose' ? 'L/F' : flangeConfig.branchType === 'rotating' ? 'R/F' : 'Flange'}</p>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Weld Summary - Consolidated display */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Weld Summary</p>
-                              {(() => {
-                                // Calculate tee junction weld (always 1 for tees)
-                                const teeOd = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
-                                const teeWeldLengthM = (Math.PI * teeOd / 1000); // Circumference in meters
-
-                                // Count fixed flanges (not loose) for weld calculations
-                                const mainFixedFlanges = (flangeConfig.hasInlet && flangeConfig.inletType !== 'loose' ? 1 : 0)
-                                                       + (flangeConfig.hasOutlet && flangeConfig.outletType !== 'loose' ? 1 : 0);
-                                const branchFixedFlanges = flangeConfig.hasBranch && flangeConfig.branchType !== 'loose' ? 1 : 0;
-                                const totalFixedFlanges = mainFixedFlanges + branchFixedFlanges;
-
-                                // Flange weld calculations (x2 for inside + outside welds)
-                                const mainFlangeOd = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
-                                const branchFlangeOd = branchNB * 1.1; // Approximate branch OD
-                                const mainFlangeWeldLengthPerFlange = Math.PI * mainFlangeOd / 1000; // Circumference in m
-                                const branchFlangeWeldLengthPerFlange = Math.PI * branchFlangeOd / 1000;
-
-                                // Total flange weld length = (count x circumference x 2) for inside + outside
-                                const totalMainFlangeWeldLength = mainFixedFlanges * mainFlangeWeldLengthPerFlange * 2;
-                                const totalBranchFlangeWeldLength = branchFixedFlanges * branchFlangeWeldLengthPerFlange * 2;
-                                const totalFlangeWeldLength = totalMainFlangeWeldLength + totalBranchFlangeWeldLength;
-                                const totalFlangeWeldCount = totalFixedFlanges * 2; // x2 for inside + outside
-
-                                // Count loose flanges
-                                const looseFlangeCount = (flangeConfig.hasInlet && flangeConfig.inletType === 'loose' ? 1 : 0)
-                                                       + (flangeConfig.hasOutlet && flangeConfig.outletType === 'loose' ? 1 : 0)
-                                                       + (flangeConfig.hasBranch && flangeConfig.branchType === 'loose' ? 1 : 0);
-
-                                return (
-                                  <div className="text-left mt-1 space-y-0.5">
-                                    {/* Tee Junction Weld */}
-                                    <p className="text-[10px] text-blue-700 font-medium">
-                                      Tee Junction: 1 weld @ {branchWeldThickness?.toFixed(1)}mm ({teeWeldLengthM.toFixed(2)}m)
-                                    </p>
-
-                                    {/* Combined Flange Welds (inside + outside) */}
-                                    {totalFixedFlanges > 0 && (
-                                      <p className="text-[10px] text-green-700 font-medium">
-                                        Flange Welds: {totalFlangeWeldCount} @ {fittingWeldThickness?.toFixed(1)}mm ({totalFlangeWeldLength.toFixed(2)}m)
-                                      </p>
-                                    )}
-                                    {totalFixedFlanges > 0 && (
-                                      <p className="text-[9px] text-gray-500 pl-2">
-                                        ({totalFixedFlanges} flange{totalFixedFlanges > 1 ? 's' : ''} × 2 welds for inside+outside)
-                                      </p>
-                                    )}
-
-                                    {/* Loose flanges - tack welds only */}
-                                    {looseFlangeCount > 0 && (
-                                      <p className="text-[10px] text-purple-700">
-                                        Loose Flanges: {looseFlangeCount} × 8 tack welds
-                                      </p>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                            </div>
-
-                            
-
-                            {/* External m² - Separate box */}
-                            {requiredProducts?.includes('surface_protection') && globalSpecs?.externalCoatingConfirmed && (() => {
-                              const odMm = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
-                              const odM = odMm / 1000;
-
-                              // Count open ends and add 100mm allowance per end
-                              const FLANGE_ALLOWANCE_MM = 100;
-                              let mainEndCount = 0;
-                              let branchEndCount = 0;
-                              if (flangeConfig.hasInlet) mainEndCount++;
-                              if (flangeConfig.hasOutlet) mainEndCount++;
-                              if (flangeConfig.hasBranch) branchEndCount++;
-
-                              // Calculate external surface areas
-                              let pipeRunExtArea = 0;
-                              let branchExtArea = 0;
-
-                              const mainEndAllowance = (mainEndCount * FLANGE_ALLOWANCE_MM) / 1000;
-                              const runLength = ((pipeALength + pipeBLength) / 1000) + mainEndAllowance;
-                              if (runLength > 0) {
-                                pipeRunExtArea = odM * Math.PI * runLength;
-                              }
-
-                              if (teeHeight > 0) {
-                                const branchOdMm = branchNB * 1.1;
-                                const branchEndAllowance = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
-                                const branchLength = (teeHeight / 1000) + branchEndAllowance;
-                                branchExtArea = (branchOdMm / 1000) * Math.PI * branchLength;
-                              }
-
-                              const itemExtArea = pipeRunExtArea + branchExtArea;
-                              const totalExtArea = itemExtArea * quantity;
-
-                              const branchOdMm = branchNB * 1.1;
-                              const branchEndAllowanceCalc = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
-                              const branchLengthCalc = (teeHeight / 1000) + branchEndAllowanceCalc;
-
-                              return (
-                                <div className="bg-indigo-50 dark:bg-indigo-900/30 p-2 rounded text-center border border-indigo-200 dark:border-indigo-700">
-                                  <p className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">🛡️ External m²</p>
-                                  <p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">{totalExtArea.toFixed(3)} m²</p>
-                                  <div className="text-left mt-1 space-y-0.5">
-                                    {runLength > 0 && (
-                                      <p className="text-[9px] text-indigo-700 dark:text-indigo-300">
-                                        Run: {pipeRunExtArea.toFixed(4)} m² <span className="text-indigo-500 dark:text-indigo-400">(OD {odMm.toFixed(1)}mm × π × {runLength.toFixed(3)}m)</span>
-                                      </p>
-                                    )}
-                                    {mainEndCount > 0 && (
-                                      <p className="text-[8px] text-indigo-500 dark:text-indigo-400 pl-2">
-                                        Length: {((pipeALength + pipeBLength) / 1000).toFixed(3)}m + {mainEndCount}×0.1m allowance
-                                      </p>
-                                    )}
-                                    {teeHeight > 0 && (
-                                      <p className="text-[9px] text-indigo-700 dark:text-indigo-300">
-                                        Branch: {branchExtArea.toFixed(4)} m² <span className="text-indigo-500 dark:text-indigo-400">(OD {branchOdMm.toFixed(1)}mm × π × {branchLengthCalc.toFixed(3)}m)</span>
-                                      </p>
-                                    )}
-                                    {teeHeight > 0 && branchEndCount > 0 && (
-                                      <p className="text-[8px] text-indigo-500 dark:text-indigo-400 pl-2">
-                                        Length: {(teeHeight / 1000).toFixed(3)}m + {branchEndCount}×0.1m allowance
-                                      </p>
-                                    )}
-                                    <p className="text-[9px] text-indigo-600 dark:text-indigo-400 font-medium pt-0.5 border-t border-indigo-200 dark:border-indigo-600 mt-1">
-                                      Per item: {itemExtArea.toFixed(4)} m² × {quantity} = {totalExtArea.toFixed(3)} m²
-                                    </p>
-                                    {globalSpecs?.coatingType && (
-                                      <p className="text-[9px] text-indigo-500 dark:text-indigo-400 italic">{globalSpecs.coatingType}</p>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-
-                            {/* Internal m² - Separate box */}
-                            {requiredProducts?.includes('surface_protection') && globalSpecs?.internalLiningConfirmed && (() => {
-                              const odMm = entry.calculation?.outsideDiameterMm || nominalBore * 1.1;
-                              const wtMm = entry.calculation?.wallThicknessMm || 6;
-                              const idMm = odMm - (2 * wtMm);
-                              const idM = idMm / 1000;
-
-                              // Count open ends and add 100mm allowance per end
-                              const FLANGE_ALLOWANCE_MM = 100;
-                              let mainEndCount = 0;
-                              let branchEndCount = 0;
-                              if (flangeConfig.hasInlet) mainEndCount++;
-                              if (flangeConfig.hasOutlet) mainEndCount++;
-                              if (flangeConfig.hasBranch) branchEndCount++;
-
-                              // Calculate internal surface areas
-                              let pipeRunIntArea = 0;
-                              let branchIntArea = 0;
-
-                              const mainEndAllowance = (mainEndCount * FLANGE_ALLOWANCE_MM) / 1000;
-                              const runLength = ((pipeALength + pipeBLength) / 1000) + mainEndAllowance;
-                              if (runLength > 0) {
-                                pipeRunIntArea = idM * Math.PI * runLength;
-                              }
-
-                              if (teeHeight > 0) {
-                                const branchIdMm = (branchNB * 1.1) - (2 * wtMm);
-                                const branchEndAllowance = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
-                                const branchLength = (teeHeight / 1000) + branchEndAllowance;
-                                branchIntArea = (branchIdMm / 1000) * Math.PI * branchLength;
-                              }
-
-                              const itemIntArea = pipeRunIntArea + branchIntArea;
-                              const totalIntArea = itemIntArea * quantity;
-
-                              const branchIdMmCalc = (branchNB * 1.1) - (2 * wtMm);
-                              const branchEndAllowanceCalc = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
-                              const branchLengthCalc = (teeHeight / 1000) + branchEndAllowanceCalc;
-
-                              return (
-                                <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded text-center border border-purple-200 dark:border-purple-700">
-                                  <p className="text-xs text-purple-700 dark:text-purple-300 font-medium">🛡️ Internal m²</p>
-                                  <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{totalIntArea.toFixed(3)} m²</p>
-                                  <div className="text-left mt-1 space-y-0.5">
-                                    {runLength > 0 && (
-                                      <p className="text-[9px] text-purple-700 dark:text-purple-300">
-                                        Run: {pipeRunIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(ID {idMm.toFixed(1)}mm × π × {runLength.toFixed(3)}m)</span>
-                                      </p>
-                                    )}
-                                    {mainEndCount > 0 && (
-                                      <p className="text-[8px] text-purple-500 dark:text-purple-400 pl-2">
-                                        Length: {((pipeALength + pipeBLength) / 1000).toFixed(3)}m + {mainEndCount}×0.1m allowance
-                                      </p>
-                                    )}
-                                    {teeHeight > 0 && (
-                                      <p className="text-[9px] text-purple-700 dark:text-purple-300">
-                                        Branch: {branchIntArea.toFixed(4)} m² <span className="text-purple-500 dark:text-purple-400">(ID {branchIdMmCalc.toFixed(1)}mm × π × {branchLengthCalc.toFixed(3)}m)</span>
-                                      </p>
-                                    )}
-                                    {teeHeight > 0 && branchEndCount > 0 && (
-                                      <p className="text-[8px] text-purple-500 dark:text-purple-400 pl-2">
-                                        Length: {(teeHeight / 1000).toFixed(3)}m + {branchEndCount}×0.1m allowance
-                                      </p>
-                                    )}
-                                    <p className="text-[9px] text-purple-600 dark:text-purple-400 font-medium pt-0.5 border-t border-purple-200 dark:border-purple-600 mt-1">
-                                      Per item: {itemIntArea.toFixed(4)} m² × {quantity} = {totalIntArea.toFixed(3)} m²
-                                    </p>
-                                    {globalSpecs?.liningType && (
-                                      <p className="text-[9px] text-purple-500 dark:text-purple-400 italic">{globalSpecs.liningType}</p>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                )}
 
                 {/* Remove Item Button */}
                 {entries.length > 1 && (

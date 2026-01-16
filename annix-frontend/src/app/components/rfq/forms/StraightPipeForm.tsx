@@ -12,6 +12,7 @@ import {
   weldCountPerPipe as getWeldCountPerPipe,
   physicalFlangeCount as getPhysicalFlangeCount,
   hasLooseFlange,
+  retainingRingWeight,
 } from '@/app/lib/config/rfq';
 import {
   calculateMinWallThickness,
@@ -1258,40 +1259,15 @@ export default function StraightPipeForm({
                       {/* Total System Weight - includes backing ring weight for R/F configs */}
                       {(() => {
                         const configUpper = (entry.specs.pipeEndConfiguration || 'PE').toUpperCase();
-                        // Only R/F (rotating flange) configurations require backing rings
                         const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(configUpper);
 
-                        // Calculate backing ring weight if R/F or L/F
                         let backingRingTotalWeight = 0;
                         if (hasRotatingFlange) {
-                          const getBackingRingCountForTotal = () => {
-                            if (configUpper === 'FOE_RF') return 1;
-                            if (configUpper === '2X_RF') return 2;
-                            return 0;
-                          };
-                          const backingRingCountPerPipe = getBackingRingCountForTotal();
+                          const backingRingCountPerPipe = configUpper === 'FOE_RF' ? 1 : configUpper === '2X_RF' ? 2 : 0;
                           const totalBackingRings = backingRingCountPerPipe * (entry.calculation?.calculatedPipeCount || 0);
-
-                          const getFlangeODForTotal = (nb: number) => {
-                            const flangeODs: Record<number, number> = {
-                              15: 95, 20: 105, 25: 115, 32: 140, 40: 150, 50: 165, 65: 185, 80: 200,
-                              100: 220, 125: 250, 150: 285, 200: 340, 250: 405, 300: 460, 350: 520,
-                              400: 580, 450: 640, 500: 670, 600: 780
-                            };
-                            return flangeODs[nb] || nb * 1.5;
-                          };
-
                           const nb = entry.specs.nominalBoreMm || 100;
-                          const pipeOD = entry.calculation?.outsideDiameterMm || (nb * 1.1);
-                          const flangeOD = getFlangeODForTotal(nb);
-                          const ringOD = flangeOD - 10;
-                          const ringID = pipeOD;
-                          const ringThickness = 10;
-                          const steelDensity = 7.85;
-
-                          const volumeCm3 = Math.PI * (Math.pow(ringOD/20, 2) - Math.pow(ringID/20, 2)) * (ringThickness/10);
-                          const weightPerRing = volumeCm3 * steelDensity / 1000;
-                          backingRingTotalWeight = weightPerRing * totalBackingRings;
+                          const ringWeightEach = retainingRingWeight(nb, entry.calculation?.outsideDiameterMm);
+                          backingRingTotalWeight = ringWeightEach * totalBackingRings;
                         }
 
                         const totalWithRings = (entry.calculation.totalSystemWeight || 0) + backingRingTotalWeight;
@@ -1304,8 +1280,8 @@ export default function StraightPipeForm({
                               (Pipe: {formatWeight(entry.calculation.totalPipeWeight)})
                             </p>
                             {backingRingTotalWeight > 0 && (
-                              <p className="text-xs text-purple-600">
-                                (incl. {backingRingTotalWeight.toFixed(1)}kg rings)
+                              <p className="text-xs text-orange-600">
+                                (incl. {backingRingTotalWeight.toFixed(1)}kg R/F rings)
                               </p>
                             )}
                           </div>
@@ -1324,52 +1300,25 @@ export default function StraightPipeForm({
                         </p>
                       </div>
 
-                      {/* Backing Ring Weight - only for R/F and L/F configurations */}
+                      {/* Backing Ring Weight - only for R/F configurations */}
                       {(() => {
                         const configUpper = (entry.specs.pipeEndConfiguration || 'PE').toUpperCase();
-                        // Only R/F (rotating flange) configurations require backing rings
                         const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(configUpper);
                         if (!hasRotatingFlange) return null;
 
-                        // Get backing ring count based on configuration
-                        const getBackingRingCount = () => {
-                          if (configUpper === 'FOE_RF') return 1;
-                          if (configUpper === '2X_RF') return 2;
-                          return 0;
-                        };
-                        const backingRingCountPerPipe = getBackingRingCount();
+                        const backingRingCountPerPipe = configUpper === 'FOE_RF' ? 1 : configUpper === '2X_RF' ? 2 : 0;
                         const totalBackingRings = backingRingCountPerPipe * (entry.calculation?.calculatedPipeCount || 0);
 
-                        // Calculate backing ring weight
-                        // Flange lookup for ring dimensions
-                        const getFlangeOD = (nb: number) => {
-                          const flangeODs: Record<number, number> = {
-                            15: 95, 20: 105, 25: 115, 32: 140, 40: 150, 50: 165, 65: 185, 80: 200,
-                            100: 220, 125: 250, 150: 285, 200: 340, 250: 405, 300: 460, 350: 520,
-                            400: 580, 450: 640, 500: 670, 600: 780
-                          };
-                          return flangeODs[nb] || nb * 1.5;
-                        };
-
                         const nb = entry.specs.nominalBoreMm || 100;
-                        const pipeOD = entry.calculation?.outsideDiameterMm || (nb * 1.1);
-                        const flangeOD = getFlangeOD(nb);
-                        const ringOD = flangeOD - 10; // mm
-                        const ringID = pipeOD; // mm
-                        const ringThickness = 10; // mm
-                        const steelDensity = 7.85; // kg/dm³
-
-                        // Volume = π × (R²outer - R²inner) × thickness in cm³
-                        const volumeCm3 = Math.PI * (Math.pow(ringOD/20, 2) - Math.pow(ringID/20, 2)) * (ringThickness/10);
-                        const weightPerRing = volumeCm3 * steelDensity / 1000; // kg
-                        const totalWeight = weightPerRing * totalBackingRings;
+                        const ringWeightEach = retainingRingWeight(nb, entry.calculation?.outsideDiameterMm);
+                        const totalWeight = ringWeightEach * totalBackingRings;
 
                         return (
-                          <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
-                            <p className="text-xs text-purple-700 font-medium">Backing Rings (R/F)</p>
-                            <p className="text-lg font-bold text-purple-900">{totalWeight.toFixed(1)} kg</p>
-                            <p className="text-xs text-purple-600">
-                              {totalBackingRings} rings × {weightPerRing.toFixed(2)}kg
+                          <div className="bg-orange-50 p-2 rounded text-center border border-orange-200">
+                            <p className="text-xs text-orange-700 font-medium">R/F Retaining Rings</p>
+                            <p className="text-lg font-bold text-orange-900">{totalWeight.toFixed(1)} kg</p>
+                            <p className="text-xs text-orange-600">
+                              {totalBackingRings} rings × {ringWeightEach.toFixed(2)}kg
                             </p>
                           </div>
                         );

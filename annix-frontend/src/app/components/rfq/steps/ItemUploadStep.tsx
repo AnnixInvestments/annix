@@ -18,6 +18,7 @@ import {
   calculateTotalSurfaceArea,
   calculateInsideDiameter,
 } from '@/app/lib/utils/pipeCalculations';
+import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 
 const Pipe3DPreview = dynamic(() => import('@/app/components/rfq/Pipe3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 const Bend3DPreview = dynamic(() => import('@/app/components/rfq/CSGBend3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
@@ -1067,8 +1068,14 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                     weightPerItem = bendWeightPerUnit + tangentWeightPerUnit + flangeWeightPerUnit;
                     totalWeight = weightPerItem * qty;
                   } else if (entry.itemType === 'fitting') {
-                    // For fittings, totalWeight is already total
-                    totalWeight = entry.calculation?.totalWeight || 0;
+                    // For fittings, totalWeight may not be set - fall back to sum of components
+                    const fittingCalc = entry.calculation || {};
+                    totalWeight = fittingCalc.totalWeight ||
+                      ((fittingCalc.fittingWeight || 0) +
+                       (fittingCalc.pipeWeight || 0) +
+                       (fittingCalc.flangeWeight || 0) +
+                       (fittingCalc.boltWeight || 0) +
+                       (fittingCalc.nutWeight || 0));
                     weightPerItem = qty > 0 ? totalWeight / qty : 0;
                   } else {
                     // For straight pipes, totalSystemWeight is already total
@@ -1153,13 +1160,16 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                     const pipeWallThickness = entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm;
                     if (!dn && !pipeWallThickness) return null;
 
-                    // Check for SABS 719 - use item-level steel spec with global fallback
+                    // Check for SABS 719 - use pattern matching on spec name
                     const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                    const isSABS719 = steelSpecId === 8;
+                    const steelSpec = masterData?.steelSpecs?.find((s: any) => s.id === steelSpecId);
+                    const steelSpecName = steelSpec?.steelSpecName || '';
+                    const isSABS719 = steelSpecName.includes('SABS 719') || steelSpecName.includes('SANS 719');
 
-                    // For SABS 719: use pipe WT directly
+                    // For SABS 719: use pipe WT rounded to 1.5mm increments (min 6mm)
                     if (isSABS719) {
-                      return { thickness: pipeWallThickness, label: 'SABS 719 WT' };
+                      const roundedWt = pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : null;
+                      return { thickness: roundedWt, label: 'SABS 719 WT' };
                     }
 
                     const scheduleUpper = schedule.toUpperCase();

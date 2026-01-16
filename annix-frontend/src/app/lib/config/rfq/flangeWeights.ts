@@ -387,3 +387,22 @@ export const sansBlankFlangeWeight = (nbMm: number, tableDesignation: string): n
 
   return blankFlangeWeight(nbMm, normalizePressureClass(tableDesignation));
 };
+
+export const retainingRingWeight = (nbMm: number, pipeOdMm?: number): number => {
+  const pipeOd = pipeOdMm || NB_TO_OD_LOOKUP[nbMm] || nbMm * 1.05;
+
+  const ringOdMm = pipeOd * 1.15;
+  const ringIdMm = pipeOd;
+  const ringThicknessMm = Math.max(15, Math.min(25, nbMm * 0.04));
+
+  const steelDensity = 7850;
+
+  const ringOdM = ringOdMm / 1000;
+  const ringIdM = ringIdMm / 1000;
+  const thicknessM = ringThicknessMm / 1000;
+
+  const volumeM3 = Math.PI * ((Math.pow(ringOdM, 2) - Math.pow(ringIdM, 2)) / 4) * thicknessM;
+  const weightKg = volumeM3 * steelDensity;
+
+  return Math.round(weightKg * 100) / 100;
+};

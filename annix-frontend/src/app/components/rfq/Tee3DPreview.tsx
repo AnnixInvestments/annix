@@ -563,7 +563,7 @@ function TeeScene(props: Tee3DPreviewProps) {
                   position={[-halfRunLength - closureLengthMm / scaleFactor - 1.0, 0, 0]}
                   rotation={[0, Math.PI / 2, 0]}
                   outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
-                  innerDiameter={id / scaleFactor}
+                  innerDiameter={(od + 3) / scaleFactor}
                   thickness={runFlangeSpecs.thickness / scaleFactor}
                   pcd={runFlangeSpecs.pcd / scaleFactor}
                   boltHoles={runFlangeSpecs.boltHoles}
@@ -615,7 +615,7 @@ function TeeScene(props: Tee3DPreviewProps) {
                 position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor, 0, 0]}
                 rotation={[0, Math.PI / 2, 0]}
                 outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
-                innerDiameter={id / scaleFactor}
+                innerDiameter={(od + 3) / scaleFactor}
                 thickness={runFlangeSpecs.thickness / scaleFactor}
                 pcd={runFlangeSpecs.pcd / scaleFactor}
                 boltHoles={runFlangeSpecs.boltHoles}
@@ -686,7 +686,7 @@ function TeeScene(props: Tee3DPreviewProps) {
                   position={[halfRunLength + closureLengthMm / scaleFactor + 1.0, 0, 0]}
                   rotation={[0, -Math.PI / 2, 0]}
                   outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
-                  innerDiameter={id / scaleFactor}
+                  innerDiameter={(od + 3) / scaleFactor}
                   thickness={runFlangeSpecs.thickness / scaleFactor}
                   pcd={runFlangeSpecs.pcd / scaleFactor}
                   boltHoles={runFlangeSpecs.boltHoles}
@@ -738,7 +738,7 @@ function TeeScene(props: Tee3DPreviewProps) {
                 position={[halfRunLength + runFlangeSpecs.thickness / scaleFactor, 0, 0]}
                 rotation={[0, -Math.PI / 2, 0]}
                 outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
-                innerDiameter={id / scaleFactor}
+                innerDiameter={(od + 3) / scaleFactor}
                 thickness={runFlangeSpecs.thickness / scaleFactor}
                 pcd={runFlangeSpecs.pcd / scaleFactor}
                 boltHoles={runFlangeSpecs.boltHoles}
@@ -809,7 +809,7 @@ function TeeScene(props: Tee3DPreviewProps) {
                   position={[branchOffsetX, height + closureLengthMm / scaleFactor + 1.0, 0]}
                   rotation={[-Math.PI / 2, 0, 0]}
                   outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
-                  innerDiameter={branchID / scaleFactor}
+                  innerDiameter={(branchOD + 3) / scaleFactor}
                   thickness={branchFlangeSpecs.thickness / scaleFactor}
                   pcd={branchFlangeSpecs.pcd / scaleFactor}
                   boltHoles={branchFlangeSpecs.boltHoles}
@@ -861,7 +861,7 @@ function TeeScene(props: Tee3DPreviewProps) {
                 position={[branchOffsetX, height + branchFlangeSpecs.thickness / scaleFactor, 0]}
                 rotation={[Math.PI / 2, 0, 0]}
                 outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
-                innerDiameter={branchID / scaleFactor}
+                innerDiameter={(branchOD + 3) / scaleFactor}
                 thickness={branchFlangeSpecs.thickness / scaleFactor}
                 pcd={branchFlangeSpecs.pcd / scaleFactor}
                 boltHoles={branchFlangeSpecs.boltHoles}

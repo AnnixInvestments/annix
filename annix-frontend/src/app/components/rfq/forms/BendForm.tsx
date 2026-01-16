@@ -13,6 +13,7 @@ import {
   getScheduleListForSpec,
   NB_TO_OD_LOOKUP,
   flangeWeight as getFlangeWeight,
+  retainingRingWeight,
 } from '@/app/lib/config/rfq';
 
 const STEEL_SPEC_NB_FALLBACK: Record<string, number[]> = {
@@ -2491,37 +2492,14 @@ export default function BendForm({
                             {/* Total Weight - calculated from all components including backing rings */}
                             {(() => {
                               const bendConfig = (entry.specs?.bendEndConfiguration || 'PE').toUpperCase();
-                              // Only R/F (rotating flange) configurations require backing rings
                               const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(bendConfig);
 
                               let backingRingWeight = 0;
+                              let backingRingCount = 0;
                               if (hasRotatingFlange) {
-                                const getBackingRingCountBend = () => {
-                                  if (bendConfig === 'FOE_RF') return 1;
-                                  if (bendConfig === '2X_RF') return 2;
-                                  return 0;
-                                };
-                                const backingRingCount = getBackingRingCountBend();
-
-                                const getFlangeODBend = (nb: number) => {
-                                  const flangeODs: Record<number, number> = {
-                                    15: 95, 20: 105, 25: 115, 32: 140, 40: 150, 50: 165, 65: 185, 80: 200,
-                                    100: 220, 125: 250, 150: 285, 200: 340, 250: 405, 300: 460, 350: 520,
-                                    400: 580, 450: 640, 500: 670, 600: 780
-                                  };
-                                  return flangeODs[nb] || nb * 1.5;
-                                };
-
-                                const pipeOD = entry.calculation?.outsideDiameterMm || (dn * 1.1);
-                                const flangeOD = getFlangeODBend(dn || 100);
-                                const ringOD = flangeOD - 10;
-                                const ringID = pipeOD;
-                                const ringThickness = 10;
-                                const steelDensity = 7.85;
-
-                                const volumeCm3 = Math.PI * (Math.pow(ringOD/20, 2) - Math.pow(ringID/20, 2)) * (ringThickness/10);
-                                const weightPerRing = volumeCm3 * steelDensity / 1000;
-                                backingRingWeight = weightPerRing * backingRingCount;
+                                backingRingCount = bendConfig === 'FOE_RF' ? 1 : bendConfig === '2X_RF' ? 2 : 0;
+                                const ringWeightEach = retainingRingWeight(dn || 100, entry.calculation?.outsideDiameterMm);
+                                backingRingWeight = ringWeightEach * backingRingCount;
                               }
 
                               const totalWeight = (entry.calculation.bendWeight || 0) + (entry.calculation.tangentWeight || 0) + totalCalcFlangeWeight + stubsWeight + backingRingWeight;
@@ -2542,50 +2520,36 @@ export default function BendForm({
                             })()}
 
                             {/* Weight Breakdown - Bend first, then Tangent, Flange, Stubs, Rings */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Weight Breakdown</p>
-                              <p className="text-xs text-gray-700 mt-1">Bend: {entry.calculation.bendWeight?.toFixed(1) || '0'}kg</p>
-                              <p className="text-xs text-gray-700">Tangent: {entry.calculation.tangentWeight?.toFixed(1) || '0'}kg</p>
-                              <p className="text-xs text-gray-700">Flange: {totalCalcFlangeWeight.toFixed(1)}kg</p>
-                              {bendFlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">({bendFlangeCount}x bend @ {(bendFlangeWeight / bendFlangeCount).toFixed(1)}kg/ea)</p>}
-                              {stub1FlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">(stub1 @ {stub1FlangeWeight.toFixed(1)}kg)</p>}
-                              {stub2FlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">(stub2 @ {stub2FlangeWeight.toFixed(1)}kg)</p>}
-                              {numStubs > 0 && <p className="text-xs text-gray-700">Stubs: {stubsWeight.toFixed(1)}kg</p>}
-                            </div>
+                            {(() => {
+                              const bendConfig = (entry.specs?.bendEndConfiguration || 'PE').toUpperCase();
+                              const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(bendConfig);
+                              const ringCount = bendConfig === 'FOE_RF' ? 1 : bendConfig === '2X_RF' ? 2 : 0;
+                              const ringWeightEach = hasRotatingFlange ? retainingRingWeight(dn || 100, entry.calculation?.outsideDiameterMm) : 0;
+                              const totalRingWeight = ringWeightEach * ringCount;
+
+                              return (
+                                <div className="bg-white p-2 rounded text-center">
+                                  <p className="text-xs text-gray-600 font-medium">Weight Breakdown</p>
+                                  <p className="text-xs text-gray-700 mt-1">Bend: {entry.calculation.bendWeight?.toFixed(1) || '0'}kg</p>
+                                  <p className="text-xs text-gray-700">Tangent: {entry.calculation.tangentWeight?.toFixed(1) || '0'}kg</p>
+                                  <p className="text-xs text-gray-700">Flange: {totalCalcFlangeWeight.toFixed(1)}kg</p>
+                                  {bendFlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">({bendFlangeCount}x bend @ {(bendFlangeWeight / bendFlangeCount).toFixed(1)}kg/ea)</p>}
+                                  {stub1FlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">(stub1 @ {stub1FlangeWeight.toFixed(1)}kg)</p>}
+                                  {stub2FlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">(stub2 @ {stub2FlangeWeight.toFixed(1)}kg)</p>}
+                                  {numStubs > 0 && <p className="text-xs text-gray-700">Stubs: {stubsWeight.toFixed(1)}kg</p>}
+                                  {totalRingWeight > 0 && <p className="text-xs text-orange-700 font-medium">R/F Rings: {totalRingWeight.toFixed(2)}kg ({ringCount}×)</p>}
+                                </div>
+                              );
+                            })()}
 
                             {/* Flanges & Backing Rings - Combined field */}
                             {(() => {
                               const bendConfig = (entry.specs?.bendEndConfiguration || 'PE').toUpperCase();
-                              // Only R/F (rotating flange) configurations require backing rings
                               const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(bendConfig);
 
-                              // Get backing ring count and weight if applicable
-                              let backingRingCount = 0;
-                              let backingRingWeight = 0;
-                              if (hasRotatingFlange) {
-                                if (bendConfig === 'FOE_RF') backingRingCount = 1;
-                                else if (bendConfig === '2X_RF') backingRingCount = 2;
-
-                                if (backingRingCount > 0) {
-                                  const getFlangeOD = (nb: number) => {
-                                    const flangeODs: Record<number, number> = {
-                                      15: 95, 20: 105, 25: 115, 32: 140, 40: 150, 50: 165, 65: 185, 80: 200,
-                                      100: 220, 125: 250, 150: 285, 200: 340, 250: 405, 300: 460, 350: 520,
-                                      400: 580, 450: 640, 500: 670, 600: 780
-                                    };
-                                    return flangeODs[nb] || nb * 1.5;
-                                  };
-                                  const pipeOD = entry.calculation?.outsideDiameterMm || (dn * 1.1);
-                                  const flangeOD = getFlangeOD(dn || 100);
-                                  const ringOD = flangeOD - 10;
-                                  const ringID = pipeOD;
-                                  const ringThickness = 10;
-                                  const steelDensity = 7.85;
-                                  const volumeCm3 = Math.PI * (Math.pow(ringOD/20, 2) - Math.pow(ringID/20, 2)) * (ringThickness/10);
-                                  const weightPerRing = volumeCm3 * steelDensity / 1000;
-                                  backingRingWeight = weightPerRing * backingRingCount;
-                                }
-                              }
+                              const backingRingCount = bendConfig === 'FOE_RF' ? 1 : bendConfig === '2X_RF' ? 2 : 0;
+                              const ringWeightEach = hasRotatingFlange ? retainingRingWeight(dn || 100, entry.calculation?.outsideDiameterMm) : 0;
+                              const backingRingWeight = ringWeightEach * backingRingCount;
 
                               return (
                                 <div className="bg-white p-2 rounded text-center">
