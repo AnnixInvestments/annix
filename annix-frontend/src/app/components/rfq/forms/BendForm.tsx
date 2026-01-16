@@ -43,6 +43,8 @@ import {
   getSabs62AvailableAngles,
   SABS62BendType,
 } from '@/app/lib/utils/sabs62CfData';
+import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
+import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 
 export interface BendFormProps {
   entry: any;
@@ -123,10 +125,9 @@ export default function BendForm({
                       </label>
                       {(() => {
                         const selectId = `bend-steel-spec-${entry.id}`;
-                        const options = masterData.steelSpecs?.map((spec: any) => ({
-                          value: String(spec.id),
-                          label: spec.steelSpecName
-                        })) || [];
+                        const groupedOptions = masterData.steelSpecs
+                          ? groupSteelSpecifications(masterData.steelSpecs)
+                          : [];
 
                         return (
                           <Select
@@ -161,7 +162,8 @@ export default function BendForm({
                                 setTimeout(() => focusAndOpenSelect(nextFieldId), 100);
                               }
                             }}
-                            options={options}
+                            options={[]}
+                            groupedOptions={groupedOptions}
                             placeholder="Select Steel Spec"
                             open={openSelects[selectId] || false}
                             onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
@@ -1117,8 +1119,8 @@ export default function BendForm({
                             let weldThickness: number | null = null;
 
                             if (isSABS719) {
-                              // SABS 719: Use pipe wall thickness directly
-                              effectiveThickness = pipeWallThickness;
+                              // SABS 719: Round pipe WT to 1.5mm weld increments
+                              effectiveThickness = pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness;
                             } else {
                               const scheduleUpper = schedule.toUpperCase();
                               fittingClass =
@@ -1187,8 +1189,8 @@ export default function BendForm({
                       let usingScheduleThickness = false;
 
                       if (isSABS719) {
-                        // SABS 719: Use pipe wall thickness directly
-                        effectiveWeldThickness = pipeWallThickness;
+                        // SABS 719: Round pipe WT to 1.5mm weld increments
+                        effectiveWeldThickness = pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness;
                         usingScheduleThickness = true;
                       } else {
                         const scheduleUpper = schedule.toUpperCase();
@@ -1221,12 +1223,12 @@ export default function BendForm({
                       const stub2OD = stub2NB ? (NB_TO_OD_LOOKUP[stub2NB] || (stub2NB * 1.05)) : 0;
                       const stub1Circumference = Math.PI * stub1OD;
                       const stub2Circumference = Math.PI * stub2OD;
-                      // For SABS 719, use pipe WT; for others, use fitting lookup
+                      // For SABS 719, round pipe WT to 1.5mm increments; for others, use fitting lookup
                       const stub1Thickness = isSABS719
-                        ? (pipeWallThickness || 0)
+                        ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : 0)
                         : (stub1NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub1NB] || pipeWallThickness) : 0);
                       const stub2Thickness = isSABS719
-                        ? (pipeWallThickness || 0)
+                        ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : 0)
                         : (stub2NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub2NB] || pipeWallThickness) : 0);
 
                       // Only show if there are bend flanges or stubs
@@ -1757,6 +1759,21 @@ export default function BendForm({
                                   <option value="L/F">L/F (Loose)</option>
                                   <option value="R/F">R/F (Rotating)</option>
                                 </select>
+                                <label className="flex items-center gap-1.5 mt-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={entry.specs?.stubs?.[0]?.hasBlankFlange || false}
+                                    onChange={(e) => {
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      stubs[0] = { ...stubs[0], hasBlankFlange: e.target.checked };
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                      updatedEntry.description = generateItemDescription(updatedEntry);
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    className="w-3 h-3 text-red-600 rounded focus:ring-red-500"
+                                  />
+                                  <span className="text-xs text-red-700 font-medium">+ Blank Flange ({entry.specs?.stubs?.[0]?.nominalBoreMm || '?'}NB)</span>
+                                </label>
                               </div>
                             ) : (
                               <p className="text-xs text-orange-700">Set in Global Specs</p>
@@ -2054,6 +2071,21 @@ export default function BendForm({
                                   <option value="L/F">L/F (Loose)</option>
                                   <option value="R/F">R/F (Rotating)</option>
                                 </select>
+                                <label className="flex items-center gap-1.5 mt-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={entry.specs?.stubs?.[1]?.hasBlankFlange || false}
+                                    onChange={(e) => {
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      stubs[1] = { ...stubs[1], hasBlankFlange: e.target.checked };
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                      updatedEntry.description = generateItemDescription(updatedEntry);
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    className="w-3 h-3 text-red-600 rounded focus:ring-red-500"
+                                  />
+                                  <span className="text-xs text-red-700 font-medium">+ Blank Flange ({entry.specs?.stubs?.[1]?.nominalBoreMm || '?'}NB)</span>
+                                </label>
                               </div>
                             ) : (
                               <p className="text-xs text-orange-700">Set in Global Specs</p>
@@ -2097,12 +2129,12 @@ export default function BendForm({
                             const stub2OD = stub2NB ? (NB_TO_OD_LOOKUP[stub2NB] || (stub2NB * 1.05)) : 0;
                             const stub1Circumference = Math.PI * stub1OD;
                             const stub2Circumference = Math.PI * stub2OD;
-                            // For SABS 719: use pipe WT directly; for ASTM/ASME: use fitting lookup
+                            // For SABS 719: round pipe WT to 1.5mm increments; for ASTM/ASME: use fitting lookup
                             const stub1Thickness = isSABS719
-                              ? (pipeWallThickness || 0)
+                              ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : 0)
                               : (stub1NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub1NB] || pipeWallThickness) : 0);
                             const stub2Thickness = isSABS719
-                              ? (pipeWallThickness || 0)
+                              ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : 0)
                               : (stub2NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub2NB] || pipeWallThickness) : 0);
 
                             if (!stub1NB && !stub2NB) {
@@ -2220,9 +2252,9 @@ export default function BendForm({
                           'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
                         };
                         const NB_TO_OD: Record<number, number> = { 15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9, 100: 114.3, 125: 141.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6, 700: 711.2, 750: 762.0, 800: 812.8, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2 };
-                        // For SABS 719: use pipe WT directly; for ASTM/ASME: use fitting lookup
+                        // For SABS 719: round pipe WT to 1.5mm increments; for ASTM/ASME: use fitting lookup
                         const fittingWt = isSABS719 ? null : (dn ? FITTING_WT[fittingClass]?.[dn] : null);
-                        const effectiveWt = isSABS719 ? pipeWallThickness : (fittingWt || pipeWallThickness);
+                        const effectiveWt = isSABS719 ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness) : (fittingWt || pipeWallThickness);
 
                         // Calculate stub weights using proper pipe weight formula
                         // Weight = π × (OD² - ID²) / 4 × density × length / 1000000
@@ -2241,12 +2273,12 @@ export default function BendForm({
                         const stub2Weight = calculateStubWeight(stub2NB, stubs[1]?.length || 0, stubs[1]?.wallThicknessMm);
                         const stubsWeight = stub1Weight + stub2Weight;
 
-                        // Stub weld thicknesses (for flange and tee welds) - SABS 719 uses pipe WT
+                        // Stub weld thicknesses (for flange and tee welds) - SABS 719: round pipe WT to 1.5mm increments
                         const stub1Wt = isSABS719
-                          ? (pipeWallThickness || 5)
+                          ? roundToWeldIncrement(pipeWallThickness || 6)
                           : (stub1NB ? (FITTING_WT[fittingClass]?.[stub1NB] || pipeWallThickness || 5) : 0);
                         const stub2Wt = isSABS719
-                          ? (pipeWallThickness || 5)
+                          ? roundToWeldIncrement(pipeWallThickness || 6)
                           : (stub2NB ? (FITTING_WT[fittingClass]?.[stub2NB] || pipeWallThickness || 5) : 0);
 
                         // Calculate flange weights dynamically based on NB and pressure class

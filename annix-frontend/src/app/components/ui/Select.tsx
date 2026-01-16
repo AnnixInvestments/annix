@@ -8,11 +8,17 @@ interface SelectOption {
   label: string;
 }
 
+interface SelectOptionGroup {
+  label: string;
+  options: SelectOption[];
+}
+
 interface SelectProps {
   id?: string;
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
+  groupedOptions?: SelectOptionGroup[];
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -21,7 +27,7 @@ interface SelectProps {
 }
 
 const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
-  ({ id, value, onChange, options, placeholder = 'Select...', className, disabled, open: controlledOpen, onOpenChange }, ref) => {
+  ({ id, value, onChange, options, groupedOptions, placeholder = 'Select...', className, disabled, open: controlledOpen, onOpenChange }, ref) => {
     const [internalOpen, setInternalOpen] = React.useState(false);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [highlightedIndex, setHighlightedIndex] = React.useState(0);
@@ -43,20 +49,42 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       }
     };
 
+    const allOptions = React.useMemo(() => {
+      if (groupedOptions) {
+        return groupedOptions.flatMap(g => g.options);
+      }
+      return options;
+    }, [options, groupedOptions]);
+
     const filteredOptions = React.useMemo(() => {
-      if (!searchTerm.trim()) return options;
+      if (!searchTerm.trim()) return allOptions;
       const term = searchTerm.toLowerCase();
-      return options.filter((option) =>
+      return allOptions.filter((option) =>
         option.label.toLowerCase().includes(term) ||
         option.value.toLowerCase().includes(term)
       );
-    }, [options, searchTerm]);
+    }, [allOptions, searchTerm]);
+
+    const filteredGroupedOptions = React.useMemo(() => {
+      if (!groupedOptions) return null;
+      if (!searchTerm.trim()) return groupedOptions;
+      const term = searchTerm.toLowerCase();
+      return groupedOptions
+        .map(group => ({
+          ...group,
+          options: group.options.filter(option =>
+            option.label.toLowerCase().includes(term) ||
+            option.value.toLowerCase().includes(term)
+          )
+        }))
+        .filter(group => group.options.length > 0);
+    }, [groupedOptions, searchTerm]);
 
     React.useEffect(() => {
       setHighlightedIndex(0);
     }, [filteredOptions]);
 
-    const selectedOption = options.find((opt) => opt.value === value);
+    const selectedOption = allOptions.find((opt) => opt.value === value);
 
     const handleSelect = (optionValue: string) => {
       onChange(optionValue);
@@ -121,9 +149,41 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                 className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
               />
             </div>
-            <div ref={listRef} className="max-h-48 overflow-y-auto p-1">
+            <div ref={listRef} className="max-h-64 overflow-y-auto p-1">
               {filteredOptions.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-gray-500">No results found</div>
+              ) : filteredGroupedOptions ? (
+                (() => {
+                  let globalIndex = 0;
+                  return filteredGroupedOptions.map((group) => (
+                    <div key={group.label}>
+                      <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 sticky top-0">
+                        {group.label}
+                      </div>
+                      {group.options.map((option) => {
+                        const currentIndex = globalIndex++;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => handleSelect(option.value)}
+                            onMouseEnter={() => setHighlightedIndex(currentIndex)}
+                            className={`relative flex items-center w-full px-8 py-2 text-sm rounded cursor-pointer select-none text-left ${
+                              currentIndex === highlightedIndex ? 'bg-green-50' : ''
+                            } ${option.value === value ? 'text-green-700 font-medium' : 'text-gray-900'} hover:bg-green-50`}
+                          >
+                            {option.value === value && (
+                              <span className="absolute left-2 inline-flex items-center">
+                                <CheckIcon />
+                              </span>
+                            )}
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ));
+                })()
               ) : (
                 filteredOptions.map((option, index) => (
                   <button
@@ -171,4 +231,4 @@ function CheckIcon() {
 }
 
 export { Select };
-export type { SelectOption, SelectProps };
+export type { SelectOption, SelectOptionGroup, SelectProps };

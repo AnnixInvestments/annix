@@ -1475,11 +1475,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         log.debug('✅ Calculation result:', result);
 
         // Recalculate flange weight based on actual pressure class used (may be overridden)
+        // Default to PN16 if no pressure class is set
         const pressureClassDesignation = masterData.pressureClasses?.find(
           (pc: { id: number; designation: string }) => pc.id === flangePressureClassId
-        )?.designation;
+        )?.designation || 'PN16';
 
-        if (result && result.numberOfFlanges > 0 && pressureClassDesignation) {
+        if (result && result.numberOfFlanges > 0) {
           const flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation);
           const totalFlangeWeight = result.numberOfFlanges * flangeWeightPerUnit;
           const totalSystemWeight = (result.totalPipeWeight || 0) + totalFlangeWeight;
@@ -1504,10 +1505,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           log.debug('⚠️ API 404 - Using local calculation fallback for', entry.specs.nominalBoreMm, 'NB');
           const wallThickness = entry.specs.wallThicknessMm || 6.35; // Default wall thickness
 
-          // Get pressure class designation for accurate flange weights
+          // Get pressure class designation for accurate flange weights, default to PN16
           const pressureClassDesignation = masterData.pressureClasses?.find(
             (pc: { id: number; designation: string }) => pc.id === flangePressureClassId
-          )?.designation;
+          )?.designation || 'PN16';
 
           const localResult = calculateLocalPipeResult(
             entry.specs.nominalBoreMm!,
@@ -1780,7 +1781,30 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           log.debug('🔄 Manual calculate for entry:', entry.id, calculationData);
           const result = await rfqApi.calculate(calculationData);
           log.debug('✅ Manual calculation result:', result);
-          updateEntryCalculation(entry.id, result);
+
+          // Recalculate flange weight for accurate values, default to PN16
+          const entryPressureClassId = entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
+          const pressureClassDesignation = masterData.pressureClasses?.find(
+            (pc: { id: number; designation: string }) => pc.id === entryPressureClassId
+          )?.designation || 'PN16';
+
+          if (result && result.numberOfFlanges > 0) {
+            const flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation);
+            const totalFlangeWeight = result.numberOfFlanges * flangeWeightPerUnit;
+            const totalSystemWeight = (result.totalPipeWeight || 0) + totalFlangeWeight;
+
+            log.debug(`🔧 Manual calc flange weight for ${pressureClassDesignation}: ${flangeWeightPerUnit}kg/flange × ${result.numberOfFlanges} = ${totalFlangeWeight}kg`);
+
+            updateEntryCalculation(entry.id, {
+              ...result,
+              flangeWeightPerUnit,
+              totalFlangeWeight,
+              totalSystemWeight,
+              pressureClassUsed: pressureClassDesignation
+            } as any);
+          } else {
+            updateEntryCalculation(entry.id, result);
+          }
         } catch (error: any) {
           console.error(`Calculation error for entry ${entry.id}:`, error);
           const errorMessage = error.message || String(error);
@@ -1790,11 +1814,11 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             log.debug('⚠️ API 404 - Using local calculation fallback for entry:', entry.id);
             const wallThickness = entry.specs.wallThicknessMm || 6.35;
 
-            // Get pressure class designation for accurate flange weights
+            // Get pressure class designation for accurate flange weights, default to PN16
             const entryPressureClassId = entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
             const pressureClassDesignation = masterData.pressureClasses?.find(
               (pc: { id: number; designation: string }) => pc.id === entryPressureClassId
-            )?.designation;
+            )?.designation || 'PN16';
 
             const localResult = calculateLocalPipeResult(
               entry.specs.nominalBoreMm!,

@@ -13,6 +13,7 @@ import {
   fittingFlangeConfig as getFittingFlangeConfig,
   hasLooseFlange,
 } from '@/app/lib/config/rfq';
+import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 
 export interface FittingFormProps {
   entry: any;
@@ -1320,12 +1321,12 @@ export default function FittingForm({
                           return SABS_719_WT[closest] || 6.4;
                         };
 
-                        // For SABS 719: use SABS 719 WT table; for ASTM/ASME: use fitting lookup
+                        // For SABS 719: use SABS 719 WT table rounded to 1.5mm increments; for ASTM/ASME: use fitting lookup
                         const fittingWeldThickness = isSABS719
-                          ? getSabs719Wt(nominalBore)
+                          ? roundToWeldIncrement(getSabs719Wt(nominalBore))
                           : (FITTING_WT[fittingClass]?.[nominalBore] || pipeWallThickness || 6);
                         const branchWeldThickness = isSABS719
-                          ? getSabs719Wt(branchNB)
+                          ? roundToWeldIncrement(getSabs719Wt(branchNB))
                           : (FITTING_WT[fittingClass]?.[branchNB] || fittingWeldThickness);
 
                         return (

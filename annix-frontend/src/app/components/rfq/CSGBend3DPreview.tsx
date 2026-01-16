@@ -57,6 +57,7 @@ const pipeInnerMat = { color: '#1a3a1a', metalness: 0.2, roughness: 0.7 }
 const pipeEndMat = { color: '#4ADE80', metalness: 0.5, roughness: 0.3 }
 const weldColor = { color: '#1a1a1a', metalness: 0.2, roughness: 0.9 }
 const flangeColor = { color: '#444444', metalness: 0.6, roughness: 0.4 }
+const blankFlangeColor = { color: '#cc3300', metalness: 0.6, roughness: 0.4 }
 
 const FLANGE_DATA: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; boltSize: number } } = {
   15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, boltSize: 12 },
@@ -712,7 +713,7 @@ const BlankFlange = ({
     <group position={[center.x, center.y, center.z]} rotation={[euler.x, euler.y, euler.z]}>
       <mesh>
         <cylinderGeometry args={[flangeR, flangeR, thick, 32, 1, true]} />
-        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
+        <meshStandardMaterial {...blankFlangeColor} side={THREE.DoubleSide} />
       </mesh>
       {Array.from({ length: boltCount }).map((_, i) => {
         const angle = (i / boltCount) * Math.PI * 2
@@ -726,10 +727,10 @@ const BlankFlange = ({
         )
       })}
       <mesh geometry={faceGeometry} position={[0, thick / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
+        <meshStandardMaterial {...blankFlangeColor} side={THREE.DoubleSide} />
       </mesh>
       <mesh geometry={faceGeometry} position={[0, -thick / 2 - 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
+        <meshStandardMaterial {...blankFlangeColor} side={THREE.DoubleSide} />
       </mesh>
     </group>
   )
@@ -1053,6 +1054,23 @@ export default function CSGBend3DPreview(props: Props) {
       <div className="absolute top-2 left-2 text-[10px] bg-white/90 px-2 py-1 rounded">
         <span className="text-purple-700 font-medium">Hollow Pipe Preview</span>
       </div>
+
+      {props.numberOfSegments && props.numberOfSegments > 1 && (() => {
+        const bendRadius = props.nominalBore * 1.5;
+        const degreesPerSeg = props.bendAngle / props.numberOfSegments;
+        const arcLengthPerSeg = (bendRadius * Math.PI * degreesPerSeg) / 180;
+        const totalArcLength = (bendRadius * Math.PI * props.bendAngle) / 180;
+        return (
+          <div className="absolute top-10 left-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md border border-orange-200 leading-snug max-w-[180px]">
+            <div className="font-bold text-orange-800 mb-0.5">SEGMENTED BEND</div>
+            <div className="text-gray-900 font-medium">Total: {props.bendAngle}° / {totalArcLength.toFixed(0)}mm arc</div>
+            <div className="text-gray-700">Segments: {props.numberOfSegments}</div>
+            <div className="text-gray-700">Per segment: {degreesPerSeg.toFixed(1)}°</div>
+            <div className="text-gray-700">Seg length: {arcLengthPerSeg.toFixed(0)}mm</div>
+            <div className="text-orange-700 font-medium mt-0.5">Mitre welds: {props.numberOfSegments - 1}</div>
+          </div>
+        );
+      })()}
 
       <div className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md border border-gray-200 leading-snug">
         <div className="font-bold text-blue-800 mb-0.5">BEND</div>

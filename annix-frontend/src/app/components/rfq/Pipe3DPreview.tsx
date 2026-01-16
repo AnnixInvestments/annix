@@ -91,7 +91,7 @@ const getMaterialProps = (name: string = '') => {
 
 const WeldBead = ({ position, diameter }: { position: [number, number, number], diameter: number }) => {
   return (
-    <mesh position={position} rotation={[0, 0, Math.PI / 2]}>
+    <mesh position={position} rotation={[0, Math.PI / 2, 0]}>
       <torusGeometry args={[diameter / 2, diameter * 0.02, 8, 32]} />
       <meshStandardMaterial color="#333" roughness={0.9} metalness={0.4} />
     </mesh>

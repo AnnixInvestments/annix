@@ -20,7 +20,8 @@ import {
   calculateTotalSurfaceArea,
   calculateInsideDiameter,
 } from '@/app/lib/utils/pipeCalculations';
-import { recommendWallThicknessCarbonPipe } from '@/app/lib/utils/weldThicknessLookup';
+import { recommendWallThicknessCarbonPipe, roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
+import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
 
 const formatWeight = (weight: number | undefined) => {
   if (weight === undefined) return 'Not calculated';
@@ -171,10 +172,9 @@ export default function StraightPipeForm({
                     <div className="flex gap-2">
                       {(() => {
                         const selectId = `pipe-steel-spec-${entry.id}`;
-                        const options = masterData.steelSpecs?.map((spec: any) => ({
-                          value: String(spec.id),
-                          label: spec.steelSpecName
-                        })) || [];
+                        const groupedOptions = masterData.steelSpecs
+                          ? groupSteelSpecifications(masterData.steelSpecs)
+                          : [];
 
                         return (
                           <Select
@@ -192,7 +192,8 @@ export default function StraightPipeForm({
                                 setTimeout(() => focusAndOpenSelect(`pipe-nb-${entry.id}`), 100);
                               }
                             }}
-                            options={options}
+                            options={[]}
+                            groupedOptions={groupedOptions}
                             placeholder="Select steel spec..."
                             className="flex-1"
                             open={openSelects[selectId] || false}
@@ -634,8 +635,8 @@ export default function StraightPipeForm({
                       let fittingClass = 'STD';
 
                       if (isSABS719) {
-                        // SABS 719: Use pipe wall thickness directly - this IS the weld thickness
-                        effectiveWeldThickness = pipeWallThickness;
+                        // SABS 719: Round pipe WT to 1.5mm weld increments
+                        effectiveWeldThickness = pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness;
                         usingPipeThickness = true;
                       } else {
                         // ASTM/ASME: Look up from fitting class tables
