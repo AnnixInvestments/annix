@@ -541,102 +541,12 @@ export default function StraightPipeForm({
                       </>
                     )}
                   </div>
-
-                  {/* Pipe Lengths */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 mb-1">
-                      Length of Each Pipe (m) *
-                    </label>
-                    <div className="flex gap-2 mb-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const pipeLength = 6.1;
-                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
-                            ? (entry.specs.quantityValue || 1)
-                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
-                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
-                          const newDescription = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, individualPipeLength: pipeLength },
-                            calculatedPipes: numPipes,
-                            description: newDescription
-                          });
-                        }}
-                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 6.1 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
-                      >
-                        6.1m
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const pipeLength = 9.144;
-                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
-                            ? (entry.specs.quantityValue || 1)
-                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
-                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
-                          const newDescription = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, individualPipeLength: pipeLength },
-                            calculatedPipes: numPipes,
-                            description: newDescription
-                          });
-                        }}
-                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 9.144 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
-                      >
-                        9.144m
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const pipeLength = 12.192;
-                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
-                            ? (entry.specs.quantityValue || 1)
-                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
-                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
-                          const newDescription = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, individualPipeLength: pipeLength },
-                            calculatedPipes: numPipes,
-                            description: newDescription
-                          });
-                        }}
-                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 12.192 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
-                      >
-                        12.192m (Standard)
-                      </button>
-                    </div>
-                    <input
-                      type="number"
-                      step="0.001"
-                      value={entry.specs.individualPipeLength || ''}
-                      onChange={(e) => {
-                        const pipeLength = e.target.value ? Number(e.target.value) : undefined;
-                        const numPipes = pipeLength && entry.specs.quantityType === 'number_of_pipes'
-                          ? (entry.specs.quantityValue || 1)
-                          : pipeLength ? Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength) : undefined;
-                        const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
-                        const newDescription = generateItemDescription(updatedEntry);
-                        onUpdateEntry(entry.id, {
-                          specs: { ...entry.specs, individualPipeLength: pipeLength },
-                          calculatedPipes: numPipes,
-                          description: newDescription
-                        });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      placeholder="Enter length or select above"
-                      required
-                    />
-                    <p className="mt-0.5 text-xs text-gray-700">
-                      Standard imported lengths: 6.1m, 9.144m, or 12.192m (can be custom)
-                    </p>
-                  </div>
                 </div>
 
-                {/* Column 2 - Quantities & Configurations */}
+                {/* Column 2 - Configuration */}
                 <div className="space-y-3">
-                  <h4 className="text-base font-bold text-gray-900 border-b-2 border-green-500 pb-2 mb-4">
-                    Quantities & Configuration
+                  <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
+                    Configuration
                   </h4>
 
                   {/* Pipe End Configuration - NEW FIELD */}
@@ -867,60 +777,6 @@ export default function StraightPipeForm({
                       </div>
                     );
                   })()}
-
-                  {/* Total Length - MOVED ABOVE QUANTITY */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 mb-1">
-                      Total Length of Line (m) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.001"
-                      value={
-                        entry.specs.quantityType === 'total_length'
-                          ? entry.specs.quantityValue || ''
-                          : (entry.specs.quantityValue || 1) * (entry.specs.individualPipeLength || 0)
-                      }
-                      onChange={(e) => {
-                        const totalLength = Number(e.target.value);
-                        const updatedEntry = calculateQuantities(entry, 'totalLength', totalLength);
-                        onUpdateEntry(entry.id, updatedEntry);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      placeholder="8000"
-                      required
-                    />
-                    <p className="mt-0.5 text-xs text-gray-700">
-                      Total pipeline length required
-                    </p>
-                  </div>
-
-                  {/* Quantity of Items - MOVED BELOW TOTAL LENGTH */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 mb-1">
-                      Quantity of Items (Each) *
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={
-                        entry.specs.quantityType === 'number_of_pipes'
-                          ? entry.specs.quantityValue || 1
-                          : entry.specs.individualPipeLength ? Math.ceil((entry.specs.quantityValue || 0) / entry.specs.individualPipeLength) : 0
-                      }
-                      onChange={(e) => {
-                        const numberOfPipes = Number(e.target.value);
-                        const updatedEntry = calculateQuantities(entry, 'numberOfPipes', numberOfPipes);
-                        onUpdateEntry(entry.id, updatedEntry);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      placeholder="1000"
-                      required
-                    />
-                    <p className="mt-0.5 text-xs text-gray-700">
-                      Number of individual pipes required
-                    </p>
-                  </div>
 
                   {/* Flange Specifications */}
                   <div>
@@ -1181,6 +1037,157 @@ export default function StraightPipeForm({
                         )}
                       </div>
                     )}
+                  </div>
+
+                </div>
+
+                {/* Column 3 - Quantity & Lengths */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-bold text-gray-900 border-b border-purple-500 pb-1.5">
+                    Quantity & Lengths
+                  </h4>
+
+                  {/* Pipe Lengths */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      Length of Each Pipe (m) *
+                    </label>
+                    <div className="flex gap-2 mb-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const pipeLength = 6.1;
+                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
+                            ? (entry.specs.quantityValue || 1)
+                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
+                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
+                          const newDescription = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, individualPipeLength: pipeLength },
+                            calculatedPipes: numPipes,
+                            description: newDescription
+                          });
+                        }}
+                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 6.1 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
+                      >
+                        6.1m
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const pipeLength = 9.144;
+                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
+                            ? (entry.specs.quantityValue || 1)
+                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
+                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
+                          const newDescription = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, individualPipeLength: pipeLength },
+                            calculatedPipes: numPipes,
+                            description: newDescription
+                          });
+                        }}
+                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 9.144 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
+                      >
+                        9.144m
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const pipeLength = 12.192;
+                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
+                            ? (entry.specs.quantityValue || 1)
+                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
+                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
+                          const newDescription = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, individualPipeLength: pipeLength },
+                            calculatedPipes: numPipes,
+                            description: newDescription
+                          });
+                        }}
+                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 12.192 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
+                      >
+                        12.192m
+                      </button>
+                    </div>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={entry.specs.individualPipeLength || ''}
+                      onChange={(e) => {
+                        const pipeLength = e.target.value ? Number(e.target.value) : undefined;
+                        const numPipes = pipeLength && entry.specs.quantityType === 'number_of_pipes'
+                          ? (entry.specs.quantityValue || 1)
+                          : pipeLength ? Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength) : undefined;
+                        const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
+                        const newDescription = generateItemDescription(updatedEntry);
+                        onUpdateEntry(entry.id, {
+                          specs: { ...entry.specs, individualPipeLength: pipeLength },
+                          calculatedPipes: numPipes,
+                          description: newDescription
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
+                      placeholder="Enter custom length"
+                    />
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      Standard: 6.1m, 9.144m, 12.192m
+                    </p>
+                  </div>
+
+                  {/* Total Length of Line */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      Total Length of Line (m) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={
+                        entry.specs.quantityType === 'total_length'
+                          ? entry.specs.quantityValue || ''
+                          : (entry.specs.quantityValue || 1) * (entry.specs.individualPipeLength || 0)
+                      }
+                      onChange={(e) => {
+                        const totalLength = Number(e.target.value);
+                        const updatedEntry = calculateQuantities(entry, 'totalLength', totalLength);
+                        onUpdateEntry(entry.id, updatedEntry);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
+                      placeholder="Total pipeline length"
+                      required
+                    />
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      Overall pipeline length required
+                    </p>
+                  </div>
+
+                  {/* Quantity of Items */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      Quantity of Items (Each) *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={
+                        entry.specs.quantityType === 'number_of_pipes'
+                          ? entry.specs.quantityValue || 1
+                          : entry.specs.individualPipeLength ? Math.ceil((entry.specs.quantityValue || 0) / entry.specs.individualPipeLength) : 0
+                      }
+                      onChange={(e) => {
+                        const numberOfPipes = Number(e.target.value);
+                        const updatedEntry = calculateQuantities(entry, 'numberOfPipes', numberOfPipes);
+                        onUpdateEntry(entry.id, updatedEntry);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
+                      placeholder="Number of pipes"
+                      required
+                    />
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      Number of individual pipes
+                    </p>
                   </div>
 
                 </div>

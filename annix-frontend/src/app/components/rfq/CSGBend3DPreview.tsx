@@ -14,6 +14,7 @@ interface StubData {
   locationFromFlange?: number
   hasFlange?: boolean
   orientation?: StubOrientation
+  angleDegrees?: number
 }
 
 interface Props {
@@ -814,7 +815,8 @@ const Scene = (props: Props) => {
           innerR: (sOd - 2 * sWt) / SCALE / 2,
           length: s.length! / SCALE,
           nb: s.nominalBoreMm!,
-          orientation: s.orientation || 'outside'
+          orientation: s.orientation || 'outside',
+          angleDegrees: s.angleDegrees ?? 0
         }
       })
   }, [stubs, wtMm])
@@ -894,24 +896,22 @@ const Scene = (props: Props) => {
           const stubCenterOnAxis = tangentStart.clone().add(tangentDir.clone().multiplyScalar(stub.distFromFlange))
 
           const orientationDir = (() => {
-            const orientation = stub.orientation
-            if (orientation === 'top') return new THREE.Vector3(0, 1, 0)
-            if (orientation === 'bottom') return new THREE.Vector3(0, -1, 0)
+            const angleRad = (stub.angleDegrees * Math.PI) / 180
 
             const yUp = new THREE.Vector3(0, 1, 0)
             const perpHorizontal = new THREE.Vector3().crossVectors(tangentDir, yUp).normalize()
 
-            const toCenter = bendCenter.clone().sub(stubCenterOnAxis)
-            toCenter.y = 0
-            const dotToCenter = perpHorizontal.dot(toCenter.normalize())
+            if (perpHorizontal.length() < 0.01) {
+              perpHorizontal.set(1, 0, 0)
+            }
 
-            if (orientation === 'inside') {
-              return dotToCenter > 0 ? perpHorizontal : perpHorizontal.clone().negate()
-            }
-            if (orientation === 'outside') {
-              return dotToCenter > 0 ? perpHorizontal.clone().negate() : perpHorizontal
-            }
-            return new THREE.Vector3(0, 1, 0)
+            const baseUp = yUp.clone()
+            const rotatedDir = baseUp.clone()
+              .multiplyScalar(Math.cos(angleRad))
+              .add(perpHorizontal.clone().multiplyScalar(Math.sin(angleRad)))
+              .normalize()
+
+            return rotatedDir
           })()
 
           return (
@@ -938,9 +938,12 @@ const Scene = (props: Props) => {
           />
         )}
 
-        {hasOutletFlange && t2 > 0 && (
+        {hasOutletFlange && (
           <Flange
-            center={outletEnd.clone().add(outletDir.clone().multiplyScalar(outerR * 0.18))}
+            center={t2 > 0
+              ? outletEnd.clone().add(outletDir.clone().multiplyScalar(outerR * 0.18))
+              : bendEndPoint.clone().add(outletDir.clone().multiplyScalar(outerR * 0.18))
+            }
             normal={outletDir}
             pipeR={outerR}
             innerR={innerR}
@@ -962,13 +965,14 @@ const Scene = (props: Props) => {
           )
         })()}
 
-        {addBlankFlange && blankFlangePositions.includes('outlet') && hasOutletFlange && t2 > 0 && (() => {
+        {addBlankFlange && blankFlangePositions.includes('outlet') && hasOutletFlange && (() => {
           const flangeThick = outerR * 0.4
           const flangeOffset = outerR * 0.18
           const blankOffset = flangeOffset + flangeThick * 2 + 0.05
+          const basePoint = t2 > 0 ? outletEnd : bendEndPoint
           return (
             <BlankFlange
-              center={outletEnd.clone().add(outletDir.clone().multiplyScalar(blankOffset))}
+              center={basePoint.clone().add(outletDir.clone().multiplyScalar(blankOffset))}
               normal={outletDir}
               pipeR={outerR}
               nb={nominalBore}

@@ -691,10 +691,10 @@ export default function BendForm({
 
                 {/* Three-Column Layout Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-                  {/* LEFT COLUMN - Quantity & Options */}
+                  {/* Column 1 - Quantity & Config */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-bold text-gray-900 border-b border-purple-500 pb-1.5">
-                      Quantity & Options
+                      Quantity & Config
                     </h4>
 
                     {/* Quantity */}
@@ -730,6 +730,281 @@ export default function BendForm({
                         )}
                       </div>
                     )}
+
+                    {/* Flange Specifications - Uses Global Specs with Override Option */}
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <h5 className="text-xs font-bold text-gray-900">
+                          Flanges
+                          {entry.hasFlangeOverride ? (
+                            <span className="text-blue-600 text-xs ml-2 font-normal">(Override Active)</span>
+                          ) : globalSpecs?.flangeStandardId ? (
+                            <span className="text-green-600 text-xs ml-2 font-normal">(From Global Specs)</span>
+                          ) : (
+                            <span className="text-gray-500 text-xs ml-2 font-normal">(Not Set)</span>
+                          )}
+                        </h5>
+                        {globalSpecs?.flangeStandardId && (
+                          <label className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer">
+                            <span className="text-gray-500 italic">(click to change)</span>
+                            <input
+                              type="checkbox"
+                              checked={entry.hasFlangeOverride || false}
+                              onChange={(e) => {
+                                const override = e.target.checked;
+                                onUpdateEntry(entry.id, {
+                                  hasFlangeOverride: override,
+                                  flangeOverrideConfirmed: false,
+                                  specs: override ? {
+                                    ...entry.specs,
+                                    flangeStandardId: entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId,
+                                    flangePressureClassId: entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId
+                                  } : {
+                                    ...entry.specs,
+                                    flangeStandardId: undefined,
+                                    flangePressureClassId: undefined
+                                  }
+                                });
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="font-medium">Override</span>
+                          </label>
+                        )}
+                      </div>
+
+                      {/* Warning if deviating from recommended pressure class */}
+                      {(() => {
+                        const currentClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                        const recommendedClassId = globalSpecs?.flangePressureClassId;
+                        const isOverride = entry.hasFlangeOverride && currentClassId && recommendedClassId && currentClassId !== recommendedClassId;
+
+                        if (isOverride) {
+                          const currentClass = masterData.pressureClasses?.find((p: any) => p.id === currentClassId);
+                          const recommendedClass = masterData.pressureClasses?.find((p: any) => p.id === recommendedClassId);
+                          return (
+                            <div className="bg-red-50 border-2 border-red-400 rounded-lg p-2 mb-2">
+                              <div className="flex items-start gap-2">
+                                <span className="text-red-600 text-base">⚠️</span>
+                                <div className="flex-1">
+                                  <p className="text-xs font-bold text-red-900">Pressure Rating Override</p>
+                                  <p className="text-xs text-red-700 mt-0.5">
+                                    Selected <span className="font-semibold">{currentClass?.designation}</span> instead of recommended{' '}
+                                    <span className="font-semibold">{recommendedClass?.designation}</span>
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      {globalSpecs?.flangeStandardId && !entry.hasFlangeOverride ? (
+                        <div className="bg-green-50 p-2 rounded-md">
+                          <p className="text-green-800 text-xs mb-1">
+                            Using global flange standard from specifications page
+                          </p>
+                          {globalSpecs?.flangePressureClassId && (
+                            <div className="bg-blue-50 p-2 rounded border-l-2 border-blue-300">
+                              <p className="text-blue-800 text-xs font-semibold">
+                                Flange Spec:
+                                <span className="ml-1">
+                                  {(() => {
+                                    const pressureClass = masterData.pressureClasses?.find(
+                                      (pc: any) => pc.id === globalSpecs.flangePressureClassId
+                                    );
+                                    const flangeStandard = masterData.flangeStandards?.find(
+                                      (fs: any) => fs.id === globalSpecs.flangeStandardId
+                                    );
+                                    if (pressureClass && flangeStandard) {
+                                      return `${flangeStandard.code}/${pressureClass.designation}`;
+                                    }
+                                    return 'N/A';
+                                  })()}
+                                </span>
+                              </p>
+                              <p className="text-blue-600 text-xs mt-0.5">
+                                For {globalSpecs?.workingPressureBar || 'N/A'} bar working pressure
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : !globalSpecs?.flangeStandardId ? (
+                        <p className="text-xs text-gray-500">Set flange specs in Global Specifications</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {entry.flangeOverrideConfirmed ? (
+                            <div className="bg-blue-50 border-2 border-blue-400 p-2 rounded-md">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-bold text-blue-900 flex items-center gap-1">
+                                  <span className="text-green-600">✓</span> Item-Specific Flange Confirmed
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: false })}
+                                  className="px-2 py-0.5 text-xs font-medium text-blue-700 bg-white border border-blue-300 rounded hover:bg-blue-50 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                              </div>
+                              <div className="bg-white p-1.5 rounded border border-blue-200">
+                                <p className="text-sm font-bold text-blue-800">
+                                  {(() => {
+                                    const flangeStandard = masterData.flangeStandards?.find(
+                                      (fs: any) => fs.id === entry.specs?.flangeStandardId
+                                    );
+                                    const pressureClass = masterData.pressureClasses?.find(
+                                      (pc: any) => pc.id === entry.specs?.flangePressureClassId
+                                    );
+                                    if (flangeStandard && pressureClass) {
+                                      return `${flangeStandard.code} / ${pressureClass.designation}`;
+                                    }
+                                    return 'N/A';
+                                  })()}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-900 mb-1">
+                                    Flange Standard
+                                  </label>
+                                  <select
+                                    value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
+                                    onChange={async (e) => {
+                                      const standardId = parseInt(e.target.value) || undefined;
+                                      onUpdateEntry(entry.id, {
+                                        specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined }
+                                      });
+                                      if (standardId) {
+                                        getFilteredPressureClasses(standardId);
+                                      }
+                                    }}
+                                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                                  >
+                                    <option value="">Select Standard</option>
+                                    {masterData.flangeStandards?.map((standard: any) => (
+                                      <option key={standard.id} value={standard.id}>
+                                        {standard.code}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-900 mb-1">
+                                    Pressure Class
+                                  </label>
+                                  <select
+                                    value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
+                                    onChange={(e) => onUpdateEntry(entry.id, {
+                                      specs: {
+                                        ...entry.specs,
+                                        flangePressureClassId: parseInt(e.target.value) || undefined
+                                      }
+                                    })}
+                                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                                  >
+                                    <option value="">Select Class</option>
+                                    {(() => {
+                                      const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                                      const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
+                                      return filtered.map((pressureClass: any) => (
+                                        <option key={pressureClass.id} value={pressureClass.id}>
+                                          {pressureClass.designation}
+                                        </option>
+                                      ));
+                                    })()}
+                                  </select>
+                                </div>
+                              </div>
+
+                              {entry.hasFlangeOverride && entry.specs?.flangeStandardId && entry.specs?.flangePressureClassId && (
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: true })}
+                                    className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-green-600 rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
+                                  >
+                                    <span>✓</span> Confirm Override
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onUpdateEntry(entry.id, {
+                                        hasFlangeOverride: false,
+                                        flangeOverrideConfirmed: false,
+                                        specs: {
+                                          ...entry.specs,
+                                          flangeStandardId: undefined,
+                                          flangePressureClassId: undefined
+                                        }
+                                      });
+                                    }}
+                                    className="px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bend End Configuration */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Bend End Config
+                      </label>
+                      <select
+                        value={entry.specs?.bendEndConfiguration || 'PE'}
+                        onChange={(e) => {
+                          const newConfig = e.target.value;
+                          const updatedEntry: any = {
+                            ...entry,
+                            specs: { ...entry.specs, bendEndConfiguration: newConfig }
+                          };
+                          updatedEntry.description = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, updatedEntry);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                      >
+                        {BEND_END_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Closure Length - Only for L/F configs */}
+                    {hasLooseFlange(entry.specs?.bendEndConfiguration || '') && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          Closure Length (mm)
+                        </label>
+                        <input
+                          type="number"
+                          value={entry.specs?.closureLengthMm || ''}
+                          onChange={(e) => {
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, closureLengthMm: e.target.value ? Number(e.target.value) : undefined }
+                            });
+                          }}
+                          placeholder="150"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Column 2 - Tangents & Length */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-gray-900 border-b border-blue-500 pb-1.5">
+                      Tangents & Length
+                    </h4>
 
                     {/* Tangents Section */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -1078,112 +1353,12 @@ export default function BendForm({
                     )}
                   </div>
 
-                  {/* RIGHT COLUMN - Flanges & Options */}
+                  {/* Column 3 - Stubs */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
-                      Flanges & Options
+                      Stub Connections
                     </h4>
 
-                    {/* Bend End Configuration */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Bend End Configuration
-                      </label>
-                      {(() => {
-                        const selectId = `bend-end-config-${entry.id}`;
-                        const options = BEND_END_OPTIONS.map(opt => ({
-                          value: opt.value,
-                          label: opt.label
-                        }));
-
-                        return (
-                          <Select
-                            id={selectId}
-                            value={entry.specs?.bendEndConfiguration || 'PE'}
-                            onChange={(newConfig) => {
-                              const updatedEntry: any = {
-                                ...entry,
-                                specs: { ...entry.specs, bendEndConfiguration: newConfig }
-                              };
-                              updatedEntry.description = generateItemDescription(updatedEntry);
-                              onUpdateEntry(entry.id, updatedEntry);
-                              if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                              }
-                            }}
-                            options={options}
-                            placeholder="Select End Configuration"
-                            open={openSelects[selectId] || false}
-                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
-                          />
-                        );
-                      })()}
-                      {entry.specs?.bendEndConfiguration && entry.specs.bendEndConfiguration !== 'PE' && (
-                        <p className="mt-1 text-xs text-purple-600 font-medium">
-                          {entry.specs.bendEndConfiguration === '2xLF'
-                            ? '2 x tack weld ends (no flange welds)'
-                            : `${getWeldCountPerBend(entry.specs.bendEndConfiguration)} weld${getWeldCountPerBend(entry.specs.bendEndConfiguration) !== 1 ? 's' : ''} per bend`}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Closure Length Field - Only shown when L/F configuration is selected */}
-                    {hasLooseFlange(entry.specs?.bendEndConfiguration || '') && (() => {
-                      const isLFBothEnds = entry.specs?.bendEndConfiguration === '2xLF';
-                      return (
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-900 mb-1">
-                            Closure Length (mm) *
-                            <span className="text-purple-600 text-xs ml-2">
-                              {isLFBothEnds
-                                ? '(Same length applies to both ends)'
-                                : '(Site weld extension past L/F)'}
-                            </span>
-                          </label>
-                          <input
-                            type="number"
-                            value={entry.specs?.closureLengthMm || ''}
-                            onChange={(e) => {
-                              const closureLength = e.target.value ? Number(e.target.value) : undefined;
-                              onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, closureLengthMm: closureLength }
-                              });
-                            }}
-                            placeholder="e.g., 150"
-                            min={50}
-                            max={500}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                          />
-                          <p className="mt-0.5 text-xs text-gray-500">
-                            {isLFBothEnds
-                              ? 'Pipe extension past each loose flange for site weld connection - same length both ends (typically 100-200mm)'
-                              : 'Additional pipe length extending past the loose flange for site weld connection (typically 100-200mm)'}
-                          </p>
-                          {/* Tack Weld Information */}
-                          <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
-                            <p className="text-xs font-bold text-amber-800">
-                              Loose Flange Tack Welds Required:
-                            </p>
-                            <ul className="text-xs text-amber-700 mt-1 list-disc list-inside">
-                              {isLFBothEnds ? (
-                                <>
-                                  <li>16 tack welds total (~20mm each) - 8 per L/F end</li>
-                                  <li>4 tack welds on each side of each loose flange</li>
-                                </>
-                              ) : (
-                                <>
-                                  <li>8 tack welds total (~20mm each)</li>
-                                  <li>4 tack welds on each side of loose flange</li>
-                                </>
-                              )}
-                            </ul>
-                            <p className="text-xs text-amber-600 mt-1 italic">
-                              Tack weld charge applies per L/F end{isLFBothEnds ? ' (x2)' : ''}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })()}
 
 
                     {/* Blank Flange Option for Bends - Position selector */}
@@ -1241,230 +1416,6 @@ export default function BendForm({
                         </div>
                       );
                     })()}
-                    {/* Flange Specifications - Uses Global Specs with Override Option */}
-                    <div>
-                      <div className="flex justify-between items-start mb-2">
-                        <h5 className="text-xs font-bold text-gray-900">
-                          Flanges
-                          {entry.hasFlangeOverride ? (
-                            <span className="text-blue-600 text-xs ml-2 font-normal">(Override Active)</span>
-                          ) : globalSpecs?.flangeStandardId ? (
-                            <span className="text-green-600 text-xs ml-2 font-normal">(From Global Specs)</span>
-                          ) : (
-                            <span className="text-gray-500 text-xs ml-2 font-normal">(Not Set)</span>
-                          )}
-                        </h5>
-                        {globalSpecs?.flangeStandardId && (
-                          <label className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer">
-                            <span className="text-gray-500 italic">(click to change)</span>
-                            <input
-                              type="checkbox"
-                              checked={entry.hasFlangeOverride || false}
-                              onChange={(e) => {
-                                const override = e.target.checked;
-                                onUpdateEntry(entry.id, {
-                                  hasFlangeOverride: override,
-                                  flangeOverrideConfirmed: false,
-                                  specs: override ? {
-                                    ...entry.specs,
-                                    flangeStandardId: entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId,
-                                    flangePressureClassId: entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId
-                                  } : {
-                                    ...entry.specs,
-                                    flangeStandardId: undefined,
-                                    flangePressureClassId: undefined
-                                  }
-                                });
-                              }}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="font-medium">Override</span>
-                          </label>
-                        )}
-                      </div>
-
-                      {/* Warning if deviating from recommended pressure class */}
-                      {(() => {
-                        const currentClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
-                        const recommendedClassId = globalSpecs?.flangePressureClassId;
-                        const isOverride = entry.hasFlangeOverride && currentClassId && recommendedClassId && currentClassId !== recommendedClassId;
-
-                        if (isOverride) {
-                          const currentClass = masterData.pressureClasses?.find((p: any) => p.id === currentClassId);
-                          const recommendedClass = masterData.pressureClasses?.find((p: any) => p.id === recommendedClassId);
-                          return (
-                            <div className="bg-red-50 border-2 border-red-400 rounded-lg p-2 mb-2">
-                              <div className="flex items-start gap-2">
-                                <span className="text-red-600 text-base">⚠️</span>
-                                <div className="flex-1">
-                                  <p className="text-xs font-bold text-red-900">Pressure Rating Override</p>
-                                  <p className="text-xs text-red-700 mt-0.5">
-                                    Selected <span className="font-semibold">{currentClass?.designation}</span> instead of recommended{' '}
-                                    <span className="font-semibold">{recommendedClass?.designation}</span>
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-
-                      {globalSpecs?.flangeStandardId && !entry.hasFlangeOverride ? (
-                        <div className="bg-green-50 p-2 rounded-md">
-                          <p className="text-green-800 text-xs mb-1">
-                            Using global flange standard from specifications page
-                          </p>
-                          {globalSpecs?.flangePressureClassId && (
-                            <div className="bg-blue-50 p-2 rounded border-l-2 border-blue-300">
-                              <p className="text-blue-800 text-xs font-semibold">
-                                Flange Spec:
-                                <span className="ml-1">
-                                  {(() => {
-                                    const pressureClass = masterData.pressureClasses?.find(
-                                      (pc: any) => pc.id === globalSpecs.flangePressureClassId
-                                    );
-                                    const flangeStandard = masterData.flangeStandards?.find(
-                                      (fs: any) => fs.id === globalSpecs.flangeStandardId
-                                    );
-                                    if (pressureClass && flangeStandard) {
-                                      return `${flangeStandard.code}/${pressureClass.designation}`;
-                                    }
-                                    return 'N/A';
-                                  })()}
-                                </span>
-                              </p>
-                              <p className="text-blue-600 text-xs mt-0.5">
-                                For {globalSpecs?.workingPressureBar || 'N/A'} bar working pressure
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ) : !globalSpecs?.flangeStandardId ? (
-                        <p className="text-xs text-gray-500">Set flange specs in Global Specifications</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {entry.flangeOverrideConfirmed ? (
-                            <div className="bg-blue-50 border-2 border-blue-400 p-2 rounded-md">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-bold text-blue-900 flex items-center gap-1">
-                                  <span className="text-green-600">✓</span> Item-Specific Flange Confirmed
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: false })}
-                                  className="px-2 py-0.5 text-xs font-medium text-blue-700 bg-white border border-blue-300 rounded hover:bg-blue-50 transition-colors"
-                                >
-                                  Edit
-                                </button>
-                              </div>
-                              <div className="bg-white p-1.5 rounded border border-blue-200">
-                                <p className="text-sm font-bold text-blue-800">
-                                  {(() => {
-                                    const flangeStandard = masterData.flangeStandards?.find(
-                                      (fs: any) => fs.id === entry.specs?.flangeStandardId
-                                    );
-                                    const pressureClass = masterData.pressureClasses?.find(
-                                      (pc: any) => pc.id === entry.specs?.flangePressureClassId
-                                    );
-                                    if (flangeStandard && pressureClass) {
-                                      return `${flangeStandard.code} / ${pressureClass.designation}`;
-                                    }
-                                    return 'N/A';
-                                  })()}
-                                </p>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <label className="block text-xs font-semibold text-gray-900 mb-1">
-                                    Flange Standard
-                                  </label>
-                                  <select
-                                    value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
-                                    onChange={async (e) => {
-                                      const standardId = parseInt(e.target.value) || undefined;
-                                      onUpdateEntry(entry.id, {
-                                        specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined }
-                                      });
-                                      // Fetch pressure classes for this standard
-                                      if (standardId) {
-                                        getFilteredPressureClasses(standardId);
-                                      }
-                                    }}
-                                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                                  >
-                                    <option value="">Select Standard</option>
-                                    {masterData.flangeStandards?.map((standard: any) => (
-                                      <option key={standard.id} value={standard.id}>
-                                        {standard.code}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-semibold text-gray-900 mb-1">
-                                    Pressure Class
-                                  </label>
-                                  <select
-                                    value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
-                                    onChange={(e) => onUpdateEntry(entry.id, {
-                                      specs: {
-                                        ...entry.specs,
-                                        flangePressureClassId: parseInt(e.target.value) || undefined
-                                      }
-                                    })}
-                                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                                  >
-                                    <option value="">Select Class</option>
-                                    {(() => {
-                                      const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                                      const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
-                                      return filtered.map((pressureClass: any) => (
-                                        <option key={pressureClass.id} value={pressureClass.id}>
-                                          {pressureClass.designation}
-                                        </option>
-                                      ));
-                                    })()}
-                                  </select>
-                                </div>
-                              </div>
-
-                              {entry.hasFlangeOverride && entry.specs?.flangeStandardId && entry.specs?.flangePressureClassId && (
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: true })}
-                                    className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-green-600 rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
-                                  >
-                                    <span>✓</span> Confirm Override
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      onUpdateEntry(entry.id, {
-                                        hasFlangeOverride: false,
-                                        flangeOverrideConfirmed: false,
-                                        specs: {
-                                          ...entry.specs,
-                                          flangeStandardId: undefined,
-                                          flangePressureClassId: undefined
-                                        }
-                                      });
-                                    }}
-                                    className="px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
 
                     {/* Stubs Section - Compact */}
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3">
@@ -1568,27 +1519,63 @@ export default function BendForm({
                               {(() => {
                                 const selectId = `bend-stub1-wt-${entry.id}`;
                                 const stub1NB = entry.specs?.stubs?.[0]?.nominalBoreMm;
-                                const STUB_WT_LOOKUP: Record<number, number> = {
+                                const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                const isSABS719 = steelSpecId === 8;
+
+                                const SABS_719_WT: Record<number, number> = {
+                                  200: 5.2, 250: 5.2, 300: 6.4, 350: 6.4, 400: 6.4, 450: 6.4, 500: 6.4,
+                                  550: 6.4, 600: 6.4, 650: 8.0, 700: 8.0, 750: 8.0, 800: 8.0, 850: 9.5,
+                                  900: 9.5, 1000: 9.5, 1050: 9.5, 1200: 12.7
+                                };
+                                const ASTM_STUB_WT: Record<number, number> = {
                                   15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68,
                                   50: 3.91, 65: 5.16, 80: 5.49, 100: 6.02, 125: 6.55,
                                   150: 7.11, 200: 8.18, 250: 9.27, 300: 10.31
                                 };
-                                const autoWt = stub1NB ? STUB_WT_LOOKUP[stub1NB] || (stub1NB * 0.05) : null;
+
+                                const getSabs719Wt = (nb: number): number => {
+                                  const sizes = Object.keys(SABS_719_WT).map(Number).sort((a, b) => a - b);
+                                  let closest = sizes[0];
+                                  for (const size of sizes) {
+                                    if (size <= nb) closest = size;
+                                    else break;
+                                  }
+                                  return SABS_719_WT[closest] || entry.specs?.wallThicknessMm || 6.4;
+                                };
+
+                                const autoWt = stub1NB
+                                  ? (isSABS719 ? getSabs719Wt(stub1NB) : (ASTM_STUB_WT[stub1NB] || (stub1NB * 0.05)))
+                                  : null;
                                 const currentWt = entry.specs?.stubs?.[0]?.wallThicknessMm;
-                                const wtOptions = [
-                                  ...(autoWt ? [{ value: String(autoWt), label: `${autoWt.toFixed(2)} (Auto)` }] : []),
-                                  { value: '2.77', label: '2.77' },
-                                  { value: '3.38', label: '3.38' },
-                                  { value: '3.91', label: '3.91' },
-                                  { value: '5.16', label: '5.16' },
-                                  { value: '5.49', label: '5.49' },
-                                  { value: '6.02', label: '6.02' },
-                                  { value: '6.55', label: '6.55' },
-                                  { value: '7.11', label: '7.11' },
-                                  { value: '8.18', label: '8.18' },
-                                  { value: '9.27', label: '9.27' },
-                                  { value: '10.31', label: '10.31' },
-                                ].filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx);
+
+                                const wtOptions = isSABS719
+                                  ? [
+                                      ...(autoWt ? [{ value: String(autoWt), label: `${autoWt.toFixed(1)} (Auto - SABS 719)` }] : []),
+                                      { value: '4.0', label: '4.0 (WT4)' },
+                                      { value: '5.0', label: '5.0 (WT5)' },
+                                      { value: '5.2', label: '5.2' },
+                                      { value: '6.0', label: '6.0 (WT6)' },
+                                      { value: '6.4', label: '6.4' },
+                                      { value: '8.0', label: '8.0 (WT8)' },
+                                      { value: '9.5', label: '9.5' },
+                                      { value: '10.0', label: '10.0 (WT10)' },
+                                      { value: '12.0', label: '12.0 (WT12)' },
+                                      { value: '12.7', label: '12.7' },
+                                    ].filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx)
+                                  : [
+                                      ...(autoWt ? [{ value: String(autoWt), label: `${autoWt.toFixed(2)} (Auto)` }] : []),
+                                      { value: '2.77', label: '2.77' },
+                                      { value: '3.38', label: '3.38' },
+                                      { value: '3.91', label: '3.91' },
+                                      { value: '5.16', label: '5.16' },
+                                      { value: '5.49', label: '5.49' },
+                                      { value: '6.02', label: '6.02' },
+                                      { value: '6.55', label: '6.55' },
+                                      { value: '7.11', label: '7.11' },
+                                      { value: '8.18', label: '8.18' },
+                                      { value: '9.27', label: '9.27' },
+                                      { value: '10.31', label: '10.31' },
+                                    ].filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx);
 
                                 return (
                                   <Select
@@ -1611,17 +1598,17 @@ export default function BendForm({
                               })()}
                             </div>
                             <div>
-                              <label className="block text-xs text-gray-600 mb-0.5">Angle (°) <span className="text-gray-400">on T1</span></label>
+                              <label className="block text-xs text-gray-600 mb-0.5">Position <span className="text-gray-400">on T1</span></label>
                               {(() => {
                                 const selectId = `bend-stub1-angle-${entry.id}`;
                                 const angleOptions = [
-                                  { value: '0', label: '0° (Tangent)' },
+                                  { value: '0', label: '0° (Top)' },
                                   { value: '45', label: '45°' },
-                                  { value: '90', label: '90°' },
+                                  { value: '90', label: '90° (Side)' },
                                   { value: '135', label: '135°' },
-                                  { value: '180', label: '180°' },
+                                  { value: '180', label: '180° (Bottom)' },
                                   { value: '225', label: '225°' },
-                                  { value: '270', label: '270°' },
+                                  { value: '270', label: '270° (Side)' },
                                   { value: '315', label: '315°' }
                                 ];
                                 return (
@@ -1829,27 +1816,63 @@ export default function BendForm({
                               {(() => {
                                 const selectId = `bend-stub2-wt-${entry.id}`;
                                 const stub2NB = entry.specs?.stubs?.[1]?.nominalBoreMm;
-                                const STUB_WT_LOOKUP: Record<number, number> = {
+                                const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                const isSABS719 = steelSpecId === 8;
+
+                                const SABS_719_WT: Record<number, number> = {
+                                  200: 5.2, 250: 5.2, 300: 6.4, 350: 6.4, 400: 6.4, 450: 6.4, 500: 6.4,
+                                  550: 6.4, 600: 6.4, 650: 8.0, 700: 8.0, 750: 8.0, 800: 8.0, 850: 9.5,
+                                  900: 9.5, 1000: 9.5, 1050: 9.5, 1200: 12.7
+                                };
+                                const ASTM_STUB_WT: Record<number, number> = {
                                   15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68,
                                   50: 3.91, 65: 5.16, 80: 5.49, 100: 6.02, 125: 6.55,
                                   150: 7.11, 200: 8.18, 250: 9.27, 300: 10.31
                                 };
-                                const autoWt = stub2NB ? STUB_WT_LOOKUP[stub2NB] || (stub2NB * 0.05) : null;
+
+                                const getSabs719Wt = (nb: number): number => {
+                                  const sizes = Object.keys(SABS_719_WT).map(Number).sort((a, b) => a - b);
+                                  let closest = sizes[0];
+                                  for (const size of sizes) {
+                                    if (size <= nb) closest = size;
+                                    else break;
+                                  }
+                                  return SABS_719_WT[closest] || entry.specs?.wallThicknessMm || 6.4;
+                                };
+
+                                const autoWt = stub2NB
+                                  ? (isSABS719 ? getSabs719Wt(stub2NB) : (ASTM_STUB_WT[stub2NB] || (stub2NB * 0.05)))
+                                  : null;
                                 const currentWt = entry.specs?.stubs?.[1]?.wallThicknessMm;
-                                const wtOptions = [
-                                  ...(autoWt ? [{ value: String(autoWt), label: `${autoWt.toFixed(2)} (Auto)` }] : []),
-                                  { value: '2.77', label: '2.77' },
-                                  { value: '3.38', label: '3.38' },
-                                  { value: '3.91', label: '3.91' },
-                                  { value: '5.16', label: '5.16' },
-                                  { value: '5.49', label: '5.49' },
-                                  { value: '6.02', label: '6.02' },
-                                  { value: '6.55', label: '6.55' },
-                                  { value: '7.11', label: '7.11' },
-                                  { value: '8.18', label: '8.18' },
-                                  { value: '9.27', label: '9.27' },
-                                  { value: '10.31', label: '10.31' },
-                                ].filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx);
+
+                                const wtOptions = isSABS719
+                                  ? [
+                                      ...(autoWt ? [{ value: String(autoWt), label: `${autoWt.toFixed(1)} (Auto - SABS 719)` }] : []),
+                                      { value: '4.0', label: '4.0 (WT4)' },
+                                      { value: '5.0', label: '5.0 (WT5)' },
+                                      { value: '5.2', label: '5.2' },
+                                      { value: '6.0', label: '6.0 (WT6)' },
+                                      { value: '6.4', label: '6.4' },
+                                      { value: '8.0', label: '8.0 (WT8)' },
+                                      { value: '9.5', label: '9.5' },
+                                      { value: '10.0', label: '10.0 (WT10)' },
+                                      { value: '12.0', label: '12.0 (WT12)' },
+                                      { value: '12.7', label: '12.7' },
+                                    ].filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx)
+                                  : [
+                                      ...(autoWt ? [{ value: String(autoWt), label: `${autoWt.toFixed(2)} (Auto)` }] : []),
+                                      { value: '2.77', label: '2.77' },
+                                      { value: '3.38', label: '3.38' },
+                                      { value: '3.91', label: '3.91' },
+                                      { value: '5.16', label: '5.16' },
+                                      { value: '5.49', label: '5.49' },
+                                      { value: '6.02', label: '6.02' },
+                                      { value: '6.55', label: '6.55' },
+                                      { value: '7.11', label: '7.11' },
+                                      { value: '8.18', label: '8.18' },
+                                      { value: '9.27', label: '9.27' },
+                                      { value: '10.31', label: '10.31' },
+                                    ].filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx);
 
                                 return (
                                   <Select
@@ -1872,17 +1895,17 @@ export default function BendForm({
                               })()}
                             </div>
                             <div>
-                              <label className="block text-xs text-gray-600 mb-0.5">Angle (°) <span className="text-gray-400">on T2</span></label>
+                              <label className="block text-xs text-gray-600 mb-0.5">Position <span className="text-gray-400">on T2</span></label>
                               {(() => {
                                 const selectId = `bend-stub2-angle-${entry.id}`;
                                 const angleOptions = [
-                                  { value: '0', label: '0° (Tangent)' },
+                                  { value: '0', label: '0° (Top)' },
                                   { value: '45', label: '45°' },
-                                  { value: '90', label: '90°' },
+                                  { value: '90', label: '90° (Side)' },
                                   { value: '135', label: '135°' },
-                                  { value: '180', label: '180°' },
+                                  { value: '180', label: '180° (Bottom)' },
                                   { value: '225', label: '225°' },
-                                  { value: '270', label: '270°' },
+                                  { value: '270', label: '270° (Side)' },
                                   { value: '315', label: '315°' }
                                 ];
                                 return (

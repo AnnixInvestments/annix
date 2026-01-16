@@ -162,7 +162,7 @@ export default function SplitPaneLayout({
   return (
     <div className={isEnabled ? "flex gap-0" : "space-y-5"}>
       {/* Left Pane - Form Fields */}
-      <div className={isEnabled ? "flex-1 space-y-5 pr-4 overflow-y-auto" : "space-y-5"}>
+      <div className={isEnabled ? "flex-1 space-y-5 pr-4" : "space-y-5"}>
         {formContent}
 
         {/* Toggle Button for Split-Pane 3D Preview */}
@@ -226,8 +226,8 @@ export default function SplitPaneLayout({
       {/* Right Pane - 3D Preview */}
       {isEnabled && showSplitToggle && previewContent && (
         <div
-          className="flex-shrink-0 sticky top-4 relative"
-          style={{ width: `${100 - width}%`, height: `${height}px`, minHeight: '350px' }}
+          className="flex-shrink-0 sticky top-4 self-start relative"
+          style={{ width: `${100 - width}%`, height: `${height}px`, minHeight: '350px', maxHeight: 'calc(100vh - 120px)' }}
         >
           <div className="h-full w-full">
             {previewContent}
