@@ -20,6 +20,8 @@ import { FlangeStandardModule } from './flange-standard/flange-standard.module';
 import { FlangePressureClassModule } from './flange-pressure-class/flange-pressure-class.module';
 import { FlangePtRatingModule } from './flange-pt-rating/flange-pt-rating.module';
 import { FlangeBoltingModule } from './flange-bolting/flange-bolting.module';
+import { FlangeTypeModule } from './flange-type/flange-type.module';
+import { SpectacleBlindModule } from './spectacle-blind/spectacle-blind.module';
 import { PipeScheduleModule } from './pipe-schedule/pipe-schedule.module';
 import { BoltModule } from './bolt/bolt.module';
 import { BoltMassModule } from './bolt-mass/bolt-mass.module';
@@ -79,6 +81,8 @@ import typeormConfig from './config/typeorm';
     FlangePressureClassModule,
     FlangePtRatingModule,
     FlangeBoltingModule,
+    FlangeTypeModule,
+    SpectacleBlindModule,
     PipeScheduleModule,
     BoltModule,
     BoltMassModule,

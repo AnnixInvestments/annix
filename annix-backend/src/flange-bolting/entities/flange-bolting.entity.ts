@@ -68,4 +68,13 @@ export class FlangeBolting {
     nullable: true,
   })
   boltLengthRf: number | null; // Bolt length for Rotating Flanges (with retaining ring)
+
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'bolt_length_bl',
+    nullable: true,
+  })
+  boltLengthBl: number | null; // Bolt length for Blind flanges
 }
