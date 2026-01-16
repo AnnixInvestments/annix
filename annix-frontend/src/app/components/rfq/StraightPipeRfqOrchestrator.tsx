@@ -424,6 +424,19 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         setNixProcessingStatus('Loading Items page...');
         setNixProcessingTimeRemaining(0);
         setCurrentStep(2);
+
+        // Fallback timeout to close popup if onReady callback doesn't fire
+        setTimeout(() => {
+          setIsNixProcessing(prev => {
+            if (prev) {
+              setNixProcessingProgress(100);
+              setNixProcessingStatus('Complete!');
+              showToast(`Nix processed ${pendingDocuments.length} document(s) successfully!`, 'success');
+              return false;
+            }
+            return prev;
+          });
+        }, 3000);
       }
     } catch (error) {
       log.error('🤖 Nix processing error:', error);
