@@ -69,7 +69,7 @@ export interface StraightPipeFormProps {
   closeSelect: (id: string) => void;
   focusAndOpenSelect: (id: string, retryCount?: number) => void;
   generateItemDescription: (entry: any) => string;
-  Pipe3DPreview: React.ComponentType<any>;
+  Pipe3DPreview?: React.ComponentType<any> | null;
   nominalBores: number[];
   availableSchedulesMap: Record<string, any[]>;
   setAvailableSchedulesMap: (fn: (prev: Record<string, any[]>) => Record<string, any[]>) => void;
@@ -1189,24 +1189,26 @@ export default function StraightPipeForm({
                   </>
                 }
                 previewContent={
-                  <Pipe3DPreview
-                    length={entry.specs.individualPipeLength || 12.192}
-                    outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
-                    wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
-                    endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
-                    materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
-                    nominalBoreMm={entry.specs.nominalBoreMm}
-                    pressureClass={globalSpecs?.pressureClassDesignation || 'PN16'}
-                    addBlankFlange={entry.specs?.addBlankFlange}
-                    blankFlangePositions={entry.specs?.blankFlangePositions}
-                    savedCameraPosition={entry.specs?.savedCameraPosition}
-                    savedCameraTarget={entry.specs?.savedCameraTarget}
-                    onCameraChange={(position: [number, number, number], target: [number, number, number]) => {
-                      onUpdateEntry(entry.id, {
-                        specs: { ...entry.specs, savedCameraPosition: position, savedCameraTarget: target }
-                      });
-                    }}
-                  />
+                  Pipe3DPreview ? (
+                    <Pipe3DPreview
+                      length={entry.specs.individualPipeLength || 12.192}
+                      outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
+                      wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
+                      endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
+                      materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                      nominalBoreMm={entry.specs.nominalBoreMm}
+                      pressureClass={globalSpecs?.pressureClassDesignation || 'PN16'}
+                      addBlankFlange={entry.specs?.addBlankFlange}
+                      blankFlangePositions={entry.specs?.blankFlangePositions}
+                      savedCameraPosition={entry.specs?.savedCameraPosition}
+                      savedCameraTarget={entry.specs?.savedCameraTarget}
+                      onCameraChange={(position: [number, number, number], target: [number, number, number]) => {
+                        onUpdateEntry(entry.id, {
+                          specs: { ...entry.specs, savedCameraPosition: position, savedCameraTarget: target }
+                        });
+                      }}
+                    />
+                  ) : null
                 }
               />
 

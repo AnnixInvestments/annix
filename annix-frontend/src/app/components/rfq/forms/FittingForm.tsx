@@ -28,7 +28,7 @@ export interface FittingFormProps {
   closeSelect: (id: string) => void;
   focusAndOpenSelect: (id: string, retryCount?: number) => void;
   generateItemDescription: (entry: any) => string;
-  Tee3DPreview: React.ComponentType<any>;
+  Tee3DPreview?: React.ComponentType<any> | null;
   pressureClassesByStandard: Record<number, any[]>;
   getFilteredPressureClasses: (standardId: number) => void;
   requiredProducts?: string[];
@@ -1202,6 +1202,8 @@ export default function FittingForm({
                 previewContent={
                   <>
                     {(() => {
+                      if (!Tee3DPreview) return null;
+
                       const fittingType = entry.specs?.fittingType || '';
                       const isTeeType = ['SHORT_TEE', 'GUSSET_TEE', 'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE', 'SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE', 'EQUAL_TEE', 'UNEQUAL_TEE', 'SWEEP_TEE', 'GUSSETTED_TEE'].includes(fittingType);
 

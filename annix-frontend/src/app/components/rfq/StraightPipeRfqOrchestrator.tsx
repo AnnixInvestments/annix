@@ -346,11 +346,27 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           setNixExtractedItems(result.items);
           log.debug(`🤖 Extracted ${result.items.length} items`);
 
-          setNixProcessingProgress(docProgress + 75);
-          setNixProcessingStatus(`Found ${result.items.length} items, converting...`);
-          setNixProcessingTimeRemaining(3);
+          setNixProcessingProgress(docProgress + 70);
+          setNixProcessingStatus(`Found ${result.items.length} items, populating RFQ...`);
+          setNixProcessingTimeRemaining(5);
+
+          await new Promise(resolve => setTimeout(resolve, 300));
+
+          const totalItems = result.items.length;
+          for (let itemIdx = 0; itemIdx < totalItems; itemIdx++) {
+            const itemProgress = docProgress + 70 + ((itemIdx / totalItems) * 20);
+            setNixProcessingProgress(itemProgress);
+            setNixProcessingStatus(`Adding item ${itemIdx + 1} of ${totalItems}...`);
+            setNixProcessingTimeRemaining(Math.max(1, Math.ceil((totalItems - itemIdx) * 0.3)));
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
 
           convertNixItemsToRfqItems(result.items);
+
+          setNixProcessingProgress(docProgress + 92);
+          setNixProcessingStatus('Items added to RFQ');
+          setNixProcessingTimeRemaining(2);
         }
 
         setNixProcessingProgress(docProgress + 85);
@@ -375,28 +391,33 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       }
 
       setNixProcessingProgress(95);
-      setNixProcessingStatus('Finalizing...');
+      setNixProcessingStatus('Finalizing RFQ...');
       setNixProcessingTimeRemaining(1);
 
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      setNixProcessingProgress(100);
-      setNixProcessingStatus('Complete!');
-      setNixProcessingTimeRemaining(0);
+      await new Promise(resolve => setTimeout(resolve, 400));
 
       const processingTime = ((Date.now() - startTime) / 1000).toFixed(1);
       log.debug(`🤖 Nix processing completed in ${processingTime}s`);
 
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      setIsNixProcessing(false);
-
       if (allClarifications.length > 0) {
+        setNixProcessingProgress(100);
+        setNixProcessingStatus('Complete! Questions needed...');
+        setNixProcessingTimeRemaining(0);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setIsNixProcessing(false);
         setNixClarifications(allClarifications);
         setCurrentClarificationIndex(0);
         setShowNixClarification(true);
       } else {
+        setNixProcessingProgress(98);
+        setNixProcessingStatus('Loading Items page...');
+        setNixProcessingTimeRemaining(0);
         setCurrentStep(2);
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setNixProcessingProgress(100);
+        setNixProcessingStatus('Complete!');
+        await new Promise(resolve => setTimeout(resolve, 400));
+        setIsNixProcessing(false);
         showToast(`Nix processed ${pendingDocuments.length} document(s) successfully!`, 'success');
       }
     } catch (error) {
@@ -2668,6 +2689,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               requiredProducts={rfqData.requiredProducts}
               pressureClassesByStandard={pressureClassesByStandard}
               getFilteredPressureClasses={getFilteredPressureClasses}
+              hideDrawings={rfqData.useNix}
             />
           );
         case 3:
@@ -2757,6 +2779,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               requiredProducts={rfqData.requiredProducts}
               pressureClassesByStandard={pressureClassesByStandard}
               getFilteredPressureClasses={getFilteredPressureClasses}
+              hideDrawings={rfqData.useNix}
             />
           );
         case 4:

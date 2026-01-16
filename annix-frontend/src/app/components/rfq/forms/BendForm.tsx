@@ -58,7 +58,7 @@ export interface BendFormProps {
   closeSelect: (id: string) => void;
   focusAndOpenSelect: (id: string, retryCount?: number) => void;
   generateItemDescription: (entry: any) => string;
-  Bend3DPreview: React.ComponentType<any>;
+  Bend3DPreview?: React.ComponentType<any> | null;
   pressureClassesByStandard: Record<number, any[]>;
   getFilteredPressureClasses: (standardId: number) => void;
 }
@@ -2381,37 +2381,39 @@ export default function BendForm({
                   </>
                 }
                 previewContent={
-                  <Bend3DPreview
-                    nominalBore={entry.specs.nominalBoreMm}
-                    outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}
-                    wallThickness={entry.calculation?.wallThicknessMm || 5}
-                    bendAngle={entry.specs.bendDegrees}
-                    bendType={entry.specs.bendType || '1.5D'}
-                    tangent1={entry.specs?.tangentLengths?.[0] || 0}
-                    tangent2={entry.specs?.tangentLengths?.[1] || 0}
-                    schedule={entry.specs.scheduleNumber}
-                    materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
-                    numberOfSegments={entry.specs?.numberOfSegments}
-                    isSegmented={(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8}
-                    stubs={entry.specs?.stubs}
-                    numberOfStubs={entry.specs?.numberOfStubs || 0}
-                    flangeConfig={entry.specs?.bendEndConfiguration || 'PE'}
-                    closureLengthMm={entry.specs?.closureLengthMm || 0}
-                    addBlankFlange={entry.specs?.addBlankFlange}
-                    blankFlangePositions={entry.specs?.blankFlangePositions}
-                    savedCameraPosition={entry.specs?.savedCameraPosition}
-                    savedCameraTarget={entry.specs?.savedCameraTarget}
-                    onCameraChange={(position: [number, number, number], target: [number, number, number]) => {
-                      log.debug('BendForm onCameraChange called', JSON.stringify({ position, target, entryId: entry.id }))
-                      onUpdateEntry(entry.id, {
-                        specs: {
-                          ...entry.specs,
-                          savedCameraPosition: position,
-                          savedCameraTarget: target
-                        }
-                      })
-                    }}
-                  />
+                  Bend3DPreview ? (
+                    <Bend3DPreview
+                      nominalBore={entry.specs.nominalBoreMm}
+                      outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}
+                      wallThickness={entry.calculation?.wallThicknessMm || 5}
+                      bendAngle={entry.specs.bendDegrees}
+                      bendType={entry.specs.bendType || '1.5D'}
+                      tangent1={entry.specs?.tangentLengths?.[0] || 0}
+                      tangent2={entry.specs?.tangentLengths?.[1] || 0}
+                      schedule={entry.specs.scheduleNumber}
+                      materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                      numberOfSegments={entry.specs?.numberOfSegments}
+                      isSegmented={(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8}
+                      stubs={entry.specs?.stubs}
+                      numberOfStubs={entry.specs?.numberOfStubs || 0}
+                      flangeConfig={entry.specs?.bendEndConfiguration || 'PE'}
+                      closureLengthMm={entry.specs?.closureLengthMm || 0}
+                      addBlankFlange={entry.specs?.addBlankFlange}
+                      blankFlangePositions={entry.specs?.blankFlangePositions}
+                      savedCameraPosition={entry.specs?.savedCameraPosition}
+                      savedCameraTarget={entry.specs?.savedCameraTarget}
+                      onCameraChange={(position: [number, number, number], target: [number, number, number]) => {
+                        log.debug('BendForm onCameraChange called', JSON.stringify({ position, target, entryId: entry.id }))
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            savedCameraPosition: position,
+                            savedCameraTarget: target
+                          }
+                        })
+                      }}
+                    />
+                  ) : null
                 }
               />
   );

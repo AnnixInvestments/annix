@@ -24,10 +24,11 @@ const Bend3DPreview = dynamic(() => import('@/app/components/rfq/CSGBend3DPrevie
 const Tee3DPreview = dynamic(() => import('@/app/components/rfq/Tee3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 import { BendForm, FittingForm, StraightPipeForm } from '@/app/components/rfq/forms';
 
-export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses }: any) {
+export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses, hideDrawings = false }: any) {
   const autoFocusedEntriesRef = useRef<Set<string>>(new Set());
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
+  const [drawingsHidden, setDrawingsHidden] = useState(hideDrawings);
 
   const copyItemToClipboard = useCallback(async (entry: any) => {
     const itemData = JSON.stringify(entry, null, 2);
@@ -799,9 +800,31 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
         <>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-900">Items</h2>
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-              <span className="text-green-700 font-semibold">Auto-calculating</span>
-              <span className="text-xs text-green-600">Results update automatically</span>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setDrawingsHidden(!drawingsHidden)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
+                  drawingsHidden
+                    ? 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
+                    : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                }`}
+              >
+                {drawingsHidden ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+                <span className="text-sm font-medium">{drawingsHidden ? 'Show 3D Drawings' : 'Hide 3D Drawings'}</span>
+              </button>
+              <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+                <span className="text-green-700 font-semibold">Auto-calculating</span>
+                <span className="text-xs text-green-600">Results update automatically</span>
+              </div>
             </div>
           </div>
 
@@ -900,7 +923,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 closeSelect={closeSelect}
                 focusAndOpenSelect={focusAndOpenSelect}
                 generateItemDescription={generateItemDescription}
-                Bend3DPreview={Bend3DPreview}
+                Bend3DPreview={drawingsHidden ? null : Bend3DPreview}
                 pressureClassesByStandard={pressureClassesByStandard}
                 getFilteredPressureClasses={getFilteredPressureClasses}
               />
@@ -919,7 +942,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 closeSelect={closeSelect}
                 focusAndOpenSelect={focusAndOpenSelect}
                 generateItemDescription={generateItemDescription}
-                Tee3DPreview={Tee3DPreview}
+                Tee3DPreview={drawingsHidden ? null : Tee3DPreview}
                 pressureClassesByStandard={pressureClassesByStandard}
                 getFilteredPressureClasses={getFilteredPressureClasses}
                 requiredProducts={requiredProducts}
@@ -939,7 +962,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 closeSelect={closeSelect}
                 focusAndOpenSelect={focusAndOpenSelect}
                 generateItemDescription={generateItemDescription}
-                Pipe3DPreview={Pipe3DPreview}
+                Pipe3DPreview={drawingsHidden ? null : Pipe3DPreview}
                 nominalBores={availableNominalBores}
                 availableSchedulesMap={availableSchedulesMap}
                 setAvailableSchedulesMap={setAvailableSchedulesMap}
