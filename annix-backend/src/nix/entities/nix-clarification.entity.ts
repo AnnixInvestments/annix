@@ -92,6 +92,16 @@ export class NixClarification {
     extractedQuantity?: number;
     confidence?: number;
     clarificationReason?: string | null;
+    isSpecificationHeader?: boolean;
+    cellRef?: string;
+    rawText?: string;
+    parsedMaterialGrade?: string | null;
+    parsedWallThickness?: string | null;
+    parsedLining?: string | null;
+    parsedExternalCoating?: string | null;
+    parsedStandard?: string | null;
+    parsedSchedule?: string | null;
+    missingFields?: string[];
   };
 
   @ApiProperty({ description: 'Type of response received', enum: ResponseType })

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import AmixLogo from '../AmixLogo';
+import AmixLogo from '@/app/components/AmixLogo';
 
 interface NixAiPopupProps {
   isVisible: boolean;

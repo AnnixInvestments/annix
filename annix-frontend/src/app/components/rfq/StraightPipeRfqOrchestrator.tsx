@@ -3,7 +3,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { StraightPipeEntry, BendEntry, FittingEntry, PipeItem, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
-import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, boqApi, nixApi, RfqDraftResponse, SessionExpiredError, NixExtractedItem, NixClarificationDto } from '@/app/lib/api/client';
+import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, boqApi, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
+import { nixApi, NixAiPopup, NixFloatingAvatar, NixClarificationPopup, NixProcessingPopup, type NixExtractedItem, type NixClarificationDto } from '@/app/lib/nix';
 import { consolidateBoqData } from '@/app/lib/utils/boqConsolidation';
 import { useToast } from '@/app/components/Toast';
 import { log } from '@/app/lib/logger';
@@ -82,9 +83,6 @@ import SpecificationsStep from './steps/SpecificationsStep';
 import ItemUploadStep from './steps/ItemUploadStep';
 import ReviewSubmitStep from './steps/ReviewSubmitStep';
 import BOQStep from './steps/BOQStep';
-import NixAiPopup from './NixAiPopup';
-import NixFloatingAvatar from './NixFloatingAvatar';
-import NixClarificationPopup from './NixClarificationPopup';
 
 const normalizeFittingTypeForApi = (type?: string | null) => {
   if (!type) return type;
@@ -251,6 +249,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const [showNixPopup, setShowNixPopup] = useState(false);
   // Nix processing state
   const [isNixProcessing, setIsNixProcessing] = useState(false);
+  const [nixProcessingProgress, setNixProcessingProgress] = useState(0);
+  const [nixProcessingStatus, setNixProcessingStatus] = useState('Initializing...');
+  const [nixProcessingTimeRemaining, setNixProcessingTimeRemaining] = useState<number | undefined>(undefined);
   const [nixExtractionId, setNixExtractionId] = useState<number | null>(null);
   const [nixExtractedItems, setNixExtractedItems] = useState<NixExtractedItem[]>([]);
   const [nixClarifications, setNixClarifications] = useState<NixClarificationDto[]>([]);
@@ -305,27 +306,59 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     }
 
     setIsNixProcessing(true);
+    setNixProcessingProgress(0);
+    setNixProcessingStatus('Uploading document...');
+    setNixProcessingTimeRemaining(15);
     log.debug(`🤖 Processing ${pendingDocuments.length} document(s) with Nix...`);
 
+    const startTime = Date.now();
+    const allClarifications: NixClarificationDto[] = [];
+
     try {
-      for (const doc of pendingDocuments) {
+      for (let i = 0; i < pendingDocuments.length; i++) {
+        const doc = pendingDocuments[i];
+        const docProgress = (i / pendingDocuments.length) * 100;
+
+        setNixProcessingProgress(docProgress + 5);
+        setNixProcessingStatus(`Uploading ${doc.file.name}...`);
+        setNixProcessingTimeRemaining(12);
+
         log.debug(`🤖 Processing document: ${doc.file.name}`);
+
+        setNixProcessingProgress(docProgress + 15);
+        setNixProcessingStatus('Reading document structure...');
+        setNixProcessingTimeRemaining(10);
+
         const result = await nixApi.uploadAndProcess(doc.file);
+
+        setNixProcessingProgress(docProgress + 40);
+        setNixProcessingStatus('Extracting pipe specifications...');
+        setNixProcessingTimeRemaining(7);
 
         log.debug('🤖 Nix extraction result:', result);
         setNixExtractionId(result.extractionId);
+
+        setNixProcessingProgress(docProgress + 60);
+        setNixProcessingStatus('Analyzing line items...');
+        setNixProcessingTimeRemaining(5);
 
         if (result.items && result.items.length > 0) {
           setNixExtractedItems(result.items);
           log.debug(`🤖 Extracted ${result.items.length} items`);
 
+          setNixProcessingProgress(docProgress + 75);
+          setNixProcessingStatus(`Found ${result.items.length} items, converting...`);
+          setNixProcessingTimeRemaining(3);
+
           convertNixItemsToRfqItems(result.items);
         }
 
+        setNixProcessingProgress(docProgress + 85);
+        setNixProcessingStatus('Preparing clarification questions...');
+        setNixProcessingTimeRemaining(2);
+
         if (result.pendingClarifications && result.pendingClarifications.length > 0) {
-          setNixClarifications(result.pendingClarifications);
-          setCurrentClarificationIndex(0);
-          setShowNixClarification(true);
+          allClarifications.push(...result.pendingClarifications);
           log.debug(`🤖 ${result.pendingClarifications.length} clarification(s) needed`);
         }
 
@@ -341,12 +374,36 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         }
       }
 
-      showToast(`Nix processed ${pendingDocuments.length} document(s) successfully!`, 'success');
+      setNixProcessingProgress(95);
+      setNixProcessingStatus('Finalizing...');
+      setNixProcessingTimeRemaining(1);
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setNixProcessingProgress(100);
+      setNixProcessingStatus('Complete!');
+      setNixProcessingTimeRemaining(0);
+
+      const processingTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      log.debug(`🤖 Nix processing completed in ${processingTime}s`);
+
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      setIsNixProcessing(false);
+
+      if (allClarifications.length > 0) {
+        setNixClarifications(allClarifications);
+        setCurrentClarificationIndex(0);
+        setShowNixClarification(true);
+      } else {
+        setCurrentStep(2);
+        showToast(`Nix processed ${pendingDocuments.length} document(s) successfully!`, 'success');
+      }
     } catch (error) {
       log.error('🤖 Nix processing error:', error);
       showToast(`Nix processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
-    } finally {
       setIsNixProcessing(false);
+      setNixProcessingProgress(0);
     }
   };
 
@@ -367,23 +424,30 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       if (!item.diameter) continue;
 
       itemIndex++;
-      const nixNote = `Extracted by Nix from Row ${item.rowNumber} (${Math.round(item.confidence * 100)}% confidence)`;
+      const unitLower = (item.unit || '').toLowerCase().trim();
+      const isMetersUnit = unitLower === 'm' || unitLower === 'meters' || unitLower === 'metre' || unitLower === 'metres' || unitLower === 'lm';
+
+      const materialNote = item.material ? ` | Material: ${item.material}${item.materialGrade ? ` (${item.materialGrade})` : ''}` : '';
+      const wallNote = item.wallThickness ? ` | Wall: ${item.wallThickness}mm` : '';
+      const nixNote = `Extracted by Nix from Row ${item.rowNumber} (${Math.round(item.confidence * 100)}% confidence)${materialNote}${wallNote}`;
+
+      log.debug(`🤖 Converting Nix item ${item.rowNumber}: material=${item.material}, wallThickness=${item.wallThickness}, unit=${item.unit}, isMeters=${isMetersUnit}`);
 
       if (item.itemType === 'pipe' || item.itemType === 'flange') {
         const pipeEntry: StraightPipeEntry = {
           id: generateUniqueId(),
           itemType: 'straight_pipe' as const,
-          clientItemNumber: generateClientItemNumber(customerName, itemIndex),
+          clientItemNumber: item.itemNumber || generateClientItemNumber(customerName, itemIndex),
           description: item.description,
           specs: {
             nominalBoreMm: item.diameter,
-            scheduleType: item.schedule ? 'schedule' : 'wall_thickness',
+            scheduleType: item.schedule ? 'schedule' : (item.wallThickness ? 'wall_thickness' : 'schedule'),
             scheduleNumber: item.schedule || undefined,
             wallThicknessMm: item.wallThickness || undefined,
             pipeEndConfiguration: flangeMap[item.flangeConfig || 'none'] || 'PE',
-            individualPipeLength: item.length || 6000,
+            individualPipeLength: isMetersUnit ? 6000 : (item.length || 6000),
             lengthUnit: 'meters' as const,
-            quantityType: 'number_of_pipes' as const,
+            quantityType: isMetersUnit ? 'total_length' as const : 'number_of_pipes' as const,
             quantityValue: item.quantity || 1,
             workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
             workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
@@ -396,7 +460,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         const bendEntry: BendEntry = {
           id: generateUniqueId(),
           itemType: 'bend' as const,
-          clientItemNumber: generateClientItemNumber(customerName, itemIndex),
+          clientItemNumber: item.itemNumber || generateClientItemNumber(customerName, itemIndex),
           description: item.description,
           specs: {
             nominalBoreMm: item.diameter,
@@ -423,7 +487,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         const fittingEntry: FittingEntry = {
           id: generateUniqueId(),
           itemType: 'fitting' as const,
-          clientItemNumber: generateClientItemNumber(customerName, itemIndex),
+          clientItemNumber: item.itemNumber || generateClientItemNumber(customerName, itemIndex),
           description: item.description,
           specs: {
             fittingStandard: 'SABS719',
@@ -2734,6 +2798,14 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         isVisible={showNixPopup}
         onYes={handleNixYes}
         onNo={handleNixNo}
+      />
+
+      {/* Nix Processing Popup - shows while extracting data */}
+      <NixProcessingPopup
+        isVisible={isNixProcessing}
+        progress={nixProcessingProgress}
+        statusMessage={nixProcessingStatus}
+        estimatedTimeRemaining={nixProcessingTimeRemaining}
       />
 
       {/* Nix Floating Avatar - shows when Nix is active */}

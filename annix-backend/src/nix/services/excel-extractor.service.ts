@@ -24,17 +24,35 @@ export interface ExtractedItem {
   rawData: Record<string, any>;
 }
 
+export interface SpecificationCellData {
+  cellRef: string;
+  rowNumber: number;
+  rawText: string;
+  parsedData: {
+    materialGrade: string | null;
+    wallThickness: string | null;
+    lining: string | null;
+    externalCoating: string | null;
+    standard: string | null;
+    schedule: string | null;
+  };
+}
+
 export interface ExtractionResult {
   sheetName: string;
   totalRows: number;
   items: ExtractedItem[];
   clarificationsNeeded: number;
+  specificationCells: SpecificationCellData[];
   metadata: {
     projectReference: string | null;
     projectLocation: string | null;
     projectName: string | null;
     standard: string | null;
     coating: string | null;
+    lining: string | null;
+    materialGrade: string | null;
+    wallThickness: string | null;
   };
 }
 
@@ -85,6 +103,12 @@ export class ExcelExtractorService {
       throw new Error('No worksheets found in Excel file');
     }
 
+    const specificationCells = this.extractSpecificationCells(worksheet);
+    this.logger.log(`📋 Found ${specificationCells.length} specification header(s)`);
+
+    const specDefaults = this.consolidateSpecificationData(specificationCells);
+    this.logger.log(`📋 Consolidated spec data - Material Type: ${specDefaults.material}, Grade: ${specDefaults.materialGrade}, Wall: ${specDefaults.wallThickness} (${specDefaults.wallThicknessNum}mm), Lining: ${specDefaults.lining}, Coating: ${specDefaults.externalCoating}`);
+
     const items: ExtractedItem[] = [];
     let currentContext: {
       material: string | null;
@@ -92,12 +116,14 @@ export class ExcelExtractorService {
       standard: string | null;
       coating: string | null;
       wallThickness: number | null;
+      lining: string | null;
     } = {
-      material: null,
-      materialGrade: null,
-      standard: null,
-      coating: null,
-      wallThickness: null,
+      material: specDefaults.material,
+      materialGrade: specDefaults.materialGrade,
+      standard: specDefaults.standard,
+      coating: specDefaults.externalCoating,
+      wallThickness: specDefaults.wallThicknessNum,
+      lining: specDefaults.lining,
     };
 
     let projectReference: string | null = null;
@@ -106,6 +132,7 @@ export class ExcelExtractorService {
     let currentDescription: string | null = null;
     let currentDescriptionRow: number | null = null;
     let currentSpecHeader: string | null = null;
+    let currentLNumber: string | null = null;
 
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber <= 10) {
@@ -143,6 +170,13 @@ export class ExcelExtractorService {
       const rowData = this.extractRowData(row);
       const description = rowData.description?.toString() || '';
 
+      const col3Value = row.getCell(3).value?.toString().trim() || '';
+      const lNumberMatch = col3Value.match(/^L\d+(?:\.\d+)?$/i);
+      if (lNumberMatch) {
+        currentLNumber = lNumberMatch[0].toUpperCase();
+        this.logger.debug(`📋 Found L number at row ${rowNumber}: ${currentLNumber}`);
+      }
+
       if (!description || description.trim().length < 3) return;
 
       const isSpecificationHeader = /^SP\d+\s+Specification\s*[-–]\s*/i.test(description.trim()) ||
@@ -163,6 +197,7 @@ export class ExcelExtractorService {
       if (contextUpdate.standard) currentContext.standard = contextUpdate.standard;
       if (contextUpdate.coating) currentContext.coating = contextUpdate.coating;
       if (contextUpdate.wallThickness) currentContext.wallThickness = contextUpdate.wallThickness;
+      if (contextUpdate.lining) currentContext.lining = contextUpdate.lining;
 
       if (rowData.paymentReference && !projectReference) {
         projectReference = rowData.paymentReference.toString();
@@ -192,6 +227,7 @@ export class ExcelExtractorService {
             currentDescription,
             currentContext,
             currentSpecHeader,
+            currentLNumber,
           );
           if (item) {
             items.push(item);
@@ -204,7 +240,7 @@ export class ExcelExtractorService {
       const isLineItem = this.isLineItem(rowData, description);
       if (!isLineItem) return;
 
-      const item = this.extractItemFromRow(rowNumber, rowData, description, currentContext, currentSpecHeader);
+      const item = this.extractItemFromRow(rowNumber, rowData, description, currentContext, currentSpecHeader, currentLNumber);
       if (item) {
         items.push(item);
       }
@@ -217,14 +253,308 @@ export class ExcelExtractorService {
       totalRows: worksheet.rowCount,
       items,
       clarificationsNeeded,
+      specificationCells,
       metadata: {
         projectReference,
         projectLocation,
         projectName,
         standard: currentContext.standard,
         coating: currentContext.coating,
+        lining: currentContext.lining,
+        materialGrade: currentContext.materialGrade,
+        wallThickness: specDefaults.wallThickness,
       },
     };
+  }
+
+  private extractSpecificationCells(worksheet: ExcelJS.Worksheet): SpecificationCellData[] {
+    const specCells: SpecificationCellData[] = [];
+
+    const specHeaderPatterns = [
+      /^SP\d+\s+Specification\s*[-–:]/i,
+      /^(Bill|Section)\s+\d+.*Specification/i,
+      /Specification\s*[-–:]\s*(CARBON|STAINLESS|MILD)\s*STEEL/i,
+      /SPECIFICATION\s*FOR\s*(PIPES?|STEEL|CARBON|STAINLESS)/i,
+      /MATERIAL\s*SPECIFICATION/i,
+      /PIPE\s*SPECIFICATION/i,
+      /STEEL\s*SPECIFICATION/i,
+    ];
+
+    const specDataPatterns = [
+      /\b(API\s*5L|SABS\s*\d+|ASTM\s*A\d+|EN\s*\d+)\b/i,
+      /\bGrade\s*[A-Z0-9]+\b/i,
+      /\b\d+(?:\.\d+)?\s*mm\s*(?:wall|thick|wt)\b/i,
+      /\bwall\s*(?:thickness)?[:\s]*\d+/i,
+      /\b(CML|cement\s*mortar|epoxy)\s*(?:lin(?:ed|ing))?\b/i,
+      /\b(?:internal\s*)?lin(?:ed|ing)[:\s]/i,
+      /\b(?:external\s*)?coat(?:ed|ing)[:\s]/i,
+      /\b(polyurethane|bitumen|galvani[sz]ed)\s*(?:coat(?:ed|ing))?\b/i,
+      /\bSch(?:edule)?\.?\s*\d+/i,
+    ];
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 20) return;
+
+      const rowText = this.extractFullRowText(row);
+      if (rowText.length < 15) return;
+
+      const isSpecHeader = specHeaderPatterns.some(pattern => pattern.test(rowText));
+
+      const specDataMatches = specDataPatterns.filter(pattern => pattern.test(rowText)).length;
+      const hasSpecData = specDataMatches >= 2;
+
+      if ((isSpecHeader || hasSpecData) && rowText.length > 10) {
+        this.logger.log(`📋 Found specification data at row ${rowNumber} (matches: ${specDataMatches}): ${rowText.substring(0, 150)}...`);
+
+        const parsed = this.parseSpecificationText(rowText);
+
+        const hasMeaningfulData = parsed.materialGrade || parsed.wallThickness || parsed.lining || parsed.externalCoating || parsed.standard;
+
+        if (hasMeaningfulData) {
+          specCells.push({
+            cellRef: `Row${rowNumber}`,
+            rowNumber: rowNumber,
+            rawText: rowText,
+            parsedData: parsed,
+          });
+        }
+      }
+    });
+
+    for (const targetRow of [4, 9]) {
+      const alreadyFound = specCells.some(sc => sc.rowNumber === targetRow);
+      if (!alreadyFound) {
+        const row = worksheet.getRow(targetRow);
+        const cell = row.getCell(5);
+        const cellText = this.getCellText(cell);
+
+        if (cellText && cellText.length > 15) {
+          const parsed = this.parseSpecificationText(cellText);
+          const hasMeaningfulData = parsed.materialGrade || parsed.wallThickness || parsed.lining || parsed.externalCoating || parsed.standard;
+
+          if (hasMeaningfulData) {
+            this.logger.log(`📋 Found specification in cell E${targetRow}: ${cellText.substring(0, 150)}...`);
+            specCells.push({
+              cellRef: `E${targetRow}`,
+              rowNumber: targetRow,
+              rawText: cellText,
+              parsedData: parsed,
+            });
+          }
+        }
+      }
+    }
+
+    return specCells;
+  }
+
+  private extractFullRowText(row: ExcelJS.Row): string {
+    const texts: string[] = [];
+    row.eachCell((cell) => {
+      const text = this.getCellText(cell);
+      if (text && text.trim().length > 0) {
+        texts.push(text.trim());
+      }
+    });
+    return texts.join(' ');
+  }
+
+  private consolidateSpecificationData(specCells: SpecificationCellData[]): {
+    material: string | null;
+    materialGrade: string | null;
+    wallThickness: string | null;
+    wallThicknessNum: number | null;
+    lining: string | null;
+    externalCoating: string | null;
+    standard: string | null;
+    schedule: string | null;
+  } {
+    const result = {
+      material: null as string | null,
+      materialGrade: null as string | null,
+      wallThickness: null as string | null,
+      wallThicknessNum: null as number | null,
+      lining: null as string | null,
+      externalCoating: null as string | null,
+      standard: null as string | null,
+      schedule: null as string | null,
+    };
+
+    for (const specCell of specCells) {
+      const parsed = specCell.parsedData;
+
+      if (parsed.materialGrade && !result.materialGrade) {
+        result.materialGrade = parsed.materialGrade;
+        const rawText = specCell.rawText.toLowerCase();
+        if (rawText.includes('stainless') || rawText.includes('s.s') || rawText.includes('ss ')) {
+          result.material = 'Stainless Steel';
+        } else if (rawText.includes('carbon') || rawText.includes('mild') || rawText.includes('m.s')) {
+          result.material = 'Carbon Steel';
+        } else if (rawText.includes('api') || rawText.includes('erw')) {
+          result.material = 'Carbon Steel';
+        }
+      }
+
+      if (parsed.wallThickness && !result.wallThickness) {
+        result.wallThickness = parsed.wallThickness;
+        const thicknessNum = parseFloat(parsed.wallThickness.replace(/[^\d.]/g, ''));
+        if (!isNaN(thicknessNum)) {
+          result.wallThicknessNum = thicknessNum;
+        }
+      }
+
+      if (parsed.lining && !result.lining) {
+        result.lining = parsed.lining;
+      }
+
+      if (parsed.externalCoating && !result.externalCoating) {
+        result.externalCoating = parsed.externalCoating;
+      }
+
+      if (parsed.standard && !result.standard) {
+        result.standard = parsed.standard;
+      }
+
+      if (parsed.schedule && !result.schedule) {
+        result.schedule = parsed.schedule;
+      }
+    }
+
+    return result;
+  }
+
+  private getCellText(cell: ExcelJS.Cell): string {
+    const value = cell.value;
+    if (!value) return '';
+
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number') return value.toString();
+
+    if (typeof value === 'object') {
+      if ('text' in value) return (value as any).text;
+      if ('richText' in value) {
+        const richText = (value as any).richText as Array<{ text: string }>;
+        return richText.map(rt => rt.text).join('');
+      }
+      if ('result' in value) return (value as any).result?.toString() || '';
+    }
+
+    return value.toString();
+  }
+
+  private parseSpecificationText(text: string): SpecificationCellData['parsedData'] {
+    const result: SpecificationCellData['parsedData'] = {
+      materialGrade: null,
+      wallThickness: null,
+      lining: null,
+      externalCoating: null,
+      standard: null,
+      schedule: null,
+    };
+
+    const gradePatterns = [
+      /(?:Grade|Gr\.?)\s*([A-Z0-9]+)/i,
+      /API\s*5L\s*(?:Grade\s*)?([A-Z])/i,
+      /ASTM\s*A\d+\s*(?:Grade\s*)?([A-Z0-9]+)/i,
+      /\b([A-Z]\d{2,3}[A-Z]?)\b/,
+      /\bX?(\d{2,3})\s*Grade/i,
+    ];
+
+    for (const pattern of gradePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        result.materialGrade = match[1] || match[0];
+        this.logger.debug(`  Found material grade: ${result.materialGrade}`);
+        break;
+      }
+    }
+
+    const wallPatterns = [
+      /wall\s*(?:thickness)?[:\s]*(\d+(?:\.\d+)?)\s*mm/i,
+      /(\d+(?:\.\d+)?)\s*mm\s*(?:wall|thick|thk)/i,
+      /wt[:\s]*(\d+(?:\.\d+)?)\s*mm/i,
+      /thickness[:\s]*(\d+(?:\.\d+)?)\s*mm/i,
+    ];
+
+    for (const pattern of wallPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        result.wallThickness = `${match[1]}mm`;
+        this.logger.debug(`  Found wall thickness: ${result.wallThickness}`);
+        break;
+      }
+    }
+
+    const liningPatterns = [
+      /(?:internal\s*)?(?:lining|lined)[:\s]*([^,\n]+)/i,
+      /CML\s*(?:lined?|lining)?/i,
+      /cement\s*(?:mortar\s*)?lin(?:ed|ing)/i,
+      /epoxy\s*(?:internal\s*)?lin(?:ed|ing)/i,
+      /(\d+mm\s*CML)/i,
+    ];
+
+    for (const pattern of liningPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        result.lining = match[1]?.trim() || match[0].trim();
+        this.logger.debug(`  Found lining: ${result.lining}`);
+        break;
+      }
+    }
+
+    const coatingPatterns = [
+      /(?:external\s*)?coating[:\s]*([^,\n]+)/i,
+      /(?:ext\.?\s*)?(?:coat(?:ed|ing)?)[:\s]*([^,\n]+)/i,
+      /polyurethane\s*(?:coat(?:ed|ing)?)?/i,
+      /epoxy\s*(?:external\s*)?coat(?:ed|ing)?/i,
+      /galvani[sz]ed/i,
+      /bitumen\s*(?:coat(?:ed|ing)?)?/i,
+      /paint(?:ed)?\s*(?:coat(?:ed|ing)?)?/i,
+    ];
+
+    for (const pattern of coatingPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        result.externalCoating = match[1]?.trim() || match[0].trim();
+        this.logger.debug(`  Found external coating: ${result.externalCoating}`);
+        break;
+      }
+    }
+
+    const standardPatterns = [
+      /\b(API\s*5L)\b/i,
+      /\b(SABS\s*\d+)\b/i,
+      /\b(ASTM\s*A\d+)\b/i,
+      /\b(EN\s*\d+)\b/i,
+      /\b(ISO\s*\d+)\b/i,
+      /\b(BS\s*\d+)\b/i,
+    ];
+
+    for (const pattern of standardPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        result.standard = match[1].toUpperCase().replace(/\s+/g, ' ');
+        this.logger.debug(`  Found standard: ${result.standard}`);
+        break;
+      }
+    }
+
+    const schedulePatterns = [
+      /(?:Sch(?:edule)?\.?)\s*(\d+[A-Z]?)/i,
+      /\bS(\d+)\b/,
+      /schedule[:\s]*(\d+)/i,
+    ];
+
+    for (const pattern of schedulePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        result.schedule = match[1];
+        this.logger.debug(`  Found schedule: ${result.schedule}`);
+        break;
+      }
+    }
+
+    return result;
   }
 
   private extractHeaderText(row: ExcelJS.Row): string | null {
@@ -315,6 +645,7 @@ export class ExcelExtractorService {
     standard: string | null;
     coating: string | null;
     wallThickness: number | null;
+    lining: string | null;
   } {
     const result = {
       material: null as string | null,
@@ -322,6 +653,7 @@ export class ExcelExtractorService {
       standard: null as string | null,
       coating: null as string | null,
       wallThickness: null as number | null,
+      lining: null as string | null,
     };
 
     const standardMatch = description.match(/\b(API\s*5L|SABS\s*\d+|ASTM\s*\w+)/i);
@@ -329,9 +661,25 @@ export class ExcelExtractorService {
       result.standard = standardMatch[1].toUpperCase().replace(/\s+/g, ' ');
     }
 
-    const coatingMatch = description.match(/\b(CML|polyurethane|epoxy|coating)\b/i);
+    const liningPatterns = [
+      /(?:internal\s*)?(?:lining|lined)[:\s]*([^,\n]+)/i,
+      /CML\s*(?:lined?|lining)?/i,
+      /cement\s*(?:mortar\s*)?lin(?:ed|ing)/i,
+      /epoxy\s*(?:internal\s*)?lin(?:ed|ing)/i,
+      /(\d+mm\s*CML)/i,
+    ];
+
+    for (const pattern of liningPatterns) {
+      const match = description.match(pattern);
+      if (match) {
+        result.lining = match[1]?.trim() || match[0].trim();
+        break;
+      }
+    }
+
+    const coatingMatch = description.match(/\b(polyurethane|epoxy|bitumen|galvani[sz]ed)\b/i);
     if (coatingMatch) {
-      result.coating = description.match(/(\d+mm\s*CML|CML|polyurethane\s*coating|epoxy)/i)?.[0] || coatingMatch[1];
+      result.coating = description.match(/(polyurethane\s*coating|epoxy\s*coating|bitumen|galvani[sz]ed)/i)?.[0] || coatingMatch[1];
     }
 
     const thicknessMatch = description.match(/(\d+(?:\.\d+)?)\s*mm\s*thick/i);
@@ -359,6 +707,62 @@ export class ExcelExtractorService {
     return (hasQuantity || hasUnit) && (hasDiameter || hasItemRef);
   }
 
+  private extractItemNumberFromDescription(description: string): string | null {
+    const patterns = [
+      /^Item\s+(\d+(?:\.\d+)?)/i,
+      /^\(([a-z])\)/i,
+      /^\((\d+)\)/,
+      /^([a-z])\)/i,
+      /^(\d+(?:\.\d+)?)\s*[-–)]/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = description.trim().match(pattern);
+      if (match) {
+        return match[1];
+      }
+    }
+    return null;
+  }
+
+  private buildItemNumber(
+    rowData: Record<string, any>,
+    description: string,
+    currentLNumber: string | null,
+    rowNumber: number,
+  ): string {
+    const itemLetterOrNumber = this.extractItemNumberFromDescription(description);
+    const rowDataItemNumber = rowData.itemNumber?.toString().trim();
+
+    let baseNumber = '';
+
+    if (rowDataItemNumber && /^L\d/i.test(rowDataItemNumber)) {
+      baseNumber = rowDataItemNumber.toUpperCase();
+    } else if (currentLNumber) {
+      baseNumber = currentLNumber;
+    }
+
+    if (itemLetterOrNumber) {
+      if (baseNumber) {
+        return `${baseNumber}(${itemLetterOrNumber})`;
+      }
+      return itemLetterOrNumber;
+    }
+
+    if (rowDataItemNumber && !/^L\d/i.test(rowDataItemNumber)) {
+      if (baseNumber) {
+        return `${baseNumber}-${rowDataItemNumber}`;
+      }
+      return rowDataItemNumber;
+    }
+
+    if (baseNumber) {
+      return baseNumber;
+    }
+
+    return `Row${rowNumber}`;
+  }
+
   private extractItemFromRow(
     rowNumber: number,
     rowData: Record<string, any>,
@@ -369,8 +773,10 @@ export class ExcelExtractorService {
       standard: string | null;
       coating: string | null;
       wallThickness: number | null;
+      lining: string | null;
     },
     specHeader: string | null = null,
+    currentLNumber: string | null = null,
   ): ExtractedItem | null {
     const itemType = this.detectItemType(description);
     const directMaterial = this.extractMaterial(description);
@@ -383,6 +789,7 @@ export class ExcelExtractorService {
     const angle = this.extractAngle(description);
     const flangeConfig = this.extractFlangeConfig(description);
     const quantity = this.parseQuantity(rowData.quantity);
+    const itemNumber = this.buildItemNumber(rowData, description, currentLNumber, rowNumber);
 
     let confidence = 0.5;
     let needsClarification = false;
@@ -424,13 +831,17 @@ export class ExcelExtractorService {
 
     confidence = Math.max(0.1, Math.min(1.0, confidence));
 
-    if (specHeader && materialFromContext) {
-      this.logger.debug(`Item at row ${rowNumber} using material "${material}" from spec header`);
+    if (materialFromContext) {
+      this.logger.log(`📦 Item ${itemNumber} (row ${rowNumber}): material="${material}" (from context), wallThickness=${context.wallThickness}mm`);
+    } else if (material) {
+      this.logger.log(`📦 Item ${itemNumber} (row ${rowNumber}): material="${material}" (from description), wallThickness=${context.wallThickness}mm`);
+    } else {
+      this.logger.log(`📦 Item ${itemNumber} (row ${rowNumber}): NO MATERIAL, context.material=${context.material}, wallThickness=${context.wallThickness}mm`);
     }
 
     return {
       rowNumber,
-      itemNumber: rowData.itemNumber?.toString() || `Row${rowNumber}`,
+      itemNumber,
       description: description.trim(),
       itemType,
       material,

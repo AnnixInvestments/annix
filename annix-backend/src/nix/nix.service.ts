@@ -25,7 +25,7 @@ import {
   SubmitClarificationDto,
   SubmitClarificationResponseDto,
 } from './dto/submit-clarification.dto';
-import { ExcelExtractorService, ExtractedItem } from './services/excel-extractor.service';
+import { ExcelExtractorService, ExtractedItem, SpecificationCellData, ExtractionResult } from './services/excel-extractor.service';
 
 @Injectable()
 export class NixService {
@@ -63,20 +63,23 @@ export class NixService {
     try {
       let extractedData: Record<string, any>;
       let extractedItems: Array<any> = [];
+      let specificationCells: SpecificationCellData[] = [];
 
       switch (documentType) {
         case DocumentType.PDF:
           ({ extractedData, extractedItems } = await this.extractFromPdf(dto.documentPath));
           break;
         case DocumentType.EXCEL:
-          ({ extractedData, extractedItems } = await this.extractFromExcel(dto.documentPath));
+          ({ extractedData, extractedItems, specificationCells } = await this.extractFromExcel(dto.documentPath));
           break;
         default:
           throw new Error(`Unsupported document type: ${documentType}`);
       }
 
       const relevantItems = await this.filterByRelevance(extractedItems, dto.productTypes);
-      const clarifications = await this.generateClarifications(extraction, relevantItems);
+      const specClarifications = await this.generateSpecificationClarifications(extraction, specificationCells);
+      const itemClarifications = await this.generateClarifications(extraction, relevantItems);
+      const clarifications = [...specClarifications, ...itemClarifications];
 
       extraction.extractedData = extractedData;
       extraction.extractedItems = relevantItems;
@@ -226,13 +229,14 @@ export class NixService {
 
   private async extractFromExcel(
     documentPath: string,
-  ): Promise<{ extractedData: Record<string, any>; extractedItems: Array<any> }> {
+  ): Promise<{ extractedData: Record<string, any>; extractedItems: Array<any>; specificationCells: SpecificationCellData[] }> {
     this.logger.log(`Excel extraction starting for: ${documentPath}`);
 
     const result = await this.excelExtractor.extractFromExcel(documentPath);
 
     this.logger.log(`Extracted ${result.items.length} items from sheet "${result.sheetName}"`);
     this.logger.log(`Items needing clarification: ${result.clarificationsNeeded}`);
+    this.logger.log(`Found ${result.specificationCells.length} specification headers`);
 
     return {
       extractedData: {
@@ -241,8 +245,10 @@ export class NixService {
         itemCount: result.items.length,
         clarificationsNeeded: result.clarificationsNeeded,
         metadata: result.metadata,
+        specificationCells: result.specificationCells,
       },
       extractedItems: result.items,
+      specificationCells: result.specificationCells,
     };
   }
 
@@ -288,9 +294,13 @@ export class NixService {
   ): Promise<NixClarification[]> {
     const clarifications: NixClarification[] = [];
 
-    const itemsNeedingClarification = items.filter(
-      (item: ExtractedItem) => item.needsClarification || (item.confidence || 0) < 0.7
-    );
+    const itemsNeedingClarification = items.filter((item: ExtractedItem) => {
+      if (!item.needsClarification && item.material && item.diameter) {
+        this.logger.debug(`Row ${item.rowNumber}: Skipping clarification - has material (${item.material}) and diameter (${item.diameter}mm)`);
+        return false;
+      }
+      return item.needsClarification;
+    });
 
     for (const item of itemsNeedingClarification.slice(0, 10)) {
       const extractedItem = item as ExtractedItem;
@@ -298,18 +308,18 @@ export class NixService {
       let question = '';
       let clarificationType = ClarificationType.AMBIGUOUS;
 
-      if (extractedItem.clarificationReason) {
-        question = `Row ${extractedItem.rowNumber}: ${extractedItem.clarificationReason}\n\nDescription: "${extractedItem.description}"\n\nPlease provide the missing information or correct any errors.`;
-        clarificationType = ClarificationType.MISSING_INFO;
-      } else if (!extractedItem.material) {
+      if (!extractedItem.material) {
         question = `Row ${extractedItem.rowNumber}: I couldn't determine the material type for this item.\n\nDescription: "${extractedItem.description}"\n\nIs this Stainless Steel (SS) or Mild Steel (MS)?`;
         clarificationType = ClarificationType.MISSING_INFO;
       } else if (!extractedItem.diameter) {
         question = `Row ${extractedItem.rowNumber}: I couldn't determine the pipe diameter.\n\nDescription: "${extractedItem.description}"\n\nWhat is the diameter in mm?`;
         clarificationType = ClarificationType.MISSING_INFO;
+      } else if (extractedItem.clarificationReason) {
+        question = `Row ${extractedItem.rowNumber}: ${extractedItem.clarificationReason}\n\nDescription: "${extractedItem.description}"\n\nPlease provide the missing information or correct any errors.`;
+        clarificationType = ClarificationType.MISSING_INFO;
       } else {
-        question = `Row ${extractedItem.rowNumber}: Please verify this extracted item:\n\nDescription: "${extractedItem.description}"\n\nExtracted:\n- Type: ${extractedItem.itemType}\n- Material: ${extractedItem.material || 'Unknown'}\n- Diameter: ${extractedItem.diameter || 'Unknown'}mm\n- Quantity: ${extractedItem.quantity}\n\nIs this correct?`;
-        clarificationType = ClarificationType.CONFIRMATION;
+        this.logger.debug(`Row ${extractedItem.rowNumber}: Skipping - no actual missing info`);
+        continue;
       }
 
       const clarification = this.clarificationRepo.create({
@@ -335,6 +345,64 @@ export class NixService {
       });
 
       clarifications.push(await this.clarificationRepo.save(clarification));
+    }
+
+    return clarifications;
+  }
+
+  private async generateSpecificationClarifications(
+    extraction: NixExtraction,
+    specCells: SpecificationCellData[],
+  ): Promise<NixClarification[]> {
+    const clarifications: NixClarification[] = [];
+
+    for (const specCell of specCells) {
+      const parsed = specCell.parsedData;
+      const missingFields: string[] = [];
+
+      if (!parsed.materialGrade) missingFields.push('material grade');
+      if (!parsed.wallThickness) missingFields.push('wall thickness');
+      if (!parsed.lining) missingFields.push('internal lining');
+      if (!parsed.externalCoating) missingFields.push('external coating');
+      if (!parsed.standard) missingFields.push('standard (e.g., API 5L, SABS)');
+
+      if (missingFields.length > 0) {
+        const extractedInfo: string[] = [];
+        if (parsed.materialGrade) extractedInfo.push(`Material Grade: ${parsed.materialGrade}`);
+        if (parsed.wallThickness) extractedInfo.push(`Wall Thickness: ${parsed.wallThickness}`);
+        if (parsed.lining) extractedInfo.push(`Lining: ${parsed.lining}`);
+        if (parsed.externalCoating) extractedInfo.push(`External Coating: ${parsed.externalCoating}`);
+        if (parsed.standard) extractedInfo.push(`Standard: ${parsed.standard}`);
+        if (parsed.schedule) extractedInfo.push(`Schedule: ${parsed.schedule}`);
+
+        const question = `📋 SPECIFICATION HEADER (${specCell.cellRef}):\n\n"${specCell.rawText.substring(0, 200)}${specCell.rawText.length > 200 ? '...' : ''}"\n\n${extractedInfo.length > 0 ? `I extracted:\n${extractedInfo.map(i => `• ${i}`).join('\n')}\n\n` : ''}I could not determine the following from this specification:\n${missingFields.map(f => `• ${f}`).join('\n')}\n\nPlease provide the missing specification details.`;
+
+        const clarification = this.clarificationRepo.create({
+          extractionId: extraction.id,
+          userId: extraction.userId,
+          clarificationType: ClarificationType.MISSING_INFO,
+          status: ClarificationStatus.PENDING,
+          question,
+          context: {
+            isSpecificationHeader: true,
+            cellRef: specCell.cellRef,
+            rowNumber: specCell.rowNumber,
+            rawText: specCell.rawText,
+            parsedMaterialGrade: parsed.materialGrade,
+            parsedWallThickness: parsed.wallThickness,
+            parsedLining: parsed.lining,
+            parsedExternalCoating: parsed.externalCoating,
+            parsedStandard: parsed.standard,
+            parsedSchedule: parsed.schedule,
+            missingFields,
+          },
+        });
+
+        clarifications.push(await this.clarificationRepo.save(clarification));
+        this.logger.log(`Generated specification clarification for ${specCell.cellRef} - missing: ${missingFields.join(', ')}`);
+      } else {
+        this.logger.log(`Specification at ${specCell.cellRef} fully parsed - no clarification needed`);
+      }
     }
 
     return clarifications;
