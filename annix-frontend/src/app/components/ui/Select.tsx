@@ -43,7 +43,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
 
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
-            className="overflow-hidden bg-white border border-gray-200 rounded-md shadow-lg z-50"
+            className="overflow-hidden bg-white border border-gray-200 rounded-md shadow-lg z-[10000]"
             position="popper"
             sideOffset={4}
             style={{ minWidth: 'var(--radix-select-trigger-width)' }}
@@ -52,7 +52,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               <ChevronUpIcon />
             </SelectPrimitive.ScrollUpButton>
 
-            <SelectPrimitive.Viewport className="p-1 max-h-60">
+            <SelectPrimitive.Viewport className="p-1 max-h-48 overflow-y-auto">
               {options.map((option) => (
                 <SelectPrimitive.Item
                   key={option.value}

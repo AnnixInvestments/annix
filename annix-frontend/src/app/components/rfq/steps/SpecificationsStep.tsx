@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { type MaterialLimits, materialLimits as getMaterialLimits, checkMaterialSuitability } from '@/app/lib/config/rfq';
 import { materialValidationApi, coatingSpecificationApi, type ISO12944System, type ISO12944SystemsByDurabilityResult } from '@/app/lib/api/client';
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
@@ -532,6 +532,23 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
   const [iso12944Loading, setIso12944Loading] = useState(false);
   const [selectedIso12944SystemCode, setSelectedIso12944SystemCode] = useState<string | null>(null);
 
+  // Steel Specification custom dropdown state
+  const [steelSpecDropdownOpen, setSteelSpecDropdownOpen] = useState(false);
+  const steelSpecDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (steelSpecDropdownRef.current && !steelSpecDropdownRef.current.contains(event.target as Node)) {
+        setSteelSpecDropdownOpen(false);
+      }
+    };
+    if (steelSpecDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [steelSpecDropdownOpen]);
+
   const hasErrors = errors && (errors.workingPressure || errors.workingTemperature || errors.steelPipesConfirmation || errors.fastenersConfirmation);
 
   // Derive temperature category from working temperature if not manually set
@@ -809,120 +826,136 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
 
           <div className="grid grid-cols-3 gap-3">
             {/* Steel Specification - with grouped options and suitability validation */}
-            <div>
+            <div ref={steelSpecDropdownRef} className="relative">
               <label className="block text-xs font-semibold text-gray-900 mb-1">Steel Specification <span className="text-red-500">*</span></label>
-              <select
-                value={globalSpecs?.steelSpecificationId || ''}
-                onChange={async (e) => {
-                  const newSpecId = e.target.value ? Number(e.target.value) : undefined;
-                  let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
-
-                  // Get the steel spec name and check suitability
-                  const newSteelSpec = masterData.steelSpecs?.find((s: any) => s.id === newSpecId);
-                  const specName = newSteelSpec?.steelSpecName || '';
-
-                  // Check material suitability for current pressure/temperature
-                  if (specName && (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC)) {
-                    const suitability = await materialValidationApi.checkMaterialSuitability(
-                      specName,
-                      globalSpecs?.workingTemperatureC,
-                      globalSpecs?.workingPressureBar
-                    );
-
-                    if (!suitability.isSuitable) {
-                      // Map API response to local MaterialLimits interface
-                      const mappedLimits = suitability.limits ? {
-                        minTempC: suitability.limits.minTempC,
-                        maxTempC: suitability.limits.maxTempC,
-                        maxPressureBar: suitability.limits.maxPressureBar,
-                        type: suitability.limits.materialType,
-                        notes: suitability.limits.notes
-                      } : undefined;
-
-                      // Show warning popup for unsuitable material
-                      setMaterialWarning({
-                        show: true,
-                        specName,
-                        specId: newSpecId,
-                        warnings: suitability.warnings,
-                        recommendation: suitability.recommendation,
-                        limits: mappedLimits
-                      });
-                      return; // Don't update yet - wait for user decision
-                    }
-                  }
-
-                  // Recalculate pressure class when steel spec changes (affects material group for P-T ratings)
-                  if (newSpecId && globalSpecs?.flangeStandardId && globalSpecs?.workingPressureBar) {
-                    const materialGroup = getFlangeMaterialGroup(newSteelSpec?.steelSpecName);
-                    recommendedPressureClassId = await fetchAndSelectPressureClass(
-                      globalSpecs.flangeStandardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup
-                    );
-                  }
-
-                  onUpdateGlobalSpecs({
-                    ...globalSpecs,
-                    steelSpecificationId: newSpecId,
-                    flangePressureClassId: recommendedPressureClassId || globalSpecs?.flangePressureClassId
-                  });
-                }}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                required
+              <button
+                type="button"
+                onClick={() => setSteelSpecDropdownOpen(!steelSpecDropdownOpen)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white text-left flex items-center justify-between"
               >
-                <option value="">Select steel specification...</option>
-                {(() => {
-                  // Helper to check if a spec is suitable for current conditions
-                  const isSpecSuitable = (specName: string): boolean => {
-                    if (!globalSpecs?.workingPressureBar && !globalSpecs?.workingTemperatureC) return true;
-                    const suitability = checkMaterialSuitability(specName, globalSpecs?.workingTemperatureC, globalSpecs?.workingPressureBar);
-                    return suitability.isSuitable;
-                  };
+                <span className={globalSpecs?.steelSpecificationId ? 'text-gray-900' : 'text-gray-400'}>
+                  {globalSpecs?.steelSpecificationId
+                    ? masterData.steelSpecs?.find((s: any) => s.id === globalSpecs.steelSpecificationId)?.steelSpecName || 'Select steel specification...'
+                    : 'Select steel specification...'}
+                </span>
+                <svg className={`w-4 h-4 text-gray-400 transition-transform ${steelSpecDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {steelSpecDropdownOpen && (
+                <div className="absolute z-[10000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {(() => {
+                    const isSpecSuitable = (specName: string): boolean => {
+                      if (!globalSpecs?.workingPressureBar && !globalSpecs?.workingTemperatureC) return true;
+                      const suitability = checkMaterialSuitability(specName, globalSpecs?.workingTemperatureC, globalSpecs?.workingPressureBar);
+                      return suitability.isSuitable;
+                    };
 
-                  // Helper to get limits text for unsuitable specs
-                  const getLimitsText = (specName: string): string => {
-                    const limits = getMaterialLimits(specName);
-                    if (!limits) return '';
-                    return ` [Max ${limits.maxTempC}°C]`;
-                  };
+                    const getLimitsText = (specName: string): string => {
+                      const limits = getMaterialLimits(specName);
+                      if (!limits) return '';
+                      return ` [Max ${limits.maxTempC}°C]`;
+                    };
 
-                  // Group definitions with their filters
-                  const groups = [
-                    { label: 'South African Standards (SABS)', filter: (name: string) => name.startsWith('SABS') },
-                    { label: 'Carbon Steel - ASTM A106 (High-Temp Seamless) - up to 427°C', filter: (name: string) => name.startsWith('ASTM A106') },
-                    { label: 'Carbon Steel - ASTM A53 (General Purpose) - up to 400°C', filter: (name: string) => name.startsWith('ASTM A53') },
-                    { label: 'Line Pipe - API 5L (Oil/Gas Pipelines) - up to 400°C', filter: (name: string) => name.startsWith('API 5L') },
-                    { label: 'Low Temperature - ASTM A333 - down to -100°C', filter: (name: string) => name.startsWith('ASTM A333') },
-                    { label: 'Heat Exchangers/Boilers - ASTM A179/A192', filter: (name: string) => /^ASTM A1(79|92)/.test(name) },
-                    { label: 'Structural Tubing - ASTM A500 - up to 200°C', filter: (name: string) => name.startsWith('ASTM A500') },
-                    { label: 'Alloy Steel - ASTM A335 (Chrome-Moly) - up to 593°C', filter: (name: string) => name.startsWith('ASTM A335') },
-                    { label: 'Stainless Steel - ASTM A312 - up to 816°C', filter: (name: string) => name.startsWith('ASTM A312') },
-                  ];
+                    const handleSpecSelect = async (specId: number) => {
+                      let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
+                      const newSteelSpec = masterData.steelSpecs?.find((s: any) => s.id === specId);
+                      const specName = newSteelSpec?.steelSpecName || '';
 
-                  return groups.map((group, groupIdx) => {
-                    const specs = masterData.steelSpecs.filter((spec: any) => group.filter(spec.steelSpecName || ''));
-                    const suitableSpecs = specs.filter((spec: any) => isSpecSuitable(spec.steelSpecName || ''));
-                    const unsuitableSpecs = specs.filter((spec: any) => !isSpecSuitable(spec.steelSpecName || ''));
+                      if (specName && (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC)) {
+                        const suitability = await materialValidationApi.checkMaterialSuitability(
+                          specName,
+                          globalSpecs?.workingTemperatureC,
+                          globalSpecs?.workingPressureBar
+                        );
 
-                    // Only show group if it has suitable specs, or show as disabled if all unsuitable
-                    if (specs.length === 0) return null;
+                        if (!suitability.isSuitable) {
+                          const mappedLimits = suitability.limits ? {
+                            minTempC: suitability.limits.minTempC,
+                            maxTempC: suitability.limits.maxTempC,
+                            maxPressureBar: suitability.limits.maxPressureBar,
+                            type: suitability.limits.materialType,
+                            notes: suitability.limits.notes
+                          } : undefined;
 
-                    return (
-                      <optgroup key={groupIdx} label={suitableSpecs.length > 0 ? group.label : `⚠️ ${group.label} (Not Suitable)`}>
-                        {suitableSpecs.map((spec: any) => (
-                          <option key={spec.id} value={spec.id}>
-                            {spec.steelSpecName}
-                          </option>
-                        ))}
-                        {unsuitableSpecs.map((spec: any) => (
-                          <option key={spec.id} value={spec.id} disabled style={{ color: '#999' }}>
-                            ⚠️ {spec.steelSpecName}{getLimitsText(spec.steelSpecName)} - NOT SUITABLE
-                          </option>
-                        ))}
-                      </optgroup>
-                    );
-                  });
-                })()}
-              </select>
+                          setMaterialWarning({
+                            show: true,
+                            specName,
+                            specId,
+                            warnings: suitability.warnings,
+                            recommendation: suitability.recommendation,
+                            limits: mappedLimits
+                          });
+                          setSteelSpecDropdownOpen(false);
+                          return;
+                        }
+                      }
+
+                      if (specId && globalSpecs?.flangeStandardId && globalSpecs?.workingPressureBar) {
+                        const materialGroup = getFlangeMaterialGroup(newSteelSpec?.steelSpecName);
+                        recommendedPressureClassId = await fetchAndSelectPressureClass(
+                          globalSpecs.flangeStandardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup
+                        );
+                      }
+
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        steelSpecificationId: specId,
+                        flangePressureClassId: recommendedPressureClassId || globalSpecs?.flangePressureClassId
+                      });
+                      setSteelSpecDropdownOpen(false);
+                    };
+
+                    const groups = [
+                      { label: 'South African Standards (SABS)', filter: (name: string) => name.startsWith('SABS') },
+                      { label: 'Carbon Steel - ASTM A106 (High-Temp Seamless) - up to 427°C', filter: (name: string) => name.startsWith('ASTM A106') },
+                      { label: 'Carbon Steel - ASTM A53 (General Purpose) - up to 400°C', filter: (name: string) => name.startsWith('ASTM A53') },
+                      { label: 'Line Pipe - API 5L (Oil/Gas Pipelines) - up to 400°C', filter: (name: string) => name.startsWith('API 5L') },
+                      { label: 'Low Temperature - ASTM A333 - down to -100°C', filter: (name: string) => name.startsWith('ASTM A333') },
+                      { label: 'Heat Exchangers/Boilers - ASTM A179/A192', filter: (name: string) => /^ASTM A1(79|92)/.test(name) },
+                      { label: 'Structural Tubing - ASTM A500 - up to 200°C', filter: (name: string) => name.startsWith('ASTM A500') },
+                      { label: 'Alloy Steel - ASTM A335 (Chrome-Moly) - up to 593°C', filter: (name: string) => name.startsWith('ASTM A335') },
+                      { label: 'Stainless Steel - ASTM A312 - up to 816°C', filter: (name: string) => name.startsWith('ASTM A312') },
+                    ];
+
+                    return groups.map((group, groupIdx) => {
+                      const specs = masterData.steelSpecs.filter((spec: any) => group.filter(spec.steelSpecName || ''));
+                      const suitableSpecs = specs.filter((spec: any) => isSpecSuitable(spec.steelSpecName || ''));
+                      const unsuitableSpecs = specs.filter((spec: any) => !isSpecSuitable(spec.steelSpecName || ''));
+
+                      if (specs.length === 0) return null;
+
+                      return (
+                        <div key={groupIdx}>
+                          <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 sticky top-0">
+                            {suitableSpecs.length > 0 ? group.label : `${group.label} (Not Suitable)`}
+                          </div>
+                          {suitableSpecs.map((spec: any) => (
+                            <button
+                              key={spec.id}
+                              type="button"
+                              onClick={() => handleSpecSelect(spec.id)}
+                              className={`w-full px-3 py-1.5 text-sm text-left hover:bg-blue-50 ${
+                                globalSpecs?.steelSpecificationId === spec.id ? 'bg-blue-100 text-blue-800' : 'text-gray-900'
+                              }`}
+                            >
+                              {spec.steelSpecName}
+                            </button>
+                          ))}
+                          {unsuitableSpecs.map((spec: any) => (
+                            <div
+                              key={spec.id}
+                              className="w-full px-3 py-1.5 text-sm text-left text-gray-400 cursor-not-allowed"
+                            >
+                              {spec.steelSpecName}{getLimitsText(spec.steelSpecName)} - NOT SUITABLE
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
               {/* Show current suitability status */}
               {globalSpecs?.steelSpecificationId && (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC) && (() => {
                 const currentSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs.steelSpecificationId);
