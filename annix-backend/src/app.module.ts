@@ -55,6 +55,7 @@ import { HdpeModule } from './hdpe/hdpe.module';
 import { PvcModule } from './pvc/pvc.module';
 import { AdminModule } from './admin/admin.module';
 import { NixModule } from './nix/nix.module';
+import { RubberLiningModule } from './rubber-lining/rubber-lining.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -111,6 +112,7 @@ import typeormConfig from './config/typeorm';
     PvcModule,
     AdminModule,
     NixModule,
+    RubberLiningModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

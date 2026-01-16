@@ -188,7 +188,8 @@ export class CoatingSpecificationService {
 
   /**
    * Get paint systems filtered by category and durability (ISO 12944-5:2018)
-   * Returns recommended system first, then alternatives
+   * Returns the LOWEST (simplest) spec that meets the durability requirement
+   * Sorted by minimum DFT to recommend the most economical option
    */
   async systemsByDurability(
     category: string,
@@ -214,7 +215,6 @@ export class CoatingSpecificationService {
         coatingType: 'external',
       },
       relations: ['environment', 'environment.standard'],
-      order: { systemCode: 'ASC' },
     });
 
     const matchingSpecs = allSpecs.filter((spec) => {
@@ -222,9 +222,19 @@ export class CoatingSpecificationService {
       return durabilities.includes(durability);
     });
 
-    const recommended =
-      matchingSpecs.find((spec) => spec.isRecommended) || matchingSpecs[0] || null;
-    const alternatives = matchingSpecs.filter((spec) => spec !== recommended);
+    const parseMinDft = (dftRange: string): number => {
+      const match = dftRange.match(/^(\d+)/);
+      return match ? parseInt(match[1], 10) : 9999;
+    };
+
+    matchingSpecs.sort((a, b) => {
+      const minDftA = parseMinDft(a.totalDftUmRange);
+      const minDftB = parseMinDft(b.totalDftUmRange);
+      return minDftA - minDftB;
+    });
+
+    const recommended = matchingSpecs[0] || null;
+    const alternatives = matchingSpecs.slice(1);
 
     return { recommended, alternatives };
   }

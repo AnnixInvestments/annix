@@ -117,12 +117,13 @@ function recommendLining(profile: MaterialTransferProfile, damage: DamageMechani
       lining: "Rubber-Ceramic Composite",
       liningType: "Ceramic Lined",
       thicknessRange: "15–30 mm",
-      standardsBasis: ["ASTM C1327", "ASTM D412", "ISO 4649"],
+      standardsBasis: ["ASTM C1327", "SANS 1198:2013", "ISO 4649"],
       rationale: "High impact combined with abrasion requires composite protection",
       engineeringNotes: [
-        "Rubber backing absorbs impact energy",
+        "SANS 1198 Type 1 rubber backing absorbs impact energy",
         "Ceramic face provides wear resistance",
-        "Consider 92% or 95% alumina tiles for severe applications"
+        "Consider 92% or 95% alumina tiles for severe applications",
+        "Rubber backing: 40-50 IRHD for maximum impact absorption"
       ]
     };
   }
@@ -144,16 +145,18 @@ function recommendLining(profile: MaterialTransferProfile, damage: DamageMechani
 
   if (damage.corrosion === "High") {
     const isHighTemp = profile.chemistry.temperatureRange === "High";
+    const isAcidic = profile.chemistry.phRange === "Acidic";
     return {
-      lining: isHighTemp ? "Hard Rubber Lining" : "Natural Rubber Lining",
+      lining: isHighTemp ? "Type 2 Butyl (IIR)" : isAcidic ? "Type 5 CSM (Hypalon)" : "Type 1 Natural Rubber",
       liningType: "Rubber Lined",
       thicknessRange: "6–15 mm",
-      standardsBasis: ["ASTM D2000", "ASTM D412", "ISO 4649"],
-      rationale: "Acidic or high chloride environment requires chemical-resistant lining",
+      standardsBasis: ["SANS 1198:2013", "SANS 1201:2005", "ASTM D412"],
+      rationale: "Acidic or high chloride environment requires chemical-resistant lining per SANS 1198",
       engineeringNotes: [
-        "Natural rubber for ambient temperature applications",
-        "Bromobutyl rubber for improved chemical resistance",
-        "Consider 50-60 Shore A hardness for abrasion resistance"
+        "SANS 1198 Type 2 (Butyl) for chemical resistance up to 120°C",
+        "SANS 1198 Type 5 (CSM/Hypalon) for acid and ozone resistance",
+        "Grade A (18+ MPa) recommended for high-stress applications",
+        "50-60 IRHD hardness class for abrasion resistance"
       ]
     };
   }
@@ -189,15 +192,16 @@ function recommendLining(profile: MaterialTransferProfile, damage: DamageMechani
   }
 
   return {
-    lining: "Natural Rubber Lining",
+    lining: "Type 1 Natural Rubber (NR/SBR)",
     liningType: "Rubber Lined",
     thicknessRange: "6–12 mm",
-    standardsBasis: ["ASTM D2000", "ASTM D412", "ISO 4649"],
-    rationale: "General-purpose protection for moderate conditions",
+    standardsBasis: ["SANS 1198:2013", "SANS 1201:2005", "ASTM D412"],
+    rationale: "General-purpose protection per SANS 1198 Type 1 specification",
     engineeringNotes: [
-      "Natural rubber provides good all-round protection",
-      "40-50 Shore A for impact absorption",
-      "Consider thickness based on expected service life"
+      "SANS 1198 Type 1 (NR/SBR) for general industrial applications",
+      "Grade B (14+ MPa) suitable for standard applications",
+      "40-50 IRHD hardness class for impact absorption",
+      "Autoclave vulcanization preferred per SANS 1201"
     ]
   };
 }
@@ -3555,28 +3559,73 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
           {/* Rubber Lined Options - Only show when selected AND not confirmed */}
           {globalSpecs?.internalLiningType === 'Rubber Lined' && !globalSpecs?.internalLiningConfirmed && (
             <div className="mt-3 pt-3 border-t border-gray-200">
-              <h4 className="text-xs font-semibold text-gray-800 mb-2">Internal Rubber Lining Specifications</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <h4 className="text-xs font-semibold text-gray-800 mb-2">Internal Rubber Lining Specifications (SANS 1198:2013)</h4>
+
+              {/* Row 1: SANS Type and Grade */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-900 mb-1">Rubber Type</label>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">SANS Type</label>
                   <select
-                    value={globalSpecs?.internalRubberType || ''}
+                    value={globalSpecs?.internalRubberSansType || ''}
+                    onChange={(e) => {
+                      const sansType = e.target.value ? Number(e.target.value) : undefined;
+                      const typeMap: Record<number, string> = {
+                        1: 'Natural Rubber',
+                        2: 'Bromobutyl Rubber',
+                        3: 'Nitrile Rubber (NBR)',
+                        4: 'Neoprene (CR)',
+                        5: 'Hypalon (CSM)'
+                      };
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        internalRubberSansType: sansType,
+                        internalRubberType: sansType ? typeMap[sansType] : undefined
+                      });
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                  >
+                    <option value="">Select...</option>
+                    <option value="1">Type 1 - NR/SBR (General purpose)</option>
+                    <option value="2">Type 2 - IIR/Butyl (Chemical resistant)</option>
+                    <option value="3">Type 3 - NBR/Nitrile (Oil resistant)</option>
+                    <option value="4">Type 4 - CR/Neoprene (Weather resistant)</option>
+                    <option value="5">Type 5 - CSM/Hypalon (Acid/ozone resistant)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Grade (Tensile Strength)</label>
+                  <select
+                    value={globalSpecs?.internalRubberGrade || ''}
                     onChange={(e) => onUpdateGlobalSpecs({
                       ...globalSpecs,
-                      internalRubberType: e.target.value || undefined
+                      internalRubberGrade: e.target.value || undefined
                     })}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
                     <option value="">Select...</option>
-                    <option value="Natural Rubber">Natural</option>
-                    <option value="Bromobutyl Rubber">Bromobutyl</option>
-                    <option value="Nitrile Rubber (NBR)">Nitrile (NBR)</option>
-                    <option value="Neoprene (CR)">Neoprene (CR)</option>
-                    <option value="EPDM">EPDM</option>
-                    <option value="Chlorobutyl">Chlorobutyl</option>
-                    <option value="Hypalon (CSM)">Hypalon (CSM)</option>
-                    <option value="Viton (FKM)">Viton (FKM)</option>
-                    <option value="Silicone Rubber">Silicone</option>
+                    <option value="A">Grade A - High Strength (18+ MPa)</option>
+                    <option value="B">Grade B - Standard (14+ MPa)</option>
+                    <option value="C">Grade C - Economy (7+ MPa)</option>
+                    <option value="D">Grade D - Ebonite (Hard rubber)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Hardness Class (IRHD)</label>
+                  <select
+                    value={globalSpecs?.internalRubberHardness || ''}
+                    onChange={(e) => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      internalRubberHardness: e.target.value ? Number(e.target.value) : undefined
+                    })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                  >
+                    <option value="">Select...</option>
+                    <option value="40">40 IRHD - Soft (High flexibility)</option>
+                    <option value="50">50 IRHD - Medium-Soft (General)</option>
+                    <option value="60">60 IRHD - Medium-Hard (Abrasion)</option>
+                    <option value="70">70 IRHD - Hard (High abrasion)</option>
                   </select>
                 </div>
 
@@ -3591,15 +3640,36 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
                     <option value="">Select...</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                    <option value="6">6</option>
-                    <option value="8">8</option>
-                    <option value="10">10</option>
-                    <option value="12">12</option>
-                    <option value="15">15</option>
-                    <option value="20">20</option>
+                    <option value="3">3mm (Min 1 ply)</option>
+                    <option value="4">4mm (Min 1 ply)</option>
+                    <option value="5">5mm (Min 2 plies)</option>
+                    <option value="6">6mm (Min 2 plies)</option>
+                    <option value="8">8mm (Min 2 plies)</option>
+                    <option value="10">10mm (Min 2 plies)</option>
+                    <option value="12">12mm (Min 3 plies)</option>
+                    <option value="15">15mm (Min 3 plies)</option>
+                    <option value="20">20mm (Min 4 plies)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 2: Vulcanization, Colour */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Vulcanization Method</label>
+                  <select
+                    value={globalSpecs?.internalRubberVulcanizationMethod || ''}
+                    onChange={(e) => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      internalRubberVulcanizationMethod: e.target.value || undefined
+                    })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                  >
+                    <option value="">Select...</option>
+                    <option value="autoclave">Autoclave (Preferred)</option>
+                    <option value="open">Open Steam</option>
+                    <option value="hot_water">Hot Water</option>
+                    <option value="chemical">Chemical/Self-cure</option>
                   </select>
                 </div>
 
@@ -3616,7 +3686,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                     <option value="">Select...</option>
                     <option value="Black">Black</option>
                     <option value="Red">Red</option>
-                    <option value="Natural (Tan)">Natural</option>
+                    <option value="Natural (Tan)">Natural (Tan)</option>
                     <option value="Grey">Grey</option>
                     <option value="Green">Green</option>
                     <option value="Blue">Blue</option>
@@ -3624,38 +3694,138 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-900 mb-1">Shore Hardness</label>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">Chemical Exposure</label>
                   <select
-                    value={globalSpecs?.internalRubberHardness || ''}
-                    onChange={(e) => onUpdateGlobalSpecs({
-                      ...globalSpecs,
-                      internalRubberHardness: e.target.value ? Number(e.target.value) : undefined
-                    })}
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const current = globalSpecs?.internalRubberChemicalExposure || [];
+                        if (!current.includes(e.target.value)) {
+                          onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalRubberChemicalExposure: [...current, e.target.value]
+                          });
+                        }
+                      }
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="">Select...</option>
-                    <option value="40">40 Shore A</option>
-                    <option value="50">50 Shore A</option>
-                    <option value="60">60 Shore A</option>
-                    <option value="70">70 Shore A</option>
+                    <option value="">Add chemical exposure...</option>
+                    <option value="acids_inorganic">Inorganic Acids (H2SO4, HCl)</option>
+                    <option value="acids_organic">Organic Acids (Acetic, Citric)</option>
+                    <option value="alkalis">Alkalis (NaOH, KOH)</option>
+                    <option value="alcohols">Alcohols</option>
+                    <option value="hydrocarbons">Hydrocarbons</option>
+                    <option value="oils_mineral">Mineral Oils</option>
+                    <option value="oils_vegetable">Vegetable Oils</option>
+                    <option value="chlorine_compounds">Chlorine Compounds</option>
+                    <option value="oxidizing_agents">Oxidizing Agents</option>
+                    <option value="solvents">Solvents</option>
+                    <option value="water">Water</option>
+                    <option value="slurry_abrasive">Abrasive Slurries</option>
                   </select>
+                  {globalSpecs?.internalRubberChemicalExposure && globalSpecs.internalRubberChemicalExposure.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {globalSpecs.internalRubberChemicalExposure.map((chem: string) => (
+                        <span key={chem} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800">
+                          {chem.replace(/_/g, ' ')}
+                          <button
+                            type="button"
+                            onClick={() => onUpdateGlobalSpecs({
+                              ...globalSpecs,
+                              internalRubberChemicalExposure: globalSpecs.internalRubberChemicalExposure?.filter((c: string) => c !== chem)
+                            })}
+                            className="ml-1 text-blue-600 hover:text-blue-800"
+                          >
+                            x
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
+              {/* Row 3: Special Properties (SANS 1198 Table 4) */}
+              <div className="mb-3">
+                <label className="block text-xs font-semibold text-gray-900 mb-1">Special Properties (SANS 1198 Table 4)</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {[
+                    { value: 1, label: 'I - Heat Resistance', code: 'I' },
+                    { value: 2, label: 'II - Ozone Resistance', code: 'II' },
+                    { value: 3, label: 'III - Chemical Resistance', code: 'III' },
+                    { value: 4, label: 'IV - Abrasion Resistance', code: 'IV' },
+                    { value: 5, label: 'V - Contaminant Release', code: 'V' },
+                    { value: 6, label: 'VI - Water Resistance', code: 'VI' },
+                    { value: 7, label: 'VII - Oil Resistance', code: 'VII' }
+                  ].map((prop) => (
+                    <label key={prop.value} className="flex items-center space-x-2 text-xs text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={globalSpecs?.internalRubberSpecialProperties?.includes(prop.value) || false}
+                        onChange={(e) => {
+                          const current = globalSpecs?.internalRubberSpecialProperties || [];
+                          const updated = e.target.checked
+                            ? [...current, prop.value].sort((a, b) => a - b)
+                            : current.filter((p: number) => p !== prop.value);
+                          onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalRubberSpecialProperties: updated.length > 0 ? updated : undefined
+                          });
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>{prop.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* SANS 1198 Line Callout Generator */}
+              {globalSpecs?.internalRubberSansType && globalSpecs?.internalRubberGrade && globalSpecs?.internalRubberHardness && (
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-3">
+                  <div className="text-xs font-semibold text-blue-900 mb-1">SANS 1198:2013 Line Call-out</div>
+                  <div className="font-mono text-sm text-blue-800 bg-white px-2 py-1 rounded border border-blue-300">
+                    {globalSpecs.internalRubberSansType} {globalSpecs.internalRubberGrade} {globalSpecs.internalRubberHardness}
+                    {globalSpecs.internalRubberSpecialProperties && globalSpecs.internalRubberSpecialProperties.length > 0 && (
+                      <span>
+                        {' '}
+                        {globalSpecs.internalRubberSpecialProperties.map((p: number) => `(${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][p - 1]})`).join(' ')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-blue-700 mt-1">
+                    Type {globalSpecs.internalRubberSansType}, Grade {globalSpecs.internalRubberGrade} ({globalSpecs.internalRubberGrade === 'A' ? '18+' : globalSpecs.internalRubberGrade === 'B' ? '14+' : globalSpecs.internalRubberGrade === 'C' ? '7+' : 'Ebonite'} MPa), {globalSpecs.internalRubberHardness} IRHD
+                    {globalSpecs.internalRubberSpecialProperties && globalSpecs.internalRubberSpecialProperties.length > 0 && (
+                      <span> with special properties</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Rubber Lining Summary */}
-              {globalSpecs?.internalRubberType && globalSpecs?.internalRubberThickness && globalSpecs?.internalRubberColour && globalSpecs?.internalRubberHardness && (
+              {globalSpecs?.internalRubberSansType && globalSpecs?.internalRubberGrade && globalSpecs?.internalRubberThickness && globalSpecs?.internalRubberHardness && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
                     <div className="text-xs text-amber-800">
-                      <span className="font-medium">{globalSpecs.internalRubberType}</span> • {globalSpecs.internalRubberThickness}mm • {globalSpecs.internalRubberColour} • {globalSpecs.internalRubberHardness} Shore A
+                      <span className="font-medium">Type {globalSpecs.internalRubberSansType}</span> • Grade {globalSpecs.internalRubberGrade} • {globalSpecs.internalRubberThickness}mm • {globalSpecs.internalRubberHardness} IRHD
+                      {globalSpecs.internalRubberColour && <span> • {globalSpecs.internalRubberColour}</span>}
+                      {globalSpecs.internalRubberVulcanizationMethod && <span> • {globalSpecs.internalRubberVulcanizationMethod}</span>}
                     </div>
                     <button
                       type="button"
-                      onClick={() => onUpdateGlobalSpecs({
-                        ...globalSpecs,
-                        internalLiningConfirmed: true
-                      })}
+                      onClick={() => {
+                        const specialPropsRoman = (globalSpecs.internalRubberSpecialProperties || [])
+                          .map((p: number) => `(${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][p - 1]})`)
+                          .join(' ');
+                        const lineCallout = `${globalSpecs.internalRubberSansType} ${globalSpecs.internalRubberGrade} ${globalSpecs.internalRubberHardness}${specialPropsRoman ? ' ' + specialPropsRoman : ''}`;
+                        onUpdateGlobalSpecs({
+                          ...globalSpecs,
+                          internalLiningConfirmed: true,
+                          internalRubberLineCallout: lineCallout
+                        });
+                      }}
                       className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
                     >
                       Confirm
@@ -3667,25 +3837,50 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
           )}
 
           {/* Confirmed Internal Rubber Lining */}
-          {globalSpecs?.internalLiningConfirmed && globalSpecs?.internalLiningType === 'Rubber Lined' && globalSpecs?.internalRubberType && (
-            <div className="bg-green-100 border border-green-400 rounded-md p-2 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-green-800">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                Rubber Lined: <span className="font-medium">{globalSpecs.internalRubberType}</span> • {globalSpecs.internalRubberThickness}mm • {globalSpecs.internalRubberColour} • {globalSpecs.internalRubberHardness} Shore A
+          {globalSpecs?.internalLiningConfirmed && globalSpecs?.internalLiningType === 'Rubber Lined' && (globalSpecs?.internalRubberType || globalSpecs?.internalRubberSansType) && (
+            <div className="bg-green-100 border border-green-400 rounded-md p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-green-800">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-medium">Rubber Lined (SANS 1198:2013)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    internalLiningConfirmed: false,
+                    internalLiningType: 'Rubber Lined'
+                  })}
+                  className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
+                >
+                  Edit
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => onUpdateGlobalSpecs({
-                  ...globalSpecs,
-                  internalLiningConfirmed: false,
-                  internalLiningType: 'Rubber Lined'
-                })}
-                className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
-              >
-                Edit
-              </button>
+              {globalSpecs?.internalRubberLineCallout && (
+                <div className="mt-2 bg-white rounded px-2 py-1 border border-green-300">
+                  <div className="text-xs text-green-900">
+                    <span className="font-semibold">Line Call-out:</span>{' '}
+                    <span className="font-mono">{globalSpecs.internalRubberLineCallout}</span>
+                  </div>
+                  <div className="text-xs text-green-700 mt-1">
+                    {globalSpecs.internalRubberType && <span>{globalSpecs.internalRubberType}</span>}
+                    {globalSpecs.internalRubberThickness && <span> • {globalSpecs.internalRubberThickness}mm</span>}
+                    {globalSpecs.internalRubberHardness && <span> • {globalSpecs.internalRubberHardness} IRHD</span>}
+                    {globalSpecs.internalRubberColour && <span> • {globalSpecs.internalRubberColour}</span>}
+                    {globalSpecs.internalRubberVulcanizationMethod && <span> • {globalSpecs.internalRubberVulcanizationMethod}</span>}
+                  </div>
+                </div>
+              )}
+              {!globalSpecs?.internalRubberLineCallout && (
+                <div className="mt-1 text-xs text-green-700">
+                  {globalSpecs.internalRubberType && <span>{globalSpecs.internalRubberType}</span>}
+                  {globalSpecs.internalRubberThickness && <span> • {globalSpecs.internalRubberThickness}mm</span>}
+                  {globalSpecs.internalRubberHardness && <span> • {globalSpecs.internalRubberHardness} IRHD</span>}
+                  {globalSpecs.internalRubberColour && <span> • {globalSpecs.internalRubberColour}</span>}
+                </div>
+              )}
             </div>
           )}
 

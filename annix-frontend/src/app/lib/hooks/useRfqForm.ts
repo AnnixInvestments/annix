@@ -167,6 +167,12 @@ export interface GlobalSpecs {
   externalRubberThickness?: string;
   externalRubberColour?: string;
   externalRubberHardness?: string;
+  externalRubberSansType?: number;
+  externalRubberGrade?: string;
+  externalRubberSpecialProperties?: number[];
+  externalRubberVulcanizationMethod?: string;
+  externalRubberChemicalExposure?: string[];
+  externalRubberLineCallout?: string;
 
   // Internal Lining
   internalLiningType?: string;
@@ -186,6 +192,12 @@ export interface GlobalSpecs {
   internalRubberThickness?: string;
   internalRubberColour?: string;
   internalRubberHardness?: string;
+  internalRubberSansType?: number;
+  internalRubberGrade?: string;
+  internalRubberSpecialProperties?: number[];
+  internalRubberVulcanizationMethod?: string;
+  internalRubberChemicalExposure?: string[];
+  internalRubberLineCallout?: string;
 
   // Steel Pipe Specs Confirmation
   steelPipesSpecsConfirmed?: boolean;
