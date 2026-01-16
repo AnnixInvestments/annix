@@ -45,6 +45,15 @@ export default function Navigation() {
                 Home
               </Link>
               <Link
+                href="/hdpe"
+                className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
+                  pathname === '/hdpe' || pathname.startsWith('/hdpe/') ? 'bg-[#FFA500]' : 'hover:bg-[#4a4da3]'
+                }`}
+                style={{ color: pathname === '/hdpe' || pathname.startsWith('/hdpe/') ? '#323288' : '#FFA500' }}
+              >
+                HDPE Pipes
+              </Link>
+              <Link
                 href="/pricing"
                 className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
                   pathname === '/pricing' ? 'bg-[#FFA500]' : 'hover:bg-[#4a4da3]'
