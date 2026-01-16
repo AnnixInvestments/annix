@@ -504,6 +504,11 @@ export default function FittingForm({
                         }
                       };
 
+                      // Auto-fetch for equal tees when data is available but lengths are not set
+                      if (isEqualTee && hasRequiredData && !entry.specs?.pipeLengthAMm && !entry.specs?.pipeLengthBMm) {
+                        fetchDimensions();
+                      }
+
                       return (
                         <>
                           {/* Pipe Length A */}

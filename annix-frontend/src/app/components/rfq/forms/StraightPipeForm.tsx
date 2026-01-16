@@ -1568,10 +1568,10 @@ export default function StraightPipeForm({
                           dn,
                         });
 
-                        const showExternal = globalSpecs?.externalCoatingConfirmed || globalSpecs?.externalCoatingType;
-                        const showInternal = globalSpecs?.internalLiningConfirmed || globalSpecs?.internalLiningType;
-
-                        if (!showExternal && !showInternal) return null;
+                        const hasExternalCoating = globalSpecs?.externalCoatingConfirmed || globalSpecs?.externalCoatingType;
+                        const hasInternalLining = globalSpecs?.internalLiningConfirmed || globalSpecs?.internalLiningType;
+                        const showExternal = hasExternalCoating || !hasInternalLining;
+                        const showInternal = hasInternalLining || !hasExternalCoating;
 
                         return (
                           <div className="mt-3 p-3 rounded-lg border-2 bg-indigo-50 border-indigo-200">

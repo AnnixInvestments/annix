@@ -748,6 +748,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                   {flangeSpecs && (
                     <>
                       <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
+                      <div className="text-gray-700">Holes: {flangeSpecs.boltHoles} × Ø{flangeSpecs.holeID}mm</div>
                       <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize} × {adjustedBoltLength}mm</div>
                       <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
                       {backingRingCount > 0 && (

@@ -57,6 +57,28 @@ const pipeEndMat = { color: '#4ADE80', metalness: 0.5, roughness: 0.3 }
 const weldColor = { color: '#1a1a1a', metalness: 0.2, roughness: 0.9 }
 const flangeColor = { color: '#444444', metalness: 0.6, roughness: 0.4 }
 
+const FLANGE_DATA: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; boltSize: number } } = {
+  15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, boltSize: 12 },
+  20: { flangeOD: 105, pcd: 75, boltHoles: 4, holeID: 14, boltSize: 12 },
+  25: { flangeOD: 115, pcd: 85, boltHoles: 4, holeID: 14, boltSize: 12 },
+  32: { flangeOD: 140, pcd: 100, boltHoles: 4, holeID: 18, boltSize: 16 },
+  40: { flangeOD: 150, pcd: 110, boltHoles: 4, holeID: 18, boltSize: 16 },
+  50: { flangeOD: 165, pcd: 125, boltHoles: 4, holeID: 18, boltSize: 16 },
+  65: { flangeOD: 185, pcd: 145, boltHoles: 4, holeID: 18, boltSize: 16 },
+  80: { flangeOD: 200, pcd: 160, boltHoles: 8, holeID: 18, boltSize: 16 },
+  100: { flangeOD: 220, pcd: 180, boltHoles: 8, holeID: 18, boltSize: 16 },
+  125: { flangeOD: 250, pcd: 210, boltHoles: 8, holeID: 18, boltSize: 16 },
+  150: { flangeOD: 285, pcd: 240, boltHoles: 8, holeID: 22, boltSize: 20 },
+  200: { flangeOD: 340, pcd: 295, boltHoles: 12, holeID: 22, boltSize: 20 },
+  250: { flangeOD: 405, pcd: 355, boltHoles: 12, holeID: 26, boltSize: 24 },
+  300: { flangeOD: 460, pcd: 410, boltHoles: 12, holeID: 26, boltSize: 24 },
+  350: { flangeOD: 520, pcd: 470, boltHoles: 16, holeID: 26, boltSize: 24 },
+  400: { flangeOD: 580, pcd: 525, boltHoles: 16, holeID: 30, boltSize: 27 },
+  450: { flangeOD: 640, pcd: 585, boltHoles: 20, holeID: 30, boltSize: 27 },
+  500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, boltSize: 24 },
+  600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, boltSize: 27 },
+}
+
 class ArcCurve extends THREE.Curve<THREE.Vector3> {
   center: THREE.Vector3
   radius: number
@@ -752,8 +774,8 @@ const Scene = (props: Props) => {
   const t2 = tangent2 / SCALE
 
   const config = flangeConfig.toUpperCase()
-  const hasInletFlange = ['FOE', 'FBE', 'FOE_LF'].includes(config)
-  const hasOutletFlange = ['FBE', 'FOE_LF'].includes(config)
+  const hasInletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'].includes(config)
+  const hasOutletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'].includes(config)
 
   const weldTube = outerR * 0.05
 
@@ -1028,13 +1050,38 @@ export default function CSGBend3DPreview(props: Props) {
         <span className="text-purple-700 font-medium">Hollow Pipe Preview</span>
       </div>
 
-      <div className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1 rounded shadow border">
-        <div className="font-bold text-blue-800">{props.nominalBore}NB | {props.bendAngle}°</div>
-        <div className="text-gray-600">WT: {props.wallThickness}mm{props.numberOfSegments ? ` | ${props.numberOfSegments} seg` : ''}</div>
-        <div className="text-gray-600">T1: {props.tangent1 || 0}mm | T2: {props.tangent2 || 0}mm</div>
-        <div className="text-gray-600">Config: {props.flangeConfig || 'PE'}</div>
+      <div className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md border border-gray-200 leading-snug">
+        <div className="font-bold text-blue-800 mb-0.5">BEND</div>
+        <div className="text-gray-900 font-medium">OD: {odMm.toFixed(0)}mm | ID: {(odMm - 2 * props.wallThickness).toFixed(0)}mm</div>
+        <div className="text-gray-700">WT: {props.wallThickness}mm | {props.bendAngle}°</div>
+        <div className="text-gray-700">T1: {props.tangent1 || 0}mm | T2: {props.tangent2 || 0}mm</div>
+        {props.numberOfSegments && props.numberOfSegments > 0 && (() => {
+          const degreesPerSeg = props.bendAngle / props.numberOfSegments;
+          const bendRadius = props.nominalBore * 1.5;
+          const arcLengthPerSeg = (bendRadius * Math.PI * degreesPerSeg) / 180;
+          return (
+            <div className="text-gray-700">{props.numberOfSegments} seg × {degreesPerSeg.toFixed(1)}° × {arcLengthPerSeg.toFixed(0)}mm</div>
+          );
+        })()}
+        {props.flangeConfig && props.flangeConfig !== 'PE' && (() => {
+          const flangeSpecs = FLANGE_DATA[props.nominalBore];
+          const config = (props.flangeConfig || 'PE').toUpperCase();
+          return (
+            <>
+              <div className="font-bold text-blue-800 mt-1 mb-0.5">FLANGE ({config})</div>
+              {flangeSpecs && (
+                <>
+                  <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
+                  <div className="text-gray-700">Holes: {flangeSpecs.boltHoles} × Ø{flangeSpecs.holeID}mm</div>
+                  <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize}</div>
+                  <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
+                </>
+              )}
+            </>
+          );
+        })()}
         {props.stubs && props.stubs.length > 0 && (
-          <div className="text-gray-600">{props.stubs.length} stub(s)</div>
+          <div className="text-purple-700 font-medium mt-0.5">{props.stubs.length} stub(s)</div>
         )}
       </div>
 
