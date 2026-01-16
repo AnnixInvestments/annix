@@ -112,9 +112,9 @@ export const flangesPerPipe = (pipeEndConfig: string): number => {
     case 'FBE':
       return 2;
     case 'FOE_LF':
-      return 1;
+      return 2;
     case 'FOE_RF':
-      return 1;
+      return 2;
     case '2X_RF':
       return 2;
     case '2xLF':

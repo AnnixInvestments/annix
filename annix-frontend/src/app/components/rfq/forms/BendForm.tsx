@@ -2328,9 +2328,10 @@ export default function BendForm({
 
                         // Count total flanges from all sources
                         // FBE = Flanged Both Ends (2), 2xLF = Loose Flange Both Ends (2), 2X_RF = 2x Rotating Flange (2)
-                        // FOE = Flanged One End (1), FOE_LF = Flanged One End Loose Flange (1), FOE_RF = Flanged One End Rotating Flange (1)
-                        const bendFlangeCount = ['FBE', '2xLF', '2X_RF'].includes(bendEndConfig) ? 2
-                          : ['FOE', 'FOE_LF', 'FOE_RF'].includes(bendEndConfig) ? 1 : 0;
+                        // FOE_LF = Flanged One End + Loose Flange (2), FOE_RF = Flanged One End + Rotating Flange (2)
+                        // FOE = Flanged One End (1)
+                        const bendFlangeCount = ['FBE', '2xLF', '2X_RF', 'FOE_LF', 'FOE_RF'].includes(bendEndConfig) ? 2
+                          : ['FOE'].includes(bendEndConfig) ? 1 : 0;
                         const stub1FlangeCount = stub1HasFlange ? 1 : 0;
                         const stub2FlangeCount = stub2HasFlange ? 1 : 0;
                         const numSegments = entry.specs?.numberOfSegments || 0;
@@ -2546,7 +2547,7 @@ export default function BendForm({
                               <p className="text-xs text-gray-700 mt-1">Bend: {entry.calculation.bendWeight?.toFixed(1) || '0'}kg</p>
                               <p className="text-xs text-gray-700">Tangent: {entry.calculation.tangentWeight?.toFixed(1) || '0'}kg</p>
                               <p className="text-xs text-gray-700">Flange: {totalCalcFlangeWeight.toFixed(1)}kg</p>
-                              {bendFlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">({bendFlangeCount}x bend @ {bendFlangeWeight.toFixed(1)}kg)</p>}
+                              {bendFlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">({bendFlangeCount}x bend @ {(bendFlangeWeight / bendFlangeCount).toFixed(1)}kg/ea)</p>}
                               {stub1FlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">(stub1 @ {stub1FlangeWeight.toFixed(1)}kg)</p>}
                               {stub2FlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">(stub2 @ {stub2FlangeWeight.toFixed(1)}kg)</p>}
                               {numStubs > 0 && <p className="text-xs text-gray-700">Stubs: {stubsWeight.toFixed(1)}kg</p>}
