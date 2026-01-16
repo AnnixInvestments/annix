@@ -3,3 +3,4 @@ export * from './pipeEndOptions';
 export * from './flangeWeights';
 export * from './materialLimits';
 export * from './pipeSchedules';
+export * from './bendSpecifications';

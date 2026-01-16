@@ -45,6 +45,14 @@ import {
 } from '@/app/lib/utils/sabs62CfData';
 import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
+import {
+  steelStandardBendRules,
+  allowedBendTypes,
+  isNominalBoreValidForSpec,
+  calculateWallThinning,
+  segmentedBendDeratingFactor,
+  type BendFabricationType,
+} from '@/app/lib/config/rfq';
 
 export interface BendFormProps {
   entry: any;
@@ -108,7 +116,14 @@ export default function BendForm({
                 {/* Conditional Bend Layout - SABS 719 vs SABS 62 */}
                 {(() => {
                   const effectiveSteelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                  const isSABS719 = effectiveSteelSpecId === 8;
+                  const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === effectiveSteelSpecId);
+                  const steelSpecName = steelSpec?.steelSpecName || '';
+                  const bendRules = steelStandardBendRules(steelSpecName);
+                  const allowedTypes = allowedBendTypes(steelSpecName);
+                  const isSABS719 = steelSpecName.includes('SABS 719') || steelSpecName.includes('SANS 719');
+                  const isSABS62 = steelSpecName.includes('SABS 62') || steelSpecName.includes('SANS 62');
+                  const isSegmentedAllowed = allowedTypes.includes('segmented');
+                  const isPulledOnly = allowedTypes.length === 1 && allowedTypes[0] === 'pulled';
 
                   // Common Steel Spec dropdown (used in both layouts)
                   const SteelSpecDropdown = (
@@ -155,8 +170,10 @@ export default function BendForm({
                               onUpdateEntry(entry.id, updatedEntry);
 
                               if (newSpecId) {
-                                const isSABS719 = newSpecId === 8;
-                                const nextFieldId = isSABS719
+                                const newSpec = masterData.steelSpecs?.find((s: any) => s.id === newSpecId);
+                                const newSpecName = newSpec?.steelSpecName || '';
+                                const isNewSABS719 = newSpecName.includes('SABS 719') || newSpecName.includes('SANS 719');
+                                const nextFieldId = isNewSABS719
                                   ? `bend-radius-type-${entry.id}`
                                   : `bend-type-${entry.id}`;
                                 setTimeout(() => focusAndOpenSelect(nextFieldId), 100);
@@ -205,103 +222,114 @@ export default function BendForm({
                           }));
                         })();
 
+                        const selectedNB = entry.specs?.nominalBoreMm;
+                        const nbValid = selectedNB ? isNominalBoreValidForSpec(steelSpecName, selectedNB) : true;
+                        const nbRules = bendRules;
+
                         return (
-                          <Select
-                            id={selectId}
-                            value={entry.specs?.nominalBoreMm ? String(entry.specs.nominalBoreMm) : ''}
-                            onChange={(value) => {
-                              const nominalBore = parseInt(value);
-                              if (!nominalBore) return;
+                          <>
+                            <Select
+                              id={selectId}
+                              value={entry.specs?.nominalBoreMm ? String(entry.specs.nominalBoreMm) : ''}
+                              onChange={(value) => {
+                                const nominalBore = parseInt(value);
+                                if (!nominalBore) return;
 
-                              const pressure = globalSpecs?.workingPressureBar || 0;
-                              const nbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                              const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId);
+                                const pressure = globalSpecs?.workingPressureBar || 0;
+                                const nbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                                const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId);
 
-                              let matchedSchedule: string | null = null;
-                              let matchedWT = 0;
+                                let matchedSchedule: string | null = null;
+                                let matchedWT = 0;
 
-                              if (pressure > 0 && schedules.length > 0) {
-                                const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
-                                const pressureMpa = pressure * 0.1;
-                                const allowableStress = 137.9;
-                                const safetyFactor = 1.2;
-                                const minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
+                                if (pressure > 0 && schedules.length > 0) {
+                                  const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
+                                  const pressureMpa = pressure * 0.1;
+                                  const allowableStress = 137.9;
+                                  const safetyFactor = 1.2;
+                                  const minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
 
-                                const eligibleSchedules = schedules
-                                  .filter(s => s.wallThicknessMm >= minWT)
-                                  .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
+                                  const eligibleSchedules = schedules
+                                    .filter(s => s.wallThicknessMm >= minWT)
+                                    .sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
 
-                                if (eligibleSchedules.length > 0) {
-                                  matchedSchedule = eligibleSchedules[0].scheduleDesignation;
-                                  matchedWT = eligibleSchedules[0].wallThicknessMm;
-                                } else {
-                                  const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
-                                  matchedSchedule = sorted[0].scheduleDesignation;
-                                  matchedWT = sorted[0].wallThicknessMm;
+                                  if (eligibleSchedules.length > 0) {
+                                    matchedSchedule = eligibleSchedules[0].scheduleDesignation;
+                                    matchedWT = eligibleSchedules[0].wallThicknessMm;
+                                  } else {
+                                    const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
+                                    matchedSchedule = sorted[0].scheduleDesignation;
+                                    matchedWT = sorted[0].wallThicknessMm;
+                                  }
+                                } else if (schedules.length > 0) {
+                                  const sch40 = schedules.find(s => s.scheduleDesignation === '40' || s.scheduleDesignation === 'Sch 40');
+                                  if (sch40) {
+                                    matchedSchedule = sch40.scheduleDesignation;
+                                    matchedWT = sch40.wallThicknessMm;
+                                  } else {
+                                    matchedSchedule = schedules[0].scheduleDesignation;
+                                    matchedWT = schedules[0].wallThicknessMm;
+                                  }
                                 }
-                              } else if (schedules.length > 0) {
-                                const sch40 = schedules.find(s => s.scheduleDesignation === '40' || s.scheduleDesignation === 'Sch 40');
-                                if (sch40) {
-                                  matchedSchedule = sch40.scheduleDesignation;
-                                  matchedWT = sch40.wallThicknessMm;
-                                } else {
-                                  matchedSchedule = schedules[0].scheduleDesignation;
-                                  matchedWT = schedules[0].wallThicknessMm;
+
+                                let newCenterToFace: number | undefined = undefined;
+                                let newBendRadius: number | undefined = undefined;
+
+                                if (isSABS719 && entry.specs?.bendRadiusType && entry.specs?.numberOfSegments) {
+                                  const cfResult = getSABS719CenterToFaceBySegments(
+                                    entry.specs.bendRadiusType,
+                                    nominalBore,
+                                    entry.specs.numberOfSegments
+                                  );
+                                  if (cfResult) {
+                                    newCenterToFace = cfResult.centerToFace;
+                                    newBendRadius = cfResult.radius;
+                                  }
                                 }
-                              }
 
-                              let newCenterToFace: number | undefined = undefined;
-                              let newBendRadius: number | undefined = undefined;
-
-                              if (isSABS719 && entry.specs?.bendRadiusType && entry.specs?.numberOfSegments) {
-                                const cfResult = getSABS719CenterToFaceBySegments(
-                                  entry.specs.bendRadiusType,
-                                  nominalBore,
-                                  entry.specs.numberOfSegments
-                                );
-                                if (cfResult) {
-                                  newCenterToFace = cfResult.centerToFace;
-                                  newBendRadius = cfResult.radius;
+                                if (!isSABS719 && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                                  const bendType = entry.specs.bendType as SABS62BendType;
+                                  newCenterToFace = getSabs62CFInterpolated(bendType, entry.specs.bendDegrees, nominalBore);
+                                  newBendRadius = SABS62_BEND_RADIUS[bendType]?.[nominalBore];
                                 }
-                              }
 
-                              if (!isSABS719 && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                                const bendType = entry.specs.bendType as SABS62BendType;
-                                newCenterToFace = getSabs62CFInterpolated(bendType, entry.specs.bendDegrees, nominalBore);
-                                newBendRadius = SABS62_BEND_RADIUS[bendType]?.[nominalBore];
-                              }
+                                const updatedEntry: any = {
+                                  ...entry,
+                                  specs: {
+                                    ...entry.specs,
+                                    nominalBoreMm: nominalBore,
+                                    scheduleNumber: matchedSchedule,
+                                    wallThicknessMm: matchedWT,
+                                    centerToFaceMm: newCenterToFace,
+                                    bendRadiusMm: newBendRadius
+                                  }
+                                };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
 
-                              const updatedEntry: any = {
-                                ...entry,
-                                specs: {
-                                  ...entry.specs,
-                                  nominalBoreMm: nominalBore,
-                                  scheduleNumber: matchedSchedule,
-                                  wallThicknessMm: matchedWT,
-                                  centerToFaceMm: newCenterToFace,
-                                  bendRadiusMm: newBendRadius
+                                const hasBendSpecs = isSABS719
+                                  ? (entry.specs?.bendRadiusType && entry.specs?.bendDegrees)
+                                  : (entry.specs?.bendType && entry.specs?.bendDegrees);
+                                if (matchedSchedule && hasBendSpecs) {
+                                  setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                                 }
-                              };
-                              updatedEntry.description = generateItemDescription(updatedEntry);
-                              onUpdateEntry(entry.id, updatedEntry);
 
-                              const hasBendSpecs = isSABS719
-                                ? (entry.specs?.bendRadiusType && entry.specs?.bendDegrees)
-                                : (entry.specs?.bendType && entry.specs?.bendDegrees);
-                              if (matchedSchedule && hasBendSpecs) {
-                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                              }
-
-                              if (!entry.specs?.bendDegrees) {
-                                setTimeout(() => focusAndOpenSelect(`bend-angle-${entry.id}`), 100);
-                              }
-                            }}
-                            options={nbOptions}
-                            placeholder={isDisabled ? 'Select Bend Type first' : 'Select NB'}
-                            disabled={isDisabled}
-                            open={openSelects[selectId] || false}
-                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
-                          />
+                                if (!entry.specs?.bendDegrees) {
+                                  setTimeout(() => focusAndOpenSelect(`bend-angle-${entry.id}`), 100);
+                                }
+                              }}
+                              options={nbOptions}
+                              placeholder={isDisabled ? 'Select Bend Type first' : 'Select NB'}
+                              disabled={isDisabled}
+                              open={openSelects[selectId] || false}
+                              onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            />
+                            {selectedNB && !nbValid && nbRules && (
+                              <p className="text-xs text-orange-600 mt-0.5">
+                                {selectedNB} NB outside typical range ({nbRules.minNominalBoreMm}-{nbRules.maxNominalBoreMm} NB) for {nbRules.category.replace('_', ' ')}
+                              </p>
+                            )}
+                          </>
                         );
                       })()}
                     </div>
@@ -663,6 +691,11 @@ export default function BendForm({
                             {ScheduleDropdown}
                           </div>
                         </div>
+                        {bendRules && (
+                          <div className="bg-green-50 border border-green-300 rounded-lg p-2 mt-2 text-xs text-green-800">
+                            <span className="font-semibold">Segmented Bend:</span> {bendRules.notes}
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                           {RadiusTypeDropdown}
                           {AngleDropdown}
@@ -671,7 +704,7 @@ export default function BendForm({
                       </>
                     );
                   } else {
-                    // SABS 62 Layout: Steel Spec -> Bend Type -> NB | Schedule -> Angle -> C/F
+                    // Non-SABS 719 Layout: Steel Spec -> Bend Type -> NB | Schedule -> Angle -> C/F
                     return (
                       <>
                         <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
@@ -681,6 +714,16 @@ export default function BendForm({
                             {NBDropdown}
                           </div>
                         </div>
+                        {bendRules && isPulledOnly && (
+                          <div className="bg-blue-50 border border-blue-300 rounded-lg p-2 mt-2 text-xs text-blue-800">
+                            <span className="font-semibold">Pulled Bend Only:</span> {bendRules.notes}
+                          </div>
+                        )}
+                        {bendRules && !isPulledOnly && isSABS62 && (
+                          <div className="bg-purple-50 border border-purple-300 rounded-lg p-2 mt-2 text-xs text-purple-800">
+                            <span className="font-semibold">Small Bore Spec:</span> {bendRules.notes}
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                           {ScheduleDropdown}
                           {AngleDropdown}
@@ -732,6 +775,64 @@ export default function BendForm({
                         )}
                       </div>
                     )}
+
+                    {/* Wall Thinning Info for Pulled Bends */}
+                    {entry.specs?.bendRadiusMm && entry.specs?.nominalBoreMm && entry.specs?.wallThicknessMm && (() => {
+                      const specId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const spec = masterData.steelSpecs?.find((s: any) => s.id === specId);
+                      const specName = spec?.steelSpecName || '';
+                      const isPulledBend = !specName.includes('SABS 719') && !specName.includes('SANS 719');
+                      if (!isPulledBend) return null;
+
+                      const od = NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05);
+                      const thinning = calculateWallThinning(entry.specs.bendRadiusMm, od, entry.specs.wallThicknessMm);
+                      return (
+                        <div className={`border rounded-lg p-3 ${thinning.withinAcceptableLimit ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-300'}`}>
+                          <h5 className={`text-xs font-bold mb-1 ${thinning.withinAcceptableLimit ? 'text-blue-900' : 'text-red-900'}`}>
+                            Pulled Bend Wall Thinning
+                          </h5>
+                          <div className="grid grid-cols-2 gap-x-2 text-xs">
+                            <p className={thinning.withinAcceptableLimit ? 'text-blue-700' : 'text-red-700'}>
+                              Extrados: {thinning.extradosThicknessMm}mm ({thinning.thinningPercent}% thin)
+                            </p>
+                            <p className={thinning.withinAcceptableLimit ? 'text-blue-700' : 'text-red-700'}>
+                              Intrados: {thinning.intradosThicknessMm}mm (+{thinning.thickeningPercent}%)
+                            </p>
+                          </div>
+                          {!thinning.withinAcceptableLimit && (
+                            <p className="text-xs text-red-800 font-medium mt-1">
+                              ⚠️ Exceeds {thinning.maxAllowedThinningPercent}% max thinning - consider thicker pipe or larger bend radius
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Pressure Derating for Segmented Bends */}
+                    {entry.specs?.numberOfSegments && entry.specs?.numberOfSegments > 1 && entry.specs?.bendDegrees && (() => {
+                      const specId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const spec = masterData.steelSpecs?.find((s: any) => s.id === specId);
+                      const specName = spec?.steelSpecName || '';
+                      const isSegmented = specName.includes('SABS 719') || specName.includes('SANS 719');
+                      if (!isSegmented) return null;
+
+                      const derating = segmentedBendDeratingFactor(entry.specs.numberOfSegments, entry.specs.bendDegrees);
+                      const deratingPercent = Math.round((1 - derating) * 100);
+                      return (
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                          <h5 className="text-xs font-bold text-orange-900 mb-1">Segmented Bend Pressure Derating</h5>
+                          <p className="text-xs text-orange-700">
+                            {entry.specs.numberOfSegments} segments ({entry.specs.numberOfSegments - 1} mitre welds)
+                          </p>
+                          <p className="text-xs text-orange-800 font-medium mt-0.5">
+                            Effective pressure: {Math.round(derating * 100)}% of pipe rating ({deratingPercent}% reduction)
+                          </p>
+                          <p className="text-xs text-orange-600 mt-1 italic">
+                            Per ASME B31.3 - stress concentration at mitre joints
+                          </p>
+                        </div>
+                      );
+                    })()}
 
                     {/* Flange Specifications - Uses Global Specs with Override Option */}
                     <div>

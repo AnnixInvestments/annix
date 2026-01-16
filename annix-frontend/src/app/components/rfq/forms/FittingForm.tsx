@@ -106,25 +106,23 @@ export default function FittingForm({
                   </div>
                 </div>
 
-                {/* Fitting Specifications Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {/* Column 1 - Basic Specs */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
-                      Fitting Specifications
-                    </h4>
-
-                    {/* Fitting Standard - Auto from Global Steel Spec (ID 8 = SABS 719), can be overridden */}
+                {/* ROW 1: Primary Specs Header (Green Background) */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                  <h4 className="text-sm font-bold text-green-900 border-b border-green-400 pb-1.5 mb-3">
+                    Fitting Specifications
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Fitting Standard */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-green-900 mb-1">
                         Fitting Standard *
                         {(() => {
                           const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                           const derived = isSABS719 ? 'SABS719' : 'SABS62';
                           const hasGlobal = !!globalSpecs?.steelSpecificationId;
                           const current = entry.specs?.fittingStandard || derived;
-                          if (hasGlobal && current === derived) return <span className="text-green-600 text-xs ml-2 font-normal">(From Steel Spec)</span>;
-                          if (hasGlobal && current !== derived) return <span className="text-blue-600 text-xs ml-2 font-normal">(Override)</span>;
+                          if (hasGlobal && current === derived) return <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>;
+                          if (hasGlobal && current !== derived) return <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>;
                           return null;
                         })()}
                       </label>
@@ -424,6 +422,221 @@ export default function FittingForm({
                         );
                       })()}
                     </div>
+                  </div>
+                </div>
+
+                {/* ROW 2: Wall Thickness & Pipe Lengths */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                  {/* Schedule/Wall Thickness */}
+                  {(() => {
+                    const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+                    const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                    const showSchedule = effectiveStandard === 'SABS719';
+
+                    if (!showSchedule) {
+                      return (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-2">
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">
+                            Wall Thickness
+                          </label>
+                          <p className="text-sm text-gray-600">N/A (SABS62)</p>
+                        </div>
+                      );
+                    }
+
+                    const selectId = `fitting-schedule-row2-${entry.id}`;
+                    const nbValue = entry.specs?.nominalDiameterMm || 0;
+                    const fitEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                    const allSchedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
+
+                    if (globalSpecs?.workingPressureBar && entry.specs?.nominalDiameterMm) {
+                      const minWT = getMinimumWallThickness(nbValue, globalSpecs?.workingPressureBar || 0);
+                      const eligibleSchedules = allSchedules
+                        .filter((dim: any) => (dim.wallThicknessMm || 0) >= minWT)
+                        .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+
+                      const options = eligibleSchedules.map((dim: any, idx: number) => {
+                        const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString() || 'Unknown';
+                        const wt = dim.wallThicknessMm || 0;
+                        const isRecommended = idx === 0;
+                        const label = isRecommended
+                          ? `★ ${scheduleValue} (${wt}mm)`
+                          : `${scheduleValue} (${wt}mm)`;
+                        return { value: scheduleValue, label };
+                      });
+
+                      return (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                          <label className="block text-xs font-semibold text-green-900 mb-1">
+                            Schedule / W/T *
+                            <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>
+                          </label>
+                          <Select
+                            id={selectId}
+                            value={entry.specs?.scheduleNumber || ''}
+                            onChange={(schedule) => {
+                              if (!schedule) return;
+                              const selectedDim = allSchedules.find((dim: any) =>
+                                (dim.scheduleDesignation || dim.scheduleNumber?.toString()) === schedule
+                              );
+                              onUpdateEntry(entry.id, {
+                                specs: {
+                                  ...entry.specs,
+                                  scheduleNumber: schedule,
+                                  wallThicknessMm: selectedDim?.wallThicknessMm || entry.specs?.wallThicknessMm
+                                }
+                              });
+                              setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                            }}
+                            options={options}
+                            placeholder="Select schedule..."
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                          {entry.specs?.wallThicknessMm && (
+                            <p className="text-xs text-green-700 mt-1">WT: {entry.specs.wallThicknessMm}mm</p>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    const manualOptions = allSchedules.length > 0
+                      ? allSchedules.map((dim: any) => ({
+                          value: dim.scheduleDesignation || dim.scheduleNumber?.toString(),
+                          label: `${dim.scheduleDesignation || dim.scheduleNumber?.toString()} (${dim.wallThicknessMm}mm)`
+                        }))
+                      : [
+                          { value: '10', label: 'Sch 10' },
+                          { value: '40', label: 'Sch 40' },
+                          { value: '80', label: 'Sch 80' },
+                          { value: '160', label: 'Sch 160' },
+                        ];
+
+                    return (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          Schedule / W/T *
+                          <span className="text-orange-600 text-xs ml-1 font-normal">(Manual)</span>
+                        </label>
+                        <Select
+                          id={selectId}
+                          value={entry.specs?.scheduleNumber || ''}
+                          onChange={(scheduleNumber) => {
+                            if (!scheduleNumber) return;
+                            const schedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
+                            const matchingSchedule = schedules.find((s: any) =>
+                              (s.scheduleDesignation || s.scheduleNumber?.toString()) === scheduleNumber
+                            );
+                            const wallThickness = matchingSchedule?.wallThicknessMm;
+
+                            const updatedEntry = {
+                              ...entry,
+                              specs: {
+                                ...entry.specs,
+                                scheduleNumber,
+                                wallThicknessMm: wallThickness
+                              }
+                            };
+                            updatedEntry.description = generateItemDescription(updatedEntry);
+                            onUpdateEntry(entry.id, updatedEntry);
+                            setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                          }}
+                          options={manualOptions}
+                          placeholder="Select Schedule"
+                          open={openSelects[selectId] || false}
+                          onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                        />
+                        {entry.specs?.wallThicknessMm && (
+                          <p className="text-xs text-gray-600 mt-1">WT: {entry.specs.wallThicknessMm}mm</p>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Pipe Length A */}
+                  {(() => {
+                    const fittingType = entry.specs?.fittingType;
+                    const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
+                    const isAutoA = entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
+
+                    return (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          Pipe Length A (mm) *
+                          {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(C/F)</span>}
+                          {!isEqualTee && isAutoA && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
+                          {!isEqualTee && entry.specs?.pipeLengthAOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
+                        </label>
+                        <input
+                          type="number"
+                          value={entry.specs?.pipeLengthAMm || ''}
+                          onChange={(e) => {
+                            if (isEqualTee) return;
+                            const newValue = Number(e.target.value);
+                            const isOverride = entry.specs?.pipeLengthAMmAuto && newValue !== entry.specs?.pipeLengthAMmAuto;
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, pipeLengthAMm: newValue, pipeLengthAOverride: isOverride }
+                            });
+                          }}
+                          className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
+                            isEqualTee
+                              ? 'bg-green-100 border-green-400 text-green-900 cursor-not-allowed font-medium'
+                              : 'border-gray-300 focus:ring-green-500 text-gray-900'
+                          }`}
+                          placeholder="e.g., 1000"
+                          min="0"
+                          readOnly={isEqualTee}
+                        />
+                      </div>
+                    );
+                  })()}
+
+                  {/* Pipe Length B */}
+                  {(() => {
+                    const fittingType = entry.specs?.fittingType;
+                    const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
+                    const isAutoB = entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
+
+                    return (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          Pipe Length B (mm) *
+                          {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(C/F)</span>}
+                          {!isEqualTee && isAutoB && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
+                          {!isEqualTee && entry.specs?.pipeLengthBOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
+                        </label>
+                        <input
+                          type="number"
+                          value={entry.specs?.pipeLengthBMm || ''}
+                          onChange={(e) => {
+                            if (isEqualTee) return;
+                            const newValue = Number(e.target.value);
+                            const isOverride = entry.specs?.pipeLengthBMmAuto && newValue !== entry.specs?.pipeLengthBMmAuto;
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, pipeLengthBMm: newValue, pipeLengthBOverride: isOverride }
+                            });
+                          }}
+                          className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
+                            isEqualTee
+                              ? 'bg-green-100 border-green-400 text-green-900 cursor-not-allowed font-medium'
+                              : 'border-gray-300 focus:ring-green-500 text-gray-900'
+                          }`}
+                          placeholder="e.g., 1000"
+                          min="0"
+                          readOnly={isEqualTee}
+                        />
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* ROW 3: Remaining fields in 3-column grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {/* Column 1 - Additional Specs */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
+                      Additional Specs
+                    </h4>
 
                     {/* Branch Nominal Diameter - For Reducing Tees */}
                     {(entry.specs?.fittingType === 'SHORT_REDUCING_TEE' || entry.specs?.fittingType === 'GUSSET_REDUCING_TEE') && (
@@ -467,153 +680,38 @@ export default function FittingForm({
                       </div>
                     )}
 
-                    {/* Pipe Lengths - Auto-filled from fitting dimensions */}
+                    {/* Auto-fetch pipe dimensions for equal tees */}
                     {(() => {
                       const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                       const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
                       const fittingType = entry.specs?.fittingType;
                       const nb = entry.specs?.nominalDiameterMm;
                       const hasRequiredData = fittingType && nb;
-                      const isAutoA = entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
-                      const isAutoB = entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
-
-                      // Equal tees use standard C/F from tables only - no length/location customization
                       const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
 
-                      // Function to fetch and set dimensions
-                      const fetchDimensions = async () => {
-                        if (!fittingType || !nb) return;
-                        try {
-                          const dims = await masterDataApi.getFittingDimensions(effectiveStandard as 'SABS62' | 'SABS719', fittingType, nb, entry.specs?.angleRange);
-                          if (dims) {
-                            // Parse string values to numbers (API returns decimal strings)
-                            const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
-                            const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
-                            const updates: any = { specs: { ...entry.specs } };
-                            if (dimA && !entry.specs?.pipeLengthAOverride) {
-                              updates.specs.pipeLengthAMm = dimA;
-                              updates.specs.pipeLengthAMmAuto = dimA;
-                            }
-                            if (dimB && !entry.specs?.pipeLengthBOverride) {
-                              updates.specs.pipeLengthBMm = dimB;
-                              updates.specs.pipeLengthBMmAuto = dimB;
-                            }
-                            onUpdateEntry(entry.id, updates);
-                          }
-                        } catch (err) {
-                          log.debug('Could not fetch fitting dimensions:', err);
-                        }
-                      };
-
-                      // Auto-fetch for equal tees when data is available but lengths are not set
                       if (isEqualTee && hasRequiredData && !entry.specs?.pipeLengthAMm && !entry.specs?.pipeLengthBMm) {
-                        fetchDimensions();
+                        masterDataApi.getFittingDimensions(effectiveStandard as 'SABS62' | 'SABS719', fittingType!, nb!, entry.specs?.angleRange)
+                          .then((dims) => {
+                            if (dims) {
+                              const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
+                              const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
+                              const updates: any = { specs: { ...entry.specs } };
+                              if (dimA) {
+                                updates.specs.pipeLengthAMm = dimA;
+                                updates.specs.pipeLengthAMmAuto = dimA;
+                              }
+                              if (dimB) {
+                                updates.specs.pipeLengthBMm = dimB;
+                                updates.specs.pipeLengthBMmAuto = dimB;
+                              }
+                              if (dimA || dimB) {
+                                onUpdateEntry(entry.id, updates);
+                              }
+                            }
+                          })
+                          .catch((err) => log.debug('Could not fetch fitting dimensions:', err));
                       }
-
-                      return (
-                        <>
-                          {/* Pipe Length A */}
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <label className="block text-xs font-semibold text-gray-900">
-                                Pipe Length A (mm) *
-                                {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(Standard C/F)</span>}
-                                {!isEqualTee && isAutoA && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
-                                {!isEqualTee && entry.specs?.pipeLengthAOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
-                              </label>
-                              {!isEqualTee && hasRequiredData && !entry.specs?.pipeLengthAMmAuto && (
-                                <button
-                                  type="button"
-                                  onClick={fetchDimensions}
-                                  className="text-xs text-blue-600 hover:text-blue-800"
-                                >
-                                  Fetch
-                                </button>
-                              )}
-                              {!isEqualTee && entry.specs?.pipeLengthAOverride && entry.specs?.pipeLengthAMmAuto && (
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateEntry(entry.id, {
-                                    specs: { ...entry.specs, pipeLengthAMm: entry.specs?.pipeLengthAMmAuto, pipeLengthAOverride: false }
-                                  })}
-                                  className="text-xs text-gray-500 hover:text-gray-700"
-                                >
-                                  Reset
-                                </button>
-                              )}
-                            </div>
-                            <input
-                              type="number"
-                              value={entry.specs?.pipeLengthAMm || ''}
-                              onChange={(e) => {
-                                if (isEqualTee) return; // Don't allow changes for equal tees
-                                const newValue = Number(e.target.value);
-                                const isOverride = entry.specs?.pipeLengthAMmAuto && newValue !== entry.specs?.pipeLengthAMmAuto;
-                                onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, pipeLengthAMm: newValue, pipeLengthAOverride: isOverride }
-                                });
-                              }}
-                              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
-                                isEqualTee
-                                  ? 'bg-green-100 border-green-400 text-green-900 cursor-not-allowed font-medium'
-                                  : 'border-gray-300 focus:ring-green-500 text-gray-900'
-                              }`}
-                              placeholder="e.g., 1000"
-                              min="0"
-                              readOnly={isEqualTee}
-                            />
-                            {isEqualTee && entry.specs?.pipeLengthAMm && (
-                              <p className="mt-0.5 text-xs text-green-700">Standard C/F dimension from tables</p>
-                            )}
-                          </div>
-
-                          {/* Pipe Length B */}
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <label className="block text-xs font-semibold text-gray-900">
-                                Pipe Length B (mm) *
-                                {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(Standard C/F)</span>}
-                                {!isEqualTee && isAutoB && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
-                                {!isEqualTee && entry.specs?.pipeLengthBOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
-                              </label>
-                              {!isEqualTee && entry.specs?.pipeLengthBOverride && entry.specs?.pipeLengthBMmAuto && (
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateEntry(entry.id, {
-                                    specs: { ...entry.specs, pipeLengthBMm: entry.specs?.pipeLengthBMmAuto, pipeLengthBOverride: false }
-                                  })}
-                                  className="text-xs text-gray-500 hover:text-gray-700"
-                                >
-                                  Reset
-                                </button>
-                              )}
-                            </div>
-                            <input
-                              type="number"
-                              value={entry.specs?.pipeLengthBMm || ''}
-                              onChange={(e) => {
-                                if (isEqualTee) return; // Don't allow changes for equal tees
-                                const newValue = Number(e.target.value);
-                                const isOverride = entry.specs?.pipeLengthBMmAuto && newValue !== entry.specs?.pipeLengthBMmAuto;
-                                onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, pipeLengthBMm: newValue, pipeLengthBOverride: isOverride }
-                                });
-                              }}
-                              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
-                                isEqualTee
-                                  ? 'bg-green-100 border-green-400 text-green-900 cursor-not-allowed font-medium'
-                                  : 'border-gray-300 focus:ring-green-500 text-gray-900'
-                              }`}
-                              placeholder="e.g., 1000"
-                              min="0"
-                              readOnly={isEqualTee}
-                            />
-                            {isEqualTee && entry.specs?.pipeLengthBMm && (
-                              <p className="mt-0.5 text-xs text-green-700">Standard C/F dimension from tables</p>
-                            )}
-                          </div>
-                        </>
-                      );
+                      return null;
                     })()}
 
                     {/* Angle Range (for Laterals and Y-Pieces) */}
@@ -730,123 +828,6 @@ export default function FittingForm({
                     <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
                       📐 Configuration
                     </h4>
-
-                    {/* Schedule - Required for SABS719 fabricated fittings */}
-                    {(() => {
-                      const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
-                      const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
-                      return effectiveStandard === 'SABS719';
-                    })() && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Schedule *
-                          {globalSpecs?.workingPressureBar ? (
-                            <span className="text-green-600 text-xs ml-2">(Automated)</span>
-                          ) : (
-                            <span className="text-orange-600 text-xs ml-2">(Manual)</span>
-                          )}
-                        </label>
-                        {(() => {
-                          const selectId = `fitting-schedule-${entry.id}`;
-                          const nbValue = entry.specs?.nominalDiameterMm || 0;
-                          const fitEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                          const allSchedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
-
-                          if (globalSpecs?.workingPressureBar && entry.specs?.nominalDiameterMm) {
-                            const minWT = getMinimumWallThickness(nbValue, globalSpecs?.workingPressureBar || 0);
-                            const eligibleSchedules = allSchedules
-                              .filter((dim: any) => (dim.wallThicknessMm || 0) >= minWT)
-                              .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
-
-                            const options = eligibleSchedules.map((dim: any, idx: number) => {
-                              const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString() || 'Unknown';
-                              const wt = dim.wallThicknessMm || 0;
-                              const isRecommended = idx === 0;
-                              const label = isRecommended
-                                ? `★ ${scheduleValue} (${wt}mm) - RECOMMENDED`
-                                : `${scheduleValue} (${wt}mm)`;
-                              return { value: scheduleValue, label };
-                            });
-
-                            return (
-                              <div className="bg-green-50 p-2 rounded-md">
-                                <p className="text-green-800 font-medium text-xs mb-2">
-                                  Auto-calculated for {globalSpecs.workingPressureBar} bar @ {entry.specs.nominalDiameterMm}NB
-                                </p>
-                                <Select
-                                  id={selectId}
-                                  value={entry.specs?.scheduleNumber || ''}
-                                  onChange={(schedule) => {
-                                    if (!schedule) return;
-                                    const selectedDim = allSchedules.find((dim: any) =>
-                                      (dim.scheduleDesignation || dim.scheduleNumber?.toString()) === schedule
-                                    );
-                                    onUpdateEntry(entry.id, {
-                                      specs: {
-                                        ...entry.specs,
-                                        scheduleNumber: schedule,
-                                        wallThicknessMm: selectedDim?.wallThicknessMm || entry.specs?.wallThicknessMm
-                                      }
-                                    });
-                                    setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
-                                  }}
-                                  options={options}
-                                  placeholder="Select schedule..."
-                                  open={openSelects[selectId] || false}
-                                  onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
-                                />
-                              </div>
-                            );
-                          }
-
-                          const manualOptions = allSchedules.length > 0
-                            ? allSchedules.map((dim: any) => ({
-                                value: dim.scheduleDesignation || dim.scheduleNumber?.toString(),
-                                label: `${dim.scheduleDesignation || dim.scheduleNumber?.toString()} (${dim.wallThicknessMm}mm)`
-                              }))
-                            : [
-                                { value: '10', label: 'Sch 10' },
-                                { value: '40', label: 'Sch 40' },
-                                { value: '80', label: 'Sch 80' },
-                                { value: '160', label: 'Sch 160' },
-                              ];
-
-                          return (
-                            <Select
-                              id={selectId}
-                              value={entry.specs?.scheduleNumber || ''}
-                              onChange={(scheduleNumber) => {
-                                if (!scheduleNumber) return;
-                                const schedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
-                                const matchingSchedule = schedules.find((s: any) =>
-                                  (s.scheduleDesignation || s.scheduleNumber?.toString()) === scheduleNumber
-                                );
-                                const wallThickness = matchingSchedule?.wallThicknessMm;
-
-                                const updatedEntry = {
-                                  ...entry,
-                                  specs: {
-                                    ...entry.specs,
-                                    scheduleNumber,
-                                    wallThicknessMm: wallThickness
-                                  }
-                                };
-                                updatedEntry.description = generateItemDescription(updatedEntry);
-                                onUpdateEntry(entry.id, updatedEntry);
-                                setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
-                              }}
-                              options={manualOptions}
-                              placeholder="Select Schedule"
-                              open={openSelects[selectId] || false}
-                              onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
-                            />
-                          );
-                        })()}
-                        <p className="text-xs text-gray-500 mt-1">
-                          Required for fabricated SABS719 fittings
-                        </p>
-                      </div>
-                    )}
 
                     {/* Stub/Lateral Location - Only for Unequal and Reducing Tees */}
                     {!['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(entry.specs?.fittingType || '') && (
