@@ -163,7 +163,7 @@ const RetainingRing = ({ position, pipeOuterRadius, pipeInnerRadius, wallThickne
     <group position={position} rotation={[0, 0, Math.PI / 2]}>
       <mesh>
         <cylinderGeometry args={[ringOuterRadius, ringOuterRadius, ringThickness, 32]} />
-        <meshStandardMaterial color="#606060" metalness={0.6} roughness={0.4} />
+        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} />
       </mesh>
       <mesh>
         <cylinderGeometry args={[ringInnerRadius, ringInnerRadius, ringThickness + 0.01, 32]} />
@@ -344,16 +344,16 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
             <>
               {/* Retaining ring welded to pipe end - prevents flange from sliding off */}
               <RetainingRing position={[-halfLen, 0, 0]} pipeOuterRadius={outerRadius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
-              {/* Rotating flange positioned 50mm back from ring (on the pipe)
+              {/* Rotating flange positioned 80mm back from ring (on the pipe) - visible gap
                   Hole diameter is slightly larger than pipe OD to allow rotation */}
-              <SimpleFlange position={[-halfLen + 0.05, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} />
-              {/* 50mm gap dimension line */}
-              <Line points={[[-halfLen, -outerRadius - 0.1, 0], [-halfLen + 0.05, -outerRadius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
+              <SimpleFlange position={[-halfLen + 0.08, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} />
+              {/* 80mm gap dimension line */}
+              <Line points={[[-halfLen, -outerRadius - 0.1, 0], [-halfLen + 0.08, -outerRadius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
               <Line points={[[-halfLen, -outerRadius - 0.05, 0], [-halfLen, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
-              <Line points={[[-halfLen + 0.05, -outerRadius - 0.05, 0], [-halfLen + 0.05, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
+              <Line points={[[-halfLen + 0.08, -outerRadius - 0.05, 0], [-halfLen + 0.08, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
               {/* R/F label with gap dimension */}
-              <Text position={[-halfLen + 0.025, -outerRadius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
-                R/F 50mm
+              <Text position={[-halfLen + 0.04, -outerRadius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                R/F
               </Text>
             </>
           ) : (
@@ -400,16 +400,16 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
             <>
               {/* Retaining ring welded to pipe end - prevents flange from sliding off */}
               <RetainingRing position={[halfLen, 0, 0]} pipeOuterRadius={outerRadius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
-              {/* Rotating flange positioned 50mm back from ring (on the pipe)
+              {/* Rotating flange positioned 80mm back from ring (on the pipe) - visible gap
                   Hole diameter is slightly larger than pipe OD to allow rotation */}
-              <SimpleFlange position={[halfLen - 0.05, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} />
-              {/* 50mm gap dimension line */}
-              <Line points={[[halfLen - 0.05, -outerRadius - 0.1, 0], [halfLen, -outerRadius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
-              <Line points={[[halfLen - 0.05, -outerRadius - 0.05, 0], [halfLen - 0.05, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
+              <SimpleFlange position={[halfLen - 0.08, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} />
+              {/* 80mm gap dimension line */}
+              <Line points={[[halfLen - 0.08, -outerRadius - 0.1, 0], [halfLen, -outerRadius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
+              <Line points={[[halfLen - 0.08, -outerRadius - 0.05, 0], [halfLen - 0.08, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
               <Line points={[[halfLen, -outerRadius - 0.05, 0], [halfLen, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
               {/* R/F label with gap dimension */}
-              <Text position={[halfLen - 0.025, -outerRadius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
-                R/F 50mm
+              <Text position={[halfLen - 0.04, -outerRadius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                R/F
               </Text>
             </>
           ) : (

@@ -689,8 +689,8 @@ export default function BendForm({
                   }
                 })()}
 
-                {/* Two-Column Layout Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                {/* Three-Column Layout Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
                   {/* LEFT COLUMN - Quantity & Options */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-bold text-gray-900 border-b border-purple-500 pb-1.5">
@@ -1557,28 +1557,86 @@ export default function BendForm({
                               })()}
                             </div>
                             <div>
-                              <label className="block text-xs text-gray-600 mb-0.5">Orientation</label>
+                              <label className="block text-xs text-gray-600 mb-0.5">
+                                W/T (mm)
+                                {entry.specs?.stubs?.[0]?.wallThicknessOverride ? (
+                                  <span className="text-blue-600 ml-1">(Override)</span>
+                                ) : entry.specs?.stubs?.[0]?.nominalBoreMm ? (
+                                  <span className="text-green-600 ml-1">(Auto)</span>
+                                ) : null}
+                              </label>
                               {(() => {
-                                const selectId = `bend-stub1-orientation-${entry.id}`;
-                                const orientationOptions = [
-                                  { value: 'top', label: 'Top' },
-                                  { value: 'bottom', label: 'Bottom' },
-                                  { value: 'inside', label: 'Inside (bend)' },
-                                  { value: 'outside', label: 'Outside (bend)' }
+                                const selectId = `bend-stub1-wt-${entry.id}`;
+                                const stub1NB = entry.specs?.stubs?.[0]?.nominalBoreMm;
+                                const STUB_WT_LOOKUP: Record<number, number> = {
+                                  15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68,
+                                  50: 3.91, 65: 5.16, 80: 5.49, 100: 6.02, 125: 6.55,
+                                  150: 7.11, 200: 8.18, 250: 9.27, 300: 10.31
+                                };
+                                const autoWt = stub1NB ? STUB_WT_LOOKUP[stub1NB] || (stub1NB * 0.05) : null;
+                                const currentWt = entry.specs?.stubs?.[0]?.wallThicknessMm;
+                                const wtOptions = [
+                                  ...(autoWt ? [{ value: String(autoWt), label: `${autoWt.toFixed(2)} (Auto)` }] : []),
+                                  { value: '2.77', label: '2.77' },
+                                  { value: '3.38', label: '3.38' },
+                                  { value: '3.91', label: '3.91' },
+                                  { value: '5.16', label: '5.16' },
+                                  { value: '5.49', label: '5.49' },
+                                  { value: '6.02', label: '6.02' },
+                                  { value: '6.55', label: '6.55' },
+                                  { value: '7.11', label: '7.11' },
+                                  { value: '8.18', label: '8.18' },
+                                  { value: '9.27', label: '9.27' },
+                                  { value: '10.31', label: '10.31' },
+                                ].filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx);
+
+                                return (
+                                  <Select
+                                    id={selectId}
+                                    value={currentWt ? String(currentWt) : (autoWt ? String(autoWt) : '')}
+                                    onChange={(value) => {
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      const newWt = parseFloat(value) || 0;
+                                      const isOverride = autoWt && newWt !== autoWt;
+                                      stubs[0] = { ...stubs[0], wallThicknessMm: newWt, wallThicknessOverride: isOverride };
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    options={wtOptions}
+                                    placeholder="Select W/T"
+                                    open={openSelects[selectId] || false}
+                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                  />
+                                );
+                              })()}
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">Angle (°) <span className="text-gray-400">on T1</span></label>
+                              {(() => {
+                                const selectId = `bend-stub1-angle-${entry.id}`;
+                                const angleOptions = [
+                                  { value: '0', label: '0° (Tangent)' },
+                                  { value: '45', label: '45°' },
+                                  { value: '90', label: '90°' },
+                                  { value: '135', label: '135°' },
+                                  { value: '180', label: '180°' },
+                                  { value: '225', label: '225°' },
+                                  { value: '270', label: '270°' },
+                                  { value: '315', label: '315°' }
                                 ];
                                 return (
                                   <Select
                                     id={selectId}
-                                    value={entry.specs?.stubs?.[0]?.orientation || 'outside'}
+                                    value={String(entry.specs?.stubs?.[0]?.angleDegrees ?? '0')}
                                     onChange={(value) => {
                                       const stubs = [...(entry.specs?.stubs || [])];
-                                      stubs[0] = { ...stubs[0], orientation: value };
+                                      stubs[0] = { ...stubs[0], angleDegrees: parseInt(value) || 0, tangent: 1 };
                                       const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
                                       updatedEntry.description = generateItemDescription(updatedEntry);
                                       onUpdateEntry(entry.id, updatedEntry);
                                     }}
-                                    options={orientationOptions}
-                                    placeholder="Select"
+                                    options={angleOptions}
+                                    placeholder="Select angle"
                                     open={openSelects[selectId] || false}
                                     onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
                                   />
@@ -1760,28 +1818,86 @@ export default function BendForm({
                               })()}
                             </div>
                             <div>
-                              <label className="block text-xs text-gray-600 mb-0.5">Orientation</label>
+                              <label className="block text-xs text-gray-600 mb-0.5">
+                                W/T (mm)
+                                {entry.specs?.stubs?.[1]?.wallThicknessOverride ? (
+                                  <span className="text-blue-600 ml-1">(Override)</span>
+                                ) : entry.specs?.stubs?.[1]?.nominalBoreMm ? (
+                                  <span className="text-green-600 ml-1">(Auto)</span>
+                                ) : null}
+                              </label>
                               {(() => {
-                                const selectId = `bend-stub2-orientation-${entry.id}`;
-                                const orientationOptions = [
-                                  { value: 'top', label: 'Top' },
-                                  { value: 'bottom', label: 'Bottom' },
-                                  { value: 'inside', label: 'Inside (bend)' },
-                                  { value: 'outside', label: 'Outside (bend)' }
+                                const selectId = `bend-stub2-wt-${entry.id}`;
+                                const stub2NB = entry.specs?.stubs?.[1]?.nominalBoreMm;
+                                const STUB_WT_LOOKUP: Record<number, number> = {
+                                  15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68,
+                                  50: 3.91, 65: 5.16, 80: 5.49, 100: 6.02, 125: 6.55,
+                                  150: 7.11, 200: 8.18, 250: 9.27, 300: 10.31
+                                };
+                                const autoWt = stub2NB ? STUB_WT_LOOKUP[stub2NB] || (stub2NB * 0.05) : null;
+                                const currentWt = entry.specs?.stubs?.[1]?.wallThicknessMm;
+                                const wtOptions = [
+                                  ...(autoWt ? [{ value: String(autoWt), label: `${autoWt.toFixed(2)} (Auto)` }] : []),
+                                  { value: '2.77', label: '2.77' },
+                                  { value: '3.38', label: '3.38' },
+                                  { value: '3.91', label: '3.91' },
+                                  { value: '5.16', label: '5.16' },
+                                  { value: '5.49', label: '5.49' },
+                                  { value: '6.02', label: '6.02' },
+                                  { value: '6.55', label: '6.55' },
+                                  { value: '7.11', label: '7.11' },
+                                  { value: '8.18', label: '8.18' },
+                                  { value: '9.27', label: '9.27' },
+                                  { value: '10.31', label: '10.31' },
+                                ].filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx);
+
+                                return (
+                                  <Select
+                                    id={selectId}
+                                    value={currentWt ? String(currentWt) : (autoWt ? String(autoWt) : '')}
+                                    onChange={(value) => {
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      const newWt = parseFloat(value) || 0;
+                                      const isOverride = autoWt && newWt !== autoWt;
+                                      stubs[1] = { ...stubs[1], wallThicknessMm: newWt, wallThicknessOverride: isOverride };
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    options={wtOptions}
+                                    placeholder="Select W/T"
+                                    open={openSelects[selectId] || false}
+                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                  />
+                                );
+                              })()}
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">Angle (°) <span className="text-gray-400">on T2</span></label>
+                              {(() => {
+                                const selectId = `bend-stub2-angle-${entry.id}`;
+                                const angleOptions = [
+                                  { value: '0', label: '0° (Tangent)' },
+                                  { value: '45', label: '45°' },
+                                  { value: '90', label: '90°' },
+                                  { value: '135', label: '135°' },
+                                  { value: '180', label: '180°' },
+                                  { value: '225', label: '225°' },
+                                  { value: '270', label: '270°' },
+                                  { value: '315', label: '315°' }
                                 ];
                                 return (
                                   <Select
                                     id={selectId}
-                                    value={entry.specs?.stubs?.[1]?.orientation || 'outside'}
+                                    value={String(entry.specs?.stubs?.[1]?.angleDegrees ?? '0')}
                                     onChange={(value) => {
                                       const stubs = [...(entry.specs?.stubs || [])];
-                                      stubs[1] = { ...stubs[1], orientation: value };
+                                      stubs[1] = { ...stubs[1], angleDegrees: parseInt(value) || 0, tangent: 2 };
                                       const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
                                       updatedEntry.description = generateItemDescription(updatedEntry);
                                       onUpdateEntry(entry.id, updatedEntry);
                                     }}
-                                    options={orientationOptions}
-                                    placeholder="Select"
+                                    options={angleOptions}
+                                    placeholder="Select angle"
                                     open={openSelects[selectId] || false}
                                     onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
                                   />

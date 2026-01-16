@@ -106,7 +106,7 @@ export default function FittingForm({
                 </div>
 
                 {/* Fitting Specifications Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {/* Column 1 - Basic Specs */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
