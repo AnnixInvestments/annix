@@ -54,6 +54,15 @@ export default function Navigation() {
                 HDPE Pipes
               </Link>
               <Link
+                href="/pvc"
+                className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
+                  pathname === '/pvc' || pathname.startsWith('/pvc/') ? 'bg-[#FFA500]' : 'hover:bg-[#4a4da3]'
+                }`}
+                style={{ color: pathname === '/pvc' || pathname.startsWith('/pvc/') ? '#323288' : '#FFA500' }}
+              >
+                PVC Pipes
+              </Link>
+              <Link
                 href="/pricing"
                 className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
                   pathname === '/pricing' ? 'bg-[#FFA500]' : 'hover:bg-[#4a4da3]'
