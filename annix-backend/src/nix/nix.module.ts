@@ -8,6 +8,8 @@ import { NixLearning } from './entities/nix-learning.entity';
 import { NixUserPreference } from './entities/nix-user-preference.entity';
 import { NixClarification } from './entities/nix-clarification.entity';
 import { ExcelExtractorService } from './services/excel-extractor.service';
+import { PdfExtractorService } from './services/pdf-extractor.service';
+import { AiExtractionService } from './ai-providers/ai-extraction.service';
 
 @Module({
   imports: [
@@ -25,7 +27,7 @@ import { ExcelExtractorService } from './services/excel-extractor.service';
     }),
   ],
   controllers: [NixController],
-  providers: [NixService, ExcelExtractorService],
-  exports: [NixService],
+  providers: [NixService, ExcelExtractorService, PdfExtractorService, AiExtractionService],
+  exports: [NixService, AiExtractionService],
 })
 export class NixModule {}

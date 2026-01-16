@@ -26,6 +26,8 @@ import {
   SubmitClarificationResponseDto,
 } from './dto/submit-clarification.dto';
 import { ExcelExtractorService, ExtractedItem, SpecificationCellData, ExtractionResult } from './services/excel-extractor.service';
+import { PdfExtractorService } from './services/pdf-extractor.service';
+import { AiExtractionService } from './ai-providers/ai-extraction.service';
 
 @Injectable()
 export class NixService {
@@ -41,6 +43,8 @@ export class NixService {
     @InjectRepository(NixClarification)
     private readonly clarificationRepo: Repository<NixClarification>,
     private readonly excelExtractor: ExcelExtractorService,
+    private readonly pdfExtractor: PdfExtractorService,
+    private readonly aiExtractor: AiExtractionService,
   ) {}
 
   async processDocument(dto: ProcessDocumentDto): Promise<ProcessDocumentResponseDto> {
@@ -67,7 +71,7 @@ export class NixService {
 
       switch (documentType) {
         case DocumentType.PDF:
-          ({ extractedData, extractedItems } = await this.extractFromPdf(dto.documentPath));
+          ({ extractedData, extractedItems, specificationCells } = await this.extractFromPdf(dto.documentPath, dto.documentName));
           break;
         case DocumentType.EXCEL:
           ({ extractedData, extractedItems, specificationCells } = await this.extractFromExcel(dto.documentPath));
@@ -77,8 +81,8 @@ export class NixService {
       }
 
       const relevantItems = await this.filterByRelevance(extractedItems, dto.productTypes);
-      const specClarifications = await this.generateSpecificationClarifications(extraction, specificationCells);
-      const itemClarifications = await this.generateClarifications(extraction, relevantItems);
+      const specClarifications = await this.generateSpecificationClarifications(extraction, specificationCells, documentType);
+      const itemClarifications = await this.generateClarifications(extraction, relevantItems, documentType);
       const clarifications = [...specClarifications, ...itemClarifications];
 
       extraction.extractedData = extractedData;
@@ -212,18 +216,81 @@ export class NixService {
   }
 
   private async extractFromPdf(
-    _documentPath: string,
-  ): Promise<{ extractedData: Record<string, any>; extractedItems: Array<any> }> {
-    this.logger.log('PDF extraction - placeholder implementation');
+    documentPath: string,
+    documentName?: string,
+  ): Promise<{ extractedData: Record<string, any>; extractedItems: Array<any>; specificationCells: SpecificationCellData[] }> {
+    this.logger.log(`PDF extraction starting for: ${documentPath}`);
+
+    const availableProviders = await this.aiExtractor.getAvailableProviders();
+    this.logger.log(`Available AI providers: ${availableProviders.join(', ') || 'none'}`);
+
+    if (availableProviders.length > 0) {
+      try {
+        this.logger.log('Attempting AI-powered extraction...');
+
+        const fs = await import('fs');
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { PDFParse } = require('pdf-parse');
+        const dataBuffer = fs.readFileSync(documentPath);
+        const parser = new PDFParse({ data: dataBuffer });
+        await parser.load();
+        const pdfResult = await parser.getText();
+        const pdfText = pdfResult.text || '';
+        const pdfInfo = await parser.getInfo();
+
+        const aiResult = await this.aiExtractor.extractWithAi(
+          pdfText,
+          documentName || documentPath.split('/').pop(),
+        );
+
+        this.logger.log(`AI extracted ${aiResult.items.length} items using ${aiResult.providerUsed}`);
+        this.logger.log(`Tokens used: ${aiResult.tokensUsed}, Processing time: ${aiResult.processingTimeMs}ms`);
+
+        const clarificationsNeeded = aiResult.items.filter(i => i.needsClarification).length;
+
+        return {
+          extractedData: {
+            totalLines: pdfInfo.numPages || pdfResult.total || 0,
+            itemCount: aiResult.items.length,
+            clarificationsNeeded,
+            metadata: aiResult.metadata,
+            specificationCells: aiResult.specificationCells,
+            hasText: true,
+            hasTables: false,
+            hasImages: false,
+            aiProvider: aiResult.providerUsed,
+            tokensUsed: aiResult.tokensUsed,
+            aiProcessingTimeMs: aiResult.processingTimeMs,
+          },
+          extractedItems: aiResult.items,
+          specificationCells: aiResult.specificationCells,
+        };
+      } catch (error) {
+        this.logger.warn(`AI extraction failed, falling back to pattern matching: ${error.message}`);
+      }
+    }
+
+    this.logger.log('Using pattern-based extraction (no AI available or AI failed)');
+    const result = await this.pdfExtractor.extractFromPdf(documentPath);
+
+    this.logger.log(`Extracted ${result.items.length} items from PDF (pattern-based)`);
+    this.logger.log(`Items needing clarification: ${result.clarificationsNeeded}`);
+    this.logger.log(`Found ${result.specificationCells.length} specification headers`);
 
     return {
       extractedData: {
-        pageCount: 0,
+        totalLines: result.totalRows,
+        itemCount: result.items.length,
+        clarificationsNeeded: result.clarificationsNeeded,
+        metadata: result.metadata,
+        specificationCells: result.specificationCells,
         hasText: true,
         hasTables: false,
         hasImages: false,
+        aiProvider: 'none (pattern-based)',
       },
-      extractedItems: [],
+      extractedItems: result.items,
+      specificationCells: result.specificationCells,
     };
   }
 
@@ -291,12 +358,15 @@ export class NixService {
   private async generateClarifications(
     extraction: NixExtraction,
     items: Array<any>,
+    documentType: DocumentType,
   ): Promise<NixClarification[]> {
     const clarifications: NixClarification[] = [];
+    const isPdf = documentType === DocumentType.PDF;
+    const itemRef = (num: number) => isPdf ? `Item ${num}` : `Row ${num}`;
 
     const itemsNeedingClarification = items.filter((item: ExtractedItem) => {
       if (!item.needsClarification && item.material && item.diameter) {
-        this.logger.debug(`Row ${item.rowNumber}: Skipping clarification - has material (${item.material}) and diameter (${item.diameter}mm)`);
+        this.logger.debug(`${itemRef(item.rowNumber)}: Skipping clarification - has material (${item.material}) and diameter (${item.diameter}mm)`);
         return false;
       }
       return item.needsClarification;
@@ -309,16 +379,16 @@ export class NixService {
       let clarificationType = ClarificationType.AMBIGUOUS;
 
       if (!extractedItem.material) {
-        question = `Row ${extractedItem.rowNumber}: I couldn't determine the material type for this item.\n\nDescription: "${extractedItem.description}"\n\nIs this Stainless Steel (SS) or Mild Steel (MS)?`;
+        question = `${itemRef(extractedItem.rowNumber)}: I couldn't determine the material type for this item.\n\nDescription: "${extractedItem.description}"\n\nIs this Stainless Steel (SS) or Mild Steel (MS)?`;
         clarificationType = ClarificationType.MISSING_INFO;
       } else if (!extractedItem.diameter) {
-        question = `Row ${extractedItem.rowNumber}: I couldn't determine the pipe diameter.\n\nDescription: "${extractedItem.description}"\n\nWhat is the diameter in mm?`;
+        question = `${itemRef(extractedItem.rowNumber)}: I couldn't determine the pipe diameter.\n\nDescription: "${extractedItem.description}"\n\nWhat is the diameter in mm?`;
         clarificationType = ClarificationType.MISSING_INFO;
       } else if (extractedItem.clarificationReason) {
-        question = `Row ${extractedItem.rowNumber}: ${extractedItem.clarificationReason}\n\nDescription: "${extractedItem.description}"\n\nPlease provide the missing information or correct any errors.`;
+        question = `${itemRef(extractedItem.rowNumber)}: ${extractedItem.clarificationReason}\n\nDescription: "${extractedItem.description}"\n\nPlease provide the missing information or correct any errors.`;
         clarificationType = ClarificationType.MISSING_INFO;
       } else {
-        this.logger.debug(`Row ${extractedItem.rowNumber}: Skipping - no actual missing info`);
+        this.logger.debug(`${itemRef(extractedItem.rowNumber)}: Skipping - no actual missing info`);
         continue;
       }
 
@@ -353,6 +423,7 @@ export class NixService {
   private async generateSpecificationClarifications(
     extraction: NixExtraction,
     specCells: SpecificationCellData[],
+    documentType: DocumentType,
   ): Promise<NixClarification[]> {
     const clarifications: NixClarification[] = [];
 

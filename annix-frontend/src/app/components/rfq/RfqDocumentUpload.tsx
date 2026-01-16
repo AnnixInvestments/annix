@@ -88,6 +88,11 @@ export default function RfqDocumentUpload({
     }
 
     // Check file size
+    if (file.size === 0) {
+      setError(`File "${file.name}" is empty (0 bytes). Please select a valid file.`);
+      return;
+    }
+
     if (file.size > maxFileSizeBytes) {
       setError(`File "${file.name}" exceeds maximum size of ${maxFileSizeMB}MB`);
       return;

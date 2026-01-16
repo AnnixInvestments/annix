@@ -334,7 +334,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         setNixProcessingStatus(`Uploading ${doc.file.name}...`);
         setNixProcessingTimeRemaining(12);
 
-        log.debug(`🤖 Processing document: ${doc.file.name}`);
+        log.debug(`🤖 Processing document: ${doc.file.name}, size: ${doc.file.size} bytes, type: ${doc.file.type}`);
 
         setNixProcessingProgress(docProgress + 15);
         setNixProcessingStatus('Reading document structure...');
@@ -427,15 +427,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
         // Fallback timeout to close popup if onReady callback doesn't fire
         setTimeout(() => {
+          let wasProcessing = false;
           setIsNixProcessing(prev => {
-            if (prev) {
-              setNixProcessingProgress(100);
-              setNixProcessingStatus('Complete!');
-              showToast(`Nix processed ${pendingDocuments.length} document(s) successfully!`, 'success');
-              return false;
-            }
-            return prev;
+            wasProcessing = prev;
+            return prev ? false : prev;
           });
+          if (wasProcessing) {
+            setNixProcessingProgress(100);
+            setNixProcessingStatus('Complete!');
+            showToast(`Nix processed ${pendingDocuments.length} document(s) successfully!`, 'success');
+          }
         }, 3000);
       }
     } catch (error) {
