@@ -24,11 +24,12 @@ const Bend3DPreview = dynamic(() => import('@/app/components/rfq/CSGBend3DPrevie
 const Tee3DPreview = dynamic(() => import('@/app/components/rfq/Tee3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 import { BendForm, FittingForm, StraightPipeForm } from '@/app/components/rfq/forms';
 
-export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses, hideDrawings = false }: any) {
+export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses, hideDrawings = false, onReady }: any) {
   const autoFocusedEntriesRef = useRef<Set<string>>(new Set());
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
   const [drawingsHidden, setDrawingsHidden] = useState(hideDrawings);
+  const hasCalledOnReady = useRef(false);
 
   const copyItemToClipboard = useCallback(async (entry: any) => {
     const itemData = JSON.stringify(entry, null, 2);
@@ -89,6 +90,24 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
 
   // Track the last entry count to detect new entries
   const lastEntryCountRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (onReady && !hasCalledOnReady.current && entries.length > 0) {
+      hasCalledOnReady.current = true;
+      const callback = () => {
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            onReady();
+          }, 100);
+        });
+      };
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(callback, { timeout: 1000 });
+      } else {
+        setTimeout(callback, 500);
+      }
+    }
+  }, [entries.length, onReady]);
 
   // Auto-focus on first empty required field for new entries
   useEffect(() => {

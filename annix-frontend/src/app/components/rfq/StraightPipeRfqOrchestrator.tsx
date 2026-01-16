@@ -299,6 +299,17 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     updateRfqField('useNix', false);
   };
 
+  const handleItemsPageReady = useCallback(() => {
+    if (isNixProcessing) {
+      setNixProcessingProgress(100);
+      setNixProcessingStatus('Complete!');
+      setTimeout(() => {
+        setIsNixProcessing(false);
+        showToast(`Nix processed ${pendingDocuments.length} document(s) successfully!`, 'success');
+      }, 300);
+    }
+  }, [isNixProcessing, pendingDocuments.length]);
+
   const handleProcessDocumentsWithNix = async () => {
     if (!pendingDocuments || pendingDocuments.length === 0) {
       log.warn('🤖 No documents to process with Nix');
@@ -413,12 +424,6 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         setNixProcessingStatus('Loading Items page...');
         setNixProcessingTimeRemaining(0);
         setCurrentStep(2);
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setNixProcessingProgress(100);
-        setNixProcessingStatus('Complete!');
-        await new Promise(resolve => setTimeout(resolve, 400));
-        setIsNixProcessing(false);
-        showToast(`Nix processed ${pendingDocuments.length} document(s) successfully!`, 'success');
       }
     } catch (error) {
       log.error('🤖 Nix processing error:', error);
@@ -2690,6 +2695,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               pressureClassesByStandard={pressureClassesByStandard}
               getFilteredPressureClasses={getFilteredPressureClasses}
               hideDrawings={rfqData.useNix}
+              onReady={rfqData.useNix ? handleItemsPageReady : undefined}
             />
           );
         case 3:

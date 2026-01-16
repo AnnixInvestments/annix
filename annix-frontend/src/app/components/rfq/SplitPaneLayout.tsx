@@ -186,7 +186,7 @@ export default function SplitPaneLayout({
       </div>
 
       {/* Draggable Divider */}
-      {isEnabled && (
+      {isEnabled && previewContent && (
         <div
           className={`w-1 bg-gray-300 ${colorScheme.divider} cursor-col-resize transition-colors flex-shrink-0 mx-2`}
           onMouseDown={(e) => {
@@ -224,7 +224,7 @@ export default function SplitPaneLayout({
       )}
 
       {/* Right Pane - 3D Preview */}
-      {isEnabled && showSplitToggle && (
+      {isEnabled && showSplitToggle && previewContent && (
         <div
           className="flex-shrink-0 sticky top-4 relative"
           style={{ width: `${100 - width}%`, height: `${height}px`, minHeight: '350px' }}
@@ -282,7 +282,7 @@ export default function SplitPaneLayout({
       )}
 
       {/* 3D Preview - shown below when split-pane is disabled */}
-      {!isEnabled && showSplitToggle && (
+      {!isEnabled && showSplitToggle && previewContent && (
         <div style={{ height: '450px' }}>
           {previewContent}
         </div>
