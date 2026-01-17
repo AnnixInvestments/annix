@@ -8,6 +8,7 @@ import { BendRfq } from './entities/bend-rfq.entity';
 import { FittingRfq } from './entities/fitting-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
+import { RfqSequence } from './entities/rfq-sequence.entity';
 import { User } from '../user/entities/user.entity';
 import { SteelSpecification } from '../steel-specification/entities/steel-specification.entity';
 import { PipeDimension } from '../pipe-dimension/entities/pipe-dimension.entity';
@@ -76,6 +77,14 @@ describe('RfqService', () => {
   };
 
   const mockRfqDraftRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
+
+  const mockRfqSequenceRepo = {
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
@@ -199,6 +208,10 @@ describe('RfqService', () => {
           useValue: mockRfqDocumentRepo,
         },
         { provide: getRepositoryToken(RfqDraft), useValue: mockRfqDraftRepo },
+        {
+          provide: getRepositoryToken(RfqSequence),
+          useValue: mockRfqSequenceRepo,
+        },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
         {
           provide: getRepositoryToken(SteelSpecification),

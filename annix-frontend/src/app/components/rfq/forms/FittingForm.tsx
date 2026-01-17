@@ -567,14 +567,80 @@ export default function FittingForm({
                     );
                   })()}
 
-                  {/* Pipe Length A */}
+                  {/* Pipe Length A - or Angle Range for Laterals/Y-Pieces */}
                   {(() => {
                     const fittingType = entry.specs?.fittingType;
+                    const isLateral = fittingType === 'LATERAL' || fittingType === 'Y_PIECE';
                     const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
                     const isUnequalTee = ['UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE'].includes(fittingType || '');
                     const isReducingTee = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(fittingType || '');
                     const isTee = isEqualTee || isUnequalTee || isReducingTee;
                     const isAutoA = entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
+
+                    if (isLateral) {
+                      return (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            Angle Range *
+                          </label>
+                          <select
+                            value={entry.specs?.angleRange || ''}
+                            onChange={async (e) => {
+                              const angleRange = e.target.value;
+                              const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+                              const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+
+                              let pipeLengthA = entry.specs?.pipeLengthAMm;
+                              let pipeLengthB = entry.specs?.pipeLengthBMm;
+                              let pipeLengthAMmAuto = entry.specs?.pipeLengthAMmAuto;
+                              let pipeLengthBMmAuto = entry.specs?.pipeLengthBMmAuto;
+
+                              if (entry.specs?.fittingType && entry.specs?.nominalDiameterMm && angleRange) {
+                                try {
+                                  const dims = await masterDataApi.getFittingDimensions(
+                                    effectiveStandard as 'SABS62' | 'SABS719',
+                                    entry.specs.fittingType,
+                                    entry.specs.nominalDiameterMm,
+                                    angleRange
+                                  );
+                                  if (dims) {
+                                    const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
+                                    const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
+                                    if (dimA && !entry.specs?.pipeLengthAOverride) {
+                                      pipeLengthA = dimA;
+                                      pipeLengthAMmAuto = dimA;
+                                    }
+                                    if (dimB && !entry.specs?.pipeLengthBOverride) {
+                                      pipeLengthB = dimB;
+                                      pipeLengthBMmAuto = dimB;
+                                    }
+                                  }
+                                } catch (err) {
+                                  log.debug('Could not fetch fitting dimensions:', err);
+                                }
+                              }
+
+                              onUpdateEntry(entry.id, {
+                                specs: {
+                                  ...entry.specs,
+                                  angleRange,
+                                  pipeLengthAMm: pipeLengthA,
+                                  pipeLengthBMm: pipeLengthB,
+                                  pipeLengthAMmAuto,
+                                  pipeLengthBMmAuto
+                                }
+                              });
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                          >
+                            <option value="">Select angle range...</option>
+                            <option value="60-90">60° - 90°</option>
+                            <option value="45-59">45° - 59°</option>
+                            <option value="30-44">30° - 44°</option>
+                          </select>
+                        </div>
+                      );
+                    }
 
                     return (
                       <div className={isTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
@@ -611,14 +677,65 @@ export default function FittingForm({
                     );
                   })()}
 
-                  {/* Pipe Length B */}
+                  {/* Pipe Length B - or Degrees for Laterals */}
                   {(() => {
                     const fittingType = entry.specs?.fittingType;
+                    const isLateral = fittingType === 'LATERAL';
+                    const isYPiece = fittingType === 'Y_PIECE';
                     const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
                     const isUnequalTee = ['UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE'].includes(fittingType || '');
                     const isReducingTee = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(fittingType || '');
                     const isTee = isEqualTee || isUnequalTee || isReducingTee;
                     const isAutoB = entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
+
+                    if (isLateral) {
+                      return (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            Degrees *
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.degrees || ''}
+                            onChange={(e) => {
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, degrees: Number(e.target.value) }
+                              });
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                            placeholder="e.g., 45, 60, 90"
+                            min="30"
+                            max="90"
+                          />
+                        </div>
+                      );
+                    }
+
+                    if (isYPiece) {
+                      return (
+                        <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
+                          <label className="block text-xs font-semibold text-blue-900 mb-1">
+                            Pipe Length B (mm) *
+                            {isAutoB && <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>}
+                            {entry.specs?.pipeLengthBOverride && <span className="text-orange-600 text-xs ml-1 font-normal">(Override)</span>}
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.pipeLengthBMm || ''}
+                            onChange={(e) => {
+                              const newValue = Number(e.target.value);
+                              const isOverride = entry.specs?.pipeLengthBMmAuto && newValue !== entry.specs?.pipeLengthBMmAuto;
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, pipeLengthBMm: newValue, pipeLengthBOverride: isOverride }
+                              });
+                            }}
+                            className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
+                            placeholder="e.g., 1000"
+                            min="0"
+                          />
+                        </div>
+                      );
+                    }
 
                     return (
                       <div className={isTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
@@ -742,93 +859,61 @@ export default function FittingForm({
                       return null;
                     })()}
 
-                    {/* Angle Range (for Laterals and Y-Pieces) */}
-                    {(entry.specs?.fittingType === 'LATERAL' || entry.specs?.fittingType === 'Y_PIECE') && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Angle Range *
-                        </label>
-                        <select
-                          value={entry.specs?.angleRange || ''}
-                          onChange={async (e) => {
-                            const angleRange = e.target.value;
-                            const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
-                            const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                    {/* Pipe Length A (for Laterals - moved from Row 2) */}
+                    {entry.specs?.fittingType === 'LATERAL' && (() => {
+                      const isAutoA = entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
+                      return (
+                        <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
+                          <label className="block text-xs font-semibold text-blue-900 mb-1">
+                            Pipe Length A (mm) *
+                            {isAutoA && <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>}
+                            {entry.specs?.pipeLengthAOverride && <span className="text-orange-600 text-xs ml-1 font-normal">(Override)</span>}
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.pipeLengthAMm || ''}
+                            onChange={(e) => {
+                              const newValue = Number(e.target.value);
+                              const isOverride = entry.specs?.pipeLengthAMmAuto && newValue !== entry.specs?.pipeLengthAMmAuto;
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, pipeLengthAMm: newValue, pipeLengthAOverride: isOverride }
+                              });
+                            }}
+                            className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
+                            placeholder="e.g., 1000"
+                            min="0"
+                          />
+                        </div>
+                      );
+                    })()}
 
-                            // Fetch fitting dimensions for pipe lengths with new angle
-                            let pipeLengthA = entry.specs?.pipeLengthAMm;
-                            let pipeLengthB = entry.specs?.pipeLengthBMm;
-                            let pipeLengthAMmAuto = entry.specs?.pipeLengthAMmAuto;
-                            let pipeLengthBMmAuto = entry.specs?.pipeLengthBMmAuto;
-
-                            if (entry.specs?.fittingType && entry.specs?.nominalDiameterMm && angleRange) {
-                              try {
-                                const dims = await masterDataApi.getFittingDimensions(
-                                  effectiveStandard as 'SABS62' | 'SABS719',
-                                  entry.specs.fittingType,
-                                  entry.specs.nominalDiameterMm,
-                                  angleRange
-                                );
-                                if (dims) {
-                                  // Parse string values to numbers (API returns decimal strings)
-                                  const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
-                                  const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
-                                  if (dimA && !entry.specs?.pipeLengthAOverride) {
-                                    pipeLengthA = dimA;
-                                    pipeLengthAMmAuto = dimA;
-                                  }
-                                  if (dimB && !entry.specs?.pipeLengthBOverride) {
-                                    pipeLengthB = dimB;
-                                    pipeLengthBMmAuto = dimB;
-                                  }
-                                }
-                              } catch (err) {
-                                log.debug('Could not fetch fitting dimensions:', err);
-                              }
-                            }
-
-                            onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                angleRange,
-                                pipeLengthAMm: pipeLengthA,
-                                pipeLengthBMm: pipeLengthB,
-                                pipeLengthAMmAuto,
-                                pipeLengthBMmAuto
-                              }
-                            });
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                        >
-                          <option value="">Select angle range...</option>
-                          <option value="60-90">60° - 90°</option>
-                          <option value="45-59">45° - 59°</option>
-                          <option value="30-44">30° - 44°</option>
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Degrees (for Laterals) */}
-                    {entry.specs?.fittingType === 'LATERAL' && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Degrees *
-                        </label>
-                        <input
-                          type="number"
-                          value={entry.specs?.degrees || ''}
-                          onChange={(e) => {
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, degrees: Number(e.target.value) }
-                            });
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                          placeholder="e.g., 45, 60, 90"
-                          min="30"
-                          max="90"
-                        />
-                      </div>
-                    )}
+                    {/* Pipe Length B (for Laterals - moved from Row 2) */}
+                    {entry.specs?.fittingType === 'LATERAL' && (() => {
+                      const isAutoB = entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
+                      return (
+                        <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
+                          <label className="block text-xs font-semibold text-blue-900 mb-1">
+                            Pipe Length B (mm) *
+                            {isAutoB && <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>}
+                            {entry.specs?.pipeLengthBOverride && <span className="text-orange-600 text-xs ml-1 font-normal">(Override)</span>}
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.pipeLengthBMm || ''}
+                            onChange={(e) => {
+                              const newValue = Number(e.target.value);
+                              const isOverride = entry.specs?.pipeLengthBMmAuto && newValue !== entry.specs?.pipeLengthBMmAuto;
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, pipeLengthBMm: newValue, pipeLengthBOverride: isOverride }
+                              });
+                            }}
+                            className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
+                            placeholder="e.g., 1000"
+                            min="0"
+                          />
+                        </div>
+                      );
+                    })()}
 
                     {/* Tee NB - For Unequal Tees */}
                     {['UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE'].includes(entry.specs?.fittingType || '') && (
