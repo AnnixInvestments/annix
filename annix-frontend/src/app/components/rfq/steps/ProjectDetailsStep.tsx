@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { isNumber } from 'es-toolkit/compat';
 import { minesApi, SaMine } from '@/app/lib/api/client';
 import { generateSystemReferenceNumber } from '@/app/lib/utils/systemUtils';
 import GoogleMapLocationPicker from '@/app/components/GoogleMapLocationPicker';
@@ -1441,7 +1442,8 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
               apiKey={GOOGLE_MAPS_API_KEY}
               config={getMapConfig()}
               initialLocation={
-                rfqData.latitude && rfqData.longitude
+                isNumber(rfqData.latitude) && isNumber(rfqData.longitude) &&
+                isFinite(rfqData.latitude) && isFinite(rfqData.longitude)
                   ? { lat: rfqData.latitude, lng: rfqData.longitude }
                   : undefined
               }

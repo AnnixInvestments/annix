@@ -903,14 +903,18 @@ export class SupplierAuthService {
         throw new UnauthorizedException('Supplier not found');
       }
 
-      const activeBinding = profile.deviceBindings.find(
-        (b) => b.isActive && b.isPrimary,
-      );
-      if (
-        !activeBinding ||
-        activeBinding.deviceFingerprint !== deviceFingerprint
-      ) {
-        throw new UnauthorizedException('Device mismatch');
+      const deviceBindingDisabled =
+        this.configService.get('DISABLE_DEVICE_FINGERPRINT') === 'true';
+      if (!deviceBindingDisabled) {
+        const activeBinding = profile.deviceBindings.find(
+          (b) => b.isActive && b.isPrimary,
+        );
+        if (
+          !activeBinding ||
+          activeBinding.deviceFingerprint !== deviceFingerprint
+        ) {
+          throw new UnauthorizedException('Device mismatch');
+        }
       }
 
       if (

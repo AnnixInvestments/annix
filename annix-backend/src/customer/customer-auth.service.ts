@@ -602,14 +602,18 @@ export class CustomerAuthService {
         throw new UnauthorizedException('Customer not found');
       }
 
-      const activeBinding = profile.deviceBindings.find(
-        (b) => b.isActive && b.isPrimary,
-      );
-      if (
-        !activeBinding ||
-        activeBinding.deviceFingerprint !== dto.deviceFingerprint
-      ) {
-        throw new UnauthorizedException('Device mismatch');
+      const deviceBindingDisabled =
+        this.configService.get('DISABLE_DEVICE_FINGERPRINT') === 'true';
+      if (!deviceBindingDisabled) {
+        const activeBinding = profile.deviceBindings.find(
+          (b) => b.isActive && b.isPrimary,
+        );
+        if (
+          !activeBinding ||
+          activeBinding.deviceFingerprint !== dto.deviceFingerprint
+        ) {
+          throw new UnauthorizedException('Device mismatch');
+        }
       }
 
       // Check account status
