@@ -331,34 +331,143 @@ function FlangeComponent({
   );
 }
 
-// Gusset plate component (triangular reinforcement)
-// Simplified to not use CSG as it causes rendering issues
+// Realistic gusset plate component - curved reinforcement plate between run and branch pipes
+// Gussets are welded steel plates that reinforce the branch connection and improve flow
 function GussetPlate({
-  position,
-  rotation,
-  size,
+  runRadius,
+  branchRadius,
+  gussetLength,
   thickness,
+  side, // 'left' or 'right' - which side of the branch (along run axis)
+  branchOffsetX,
 }: {
-  position: [number, number, number];
-  rotation: [number, number, number];
-  size: number;
+  runRadius: number;
+  branchRadius: number;
+  gussetLength: number;
   thickness: number;
-  branchRadius?: number;
-  branchLocalOffset?: [number, number, number];
+  side: 'left' | 'right';
+  branchOffsetX: number;
 }) {
   const geometry = useMemo(() => {
-    const shape = new THREE.Shape();
-    shape.moveTo(0, 0);
-    shape.lineTo(size, 0);
-    shape.lineTo(0, size);
-    shape.lineTo(0, 0);
-    const extrudeSettings = { depth: thickness, bevelEnabled: false };
-    return new THREE.ExtrudeGeometry(shape, extrudeSettings);
-  }, [size, thickness]);
+    // Create a curved gusset plate that follows the pipe surfaces
+    // The gusset sits on top of the run pipe and extends up along the branch
+    const segments = 16;
+    const positions: number[] = [];
+    const indices: number[] = [];
+
+    // Direction multiplier based on side
+    const dir = side === 'left' ? -1 : 1;
+
+    // The gusset extends from the run pipe surface (at y = runRadius)
+    // upward along the branch at a 45-degree angle
+    // It's positioned at the edge of the branch opening
+
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+
+      // Inner edge (closer to branch center) - follows a curve from run to branch
+      const innerX = branchOffsetX + dir * (branchRadius * 0.3 + t * gussetLength * 0.7);
+      const innerY = runRadius + t * gussetLength;
+      const innerZ = thickness / 2;
+
+      // Outer edge - extends further out
+      const outerX = branchOffsetX + dir * (branchRadius + t * gussetLength);
+      const outerY = runRadius + t * gussetLength * 0.85;
+      const outerZ = thickness / 2;
+
+      // Front face vertices (positive Z)
+      positions.push(innerX, innerY, innerZ);
+      positions.push(outerX, outerY, outerZ);
+
+      // Back face vertices (negative Z)
+      positions.push(innerX, innerY, -innerZ);
+      positions.push(outerX, outerY, -outerZ);
+    }
+
+    // Create faces
+    for (let i = 0; i < segments; i++) {
+      const base = i * 4;
+
+      // Front face quad
+      indices.push(base, base + 4, base + 1);
+      indices.push(base + 1, base + 4, base + 5);
+
+      // Back face quad
+      indices.push(base + 2, base + 3, base + 6);
+      indices.push(base + 3, base + 7, base + 6);
+
+      // Outer edge
+      indices.push(base + 1, base + 5, base + 3);
+      indices.push(base + 3, base + 5, base + 7);
+
+      // Inner edge
+      indices.push(base, base + 2, base + 4);
+      indices.push(base + 2, base + 6, base + 4);
+    }
+
+    // Bottom cap (at run pipe surface)
+    indices.push(0, 1, 2);
+    indices.push(1, 3, 2);
+
+    // Top cap
+    const topBase = segments * 4;
+    indices.push(topBase, topBase + 2, topBase + 1);
+    indices.push(topBase + 1, topBase + 2, topBase + 3);
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+
+    return geo;
+  }, [runRadius, branchRadius, gussetLength, thickness, side, branchOffsetX]);
 
   return (
-    <mesh position={position} rotation={rotation} geometry={geometry} castShadow receiveShadow>
-      <meshStandardMaterial color="#7a7a7a" metalness={0.6} roughness={0.4} side={THREE.DoubleSide} />
+    <mesh geometry={geometry} castShadow receiveShadow>
+      <meshStandardMaterial
+        color="#5a5a5a"
+        metalness={0.7}
+        roughness={0.3}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
+// Weld bead component for gusset edges
+function GussetWeld({
+  runRadius,
+  branchRadius,
+  gussetLength,
+  side,
+  branchOffsetX,
+}: {
+  runRadius: number;
+  branchRadius: number;
+  gussetLength: number;
+  side: 'left' | 'right';
+  branchOffsetX: number;
+}) {
+  const weldRadius = gussetLength * 0.03;
+  const dir = side === 'left' ? -1 : 1;
+
+  // Create weld beads along the edges
+  const points: THREE.Vector3[] = [];
+  const segments = 12;
+
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const x = branchOffsetX + dir * (branchRadius + t * gussetLength);
+    const y = runRadius + t * gussetLength * 0.85;
+    points.push(new THREE.Vector3(x, y, 0));
+  }
+
+  const curve = new THREE.CatmullRomCurve3(points);
+
+  return (
+    <mesh>
+      <tubeGeometry args={[curve, 16, weldRadius, 8, false]} />
+      <meshStandardMaterial color="#2a2a2a" metalness={0.3} roughness={0.8} />
     </mesh>
   );
 }
@@ -478,26 +587,42 @@ function TeeScene(props: Tee3DPreviewProps) {
           <meshStandardMaterial color="#808080" metalness={0.6} roughness={0.3} />
         </mesh>
 
-        {/* Gusset plates for Gusset Tees - 2 vertical triangular plates along run pipe axis */}
+        {/* Gusset plates for Gusset Tees - curved reinforcement plates on both sides of branch */}
         {teeType === 'gusset' && gussetSize > 0 && (
           <>
-            {/* Inlet side gusset (-X side) - local coords: origin at gusset position, rotation applied */}
+            {/* Left gusset (-X side) - extends from run pipe up along branch */}
             <GussetPlate
-              position={[branchOffsetX - branchOuterRadius, outerRadius, gussetThickness / 2]}
-              rotation={[0, Math.PI, 0]}
-              size={gussetSize}
-              thickness={gussetThickness}
+              runRadius={outerRadius}
               branchRadius={branchOuterRadius}
-              branchLocalOffset={[-branchOuterRadius, 0, gussetThickness / 2]}
+              gussetLength={gussetSize}
+              thickness={gussetThickness}
+              side="left"
+              branchOffsetX={branchOffsetX}
             />
-            {/* Outlet side gusset (+X side) */}
-            <GussetPlate
-              position={[branchOffsetX + branchOuterRadius, outerRadius, -gussetThickness / 2]}
-              rotation={[0, 0, 0]}
-              size={gussetSize}
-              thickness={gussetThickness}
+            {/* Left gusset weld */}
+            <GussetWeld
+              runRadius={outerRadius}
               branchRadius={branchOuterRadius}
-              branchLocalOffset={[-branchOuterRadius, 0, gussetThickness / 2]}
+              gussetLength={gussetSize}
+              side="left"
+              branchOffsetX={branchOffsetX}
+            />
+            {/* Right gusset (+X side) */}
+            <GussetPlate
+              runRadius={outerRadius}
+              branchRadius={branchOuterRadius}
+              gussetLength={gussetSize}
+              thickness={gussetThickness}
+              side="right"
+              branchOffsetX={branchOffsetX}
+            />
+            {/* Right gusset weld */}
+            <GussetWeld
+              runRadius={outerRadius}
+              branchRadius={branchOuterRadius}
+              gussetLength={gussetSize}
+              side="right"
+              branchOffsetX={branchOffsetX}
             />
           </>
         )}
@@ -1009,23 +1134,23 @@ function TeeScene(props: Tee3DPreviewProps) {
           </>
         )}
 
-        {/* Gusset dimension for gusset tees */}
+        {/* Gusset dimension for gusset tees - shows vertical gusset length */}
         {teeType === 'gusset' && gussetSize > 0 && (
           <>
             <Line
               points={[
-                [branchOffsetX + branchOuterRadius + gussetThickness, outerRadius, 0.3],
-                [branchOffsetX + branchOuterRadius + gussetThickness + gussetSize, outerRadius, 0.3]
+                [branchOffsetX + branchOuterRadius + gussetSize + 0.1, outerRadius, 0.3],
+                [branchOffsetX + branchOuterRadius + gussetSize + 0.1, outerRadius + gussetSize * 0.85, 0.3]
               ]}
               color="#0066cc"
               lineWidth={2}
             />
             <Text
-              position={[branchOffsetX + branchOuterRadius + gussetThickness + gussetSize / 2, outerRadius - 0.15, 0.3]}
-              fontSize={0.15}
+              position={[branchOffsetX + branchOuterRadius + gussetSize + 0.25, outerRadius + gussetSize * 0.4, 0.3]}
+              fontSize={0.12}
               color="#0066cc"
-              anchorX="center"
-              anchorY="top"
+              anchorX="left"
+              anchorY="middle"
               outlineWidth={0.015}
               outlineColor="white"
               fontWeight="bold"

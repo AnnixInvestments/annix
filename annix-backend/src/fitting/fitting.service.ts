@@ -274,9 +274,36 @@ export class FittingService {
     }
 
     // Calculate weights for pipe sections (convert mm to m)
+    // Run pipe: user-specified lengths A and B
     const pipeWeightA = pipeWeightPerMeter * (dto.pipeLengthAMm / 1000);
     const pipeWeightB = pipeWeightPerMeter * (dto.pipeLengthBMm / 1000);
-    const totalPipeWeight = (pipeWeightA + pipeWeightB) * dto.quantityValue;
+    const runPipeWeight = pipeWeightA + pipeWeightB;
+
+    // Branch pipe: for tees and laterals, add the branch height from fitting dimensions
+    // For tees: dimensionAMm is the center-to-face height (branch length)
+    // For gusset tees: dimensionBMm is the center-to-face height
+    let branchPipeWeight = 0;
+    const isTeeType = [
+      'SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE',
+      'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE',
+      'SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE',
+    ].includes(dto.fittingType);
+    const isGussetType = dto.fittingType.includes('GUSSET');
+    const isLateralType = ['LATERAL', 'Y_PIECE'].includes(dto.fittingType);
+
+    if (isTeeType && fittingDimensions) {
+      // Use dimensionBMm for gusset tees, dimensionAMm for short tees
+      const branchHeightMm = isGussetType
+        ? (fittingDimensions.dimensionBMm || fittingDimensions.dimensionAMm || 0)
+        : (fittingDimensions.dimensionAMm || 0);
+      branchPipeWeight = pipeWeightPerMeter * (branchHeightMm / 1000);
+    } else if (isLateralType && fittingDimensions) {
+      // For laterals, use dimensionAMm as the branch height
+      const branchHeightMm = fittingDimensions.dimensionAMm || 0;
+      branchPipeWeight = pipeWeightPerMeter * (branchHeightMm / 1000);
+    }
+
+    const totalPipeWeight = (runPipeWeight + branchPipeWeight) * dto.quantityValue;
 
     // Calculate weld weights
     // 1 tee/lateral weld per fitting + flange welds
@@ -487,8 +514,24 @@ export class FittingService {
             1000;
         }
 
-        const totalTangentLength =
-          (dto.pipeLengthAMm || 0) + (dto.pipeLengthBMm || 0);
+        // Run pipe: user-specified lengths A and B
+        const runPipeLength = (dto.pipeLengthAMm || 0) + (dto.pipeLengthBMm || 0);
+
+        // Branch pipe: for tees and laterals, add the branch height from fitting dimensions
+        let branchPipeLength = 0;
+        const isTeeType = [
+          'SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE',
+          'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE',
+          'SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE',
+        ].includes(dto.fittingType);
+        const isLateralType = ['LATERAL', 'Y_PIECE'].includes(dto.fittingType);
+
+        if ((isTeeType || isLateralType) && fittingDimensions) {
+          // Use centreToFaceCMm as the branch height
+          branchPipeLength = fittingDimensions.centreToFaceCMm || 0;
+        }
+
+        const totalTangentLength = runPipeLength + branchPipeLength;
         totalPipeWeight =
           pipeWeightPerMeter * (totalTangentLength / 1000) * dto.quantityValue;
       }

@@ -245,6 +245,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const [bendOptionsCache, setBendOptionsCache] = useState<Record<string, { nominalBores: number[]; degrees: number[] }>>({});
   // Store pending documents to upload
   const [pendingDocuments, setPendingDocuments] = useState<PendingDocument[]>([]);
+  // Store pending tender specification documents
+  const [pendingTenderDocuments, setPendingTenderDocuments] = useState<PendingDocument[]>([]);
   // Nix AI Assistant popup visibility
   const [showNixPopup, setShowNixPopup] = useState(false);
   // Nix processing state
@@ -271,6 +273,19 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
   const handleRemoveDocument = (id: string) => {
     setPendingDocuments(prev => prev.filter(doc => doc.id !== id));
+  };
+
+  // Tender specification document handlers
+  const handleAddTenderDocument = (file: File) => {
+    const newDoc: PendingDocument = {
+      file,
+      id: `tender-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
+    };
+    setPendingTenderDocuments(prev => [...prev, newDoc]);
+  };
+
+  const handleRemoveTenderDocument = (id: string) => {
+    setPendingTenderDocuments(prev => prev.filter(doc => doc.id !== id));
   };
 
   // Nix AI Assistant handlers
@@ -2322,14 +2337,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       const result = await unifiedRfqApi.create(unifiedPayload);
       log.debug(`✅ Unified RFQ created successfully:`, result);
 
-      if (pendingDocuments.length > 0 && result.rfq?.id) {
+      if ((pendingDocuments.length > 0 || pendingTenderDocuments.length > 0) && result.rfq?.id) {
         const rfqId = result.rfq.id;
-        log.debug(`📎 Uploading ${pendingDocuments.length} document(s) to RFQ #${rfqId}...`);
+        const allDocuments = [...pendingDocuments, ...pendingTenderDocuments];
+        log.debug(`📎 Uploading ${allDocuments.length} document(s) to RFQ #${rfqId}...`);
 
         let uploadedCount = 0;
         let failedCount = 0;
 
-        for (const doc of pendingDocuments) {
+        for (const doc of allDocuments) {
           try {
             await rfqDocumentApi.upload(rfqId, doc.file);
             uploadedCount++;
@@ -2345,6 +2361,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         }
 
         setPendingDocuments([]);
+        setPendingTenderDocuments([]);
       }
 
       if (result.rfq?.id) {
@@ -2698,6 +2715,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               pendingDocuments={pendingDocuments}
               onAddDocument={handleAddDocument}
               onRemoveDocument={handleRemoveDocument}
+              pendingTenderDocuments={pendingTenderDocuments}
+              onAddTenderDocument={handleAddTenderDocument}
+              onRemoveTenderDocument={handleRemoveTenderDocument}
               useNix={rfqData.useNix}
               onShowNixPopup={handleShowNixPopup}
               onStopUsingNix={handleStopUsingNix}
@@ -2778,6 +2798,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               pendingDocuments={pendingDocuments}
               onAddDocument={handleAddDocument}
               onRemoveDocument={handleRemoveDocument}
+              pendingTenderDocuments={pendingTenderDocuments}
+              onAddTenderDocument={handleAddTenderDocument}
+              onRemoveTenderDocument={handleRemoveTenderDocument}
               useNix={rfqData.useNix}
               onShowNixPopup={handleShowNixPopup}
               onStopUsingNix={handleStopUsingNix}

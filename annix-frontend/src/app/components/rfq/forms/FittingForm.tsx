@@ -559,10 +559,11 @@ export default function FittingForm({
                     const fittingType = entry.specs?.fittingType;
                     const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
                     const isUnequalTee = ['UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE'].includes(fittingType || '');
+                    const isTee = isEqualTee || isUnequalTee;
                     const isAutoA = entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
 
                     return (
-                      <div className={isUnequalTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
+                      <div className={isTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
                         <label className="block text-xs font-semibold text-gray-900 mb-1">
                           Pipe Length A (mm) *
                           {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(C/F)</span>}
@@ -601,10 +602,11 @@ export default function FittingForm({
                     const fittingType = entry.specs?.fittingType;
                     const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
                     const isUnequalTee = ['UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE'].includes(fittingType || '');
+                    const isTee = isEqualTee || isUnequalTee;
                     const isAutoB = entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
 
                     return (
-                      <div className={isUnequalTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
+                      <div className={isTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
                         <label className="block text-xs font-semibold text-gray-900 mb-1">
                           Pipe Length B (mm) *
                           {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(C/F)</span>}
@@ -808,6 +810,48 @@ export default function FittingForm({
                           min="30"
                           max="90"
                         />
+                      </div>
+                    )}
+
+                    {/* Tee NB - For Unequal Tees */}
+                    {['UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE'].includes(entry.specs?.fittingType || '') && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          Tee NB (mm) *
+                          <span className="text-blue-600 text-xs ml-2">(Branch Outlet Size)</span>
+                        </label>
+                        {(() => {
+                          const selectId = `fitting-tee-nb-${entry.id}`;
+                          const mainNB = entry.specs?.nominalDiameterMm || 0;
+                          const sizes = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 1000, 1050, 1200]
+                            .filter(nb => nb < mainNB);
+                          const options = sizes.map((nb: number) => ({ value: String(nb), label: `${nb}mm` }));
+
+                          return (
+                            <Select
+                              id={selectId}
+                              value={entry.specs?.teeNominalDiameterMm ? String(entry.specs.teeNominalDiameterMm) : ''}
+                              onChange={(value) => {
+                                if (!value) return;
+                                const teeDiameter = Number(value);
+                                onUpdateEntry(entry.id, {
+                                  specs: {
+                                    ...entry.specs,
+                                    teeNominalDiameterMm: teeDiameter
+                                  }
+                                });
+                                setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                              }}
+                              options={options}
+                              placeholder="Select tee diameter..."
+                              open={openSelects[selectId] || false}
+                              onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            />
+                          );
+                        })()}
+                        <p className="mt-1 text-xs text-gray-500">
+                          Branch/outlet size must be smaller than main pipe ({entry.specs?.nominalDiameterMm || '--'}mm)
+                        </p>
                       </div>
                     )}
 

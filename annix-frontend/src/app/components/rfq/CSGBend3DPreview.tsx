@@ -282,12 +282,13 @@ const Flange = ({
   innerR: number
   nb: number
 }) => {
-  const flangeR = pipeR * 2.2
-  const thick = pipeR * 0.4
-  const boltR = pipeR * 1.65
-  const holeR = pipeR * 0.12
-  const boltCount = nb <= 100 ? 4 : nb <= 200 ? 8 : nb <= 350 ? 12 : 20
-  const boreR = innerR * 1.02
+  const flangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nb).pop() || 200]
+  const flangeR = (flangeSpecs.flangeOD / 2) / SCALE
+  const thick = flangeR * 0.18
+  const boltR = (flangeSpecs.pcd / 2) / SCALE
+  const holeR = (flangeSpecs.holeID / 2) / SCALE
+  const boltCount = flangeSpecs.boltHoles
+  const boreR = pipeR * 1.02
 
   const faceGeometry = useMemo(() => {
     const shape = new THREE.Shape()
@@ -369,7 +370,9 @@ const SaddleCutStubPipe = ({
 }) => {
   const dir = direction.clone().normalize()
   const weldTube = outerR * 0.06
-  const flangeOffset = outerR * 0.18
+  const stubFlangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nb).pop() || 200]
+  const stubFlangeThick = ((stubFlangeSpecs.flangeOD / 2) / SCALE) * 0.18
+  const flangeOffset = stubFlangeThick / 2
 
   const saddleAxis = useMemo(() => {
     const isVertical = Math.abs(dir.y) > 0.7
@@ -540,7 +543,9 @@ const StubPipe = ({
   const dir = direction.clone().normalize()
   const endCenter = baseCenter.clone().add(dir.clone().multiplyScalar(length))
   const weldTube = outerR * 0.06
-  const flangeOffset = outerR * 0.18
+  const stubFlangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nb).pop() || 200]
+  const stubFlangeThick = ((stubFlangeSpecs.flangeOD / 2) / SCALE) * 0.18
+  const flangeOffset = stubFlangeThick / 2
 
   return (
     <>
@@ -679,11 +684,12 @@ const BlankFlange = ({
   pipeR: number
   nb: number
 }) => {
-  const flangeR = pipeR * 2.2
-  const thick = pipeR * 0.4
-  const boltR = pipeR * 1.65
-  const holeR = pipeR * 0.12
-  const boltCount = nb <= 100 ? 4 : nb <= 200 ? 8 : nb <= 350 ? 12 : 20
+  const flangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nb).pop() || 200]
+  const flangeR = (flangeSpecs.flangeOD / 2) / SCALE
+  const thick = flangeR * 0.18
+  const boltR = (flangeSpecs.pcd / 2) / SCALE
+  const holeR = (flangeSpecs.holeID / 2) / SCALE
+  const boltCount = flangeSpecs.boltHoles
 
   const faceGeometry = useMemo(() => {
     const shape = new THREE.Shape()
@@ -778,6 +784,10 @@ const Scene = (props: Props) => {
   const config = flangeConfig.toUpperCase()
   const hasInletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'].includes(config)
   const hasOutletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'].includes(config)
+
+  const flangeSpecs = FLANGE_DATA[nominalBore] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nominalBore).pop() || 200]
+  const flangeThickScaled = ((flangeSpecs.flangeOD / 2) / SCALE) * 0.18
+  const flangeOffset = flangeThickScaled / 2
 
   const weldTube = outerR * 0.05
 
@@ -931,7 +941,7 @@ const Scene = (props: Props) => {
 
         {hasInletFlange && (
           <Flange
-            center={new THREE.Vector3(0, 0, -outerR * 0.18)}
+            center={new THREE.Vector3(0, 0, -flangeOffset)}
             normal={new THREE.Vector3(0, 0, -1)}
             pipeR={outerR}
             innerR={innerR}
@@ -942,8 +952,8 @@ const Scene = (props: Props) => {
         {hasOutletFlange && (
           <Flange
             center={t2 > 0
-              ? outletEnd.clone().add(outletDir.clone().multiplyScalar(outerR * 0.18))
-              : bendEndPoint.clone().add(outletDir.clone().multiplyScalar(outerR * 0.18))
+              ? outletEnd.clone().add(outletDir.clone().multiplyScalar(flangeOffset))
+              : bendEndPoint.clone().add(outletDir.clone().multiplyScalar(flangeOffset))
             }
             normal={outletDir}
             pipeR={outerR}
@@ -953,9 +963,7 @@ const Scene = (props: Props) => {
         )}
 
         {addBlankFlange && blankFlangePositions.includes('inlet') && hasInletFlange && (() => {
-          const flangeThick = outerR * 0.4
-          const flangeOffset = outerR * 0.18
-          const blankOffset = flangeOffset + flangeThick * 2 + 0.05
+          const blankOffset = flangeOffset + flangeThickScaled * 2 + 0.05
           return (
             <BlankFlange
               center={new THREE.Vector3(0, 0, -blankOffset)}
@@ -967,9 +975,7 @@ const Scene = (props: Props) => {
         })()}
 
         {addBlankFlange && blankFlangePositions.includes('outlet') && hasOutletFlange && (() => {
-          const flangeThick = outerR * 0.4
-          const flangeOffset = outerR * 0.18
-          const blankOffset = flangeOffset + flangeThick * 2 + 0.05
+          const blankOffset = flangeOffset + flangeThickScaled * 2 + 0.05
           const basePoint = t2 > 0 ? outletEnd : bendEndPoint
           return (
             <BlankFlange

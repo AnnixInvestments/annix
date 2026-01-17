@@ -1070,7 +1070,7 @@ export default function StraightPipeForm({
                             description: newDescription
                           });
                         }}
-                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 6.1 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
+                        className={`px-2 py-1 text-xs rounded border ${entry.specs.individualPipeLength === 6.1 ? 'bg-blue-100 border-blue-300 font-medium text-black' : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-black dark:text-white dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600'}`}
                       >
                         6.1m
                       </button>
@@ -1089,7 +1089,7 @@ export default function StraightPipeForm({
                             description: newDescription
                           });
                         }}
-                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 9.144 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
+                        className={`px-2 py-1 text-xs rounded border ${entry.specs.individualPipeLength === 9.144 ? 'bg-blue-100 border-blue-300 font-medium text-black' : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-black dark:text-white dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600'}`}
                       >
                         9.144m
                       </button>
@@ -1108,7 +1108,7 @@ export default function StraightPipeForm({
                             description: newDescription
                           });
                         }}
-                        className={`px-2 py-1 text-black text-xs rounded border ${entry.specs.individualPipeLength === 12.192 ? 'bg-blue-100 border-blue-300 font-medium' : 'bg-gray-100 hover:bg-gray-200 border-gray-300'}`}
+                        className={`px-2 py-1 text-xs rounded border ${entry.specs.individualPipeLength === 12.192 ? 'bg-blue-100 border-blue-300 font-medium text-black' : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-black dark:text-white dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600'}`}
                       >
                         12.192m
                       </button>
