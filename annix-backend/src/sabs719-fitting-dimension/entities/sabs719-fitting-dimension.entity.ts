@@ -30,6 +30,9 @@ export class Sabs719FittingDimension {
   })
   outsideDiameterMm: number;
 
+  @Column({ name: 'angle_range', type: 'varchar', length: 20, nullable: true })
+  angleRange: string;
+
   @Column({
     name: 'dimension_a_mm',
     type: 'decimal',

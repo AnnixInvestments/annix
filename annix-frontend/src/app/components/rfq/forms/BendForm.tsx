@@ -2329,352 +2329,11 @@ export default function BendForm({
                     </button>
                   </div>
                 )}
-
-                {/* Smart Notes Dropdown */}
-                <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
-                  <label className="block text-xs font-semibold text-gray-900 mb-2">
-                    Additional Notes & Requirements
-                  </label>
-                  <SmartNotesDropdown
-                    selectedNotes={entry.selectedNotes || []}
-                    onNotesChange={(notes) => onUpdateEntry(entry.id, {
-                      selectedNotes: notes,
-                      notes: formatNotesForDisplay(notes)
-                    })}
-                    placeholder="Select quality/inspection requirements..."
-                  />
-                </div>
-
-                {/* Calculation Results - Compact Layout matching Pipe style */}
-                {entry.calculation && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
-                      Calculation Results
-                    </h4>
-                    <div className="bg-purple-50 border border-purple-200 p-3 rounded-md">
-                      {(() => {
-                        // Calculate all values needed for display
-                        const cf = Number(entry.specs?.centerToFaceMm) || 0;
-                        const tangent1 = entry.specs?.tangentLengths?.[0] || 0;
-                        const tangent2 = entry.specs?.tangentLengths?.[1] || 0;
-                        const numTangents = entry.specs?.numberOfTangents || 0;
-                        const numStubs = entry.specs?.numberOfStubs || 0;
-                        const stubs = entry.specs?.stubs || [];
-                        const stub1NB = stubs[0]?.nominalBoreMm;
-                        const stub2NB = stubs[1]?.nominalBoreMm;
-                        // Stubs always have flanges by default when they exist (have NB set)
-                        const stub1HasFlange = stub1NB ? true : false;
-                        const stub2HasFlange = stub2NB ? true : false;
-                        const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-
-                        // C/F display with tangents
-                        const end1 = cf + tangent1;
-                        const end2 = cf + tangent2;
-                        let cfDisplay = '';
-                        if (numTangents > 0 && (tangent1 > 0 || tangent2 > 0)) {
-                          if (numTangents === 2 && tangent1 > 0 && tangent2 > 0) {
-                            cfDisplay = `${end1.toFixed(0)}x${end2.toFixed(0)}`;
-                          } else if (tangent1 > 0) {
-                            cfDisplay = `${end1.toFixed(0)}x${cf.toFixed(0)}`;
-                          } else if (tangent2 > 0) {
-                            cfDisplay = `${cf.toFixed(0)}x${end2.toFixed(0)}`;
-                          }
-                        } else {
-                          cfDisplay = `${cf.toFixed(0)}`;
-                        }
-
-                        // Count total flanges from all sources
-                        // FBE = Flanged Both Ends (2), 2xLF = Loose Flange Both Ends (2), 2X_RF = 2x Rotating Flange (2)
-                        // FOE_LF = Flanged One End + Loose Flange (2), FOE_RF = Flanged One End + Rotating Flange (2)
-                        // FOE = Flanged One End (1)
-                        const bendFlangeCount = ['FBE', '2xLF', '2X_RF', 'FOE_LF', 'FOE_RF'].includes(bendEndConfig) ? 2
-                          : ['FOE'].includes(bendEndConfig) ? 1 : 0;
-                        const stub1FlangeCount = stub1HasFlange ? 1 : 0;
-                        const stub2FlangeCount = stub2HasFlange ? 1 : 0;
-                        const numSegments = entry.specs?.numberOfSegments || 0;
-                        const totalFlanges = bendFlangeCount + stub1FlangeCount + stub2FlangeCount;
-
-                        // Weld thickness lookup
-                        const dn = entry.specs?.nominalBoreMm;
-                        const schedule = entry.specs?.scheduleNumber || '';
-                        const pipeWallThickness = entry.calculation?.wallThicknessMm;
-
-                        // Check for SABS 719 - use item-level steel spec with global fallback
-                        const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                        const isSABS719 = steelSpecId === 8;
-
-                        const scheduleUpper = schedule.toUpperCase();
-                        const fittingClass = scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH') ? 'XXH' : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH') ? 'XH' : 'STD';
-                        const FITTING_WT: Record<string, Record<number, number>> = {
-                          'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53, 750: 9.53, 900: 9.53, 1000: 9.53, 1050: 9.53, 1200: 9.53 },
-                          'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70, 750: 12.70, 900: 12.70, 1000: 12.70, 1050: 12.70, 1200: 12.70 },
-                          'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
-                        };
-                        const NB_TO_OD: Record<number, number> = { 15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9, 100: 114.3, 125: 141.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6, 700: 711.2, 750: 762.0, 800: 812.8, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2 };
-                        // For SABS 719: round pipe WT to 1.5mm increments; for ASTM/ASME: use fitting lookup
-                        const fittingWt = isSABS719 ? null : (dn ? FITTING_WT[fittingClass]?.[dn] : null);
-                        const effectiveWt = isSABS719 ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness) : (fittingWt || pipeWallThickness);
-
-                        // Calculate stub weights using proper pipe weight formula
-                        // Weight = π × (OD² - ID²) / 4 × density × length / 1000000
-                        // Steel density = 7850 kg/m³
-                        const calculateStubWeight = (stubNB: number | null, stubLength: number, stubWt?: number): number => {
-                          if (!stubNB || stubLength <= 0) return 0;
-                          const stubOD = NB_TO_OD[stubNB] || stubNB * 1.1;
-                          // Use provided WT or lookup from FITTING_WT, or estimate as 5% of OD
-                          const stubWT = stubWt || FITTING_WT[fittingClass]?.[stubNB] || (stubOD * 0.05);
-                          const stubID = stubOD - (2 * stubWT);
-                          const crossSectionalArea = Math.PI * (Math.pow(stubOD, 2) - Math.pow(stubID, 2)) / 4; // mm²
-                          const weightPerMeter = crossSectionalArea * 7850 / 1000000; // kg/m
-                          return weightPerMeter * (stubLength / 1000); // kg
-                        };
-                        const stub1Weight = calculateStubWeight(stub1NB, stubs[0]?.length || 0, stubs[0]?.wallThicknessMm);
-                        const stub2Weight = calculateStubWeight(stub2NB, stubs[1]?.length || 0, stubs[1]?.wallThicknessMm);
-                        const stubsWeight = stub1Weight + stub2Weight;
-
-                        // Stub weld thicknesses (for flange and tee welds) - SABS 719: round pipe WT to 1.5mm increments
-                        const stub1Wt = isSABS719
-                          ? roundToWeldIncrement(pipeWallThickness || 6)
-                          : (stub1NB ? (FITTING_WT[fittingClass]?.[stub1NB] || pipeWallThickness || 5) : 0);
-                        const stub2Wt = isSABS719
-                          ? roundToWeldIncrement(pipeWallThickness || 6)
-                          : (stub2NB ? (FITTING_WT[fittingClass]?.[stub2NB] || pipeWallThickness || 5) : 0);
-
-                        // Calculate flange weights dynamically based on NB and pressure class
-                        // Bend flanges - use bend's NB and pressure class
-                        const bendPressureClass = masterData.pressureClasses?.find((p: any) => p.id === (entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId))?.designation;
-                        const bendFlangeWeight = bendFlangeCount > 0 ? getFlangeWeight(dn || 100, bendPressureClass) * bendFlangeCount : 0;
-
-                        // Stub 1 flange - use stub's own NB and pressure class
-                        const stub1PressureClass = stubs[0]?.flangePressureClassId
-                          ? masterData.pressureClasses?.find((p: any) => p.id === stubs[0].flangePressureClassId)?.designation
-                          : bendPressureClass;
-                        const stub1FlangeWeight = stub1FlangeCount > 0 ? getFlangeWeight(stub1NB || dn || 100, stub1PressureClass) : 0;
-
-                        // Stub 2 flange - use stub's own NB and pressure class
-                        const stub2PressureClass = stubs[1]?.flangePressureClassId
-                          ? masterData.pressureClasses?.find((p: any) => p.id === stubs[1].flangePressureClassId)?.designation
-                          : bendPressureClass;
-                        const stub2FlangeWeight = stub2FlangeCount > 0 ? getFlangeWeight(stub2NB || dn || 100, stub2PressureClass) : 0;
-
-                        // Total calculated flange weight
-                        const totalCalcFlangeWeight = bendFlangeWeight + stub1FlangeWeight + stub2FlangeWeight;
-
-                        return (
-                          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
-                            {/* Quantity - Green for auto-calculated */}
-                            <div className="bg-green-50 p-2 rounded text-center border border-green-200">
-                              <p className="text-xs text-green-800 font-medium">Qty Bends</p>
-                              <p className="text-lg font-bold text-green-900">{entry.specs?.quantityValue || 1}</p>
-                              <p className="text-xs text-green-600">pieces</p>
-                            </div>
-
-                            {/* Combined Dimensions - Blue for lengths */}
-                            <div className="bg-blue-50 p-2 rounded text-center border border-blue-200">
-                              <p className="text-xs text-blue-800 font-medium">Dimensions</p>
-                              <p className="text-sm font-bold text-blue-900">C/F: {cfDisplay} mm</p>
-                              {numTangents > 0 && <p className="text-[10px] text-blue-600">incl. tangents</p>}
-                              {numStubs > 0 && (
-                                <div className="mt-1 pt-1 border-t border-blue-200">
-                                  {stub1NB && (
-                                    <p className="text-[10px] text-blue-700">Stub 1 Length: {stubs[0]?.length || 0}mm</p>
-                                  )}
-                                  {stub2NB && (
-                                    <p className="text-[10px] text-blue-700">Stub 2 Length: {stubs[1]?.length || 0}mm</p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Surface Area - for coating calculations */}
-                            {(() => {
-                              const odMm = entry.calculation?.outsideDiameterMm || entry.specs?.outsideDiameterMm;
-                              const wtMm = entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm;
-                              if (!odMm || !wtMm) return null;
-
-                              const idMm = odMm - (2 * wtMm);
-                              const odM = odMm / 1000;
-                              const idM = idMm / 1000;
-
-                              // Get bend radius and angle
-                              const bendRadiusMm = entry.specs?.bendRadiusMm || entry.calculation?.bendRadiusMm ||
-                                (entry.specs?.centerToFaceMm ? entry.specs.centerToFaceMm : (entry.specs?.nominalBoreMm || 100) * 1.5);
-                              const bendAngleDeg = entry.specs?.bendDegrees || 90;
-                              const bendAngleRad = (bendAngleDeg * Math.PI) / 180;
-                              const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
-
-                              let extArea = odM * Math.PI * arcLengthM;
-                              let intArea = idM * Math.PI * arcLengthM;
-
-                              // Add tangents
-                              const tangentLengths = entry.specs?.tangentLengths || [];
-                              if (tangentLengths[0] > 0) {
-                                extArea += odM * Math.PI * (tangentLengths[0] / 1000);
-                                intArea += idM * Math.PI * (tangentLengths[0] / 1000);
-                              }
-                              if (tangentLengths[1] > 0) {
-                                extArea += odM * Math.PI * (tangentLengths[1] / 1000);
-                                intArea += idM * Math.PI * (tangentLengths[1] / 1000);
-                              }
-
-                              // Add stubs
-                              if (entry.specs?.stubs?.length > 0) {
-                                entry.specs.stubs.forEach((stub: any) => {
-                                  if (stub?.nominalBoreMm && stub?.length) {
-                                    const stubOdMm = stub.outsideDiameterMm || (stub.nominalBoreMm * 1.1);
-                                    const stubWtMm = stub.wallThicknessMm || (stubOdMm * 0.08);
-                                    const stubIdMm = stubOdMm - (2 * stubWtMm);
-                                    extArea += (stubOdMm / 1000) * Math.PI * (stub.length / 1000);
-                                    intArea += (stubIdMm / 1000) * Math.PI * (stub.length / 1000);
-                                  }
-                                });
-                              }
-
-                              return (
-                                <div className="bg-indigo-50 p-2 rounded text-center border border-indigo-200">
-                                  <p className="text-xs text-indigo-700 font-medium">Surface Area</p>
-                                  <div className="mt-1 space-y-0.5">
-                                    <p className="text-xs text-indigo-900">
-                                      <span className="font-medium">Ext:</span> {extArea.toFixed(3)} m²
-                                    </p>
-                                    <p className="text-xs text-indigo-900">
-                                      <span className="font-medium">Int:</span> {intArea.toFixed(3)} m²
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-
-                            {/* Total Weight - calculated from all components including backing rings */}
-                            {(() => {
-                              const bendConfig = (entry.specs?.bendEndConfiguration || 'PE').toUpperCase();
-                              const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(bendConfig);
-
-                              let backingRingWeight = 0;
-                              let backingRingCount = 0;
-                              if (hasRotatingFlange) {
-                                backingRingCount = bendConfig === 'FOE_RF' ? 1 : bendConfig === '2X_RF' ? 2 : 0;
-                                const ringWeightEach = retainingRingWeight(dn || 100, entry.calculation?.outsideDiameterMm);
-                                backingRingWeight = ringWeightEach * backingRingCount;
-                              }
-
-                              const totalWeight = (entry.calculation.bendWeight || 0) + (entry.calculation.tangentWeight || 0) + totalCalcFlangeWeight + stubsWeight + backingRingWeight;
-
-                              return (
-                                <div className="bg-green-50 p-2 rounded text-center border border-green-200">
-                                  <p className="text-xs text-green-800 font-medium">Total Weight</p>
-                                  <p className="text-lg font-bold text-green-900">
-                                    {totalWeight.toFixed(1)} kg
-                                  </p>
-                                  {backingRingWeight > 0 && (
-                                    <p className="text-xs text-green-600">
-                                      (incl. {backingRingWeight.toFixed(1)}kg rings)
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })()}
-
-                            {/* Weight Breakdown - Bend first, then Tangent, Flange, Stubs, Rings */}
-                            {(() => {
-                              const bendConfig = (entry.specs?.bendEndConfiguration || 'PE').toUpperCase();
-                              const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(bendConfig);
-                              const ringCount = bendConfig === 'FOE_RF' ? 1 : bendConfig === '2X_RF' ? 2 : 0;
-                              const ringWeightEach = hasRotatingFlange ? retainingRingWeight(dn || 100, entry.calculation?.outsideDiameterMm) : 0;
-                              const totalRingWeight = ringWeightEach * ringCount;
-
-                              return (
-                                <div className="bg-green-50 p-2 rounded text-center border border-green-200">
-                                  <p className="text-xs text-green-800 font-medium">Weight Breakdown</p>
-                                  <p className="text-xs text-green-700 mt-1">Bend: {entry.calculation.bendWeight?.toFixed(1) || '0'}kg</p>
-                                  <p className="text-xs text-green-700">Tangent: {entry.calculation.tangentWeight?.toFixed(1) || '0'}kg</p>
-                                  <p className="text-xs text-green-700">Flange: {totalCalcFlangeWeight.toFixed(1)}kg</p>
-                                  {bendFlangeCount > 0 && <p className="text-[10px] text-green-600 ml-2">({bendFlangeCount}x bend @ {(bendFlangeWeight / bendFlangeCount).toFixed(1)}kg/ea)</p>}
-                                  {stub1FlangeCount > 0 && <p className="text-[10px] text-green-600 ml-2">(stub1 @ {stub1FlangeWeight.toFixed(1)}kg)</p>}
-                                  {stub2FlangeCount > 0 && <p className="text-[10px] text-green-600 ml-2">(stub2 @ {stub2FlangeWeight.toFixed(1)}kg)</p>}
-                                  {numStubs > 0 && <p className="text-xs text-green-700">Stubs: {stubsWeight.toFixed(1)}kg</p>}
-                                  {totalRingWeight > 0 && <p className="text-xs text-amber-700 font-medium">R/F Rings: {totalRingWeight.toFixed(2)}kg ({ringCount}×)</p>}
-                                </div>
-                              );
-                            })()}
-
-                            {/* Flanges & Backing Rings - Combined field */}
-                            {(() => {
-                              const bendConfig = (entry.specs?.bendEndConfiguration || 'PE').toUpperCase();
-                              const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(bendConfig);
-
-                              const backingRingCount = bendConfig === 'FOE_RF' ? 1 : bendConfig === '2X_RF' ? 2 : 0;
-                              const ringWeightEach = hasRotatingFlange ? retainingRingWeight(dn || 100, entry.calculation?.outsideDiameterMm) : 0;
-                              const backingRingWeight = ringWeightEach * backingRingCount;
-
-                              return (
-                                <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
-                                  <p className="text-xs text-amber-800 font-medium">Flanges{backingRingCount > 0 ? ' & Rings' : ''}</p>
-                                  <p className="text-lg font-bold text-amber-900">{totalFlanges}</p>
-                                  <div className="text-left mt-1 space-y-0.5">
-                                    {bendFlangeCount > 0 && (
-                                      <p className="text-[10px] text-amber-700">{bendFlangeCount} x {dn}NB Flange</p>
-                                    )}
-                                    {/* Stub flanges - combine if same NB, separate if different */}
-                                    {stub1FlangeCount > 0 && stub2FlangeCount > 0 && stub1NB === stub2NB ? (
-                                      <p className="text-[10px] text-amber-700">2 x {stub1NB}NB Stub Flange</p>
-                                    ) : (
-                                      <>
-                                        {stub1FlangeCount > 0 && stub1NB && (
-                                          <p className="text-[10px] text-amber-700">1 x {stub1NB}NB Stub Flange</p>
-                                        )}
-                                        {stub2FlangeCount > 0 && stub2NB && (
-                                          <p className="text-[10px] text-amber-700">1 x {stub2NB}NB Stub Flange</p>
-                                        )}
-                                      </>
-                                    )}
-                                    {backingRingCount > 0 && (
-                                      <p className="text-[10px] text-amber-700 mt-1 pt-1 border-t border-amber-200">
-                                        {backingRingCount} x Backing Ring ({backingRingWeight.toFixed(1)}kg)
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-
-                            {/* Weld Summary - Purple for weld info */}
-                            <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
-                              <p className="text-xs text-purple-800 font-medium">Weld Summary</p>
-                              <div className="text-left mt-1 space-y-0.5">
-                                {bendFlangeCount > 0 && (
-                                  <p className="text-[10px] text-purple-700">Bend Flange: {bendFlangeCount * 2} welds @ {effectiveWt?.toFixed(1) || '?'}mm</p>
-                                )}
-                                {numTangents > 0 && (
-                                  <p className="text-[10px] text-purple-700">Tangent Buttweld: {numTangents} @ {effectiveWt?.toFixed(1) || '?'}mm</p>
-                                )}
-                                {numSegments > 1 && (
-                                  <p className="text-[10px] text-purple-700">Mitre Weld: {numSegments - 1} @ {effectiveWt?.toFixed(1) || '?'}mm</p>
-                                )}
-                                {stub1NB && (
-                                  <p className="text-[10px] text-purple-700">Stub 1 Tee: 1 weld @ {stub1Wt?.toFixed(1) || '?'}mm</p>
-                                )}
-                                {stub2NB && (
-                                  <p className="text-[10px] text-purple-700">Stub 2 Tee: 1 weld @ {stub2Wt?.toFixed(1) || '?'}mm</p>
-                                )}
-                                {stub1FlangeCount > 0 && (
-                                  <p className="text-[10px] text-purple-700">Stub 1 Flange: 2 welds @ {stub1Wt?.toFixed(1) || '?'}mm</p>
-                                )}
-                                {stub2FlangeCount > 0 && (
-                                  <p className="text-[10px] text-purple-700">Stub 2 Flange: 2 welds @ {stub2Wt?.toFixed(1) || '?'}mm</p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                )}
                   </>
                 }
                 previewContent={
-                  Bend3DPreview ? (
+                  <>
+                  {Bend3DPreview && (
                     <Bend3DPreview
                       nominalBore={entry.specs.nominalBoreMm}
                       outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}
@@ -2707,7 +2366,108 @@ export default function BendForm({
                       }}
                       selectedNotes={entry.selectedNotes}
                     />
-                  ) : null
+                  )}
+
+                  {/* Smart Notes Dropdown - Below 3D Preview */}
+                  <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <label className="block text-xs font-semibold text-gray-900 mb-2">
+                      Additional Notes & Requirements
+                    </label>
+                    <SmartNotesDropdown
+                      selectedNotes={entry.selectedNotes || []}
+                      onNotesChange={(notes) => onUpdateEntry(entry.id, {
+                        selectedNotes: notes,
+                        notes: formatNotesForDisplay(notes)
+                      })}
+                      placeholder="Select quality/inspection requirements..."
+                    />
+                  </div>
+
+                  {/* Calculation Results - Below 3D Preview */}
+                  {entry.calculation && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
+                        Calculation Results
+                      </h4>
+                      <div className="bg-purple-50 border border-purple-200 p-3 rounded-md">
+                        {(() => {
+                          const cf = Number(entry.specs?.centerToFaceMm) || 0;
+                          const tangent1 = entry.specs?.tangentLengths?.[0] || 0;
+                          const tangent2 = entry.specs?.tangentLengths?.[1] || 0;
+                          const numTangents = entry.specs?.numberOfTangents || 0;
+                          const stubs = entry.specs?.stubs || [];
+                          const stub1NB = stubs[0]?.nominalBoreMm;
+                          const stub2NB = stubs[1]?.nominalBoreMm;
+                          const stub1HasFlange = stub1NB ? true : false;
+                          const stub2HasFlange = stub2NB ? true : false;
+                          const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                          const end1 = cf + tangent1;
+                          const end2 = cf + tangent2;
+                          let cfDisplay = '';
+                          if (numTangents > 0 && (tangent1 > 0 || tangent2 > 0)) {
+                            if (numTangents === 2 && tangent1 > 0 && tangent2 > 0) {
+                              cfDisplay = `${end1.toFixed(0)}x${end2.toFixed(0)}`;
+                            } else if (tangent1 > 0) {
+                              cfDisplay = `${end1.toFixed(0)}x${cf.toFixed(0)}`;
+                            } else if (tangent2 > 0) {
+                              cfDisplay = `${cf.toFixed(0)}x${end2.toFixed(0)}`;
+                            }
+                          } else {
+                            cfDisplay = `${cf.toFixed(0)}`;
+                          }
+                          const bendFlangeCount = ['FBE', '2xLF', '2X_RF', 'FOE_LF', 'FOE_RF'].includes(bendEndConfig) ? 2
+                            : ['FOE'].includes(bendEndConfig) ? 1 : 0;
+                          const stub1FlangeCount = stub1HasFlange ? 1 : 0;
+                          const stub2FlangeCount = stub2HasFlange ? 1 : 0;
+                          const numSegments = entry.specs?.numberOfSegments || 0;
+                          const totalFlanges = bendFlangeCount + stub1FlangeCount + stub2FlangeCount;
+                          const dn = entry.specs?.nominalBoreMm;
+                          const schedule = entry.specs?.scheduleNumber || '';
+                          const pipeWallThickness = entry.calculation?.wallThicknessMm;
+                          const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                          const isSABS719 = steelSpecId === 8;
+                          const scheduleUpper = schedule.toUpperCase();
+                          const fittingClass = scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH') ? 'XXH' : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH') ? 'XH' : 'STD';
+                          const FITTING_WT: Record<string, Record<number, number>> = {
+                            'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53, 750: 9.53, 900: 9.53, 1000: 9.53, 1050: 9.53, 1200: 9.53 },
+                            'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70, 750: 12.70, 900: 12.70, 1000: 12.70, 1050: 12.70, 1200: 12.70 },
+                            'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
+                          };
+                          const NB_TO_OD: Record<number, number> = { 15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9, 100: 114.3, 125: 141.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6, 700: 711.2, 750: 762.0, 800: 812.8, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2 };
+                          const fittingWt = isSABS719 ? null : (dn ? FITTING_WT[fittingClass]?.[dn] : null);
+                          const effectiveWt = isSABS719 ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness) : (fittingWt || pipeWallThickness);
+                          const stub1Length = stubs[0]?.lengthMm || 0;
+                          const stub2Length = stubs[1]?.lengthMm || 0;
+                          const stub1Wt = stub1NB ? (isSABS719 ? roundToWeldIncrement(pipeWallThickness || 6) : (FITTING_WT[fittingClass]?.[stub1NB] || pipeWallThickness)) : 0;
+                          const stub2Wt = stub2NB ? (isSABS719 ? roundToWeldIncrement(pipeWallThickness || 6) : (FITTING_WT[fittingClass]?.[stub2NB] || pipeWallThickness)) : 0;
+                          const totalWeight = entry.calculation.totalWeight || 0;
+                          const totalWeldLength = entry.calculation.totalWeldLengthMm || 0;
+
+                          return (
+                            <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))' }}>
+                              <div className="bg-purple-100 p-2 rounded text-center">
+                                <p className="text-xs text-purple-600 font-medium">C/F (mm)</p>
+                                <p className="text-lg font-bold text-purple-900">{cfDisplay}</p>
+                              </div>
+                              <div className="bg-purple-100 p-2 rounded text-center">
+                                <p className="text-xs text-purple-600 font-medium">Flanges</p>
+                                <p className="text-lg font-bold text-purple-900">{totalFlanges}</p>
+                              </div>
+                              <div className="bg-purple-100 p-2 rounded text-center">
+                                <p className="text-xs text-purple-600 font-medium">Weight (kg)</p>
+                                <p className="text-lg font-bold text-purple-900">{totalWeight.toFixed(1)}</p>
+                              </div>
+                              <div className="bg-purple-100 p-2 rounded text-center">
+                                <p className="text-xs text-purple-600 font-medium">Weld (mm)</p>
+                                <p className="text-lg font-bold text-purple-900">{totalWeldLength.toFixed(0)}</p>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                  </>
                 }
               />
   );

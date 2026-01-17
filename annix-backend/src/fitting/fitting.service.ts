@@ -53,7 +53,11 @@ export class FittingService {
         angleRange,
       );
     } else {
-      return this.getSabs719FittingDimensions(fittingType, nominalDiameterMm);
+      return this.getSabs719FittingDimensions(
+        fittingType,
+        nominalDiameterMm,
+        angleRange,
+      );
     }
   }
 
@@ -87,13 +91,20 @@ export class FittingService {
   private async getSabs719FittingDimensions(
     fittingType: FittingType,
     nominalDiameterMm: number,
+    angleRange?: string,
   ) {
-    const fitting = await this.sabs719Repository.findOne({
-      where: {
-        fittingType,
+    const queryBuilder = this.sabs719Repository
+      .createQueryBuilder('fitting')
+      .where('fitting.fittingType = :fittingType', { fittingType })
+      .andWhere('fitting.nominalDiameterMm = :nominalDiameterMm', {
         nominalDiameterMm,
-      },
-    });
+      });
+
+    if (angleRange) {
+      queryBuilder.andWhere('fitting.angleRange = :angleRange', { angleRange });
+    }
+
+    const fitting = await queryBuilder.getOne();
 
     if (!fitting) {
       throw new NotFoundException(

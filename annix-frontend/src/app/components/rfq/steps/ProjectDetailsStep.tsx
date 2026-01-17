@@ -896,26 +896,38 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
           </div>
         </div>
 
-        {/* Project Name and Description - Side by Side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {/* Your RFQ Reference, Project Name, and Description */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div data-field="customerRfqReference">
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              Your RFQ Reference <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              value={rfqData.customerRfqReference || ''}
+              onChange={(e) => onUpdate('customerRfqReference', e.target.value)}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+              placeholder="e.g., RFQ-2025-001"
+            />
+            {errors.customerRfqReference && (
+              <p className="mt-1 text-xs text-red-600">{errors.customerRfqReference}</p>
+            )}
+          </div>
           <div data-field="projectName">
             <label className="block text-xs font-semibold text-gray-900 mb-1">
-              Project/RFQ Name <span className="text-red-600">*</span>
+              Project Name
             </label>
             <input
               type="text"
               value={rfqData.projectName}
               onChange={(e) => onUpdate('projectName', e.target.value)}
               className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
-              placeholder="Enter name (auto-generated if empty)"
+              placeholder="Optional project name"
             />
-            {errors.projectName && (
-              <p className="mt-1 text-xs text-red-600">{errors.projectName}</p>
-            )}
           </div>
           <div data-field="description">
             <label className="block text-xs font-semibold text-gray-900 mb-1">
-              RFQ Description <span className="text-red-600">*</span>
+              RFQ Description
             </label>
             <input
               type="text"

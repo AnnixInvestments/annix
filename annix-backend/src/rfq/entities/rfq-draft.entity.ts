@@ -25,6 +25,13 @@ export class RfqDraft {
   draftNumber: string;
 
   @ApiProperty({
+    description: 'Customer RFQ reference number (user-inputted)',
+    example: 'RFQ-2025-001',
+  })
+  @Column({ name: 'customer_rfq_reference', nullable: true })
+  customerRfqReference?: string;
+
+  @ApiProperty({
     description: 'Project name (for display purposes)',
     example: '500NB Pipeline Extension',
   })

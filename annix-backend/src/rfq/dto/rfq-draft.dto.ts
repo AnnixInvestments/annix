@@ -20,6 +20,14 @@ export class SaveRfqDraftDto {
   draftId?: number;
 
   @ApiPropertyOptional({
+    description: 'Customer RFQ reference number',
+    example: 'RFQ-2025-001',
+  })
+  @IsOptional()
+  @IsString()
+  customerRfqReference?: string;
+
+  @ApiPropertyOptional({
     description: 'Project name',
     example: '500NB Pipeline Extension',
   })
@@ -86,6 +94,12 @@ export class RfqDraftResponseDto {
     example: 'RFQ-2025-0001',
   })
   rfqNumber?: string;
+
+  @ApiPropertyOptional({
+    description: 'Customer RFQ reference number',
+    example: 'RFQ-2025-001',
+  })
+  customerRfqReference?: string;
 
   @ApiProperty({
     description: 'Project name',

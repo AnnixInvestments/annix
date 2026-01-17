@@ -1194,6 +1194,8 @@ export class RfqService {
     }
 
     // Update draft fields
+    draft.customerRfqReference =
+      dto.customerRfqReference || dto.formData.customerRfqReference;
     draft.projectName =
       dto.projectName || dto.formData.projectName || 'Untitled Draft';
     draft.currentStep = dto.currentStep;
@@ -1387,6 +1389,7 @@ export class RfqService {
       id: draft.id,
       draftNumber: draft.draftNumber,
       rfqNumber: draft.convertedRfq?.rfqNumber,
+      customerRfqReference: draft.customerRfqReference,
       projectName: draft.projectName,
       currentStep: draft.currentStep,
       completionPercentage: draft.isConverted

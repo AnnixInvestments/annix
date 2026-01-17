@@ -200,6 +200,7 @@ export interface RfqDraftResponse {
   id: number;
   draftNumber: string;
   rfqNumber?: string;
+  customerRfqReference?: string;
   projectName?: string;
   currentStep: number;
   completionPercentage: number;

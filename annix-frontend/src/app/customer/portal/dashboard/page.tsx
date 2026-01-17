@@ -216,7 +216,7 @@ export default function CustomerDashboardPage() {
                         {getStatusDisplay(draft.status).label}
                       </span>
                       <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {draft.rfqNumber || draft.projectName || 'Untitled Project'}
+                        {draft.customerRfqReference || draft.projectName || 'Untitled Project'}
                       </h3>
                       {draft.isConverted && draft.supplierCounts && (
                         <div className="flex items-center gap-2 ml-auto">
