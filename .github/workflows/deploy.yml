@@ -52,8 +52,7 @@ jobs:
         run: cp pnpm-lock.yaml annix-backend/
 
       - name: Deploy Backend to Fly.io
-        working-directory: ./annix-backend
-        run: flyctl deploy
+        run: flyctl deploy -c annix-backend/fly.toml
 
   deploy-frontend:
     name: Deploy Frontend
