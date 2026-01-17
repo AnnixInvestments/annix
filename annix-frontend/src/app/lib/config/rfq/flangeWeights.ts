@@ -227,20 +227,34 @@ export const GASKET_WEIGHTS: Record<number, { spiralWound: number; rtj: number; 
   1200: { spiralWound: 7.900, rtj: 11.800, ptfe: 3.000, graphite: 2.310, caf: 3.850, rubber: 2.510 }
 };
 
-export const normalizePressureClass = (designation: string): string => {
+export const normalizePressureClass = (designation: string, flangeStandard?: string): string => {
   if (!designation) return 'PN16';
 
   const trimmed = designation.trim().toUpperCase();
 
-  const sabsMatch = trimmed.match(/^(\d+)\/\d+$/);
-  if (sabsMatch) {
-    const kpa = parseInt(sabsMatch[1]);
-    if (kpa <= 1000) return 'PN10';
-    if (kpa <= 1600) return 'PN16';
-    if (kpa <= 2500) return 'PN25';
-    if (kpa <= 4000) return 'PN40';
-    if (kpa <= 6400) return 'PN64';
-    return 'PN64';
+  const slashMatch = trimmed.match(/^(\d+)\/\d+$/);
+  if (slashMatch) {
+    const value = parseInt(slashMatch[1]);
+    const isBs4504 = flangeStandard?.toUpperCase().includes('BS') && flangeStandard?.includes('4504');
+    const isSabs1123 = flangeStandard?.toUpperCase().includes('SABS') && flangeStandard?.includes('1123');
+
+    if (isBs4504 || value <= 160) {
+      if (value <= 6) return 'PN6';
+      if (value <= 10) return 'PN10';
+      if (value <= 16) return 'PN16';
+      if (value <= 25) return 'PN25';
+      if (value <= 40) return 'PN40';
+      if (value <= 64) return 'PN64';
+      if (value <= 100) return 'PN64';
+      return 'PN64';
+    } else if (isSabs1123 || value >= 600) {
+      if (value <= 1000) return 'PN10';
+      if (value <= 1600) return 'PN16';
+      if (value <= 2500) return 'PN25';
+      if (value <= 4000) return 'PN40';
+      if (value <= 6400) return 'PN64';
+      return 'PN64';
+    }
   }
 
   const pnMatch = trimmed.match(/^PN\s*(\d+)/i);
@@ -356,7 +370,7 @@ export const flangeWeight = (
     }
   }
 
-  const pressureClass = normalizePressureClass(designation);
+  const pressureClass = normalizePressureClass(designation, flangeStandard);
 
   if (FLANGE_WEIGHT_BY_PRESSURE_CLASS[pressureClass]) {
     const weight = FLANGE_WEIGHT_BY_PRESSURE_CLASS[pressureClass][nominalBoreMm];
@@ -412,6 +426,29 @@ export const SABS_1123_PRESSURE_CLASSES = [
   { value: 1600, label: '1600 kPa' },
   { value: 2500, label: '2500 kPa' },
   { value: 4000, label: '4000 kPa' },
+];
+
+export const BS_4504_FLANGE_TYPES: Sabs1123FlangeType[] = [
+  { code: '/1', name: 'Weld Neck', description: 'WN - Weld Neck flange for high pressure applications' },
+  { code: '/2', name: 'Threaded', description: 'THD - Threaded flange for low pressure, non-critical services' },
+  { code: '/3', name: 'Slip-On', description: 'SO - Slip-On flange, most common type' },
+  { code: '/4', name: 'Lap Joint', description: 'LJ - Lap Joint flange with stub end' },
+  { code: '/5', name: 'Socket Weld', description: 'SW - Socket Weld flange for small bore piping' },
+  { code: '/6', name: 'Blind', description: 'BL - Blind flange to close pipe ends' },
+  { code: '/7', name: 'Orifice', description: 'Orifice flange for flow measurement' },
+  { code: '/8', name: 'Spectacle Blind', description: 'Spectacle Blind for isolation purposes' },
+  { code: '/9', name: 'Reducing', description: 'Reducing flange for pipe size transitions' },
+];
+
+export const BS_4504_PRESSURE_CLASSES = [
+  { value: 6, label: 'PN6' },
+  { value: 10, label: 'PN10' },
+  { value: 16, label: 'PN16' },
+  { value: 25, label: 'PN25' },
+  { value: 40, label: 'PN40' },
+  { value: 64, label: 'PN64' },
+  { value: 100, label: 'PN100' },
+  { value: 160, label: 'PN160' },
 ];
 
 export const retainingRingWeight = (nbMm: number, pipeOdMm?: number): number => {

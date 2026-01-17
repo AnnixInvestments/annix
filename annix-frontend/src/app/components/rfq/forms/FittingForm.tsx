@@ -15,9 +15,12 @@ import {
   retainingRingWeight,
   SABS_1123_FLANGE_TYPES,
   SABS_1123_PRESSURE_CLASSES,
+  BS_4504_FLANGE_TYPES,
+  BS_4504_PRESSURE_CLASSES,
 } from '@/app/lib/config/rfq';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
+import { checkMaterialSuitability, suitableMaterials } from '@/app/lib/config/rfq/materialLimits';
 
 export interface FittingFormProps {
   entry: any;
@@ -108,6 +111,130 @@ export default function FittingForm({
                       </button>
                     )}
                   </div>
+                </div>
+
+                {/* Working Conditions - Item Override */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3 mb-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-xs font-semibold text-gray-800">
+                      Working Conditions
+                      {(!entry.specs?.workingPressureBar && !entry.specs?.workingTemperatureC) && (
+                        <span className="ml-2 text-xs font-normal text-green-600">(From Global Spec)</span>
+                      )}
+                      {(entry.specs?.workingPressureBar || entry.specs?.workingTemperatureC) && (
+                        <span className="ml-2 text-xs font-normal text-orange-600">(Override)</span>
+                      )}
+                    </h4>
+                    {(entry.specs?.workingPressureBar || entry.specs?.workingTemperatureC) && (
+                      <button
+                        type="button"
+                        onClick={() => onUpdateEntry(entry.id, {
+                          specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined }
+                        })}
+                        className="text-xs text-orange-600 hover:text-orange-800 font-medium"
+                      >
+                        Reset to Global
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Working Pressure (bar)
+                      </label>
+                      <select
+                        value={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? Number(e.target.value) : undefined;
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, workingPressureBar: value }
+                          });
+                        }}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                      >
+                        <option value="">Select pressure...</option>
+                        {[6, 10, 16, 25, 40, 63, 100, 160, 250, 320, 400, 630].map((pressure) => (
+                          <option key={pressure} value={pressure}>{pressure} bar</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Working Temperature (°C)
+                      </label>
+                      <select
+                        value={entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC || ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? Number(e.target.value) : undefined;
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, workingTemperatureC: value }
+                          });
+                        }}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                      >
+                        <option value="">Select temperature...</option>
+                        {[-29, -20, 0, 20, 50, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500].map((temp) => (
+                          <option key={temp} value={temp}>{temp}°C</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  {(() => {
+                    const effectivePressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
+                    const effectiveTemperature = entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC;
+                    const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                    const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
+                    const steelSpecName = steelSpec?.steelSpecName || '';
+
+                    if (!steelSpecName || (!effectivePressure && !effectiveTemperature)) return null;
+
+                    const suitability = checkMaterialSuitability(steelSpecName, effectiveTemperature, effectivePressure);
+
+                    if (suitability.isSuitable && suitability.warnings.length === 0) return null;
+
+                    const suitableSpecPatterns = suitableMaterials(effectiveTemperature, effectivePressure);
+                    const recommendedSpecs = masterData.steelSpecs?.filter((s: any) =>
+                      suitableSpecPatterns.some(pattern => s.steelSpecName?.includes(pattern))
+                    ) || [];
+
+                    return (
+                      <div className={`mt-2 p-2 rounded border ${!suitability.isSuitable ? 'bg-red-50 border-red-300' : 'bg-amber-50 border-amber-300'}`}>
+                        <div className="flex items-start gap-2">
+                          <span className={`text-sm ${!suitability.isSuitable ? 'text-red-600' : 'text-amber-600'}`}>⚠</span>
+                          <div className="text-xs flex-1">
+                            {!suitability.isSuitable && (
+                              <p className="font-semibold text-red-700 mb-1">Steel spec not suitable - must be changed:</p>
+                            )}
+                            {suitability.warnings.map((warning, idx) => (
+                              <p key={idx} className={!suitability.isSuitable ? 'text-red-800' : 'text-amber-800'}>{warning}</p>
+                            ))}
+                            {suitability.recommendation && (
+                              <p className="mt-1 text-gray-700 italic">{suitability.recommendation}</p>
+                            )}
+                            {!suitability.isSuitable && recommendedSpecs.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                <span className="text-gray-600">Suitable specs:</span>
+                                {recommendedSpecs.slice(0, 3).map((spec: any) => (
+                                  <button
+                                    key={spec.id}
+                                    type="button"
+                                    onClick={() => {
+                                      onUpdateEntry(entry.id, {
+                                        specs: { ...entry.specs, steelSpecificationId: spec.id }
+                                      });
+                                    }}
+                                    className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs hover:bg-orange-200 font-medium"
+                                  >
+                                    {spec.steelSpecName}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* ROW 1: Primary Specs Header (Green Background) */}
@@ -1259,9 +1386,12 @@ export default function FittingForm({
                                 );
                                 const isSabs1123 = selectedStandard?.code?.toUpperCase().includes('SABS') &&
                                                    selectedStandard?.code?.includes('1123');
+                                const isBs4504 = selectedStandard?.code?.toUpperCase().includes('BS') &&
+                                                 selectedStandard?.code?.includes('4504');
+                                const hasThreeDropdowns = isSabs1123 || isBs4504;
 
                                 return (
-                                  <div className={`grid gap-1 ${isSabs1123 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                                  <div className={`grid gap-1 ${hasThreeDropdowns ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                     <select
                                       value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
                                       onChange={(e) => {
@@ -1281,7 +1411,7 @@ export default function FittingForm({
                                         <option key={standard.id} value={standard.id}>{standard.code}</option>
                                       ))}
                                     </select>
-                                    {isSabs1123 ? (
+                                    {hasThreeDropdowns ? (
                                       <>
                                         <select
                                           value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
@@ -1289,15 +1419,15 @@ export default function FittingForm({
                                             specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                                           })}
                                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
-                                          title="Pressure Class (kPa)"
+                                          title={isSabs1123 ? 'Pressure Class (kPa)' : 'Pressure Class (PN)'}
                                         >
                                           <option value="">Class...</option>
-                                          {SABS_1123_PRESSURE_CLASSES.map((pc) => {
+                                          {(isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES).map((pc) => {
                                             const matchingPc = masterData.pressureClasses?.find(
                                               (mpc: any) => mpc.designation?.includes(String(pc.value))
                                             );
                                             return matchingPc ? (
-                                              <option key={matchingPc.id} value={matchingPc.id}>{pc.value}</option>
+                                              <option key={matchingPc.id} value={matchingPc.id}>{isSabs1123 ? pc.value : pc.label}</option>
                                             ) : null;
                                           })}
                                         </select>
@@ -1310,7 +1440,7 @@ export default function FittingForm({
                                           title="Flange Type"
                                         >
                                           <option value="">Type...</option>
-                                          {SABS_1123_FLANGE_TYPES.map((ft) => (
+                                          {(isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES).map((ft) => (
                                             <option key={ft.code} value={ft.code} title={ft.description}>
                                               {ft.name} ({ft.code})
                                             </option>
