@@ -12,9 +12,12 @@ interface InitialData {
   content: string;
 }
 
+export type EditorPaneMode = 'edit' | 'live' | 'preview';
+
 interface SecureDocumentEditorProps {
   document: SecureDocumentWithContent | null;
   initialData?: InitialData | null;
+  paneMode?: EditorPaneMode;
   onSave: (data: { title: string; description: string; content: string }) => Promise<void>;
   onCancel: () => void;
 }
@@ -22,6 +25,7 @@ interface SecureDocumentEditorProps {
 export default function SecureDocumentEditor({
   document,
   initialData,
+  paneMode = 'live',
   onSave,
   onCancel,
 }: SecureDocumentEditorProps) {
@@ -173,7 +177,7 @@ export default function SecureDocumentEditor({
               value={content}
               onChange={(val) => setContent(val || '')}
               height={editorHeight}
-              preview="live"
+              preview={paneMode}
             />
           </div>
         </div>

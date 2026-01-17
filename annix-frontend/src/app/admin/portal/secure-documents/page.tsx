@@ -4,10 +4,11 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { adminApiClient, SecureDocument, SecureDocumentWithContent } from '@/app/lib/api/adminApi';
 import { formatDateZA } from '@/app/lib/datetime';
-import SecureDocumentEditor from './SecureDocumentEditor';
+import SecureDocumentEditor, { EditorPaneMode } from './SecureDocumentEditor';
 import SecureDocumentViewer from './SecureDocumentViewer';
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create';
+type UrlMode = 'view' | 'edit';
 
 interface ImportedFile {
   title: string;
@@ -75,6 +76,7 @@ export default function SecureDocumentsPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [editorPaneMode, setEditorPaneMode] = useState<EditorPaneMode>('live');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const allSelected = documents.length > 0 && selectedIds.size === documents.length;
@@ -153,26 +155,45 @@ export default function SecureDocumentsPage() {
 
   useEffect(() => {
     const docSlug = searchParams.get('doc');
+    const urlMode = searchParams.get('mode') as UrlMode | null;
+    const urlPane = searchParams.get('pane') as EditorPaneMode | null;
+
+    if (urlPane && ['edit', 'live', 'preview'].includes(urlPane)) {
+      setEditorPaneMode(urlPane);
+    }
+
     if (docSlug && !selectedDocument && !isLoadingDocument) {
-      handleViewDocumentBySlug(docSlug);
+      const targetMode = urlMode === 'edit' ? 'edit' : 'view';
+      handleViewDocumentBySlug(docSlug, targetMode);
     }
   }, [searchParams, selectedDocument, isLoadingDocument]);
 
-  const updateUrl = (slug: string | null) => {
+  const updateUrl = (slug: string | null, mode?: UrlMode, pane?: EditorPaneMode) => {
+    const params = new URLSearchParams();
     if (slug) {
-      router.push(`/admin/portal/secure-documents?doc=${slug}`, { scroll: false });
-    } else {
-      router.push('/admin/portal/secure-documents', { scroll: false });
+      params.set('doc', slug);
     }
+    if (mode) {
+      params.set('mode', mode);
+    }
+    if (pane) {
+      params.set('pane', pane);
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `/admin/portal/secure-documents?${queryString}`
+      : '/admin/portal/secure-documents';
+    router.push(url, { scroll: false });
   };
 
-  const handleViewDocumentBySlug = async (slug: string) => {
+
+  const handleViewDocumentBySlug = async (slug: string, targetMode: ViewMode = 'view') => {
     try {
       setIsLoadingDocument(true);
       setActionMessage(null);
       const doc = await adminApiClient.getSecureDocument(slug);
       setSelectedDocument(doc);
-      setViewMode('view');
+      setViewMode(targetMode);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load document';
       setActionMessage({ type: 'error', text: message });
@@ -188,7 +209,7 @@ export default function SecureDocumentsPage() {
       const doc = await adminApiClient.getSecureDocument(id);
       setSelectedDocument(doc);
       setViewMode('view');
-      updateUrl(slug);
+      updateUrl(slug, 'view');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load document';
       setActionMessage({ type: 'error', text: message });
@@ -197,13 +218,14 @@ export default function SecureDocumentsPage() {
     }
   };
 
-  const handleEditDocument = async (id: string) => {
+  const handleEditDocument = async (id: string, slug: string) => {
     try {
       setIsLoadingDocument(true);
       setActionMessage(null);
       const doc = await adminApiClient.getSecureDocument(id);
       setSelectedDocument(doc);
       setViewMode('edit');
+      updateUrl(slug, 'edit', editorPaneMode);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load document';
       setActionMessage({ type: 'error', text: message });
@@ -373,7 +395,10 @@ export default function SecureDocumentsPage() {
       <SecureDocumentViewer
         document={selectedDocument}
         onBack={handleBack}
-        onEdit={() => setViewMode('edit')}
+        onEdit={() => {
+          setViewMode('edit');
+          updateUrl(selectedDocument.slug, 'edit', editorPaneMode);
+        }}
       />
     );
   }
@@ -386,6 +411,7 @@ export default function SecureDocumentsPage() {
       <SecureDocumentEditor
         document={viewMode === 'edit' ? selectedDocument : null}
         initialData={initialData}
+        paneMode={editorPaneMode}
         onSave={handleSave}
         onCancel={handleBack}
       />
@@ -592,7 +618,7 @@ export default function SecureDocumentsPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleEditDocument(doc.id);
+                            handleEditDocument(doc.id, doc.slug);
                           }}
                           className="p-1.5 text-[#323288] hover:text-[#252560] hover:bg-[#323288]/10 rounded"
                         >
