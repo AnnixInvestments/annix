@@ -94,6 +94,32 @@ const normalizeFittingTypeForApi = (type?: string | null) => {
   return map[type] || type;
 };
 
+/**
+ * Combine pressure class designation with selected flange type for SABS 1123 / BS 4504
+ * For example: "1000/3" with flangeTypeCode "/1" becomes "1000/1"
+ * This is needed because the flange type dropdown is now separate from the pressure class dropdown
+ */
+const getPressureClassWithFlangeType = (
+  pressureClassDesignation: string,
+  flangeTypeCode?: string,
+  flangeStandard?: string
+): string => {
+  if (!flangeTypeCode) return pressureClassDesignation;
+
+  // Only modify for SABS 1123 and BS 4504 standards
+  const isSabsOrBs4504 = flangeStandard?.includes('SABS 1123') || flangeStandard?.includes('BS 4504');
+  if (!isSabsOrBs4504) return pressureClassDesignation;
+
+  // Check if the designation has a /X suffix (e.g., "1000/3" or "10/3")
+  const match = pressureClassDesignation.match(/^(\d+)\/\d+$/);
+  if (match) {
+    // Replace the suffix with the selected flange type (e.g., "1000" + "/1" = "1000/1")
+    return `${match[1]}${flangeTypeCode}`;
+  }
+
+  return pressureClassDesignation;
+};
+
 interface Props {
   onSuccess: (rfqId: string) => void;
   onCancel: () => void;
@@ -1507,13 +1533,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
         // Recalculate flange weight based on actual pressure class used (may be overridden)
         // Default to PN16 if no pressure class is set
-        const pressureClassDesignation = masterData.pressureClasses?.find(
+        const basePressureClassDesignation = masterData.pressureClasses?.find(
           (pc: { id: number; designation: string }) => pc.id === flangePressureClassId
         )?.designation || 'PN16';
+        const flangeStandardCode = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code;
+        const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
+        const pressureClassDesignation = getPressureClassWithFlangeType(basePressureClassDesignation, flangeTypeCode, flangeStandardCode);
 
         if (result && result.numberOfFlanges > 0) {
           // Try to fetch dynamic flange specs from database
-          let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation);
+          let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation, flangeStandardCode);
           let flangeSpecData: FlangeSpecData | null = null;
 
           if (flangeStandardId && flangePressureClassId && entry.specs.nominalBoreMm) {
@@ -1553,9 +1582,13 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           const wallThickness = entry.specs.wallThicknessMm || 6.35; // Default wall thickness
 
           // Get pressure class designation for accurate flange weights, default to PN16
-          const pressureClassDesignation = masterData.pressureClasses?.find(
+          // Combine with flange type code for SABS 1123 / BS 4504 standards
+          const basePressureClassDesignation = masterData.pressureClasses?.find(
             (pc: { id: number; designation: string }) => pc.id === flangePressureClassId
           )?.designation || 'PN16';
+          const flangeStandardCode = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code;
+          const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
+          const pressureClassDesignation = getPressureClassWithFlangeType(basePressureClassDesignation, flangeTypeCode, flangeStandardCode);
 
           const localResult = calculateLocalPipeResult(
             entry.specs.nominalBoreMm!,
@@ -1830,14 +1863,18 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           log.debug('✅ Manual calculation result:', result);
 
           // Recalculate flange weight for accurate values, default to PN16
+          // Combine with flange type code for SABS 1123 / BS 4504 standards
           const entryPressureClassId = entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
-          const pressureClassDesignation = masterData.pressureClasses?.find(
+          const basePressureClassDesignation = masterData.pressureClasses?.find(
             (pc: { id: number; designation: string }) => pc.id === entryPressureClassId
           )?.designation || 'PN16';
+          const flangeStandardCode = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code;
+          const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
+          const pressureClassDesignation = getPressureClassWithFlangeType(basePressureClassDesignation, flangeTypeCode, flangeStandardCode);
 
           if (result && result.numberOfFlanges > 0) {
             // Try to fetch dynamic flange specs from database
-            let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation);
+            let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation, flangeStandardCode);
             let flangeSpecData: FlangeSpecData | null = null;
 
             if (flangeStandardId && flangePressureClassId && entry.specs.nominalBoreMm) {
@@ -1878,10 +1915,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             const wallThickness = entry.specs.wallThicknessMm || 6.35;
 
             // Get pressure class designation for accurate flange weights, default to PN16
+            // Combine with flange type code for SABS 1123 / BS 4504 standards
             const entryPressureClassId = entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
-            const pressureClassDesignation = masterData.pressureClasses?.find(
+            const entryFlangeStandardId = entry.specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId;
+            const basePressureClassDesignation = masterData.pressureClasses?.find(
               (pc: { id: number; designation: string }) => pc.id === entryPressureClassId
             )?.designation || 'PN16';
+            const flangeStandardCode = masterData.flangeStandards?.find((s: any) => s.id === entryFlangeStandardId)?.code;
+            const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
+            const pressureClassDesignation = getPressureClassWithFlangeType(basePressureClassDesignation, flangeTypeCode, flangeStandardCode);
 
             const localResult = calculateLocalPipeResult(
               entry.specs.nominalBoreMm!,
