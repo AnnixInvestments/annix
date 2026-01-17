@@ -8,7 +8,6 @@ import {
   Param,
   Req,
   UseGuards,
-  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -51,17 +50,21 @@ export class SecureDocumentsController {
     return this.service.findAll();
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a secure document with decrypted content' })
+  @Get(':idOrSlug')
+  @ApiOperation({ summary: 'Get a secure document with decrypted content by ID or slug' })
   @ApiResponse({
     status: 200,
     description: 'Document with content',
   })
   @ApiResponse({ status: 404, description: 'Document not found' })
   async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('idOrSlug') idOrSlug: string,
   ): Promise<SecureDocument & { content: string }> {
-    return this.service.findOneWithContent(id);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+    if (isUuid) {
+      return this.service.findOneWithContent(idOrSlug);
+    }
+    return this.service.findBySlugWithContent(idOrSlug);
   }
 
   @Post()
@@ -78,8 +81,8 @@ export class SecureDocumentsController {
     return this.service.create(dto, req.user.id);
   }
 
-  @Put(':id')
-  @ApiOperation({ summary: 'Update a secure document' })
+  @Put(':idOrSlug')
+  @ApiOperation({ summary: 'Update a secure document by ID or slug' })
   @ApiResponse({
     status: 200,
     description: 'Document updated',
@@ -87,17 +90,28 @@ export class SecureDocumentsController {
   })
   @ApiResponse({ status: 404, description: 'Document not found' })
   async update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('idOrSlug') idOrSlug: string,
     @Body() dto: UpdateSecureDocumentDto,
   ): Promise<SecureDocument> {
+    const id = await this.resolveId(idOrSlug);
     return this.service.update(id, dto);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete a secure document' })
+  @Delete(':idOrSlug')
+  @ApiOperation({ summary: 'Delete a secure document by ID or slug' })
   @ApiResponse({ status: 200, description: 'Document deleted' })
   @ApiResponse({ status: 404, description: 'Document not found' })
-  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+  async remove(@Param('idOrSlug') idOrSlug: string): Promise<void> {
+    const id = await this.resolveId(idOrSlug);
     return this.service.remove(id);
+  }
+
+  private async resolveId(idOrSlug: string): Promise<string> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+    if (isUuid) {
+      return idOrSlug;
+    }
+    const document = await this.service.findBySlug(idOrSlug);
+    return document.id;
   }
 }

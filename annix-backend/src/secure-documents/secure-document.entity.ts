@@ -20,6 +20,13 @@ export class SecureDocument {
   id: string;
 
   @ApiProperty({
+    description: 'URL-friendly slug',
+    example: 'fly-deployment-technical-docs',
+  })
+  @Column({ unique: true })
+  slug: string;
+
+  @ApiProperty({
     description: 'Document title',
     example: 'Fly Deployment Technical Docs',
   })

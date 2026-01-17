@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { adminApiClient, SecureDocument, SecureDocumentWithContent } from '@/app/lib/api/adminApi';
 import { formatDateZA } from '@/app/lib/datetime';
 import SecureDocumentEditor from './SecureDocumentEditor';
@@ -56,6 +57,8 @@ function extractDescription(content: string): string {
 }
 
 export default function SecureDocumentsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [documents, setDocuments] = useState<SecureDocument[]>([]);
@@ -148,13 +151,44 @@ export default function SecureDocumentsPage() {
     fetchDocuments();
   }, []);
 
-  const handleViewDocument = async (id: string) => {
+  useEffect(() => {
+    const docSlug = searchParams.get('doc');
+    if (docSlug && !selectedDocument && !isLoadingDocument) {
+      handleViewDocumentBySlug(docSlug);
+    }
+  }, [searchParams, selectedDocument, isLoadingDocument]);
+
+  const updateUrl = (slug: string | null) => {
+    if (slug) {
+      router.push(`/admin/portal/secure-documents?doc=${slug}`, { scroll: false });
+    } else {
+      router.push('/admin/portal/secure-documents', { scroll: false });
+    }
+  };
+
+  const handleViewDocumentBySlug = async (slug: string) => {
+    try {
+      setIsLoadingDocument(true);
+      setActionMessage(null);
+      const doc = await adminApiClient.getSecureDocument(slug);
+      setSelectedDocument(doc);
+      setViewMode('view');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load document';
+      setActionMessage({ type: 'error', text: message });
+    } finally {
+      setIsLoadingDocument(false);
+    }
+  };
+
+  const handleViewDocument = async (id: string, slug: string) => {
     try {
       setIsLoadingDocument(true);
       setActionMessage(null);
       const doc = await adminApiClient.getSecureDocument(id);
       setSelectedDocument(doc);
       setViewMode('view');
+      updateUrl(slug);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load document';
       setActionMessage({ type: 'error', text: message });
@@ -224,6 +258,7 @@ export default function SecureDocumentsPage() {
     setImportedFile(null);
     setFileError(null);
     setActionMessage(null);
+    updateUrl(null);
   };
 
   const readFileAsText = (file: File): Promise<string> => {
@@ -521,7 +556,7 @@ export default function SecureDocumentsPage() {
                 {documents.map((doc) => (
                   <tr
                     key={doc.id}
-                    onClick={() => handleViewDocument(doc.id)}
+                    onClick={() => handleViewDocument(doc.id, doc.slug)}
                     className={`hover:bg-gray-50 cursor-pointer transition-colors ${selectedIds.has(doc.id) ? 'bg-[#323288]/5' : ''}`}
                   >
                     <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>

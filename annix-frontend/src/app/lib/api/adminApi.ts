@@ -170,6 +170,7 @@ export interface CustomerDocument {
 
 export interface SecureDocument {
   id: string;
+  slug: string;
   title: string;
   description: string | null;
   storagePath: string;

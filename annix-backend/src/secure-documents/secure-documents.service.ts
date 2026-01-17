@@ -21,6 +21,15 @@ import { encrypt, decrypt } from './crypto.util';
 import { User } from '../user/entities/user.entity';
 import { nowISO } from '../lib/datetime';
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 @Injectable()
 export class SecureDocumentsService {
   private readonly logger = new Logger(SecureDocumentsService.name);
@@ -75,12 +84,46 @@ export class SecureDocumentsService {
     return document;
   }
 
+  async findBySlug(slug: string): Promise<SecureDocument> {
+    const document = await this.documentRepo.findOne({
+      where: { slug },
+      relations: ['createdBy'],
+    });
+    if (!document) {
+      throw new NotFoundException(`Secure document with slug "${slug}" not found`);
+    }
+    return document;
+  }
+
   async findOneWithContent(
     id: string,
   ): Promise<SecureDocument & { content: string }> {
     const document = await this.findOne(id);
     const content = await this.downloadAndDecrypt(document.storagePath);
     return { ...document, content };
+  }
+
+  async findBySlugWithContent(
+    slug: string,
+  ): Promise<SecureDocument & { content: string }> {
+    const document = await this.findBySlug(slug);
+    const content = await this.downloadAndDecrypt(document.storagePath);
+    return { ...document, content };
+  }
+
+  private async generateUniqueSlug(title: string): Promise<string> {
+    const baseSlug = slugify(title);
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (true) {
+      const existing = await this.documentRepo.findOne({ where: { slug } });
+      if (!existing) {
+        return slug;
+      }
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
   }
 
   async create(
@@ -92,17 +135,19 @@ export class SecureDocumentsService {
       throw new NotFoundException(`User #${userId} not found`);
     }
 
+    const slug = await this.generateUniqueSlug(dto.title);
     const storagePath = await this.encryptAndUpload(dto.content);
 
     const document = this.documentRepo.create({
       title: dto.title,
+      slug,
       description: dto.description,
       storagePath,
       createdBy: user,
     });
 
     const saved = await this.documentRepo.save(document);
-    this.logger.log(`Created secure document: ${saved.id} by user ${userId}`);
+    this.logger.log(`Created secure document: ${saved.id} (${slug}) by user ${userId}`);
     return saved;
   }
 
@@ -112,8 +157,9 @@ export class SecureDocumentsService {
   ): Promise<SecureDocument> {
     const document = await this.findOne(id);
 
-    if (dto.title !== undefined) {
+    if (dto.title !== undefined && dto.title !== document.title) {
       document.title = dto.title;
+      document.slug = await this.generateUniqueSlug(dto.title);
     }
 
     if (dto.description !== undefined) {
@@ -126,7 +172,7 @@ export class SecureDocumentsService {
     }
 
     const updated = await this.documentRepo.save(document);
-    this.logger.log(`Updated secure document: ${id}`);
+    this.logger.log(`Updated secure document: ${id} (${document.slug})`);
     return updated;
   }
 
