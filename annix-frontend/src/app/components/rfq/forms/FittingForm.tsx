@@ -137,7 +137,7 @@ export default function FittingForm({
                       </button>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Working Pressure (bar)
@@ -177,6 +177,57 @@ export default function FittingForm({
                           <option key={temp} value={temp}>{temp}°C</option>
                         ))}
                       </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-green-900 mb-1">
+                        Fitting Standard *
+                        {(() => {
+                          const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+                          const derived = isSABS719 ? 'SABS719' : 'SABS62';
+                          const hasGlobal = !!globalSpecs?.steelSpecificationId;
+                          const current = entry.specs?.fittingStandard || derived;
+                          if (hasGlobal && current === derived) return <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>;
+                          if (hasGlobal && current !== derived) return <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>;
+                          return null;
+                        })()}
+                      </label>
+                      {(() => {
+                        const selectId = `fitting-standard-wc-${entry.id}`;
+                        const derivedStandard = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8 ? 'SABS719' : 'SABS62';
+                        return (
+                          <Select
+                            id={selectId}
+                            value={entry.specs?.fittingStandard || derivedStandard}
+                            onChange={(newStandard) => {
+                              const updatedEntry = {
+                                ...entry,
+                                specs: { ...entry.specs, fittingStandard: newStandard as 'SABS62' | 'SABS719', nominalDiameterMm: undefined, scheduleNumber: undefined }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+
+                              if (!entry.specs?.fittingType) {
+                                setTimeout(() => focusAndOpenSelect(`fitting-type-${entry.id}`), 100);
+                              } else {
+                                setTimeout(() => focusAndOpenSelect(`fitting-nb-${entry.id}`), 100);
+                              }
+                            }}
+                            options={[
+                              { value: 'SABS62', label: 'SABS62 (Standard)' },
+                              { value: 'SABS719', label: 'SABS719 (Fabricated)' }
+                            ]}
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => {
+                              if (open) {
+                                openSelect(selectId);
+                              } else {
+                                closeSelect(selectId);
+                                setTimeout(() => focusAndOpenSelect(`fitting-type-${entry.id}`), 150);
+                              }
+                            }}
+                          />
+                        );
+                      })()}
                     </div>
                   </div>
                   {(() => {
@@ -243,85 +294,6 @@ export default function FittingForm({
                     Fitting Specifications
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {/* Fitting Standard */}
-                    <div>
-                      <label className="block text-xs font-semibold text-green-900 mb-1">
-                        Fitting Standard *
-                        {(() => {
-                          const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
-                          const derived = isSABS719 ? 'SABS719' : 'SABS62';
-                          const hasGlobal = !!globalSpecs?.steelSpecificationId;
-                          const current = entry.specs?.fittingStandard || derived;
-                          if (hasGlobal && current === derived) return <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>;
-                          if (hasGlobal && current !== derived) return <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>;
-                          return null;
-                        })()}
-                      </label>
-                      <div className="flex gap-2">
-                        {(() => {
-                          const selectId = `fitting-standard-${entry.id}`;
-                          const derivedStandard = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8 ? 'SABS719' : 'SABS62';
-                          return (
-                            <Select
-                              id={selectId}
-                              value={entry.specs?.fittingStandard || derivedStandard}
-                              onChange={(newStandard) => {
-                                const updatedEntry = {
-                                  ...entry,
-                                  specs: { ...entry.specs, fittingStandard: newStandard as 'SABS62' | 'SABS719', nominalDiameterMm: undefined, scheduleNumber: undefined }
-                                };
-                                updatedEntry.description = generateItemDescription(updatedEntry);
-                                onUpdateEntry(entry.id, updatedEntry);
-
-                                if (!entry.specs?.fittingType) {
-                                  setTimeout(() => focusAndOpenSelect(`fitting-type-${entry.id}`), 100);
-                                } else {
-                                  setTimeout(() => focusAndOpenSelect(`fitting-nb-${entry.id}`), 100);
-                                }
-                              }}
-                              options={[
-                                { value: 'SABS62', label: 'SABS62 (Standard Fittings)' },
-                                { value: 'SABS719', label: 'SABS719 (Fabricated Fittings)' }
-                              ]}
-                              className="flex-1"
-                              open={openSelects[selectId] || false}
-                              onOpenChange={(open) => {
-                                if (open) {
-                                  openSelect(selectId);
-                                } else {
-                                  closeSelect(selectId);
-                                  setTimeout(() => focusAndOpenSelect(`fitting-type-${entry.id}`), 150);
-                                }
-                              }}
-                            />
-                          );
-                        })()}
-                        {(() => {
-                          const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
-                          const derived = isSABS719 ? 'SABS719' : 'SABS62';
-                          const hasGlobal = !!globalSpecs?.steelSpecificationId;
-                          const current = entry.specs?.fittingStandard;
-                          if (hasGlobal && current && current !== derived) {
-                            return (
-                              <button
-                                type="button"
-                                onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, fittingStandard: undefined, nominalDiameterMm: undefined } })}
-                                className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded"
-                              >
-                                Reset
-                              </button>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {(entry.specs?.fittingStandard || ((entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8 ? 'SABS719' : 'SABS62')) === 'SABS719'
-                          ? 'Uses pipe table for cut lengths, tee/lateral weld + flange welds'
-                          : 'Uses standard fitting dimensions from tables'}
-                      </p>
-                    </div>
-
                     {/* Fitting Type */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
@@ -565,6 +537,132 @@ export default function FittingForm({
                         );
                       })()}
                     </div>
+
+                    {/* Schedule/Wall Thickness */}
+                    {(() => {
+                      const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+                      const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+                      const showSchedule = effectiveStandard === 'SABS719';
+
+                      if (!showSchedule) {
+                        return (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-2">
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">
+                              Wall Thickness
+                            </label>
+                            <p className="text-sm text-gray-600">N/A (SABS62)</p>
+                          </div>
+                        );
+                      }
+
+                      const selectId = `fitting-schedule-spec-${entry.id}`;
+                      const nbValue = entry.specs?.nominalDiameterMm || 0;
+                      const fitEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                      const allSchedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
+
+                      if (globalSpecs?.workingPressureBar && entry.specs?.nominalDiameterMm) {
+                        const minWT = getMinimumWallThickness(nbValue, globalSpecs?.workingPressureBar || 0);
+                        const eligibleSchedules = allSchedules
+                          .filter((dim: any) => (dim.wallThicknessMm || 0) >= minWT)
+                          .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+
+                        const options = eligibleSchedules.map((dim: any, idx: number) => {
+                          const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString() || 'Unknown';
+                          const wt = dim.wallThicknessMm || 0;
+                          const isRecommended = idx === 0;
+                          const label = isRecommended
+                            ? `★ ${scheduleValue} (${wt}mm)`
+                            : `${scheduleValue} (${wt}mm)`;
+                          return { value: scheduleValue, label };
+                        });
+
+                        return (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                            <label className="block text-xs font-semibold text-green-900 mb-1">
+                              Schedule / W/T *
+                              <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>
+                            </label>
+                            <Select
+                              id={selectId}
+                              value={entry.specs?.scheduleNumber || ''}
+                              onChange={(schedule) => {
+                                if (!schedule) return;
+                                const selectedDim = allSchedules.find((dim: any) =>
+                                  (dim.scheduleDesignation || dim.scheduleNumber?.toString()) === schedule
+                                );
+                                onUpdateEntry(entry.id, {
+                                  specs: {
+                                    ...entry.specs,
+                                    scheduleNumber: schedule,
+                                    wallThicknessMm: selectedDim?.wallThicknessMm || entry.specs?.wallThicknessMm
+                                  }
+                                });
+                                setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                              }}
+                              options={options}
+                              placeholder="Select schedule..."
+                              open={openSelects[selectId] || false}
+                              onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            />
+                            {entry.specs?.wallThicknessMm && (
+                              <p className="text-xs text-green-700 mt-1">WT: {entry.specs.wallThicknessMm}mm</p>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      const manualOptions = allSchedules.length > 0
+                        ? allSchedules.map((dim: any) => ({
+                            value: dim.scheduleDesignation || dim.scheduleNumber?.toString(),
+                            label: `${dim.scheduleDesignation || dim.scheduleNumber?.toString()} (${dim.wallThicknessMm}mm)`
+                          }))
+                        : [
+                            { value: '10', label: 'Sch 10' },
+                            { value: '40', label: 'Sch 40' },
+                            { value: '80', label: 'Sch 80' },
+                            { value: '160', label: 'Sch 160' },
+                          ];
+
+                      return (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            Schedule / W/T *
+                            <span className="text-orange-600 text-xs ml-1 font-normal">(Manual)</span>
+                          </label>
+                          <Select
+                            id={selectId}
+                            value={entry.specs?.scheduleNumber || ''}
+                            onChange={(scheduleNumber) => {
+                              if (!scheduleNumber) return;
+                              const schedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
+                              const matchingSchedule = schedules.find((s: any) =>
+                                (s.scheduleDesignation || s.scheduleNumber?.toString()) === scheduleNumber
+                              );
+                              const wallThickness = matchingSchedule?.wallThicknessMm;
+
+                              const updatedEntry = {
+                                ...entry,
+                                specs: {
+                                  ...entry.specs,
+                                  scheduleNumber,
+                                  wallThicknessMm: wallThickness
+                                }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                              setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                            }}
+                            options={manualOptions}
+                            placeholder="Select Schedule"
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                          {entry.specs?.wallThicknessMm && (
+                            <p className="text-xs text-gray-600 mt-1">WT: {entry.specs.wallThicknessMm}mm</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -806,135 +904,32 @@ export default function FittingForm({
                   )}
                 </div>
 
-                {/* ROW 3: Wall Thickness & Pipe Lengths */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                  {/* Schedule/Wall Thickness */}
-                  {(() => {
-                    const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
-                    const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
-                    const showSchedule = effectiveStandard === 'SABS719';
+                {/* ROW 3: Quantity & Pipe Lengths - Combined Blue Area */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                  <h4 className="text-sm font-bold text-blue-900 border-b border-blue-400 pb-1.5 mb-3">
+                    Quantity & Dimensions
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Quantity */}
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-900 mb-1">
+                        Quantity *
+                      </label>
+                      <input
+                        type="number"
+                        value={entry.specs?.quantityValue || 1}
+                        onChange={(e) => {
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, quantityValue: Number(e.target.value) }
+                          });
+                          setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                        }}
+                        className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                        min="1"
+                      />
+                    </div>
 
-                    if (!showSchedule) {
-                      return (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-2">
-                          <label className="block text-xs font-semibold text-gray-500 mb-1">
-                            Wall Thickness
-                          </label>
-                          <p className="text-sm text-gray-600">N/A (SABS62)</p>
-                        </div>
-                      );
-                    }
-
-                    const selectId = `fitting-schedule-row2-${entry.id}`;
-                    const nbValue = entry.specs?.nominalDiameterMm || 0;
-                    const fitEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                    const allSchedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
-
-                    if (globalSpecs?.workingPressureBar && entry.specs?.nominalDiameterMm) {
-                      const minWT = getMinimumWallThickness(nbValue, globalSpecs?.workingPressureBar || 0);
-                      const eligibleSchedules = allSchedules
-                        .filter((dim: any) => (dim.wallThicknessMm || 0) >= minWT)
-                        .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
-
-                      const options = eligibleSchedules.map((dim: any, idx: number) => {
-                        const scheduleValue = dim.scheduleDesignation || dim.scheduleNumber?.toString() || 'Unknown';
-                        const wt = dim.wallThicknessMm || 0;
-                        const isRecommended = idx === 0;
-                        const label = isRecommended
-                          ? `★ ${scheduleValue} (${wt}mm)`
-                          : `${scheduleValue} (${wt}mm)`;
-                        return { value: scheduleValue, label };
-                      });
-
-                      return (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-2">
-                          <label className="block text-xs font-semibold text-green-900 mb-1">
-                            Schedule / W/T *
-                            <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>
-                          </label>
-                          <Select
-                            id={selectId}
-                            value={entry.specs?.scheduleNumber || ''}
-                            onChange={(schedule) => {
-                              if (!schedule) return;
-                              const selectedDim = allSchedules.find((dim: any) =>
-                                (dim.scheduleDesignation || dim.scheduleNumber?.toString()) === schedule
-                              );
-                              onUpdateEntry(entry.id, {
-                                specs: {
-                                  ...entry.specs,
-                                  scheduleNumber: schedule,
-                                  wallThicknessMm: selectedDim?.wallThicknessMm || entry.specs?.wallThicknessMm
-                                }
-                              });
-                              setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
-                            }}
-                            options={options}
-                            placeholder="Select schedule..."
-                            open={openSelects[selectId] || false}
-                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
-                          />
-                          {entry.specs?.wallThicknessMm && (
-                            <p className="text-xs text-green-700 mt-1">WT: {entry.specs.wallThicknessMm}mm</p>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    const manualOptions = allSchedules.length > 0
-                      ? allSchedules.map((dim: any) => ({
-                          value: dim.scheduleDesignation || dim.scheduleNumber?.toString(),
-                          label: `${dim.scheduleDesignation || dim.scheduleNumber?.toString()} (${dim.wallThicknessMm}mm)`
-                        }))
-                      : [
-                          { value: '10', label: 'Sch 10' },
-                          { value: '40', label: 'Sch 40' },
-                          { value: '80', label: 'Sch 80' },
-                          { value: '160', label: 'Sch 160' },
-                        ];
-
-                    return (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Schedule / W/T *
-                          <span className="text-orange-600 text-xs ml-1 font-normal">(Manual)</span>
-                        </label>
-                        <Select
-                          id={selectId}
-                          value={entry.specs?.scheduleNumber || ''}
-                          onChange={(scheduleNumber) => {
-                            if (!scheduleNumber) return;
-                            const schedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
-                            const matchingSchedule = schedules.find((s: any) =>
-                              (s.scheduleDesignation || s.scheduleNumber?.toString()) === scheduleNumber
-                            );
-                            const wallThickness = matchingSchedule?.wallThicknessMm;
-
-                            const updatedEntry = {
-                              ...entry,
-                              specs: {
-                                ...entry.specs,
-                                scheduleNumber,
-                                wallThicknessMm: wallThickness
-                              }
-                            };
-                            updatedEntry.description = generateItemDescription(updatedEntry);
-                            onUpdateEntry(entry.id, updatedEntry);
-                            setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
-                          }}
-                          options={manualOptions}
-                          placeholder="Select Schedule"
-                          open={openSelects[selectId] || false}
-                          onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
-                        />
-                        {entry.specs?.wallThicknessMm && (
-                          <p className="text-xs text-gray-600 mt-1">WT: {entry.specs.wallThicknessMm}mm</p>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Pipe Length A - or Angle Range for Laterals/Y-Pieces */}
+                    {/* Pipe Length A - or Angle Range for Laterals/Y-Pieces */}
                   {(() => {
                     const fittingType = entry.specs?.fittingType;
                     const isLateral = fittingType === 'LATERAL' || fittingType === 'Y_PIECE';
@@ -1138,9 +1133,10 @@ export default function FittingForm({
                       </div>
                     );
                   })()}
+                  </div>
                 </div>
 
-                {/* ROW 3: Remaining fields in 3-column grid */}
+                {/* ROW 4: Remaining fields in 3-column grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {/* Column 1 - Additional Specs */}
                   <div className="space-y-3">
@@ -1324,25 +1320,6 @@ export default function FittingForm({
                       </div>
                     )}
 
-                    {/* Quantity */}
-                    <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
-                      <label className="block text-xs font-semibold text-blue-900 mb-1">
-                        Quantity *
-                      </label>
-                      <input
-                        type="number"
-                        value={entry.specs?.quantityValue || 1}
-                        onChange={(e) => {
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, quantityValue: Number(e.target.value) }
-                          });
-                          // Auto-calculate fitting
-                          setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
-                        }}
-                        className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
-                        min="1"
-                      />
-                    </div>
                   </div>
 
                   {/* Column 2 - Configuration & Ends */}

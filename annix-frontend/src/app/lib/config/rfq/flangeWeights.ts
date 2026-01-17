@@ -354,15 +354,42 @@ export const flangeWeight = (
 ): number => {
   const designation = pressureClassDesignation || 'PN16';
 
+  // Check if this is a SABS/SANS 1123 standard (South African standard - both naming conventions)
+  const isSabsSans1123 = flangeStandard && (
+    flangeStandard.toUpperCase().includes('SABS') && flangeStandard.includes('1123') ||
+    flangeStandard.toUpperCase().includes('SANS') && flangeStandard.includes('1123')
+  );
+
   const sansTableMatch = designation.match(/^(\d+)\/(\d)$/);
-  if (sansTableMatch || (flangeStandard && flangeStandard.toUpperCase().includes('SANS'))) {
-    const tableDesignation = sansTableMatch ? `${sansTableMatch[1]}/3` : designation;
+  // Also match pure numeric designations like "1000" for SABS 1123
+  const numericMatch = designation.match(/^(\d+)$/);
+
+  if (sansTableMatch || isSabsSans1123) {
+    // For SABS/SANS 1123, always use /3 table (plate flanges) as the base
+    // Handle both "1000/3" format and pure "1000" format
+    let tableDesignation: string;
+    let kpa: number;
+
+    if (sansTableMatch) {
+      tableDesignation = `${sansTableMatch[1]}/3`;
+      kpa = parseInt(sansTableMatch[1]);
+    } else if (numericMatch) {
+      // Pure numeric like "1000" - append /3 for table lookup
+      tableDesignation = `${numericMatch[1]}/3`;
+      kpa = parseInt(numericMatch[1]);
+    } else {
+      // Fallback - try to extract kPa value from designation
+      const kpaMatch = designation.match(/(\d{3,4})/);
+      kpa = kpaMatch ? parseInt(kpaMatch[1]) : 1000;
+      tableDesignation = `${kpa}/3`;
+    }
+
     const sansWeight = SANS_1123_PLATE_FLANGE_WEIGHT[tableDesignation]?.[nominalBoreMm];
     if (sansWeight) {
       return sansWeight;
     }
 
-    const kpa = sansTableMatch ? parseInt(sansTableMatch[1]) : 1000;
+    // Fallback to nearest pressure class if exact match not found
     const fallbackTable = kpa <= 600 ? '600/3' : kpa <= 1000 ? '1000/3' : kpa <= 1600 ? '1600/3' : kpa <= 2500 ? '2500/3' : '4000/3';
     const fallbackWeight = SANS_1123_PLATE_FLANGE_WEIGHT[fallbackTable]?.[nominalBoreMm];
     if (fallbackWeight) {
