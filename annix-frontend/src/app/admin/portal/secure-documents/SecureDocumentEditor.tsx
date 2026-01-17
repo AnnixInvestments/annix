@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { SecureDocumentWithContent } from '@/app/lib/api/adminApi';
+import type { ICommand } from '@uiw/react-md-editor';
 
 const MDEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
 
@@ -14,10 +15,17 @@ interface InitialData {
 
 export type EditorPaneMode = 'edit' | 'live' | 'preview';
 
+export interface EditorState {
+  paneMode?: EditorPaneMode;
+  fullscreen?: boolean;
+}
+
 interface SecureDocumentEditorProps {
   document: SecureDocumentWithContent | null;
   initialData?: InitialData | null;
   paneMode?: EditorPaneMode;
+  fullscreen?: boolean;
+  onStateChange?: (state: EditorState) => void;
   onSave: (data: { title: string; description: string; content: string }) => Promise<void>;
   onCancel: () => void;
 }
@@ -26,6 +34,8 @@ export default function SecureDocumentEditor({
   document,
   initialData,
   paneMode = 'live',
+  fullscreen = false,
+  onStateChange,
   onSave,
   onCancel,
 }: SecureDocumentEditorProps) {
@@ -34,7 +44,40 @@ export default function SecureDocumentEditor({
   const [content, setContent] = useState(initialData?.content || document?.content || '');
   const [isSaving, setIsSaving] = useState(false);
   const [editorHeight, setEditorHeight] = useState(500);
+  const [localPaneMode, setLocalPaneMode] = useState<EditorPaneMode>(paneMode);
+  const [localFullscreen, setLocalFullscreen] = useState(fullscreen);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setLocalPaneMode(paneMode);
+  }, [paneMode]);
+
+  useEffect(() => {
+    setLocalFullscreen(fullscreen);
+  }, [fullscreen]);
+
+  const handlePaneModeChange = useCallback((mode: EditorPaneMode) => {
+    setLocalPaneMode(mode);
+    onStateChange?.({ paneMode: mode });
+  }, [onStateChange]);
+
+  const handleFullscreenChange = useCallback((isFullscreen: boolean) => {
+    setLocalFullscreen(isFullscreen);
+    onStateChange?.({ fullscreen: isFullscreen });
+  }, [onStateChange]);
+
+  const commandsFilter = useCallback((cmd: ICommand): ICommand => {
+    if (cmd.name === 'edit') {
+      return { ...cmd, execute: () => handlePaneModeChange('edit') };
+    } else if (cmd.name === 'live') {
+      return { ...cmd, execute: () => handlePaneModeChange('live') };
+    } else if (cmd.name === 'preview') {
+      return { ...cmd, execute: () => handlePaneModeChange('preview') };
+    } else if (cmd.name === 'fullscreen') {
+      return { ...cmd, execute: () => handleFullscreenChange(!localFullscreen) };
+    }
+    return cmd;
+  }, [handlePaneModeChange, handleFullscreenChange, localFullscreen]);
 
   useEffect(() => {
     const calculateHeight = () => {
@@ -177,7 +220,8 @@ export default function SecureDocumentEditor({
               value={content}
               onChange={(val) => setContent(val || '')}
               height={editorHeight}
-              preview={paneMode}
+              preview={localPaneMode}
+              commandsFilter={commandsFilter}
             />
           </div>
         </div>

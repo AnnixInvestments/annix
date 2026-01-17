@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { adminApiClient, SecureDocument, SecureDocumentWithContent } from '@/app/lib/api/adminApi';
 import { formatDateZA } from '@/app/lib/datetime';
-import SecureDocumentEditor, { EditorPaneMode } from './SecureDocumentEditor';
+import SecureDocumentEditor, { EditorPaneMode, EditorState } from './SecureDocumentEditor';
 import SecureDocumentViewer from './SecureDocumentViewer';
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create';
@@ -77,6 +77,7 @@ export default function SecureDocumentsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [editorPaneMode, setEditorPaneMode] = useState<EditorPaneMode>('live');
+  const [editorFullscreen, setEditorFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const allSelected = documents.length > 0 && selectedIds.size === documents.length;
@@ -157,9 +158,16 @@ export default function SecureDocumentsPage() {
     const docSlug = searchParams.get('doc');
     const urlMode = searchParams.get('mode') as UrlMode | null;
     const urlPane = searchParams.get('pane') as EditorPaneMode | null;
+    const urlFullscreen = searchParams.get('fullscreen');
 
     if (urlPane && ['edit', 'live', 'preview'].includes(urlPane)) {
       setEditorPaneMode(urlPane);
+    }
+
+    if (urlFullscreen === 'true') {
+      setEditorFullscreen(true);
+    } else if (urlFullscreen === 'false') {
+      setEditorFullscreen(false);
     }
 
     if (docSlug && !selectedDocument && !isLoadingDocument) {
@@ -168,7 +176,7 @@ export default function SecureDocumentsPage() {
     }
   }, [searchParams, selectedDocument, isLoadingDocument]);
 
-  const updateUrl = (slug: string | null, mode?: UrlMode, pane?: EditorPaneMode) => {
+  const updateUrl = (slug: string | null, mode?: UrlMode, pane?: EditorPaneMode, fullscreen?: boolean) => {
     const params = new URLSearchParams();
     if (slug) {
       params.set('doc', slug);
@@ -179,6 +187,9 @@ export default function SecureDocumentsPage() {
     if (pane) {
       params.set('pane', pane);
     }
+    if (fullscreen !== undefined) {
+      params.set('fullscreen', String(fullscreen));
+    }
     const queryString = params.toString();
     const url = queryString
       ? `/admin/portal/secure-documents?${queryString}`
@@ -186,6 +197,22 @@ export default function SecureDocumentsPage() {
     router.push(url, { scroll: false });
   };
 
+  const handleEditorStateChange = (state: EditorState) => {
+    if (state.paneMode !== undefined) {
+      setEditorPaneMode(state.paneMode);
+    }
+    if (state.fullscreen !== undefined) {
+      setEditorFullscreen(state.fullscreen);
+    }
+    if (selectedDocument) {
+      updateUrl(
+        selectedDocument.slug,
+        'edit',
+        state.paneMode ?? editorPaneMode,
+        state.fullscreen ?? editorFullscreen
+      );
+    }
+  };
 
   const handleViewDocumentBySlug = async (slug: string, targetMode: ViewMode = 'view') => {
     try {
@@ -225,7 +252,7 @@ export default function SecureDocumentsPage() {
       const doc = await adminApiClient.getSecureDocument(id);
       setSelectedDocument(doc);
       setViewMode('edit');
-      updateUrl(slug, 'edit', editorPaneMode);
+      updateUrl(slug, 'edit', editorPaneMode, editorFullscreen);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load document';
       setActionMessage({ type: 'error', text: message });
@@ -397,7 +424,7 @@ export default function SecureDocumentsPage() {
         onBack={handleBack}
         onEdit={() => {
           setViewMode('edit');
-          updateUrl(selectedDocument.slug, 'edit', editorPaneMode);
+          updateUrl(selectedDocument.slug, 'edit', editorPaneMode, editorFullscreen);
         }}
       />
     );
@@ -412,6 +439,8 @@ export default function SecureDocumentsPage() {
         document={viewMode === 'edit' ? selectedDocument : null}
         initialData={initialData}
         paneMode={editorPaneMode}
+        fullscreen={editorFullscreen}
+        onStateChange={handleEditorStateChange}
         onSave={handleSave}
         onCancel={handleBack}
       />
