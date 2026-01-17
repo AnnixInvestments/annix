@@ -643,7 +643,7 @@ export default function FittingForm({
                     }
 
                     return (
-                      <div className={isTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
+                      <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
                         <label className="block text-xs font-semibold text-blue-900 mb-1">
                           Pipe Length A (mm) *
                           {isEqualTee && <span className="text-blue-600 text-xs ml-1 font-normal">(Standard)</span>}
@@ -738,7 +738,7 @@ export default function FittingForm({
                     }
 
                     return (
-                      <div className={isTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
+                      <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
                         <label className="block text-xs font-semibold text-blue-900 mb-1">
                           Pipe Length B (mm) *
                           {isEqualTee && <span className="text-blue-600 text-xs ml-1 font-normal">(Standard)</span>}
@@ -958,8 +958,8 @@ export default function FittingForm({
                     )}
 
                     {/* Quantity */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                    <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
+                      <label className="block text-xs font-semibold text-blue-900 mb-1">
                         Quantity *
                       </label>
                       <input
