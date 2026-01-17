@@ -331,7 +331,7 @@ function Start-ServiceJobs {
 
     foreach ($definition in @(
         @{ Name = "backend"; WorkingDir = $BackendDir; Command = "pnpm start:dev"; Log = Join-Path $RepoRoot $BackendLog },
-        @{ Name = "frontend"; WorkingDir = $FrontendDir; Command = "pnpm dev --turbo"; Log = Join-Path $RepoRoot $FrontendLog }
+        @{ Name = "frontend"; WorkingDir = $FrontendDir; Command = "pnpm dev"; Log = Join-Path $RepoRoot $FrontendLog }
     )) {
         if (Test-Path $definition.Log) {
             Remove-Item $definition.Log

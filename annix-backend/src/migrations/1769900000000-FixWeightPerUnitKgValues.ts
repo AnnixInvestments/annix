@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class FixWeightPerUnitKgValues1736920000000 implements MigrationInterface {
-  name = 'FixWeightPerUnitKgValues1736920000000';
+export class FixWeightPerUnitKgValues1769900000000 implements MigrationInterface {
+  name = 'FixWeightPerUnitKgValues1769900000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Fix weight_per_unit_kg for straight pipes
