@@ -691,8 +691,8 @@ export default function SecureDocumentsPage() {
     <div className="space-y-6">
       <div className="relative">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Secure Documents</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Secure Documents</h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             Encrypted markdown documents for sensitive information
           </p>
         </div>
@@ -706,7 +706,7 @@ export default function SecureDocumentsPage() {
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -726,7 +726,7 @@ export default function SecureDocumentsPage() {
       </div>
 
       <div
-        className={`relative bg-white shadow rounded-lg overflow-x-auto transition-colors ${isDragging ? 'ring-2 ring-[#323288] ring-offset-2' : ''}`}
+        className={`relative bg-white dark:bg-gray-900 shadow rounded-lg overflow-x-auto transition-colors ${isDragging ? 'ring-2 ring-[#323288] ring-offset-2' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -758,14 +758,14 @@ export default function SecureDocumentsPage() {
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No documents</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No documents</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Create your first secure document or drag and drop a markdown file
             </p>
             <div className="mt-4 flex justify-center space-x-3">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -801,8 +801,8 @@ export default function SecureDocumentsPage() {
                 </button>
               </div>
             )}
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
                   <th scope="col" className="w-12 px-4 py-3">
                     <input
@@ -815,7 +815,7 @@ export default function SecureDocumentsPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
                     onClick={() => handleSort('title')}
                   >
                     <div className="flex items-center gap-1">
@@ -829,7 +829,7 @@ export default function SecureDocumentsPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
                     onClick={() => handleSort('description')}
                   >
                     <div className="flex items-center gap-1">
@@ -843,7 +843,7 @@ export default function SecureDocumentsPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
                     onClick={() => handleSort('author')}
                   >
                     <div className="flex items-center gap-1">
@@ -857,7 +857,7 @@ export default function SecureDocumentsPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
                     onClick={() => handleSort('updatedAt')}
                   >
                     <div className="flex items-center gap-1">
@@ -874,17 +874,17 @@ export default function SecureDocumentsPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {sortedSecureFolders.map((folder) => (
                   <React.Fragment key={`secure-folder-${folder}`}>
                     {folder !== '.' && (
                       <tr
-                        className="bg-purple-50 hover:bg-purple-100 cursor-pointer select-none"
+                        className="bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 cursor-pointer select-none"
                         onClick={() => toggleFolder(folder)}
                       >
                         <td className="w-12 px-4 py-3">
                           <svg
-                            className={`w-4 h-4 text-purple-600 transition-transform ${collapsedFolders.has(folder) ? '' : 'rotate-90'}`}
+                            className={`w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform ${collapsedFolders.has(folder) ? '' : 'rotate-90'}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -894,11 +894,11 @@ export default function SecureDocumentsPage() {
                         </td>
                         <td colSpan={5} className="px-6 py-3">
                           <div className="flex items-center">
-                            <svg className="w-5 h-5 text-purple-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 text-purple-500 dark:text-purple-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                             </svg>
-                            <span className="text-sm font-medium text-purple-900">{folder}</span>
-                            <span className="ml-2 text-xs text-purple-600">
+                            <span className="text-sm font-medium text-purple-900 dark:text-purple-200">{folder}</span>
+                            <span className="ml-2 text-xs text-purple-600 dark:text-purple-400">
                               ({secureDocsByFolder[folder].length} document{secureDocsByFolder[folder].length !== 1 ? 's' : ''})
                             </span>
                           </div>
@@ -909,7 +909,7 @@ export default function SecureDocumentsPage() {
                       <tr
                         key={doc.id}
                         onClick={() => handleUnifiedDocumentClick(doc)}
-                        className={`hover:bg-gray-50 cursor-pointer transition-colors ${selectedIds.has(doc.id) ? 'bg-[#323288]/5' : ''} ${folder !== '.' ? 'bg-purple-50/30' : ''}`}
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${selectedIds.has(doc.id) ? 'bg-[#323288]/5' : ''} ${folder !== '.' ? 'bg-purple-50/30 dark:bg-purple-900/20' : ''}`}
                       >
                         <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
                           <input
@@ -924,18 +924,18 @@ export default function SecureDocumentsPage() {
                             <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
-                            <span className="text-sm font-medium text-gray-900">{doc.title}</span>
+                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doc.title}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm text-gray-500 truncate max-w-xs block">
+                          <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs block">
                             {doc.description || '-'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           {doc.author || '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           {formatDateZA(doc.updatedAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -981,12 +981,12 @@ export default function SecureDocumentsPage() {
                 {sortedLocalFolders.map((folder) => (
                   <React.Fragment key={`local-folder-${folder}`}>
                     <tr
-                      className="bg-blue-50 hover:bg-blue-100 cursor-pointer select-none"
+                      className="bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer select-none"
                       onClick={() => toggleFolder(`local:${folder}`)}
                     >
                       <td className="w-12 px-4 py-3">
                         <svg
-                          className={`w-4 h-4 text-blue-600 transition-transform ${collapsedFolders.has(`local:${folder}`) ? '' : 'rotate-90'}`}
+                          className={`w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform ${collapsedFolders.has(`local:${folder}`) ? '' : 'rotate-90'}`}
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -996,13 +996,13 @@ export default function SecureDocumentsPage() {
                       </td>
                       <td colSpan={5} className="px-6 py-3">
                         <div className="flex items-center">
-                          <svg className="w-5 h-5 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 text-blue-500 dark:text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                           </svg>
-                          <span className="text-sm font-medium text-blue-900">
+                          <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
                             {folder === '.' ? 'Codebase Root' : folder}
                           </span>
-                          <span className="ml-2 text-xs text-blue-600">
+                          <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
                             ({localDocsByFolder[folder].length} file{localDocsByFolder[folder].length !== 1 ? 's' : ''})
                           </span>
                         </div>
@@ -1012,7 +1012,7 @@ export default function SecureDocumentsPage() {
                       <tr
                         key={doc.id}
                         onClick={() => handleUnifiedDocumentClick(doc)}
-                        className="hover:bg-gray-50 cursor-pointer transition-colors bg-blue-50/30"
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors bg-blue-50/30 dark:bg-blue-900/20"
                       >
                         <td className="w-12 px-4 py-4">
                           <span className="w-4 h-4 block" />
@@ -1022,20 +1022,20 @@ export default function SecureDocumentsPage() {
                             <svg className="w-5 h-5 text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {doc.filePath?.split('/').pop()?.replace('.md', '') || doc.title}
                             </span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm text-gray-500 truncate max-w-xs block">
+                          <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs block">
                             {doc.filePath || '-'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           Codebase
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           {formatDateZA(doc.updatedAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -1148,7 +1148,7 @@ export default function SecureDocumentsPage() {
       )}
 
       <div
-        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging ? 'border-[#323288] bg-[#323288]/5' : 'border-gray-300 hover:border-gray-400'}`}
+        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging ? 'border-[#323288] bg-[#323288]/5' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -1156,10 +1156,10 @@ export default function SecureDocumentsPage() {
         <svg className="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           <span className="font-medium">Drop files here</span> to import markdown documents
         </p>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
           Supports .md, .markdown, and .txt files
         </p>
       </div>
@@ -1168,15 +1168,15 @@ export default function SecureDocumentsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(null)} />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Delete Document</h3>
-              <p className="text-sm text-gray-500 mb-6">
+            <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Delete Document</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                 Are you sure you want to delete this document? This action cannot be undone.
               </p>
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => setShowDeleteConfirm(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600"
                 >
                   Cancel
                 </button>
@@ -1197,15 +1197,15 @@ export default function SecureDocumentsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowBulkDeleteConfirm(false)} />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Delete {selectedIds.size} Document{selectedIds.size !== 1 ? 's' : ''}</h3>
-              <p className="text-sm text-gray-500 mb-6">
+            <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Delete {selectedIds.size} Document{selectedIds.size !== 1 ? 's' : ''}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                 Are you sure you want to delete {selectedIds.size} selected document{selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.
               </p>
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => setShowBulkDeleteConfirm(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600"
                 >
                   Cancel
                 </button>

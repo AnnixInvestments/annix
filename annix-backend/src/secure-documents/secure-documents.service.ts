@@ -35,6 +35,7 @@ export interface LocalDocument {
 function slugify(text: string): string {
   return text
     .toLowerCase()
+    .replace(/_/g, '-')
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
@@ -61,7 +62,12 @@ export class SecureDocumentsService {
       this.configService.get<string>('AWS_S3_BUCKET') || 'annix-sync-files';
     this.encryptionKey =
       this.configService.get<string>('DOCUMENT_ENCRYPTION_KEY') || '';
-    this.projectRoot = path.resolve(process.cwd(), '..');
+    const dockerDocsPath = path.join(process.cwd(), 'project-docs');
+    if (fs.existsSync(dockerDocsPath)) {
+      this.projectRoot = dockerDocsPath;
+    } else {
+      this.projectRoot = path.resolve(process.cwd(), '..');
+    }
 
     this.s3Client = new S3Client({
       region,
@@ -295,7 +301,7 @@ export class SecureDocumentsService {
             ? fileName.replace(/[-_]/g, ' ')
             : `${dirName.replace(/\//g, ' / ')} / ${fileName.replace(/[-_]/g, ' ')}`;
 
-          const slug = `local:${relativePath.replace(/\//g, '-').replace(/\.md$/i, '').toLowerCase()}`;
+          const slug = `local:${slugify(relativePath.replace(/\//g, '-').replace(/\.md$/i, ''))}`;
 
           results.push({
             slug,
@@ -332,7 +338,7 @@ export class SecureDocumentsService {
       ? 'Project README'
       : `${dirName.replace(/\//g, ' / ')} README`;
 
-    const slug = `local:${relativePath.replace(/\//g, '-').replace(/\.md$/i, '').toLowerCase()}`;
+    const slug = `local:${slugify(relativePath.replace(/\//g, '-').replace(/\.md$/i, ''))}`;
 
     const document: LocalDocument = {
       slug,

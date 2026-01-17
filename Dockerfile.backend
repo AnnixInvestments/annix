@@ -1,0 +1,37 @@
+FROM node:24-slim AS builder
+
+WORKDIR /usr/src/app
+
+COPY annix-backend/package.json annix-backend/pnpm-lock.yaml* ./
+RUN corepack enable pnpm && pnpm install
+
+COPY annix-backend/ .
+RUN corepack enable pnpm && pnpm run build
+
+FROM node:24-slim AS docs-collector
+
+WORKDIR /usr/src/repo
+
+COPY . .
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /usr/src/docs && \
+  cd /usr/src/repo && \
+  git ls-files "*.md" -z | xargs -0 -I{} sh -c 'mkdir -p "/usr/src/docs/$(dirname "$1")"; cp "$1" "/usr/src/docs/$1"' _ {}
+
+FROM node:24-slim AS runner
+
+WORKDIR /usr/src/app
+
+COPY annix-backend/package.json annix-backend/pnpm-lock.yaml* ./
+RUN corepack enable pnpm && pnpm install --prod && pnpm add -D ts-node typescript
+
+COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/src/config/data-source.ts ./src/config/data-source.ts
+COPY --from=builder /usr/src/app/src/migrations ./src/migrations
+COPY --from=builder /usr/src/app/tsconfig.json ./tsconfig.json
+
+COPY --from=docs-collector /usr/src/docs ./project-docs
+
+EXPOSE 4000
+
+CMD ["sh", "-c", "node dist/src/main"]

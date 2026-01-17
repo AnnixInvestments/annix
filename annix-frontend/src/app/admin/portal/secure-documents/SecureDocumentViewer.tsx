@@ -4,6 +4,7 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import { SecureDocumentWithContent } from '@/app/lib/api/adminApi';
 import { formatDateZA } from '@/app/lib/datetime';
+import { useTheme } from '@/app/components/ThemeProvider';
 
 function authorName(doc: SecureDocumentWithContent): string {
   if (!doc.createdBy) return 'Unknown';
@@ -34,22 +35,24 @@ export default function SecureDocumentViewer({
   onEdit,
   isReadOnly = false,
 }: SecureDocumentViewerProps) {
+  const { resolvedTheme } = useTheme();
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <button
             onClick={onBack}
-            className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-2"
+            className="inline-flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 mb-2"
           >
             <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Back
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">{document.title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{document.title}</h1>
           {document.description && (
-            <p className="mt-1 text-sm text-gray-600">{document.description}</p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{document.description}</p>
           )}
         </div>
         {!isReadOnly && onEdit && (
@@ -65,9 +68,9 @@ export default function SecureDocumentViewer({
         )}
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center justify-between text-sm text-gray-500">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
             <div className="flex items-center space-x-4">
               <span>Created by {authorName(document)}</span>
               <span>|</span>
@@ -92,10 +95,14 @@ export default function SecureDocumentViewer({
             )}
           </div>
         </div>
-        <div className="p-6" data-color-mode="light">
+        <div className="p-6" data-color-mode={resolvedTheme}>
           <MarkdownPreview
             source={document.content}
-            style={{ backgroundColor: 'transparent' }}
+            style={resolvedTheme === 'dark' ? {
+              backgroundColor: 'transparent',
+              '--color-canvas-default': 'transparent',
+              '--color-canvas-subtle': '#111827',
+            } as React.CSSProperties : { backgroundColor: 'transparent' }}
           />
         </div>
       </div>

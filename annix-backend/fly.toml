@@ -2,6 +2,8 @@ app = 'annix-backend'
 primary_region = 'jnb'
 
 [build]
+  dockerfile = '../Dockerfile.backend'
+  context = '..'
 
 [deploy]
   release_command = 'npx ts-node --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run'

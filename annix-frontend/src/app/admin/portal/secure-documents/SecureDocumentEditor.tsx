@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { SecureDocumentWithContent } from '@/app/lib/api/adminApi';
+import { useTheme } from '@/app/components/ThemeProvider';
 import type { ICommand } from '@uiw/react-md-editor';
 
 const MDEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
@@ -53,6 +54,7 @@ export default function SecureDocumentEditor({
   const [localPaneMode, setLocalPaneMode] = useState<EditorPaneMode>(paneMode);
   const [localFullscreen, setLocalFullscreen] = useState(fullscreen);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     setLocalPaneMode(paneMode);
@@ -167,13 +169,33 @@ export default function SecureDocumentEditor({
         .w-md-editor-toolbar li > button {
           padding: 6px !important;
         }
+        [data-color-mode="dark"] .w-md-editor,
+        [data-color-mode="dark"] .w-md-editor *,
+        [data-color-mode="dark"] .w-md-editor-text-input,
+        [data-color-mode="dark"] .w-md-editor-text-input:focus,
+        [data-color-mode="dark"] .w-md-editor-text-pre,
+        [data-color-mode="dark"] .w-md-editor-text-pre > code,
+        [data-color-mode="dark"] .w-md-editor-area,
+        [data-color-mode="dark"] .w-md-editor-preview,
+        [data-color-mode="dark"] .wmde-markdown,
+        [data-color-mode="dark"] .w-md-editor-content {
+          background-color: #1f2937 !important;
+        }
+        [data-color-mode="dark"] .w-md-editor-text-input,
+        [data-color-mode="dark"] .w-md-editor-text-input:focus,
+        [data-color-mode="dark"] .w-md-editor-text-pre,
+        [data-color-mode="dark"] .w-md-editor-text-pre > code {
+          color: #e5e7eb !important;
+          -webkit-text-fill-color: #e5e7eb !important;
+          caret-color: #e5e7eb !important;
+        }
       `}</style>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {isEdit ? 'Edit Document' : 'Create Document'}
           </h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             {isEdit ? 'Update the document content below' : 'Create a new secure document'}
           </p>
         </div>
@@ -211,9 +233,9 @@ export default function SecureDocumentEditor({
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6 space-y-6">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-6">
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Title
           </label>
           <input
@@ -221,13 +243,13 @@ export default function SecureDocumentEditor({
             id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#323288] focus:ring-[#323288] sm:text-sm border p-2"
+            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-[#323288] focus:ring-[#323288] sm:text-sm border p-2"
             placeholder="Document title"
           />
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Description
           </label>
           <input
@@ -235,13 +257,13 @@ export default function SecureDocumentEditor({
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#323288] focus:ring-[#323288] sm:text-sm border p-2"
+            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-[#323288] focus:ring-[#323288] sm:text-sm border p-2"
             placeholder="Brief description for the document list"
           />
         </div>
 
         <div>
-          <label htmlFor="folder" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="folder" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Folder
           </label>
           <input
@@ -249,22 +271,28 @@ export default function SecureDocumentEditor({
             id="folder"
             value={folder}
             onChange={(e) => setFolder(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#323288] focus:ring-[#323288] sm:text-sm border p-2"
+            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-[#323288] focus:ring-[#323288] sm:text-sm border p-2"
             placeholder="e.g. deployment/aws (leave empty for root)"
           />
         </div>
 
         <div ref={editorContainerRef}>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Content
           </label>
-          <div data-color-mode="light">
+          <div data-color-mode={resolvedTheme}>
             <MDEditor
               value={content}
               onChange={(val) => setContent(val || '')}
               height={editorHeight}
               preview={localPaneMode}
               commandsFilter={commandsFilter}
+              style={resolvedTheme === 'dark' ? {
+                '--color-canvas-default': '#1f2937',
+                '--color-canvas-subtle': '#111827',
+                '--color-border-default': '#374151',
+                '--color-border-muted': '#374151',
+              } as React.CSSProperties : undefined}
             />
           </div>
         </div>
