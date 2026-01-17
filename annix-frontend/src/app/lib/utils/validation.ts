@@ -65,9 +65,10 @@ export function validatePage1RequiredFields(rfqData: any): ValidationErrors {
 /**
  * Validate Page 2 specifications
  * @param globalSpecs - Global specifications object
+ * @param masterData - Optional master data for looking up flange standards
  * @returns Object with validation errors
  */
-export function validatePage2Specifications(globalSpecs: any): ValidationErrors {
+export function validatePage2Specifications(globalSpecs: any, masterData?: any): ValidationErrors {
   const errors: ValidationErrors = {};
 
   if (!globalSpecs.workingPressureBar) {
@@ -76,6 +77,14 @@ export function validatePage2Specifications(globalSpecs: any): ValidationErrors 
 
   if (!globalSpecs.workingTemperatureC) {
     errors.workingTemperature = 'Working temperature is required';
+  }
+
+  if (masterData?.flangeStandards && globalSpecs.flangeStandardId) {
+    const selectedStandard = masterData.flangeStandards.find((s: any) => s.id === globalSpecs.flangeStandardId);
+    const requiresFlangeType = selectedStandard?.code === 'SABS 1123' || selectedStandard?.code === 'BS 4504';
+    if (requiresFlangeType && !globalSpecs.flangeTypeCode) {
+      errors.flangeTypeCode = 'Flange type is required for SABS 1123 and BS 4504 standards';
+    }
   }
 
   return errors;

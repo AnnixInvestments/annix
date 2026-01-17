@@ -1329,21 +1329,42 @@ export default function FittingForm({
                       </div>
 
                       {globalSpecs?.flangeStandardId && !entry.hasFlangeOverride ? (
-                        <div className="bg-green-50 p-2 rounded-md">
-                          <p className="text-green-800 text-xs font-semibold">
+                        <div className="bg-green-50 p-3 rounded-md border border-green-200">
+                          <div className="flex justify-between items-center mb-2">
+                            <p className="text-green-800 text-xs font-semibold">
+                              Global Flange Specification
+                            </p>
+                            <span className="text-green-600 text-xs">(From Page 2)</span>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="bg-white p-2 rounded border border-green-200">
+                              <label className="block text-xs text-gray-500 mb-0.5">Flange Standard</label>
+                              <p className="text-sm font-medium text-gray-900">
+                                {masterData.flangeStandards?.find((fs: any) => fs.id === globalSpecs.flangeStandardId)?.code || 'Not set'}
+                              </p>
+                            </div>
+                            <div className="bg-white p-2 rounded border border-green-200">
+                              <label className="block text-xs text-gray-500 mb-0.5">Pressure Class</label>
+                              <p className="text-sm font-medium text-gray-900">
+                                {masterData.pressureClasses?.find((pc: any) => pc.id === globalSpecs.flangePressureClassId)?.designation || 'Not set'}
+                              </p>
+                            </div>
                             {(() => {
-                              const pressureClass = masterData.pressureClasses?.find(
-                                (pc: any) => pc.id === globalSpecs.flangePressureClassId
+                              const selectedStandard = masterData.flangeStandards?.find((fs: any) => fs.id === globalSpecs.flangeStandardId);
+                              const showFlangeType = selectedStandard?.code === 'SABS 1123' || selectedStandard?.code === 'BS 4504';
+                              if (!showFlangeType) return null;
+                              const flangeType = (selectedStandard?.code === 'SABS 1123' ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES)
+                                .find(ft => ft.code === globalSpecs.flangeTypeCode);
+                              return (
+                                <div className="bg-white p-2 rounded border border-green-200">
+                                  <label className="block text-xs text-gray-500 mb-0.5">Flange Type</label>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {flangeType ? `${flangeType.name} (${flangeType.code})` : 'Not set'}
+                                  </p>
+                                </div>
                               );
-                              const flangeStandard = masterData.flangeStandards?.find(
-                                (fs: any) => fs.id === globalSpecs.flangeStandardId
-                              );
-                              if (pressureClass && flangeStandard) {
-                                return `${flangeStandard.code} / ${pressureClass.designation}`;
-                              }
-                              return 'Using global specs';
                             })()}
-                          </p>
+                          </div>
                         </div>
                       ) : (
                         <div className="space-y-2">

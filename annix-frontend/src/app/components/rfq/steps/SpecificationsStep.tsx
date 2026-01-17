@@ -1087,7 +1087,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
               return showFlangeType ? (
                 <div>
                   <label className="block text-xs font-semibold text-gray-900 mb-1">
-                    Flange Type
+                    Flange Type *
                   </label>
                   <select
                     value={globalSpecs?.flangeTypeCode || ''}
@@ -1096,6 +1096,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                       flangeTypeCode: e.target.value || undefined
                     })}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                    required
                   >
                     <option value="">Select type...</option>
                     {SABS_1123_FLANGE_TYPES.map((ft) => (

@@ -97,6 +97,7 @@ const normalizeFittingTypeForApi = (type?: string | null) => {
 /**
  * Combine pressure class designation with selected flange type for SABS 1123 / BS 4504
  * For example: "1000/3" with flangeTypeCode "/1" becomes "1000/1"
+ * Or: "1000" with flangeTypeCode "/3" becomes "1000/3"
  * This is needed because the flange type dropdown is now separate from the pressure class dropdown
  */
 const getPressureClassWithFlangeType = (
@@ -104,17 +105,26 @@ const getPressureClassWithFlangeType = (
   flangeTypeCode?: string,
   flangeStandard?: string
 ): string => {
-  if (!flangeTypeCode) return pressureClassDesignation;
-
   // Only modify for SABS 1123 and BS 4504 standards
   const isSabsOrBs4504 = flangeStandard?.includes('SABS 1123') || flangeStandard?.includes('BS 4504');
   if (!isSabsOrBs4504) return pressureClassDesignation;
 
+  // If no flange type code is selected, return the designation as-is
+  if (!flangeTypeCode) return pressureClassDesignation;
+
   // Check if the designation has a /X suffix (e.g., "1000/3" or "10/3")
-  const match = pressureClassDesignation.match(/^(\d+)\/\d+$/);
-  if (match) {
+  const matchWithSuffix = pressureClassDesignation.match(/^(\d+)\/\d+$/);
+  if (matchWithSuffix) {
     // Replace the suffix with the selected flange type (e.g., "1000" + "/1" = "1000/1")
-    return `${match[1]}${flangeTypeCode}`;
+    return `${matchWithSuffix[1]}${flangeTypeCode}`;
+  }
+
+  // Check if the designation is just a number (e.g., "1000" or "16")
+  // This happens when the pressure class dropdown was split and no longer includes the /X suffix
+  const matchNumeric = pressureClassDesignation.match(/^(\d+)$/);
+  if (matchNumeric) {
+    // Append the flange type code (e.g., "1000" + "/3" = "1000/3")
+    return `${matchNumeric[1]}${flangeTypeCode}`;
   }
 
   return pressureClassDesignation;
@@ -1793,7 +1803,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         errors = validatePage1RequiredFields(rfqData);
         break;
       case 2:
-        errors = validatePage2Specifications(rfqData.globalSpecs);
+        errors = validatePage2Specifications(rfqData.globalSpecs, masterData);
         // Check if steel pipes is selected but not confirmed
         if (rfqData.requiredProducts?.includes('fabricated_steel') && !rfqData.globalSpecs?.steelPipesSpecsConfirmed) {
           errors.steelPipesConfirmation = 'Please confirm the Steel Pipe Specifications before proceeding';
