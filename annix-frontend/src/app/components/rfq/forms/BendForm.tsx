@@ -1085,8 +1085,8 @@ export default function BendForm({
 
                     {/* Closure Length - Only for L/F configs */}
                     {hasLooseFlange(entry.specs?.bendEndConfiguration || '') && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
+                        <label className="block text-xs font-semibold text-blue-900 mb-1">
                           Closure Length (mm)
                         </label>
                         <input
@@ -1098,7 +1098,7 @@ export default function BendForm({
                             });
                           }}
                           placeholder="150"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                          className="w-full px-3 py-2 bg-blue-50 border border-blue-300 rounded-md text-sm text-gray-900"
                         />
                       </div>
                     )}
@@ -1148,8 +1148,8 @@ export default function BendForm({
                       </div>
 
                       {(entry.specs?.numberOfTangents || 0) >= 1 && (
-                        <div className="mt-2">
-                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        <div className="mt-2 bg-blue-50 p-2 rounded-md border border-blue-200">
+                          <label className="block text-xs font-semibold text-blue-900 mb-1">
                             Tangent 1 Length (mm)
                           </label>
                           <input
@@ -1165,7 +1165,7 @@ export default function BendForm({
                                 setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                               }
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                            className="w-full px-3 py-2 bg-blue-50 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                             min="0"
                             placeholder="150"
                           />
@@ -1173,8 +1173,8 @@ export default function BendForm({
                       )}
 
                       {(entry.specs?.numberOfTangents || 0) >= 2 && (
-                        <div className="mt-2">
-                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        <div className="mt-2 bg-blue-50 p-2 rounded-md border border-blue-200">
+                          <label className="block text-xs font-semibold text-blue-900 mb-1">
                             Tangent 2 Length (mm)
                           </label>
                           <input
@@ -1190,7 +1190,7 @@ export default function BendForm({
                                 setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                               }
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                            className="w-full px-3 py-2 bg-blue-50 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                             min="0"
                             placeholder="150"
                           />
@@ -1734,8 +1734,8 @@ export default function BendForm({
                                 );
                               })()}
                             </div>
-                            <div>
-                              <label className="block text-xs text-gray-600 mb-0.5">Length (mm)</label>
+                            <div className="bg-blue-50 p-1 rounded border border-blue-200">
+                              <label className="block text-xs text-blue-800 mb-0.5">Length (mm)</label>
                               <input
                                 type="number"
                                 value={entry.specs?.stubs?.[0]?.length || ''}
@@ -1746,12 +1746,12 @@ export default function BendForm({
                                   updatedEntry.description = generateItemDescription(updatedEntry);
                                   onUpdateEntry(entry.id, updatedEntry);
                                 }}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                                className="w-full px-2 py-1 bg-blue-50 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500 text-gray-900"
                                 placeholder="150"
                               />
                             </div>
-                            <div>
-                              <label className="block text-xs text-gray-600 mb-0.5">Location (mm)</label>
+                            <div className="bg-blue-50 p-1 rounded border border-blue-200">
+                              <label className="block text-xs text-blue-800 mb-0.5">Location (mm)</label>
                               <input
                                 type="number"
                                 value={entry.specs?.stubs?.[0]?.locationFromFlange || ''}
@@ -1762,13 +1762,13 @@ export default function BendForm({
                                   updatedEntry.description = generateItemDescription(updatedEntry);
                                   onUpdateEntry(entry.id, updatedEntry);
                                 }}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                                className="w-full px-2 py-1 bg-blue-50 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500 text-gray-900"
                                 placeholder="From flange"
                               />
                             </div>
                           </div>
                           {/* Stub 1 Flange - Global with Override */}
-                          <div className="bg-orange-50 border border-orange-200 rounded p-2">
+                          <div className="bg-amber-50 border border-amber-200 rounded p-2">
                             <div className="flex justify-between items-center mb-1">
                               <span className="text-xs font-medium text-orange-900">
                                 Flange
@@ -2046,8 +2046,8 @@ export default function BendForm({
                                 );
                               })()}
                             </div>
-                            <div>
-                              <label className="block text-xs text-gray-600 mb-0.5">Length (mm)</label>
+                            <div className="bg-blue-50 p-1 rounded border border-blue-200">
+                              <label className="block text-xs text-blue-800 mb-0.5">Length (mm)</label>
                               <input
                                 type="number"
                                 value={entry.specs?.stubs?.[1]?.length || ''}
@@ -2058,12 +2058,12 @@ export default function BendForm({
                                   updatedEntry.description = generateItemDescription(updatedEntry);
                                   onUpdateEntry(entry.id, updatedEntry);
                                 }}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                                className="w-full px-2 py-1 bg-blue-50 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500 text-gray-900"
                                 placeholder="150"
                               />
                             </div>
-                            <div>
-                              <label className="block text-xs text-gray-600 mb-0.5">Location (mm)</label>
+                            <div className="bg-blue-50 p-1 rounded border border-blue-200">
+                              <label className="block text-xs text-blue-800 mb-0.5">Location (mm)</label>
                               <input
                                 type="number"
                                 value={entry.specs?.stubs?.[1]?.locationFromFlange || ''}
@@ -2074,13 +2074,13 @@ export default function BendForm({
                                   updatedEntry.description = generateItemDescription(updatedEntry);
                                   onUpdateEntry(entry.id, updatedEntry);
                                 }}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 text-gray-900"
+                                className="w-full px-2 py-1 bg-blue-50 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500 text-gray-900"
                                 placeholder="From flange"
                               />
                             </div>
                           </div>
                           {/* Stub 2 Flange - Global with Override */}
-                          <div className="bg-orange-50 border border-orange-200 rounded p-2">
+                          <div className="bg-amber-50 border border-amber-200 rounded p-2">
                             <div className="flex justify-between items-center mb-1">
                               <span className="text-xs font-medium text-orange-900">
                                 Flange
@@ -2406,25 +2406,25 @@ export default function BendForm({
 
                         return (
                           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
-                            {/* Quantity */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Qty Bends</p>
-                              <p className="text-lg font-bold text-gray-900">{entry.specs?.quantityValue || 1}</p>
-                              <p className="text-xs text-gray-500">pieces</p>
+                            {/* Quantity - Green for auto-calculated */}
+                            <div className="bg-green-50 p-2 rounded text-center border border-green-200">
+                              <p className="text-xs text-green-800 font-medium">Qty Bends</p>
+                              <p className="text-lg font-bold text-green-900">{entry.specs?.quantityValue || 1}</p>
+                              <p className="text-xs text-green-600">pieces</p>
                             </div>
 
-                            {/* Combined Dimensions - C/F and Stubs */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Dimensions</p>
-                              <p className="text-sm font-bold text-purple-900">C/F: {cfDisplay} mm</p>
-                              {numTangents > 0 && <p className="text-[10px] text-gray-500">incl. tangents</p>}
+                            {/* Combined Dimensions - Blue for lengths */}
+                            <div className="bg-blue-50 p-2 rounded text-center border border-blue-200">
+                              <p className="text-xs text-blue-800 font-medium">Dimensions</p>
+                              <p className="text-sm font-bold text-blue-900">C/F: {cfDisplay} mm</p>
+                              {numTangents > 0 && <p className="text-[10px] text-blue-600">incl. tangents</p>}
                               {numStubs > 0 && (
-                                <div className="mt-1 pt-1 border-t border-gray-200">
+                                <div className="mt-1 pt-1 border-t border-blue-200">
                                   {stub1NB && (
-                                    <p className="text-[10px] text-gray-700">Stub 1 Length: {stubs[0]?.length || 0}mm</p>
+                                    <p className="text-[10px] text-blue-700">Stub 1 Length: {stubs[0]?.length || 0}mm</p>
                                   )}
                                   {stub2NB && (
-                                    <p className="text-[10px] text-gray-700">Stub 2 Length: {stubs[1]?.length || 0}mm</p>
+                                    <p className="text-[10px] text-blue-700">Stub 2 Length: {stubs[1]?.length || 0}mm</p>
                                   )}
                                 </div>
                               )}
@@ -2505,13 +2505,13 @@ export default function BendForm({
                               const totalWeight = (entry.calculation.bendWeight || 0) + (entry.calculation.tangentWeight || 0) + totalCalcFlangeWeight + stubsWeight + backingRingWeight;
 
                               return (
-                                <div className="bg-white p-2 rounded text-center">
-                                  <p className="text-xs text-gray-600 font-medium">Total Weight</p>
-                                  <p className="text-lg font-bold text-purple-900">
+                                <div className="bg-green-50 p-2 rounded text-center border border-green-200">
+                                  <p className="text-xs text-green-800 font-medium">Total Weight</p>
+                                  <p className="text-lg font-bold text-green-900">
                                     {totalWeight.toFixed(1)} kg
                                   </p>
                                   {backingRingWeight > 0 && (
-                                    <p className="text-xs text-purple-600">
+                                    <p className="text-xs text-green-600">
                                       (incl. {backingRingWeight.toFixed(1)}kg rings)
                                     </p>
                                   )}
@@ -2528,16 +2528,16 @@ export default function BendForm({
                               const totalRingWeight = ringWeightEach * ringCount;
 
                               return (
-                                <div className="bg-white p-2 rounded text-center">
-                                  <p className="text-xs text-gray-600 font-medium">Weight Breakdown</p>
-                                  <p className="text-xs text-gray-700 mt-1">Bend: {entry.calculation.bendWeight?.toFixed(1) || '0'}kg</p>
-                                  <p className="text-xs text-gray-700">Tangent: {entry.calculation.tangentWeight?.toFixed(1) || '0'}kg</p>
-                                  <p className="text-xs text-gray-700">Flange: {totalCalcFlangeWeight.toFixed(1)}kg</p>
-                                  {bendFlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">({bendFlangeCount}x bend @ {(bendFlangeWeight / bendFlangeCount).toFixed(1)}kg/ea)</p>}
-                                  {stub1FlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">(stub1 @ {stub1FlangeWeight.toFixed(1)}kg)</p>}
-                                  {stub2FlangeCount > 0 && <p className="text-[10px] text-gray-500 ml-2">(stub2 @ {stub2FlangeWeight.toFixed(1)}kg)</p>}
-                                  {numStubs > 0 && <p className="text-xs text-gray-700">Stubs: {stubsWeight.toFixed(1)}kg</p>}
-                                  {totalRingWeight > 0 && <p className="text-xs text-orange-700 font-medium">R/F Rings: {totalRingWeight.toFixed(2)}kg ({ringCount}×)</p>}
+                                <div className="bg-green-50 p-2 rounded text-center border border-green-200">
+                                  <p className="text-xs text-green-800 font-medium">Weight Breakdown</p>
+                                  <p className="text-xs text-green-700 mt-1">Bend: {entry.calculation.bendWeight?.toFixed(1) || '0'}kg</p>
+                                  <p className="text-xs text-green-700">Tangent: {entry.calculation.tangentWeight?.toFixed(1) || '0'}kg</p>
+                                  <p className="text-xs text-green-700">Flange: {totalCalcFlangeWeight.toFixed(1)}kg</p>
+                                  {bendFlangeCount > 0 && <p className="text-[10px] text-green-600 ml-2">({bendFlangeCount}x bend @ {(bendFlangeWeight / bendFlangeCount).toFixed(1)}kg/ea)</p>}
+                                  {stub1FlangeCount > 0 && <p className="text-[10px] text-green-600 ml-2">(stub1 @ {stub1FlangeWeight.toFixed(1)}kg)</p>}
+                                  {stub2FlangeCount > 0 && <p className="text-[10px] text-green-600 ml-2">(stub2 @ {stub2FlangeWeight.toFixed(1)}kg)</p>}
+                                  {numStubs > 0 && <p className="text-xs text-green-700">Stubs: {stubsWeight.toFixed(1)}kg</p>}
+                                  {totalRingWeight > 0 && <p className="text-xs text-amber-700 font-medium">R/F Rings: {totalRingWeight.toFixed(2)}kg ({ringCount}×)</p>}
                                 </div>
                               );
                             })()}
@@ -2552,28 +2552,28 @@ export default function BendForm({
                               const backingRingWeight = ringWeightEach * backingRingCount;
 
                               return (
-                                <div className="bg-white p-2 rounded text-center">
-                                  <p className="text-xs text-gray-600 font-medium">Flanges{backingRingCount > 0 ? ' & Rings' : ''}</p>
-                                  <p className="text-lg font-bold text-gray-900">{totalFlanges}</p>
+                                <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
+                                  <p className="text-xs text-amber-800 font-medium">Flanges{backingRingCount > 0 ? ' & Rings' : ''}</p>
+                                  <p className="text-lg font-bold text-amber-900">{totalFlanges}</p>
                                   <div className="text-left mt-1 space-y-0.5">
                                     {bendFlangeCount > 0 && (
-                                      <p className="text-[10px] text-gray-700">{bendFlangeCount} x {dn}NB Flange</p>
+                                      <p className="text-[10px] text-amber-700">{bendFlangeCount} x {dn}NB Flange</p>
                                     )}
                                     {/* Stub flanges - combine if same NB, separate if different */}
                                     {stub1FlangeCount > 0 && stub2FlangeCount > 0 && stub1NB === stub2NB ? (
-                                      <p className="text-[10px] text-purple-700">2 x {stub1NB}NB Stub Flange</p>
+                                      <p className="text-[10px] text-amber-700">2 x {stub1NB}NB Stub Flange</p>
                                     ) : (
                                       <>
                                         {stub1FlangeCount > 0 && stub1NB && (
-                                          <p className="text-[10px] text-purple-700">1 x {stub1NB}NB Stub Flange</p>
+                                          <p className="text-[10px] text-amber-700">1 x {stub1NB}NB Stub Flange</p>
                                         )}
                                         {stub2FlangeCount > 0 && stub2NB && (
-                                          <p className="text-[10px] text-purple-700">1 x {stub2NB}NB Stub Flange</p>
+                                          <p className="text-[10px] text-amber-700">1 x {stub2NB}NB Stub Flange</p>
                                         )}
                                       </>
                                     )}
                                     {backingRingCount > 0 && (
-                                      <p className="text-[10px] text-purple-700 mt-1 pt-1 border-t border-purple-200">
+                                      <p className="text-[10px] text-amber-700 mt-1 pt-1 border-t border-amber-200">
                                         {backingRingCount} x Backing Ring ({backingRingWeight.toFixed(1)}kg)
                                       </p>
                                     )}
@@ -2582,18 +2582,18 @@ export default function BendForm({
                               );
                             })()}
 
-                            {/* Weld Summary */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Weld Summary</p>
+                            {/* Weld Summary - Purple for weld info */}
+                            <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
+                              <p className="text-xs text-purple-800 font-medium">Weld Summary</p>
                               <div className="text-left mt-1 space-y-0.5">
                                 {bendFlangeCount > 0 && (
-                                  <p className="text-[10px] text-green-700">Bend Flange: {bendFlangeCount * 2} welds @ {effectiveWt?.toFixed(1) || '?'}mm</p>
+                                  <p className="text-[10px] text-purple-700">Bend Flange: {bendFlangeCount * 2} welds @ {effectiveWt?.toFixed(1) || '?'}mm</p>
                                 )}
                                 {numTangents > 0 && (
-                                  <p className="text-[10px] text-blue-700">Tangent Buttweld: {numTangents} @ {effectiveWt?.toFixed(1) || '?'}mm</p>
+                                  <p className="text-[10px] text-purple-700">Tangent Buttweld: {numTangents} @ {effectiveWt?.toFixed(1) || '?'}mm</p>
                                 )}
                                 {numSegments > 1 && (
-                                  <p className="text-[10px] text-red-700">Mitre Weld: {numSegments - 1} @ {effectiveWt?.toFixed(1) || '?'}mm</p>
+                                  <p className="text-[10px] text-purple-700">Mitre Weld: {numSegments - 1} @ {effectiveWt?.toFixed(1) || '?'}mm</p>
                                 )}
                                 {stub1NB && (
                                   <p className="text-[10px] text-purple-700">Stub 1 Tee: 1 weld @ {stub1Wt?.toFixed(1) || '?'}mm</p>
@@ -2602,10 +2602,10 @@ export default function BendForm({
                                   <p className="text-[10px] text-purple-700">Stub 2 Tee: 1 weld @ {stub2Wt?.toFixed(1) || '?'}mm</p>
                                 )}
                                 {stub1FlangeCount > 0 && (
-                                  <p className="text-[10px] text-orange-700">Stub 1 Flange: 2 welds @ {stub1Wt?.toFixed(1) || '?'}mm</p>
+                                  <p className="text-[10px] text-purple-700">Stub 1 Flange: 2 welds @ {stub1Wt?.toFixed(1) || '?'}mm</p>
                                 )}
                                 {stub2FlangeCount > 0 && (
-                                  <p className="text-[10px] text-orange-700">Stub 2 Flange: 2 welds @ {stub2Wt?.toFixed(1) || '?'}mm</p>
+                                  <p className="text-[10px] text-purple-700">Stub 2 Flange: 2 welds @ {stub2Wt?.toFixed(1) || '?'}mm</p>
                                 )}
                               </div>
                             </div>

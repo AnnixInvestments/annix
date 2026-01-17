@@ -268,13 +268,19 @@ export default function FittingForm({
                                     const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
                                     const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
                                     const pipeUpdates: Record<string, unknown> = {};
-                                    if (dimA && (isEqualTee || !entry.specs?.pipeLengthAOverride)) {
-                                      pipeUpdates.pipeLengthAMm = dimA;
-                                      pipeUpdates.pipeLengthAMmAuto = dimA;
+
+                                    // For gusset tees (equal, unequal, reducing), use B dimension as the standard pipe length
+                                    // B is the gusset tee center-to-face height which should be the default for both A and B
+                                    const isGussetTee = ['GUSSET_TEE', 'UNEQUAL_GUSSET_TEE', 'GUSSET_REDUCING_TEE'].includes(fittingType);
+                                    const standardLength = isGussetTee ? (dimB || dimA) : dimA;
+
+                                    if (standardLength && (isEqualTee || !entry.specs?.pipeLengthAOverride)) {
+                                      pipeUpdates.pipeLengthAMm = standardLength;
+                                      pipeUpdates.pipeLengthAMmAuto = standardLength;
                                     }
-                                    if (dimB && (isEqualTee || !entry.specs?.pipeLengthBOverride)) {
-                                      pipeUpdates.pipeLengthBMm = dimB;
-                                      pipeUpdates.pipeLengthBMmAuto = dimB;
+                                    if (standardLength && (isEqualTee || !entry.specs?.pipeLengthBOverride)) {
+                                      pipeUpdates.pipeLengthBMm = standardLength;
+                                      pipeUpdates.pipeLengthBMmAuto = standardLength;
                                     }
                                     if (Object.keys(pipeUpdates).length > 0) {
                                       onUpdateEntry(entry.id, { specs: pipeUpdates });
@@ -376,13 +382,19 @@ export default function FittingForm({
                                     const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
                                     const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
                                     const pipeUpdates: Record<string, unknown> = {};
-                                    if (dimA && !pipeLengthAOverride) {
-                                      pipeUpdates.pipeLengthAMm = dimA;
-                                      pipeUpdates.pipeLengthAMmAuto = dimA;
+
+                                    // For gusset tees (equal, unequal, reducing), use B dimension as the standard pipe length
+                                    // B is the gusset tee center-to-face height which should be the default for both A and B
+                                    const isGussetTee = ['GUSSET_TEE', 'UNEQUAL_GUSSET_TEE', 'GUSSET_REDUCING_TEE'].includes(fittingType);
+                                    const standardLength = isGussetTee ? (dimB || dimA) : dimA;
+
+                                    if (standardLength && !pipeLengthAOverride) {
+                                      pipeUpdates.pipeLengthAMm = standardLength;
+                                      pipeUpdates.pipeLengthAMmAuto = standardLength;
                                     }
-                                    if (dimB && !pipeLengthBOverride) {
-                                      pipeUpdates.pipeLengthBMm = dimB;
-                                      pipeUpdates.pipeLengthBMmAuto = dimB;
+                                    if (standardLength && !pipeLengthBOverride) {
+                                      pipeUpdates.pipeLengthBMm = standardLength;
+                                      pipeUpdates.pipeLengthBMmAuto = standardLength;
                                     }
                                     if (Object.keys(pipeUpdates).length > 0) {
                                       onUpdateEntry(entry.id, { specs: pipeUpdates });
@@ -559,16 +571,17 @@ export default function FittingForm({
                     const fittingType = entry.specs?.fittingType;
                     const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
                     const isUnequalTee = ['UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE'].includes(fittingType || '');
-                    const isTee = isEqualTee || isUnequalTee;
+                    const isReducingTee = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(fittingType || '');
+                    const isTee = isEqualTee || isUnequalTee || isReducingTee;
                     const isAutoA = entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
 
                     return (
                       <div className={isTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        <label className="block text-xs font-semibold text-blue-900 mb-1">
                           Pipe Length A (mm) *
-                          {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(C/F)</span>}
-                          {!isEqualTee && isAutoA && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
-                          {!isEqualTee && entry.specs?.pipeLengthAOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
+                          {isEqualTee && <span className="text-blue-600 text-xs ml-1 font-normal">(Standard)</span>}
+                          {!isEqualTee && isAutoA && <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>}
+                          {!isEqualTee && entry.specs?.pipeLengthAOverride && <span className="text-orange-600 text-xs ml-1 font-normal">(Override)</span>}
                         </label>
                         <input
                           type="number"
@@ -583,14 +596,14 @@ export default function FittingForm({
                           }}
                           className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
                             isEqualTee
-                              ? 'bg-green-100 border-green-400 text-green-900 cursor-not-allowed font-medium'
-                              : 'border-gray-300 focus:ring-green-500 text-gray-900'
+                              ? 'bg-blue-100 border-blue-400 text-blue-900 cursor-not-allowed font-medium'
+                              : 'bg-blue-50 border-blue-300 focus:ring-blue-500 text-gray-900'
                           }`}
                           placeholder="e.g., 1000"
                           min="0"
                           readOnly={isEqualTee}
                         />
-                        {isUnequalTee && (
+                        {(isUnequalTee || isReducingTee) && (
                           <p className="text-xs text-blue-600 mt-1 font-medium">Can Change Lengths</p>
                         )}
                       </div>
@@ -602,16 +615,17 @@ export default function FittingForm({
                     const fittingType = entry.specs?.fittingType;
                     const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
                     const isUnequalTee = ['UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE'].includes(fittingType || '');
-                    const isTee = isEqualTee || isUnequalTee;
+                    const isReducingTee = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(fittingType || '');
+                    const isTee = isEqualTee || isUnequalTee || isReducingTee;
                     const isAutoB = entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
 
                     return (
                       <div className={isTee ? 'bg-blue-50 p-2 rounded-md border border-blue-200' : ''}>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        <label className="block text-xs font-semibold text-blue-900 mb-1">
                           Pipe Length B (mm) *
-                          {isEqualTee && <span className="text-gray-500 text-xs ml-1 font-normal">(C/F)</span>}
-                          {!isEqualTee && isAutoB && <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>}
-                          {!isEqualTee && entry.specs?.pipeLengthBOverride && <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>}
+                          {isEqualTee && <span className="text-blue-600 text-xs ml-1 font-normal">(Standard)</span>}
+                          {!isEqualTee && isAutoB && <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>}
+                          {!isEqualTee && entry.specs?.pipeLengthBOverride && <span className="text-orange-600 text-xs ml-1 font-normal">(Override)</span>}
                         </label>
                         <input
                           type="number"
@@ -626,14 +640,14 @@ export default function FittingForm({
                           }}
                           className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
                             isEqualTee
-                              ? 'bg-green-100 border-green-400 text-green-900 cursor-not-allowed font-medium'
-                              : 'border-gray-300 focus:ring-green-500 text-gray-900'
+                              ? 'bg-blue-100 border-blue-400 text-blue-900 cursor-not-allowed font-medium'
+                              : 'bg-blue-50 border-blue-300 focus:ring-blue-500 text-gray-900'
                           }`}
                           placeholder="e.g., 1000"
                           min="0"
                           readOnly={isEqualTee}
                         />
-                        {isUnequalTee && (
+                        {(isUnequalTee || isReducingTee) && (
                           <p className="text-xs text-blue-600 mt-1 font-medium">Can Change Lengths</p>
                         )}
                       </div>
@@ -691,31 +705,33 @@ export default function FittingForm({
                       </div>
                     )}
 
-                    {/* Auto-fetch pipe dimensions for equal tees */}
+                    {/* Auto-fetch pipe dimensions for tees */}
                     {(() => {
                       const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                       const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
                       const fittingType = entry.specs?.fittingType;
                       const nb = entry.specs?.nominalDiameterMm;
                       const hasRequiredData = fittingType && nb;
-                      const isEqualTee = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType || '');
+                      const isTeeType = ['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE', 'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE', 'SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(fittingType || '');
 
-                      if (isEqualTee && hasRequiredData && !entry.specs?.pipeLengthAMm && !entry.specs?.pipeLengthBMm) {
+                      if (isTeeType && hasRequiredData && !entry.specs?.pipeLengthAMm && !entry.specs?.pipeLengthBMm) {
                         masterDataApi.getFittingDimensions(effectiveStandard as 'SABS62' | 'SABS719', fittingType!, nb!, entry.specs?.angleRange)
                           .then((dims) => {
                             if (dims) {
                               const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
                               const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
+
+                              // For gusset tees (equal, unequal, reducing), use B dimension as the standard pipe length
+                              // B is the gusset tee center-to-face height which should be the default for both A and B
+                              const isGussetTee = ['GUSSET_TEE', 'UNEQUAL_GUSSET_TEE', 'GUSSET_REDUCING_TEE'].includes(fittingType!);
+                              const standardLength = isGussetTee ? (dimB || dimA) : dimA;
+
                               const updates: any = { specs: { ...entry.specs } };
-                              if (dimA) {
-                                updates.specs.pipeLengthAMm = dimA;
-                                updates.specs.pipeLengthAMmAuto = dimA;
-                              }
-                              if (dimB) {
-                                updates.specs.pipeLengthBMm = dimB;
-                                updates.specs.pipeLengthBMmAuto = dimB;
-                              }
-                              if (dimA || dimB) {
+                              if (standardLength) {
+                                updates.specs.pipeLengthAMm = standardLength;
+                                updates.specs.pipeLengthAMmAuto = standardLength;
+                                updates.specs.pipeLengthBMm = standardLength;
+                                updates.specs.pipeLengthBMmAuto = standardLength;
                                 onUpdateEntry(entry.id, updates);
                               }
                             }
@@ -957,8 +973,8 @@ export default function FittingForm({
 
                     {/* Closure Length Field - Only shown when L/F configuration is selected */}
                     {hasLooseFlange(entry.specs?.pipeEndConfiguration || '') && (
-                      <div className="mt-3">
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <div className="mt-3 bg-blue-50 p-3 rounded-md border border-blue-200">
+                        <label className="block text-xs font-semibold text-blue-900 mb-1">
                           Closure Length (mm) *
                           <span className="text-blue-600 text-xs ml-2">(Site weld extension past L/F)</span>
                         </label>
@@ -974,21 +990,21 @@ export default function FittingForm({
                           placeholder="e.g., 150"
                           min={50}
                           max={500}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                          className="w-full px-3 py-2 bg-blue-50 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         />
-                        <p className="mt-0.5 text-xs text-gray-500">
+                        <p className="mt-0.5 text-xs text-blue-700">
                           Additional pipe length extending past the loose flange for site weld connection (typically 100-200mm)
                         </p>
                         {/* Tack Weld Information */}
-                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
-                          <p className="text-xs font-bold text-amber-800">
+                        <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded-md">
+                          <p className="text-xs font-bold text-purple-800">
                             Loose Flange Tack Welds Required:
                           </p>
-                          <ul className="text-xs text-amber-700 mt-1 list-disc list-inside">
+                          <ul className="text-xs text-purple-700 mt-1 list-disc list-inside">
                             <li>8 tack welds total (~20mm each)</li>
                             <li>4 tack welds on each side of loose flange</li>
                           </ul>
-                          <p className="text-xs text-amber-600 mt-1 italic">
+                          <p className="text-xs text-purple-600 mt-1 italic">
                             Tack weld charge applies per L/F end
                           </p>
                         </div>
@@ -1312,79 +1328,79 @@ export default function FittingForm({
 
                         return (
                           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
-                            {/* Qty & Dimensions */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Qty & Dimensions</p>
-                              <p className="text-lg font-bold text-gray-900">{quantity} × {fittingType.replace(/_/g, ' ')}</p>
+                            {/* Qty & Dimensions - Blue for lengths */}
+                            <div className="bg-blue-50 p-2 rounded text-center border border-blue-200">
+                              <p className="text-xs text-blue-800 font-medium">Qty & Dimensions</p>
+                              <p className="text-lg font-bold text-blue-900">{quantity} × {fittingType.replace(/_/g, ' ')}</p>
                               <div className="mt-1 space-y-0.5 text-left">
-                                <p className="text-[10px] text-gray-700">Main: {nominalBore}NB</p>
+                                <p className="text-[10px] text-blue-700">Main: {nominalBore}NB</p>
                                 {branchNB !== nominalBore && (
-                                  <p className="text-[10px] text-gray-700">Branch: {branchNB}NB</p>
+                                  <p className="text-[10px] text-blue-700">Branch: {branchNB}NB</p>
                                 )}
                                 {pipeALength > 0 && (
-                                  <p className="text-[10px] text-gray-700">Pipe A: {pipeALength}mm</p>
+                                  <p className="text-[10px] text-blue-700">Pipe A: {pipeALength}mm</p>
                                 )}
                                 {pipeBLength > 0 && (
-                                  <p className="text-[10px] text-gray-700">Pipe B: {pipeBLength}mm</p>
+                                  <p className="text-[10px] text-blue-700">Pipe B: {pipeBLength}mm</p>
                                 )}
                                 {teeHeight > 0 && (
-                                  <p className="text-[10px] text-gray-700">Height: {teeHeight}mm</p>
+                                  <p className="text-[10px] text-blue-700">Height: {teeHeight}mm</p>
                                 )}
                               </div>
                             </div>
 
-                            {/* Total Weight */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Total Weight</p>
+                            {/* Total Weight - Green for auto-calculated */}
+                            <div className="bg-green-50 p-2 rounded text-center border border-green-200">
+                              <p className="text-xs text-green-800 font-medium">Total Weight</p>
                               <p className="text-lg font-bold text-green-900">{totalWeight.toFixed(1)} kg</p>
-                              <p className="text-[10px] text-gray-500">per fitting</p>
+                              <p className="text-[10px] text-green-600">per fitting</p>
                             </div>
 
-                            {/* Weight Breakdown */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Weight Breakdown</p>
+                            {/* Weight Breakdown - Green for auto-calculated */}
+                            <div className="bg-green-50 p-2 rounded text-center border border-green-200">
+                              <p className="text-xs text-green-800 font-medium">Weight Breakdown</p>
                               <div className="text-left mt-1 space-y-0.5">
                                 {(entry.calculation.fittingWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-gray-700">Fitting: {entry.calculation.fittingWeight.toFixed(1)}kg</p>
+                                  <p className="text-[10px] text-green-700">Fitting: {entry.calculation.fittingWeight.toFixed(1)}kg</p>
                                 )}
                                 {(entry.calculation.pipeWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-gray-700">Pipe: {entry.calculation.pipeWeight.toFixed(1)}kg</p>
+                                  <p className="text-[10px] text-green-700">Pipe: {entry.calculation.pipeWeight.toFixed(1)}kg</p>
                                 )}
                                 {(entry.calculation.flangeWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-gray-700">Flanges: {entry.calculation.flangeWeight.toFixed(1)}kg</p>
+                                  <p className="text-[10px] text-green-700">Flanges: {entry.calculation.flangeWeight.toFixed(1)}kg</p>
                                 )}
                                 {totalRingWeight > 0 && (
-                                  <p className="text-[10px] text-orange-700 font-medium">R/F Rings: {totalRingWeight.toFixed(2)}kg ({rotatingFlangeCount}×)</p>
+                                  <p className="text-[10px] text-amber-700 font-medium">R/F Rings: {totalRingWeight.toFixed(2)}kg ({rotatingFlangeCount}×)</p>
                                 )}
                               </div>
                             </div>
 
-                            {/* Flanges */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Total Flanges</p>
-                              <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfFlanges || numFlanges}</p>
+                            {/* Flanges - Amber for flange info */}
+                            <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
+                              <p className="text-xs text-amber-800 font-medium">Total Flanges</p>
+                              <p className="text-lg font-bold text-amber-900">{entry.calculation.numberOfFlanges || numFlanges}</p>
                               <div className="text-left mt-1 space-y-0.5">
                                 {flangeConfig.hasInlet && (
-                                  <p className="text-[10px] text-gray-700">1 x {nominalBore}NB {flangeConfig.inletType === 'loose' ? 'L/F' : flangeConfig.inletType === 'rotating' ? 'R/F' : 'Flange'}</p>
+                                  <p className="text-[10px] text-amber-700">1 x {nominalBore}NB {flangeConfig.inletType === 'loose' ? 'L/F' : flangeConfig.inletType === 'rotating' ? 'R/F' : 'Flange'}</p>
                                 )}
                                 {flangeConfig.hasOutlet && (
-                                  <p className="text-[10px] text-gray-700">1 x {nominalBore}NB {flangeConfig.outletType === 'loose' ? 'L/F' : flangeConfig.outletType === 'rotating' ? 'R/F' : 'Flange'}</p>
+                                  <p className="text-[10px] text-amber-700">1 x {nominalBore}NB {flangeConfig.outletType === 'loose' ? 'L/F' : flangeConfig.outletType === 'rotating' ? 'R/F' : 'Flange'}</p>
                                 )}
                                 {flangeConfig.hasBranch && (
-                                  <p className="text-[10px] text-gray-700">1 x {branchNB}NB {flangeConfig.branchType === 'loose' ? 'L/F' : flangeConfig.branchType === 'rotating' ? 'R/F' : 'Flange'}</p>
+                                  <p className="text-[10px] text-amber-700">1 x {branchNB}NB {flangeConfig.branchType === 'loose' ? 'L/F' : flangeConfig.branchType === 'rotating' ? 'R/F' : 'Flange'}</p>
                                 )}
                               </div>
                             </div>
 
-                            {/* Weld Summary */}
-                            <div className="bg-white p-2 rounded text-center">
-                              <p className="text-xs text-gray-600 font-medium">Weld Summary</p>
+                            {/* Weld Summary - Purple for weld info */}
+                            <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
+                              <p className="text-xs text-purple-800 font-medium">Weld Summary</p>
                               <div className="text-left mt-1 space-y-0.5">
-                                <p className="text-[10px] text-blue-700 font-medium">
+                                <p className="text-[10px] text-purple-700 font-medium">
                                   Tee Junction: 1 weld @ {branchWeldThickness?.toFixed(1)}mm
                                 </p>
                                 {numFlanges > 0 && (
-                                  <p className="text-[10px] text-green-700 font-medium">
+                                  <p className="text-[10px] text-purple-700 font-medium">
                                     Flange Welds: {numFlanges * 2} @ {fittingWeldThickness?.toFixed(1)}mm
                                   </p>
                                 )}

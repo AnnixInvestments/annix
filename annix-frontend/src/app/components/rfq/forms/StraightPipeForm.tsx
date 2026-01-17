@@ -686,8 +686,8 @@ export default function StraightPipeForm({
 
                   {/* Closure Length Field - Only shown when L/F configuration is selected */}
                   {hasLooseFlange(entry.specs.pipeEndConfiguration || '') && (
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                    <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+                      <label className="block text-xs font-semibold text-blue-900 mb-1">
                         Closure Length (mm) *
                         <span className="text-blue-600 text-xs ml-2">(Site weld extension past L/F)</span>
                       </label>
@@ -703,21 +703,21 @@ export default function StraightPipeForm({
                         placeholder="e.g., 150"
                         min={50}
                         max={500}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        className="w-full px-3 py-2 bg-blue-50 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       />
-                      <p className="mt-0.5 text-xs text-gray-500">
+                      <p className="mt-0.5 text-xs text-blue-700">
                         Additional pipe length extending past the loose flange for site weld connection (typically 100-200mm)
                       </p>
                       {/* Tack Weld Information */}
-                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
-                        <p className="text-xs font-bold text-amber-800">
+                      <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded-md">
+                        <p className="text-xs font-bold text-purple-800">
                           Loose Flange Tack Welds Required:
                         </p>
-                        <ul className="text-xs text-amber-700 mt-1 list-disc list-inside">
+                        <ul className="text-xs text-purple-700 mt-1 list-disc list-inside">
                           <li>8 tack welds total (~20mm each)</li>
                           <li>4 tack welds on each side of loose flange</li>
                         </ul>
-                        <p className="text-xs text-amber-600 mt-1 italic">
+                        <p className="text-xs text-purple-600 mt-1 italic">
                           Tack weld charge applies per L/F end
                         </p>
                       </div>
@@ -1240,20 +1240,20 @@ export default function StraightPipeForm({
                 </h4>
 
                 {entry.calculation ? (
-                  <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
+                  <div className="bg-gray-50 border border-gray-200 p-3 rounded-md">
                     {/* Compact horizontal grid layout - equal width columns that fill container */}
                     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
-                      {/* Quantity of Pipes */}
-                      <div className="bg-white p-2 rounded text-center">
-                        <p className="text-xs text-gray-600 font-medium">Qty Pipes</p>
-                        <p className="text-lg font-bold text-gray-900">{entry.calculation.calculatedPipeCount}</p>
-                        <p className="text-xs text-gray-500">pieces</p>
+                      {/* Quantity of Pipes - Green for auto-calculated */}
+                      <div className="bg-green-50 p-2 rounded text-center border border-green-200">
+                        <p className="text-xs text-green-800 font-medium">Qty Pipes</p>
+                        <p className="text-lg font-bold text-green-900">{entry.calculation.calculatedPipeCount}</p>
+                        <p className="text-xs text-green-600">pieces</p>
                       </div>
 
-                      {/* Total Length */}
-                      <div className="bg-white p-2 rounded text-center">
-                        <p className="text-xs text-gray-600 font-medium">Total Length</p>
-                        <p className="text-lg font-bold text-gray-900">{entry.calculation.calculatedTotalLength?.toFixed(1)}m</p>
+                      {/* Total Length - Blue for lengths */}
+                      <div className="bg-blue-50 p-2 rounded text-center border border-blue-200">
+                        <p className="text-xs text-blue-800 font-medium">Total Length</p>
+                        <p className="text-lg font-bold text-blue-900">{entry.calculation.calculatedTotalLength?.toFixed(1)}m</p>
                       </div>
 
                       {/* Total System Weight - includes backing ring weight for R/F configs */}
@@ -1273,14 +1273,14 @@ export default function StraightPipeForm({
                         const totalWithRings = (entry.calculation.totalSystemWeight || 0) + backingRingTotalWeight;
 
                         return (
-                          <div className="bg-white p-2 rounded text-center">
-                            <p className="text-xs text-gray-600 font-medium">Total Weight</p>
-                            <p className="text-lg font-bold text-blue-900">{formatWeight(totalWithRings)}</p>
-                            <p className="text-xs text-gray-500">
+                          <div className="bg-green-50 p-2 rounded text-center border border-green-200">
+                            <p className="text-xs text-green-800 font-medium">Total Weight</p>
+                            <p className="text-lg font-bold text-green-900">{formatWeight(totalWithRings)}</p>
+                            <p className="text-xs text-green-600">
                               (Pipe: {formatWeight(entry.calculation.totalPipeWeight)})
                             </p>
                             {backingRingTotalWeight > 0 && (
-                              <p className="text-xs text-orange-600">
+                              <p className="text-xs text-amber-600">
                                 (incl. {backingRingTotalWeight.toFixed(1)}kg R/F rings)
                               </p>
                             )}
@@ -1288,11 +1288,11 @@ export default function StraightPipeForm({
                         );
                       })()}
 
-                      {/* Total Flange Weight */}
-                      <div className="bg-white p-2 rounded text-center">
-                        <p className="text-xs text-gray-600 font-medium">Total Flange Weight</p>
-                        <p className="text-lg font-bold text-gray-900">{formatWeight(entry.calculation.totalFlangeWeight)}</p>
-                        <p className="text-xs text-gray-500">
+                      {/* Total Flange Weight - Amber for flange info */}
+                      <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
+                        <p className="text-xs text-amber-800 font-medium">Total Flange Weight</p>
+                        <p className="text-lg font-bold text-amber-900">{formatWeight(entry.calculation.totalFlangeWeight)}</p>
+                        <p className="text-xs text-amber-600">
                           {(() => {
                             const physicalFlanges = getPhysicalFlangeCount(entry.specs.pipeEndConfiguration || 'PE');
                             return physicalFlanges * (entry.calculation?.calculatedPipeCount || 0);
@@ -1324,12 +1324,12 @@ export default function StraightPipeForm({
                         );
                       })()}
 
-                      {/* Flange Welds */}
-                      <div className="bg-white p-2 rounded text-center">
-                        <p className="text-xs text-gray-600 font-medium">Flange Welds</p>
-                        <p className="text-lg font-bold text-gray-900">{entry.calculation.numberOfFlangeWelds}</p>
-                        <p className="text-xs text-gray-500">{entry.calculation.totalFlangeWeldLength?.toFixed(2)}m</p>
-                        <p className="text-[10px] text-gray-400">(2 per flange: in+out)</p>
+                      {/* Flange Welds - Purple for weld info */}
+                      <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
+                        <p className="text-xs text-purple-800 font-medium">Flange Welds</p>
+                        <p className="text-lg font-bold text-purple-900">{entry.calculation.numberOfFlangeWelds}</p>
+                        <p className="text-xs text-purple-600">{entry.calculation.totalFlangeWeldLength?.toFixed(2)}m</p>
+                        <p className="text-[10px] text-purple-500">(2 per flange: in+out)</p>
                         {(() => {
                           const dn = entry.specs.nominalBoreMm;
                           const schedule = entry.specs.scheduleNumber || '';
