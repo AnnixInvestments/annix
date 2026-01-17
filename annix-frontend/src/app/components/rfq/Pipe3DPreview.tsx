@@ -791,7 +791,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
 
       {/* Expanded Modal */}
       {isExpanded && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4">
           <div className="relative w-full h-full max-w-6xl max-h-[90vh] bg-slate-100 rounded-lg overflow-hidden">
             {/* Close button */}
             <button

@@ -331,12 +331,13 @@ function FlangeComponent({
   );
 }
 
-// Realistic gusset plate component - curved reinforcement plate between run and branch pipes
-// Gussets are welded steel plates that reinforce the branch connection and improve flow
+// Realistic gusset plate component - isoceles right triangle at 45° as per SABS 719
+// Per the technical drawing, gussets are triangular plates with both legs equal to dimension C
+// The gusset extends from the branch pipe at 45° down to the run pipe
 function GussetPlate({
   runRadius,
   branchRadius,
-  gussetLength,
+  gussetLength, // This is dimension C - both legs of the 45° triangle
   thickness,
   side, // 'left' or 'right' - which side of the branch (along run axis)
   branchOffsetX,
@@ -349,73 +350,58 @@ function GussetPlate({
   branchOffsetX: number;
 }) {
   const geometry = useMemo(() => {
-    // Create a curved gusset plate that follows the pipe surfaces
-    // The gusset sits on top of the run pipe and extends up along the branch
-    const segments = 16;
-    const positions: number[] = [];
-    const indices: number[] = [];
-
-    // Direction multiplier based on side
+    // Create an isoceles right triangle at 45° angle
+    // The triangle has:
+    // - One vertical leg along the branch pipe (length = C)
+    // - One horizontal leg along the run pipe (length = C)
+    // - Hypotenuse at 45° connecting them
+    const halfThick = thickness / 2;
     const dir = side === 'left' ? -1 : 1;
 
-    // The gusset extends from the run pipe surface (at y = runRadius)
-    // upward along the branch at a 45-degree angle
-    // It's positioned at the edge of the branch opening
+    // Triangle vertices (looking from front, +Z direction):
+    // Bottom corner: at branch edge on run pipe surface
+    // Top corner: up the branch by gussetLength
+    // Outer corner: outward along run pipe by gussetLength
 
-    for (let i = 0; i <= segments; i++) {
-      const t = i / segments;
+    const bottomX = branchOffsetX + dir * branchRadius;
+    const bottomY = runRadius;
 
-      // Inner edge (closer to branch center) - follows a curve from run to branch
-      const innerX = branchOffsetX + dir * (branchRadius * 0.3 + t * gussetLength * 0.7);
-      const innerY = runRadius + t * gussetLength;
-      const innerZ = thickness / 2;
+    const topX = branchOffsetX + dir * branchRadius;
+    const topY = runRadius + gussetLength;
 
-      // Outer edge - extends further out
-      const outerX = branchOffsetX + dir * (branchRadius + t * gussetLength);
-      const outerY = runRadius + t * gussetLength * 0.85;
-      const outerZ = thickness / 2;
+    const outerX = branchOffsetX + dir * (branchRadius + gussetLength);
+    const outerY = runRadius;
 
-      // Front face vertices (positive Z)
-      positions.push(innerX, innerY, innerZ);
-      positions.push(outerX, outerY, outerZ);
+    const positions = new Float32Array([
+      // Front face (z = +halfThick)
+      bottomX, bottomY, halfThick,  // 0
+      topX, topY, halfThick,        // 1
+      outerX, outerY, halfThick,    // 2
+      // Back face (z = -halfThick)
+      bottomX, bottomY, -halfThick, // 3
+      topX, topY, -halfThick,       // 4
+      outerX, outerY, -halfThick,   // 5
+    ]);
 
-      // Back face vertices (negative Z)
-      positions.push(innerX, innerY, -innerZ);
-      positions.push(outerX, outerY, -outerZ);
-    }
-
-    // Create faces
-    for (let i = 0; i < segments; i++) {
-      const base = i * 4;
-
-      // Front face quad
-      indices.push(base, base + 4, base + 1);
-      indices.push(base + 1, base + 4, base + 5);
-
-      // Back face quad
-      indices.push(base + 2, base + 3, base + 6);
-      indices.push(base + 3, base + 7, base + 6);
-
-      // Outer edge
-      indices.push(base + 1, base + 5, base + 3);
-      indices.push(base + 3, base + 5, base + 7);
-
-      // Inner edge
-      indices.push(base, base + 2, base + 4);
-      indices.push(base + 2, base + 6, base + 4);
-    }
-
-    // Bottom cap (at run pipe surface)
-    indices.push(0, 1, 2);
-    indices.push(1, 3, 2);
-
-    // Top cap
-    const topBase = segments * 4;
-    indices.push(topBase, topBase + 2, topBase + 1);
-    indices.push(topBase + 1, topBase + 2, topBase + 3);
+    // Indices for all faces
+    const indices = [
+      // Front face
+      0, 1, 2,
+      // Back face (reversed winding)
+      3, 5, 4,
+      // Top edge (vertical leg)
+      0, 3, 1,
+      1, 3, 4,
+      // Bottom edge (horizontal leg)
+      0, 2, 3,
+      2, 5, 3,
+      // Hypotenuse edge (45° diagonal)
+      1, 4, 2,
+      2, 4, 5,
+    ];
 
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setIndex(indices);
     geo.computeVertexNormals();
 
@@ -425,9 +411,9 @@ function GussetPlate({
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
       <meshStandardMaterial
-        color="#5a5a5a"
-        metalness={0.7}
-        roughness={0.3}
+        color="#4a7c4e"
+        metalness={0.6}
+        roughness={0.4}
         side={THREE.DoubleSide}
       />
     </mesh>
@@ -1455,7 +1441,7 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
       {/* Expanded Modal - centered in viewport */}
       {isExpanded && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8"
+          className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-8"
           onClick={() => setIsExpanded(false)}
         >
           <div
@@ -1495,28 +1481,42 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
             </Canvas>
 
             {/* Info overlay in expanded view */}
-            <div className="absolute top-4 left-4 text-sm bg-white px-3 py-2 rounded-lg shadow-lg border border-gray-200">
-              <div className="font-semibold text-gray-800 mb-1">
-                SABS 719 {props.teeType === 'gusset' ? 'Gusset' : 'Short'} Tee
-              </div>
-              <div className="text-gray-800">
-                {props.nominalBore}NB | OD: {od.toFixed(0)}mm | WT: {wt.toFixed(1)}mm | Height: {teeHeight}mm
-              </div>
+            <div className="absolute top-4 left-4 text-sm bg-white/95 px-3 py-2 rounded-lg shadow-lg border border-gray-200">
+              <div className="font-bold text-blue-800 mb-1">RUN PIPE ({props.nominalBore}NB)</div>
+              <div className="text-gray-900 font-medium">OD: {od.toFixed(0)}mm | ID: {id.toFixed(0)}mm</div>
+              <div className="text-gray-700">WT: {wt.toFixed(1)}mm</div>
               {props.branchNominalBore && (
-                <div className="text-gray-800 mt-1">
-                  Branch: {props.branchNominalBore}NB | OD: {branchOD.toFixed(0)}mm | WT: {branchWT.toFixed(1)}mm
-                </div>
+                <>
+                  <div className="font-bold text-blue-800 mt-2 mb-1">BRANCH ({props.branchNominalBore}NB)</div>
+                  <div className="text-gray-900 font-medium">OD: {branchOD.toFixed(0)}mm | ID: {branchID.toFixed(0)}mm</div>
+                  <div className="text-gray-700">WT: {branchWT.toFixed(1)}mm</div>
+                </>
               )}
+              <div className="text-gray-700 mt-2">Height: {teeHeight}mm</div>
               {props.teeType === 'gusset' && (
-                <div className="text-gray-800 mt-1">
-                  Gusset Section: {gussetSection}mm
-                </div>
+                <div className="text-gray-700">Gusset: {gussetSection}mm</div>
               )}
               {(props.hasInletFlange || props.hasOutletFlange) && (
-                <div className="text-gray-800 mt-1">
-                  Run Flange: OD {runFlangeSpecs.flangeOD}mm | THK {runFlangeSpecs.thickness}mm
-                </div>
+                <>
+                  <div className="font-bold text-blue-800 mt-2 mb-1">RUN FLANGE</div>
+                  <div className="text-gray-900 font-medium">OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm</div>
+                  <div className="text-gray-700">Bolts: {runFlangeSpecs.boltHoles} × M{runFlangeSpecs.boltSize} × {runFlangeSpecs.boltLength}mm</div>
+                  <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
+                </>
               )}
+              {props.hasBranchFlange && (
+                <>
+                  <div className="font-bold text-blue-800 mt-2 mb-1">BRANCH FLANGE</div>
+                  <div className="text-gray-900 font-medium">OD: {branchFlangeSpecs.flangeOD}mm | PCD: {branchFlangeSpecs.pcd}mm</div>
+                  <div className="text-gray-700">Bolts: {branchFlangeSpecs.boltHoles} × M{branchFlangeSpecs.boltSize} × {branchFlangeSpecs.boltLength}mm</div>
+                  <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
+                </>
+              )}
+            </div>
+
+            {/* Controls hint */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-sm text-white/80 bg-black/50 px-4 py-2 rounded-full">
+              Drag to rotate • Scroll to zoom • Right-click to pan
             </div>
           </div>
         </div>

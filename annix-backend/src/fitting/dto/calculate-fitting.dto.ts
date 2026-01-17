@@ -160,6 +160,13 @@ export class FittingCalculationResultDto {
   nutWeight: number;
 
   @ApiProperty({
+    description: 'Total weight of gusset plates (for gussetted tees) in kg',
+    example: 1.5,
+    required: false,
+  })
+  gussetWeight?: number;
+
+  @ApiProperty({
     description: 'Estimated weld weight in kg',
     example: 0.5,
   })
@@ -206,4 +213,18 @@ export class FittingCalculationResultDto {
     example: 6.02,
   })
   wallThicknessMm: number;
+
+  @ApiProperty({
+    description: 'Total length of gusset welds in linear meters (for gussetted tees)',
+    example: 0.45,
+    required: false,
+  })
+  gussetWeldLength?: number;
+
+  @ApiProperty({
+    description: 'Gusset section dimension C in mm (for gussetted tees)',
+    example: 102.0,
+    required: false,
+  })
+  gussetSectionMm?: number;
 }

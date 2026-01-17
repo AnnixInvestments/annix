@@ -693,7 +693,7 @@ export default function BendForm({
                           </div>
                         </div>
                         {bendRules && (
-                          <div className="bg-green-50 border border-green-300 rounded-lg p-2 mt-2 text-xs text-green-800">
+                          <div className="bg-green-600 border border-green-700 rounded-lg p-2 mt-2 text-xs text-white">
                             <span className="font-semibold">Segmented Bend:</span> {bendRules.notes}
                           </div>
                         )}

@@ -305,6 +305,52 @@ export class FittingService {
 
     const totalPipeWeight = (runPipeWeight + branchPipeWeight) * dto.quantityValue;
 
+    // Calculate gusset weight for gusset tees
+    // Gussets are triangular reinforcement plates welded between run and branch pipes
+    // 2 gussets per tee (one on each side of the branch)
+    let gussetWeight = 0;
+    let gussetWeldLength = 0;
+    let gussetSectionMm = 0;
+
+    if (isGussetType && fittingDimensions) {
+      // Gusset section C is directly from the SABS 719 table
+      // C represents the gusset dimension as shown in the technical drawing
+      // The gusset extends at 45° from the branch pipe
+      gussetSectionMm = fittingDimensions.dimensionCMm || 0;
+
+      // Fallback: if C is not available, calculate from B - A
+      if (!gussetSectionMm && fittingDimensions.dimensionBMm && fittingDimensions.dimensionAMm) {
+        gussetSectionMm = fittingDimensions.dimensionBMm - fittingDimensions.dimensionAMm;
+      }
+
+      if (gussetSectionMm > 0) {
+        // Each gusset is a right triangle at 45° angle
+        // Per the technical drawing: C is the gusset section dimension
+        // At 45°, both legs of the triangle are equal to C
+        const gussetLegMm = gussetSectionMm;
+        const gussetThicknessMm = wallThicknessMm;
+
+        // Triangle area = 0.5 × leg × leg (isoceles right triangle at 45°)
+        const gussetAreaMm2 = 0.5 * gussetLegMm * gussetLegMm;
+        const gussetVolumeMm3 = gussetAreaMm2 * gussetThicknessMm;
+        const gussetVolumeDm3 = gussetVolumeMm3 / 1e6; // Convert mm³ to dm³
+
+        const steelDensity = 7.85; // kg/dm³
+        const singleGussetWeight = gussetVolumeDm3 * steelDensity;
+
+        // 2 gussets per tee
+        gussetWeight = 2 * singleGussetWeight * dto.quantityValue;
+
+        // Gusset weld runs along 3 edges of each triangular gusset
+        // At 45°: hypotenuse = leg × √2, plus two legs
+        const hypotenuseMm = gussetLegMm * Math.sqrt(2);
+        const singleGussetWeldLengthMm = hypotenuseMm + (2 * gussetLegMm);
+
+        // 2 gussets per tee, convert to meters
+        gussetWeldLength = (2 * singleGussetWeldLengthMm / 1000) * dto.quantityValue;
+      }
+    }
+
     // Calculate weld weights
     // 1 tee/lateral weld per fitting + flange welds
     // For SABS719, typically 3 flanges (one on each outlet)
@@ -319,9 +365,10 @@ export class FittingService {
     const totalTeeWeldLength = numberOfTeeWelds * circumferenceM;
 
     // Estimate weld weight (typical: 2-3% of pipe weight for butt welds)
+    // Include gusset weld length in calculation
     const weldWeight =
       totalPipeWeight * 0.025 +
-      (totalFlangeWeldLength + totalTeeWeldLength) * 0.5;
+      (totalFlangeWeldLength + totalTeeWeldLength + gussetWeldLength) * 0.5;
 
     // Calculate flange, bolt, and nut weights
     let totalFlangeWeight = 0;
@@ -385,6 +432,7 @@ export class FittingService {
       totalFlangeWeight +
       totalBoltWeight +
       totalNutWeight +
+      gussetWeight +
       weldWeight;
 
     return {
@@ -394,12 +442,15 @@ export class FittingService {
       flangeWeight: Math.round(totalFlangeWeight * 100) / 100,
       boltWeight: Math.round(totalBoltWeight * 100) / 100,
       nutWeight: Math.round(totalNutWeight * 100) / 100,
+      gussetWeight: Math.round(gussetWeight * 100) / 100,
       weldWeight: Math.round(weldWeight * 100) / 100,
       numberOfFlanges,
       numberOfFlangeWelds,
       totalFlangeWeldLength: Math.round(totalFlangeWeldLength * 100) / 100,
       numberOfTeeWelds,
       totalTeeWeldLength: Math.round(totalTeeWeldLength * 100) / 100,
+      gussetWeldLength: Math.round(gussetWeldLength * 100) / 100,
+      gussetSectionMm: Math.round(gussetSectionMm * 100) / 100,
       outsideDiameterMm,
       wallThicknessMm,
     };

@@ -1083,14 +1083,11 @@ export default function CSGBend3DPreview(props: Props) {
         <div className="text-gray-900 font-medium">OD: {odMm.toFixed(0)}mm | ID: {(odMm - 2 * props.wallThickness).toFixed(0)}mm</div>
         <div className="text-gray-700">WT: {props.wallThickness}mm | {props.bendAngle}°</div>
         <div className="text-gray-700">T1: {props.tangent1 || 0}mm | T2: {props.tangent2 || 0}mm</div>
-        {props.numberOfSegments && props.numberOfSegments > 0 && (() => {
-          const degreesPerSeg = props.bendAngle / props.numberOfSegments;
-          const bendRadius = props.nominalBore * 1.5;
-          const arcLengthPerSeg = (bendRadius * Math.PI * degreesPerSeg) / 180;
-          return (
-            <div className="text-gray-700">{props.numberOfSegments} seg × {degreesPerSeg.toFixed(1)}° × {arcLengthPerSeg.toFixed(0)}mm</div>
-          );
-        })()}
+        {props.stubs && props.stubs.length > 0 && (
+          <div className="text-gray-700">
+            Stubs: {props.stubs.map((stub, i) => `${stub.length}mm`).join(' | ')}
+          </div>
+        )}
         {props.flangeConfig && props.flangeConfig !== 'PE' && (() => {
           const flangeSpecs = FLANGE_DATA[props.nominalBore];
           const config = (props.flangeConfig || 'PE').toUpperCase();
@@ -1131,9 +1128,9 @@ export default function CSGBend3DPreview(props: Props) {
       </div>
 
       {expanded && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setExpanded(false)}>
+        <div className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4" onClick={() => setExpanded(false)}>
           <div className="relative w-full h-full max-w-[95vw] max-h-[90vh] bg-slate-100 rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setExpanded(false)} className="absolute top-4 right-4 z-50 bg-white p-2 rounded-full shadow">✕</button>
+            <button onClick={() => setExpanded(false)} className="absolute top-4 right-4 z-[10001] bg-white p-2 rounded-full shadow">✕</button>
             <Canvas shadows dpr={[1, 2]} camera={{ position: cameraPosition, fov: 40 }}>
               <ambientLight intensity={0.7} />
               <spotLight position={[10, 10, 10]} intensity={1} castShadow />
@@ -1152,6 +1149,59 @@ export default function CSGBend3DPreview(props: Props) {
                 savedTarget={props.savedCameraTarget}
               />
             </Canvas>
+
+            {/* Info overlay in expanded view */}
+            <div className="absolute top-4 left-4 text-sm bg-white/95 px-3 py-2 rounded-lg shadow-lg">
+              <div className="font-bold text-blue-800 mb-1">BEND</div>
+              <div className="text-gray-900 font-medium">OD: {odMm.toFixed(0)}mm | ID: {(odMm - 2 * props.wallThickness).toFixed(0)}mm</div>
+              <div className="text-gray-700">WT: {props.wallThickness}mm | {props.bendAngle}°</div>
+              <div className="text-gray-700">T1: {props.tangent1 || 0}mm | T2: {props.tangent2 || 0}mm</div>
+              {props.stubs && props.stubs.length > 0 && (
+                <div className="text-gray-700">
+                  Stubs: {props.stubs.map((stub) => `${stub.length}mm`).join(' | ')}
+                </div>
+              )}
+              {props.flangeConfig && props.flangeConfig !== 'PE' && (() => {
+                const flangeSpecs = FLANGE_DATA[props.nominalBore];
+                const config = (props.flangeConfig || 'PE').toUpperCase();
+                return (
+                  <>
+                    <div className="font-bold text-blue-800 mt-2 mb-1">FLANGE ({config})</div>
+                    {flangeSpecs && (
+                      <>
+                        <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
+                        <div className="text-gray-700">Holes: {flangeSpecs.boltHoles} × Ø{flangeSpecs.holeID}mm</div>
+                        <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize}</div>
+                        <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Segmented bend info in expanded view */}
+            {props.numberOfSegments && props.numberOfSegments > 1 && (() => {
+              const bendRadius = props.nominalBore * 1.5;
+              const degreesPerSeg = props.bendAngle / props.numberOfSegments;
+              const arcLengthPerSeg = (bendRadius * Math.PI * degreesPerSeg) / 180;
+              const totalArcLength = (bendRadius * Math.PI * props.bendAngle) / 180;
+              return (
+                <div className="absolute top-4 left-[280px] text-sm bg-white/95 px-3 py-2 rounded-lg shadow-lg border border-orange-200">
+                  <div className="font-bold text-orange-800 mb-1">SEGMENTED BEND</div>
+                  <div className="text-gray-900 font-medium">Total: {props.bendAngle}° / {totalArcLength.toFixed(0)}mm arc</div>
+                  <div className="text-gray-700">Segments: {props.numberOfSegments}</div>
+                  <div className="text-gray-700">Per segment: {degreesPerSeg.toFixed(1)}°</div>
+                  <div className="text-gray-700">Seg length: {arcLengthPerSeg.toFixed(0)}mm</div>
+                  <div className="text-orange-700 font-medium mt-1">Mitre welds: {props.numberOfSegments - 1}</div>
+                </div>
+              );
+            })()}
+
+            {/* Controls hint */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-sm text-white/80 bg-black/50 px-4 py-2 rounded-full">
+              Drag to rotate • Scroll to zoom • Right-click to pan
+            </div>
           </div>
         </div>
       )}
