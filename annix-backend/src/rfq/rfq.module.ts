@@ -10,6 +10,7 @@ import { BendRfq } from './entities/bend-rfq.entity';
 import { FittingRfq } from './entities/fitting-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
+import { RfqSequence } from './entities/rfq-sequence.entity';
 import { User } from '../user/entities/user.entity';
 import { SteelSpecification } from '../steel-specification/entities/steel-specification.entity';
 import { PipeDimension } from '../pipe-dimension/entities/pipe-dimension.entity';
@@ -37,6 +38,7 @@ import { EmailModule } from '../email/email.module';
       FittingRfq,
       RfqDocument,
       RfqDraft,
+      RfqSequence,
       User,
       SteelSpecification,
       PipeDimension,

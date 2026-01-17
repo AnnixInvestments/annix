@@ -15,6 +15,7 @@ import {
   flangeWeight as getFlangeWeight,
   retainingRingWeight,
 } from '@/app/lib/config/rfq';
+import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 
 const STEEL_SPEC_NB_FALLBACK: Record<string, number[]> = {
   'SABS 62': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150],
@@ -760,7 +761,7 @@ export default function BendForm({
                             setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                           }
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                        className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
                         min="1"
                         placeholder="1"
                       />
@@ -1483,10 +1484,10 @@ export default function BendForm({
                       const currentPositions = entry.specs?.blankFlangePositions || [];
 
                       return (
-                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-3">
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm font-semibold text-green-800">Add Blank Flange(s)</span>
-                            <span className="text-xs text-slate-500">({availablePositions.length} positions available)</span>
+                            <span className="text-sm font-semibold text-amber-800">Add Blank Flange(s)</span>
+                            <span className="text-xs text-amber-600">({availablePositions.length} positions available)</span>
                           </div>
                           <div className="flex flex-wrap gap-4">
                             {availablePositions.map(pos => (
@@ -1511,9 +1512,9 @@ export default function BendForm({
                                       }
                                     });
                                   }}
-                                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                  className="w-4 h-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500"
                                 />
-                                <span className="text-sm text-slate-700">{pos.label}</span>
+                                <span className="text-sm text-amber-800">{pos.label}</span>
                               </label>
                             ))}
                           </div>
@@ -2289,6 +2290,21 @@ export default function BendForm({
                   </div>
                 )}
 
+                {/* Smart Notes Dropdown */}
+                <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                  <label className="block text-xs font-semibold text-gray-900 mb-2">
+                    Additional Notes & Requirements
+                  </label>
+                  <SmartNotesDropdown
+                    selectedNotes={entry.selectedNotes || []}
+                    onNotesChange={(notes) => onUpdateEntry(entry.id, {
+                      selectedNotes: notes,
+                      notes: formatNotesForDisplay(notes)
+                    })}
+                    placeholder="Select quality/inspection requirements..."
+                  />
+                </div>
+
                 {/* Calculation Results - Compact Layout matching Pipe style */}
                 {entry.calculation && (
                   <div className="mt-4">
@@ -2649,6 +2665,7 @@ export default function BendForm({
                           }
                         })
                       }}
+                      selectedNotes={entry.selectedNotes}
                     />
                   ) : null
                 }

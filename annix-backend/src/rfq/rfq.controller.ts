@@ -49,6 +49,40 @@ import { CustomerAuthGuard } from '../customer/guards/customer-auth.guard';
 export class RfqController {
   constructor(private readonly rfqService: RfqService) {}
 
+  @Get('statistics')
+  @ApiOperation({
+    summary: 'RFQ statistics',
+    description: 'Returns RFQ counts per year for dashboard display',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statistics retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        currentYear: { type: 'number', example: 2026 },
+        currentYearCount: { type: 'number', example: 42 },
+        yearlyStats: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              year: { type: 'number', example: 2026 },
+              count: { type: 'number', example: 42 },
+            },
+          },
+        },
+      },
+    },
+  })
+  async statistics(): Promise<{
+    currentYear: number;
+    currentYearCount: number;
+    yearlyStats: Array<{ year: number; count: number }>;
+  }> {
+    return this.rfqService.rfqStatistics();
+  }
+
   @Post('straight-pipe/calculate')
   @ApiOperation({
     summary: 'Calculate straight pipe requirements',

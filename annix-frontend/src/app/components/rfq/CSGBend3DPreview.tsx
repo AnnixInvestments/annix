@@ -35,6 +35,7 @@ interface Props {
   savedCameraPosition?: [number, number, number]
   savedCameraTarget?: [number, number, number]
   onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void
+  selectedNotes?: string[]
 }
 
 const SCALE = 200
@@ -1109,6 +1110,18 @@ export default function CSGBend3DPreview(props: Props) {
           <div className="text-purple-700 font-medium mt-0.5">{props.stubs.length} stub(s)</div>
         )}
       </div>
+
+      {/* Notes Section - bottom left */}
+      {props.selectedNotes && props.selectedNotes.length > 0 && (
+        <div className="absolute bottom-2 left-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md border border-slate-200 max-w-[300px] max-h-[120px] overflow-y-auto">
+          <div className="font-bold text-slate-700 mb-1">NOTES</div>
+          <ol className="list-decimal list-inside space-y-0.5">
+            {props.selectedNotes.map((note, i) => (
+              <li key={i} className="text-gray-700 leading-tight">{note}</li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       <div className="absolute bottom-2 right-2 flex items-center gap-2">
         {showDebug && (

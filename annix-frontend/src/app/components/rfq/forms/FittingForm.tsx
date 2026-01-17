@@ -15,6 +15,7 @@ import {
   retainingRingWeight,
 } from '@/app/lib/config/rfq';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
+import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 
 export interface FittingFormProps {
   entry: any;
@@ -886,7 +887,7 @@ export default function FittingForm({
                           // Auto-calculate fitting
                           setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                        className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
                         min="1"
                       />
                     </div>
@@ -1034,10 +1035,10 @@ export default function FittingForm({
                       const currentPositions = entry.specs?.blankFlangePositions || [];
 
                       return (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-2 mt-2">
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs font-semibold text-green-800">Add Blank Flange(s)</span>
-                            <span className="text-xs text-green-600">({availablePositions.length} positions available)</span>
+                            <span className="text-xs font-semibold text-amber-800">Add Blank Flange(s)</span>
+                            <span className="text-xs text-amber-600">({availablePositions.length} positions available)</span>
                           </div>
                           <div className="flex flex-wrap gap-3">
                             {availablePositions.map(pos => (
@@ -1062,9 +1063,9 @@ export default function FittingForm({
                                       }
                                     });
                                   }}
-                                  className="w-3.5 h-3.5 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                  className="w-3.5 h-3.5 text-amber-600 border-amber-300 rounded focus:ring-amber-500"
                                 />
-                                <span className="text-xs text-green-700">{pos.label}</span>
+                                <span className="text-xs text-amber-800">{pos.label}</span>
                               </label>
                             ))}
                           </div>
@@ -1247,17 +1248,18 @@ export default function FittingForm({
 
                 {/* Operating Conditions - Hidden: Uses global specs for working pressure/temp */}
 
-                {/* Notes */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-900 mb-1">
-                    Additional Notes
+                {/* Smart Notes Dropdown */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                  <label className="block text-xs font-semibold text-gray-900 mb-2">
+                    Additional Notes & Requirements
                   </label>
-                  <textarea
-                    value={entry.notes || ''}
-                    onChange={(e) => onUpdateEntry(entry.id, { notes: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                    rows={2}
-                    placeholder="Any special requirements or notes..."
+                  <SmartNotesDropdown
+                    selectedNotes={entry.selectedNotes || []}
+                    onNotesChange={(notes) => onUpdateEntry(entry.id, {
+                      selectedNotes: notes,
+                      notes: formatNotesForDisplay(notes)
+                    })}
+                    placeholder="Select quality/inspection requirements..."
                   />
                 </div>
 
@@ -1464,6 +1466,7 @@ export default function FittingForm({
                               specs: { ...entry.specs, savedCameraPosition: position, savedCameraTarget: target }
                             });
                           }}
+                          selectedNotes={entry.selectedNotes}
                         />
                       );
                     })()}

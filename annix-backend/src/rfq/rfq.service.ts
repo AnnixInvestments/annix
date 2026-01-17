@@ -21,6 +21,7 @@ import { BendRfq } from './entities/bend-rfq.entity';
 import { FittingRfq } from './entities/fitting-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
+import { RfqSequence } from './entities/rfq-sequence.entity';
 import { User } from '../user/entities/user.entity';
 import { SteelSpecification } from '../steel-specification/entities/steel-specification.entity';
 import { PipeDimension } from '../pipe-dimension/entities/pipe-dimension.entity';
@@ -76,6 +77,8 @@ export class RfqService {
     private rfqDocumentRepository: Repository<RfqDocument>,
     @InjectRepository(RfqDraft)
     private rfqDraftRepository: Repository<RfqDraft>,
+    @InjectRepository(RfqSequence)
+    private rfqSequenceRepository: Repository<RfqSequence>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
     @InjectRepository(SteelSpecification)
@@ -100,6 +103,49 @@ export class RfqService {
     private storageService: IStorageService,
     private emailService: EmailService,
   ) {}
+
+  async nextRfqNumber(): Promise<string> {
+    const currentYear = now().year;
+
+    let sequence = await this.rfqSequenceRepository.findOne({
+      where: { year: currentYear },
+    });
+
+    if (!sequence) {
+      sequence = this.rfqSequenceRepository.create({
+        year: currentYear,
+        lastSequence: 0,
+      });
+    }
+
+    sequence.lastSequence += 1;
+    await this.rfqSequenceRepository.save(sequence);
+
+    return `RFQ-${currentYear}-${String(sequence.lastSequence).padStart(4, '0')}`;
+  }
+
+  async rfqStatistics(): Promise<{
+    currentYear: number;
+    currentYearCount: number;
+    yearlyStats: Array<{ year: number; count: number }>;
+  }> {
+    const currentYear = now().year;
+
+    const sequences = await this.rfqSequenceRepository.find({
+      order: { year: 'DESC' },
+    });
+
+    const currentYearSequence = sequences.find((s) => s.year === currentYear);
+
+    return {
+      currentYear,
+      currentYearCount: currentYearSequence?.lastSequence || 0,
+      yearlyStats: sequences.map((s) => ({
+        year: s.year,
+        count: s.lastSequence,
+      })),
+    };
+  }
 
   async calculateStraightPipeRequirements(
     dto: CreateStraightPipeRfqWithItemDto['straightPipe'],
@@ -353,8 +399,7 @@ export class RfqService {
     );
 
     // Generate RFQ number
-    const rfqCount = await this.rfqRepository.count();
-    const rfqNumber = `RFQ-${now().year}-${String(rfqCount + 1).padStart(4, '0')}`;
+    const rfqNumber = await this.nextRfqNumber();
 
     // Create RFQ
     const rfq = this.rfqRepository.create({
@@ -428,8 +473,7 @@ export class RfqService {
       .findOne({ where: { id: userId } })
       .catch(() => null);
 
-    const rfqCount = await this.rfqRepository.count();
-    const rfqNumber = `RFQ-${now().year}-${String(rfqCount + 1).padStart(4, '0')}`;
+    const rfqNumber = await this.nextRfqNumber();
 
     let totalWeight = 0;
     dto.items.forEach((item) => {
@@ -923,8 +967,7 @@ export class RfqService {
     const calculation = await this.calculateBendRequirements(dto.bend);
 
     // Generate RFQ number
-    const rfqCount = await this.rfqRepository.count();
-    const rfqNumber = `RFQ-${now().year}-${String(rfqCount + 1).padStart(4, '0')}`;
+    const rfqNumber = await this.nextRfqNumber();
 
     // Create RFQ
     const rfq = this.rfqRepository.create({

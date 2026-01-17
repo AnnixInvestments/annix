@@ -23,6 +23,7 @@ import {
 } from '@/app/lib/utils/pipeCalculations';
 import { recommendWallThicknessCarbonPipe, roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
+import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 
 const formatWeight = (weight: number | undefined) => {
   if (weight === undefined) return 'Not calculated';
@@ -742,10 +743,10 @@ export default function StraightPipeForm({
                     const currentPositions = entry.specs?.blankFlangePositions || [];
 
                     return (
-                      <div className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg p-3">
+                      <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-semibold text-green-800 dark:text-green-400">Add Blank Flange(s)</span>
-                          <span className="text-xs text-slate-500 dark:text-slate-400">({availablePositions.length} positions available)</span>
+                          <span className="text-sm font-semibold text-amber-800 dark:text-amber-400">Add Blank Flange(s)</span>
+                          <span className="text-xs text-amber-600 dark:text-amber-500">({availablePositions.length} positions available)</span>
                         </div>
                         <div className="flex flex-wrap gap-4">
                           {availablePositions.map(pos => (
@@ -770,9 +771,9 @@ export default function StraightPipeForm({
                                     }
                                   });
                                 }}
-                                className="w-4 h-4 text-green-600 border-gray-300 dark:border-slate-500 rounded focus:ring-green-500"
+                                className="w-4 h-4 text-amber-600 border-amber-300 dark:border-amber-600 rounded focus:ring-amber-500"
                               />
-                              <span className="text-sm text-slate-700 dark:text-slate-300">{pos.label}</span>
+                              <span className="text-sm text-amber-800 dark:text-amber-300">{pos.label}</span>
                             </label>
                           ))}
                         </div>
@@ -1130,7 +1131,7 @@ export default function StraightPipeForm({
                           description: newDescription
                         });
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-blue-50"
                       placeholder="Enter custom length"
                     />
                     <p className="mt-0.5 text-xs text-gray-500">
@@ -1156,7 +1157,7 @@ export default function StraightPipeForm({
                         const updatedEntry = calculateQuantities(entry, 'totalLength', totalLength);
                         onUpdateEntry(entry.id, updatedEntry);
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-blue-50"
                       placeholder="Total pipeline length"
                       required
                     />
@@ -1183,7 +1184,7 @@ export default function StraightPipeForm({
                         const updatedEntry = calculateQuantities(entry, 'numberOfPipes', numberOfPipes);
                         onUpdateEntry(entry.id, updatedEntry);
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-blue-50"
                       placeholder="Number of pipes"
                       required
                     />
@@ -1216,6 +1217,7 @@ export default function StraightPipeForm({
                           specs: { ...entry.specs, savedCameraPosition: position, savedCameraTarget: target }
                         });
                       }}
+                      selectedNotes={entry.selectedNotes}
                     />
                   ) : null
                 }
@@ -1232,6 +1234,21 @@ export default function StraightPipeForm({
                   </button>
                 </div>
               )}
+
+              {/* Smart Notes Dropdown */}
+              <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <label className="block text-xs font-semibold text-gray-900 mb-2">
+                  Additional Notes & Requirements
+                </label>
+                <SmartNotesDropdown
+                  selectedNotes={entry.selectedNotes || []}
+                  onNotesChange={(notes) => onUpdateEntry(entry.id, {
+                    selectedNotes: notes,
+                    notes: formatNotesForDisplay(notes)
+                  })}
+                  placeholder="Select quality/inspection requirements..."
+                />
+              </div>
 
               {/* Calculation Results - Full Width Compact Layout */}
               <div className="mt-4">

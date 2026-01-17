@@ -69,6 +69,8 @@ interface Tee3DPreviewProps {
   savedCameraPosition?: [number, number, number];
   savedCameraTarget?: [number, number, number];
   onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
+  // Notes for display
+  selectedNotes?: string[];
 }
 
 // Standard Pipe OD Lookup Table (NB to OD in mm)
@@ -1412,6 +1414,18 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
           </>
         )}
       </div>
+
+      {/* Notes Section - bottom left */}
+      {props.selectedNotes && props.selectedNotes.length > 0 && (
+        <div className="absolute bottom-2 left-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md border border-slate-200 max-w-[300px] max-h-[120px] overflow-y-auto">
+          <div className="font-bold text-slate-700 mb-1">NOTES</div>
+          <ol className="list-decimal list-inside space-y-0.5">
+            {props.selectedNotes.map((note, i) => (
+              <li key={i} className="text-gray-700 leading-tight">{note}</li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       {/* Bottom toolbar - Expand, Drag hint, and Hide button in horizontal row */}
       <div className="absolute bottom-2 right-2 flex flex-row items-center gap-2">

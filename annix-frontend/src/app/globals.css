@@ -11,14 +11,14 @@
   --amix-orange-light: #FFB733;
   --amix-orange-dark: #CC8400;
 
-  /* Light mode (default) */
-  --background: #ffffff;
+  /* Light mode (default) - soft grey feel */
+  --background: #f5f7fa;
   --foreground: #171717;
   --card-bg: #ffffff;
   --card-border: #e5e7eb;
   --input-bg: #ffffff;
   --input-border: #d1d5db;
-  --muted-bg: #f9fafb;
+  --muted-bg: #eef1f5;
   --muted-text: #6b7280;
 }
 
