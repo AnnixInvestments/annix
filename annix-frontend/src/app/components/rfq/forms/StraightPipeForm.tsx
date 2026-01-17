@@ -13,6 +13,8 @@ import {
   physicalFlangeCount as getPhysicalFlangeCount,
   hasLooseFlange,
   retainingRingWeight,
+  SABS_1123_FLANGE_TYPES,
+  SABS_1123_PRESSURE_CLASSES,
 } from '@/app/lib/config/rfq';
 import {
   calculateMinWallThickness,
@@ -924,47 +926,112 @@ export default function StraightPipeForm({
                           </div>
                         ) : (
                           <>
-                            <select
-                              value={entry.specs.flangeStandardId || globalSpecs?.flangeStandardId || ''}
-                              onChange={(e) => {
-                                const newFlangeStandardId = e.target.value ? Number(e.target.value) : undefined;
-                                const updatedEntry = { ...entry, specs: { ...entry.specs, flangeStandardId: newFlangeStandardId } };
-                                const newDescription = generateItemDescription(updatedEntry);
-                                onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, flangeStandardId: newFlangeStandardId },
-                                  description: newDescription
-                                });
-                              }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                            >
-                              <option value="">Select flange standard...</option>
-                              {masterData.flangeStandards.map((standard: any) => (
-                                <option key={standard.id} value={standard.id}>
-                                  {standard.code}
-                                </option>
-                              ))}
-                            </select>
+                            {(() => {
+                              const selectedStandard = masterData.flangeStandards?.find(
+                                (fs: any) => fs.id === (entry.specs.flangeStandardId || globalSpecs?.flangeStandardId)
+                              );
+                              const isSabs1123 = selectedStandard?.code?.toUpperCase().includes('SABS') &&
+                                                 selectedStandard?.code?.includes('1123');
 
-                            <select
-                              value={entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
-                              onChange={(e) => {
-                                const newFlangePressureClassId = e.target.value ? Number(e.target.value) : undefined;
-                                const updatedEntry = { ...entry, specs: { ...entry.specs, flangePressureClassId: newFlangePressureClassId } };
-                                const newDescription = generateItemDescription(updatedEntry);
-                                onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, flangePressureClassId: newFlangePressureClassId },
-                                  description: newDescription
-                                });
-                              }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                            >
-                              <option value="">Select pressure class...</option>
-                              {masterData.pressureClasses.map((pc: any) => (
-                                <option key={pc.id} value={pc.id}>
-                                  {pc.designation}
-                                </option>
-                              ))}
-                            </select>
+                              return (
+                                <div className={`grid gap-1 ${isSabs1123 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                                  <select
+                                    value={entry.specs.flangeStandardId || globalSpecs?.flangeStandardId || ''}
+                                    onChange={(e) => {
+                                      const newFlangeStandardId = e.target.value ? Number(e.target.value) : undefined;
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, flangeStandardId: newFlangeStandardId, flangeTypeCode: undefined } };
+                                      const newDescription = generateItemDescription(updatedEntry);
+                                      onUpdateEntry(entry.id, {
+                                        specs: { ...entry.specs, flangeStandardId: newFlangeStandardId, flangeTypeCode: undefined },
+                                        description: newDescription
+                                      });
+                                    }}
+                                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                                    title="Flange Standard"
+                                  >
+                                    <option value="">Standard...</option>
+                                    {masterData.flangeStandards.map((standard: any) => (
+                                      <option key={standard.id} value={standard.id}>
+                                        {standard.code}
+                                      </option>
+                                    ))}
+                                  </select>
+
+                                  {isSabs1123 ? (
+                                    <>
+                                      <select
+                                        value={entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
+                                        onChange={(e) => {
+                                          const newFlangePressureClassId = e.target.value ? Number(e.target.value) : undefined;
+                                          const updatedEntry = { ...entry, specs: { ...entry.specs, flangePressureClassId: newFlangePressureClassId } };
+                                          const newDescription = generateItemDescription(updatedEntry);
+                                          onUpdateEntry(entry.id, {
+                                            specs: { ...entry.specs, flangePressureClassId: newFlangePressureClassId },
+                                            description: newDescription
+                                          });
+                                        }}
+                                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                                        title="Pressure Class (kPa)"
+                                      >
+                                        <option value="">Class...</option>
+                                        {SABS_1123_PRESSURE_CLASSES.map((pc) => {
+                                          const matchingPc = masterData.pressureClasses?.find(
+                                            (mpc: any) => mpc.designation?.includes(String(pc.value))
+                                          );
+                                          return matchingPc ? (
+                                            <option key={matchingPc.id} value={matchingPc.id}>
+                                              {pc.value}
+                                            </option>
+                                          ) : null;
+                                        })}
+                                      </select>
+                                      <select
+                                        value={entry.specs.flangeTypeCode || ''}
+                                        onChange={(e) => {
+                                          const updatedEntry = { ...entry, specs: { ...entry.specs, flangeTypeCode: e.target.value || undefined } };
+                                          const newDescription = generateItemDescription(updatedEntry);
+                                          onUpdateEntry(entry.id, {
+                                            specs: { ...entry.specs, flangeTypeCode: e.target.value || undefined },
+                                            description: newDescription
+                                          });
+                                        }}
+                                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                                        title="Flange Type"
+                                      >
+                                        <option value="">Type...</option>
+                                        {SABS_1123_FLANGE_TYPES.map((ft) => (
+                                          <option key={ft.code} value={ft.code} title={ft.description}>
+                                            {ft.name} ({ft.code})
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </>
+                                  ) : (
+                                    <select
+                                      value={entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
+                                      onChange={(e) => {
+                                        const newFlangePressureClassId = e.target.value ? Number(e.target.value) : undefined;
+                                        const updatedEntry = { ...entry, specs: { ...entry.specs, flangePressureClassId: newFlangePressureClassId } };
+                                        const newDescription = generateItemDescription(updatedEntry);
+                                        onUpdateEntry(entry.id, {
+                                          specs: { ...entry.specs, flangePressureClassId: newFlangePressureClassId },
+                                          description: newDescription
+                                        });
+                                      }}
+                                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                                      title="Pressure Class"
+                                    >
+                                      <option value="">Class...</option>
+                                      {masterData.pressureClasses.map((pc: any) => (
+                                        <option key={pc.id} value={pc.id}>
+                                          {pc.designation}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  )}
+                                </div>
+                              );
+                            })()}
 
                             {/* Confirm/Edit Buttons for Override */}
                             {entry.hasFlangeOverride && entry.specs.flangeStandardId && entry.specs.flangePressureClassId && (

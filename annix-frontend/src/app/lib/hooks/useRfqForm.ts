@@ -53,6 +53,7 @@ export interface BendEntry {
     steelSpecificationId?: number;
     flangeStandardId?: number;
     flangePressureClassId?: number;
+    flangeTypeCode?: string; // SABS 1123 flange type code (/1 to /9)
     quantityValue: number;
     quantityType: 'number_of_items';
     workingPressureBar?: number;
@@ -82,6 +83,7 @@ export interface FittingEntry {
     steelSpecificationId?: number;
     flangeStandardId?: number;
     flangePressureClassId?: number;
+    flangeTypeCode?: string; // SABS 1123 flange type code (/1 to /9)
     quantityValue: number;
     quantityType: 'number_of_items';
     workingPressureBar?: number;

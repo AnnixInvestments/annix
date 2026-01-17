@@ -13,6 +13,8 @@ import {
   fittingFlangeConfig as getFittingFlangeConfig,
   hasLooseFlange,
   retainingRingWeight,
+  SABS_1123_FLANGE_TYPES,
+  SABS_1123_PRESSURE_CLASSES,
 } from '@/app/lib/config/rfq';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
@@ -1251,49 +1253,92 @@ export default function FittingForm({
                             </div>
                           ) : (
                             <>
-                              <div className="grid grid-cols-2 gap-2">
-                                <select
-                                  value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
-                                  onChange={(e) => {
-                                    const standardId = parseInt(e.target.value) || undefined;
-                                    onUpdateEntry(entry.id, {
-                                      specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined }
-                                    });
-                                    if (standardId) {
-                                      getFilteredPressureClasses(standardId);
-                                    }
-                                  }}
-                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
-                                >
-                                  <option value="">Standard...</option>
-                                  {masterData.flangeStandards?.map((standard: any) => (
-                                    <option key={standard.id} value={standard.id}>
-                                      {standard.code}
-                                    </option>
-                                  ))}
-                                </select>
-                                <select
-                                  value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
-                                  onChange={(e) => onUpdateEntry(entry.id, {
-                                    specs: {
-                                      ...entry.specs,
-                                      flangePressureClassId: parseInt(e.target.value) || undefined
-                                    }
-                                  })}
-                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
-                                >
-                                  <option value="">Class...</option>
-                                  {(() => {
-                                    const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                                    const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
-                                    return filtered.map((pressureClass: any) => (
-                                      <option key={pressureClass.id} value={pressureClass.id}>
-                                        {pressureClass.designation}
-                                      </option>
-                                    ));
-                                  })()}
-                                </select>
-                              </div>
+                              {(() => {
+                                const selectedStandard = masterData.flangeStandards?.find(
+                                  (fs: any) => fs.id === (entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId)
+                                );
+                                const isSabs1123 = selectedStandard?.code?.toUpperCase().includes('SABS') &&
+                                                   selectedStandard?.code?.includes('1123');
+
+                                return (
+                                  <div className={`grid gap-1 ${isSabs1123 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                                    <select
+                                      value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
+                                      onChange={(e) => {
+                                        const standardId = parseInt(e.target.value) || undefined;
+                                        onUpdateEntry(entry.id, {
+                                          specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined, flangeTypeCode: undefined }
+                                        });
+                                        if (standardId) {
+                                          getFilteredPressureClasses(standardId);
+                                        }
+                                      }}
+                                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                      title="Flange Standard"
+                                    >
+                                      <option value="">Standard...</option>
+                                      {masterData.flangeStandards?.map((standard: any) => (
+                                        <option key={standard.id} value={standard.id}>{standard.code}</option>
+                                      ))}
+                                    </select>
+                                    {isSabs1123 ? (
+                                      <>
+                                        <select
+                                          value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
+                                          onChange={(e) => onUpdateEntry(entry.id, {
+                                            specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
+                                          })}
+                                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                          title="Pressure Class (kPa)"
+                                        >
+                                          <option value="">Class...</option>
+                                          {SABS_1123_PRESSURE_CLASSES.map((pc) => {
+                                            const matchingPc = masterData.pressureClasses?.find(
+                                              (mpc: any) => mpc.designation?.includes(String(pc.value))
+                                            );
+                                            return matchingPc ? (
+                                              <option key={matchingPc.id} value={matchingPc.id}>{pc.value}</option>
+                                            ) : null;
+                                          })}
+                                        </select>
+                                        <select
+                                          value={entry.specs?.flangeTypeCode || ''}
+                                          onChange={(e) => onUpdateEntry(entry.id, {
+                                            specs: { ...entry.specs, flangeTypeCode: e.target.value || undefined }
+                                          })}
+                                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                          title="Flange Type"
+                                        >
+                                          <option value="">Type...</option>
+                                          {SABS_1123_FLANGE_TYPES.map((ft) => (
+                                            <option key={ft.code} value={ft.code} title={ft.description}>
+                                              {ft.name} ({ft.code})
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </>
+                                    ) : (
+                                      <select
+                                        value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
+                                        onChange={(e) => onUpdateEntry(entry.id, {
+                                          specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
+                                        })}
+                                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                        title="Pressure Class"
+                                      >
+                                        <option value="">Class...</option>
+                                        {(() => {
+                                          const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                                          const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
+                                          return filtered.map((pressureClass: any) => (
+                                            <option key={pressureClass.id} value={pressureClass.id}>{pressureClass.designation}</option>
+                                          ));
+                                        })()}
+                                      </select>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               {entry.hasFlangeOverride && entry.specs?.flangeStandardId && entry.specs?.flangePressureClassId && (
                                 <div className="flex gap-2">
                                   <button

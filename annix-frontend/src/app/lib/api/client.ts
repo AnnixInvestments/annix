@@ -35,6 +35,7 @@ export interface CreateStraightPipeRfqDto {
   steelSpecificationId?: number;
   flangeStandardId?: number;
   flangePressureClassId?: number;
+  flangeTypeCode?: string; // SABS 1123 flange type code (/1 to /9)
 }
 
 export interface PipeEndConfiguration {

@@ -388,6 +388,32 @@ export const sansBlankFlangeWeight = (nbMm: number, tableDesignation: string): n
   return blankFlangeWeight(nbMm, normalizePressureClass(tableDesignation));
 };
 
+export interface Sabs1123FlangeType {
+  code: string;
+  name: string;
+  description: string;
+}
+
+export const SABS_1123_FLANGE_TYPES: Sabs1123FlangeType[] = [
+  { code: '/1', name: 'Weld Neck', description: 'WN - Weld Neck flange for high pressure applications' },
+  { code: '/2', name: 'Threaded', description: 'THD - Threaded flange for low pressure, non-critical services' },
+  { code: '/3', name: 'Slip-On', description: 'SO - Slip-On flange, most common type' },
+  { code: '/4', name: 'Lap Joint', description: 'LJ - Lap Joint flange with stub end' },
+  { code: '/5', name: 'Socket Weld', description: 'SW - Socket Weld flange for small bore piping' },
+  { code: '/6', name: 'Blind', description: 'BL - Blind flange to close pipe ends' },
+  { code: '/7', name: 'Orifice', description: 'Orifice flange for flow measurement' },
+  { code: '/8', name: 'Spectacle Blind', description: 'Spectacle Blind for isolation purposes' },
+  { code: '/9', name: 'Reducing', description: 'Reducing flange for pipe size transitions' },
+];
+
+export const SABS_1123_PRESSURE_CLASSES = [
+  { value: 600, label: '600 kPa' },
+  { value: 1000, label: '1000 kPa' },
+  { value: 1600, label: '1600 kPa' },
+  { value: 2500, label: '2500 kPa' },
+  { value: 4000, label: '4000 kPa' },
+];
+
 export const retainingRingWeight = (nbMm: number, pipeOdMm?: number): number => {
   const pipeOd = pipeOdMm || NB_TO_OD_LOOKUP[nbMm] || nbMm * 1.05;
 
