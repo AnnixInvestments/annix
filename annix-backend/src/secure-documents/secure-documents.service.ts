@@ -14,12 +14,23 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
 import { SecureDocument } from './secure-document.entity';
 import { CreateSecureDocumentDto } from './dto/create-secure-document.dto';
 import { UpdateSecureDocumentDto } from './dto/update-secure-document.dto';
 import { encrypt, decrypt } from './crypto.util';
 import { User } from '../user/entities/user.entity';
 import { nowISO } from '../lib/datetime';
+
+export interface LocalDocument {
+  slug: string;
+  title: string;
+  description: string;
+  filePath: string;
+  updatedAt: Date;
+  isLocal: true;
+}
 
 function slugify(text: string): string {
   return text
@@ -36,6 +47,7 @@ export class SecureDocumentsService {
   private readonly s3Client: S3Client;
   private readonly bucket: string;
   private readonly encryptionKey: string;
+  private readonly projectRoot: string;
 
   constructor(
     @InjectRepository(SecureDocument)
@@ -49,6 +61,7 @@ export class SecureDocumentsService {
       this.configService.get<string>('AWS_S3_BUCKET') || 'annix-sync-files';
     this.encryptionKey =
       this.configService.get<string>('DOCUMENT_ENCRYPTION_KEY') || '';
+    this.projectRoot = path.resolve(process.cwd(), '..');
 
     this.s3Client = new S3Client({
       region,
@@ -142,6 +155,7 @@ export class SecureDocumentsService {
       title: dto.title,
       slug,
       description: dto.description,
+      folder: dto.folder || null,
       storagePath,
       createdBy: user,
     });
@@ -164,6 +178,10 @@ export class SecureDocumentsService {
 
     if (dto.description !== undefined) {
       document.description = dto.description;
+    }
+
+    if (dto.folder !== undefined) {
+      document.folder = dto.folder || null;
     }
 
     if (dto.content !== undefined) {
@@ -241,5 +259,90 @@ export class SecureDocumentsService {
       }),
     );
     this.logger.log(`Deleted encrypted document from S3: ${storagePath}`);
+  }
+
+  async listLocalMarkdownFiles(): Promise<LocalDocument[]> {
+    const readmes: LocalDocument[] = [];
+    await this.scanForMarkdownFiles(this.projectRoot, readmes, 0);
+    return readmes.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  }
+
+  private async scanForMarkdownFiles(
+    dir: string,
+    results: LocalDocument[],
+    depth: number,
+  ): Promise<void> {
+    if (depth > 3) return;
+
+    try {
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+          if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'dist') {
+            continue;
+          }
+          await this.scanForMarkdownFiles(fullPath, results, depth + 1);
+        } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
+          const stats = await fs.promises.stat(fullPath);
+          const relativePath = path.relative(this.projectRoot, fullPath);
+          const fileName = path.basename(relativePath, '.md');
+          const dirName = path.dirname(relativePath);
+
+          const title = dirName === '.'
+            ? fileName.replace(/[-_]/g, ' ')
+            : `${dirName.replace(/\//g, ' / ')} / ${fileName.replace(/[-_]/g, ' ')}`;
+
+          const slug = `local:${relativePath.replace(/\//g, '-').replace(/\.md$/i, '').toLowerCase()}`;
+
+          results.push({
+            slug,
+            title,
+            description: `Local file: ${relativePath}`,
+            filePath: relativePath,
+            updatedAt: stats.mtime,
+            isLocal: true,
+          });
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`Error scanning directory ${dir}: ${err}`);
+    }
+  }
+
+  async readLocalReadme(filePath: string): Promise<{ content: string; document: LocalDocument }> {
+    const fullPath = path.join(this.projectRoot, filePath);
+
+    if (!fullPath.startsWith(this.projectRoot)) {
+      throw new NotFoundException('Invalid file path');
+    }
+
+    if (!fs.existsSync(fullPath)) {
+      throw new NotFoundException(`File not found: ${filePath}`);
+    }
+
+    const stats = await fs.promises.stat(fullPath);
+    const content = await fs.promises.readFile(fullPath, 'utf-8');
+    const relativePath = path.relative(this.projectRoot, fullPath);
+    const dirName = path.dirname(relativePath);
+
+    const title = dirName === '.'
+      ? 'Project README'
+      : `${dirName.replace(/\//g, ' / ')} README`;
+
+    const slug = `local:${relativePath.replace(/\//g, '-').replace(/\.md$/i, '').toLowerCase()}`;
+
+    const document: LocalDocument = {
+      slug,
+      title,
+      description: `Local file: ${relativePath}`,
+      filePath: relativePath,
+      updatedAt: stats.mtime,
+      isLocal: true,
+    };
+
+    return { content, document };
   }
 }

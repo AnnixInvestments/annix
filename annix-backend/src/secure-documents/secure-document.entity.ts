@@ -59,6 +59,13 @@ export class SecureDocument {
   @Column({ name: 'original_filename', nullable: true })
   originalFilename: string;
 
+  @ApiProperty({
+    description: 'Folder path for organizing documents',
+    example: 'deployment/aws',
+  })
+  @Column({ nullable: true, type: 'varchar' })
+  folder: string | null;
+
   @ApiProperty({ description: 'User who created the document' })
   @ManyToOne(() => User, { eager: true })
   @JoinColumn({ name: 'created_by_id' })

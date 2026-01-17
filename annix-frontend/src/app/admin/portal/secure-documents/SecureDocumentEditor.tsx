@@ -11,6 +11,7 @@ interface InitialData {
   title: string;
   description: string;
   content: string;
+  folder?: string;
 }
 
 export type EditorPaneMode = 'edit' | 'live' | 'preview';
@@ -26,8 +27,8 @@ interface SecureDocumentEditorProps {
   paneMode?: EditorPaneMode;
   fullscreen?: boolean;
   onStateChange?: (state: EditorState) => void;
-  onSave: (data: { title: string; description: string; content: string }) => Promise<void>;
-  onCancel: () => void;
+  onSave: (data: { title: string; description: string; content: string; folder?: string }) => Promise<boolean>;
+  onBack: () => void;
 }
 
 export default function SecureDocumentEditor({
@@ -37,11 +38,16 @@ export default function SecureDocumentEditor({
   fullscreen = false,
   onStateChange,
   onSave,
-  onCancel,
+  onBack,
 }: SecureDocumentEditorProps) {
   const [title, setTitle] = useState(initialData?.title || document?.title || '');
   const [description, setDescription] = useState(initialData?.description || document?.description || '');
+  const [folder, setFolder] = useState(initialData?.folder || document?.folder || '');
   const [content, setContent] = useState(initialData?.content || document?.content || '');
+  const [savedTitle, setSavedTitle] = useState(initialData?.title || document?.title || '');
+  const [savedDescription, setSavedDescription] = useState(initialData?.description || document?.description || '');
+  const [savedFolder, setSavedFolder] = useState(initialData?.folder || document?.folder || '');
+  const [savedContent, setSavedContent] = useState(initialData?.content || document?.content || '');
   const [isSaving, setIsSaving] = useState(false);
   const [editorHeight, setEditorHeight] = useState(500);
   const [localPaneMode, setLocalPaneMode] = useState<EditorPaneMode>(paneMode);
@@ -55,6 +61,19 @@ export default function SecureDocumentEditor({
   useEffect(() => {
     setLocalFullscreen(fullscreen);
   }, [fullscreen]);
+
+  useEffect(() => {
+    if (document) {
+      setTitle(document.title || '');
+      setDescription(document.description || '');
+      setFolder(document.folder || '');
+      setContent(document.content || '');
+      setSavedTitle(document.title || '');
+      setSavedDescription(document.description || '');
+      setSavedFolder(document.folder || '');
+      setSavedContent(document.content || '');
+    }
+  }, [document?.id]);
 
   const handlePaneModeChange = useCallback((mode: EditorPaneMode) => {
     setLocalPaneMode(mode);
@@ -100,25 +119,35 @@ export default function SecureDocumentEditor({
 
     setIsSaving(true);
     try {
-      await onSave({ title: title.trim(), description: description.trim(), content });
+      const success = await onSave({
+        title: title.trim(),
+        description: description.trim(),
+        content,
+        folder: folder.trim() || undefined,
+      });
+      if (success) {
+        setSavedTitle(title.trim());
+        setSavedDescription(description.trim());
+        setSavedFolder(folder.trim());
+        setSavedContent(content);
+      }
     } finally {
       setIsSaving(false);
     }
   };
 
   const isEdit = document !== null;
-  const originalTitle = initialData?.title || document?.title || '';
-  const originalDescription = initialData?.description || document?.description || '';
-  const originalContent = initialData?.content || document?.content || '';
 
-  const hasChanges = title !== originalTitle ||
-    description !== originalDescription ||
-    content !== originalContent;
+  const hasChanges = title.trim() !== savedTitle ||
+    description.trim() !== savedDescription ||
+    folder.trim() !== savedFolder ||
+    content !== savedContent;
 
   const handleRevert = () => {
-    setTitle(originalTitle);
-    setDescription(originalDescription);
-    setContent(originalContent);
+    setTitle(savedTitle);
+    setDescription(savedDescription);
+    setFolder(savedFolder);
+    setContent(savedContent);
   };
 
   return (
@@ -150,13 +179,13 @@ export default function SecureDocumentEditor({
         </div>
         <div className="flex space-x-3">
           <button
-            onClick={onCancel}
+            onClick={onBack}
             className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Cancel
+            Back to Secure Documents
           </button>
           {isEdit && hasChanges && (
             <button
@@ -208,6 +237,20 @@ export default function SecureDocumentEditor({
             onChange={(e) => setDescription(e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#323288] focus:ring-[#323288] sm:text-sm border p-2"
             placeholder="Brief description for the document list"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="folder" className="block text-sm font-medium text-gray-700">
+            Folder
+          </label>
+          <input
+            type="text"
+            id="folder"
+            value={folder}
+            onChange={(e) => setFolder(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#323288] focus:ring-[#323288] sm:text-sm border p-2"
+            placeholder="e.g. deployment/aws (leave empty for root)"
           />
         </div>
 

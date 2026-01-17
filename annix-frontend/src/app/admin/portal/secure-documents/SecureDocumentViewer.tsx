@@ -24,13 +24,15 @@ const MarkdownPreview = dynamic(
 interface SecureDocumentViewerProps {
   document: SecureDocumentWithContent;
   onBack: () => void;
-  onEdit: () => void;
+  onEdit?: () => void;
+  isReadOnly?: boolean;
 }
 
 export default function SecureDocumentViewer({
   document,
   onBack,
   onEdit,
+  isReadOnly = false,
 }: SecureDocumentViewerProps) {
   return (
     <div className="space-y-6">
@@ -50,15 +52,17 @@ export default function SecureDocumentViewer({
             <p className="mt-1 text-sm text-gray-600">{document.description}</p>
           )}
         </div>
-        <button
-          onClick={onEdit}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#323288] hover:bg-[#4a4da3]"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          Edit
-        </button>
+        {!isReadOnly && onEdit && (
+          <button
+            onClick={onEdit}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#323288] hover:bg-[#4a4da3]"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit
+          </button>
+        )}
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -71,12 +75,21 @@ export default function SecureDocumentViewer({
               <span>|</span>
               <span>Updated: {formatDateZA(document.updatedAt)}</span>
             </div>
-            <div className="flex items-center text-green-600">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              Encrypted
-            </div>
+            {isReadOnly ? (
+              <div className="flex items-center text-blue-600">
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Local file (read-only)
+              </div>
+            ) : (
+              <div className="flex items-center text-green-600">
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Encrypted
+              </div>
+            )}
           </div>
         </div>
         <div className="p-6" data-color-mode="light">

@@ -16,7 +16,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Request } from 'express';
-import { SecureDocumentsService } from './secure-documents.service';
+import { SecureDocumentsService, LocalDocument } from './secure-documents.service';
 import { CreateSecureDocumentDto } from './dto/create-secure-document.dto';
 import { UpdateSecureDocumentDto } from './dto/update-secure-document.dto';
 import { SecureDocument } from './secure-document.entity';
@@ -48,6 +48,30 @@ export class SecureDocumentsController {
   })
   async findAll(): Promise<SecureDocument[]> {
     return this.service.findAll();
+  }
+
+  @Get('local')
+  @ApiOperation({ summary: 'List local README.md files from the codebase' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of local README files',
+  })
+  async listLocalMarkdownFiles(): Promise<LocalDocument[]> {
+    return this.service.listLocalMarkdownFiles();
+  }
+
+  @Get('local/:filePath')
+  @ApiOperation({ summary: 'Read a local README.md file content' })
+  @ApiResponse({
+    status: 200,
+    description: 'File content',
+  })
+  @ApiResponse({ status: 404, description: 'File not found' })
+  async readLocalReadme(
+    @Param('filePath') filePath: string,
+  ): Promise<{ content: string; document: LocalDocument }> {
+    const decodedPath = decodeURIComponent(filePath);
+    return this.service.readLocalReadme(decodedPath);
   }
 
   @Get(':idOrSlug')

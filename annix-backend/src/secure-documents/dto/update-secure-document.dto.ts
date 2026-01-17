@@ -19,4 +19,9 @@ export class UpdateSecureDocumentDto {
   @IsString()
   @IsOptional()
   content?: string;
+
+  @ApiProperty({ example: 'deployment/aws', required: false })
+  @IsString()
+  @IsOptional()
+  folder?: string;
 }

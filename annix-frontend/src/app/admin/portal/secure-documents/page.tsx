@@ -2,13 +2,26 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { adminApiClient, SecureDocument, SecureDocumentWithContent } from '@/app/lib/api/adminApi';
-import { formatDateZA } from '@/app/lib/datetime';
+import { adminApiClient, SecureDocument, SecureDocumentWithContent, LocalDocument, LocalDocumentWithContent } from '@/app/lib/api/adminApi';
+import { formatDateZA, fromISO } from '@/app/lib/datetime';
 import SecureDocumentEditor, { EditorPaneMode, EditorState } from './SecureDocumentEditor';
 import SecureDocumentViewer from './SecureDocumentViewer';
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create';
 type UrlMode = 'view' | 'edit';
+type DocumentType = 'secure' | 'local';
+
+interface UnifiedDocument {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  updatedAt: string;
+  type: DocumentType;
+  author?: string;
+  filePath?: string;
+  folder?: string | null;
+}
 
 interface ImportedFile {
   title: string;
@@ -63,9 +76,11 @@ export default function SecureDocumentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [documents, setDocuments] = useState<SecureDocument[]>([]);
+  const [localDocuments, setLocalDocuments] = useState<LocalDocument[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedDocument, setSelectedDocument] = useState<SecureDocumentWithContent | null>(null);
+  const [selectedLocalDocument, setSelectedLocalDocument] = useState<LocalDocumentWithContent | null>(null);
   const [isLoadingDocument, setIsLoadingDocument] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -78,16 +93,128 @@ export default function SecureDocumentsPage() {
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [editorPaneMode, setEditorPaneMode] = useState<EditorPaneMode>('live');
   const [editorFullscreen, setEditorFullscreen] = useState(false);
+  const [sortColumn, setSortColumn] = useState<'title' | 'description' | 'author' | 'updatedAt'>('updatedAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isNavigatingBack = useRef(false);
 
-  const allSelected = documents.length > 0 && selectedIds.size === documents.length;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < documents.length;
+  const updateExpandedUrl = (expanded: Set<string>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (expanded.size > 0) {
+      params.set('expanded', Array.from(expanded).join(','));
+    } else {
+      params.delete('expanded');
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `/admin/portal/secure-documents?${queryString}`
+      : '/admin/portal/secure-documents';
+    router.replace(url, { scroll: false });
+  };
+
+  const toggleFolder = (folder: string) => {
+    const newCollapsed = new Set(collapsedFolders);
+    if (newCollapsed.has(folder)) {
+      newCollapsed.delete(folder);
+    } else {
+      newCollapsed.add(folder);
+    }
+    setCollapsedFolders(newCollapsed);
+
+    const allFolders = [
+      ...sortedSecureFolders.filter(f => f !== '.'),
+      ...sortedLocalFolders.map(f => `local:${f}`),
+    ];
+    const expandedFolders = new Set(allFolders.filter(f => !newCollapsed.has(f)));
+    updateExpandedUrl(expandedFolders);
+  };
+
+  const handleSort = (column: 'title' | 'description' | 'author' | 'updatedAt') => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const unifiedDocuments: UnifiedDocument[] = [
+    ...documents.map((doc): UnifiedDocument => ({
+      id: doc.id,
+      slug: doc.slug,
+      title: doc.title,
+      description: doc.description,
+      updatedAt: doc.updatedAt,
+      type: 'secure',
+      author: authorDisplay(doc),
+      folder: doc.folder,
+    })),
+    ...localDocuments.map((doc): UnifiedDocument => ({
+      id: doc.slug,
+      slug: doc.slug,
+      title: doc.title,
+      description: doc.description,
+      updatedAt: doc.updatedAt,
+      type: 'local',
+      author: 'Codebase',
+      filePath: doc.filePath,
+    })),
+  ].sort((a, b) => {
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    if (sortColumn === 'updatedAt') {
+      return direction * (fromISO(a.updatedAt).toMillis() - fromISO(b.updatedAt).toMillis());
+    } else if (sortColumn === 'title') {
+      return direction * (a.title || '').localeCompare(b.title || '');
+    } else if (sortColumn === 'description') {
+      return direction * (a.description || '').localeCompare(b.description || '');
+    } else if (sortColumn === 'author') {
+      return direction * (a.author || '').localeCompare(b.author || '');
+    }
+    return 0;
+  });
+
+  const secureDocuments = unifiedDocuments.filter(d => d.type === 'secure');
+  const localDocs = unifiedDocuments.filter(d => d.type === 'local');
+
+  const secureDocsByFolder = secureDocuments.reduce((acc, doc) => {
+    const folder = doc.folder || '.';
+    if (!acc[folder]) {
+      acc[folder] = [];
+    }
+    acc[folder].push(doc);
+    return acc;
+  }, {} as Record<string, UnifiedDocument[]>);
+
+  const sortedSecureFolders = Object.keys(secureDocsByFolder).sort((a, b) => {
+    if (a === '.') return -1;
+    if (b === '.') return 1;
+    return a.localeCompare(b);
+  });
+
+  const localDocsByFolder = localDocs.reduce((acc, doc) => {
+    const folder = doc.filePath ? doc.filePath.split('/').slice(0, -1).join('/') || '.' : '.';
+    if (!acc[folder]) {
+      acc[folder] = [];
+    }
+    acc[folder].push(doc);
+    return acc;
+  }, {} as Record<string, UnifiedDocument[]>);
+
+  const sortedLocalFolders = Object.keys(localDocsByFolder).sort((a, b) => {
+    if (a === '.') return -1;
+    if (b === '.') return 1;
+    return a.localeCompare(b);
+  });
+
+  const allSelected = secureDocuments.length > 0 && selectedIds.size === secureDocuments.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < secureDocuments.length;
 
   const toggleSelectAll = () => {
     if (allSelected) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(documents.map(d => d.id)));
+      setSelectedIds(new Set(secureDocuments.map(d => d.id)));
     }
   };
 
@@ -140,8 +267,12 @@ export default function SecureDocumentsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await adminApiClient.listSecureDocuments();
-      setDocuments(response);
+      const [secureResponse, localResponse] = await Promise.all([
+        adminApiClient.listSecureDocuments(),
+        adminApiClient.listLocalDocuments().catch(() => [] as LocalDocument[]),
+      ]);
+      setDocuments(secureResponse);
+      setLocalDocuments(localResponse);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch documents';
       setError(message);
@@ -155,10 +286,31 @@ export default function SecureDocumentsPage() {
   }, []);
 
   useEffect(() => {
+    const expandedParam = searchParams.get('expanded');
+    const expandedFromUrl = expandedParam ? new Set(expandedParam.split(',')) : new Set<string>();
+
+    const allFolders = [
+      ...sortedSecureFolders.filter(f => f !== '.'),
+      ...sortedLocalFolders.map(f => `local:${f}`),
+    ];
+    const collapsed = allFolders.filter(f => !expandedFromUrl.has(f));
+    setCollapsedFolders(new Set(collapsed));
+  }, [documents, localDocuments, searchParams]);
+
+  useEffect(() => {
     const docSlug = searchParams.get('doc');
     const urlMode = searchParams.get('mode') as UrlMode | null;
     const urlPane = searchParams.get('pane') as EditorPaneMode | null;
     const urlFullscreen = searchParams.get('fullscreen');
+
+    if (!docSlug) {
+      isNavigatingBack.current = false;
+      return;
+    }
+
+    if (isNavigatingBack.current) {
+      return;
+    }
 
     if (urlPane && ['edit', 'live', 'preview'].includes(urlPane)) {
       setEditorPaneMode(urlPane);
@@ -170,7 +322,7 @@ export default function SecureDocumentsPage() {
       setEditorFullscreen(false);
     }
 
-    if (docSlug && !selectedDocument && !isLoadingDocument) {
+    if (!selectedDocument && !isLoadingDocument) {
       const targetMode = urlMode === 'edit' ? 'edit' : 'view';
       handleViewDocumentBySlug(docSlug, targetMode);
     }
@@ -218,9 +370,21 @@ export default function SecureDocumentsPage() {
     try {
       setIsLoadingDocument(true);
       setActionMessage(null);
-      const doc = await adminApiClient.getSecureDocument(slug);
-      setSelectedDocument(doc);
-      setViewMode(targetMode);
+
+      if (slug.startsWith('local:')) {
+        const localDoc = localDocuments.find(d => d.slug === slug);
+        if (localDoc) {
+          const doc = await adminApiClient.getLocalDocument(localDoc.filePath);
+          setSelectedLocalDocument(doc);
+          setSelectedDocument(null);
+          setViewMode('view');
+        }
+      } else {
+        const doc = await adminApiClient.getSecureDocument(slug);
+        setSelectedDocument(doc);
+        setSelectedLocalDocument(null);
+        setViewMode(targetMode);
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load document';
       setActionMessage({ type: 'error', text: message });
@@ -235,6 +399,7 @@ export default function SecureDocumentsPage() {
       setActionMessage(null);
       const doc = await adminApiClient.getSecureDocument(id);
       setSelectedDocument(doc);
+      setSelectedLocalDocument(null);
       setViewMode('view');
       updateUrl(slug, 'view');
     } catch (err: unknown) {
@@ -242,6 +407,32 @@ export default function SecureDocumentsPage() {
       setActionMessage({ type: 'error', text: message });
     } finally {
       setIsLoadingDocument(false);
+    }
+  };
+
+  const handleViewLocalDocument = async (doc: UnifiedDocument) => {
+    if (!doc.filePath) return;
+    try {
+      setIsLoadingDocument(true);
+      setActionMessage(null);
+      const localDoc = await adminApiClient.getLocalDocument(doc.filePath);
+      setSelectedLocalDocument(localDoc);
+      setSelectedDocument(null);
+      setViewMode('view');
+      updateUrl(doc.slug, 'view');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load document';
+      setActionMessage({ type: 'error', text: message });
+    } finally {
+      setIsLoadingDocument(false);
+    }
+  };
+
+  const handleUnifiedDocumentClick = (doc: UnifiedDocument) => {
+    if (doc.type === 'local') {
+      handleViewLocalDocument(doc);
+    } else {
+      handleViewDocument(doc.id, doc.slug);
     }
   };
 
@@ -267,21 +458,30 @@ export default function SecureDocumentsPage() {
     setViewMode('create');
   };
 
-  const handleSave = async (data: { title: string; description: string; content: string }) => {
+  const handleSave = async (data: { title: string; description: string; content: string; folder?: string }): Promise<boolean> => {
     try {
+      let message: string;
       if (viewMode === 'create') {
-        await adminApiClient.createSecureDocument(data);
-        setActionMessage({ type: 'success', text: 'Document created successfully' });
+        const created = await adminApiClient.createSecureDocument(data);
+        message = 'Document created successfully';
+        const doc = await adminApiClient.getSecureDocument(created.id);
+        setSelectedDocument(doc);
+        setViewMode('edit');
+        updateUrl(doc.slug, 'edit', editorPaneMode, editorFullscreen);
       } else if (selectedDocument) {
         await adminApiClient.updateSecureDocument(selectedDocument.id, data);
-        setActionMessage({ type: 'success', text: 'Document updated successfully' });
+        message = 'Document saved';
+        const doc = await adminApiClient.getSecureDocument(selectedDocument.id);
+        setSelectedDocument(doc);
+      } else {
+        return false;
       }
-      setViewMode('list');
-      setSelectedDocument(null);
-      fetchDocuments();
+      setActionMessage({ type: 'success', text: message });
+      return true;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to save document';
       setActionMessage({ type: 'error', text: message });
+      return false;
     }
   };
 
@@ -302,12 +502,14 @@ export default function SecureDocumentsPage() {
   };
 
   const handleBack = () => {
-    setViewMode('list');
+    isNavigatingBack.current = true;
     setSelectedDocument(null);
+    setSelectedLocalDocument(null);
     setImportedFile(null);
     setFileError(null);
     setActionMessage(null);
-    updateUrl(null);
+    setViewMode('list');
+    router.replace('/admin/portal/secure-documents');
   };
 
   const readFileAsText = (file: File): Promise<string> => {
@@ -430,6 +632,27 @@ export default function SecureDocumentsPage() {
     );
   }
 
+  if (viewMode === 'view' && selectedLocalDocument) {
+    return (
+      <SecureDocumentViewer
+        document={{
+          id: selectedLocalDocument.slug,
+          slug: selectedLocalDocument.slug,
+          title: selectedLocalDocument.title,
+          description: selectedLocalDocument.description,
+          folder: null,
+          storagePath: '',
+          createdBy: null,
+          createdAt: selectedLocalDocument.updatedAt,
+          updatedAt: selectedLocalDocument.updatedAt,
+          content: selectedLocalDocument.content,
+        }}
+        onBack={handleBack}
+        isReadOnly
+      />
+    );
+  }
+
   if (viewMode === 'edit' || viewMode === 'create') {
     const initialData = viewMode === 'create' && importedFile
       ? { title: importedFile.title, description: importedFile.description, content: importedFile.content }
@@ -442,7 +665,7 @@ export default function SecureDocumentsPage() {
         fullscreen={editorFullscreen}
         onStateChange={handleEditorStateChange}
         onSave={handleSave}
-        onCancel={handleBack}
+        onBack={handleBack}
       />
     );
   }
@@ -503,7 +726,7 @@ export default function SecureDocumentsPage() {
       </div>
 
       <div
-        className={`relative bg-white shadow rounded-lg overflow-hidden transition-colors ${isDragging ? 'ring-2 ring-[#323288] ring-offset-2' : ''}`}
+        className={`relative bg-white shadow rounded-lg overflow-x-auto transition-colors ${isDragging ? 'ring-2 ring-[#323288] ring-offset-2' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -525,7 +748,7 @@ export default function SecureDocumentsPage() {
               <p className="mt-4 text-gray-600">Loading...</p>
             </div>
           </div>
-        ) : documents.length === 0 ? (
+        ) : unifiedDocuments.length === 0 ? (
           <div
             className={`text-center py-12 px-6 transition-colors ${isDragging ? 'bg-[#323288]/5 border-2 border-dashed border-[#323288]' : ''}`}
             onDragOver={handleDragOver}
@@ -590,17 +813,61 @@ export default function SecureDocumentsPage() {
                       className="h-4 w-4 rounded border-gray-300 text-[#323288] focus:ring-[#323288]"
                     />
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Title
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('title')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Title
+                      {sortColumn === 'title' && (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
+                        </svg>
+                      )}
+                    </div>
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('description')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Description
+                      {sortColumn === 'description' && (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
+                        </svg>
+                      )}
+                    </div>
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Author
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('author')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Author
+                      {sortColumn === 'author' && (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
+                        </svg>
+                      )}
+                    </div>
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Last Updated
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('updatedAt')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Last Updated
+                      {sortColumn === 'updatedAt' && (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
+                        </svg>
+                      )}
+                    </div>
                   </th>
                   <th scope="col" className="relative px-6 py-3">
                     <span className="sr-only">Actions</span>
@@ -608,78 +875,177 @@ export default function SecureDocumentsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {documents.map((doc) => (
-                  <tr
-                    key={doc.id}
-                    onClick={() => handleViewDocument(doc.id, doc.slug)}
-                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${selectedIds.has(doc.id) ? 'bg-[#323288]/5' : ''}`}
-                  >
-                    <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(doc.id)}
-                        onChange={() => toggleSelect(doc.id)}
-                        className="h-4 w-4 rounded border-gray-300 text-[#323288] focus:ring-[#323288]"
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                {sortedSecureFolders.map((folder) => (
+                  <React.Fragment key={`secure-folder-${folder}`}>
+                    {folder !== '.' && (
+                      <tr
+                        className="bg-purple-50 hover:bg-purple-100 cursor-pointer select-none"
+                        onClick={() => toggleFolder(folder)}
+                      >
+                        <td className="w-12 px-4 py-3">
+                          <svg
+                            className={`w-4 h-4 text-purple-600 transition-transform ${collapsedFolders.has(folder) ? '' : 'rotate-90'}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </td>
+                        <td colSpan={5} className="px-6 py-3">
+                          <div className="flex items-center">
+                            <svg className="w-5 h-5 text-purple-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                            <span className="text-sm font-medium text-purple-900">{folder}</span>
+                            <span className="ml-2 text-xs text-purple-600">
+                              ({secureDocsByFolder[folder].length} document{secureDocsByFolder[folder].length !== 1 ? 's' : ''})
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {(folder === '.' || !collapsedFolders.has(folder)) && secureDocsByFolder[folder].map((doc) => (
+                      <tr
+                        key={doc.id}
+                        onClick={() => handleUnifiedDocumentClick(doc)}
+                        className={`hover:bg-gray-50 cursor-pointer transition-colors ${selectedIds.has(doc.id) ? 'bg-[#323288]/5' : ''} ${folder !== '.' ? 'bg-purple-50/30' : ''}`}
+                      >
+                        <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(doc.id)}
+                            onChange={() => toggleSelect(doc.id)}
+                            className="h-4 w-4 rounded border-gray-300 text-[#323288] focus:ring-[#323288]"
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className={`flex items-center ${folder !== '.' ? 'pl-6' : ''}`}>
+                            <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <span className="text-sm font-medium text-gray-900">{doc.title}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-500 truncate max-w-xs block">
+                            {doc.description || '-'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {doc.author || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDateZA(doc.updatedAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center gap-2 justify-end">
+                            <div className="relative group">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditDocument(doc.id, doc.slug);
+                                }}
+                                className="p-1.5 text-[#323288] hover:text-[#252560] hover:bg-[#323288]/10 rounded"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
+                                Edit document
+                              </span>
+                            </div>
+                            <div className="relative group">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowDeleteConfirm(doc.id);
+                                }}
+                                className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
+                                Delete document
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))}
+                {sortedLocalFolders.map((folder) => (
+                  <React.Fragment key={`local-folder-${folder}`}>
+                    <tr
+                      className="bg-blue-50 hover:bg-blue-100 cursor-pointer select-none"
+                      onClick={() => toggleFolder(`local:${folder}`)}
+                    >
+                      <td className="w-12 px-4 py-3">
+                        <svg
+                          className={`w-4 h-4 text-blue-600 transition-transform ${collapsedFolders.has(`local:${folder}`) ? '' : 'rotate-90'}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
-                        <span className="text-sm font-medium text-gray-900">{doc.title}</span>
-                      </div>
-                    </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-500 truncate max-w-xs block">
-                      {doc.description || '-'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {authorDisplay(doc)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateZA(doc.updatedAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center gap-2 justify-end">
-                      <div className="relative group">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditDocument(doc.id, doc.slug);
-                          }}
-                          className="p-1.5 text-[#323288] hover:text-[#252560] hover:bg-[#323288]/10 rounded"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </td>
+                      <td colSpan={5} className="px-6 py-3">
+                        <div className="flex items-center">
+                          <svg className="w-5 h-5 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                           </svg>
-                        </button>
-                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
-                          Edit document
-                        </span>
-                      </div>
-                      <div className="relative group">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowDeleteConfirm(doc.id);
-                          }}
-                          className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
-                          Delete document
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+                          <span className="text-sm font-medium text-blue-900">
+                            {folder === '.' ? 'Codebase Root' : folder}
+                          </span>
+                          <span className="ml-2 text-xs text-blue-600">
+                            ({localDocsByFolder[folder].length} file{localDocsByFolder[folder].length !== 1 ? 's' : ''})
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                    {!collapsedFolders.has(`local:${folder}`) && localDocsByFolder[folder].map((doc) => (
+                      <tr
+                        key={doc.id}
+                        onClick={() => handleUnifiedDocumentClick(doc)}
+                        className="hover:bg-gray-50 cursor-pointer transition-colors bg-blue-50/30"
+                      >
+                        <td className="w-12 px-4 py-4">
+                          <span className="w-4 h-4 block" />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center pl-6">
+                            <svg className="w-5 h-5 text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="text-sm font-medium text-gray-900">
+                              {doc.filePath?.split('/').pop()?.replace('.md', '') || doc.title}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-500 truncate max-w-xs block">
+                            {doc.filePath || '-'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          Codebase
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDateZA(doc.updatedAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <span className="text-xs text-gray-400 italic whitespace-nowrap">Read-only</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </tbody>
             </table>
           </>
         )}

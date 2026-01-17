@@ -16,4 +16,9 @@ export class CreateSecureDocumentDto {
   @IsString()
   @IsNotEmpty()
   content: string;
+
+  @ApiProperty({ example: 'deployment/aws', required: false })
+  @IsString()
+  @IsOptional()
+  folder?: string;
 }

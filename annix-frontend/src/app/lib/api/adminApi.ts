@@ -173,6 +173,7 @@ export interface SecureDocument {
   slug: string;
   title: string;
   description: string | null;
+  folder: string | null;
   storagePath: string;
   createdBy: {
     id: number;
@@ -193,12 +194,27 @@ export interface CreateSecureDocumentDto {
   title: string;
   description?: string;
   content: string;
+  folder?: string;
 }
 
 export interface UpdateSecureDocumentDto {
   title?: string;
   description?: string;
   content?: string;
+  folder?: string;
+}
+
+export interface LocalDocument {
+  slug: string;
+  title: string;
+  description: string;
+  filePath: string;
+  updatedAt: string;
+  isLocal: true;
+}
+
+export interface LocalDocumentWithContent extends LocalDocument {
+  content: string;
 }
 
 class AdminApiClient {
@@ -563,6 +579,18 @@ class AdminApiClient {
     return this.request<void>(`/admin/secure-documents/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  async listLocalDocuments(): Promise<LocalDocument[]> {
+    return this.request<LocalDocument[]>('/admin/secure-documents/local');
+  }
+
+  async getLocalDocument(filePath: string): Promise<LocalDocumentWithContent> {
+    const encodedPath = encodeURIComponent(filePath);
+    const response = await this.request<{ content: string; document: LocalDocument }>(
+      `/admin/secure-documents/local/${encodedPath}`
+    );
+    return { ...response.document, content: response.content };
   }
 }
 
