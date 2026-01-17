@@ -23,9 +23,9 @@ import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 const Pipe3DPreview = dynamic(() => import('@/app/components/rfq/Pipe3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 const Bend3DPreview = dynamic(() => import('@/app/components/rfq/CSGBend3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 const Tee3DPreview = dynamic(() => import('@/app/components/rfq/Tee3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
-import { BendForm, FittingForm, StraightPipeForm } from '@/app/components/rfq/forms';
+import { BendForm, FittingForm, StraightPipeForm, PipeSteelWorkForm } from '@/app/components/rfq/forms';
 
-export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses, hideDrawings = false, onReady }: any) {
+export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onAddPipeSteelWorkEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses, hideDrawings = false, onReady }: any) {
   const autoFocusedEntriesRef = useRef<Set<string>>(new Set());
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
@@ -967,6 +967,22 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 getFilteredPressureClasses={getFilteredPressureClasses}
                 requiredProducts={requiredProducts}
               />
+            ) : entry.itemType === 'pipe_steel_work' ? (
+              <PipeSteelWorkForm
+                entry={entry}
+                index={index}
+                entries={entries}
+                globalSpecs={globalSpecs}
+                masterData={masterData}
+                onUpdateEntry={onUpdateEntry}
+                onRemoveEntry={onRemoveEntry}
+                openSelects={openSelects}
+                openSelect={openSelect}
+                closeSelect={closeSelect}
+                focusAndOpenSelect={focusAndOpenSelect}
+                generateItemDescription={generateItemDescription}
+                requiredProducts={requiredProducts}
+              />
             ) : (
               <StraightPipeForm
                 entry={entry}
@@ -1029,6 +1045,17 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 </svg>
                 <span className="text-xs font-semibold text-green-700">Fitting</span>
               </button>
+              {requiredProducts.includes('pipe_steel_work') && onAddPipeSteelWorkEntry && (
+                <button
+                  onClick={() => onAddPipeSteelWorkEntry()}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 rounded-md border border-orange-300 transition-colors"
+                >
+                  <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span className="text-xs font-semibold text-orange-700">Steel Work</span>
+                </button>
+              )}
             </div>
           </div>
           {/* Items table - each item on its own line */}

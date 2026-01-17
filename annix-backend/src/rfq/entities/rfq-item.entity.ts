@@ -12,6 +12,7 @@ import { Rfq } from './rfq.entity';
 import { StraightPipeRfq } from './straight-pipe-rfq.entity';
 import { BendRfq } from './bend-rfq.entity';
 import { FittingRfq } from './fitting-rfq.entity';
+import { PipeSteelWorkRfq } from './pipe-steel-work-rfq.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum RfqItemType {
@@ -20,6 +21,7 @@ export enum RfqItemType {
   FITTING = 'fitting',
   FLANGE = 'flange',
   CUSTOM = 'custom',
+  PIPE_STEEL_WORK = 'pipe_steel_work',
 }
 
 @Entity('rfq_items')
@@ -131,6 +133,17 @@ export class RfqItem {
     nullable: true,
   })
   fittingDetails?: FittingRfq;
+
+  @ApiProperty({
+    description: 'Pipe steel work details (if item type is pipe_steel_work)',
+    required: false,
+    type: () => PipeSteelWorkRfq,
+  })
+  @OneToOne(() => PipeSteelWorkRfq, (pipeSteelWork) => pipeSteelWork.rfqItem, {
+    cascade: true,
+    nullable: true,
+  })
+  pipeSteelWorkDetails?: PipeSteelWorkRfq;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

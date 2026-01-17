@@ -93,7 +93,31 @@ export interface FittingEntry {
   notes?: string;
 }
 
-export type PipeItem = StraightPipeEntry | BendEntry | FittingEntry;
+export interface PipeSteelWorkEntry {
+  id: string;
+  itemType: 'pipe_steel_work';
+  description: string;
+  clientItemNumber?: string;
+  useSequentialNumbering?: boolean;
+  specs: {
+    workType?: 'pipe_support' | 'reinforcement_pad' | 'saddle_support' | 'shoe_support';
+    nominalDiameterMm?: number;
+    bracketType?: string;
+    pipelineLengthM?: number;
+    branchDiameterMm?: number;
+    mediaType?: 'water_filled' | 'vapor_gas';
+    supportSpacingM?: number;
+    numberOfSupports?: number;
+    steelSpecificationId?: number;
+    quantity: number;
+    workingPressureBar?: number;
+    workingTemperatureC?: number;
+  };
+  calculation?: any;
+  notes?: string;
+}
+
+export type PipeItem = StraightPipeEntry | BendEntry | FittingEntry | PipeSteelWorkEntry;
 
 export interface GlobalSpecs {
   // Core pipe specifications
@@ -385,15 +409,41 @@ export const useRfqForm = () => {
     return newEntry.id;
   }, [rfqData.globalSpecs?.steelSpecificationId, rfqData.globalSpecs?.workingPressureBar, rfqData.globalSpecs?.workingTemperatureC]);
 
-  const addItem = useCallback((itemType: 'straight_pipe' | 'bend' | 'fitting', description?: string) => {
+  const addPipeSteelWorkEntry = useCallback((description?: string) => {
+    const newEntry: PipeSteelWorkEntry = {
+      id: generateUniqueId(),
+      itemType: 'pipe_steel_work',
+      description: description || 'New Pipe Steel Work Item',
+      specs: {
+        workType: 'pipe_support',
+        nominalDiameterMm: undefined,
+        bracketType: 'clevis_hanger',
+        quantity: 1,
+        workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 10,
+        workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
+      },
+      notes: '',
+    };
+
+    setRfqData(prev => ({
+      ...prev,
+      items: [...prev.items, newEntry],
+    }));
+
+    return newEntry.id;
+  }, [rfqData.globalSpecs?.workingPressureBar, rfqData.globalSpecs?.workingTemperatureC]);
+
+  const addItem = useCallback((itemType: 'straight_pipe' | 'bend' | 'fitting' | 'pipe_steel_work', description?: string) => {
     if (itemType === 'straight_pipe') {
       return addStraightPipeEntry(description);
     } else if (itemType === 'bend') {
       return addBendEntry(description);
-    } else {
+    } else if (itemType === 'fitting') {
       return addFittingEntry(description);
+    } else {
+      return addPipeSteelWorkEntry(description);
     }
-  }, [addStraightPipeEntry, addBendEntry, addFittingEntry]);
+  }, [addStraightPipeEntry, addBendEntry, addFittingEntry, addPipeSteelWorkEntry]);
 
   const updateStraightPipeEntry = useCallback((
     id: string,
@@ -642,6 +692,7 @@ export const useRfqForm = () => {
     addItem,
     addBendEntry,
     addFittingEntry,
+    addPipeSteelWorkEntry,
     updateItem,
     removeItem,
     duplicateItem,

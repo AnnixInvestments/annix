@@ -58,6 +58,7 @@ import { PvcModule } from './pvc/pvc.module';
 import { AdminModule } from './admin/admin.module';
 import { NixModule } from './nix/nix.module';
 import { RubberLiningModule } from './rubber-lining/rubber-lining.module';
+import { PipeSteelWorkModule } from './pipe-steel-work/pipe-steel-work.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -117,6 +118,7 @@ import typeormConfig from './config/typeorm';
     AdminModule,
     NixModule,
     RubberLiningModule,
+    PipeSteelWorkModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

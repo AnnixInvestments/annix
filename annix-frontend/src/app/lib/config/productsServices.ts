@@ -63,6 +63,13 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     icon: '🚚',
     category: 'service',
   },
+  {
+    value: 'pipe_steel_work',
+    label: 'Pipe Brackets & Steel Work',
+    description: 'Pipe supports, brackets, compensation plates, and reinforcement pads',
+    icon: '🔧',
+    category: 'product',
+  },
 ];
 
 // Helper to get products only
