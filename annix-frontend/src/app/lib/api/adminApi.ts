@@ -297,7 +297,12 @@ class AdminApiClient {
       throw new Error(errorMessage);
     }
 
-    return response.json();
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    }
+
+    return undefined as T;
   }
 
   private async refreshAccessToken(): Promise<boolean> {
