@@ -126,6 +126,7 @@ export interface GlobalSpecs {
   steelSpecificationId?: number;
   flangeStandardId?: number;
   flangePressureClassId?: number;
+  flangeTypeCode?: string; // SABS 1123 flange type code (/1 to /9)
 
   // Environmental Corrosion Protection (ECP) - Location based
   ecpMarineInfluence?: 'None' | 'Coastal' | 'Offshore';

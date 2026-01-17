@@ -105,8 +105,8 @@ export default function StraightPipeForm({
   availableSchedulesMap,
   setAvailableSchedulesMap,
   fetchAvailableSchedules,
-  pressureClassesByStandard: _pressureClassesByStandard,
-  getFilteredPressureClasses: _getFilteredPressureClasses,
+  pressureClassesByStandard,
+  getFilteredPressureClasses,
   errors = {},
   isLoadingNominalBores = false,
   requiredProducts = [],
@@ -939,12 +939,15 @@ export default function StraightPipeForm({
                                     value={entry.specs.flangeStandardId || globalSpecs?.flangeStandardId || ''}
                                     onChange={(e) => {
                                       const newFlangeStandardId = e.target.value ? Number(e.target.value) : undefined;
-                                      const updatedEntry = { ...entry, specs: { ...entry.specs, flangeStandardId: newFlangeStandardId, flangeTypeCode: undefined } };
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, flangeStandardId: newFlangeStandardId, flangeTypeCode: undefined, flangePressureClassId: undefined } };
                                       const newDescription = generateItemDescription(updatedEntry);
                                       onUpdateEntry(entry.id, {
-                                        specs: { ...entry.specs, flangeStandardId: newFlangeStandardId, flangeTypeCode: undefined },
+                                        specs: { ...entry.specs, flangeStandardId: newFlangeStandardId, flangeTypeCode: undefined, flangePressureClassId: undefined },
                                         description: newDescription
                                       });
+                                      if (newFlangeStandardId && !pressureClassesByStandard[newFlangeStandardId]) {
+                                        getFilteredPressureClasses(newFlangeStandardId);
+                                      }
                                     }}
                                     className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                                     title="Flange Standard"
@@ -1020,13 +1023,23 @@ export default function StraightPipeForm({
                                       }}
                                       className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                                       title="Pressure Class"
+                                      onFocus={() => {
+                                        const stdId = entry.specs.flangeStandardId || globalSpecs?.flangeStandardId;
+                                        if (stdId && !pressureClassesByStandard[stdId]) {
+                                          getFilteredPressureClasses(stdId);
+                                        }
+                                      }}
                                     >
                                       <option value="">Class...</option>
-                                      {masterData.pressureClasses.map((pc: any) => (
-                                        <option key={pc.id} value={pc.id}>
-                                          {pc.designation}
-                                        </option>
-                                      ))}
+                                      {(() => {
+                                        const stdId = entry.specs.flangeStandardId || globalSpecs?.flangeStandardId;
+                                        const filteredClasses = stdId ? pressureClassesByStandard[stdId] : [];
+                                        return filteredClasses?.map((pc: any) => (
+                                          <option key={pc.id} value={pc.id}>
+                                            {pc.designation}
+                                          </option>
+                                        )) || null;
+                                      })()}
                                     </select>
                                   )}
                                 </div>

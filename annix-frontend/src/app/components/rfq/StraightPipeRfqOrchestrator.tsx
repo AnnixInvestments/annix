@@ -1169,6 +1169,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       log.debug(`Fetched ${classes.length} pressure classes for ${standardName}:`, classes.map((c: any) => `${c.designation}(id=${c.id})`).join(', '));
 
       setAvailablePressureClasses(classes);
+      setPressureClassesByStandard(prev => ({ ...prev, [standardId]: classes }));
 
       // Auto-select recommended pressure class if working pressure is available
       if (workingPressureBar && classes.length > 0) {
@@ -1212,6 +1213,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       // Use fallback pressure classes when backend is unavailable
       const fallbackClasses = getFallbackPressureClasses(standardId);
       setAvailablePressureClasses(fallbackClasses);
+      setPressureClassesByStandard(prev => ({ ...prev, [standardId]: fallbackClasses }));
 
       if (error instanceof Error && error.message !== 'Backend unavailable') {
         console.error('Error fetching pressure classes:', error);

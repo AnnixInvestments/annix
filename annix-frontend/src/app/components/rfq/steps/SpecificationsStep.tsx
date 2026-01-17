@@ -6,6 +6,7 @@ import { materialValidationApi, coatingSpecificationApi, type ISO12944System, ty
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
 import { log } from '@/app/lib/logger';
 import { nowISO } from '@/app/lib/datetime';
+import { SABS_1123_FLANGE_TYPES } from '@/app/lib/config/rfq/flangeWeights';
 
 interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
@@ -828,7 +829,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
         <div className="bg-white border border-gray-200 rounded-lg p-3">
           <h3 className="text-xs font-semibold text-gray-800 mb-2">Material Specifications</h3>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             {/* Steel Specification - with grouped options and suitability validation */}
             <div ref={steelSpecDropdownRef} className="relative">
               <label className="block text-xs font-semibold text-gray-900 mb-1">Steel Specification <span className="text-red-500">*</span></label>
@@ -1073,6 +1074,28 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
               </select>
               )}
             </div>
+
+            {/* SABS 1123 Flange Type - Only show when SABS 1123 is selected */}
+            {masterData.flangeStandards?.find((s: any) => s.id === globalSpecs?.flangeStandardId)?.code === 'SABS 1123' && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-900 mb-1">
+                  Flange Type
+                </label>
+                <select
+                  value={globalSpecs?.flangeTypeCode || ''}
+                  onChange={(e) => onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    flangeTypeCode: e.target.value || undefined
+                  })}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                >
+                  <option value="">Select type...</option>
+                  {SABS_1123_FLANGE_TYPES.map((ft) => (
+                    <option key={ft.code} value={ft.code}>{ft.code} - {ft.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
 
