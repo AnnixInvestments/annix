@@ -1,0 +1,67 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
+import { User } from '../user/entities/user.entity';
+
+@Entity('secure_document')
+export class SecureDocument {
+  @ApiProperty({
+    description: 'Primary key (UUID)',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  })
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @ApiProperty({
+    description: 'Document title',
+    example: 'Fly Deployment Technical Docs',
+  })
+  @Column()
+  title: string;
+
+  @ApiProperty({
+    description: 'Brief description for listing',
+    example: 'Neon DB, Fly.io credentials',
+  })
+  @Column({ nullable: true })
+  description: string;
+
+  @ApiProperty({ description: 'S3 path to encrypted content file' })
+  @Column({ name: 'storage_path' })
+  storagePath: string;
+
+  @ApiProperty({
+    description: 'Type of document',
+    example: 'markdown',
+    enum: ['markdown', 'pdf', 'excel', 'word', 'other'],
+  })
+  @Column({ name: 'file_type', default: 'markdown' })
+  fileType: string;
+
+  @ApiProperty({
+    description: 'Original filename for binary uploads',
+    example: 'deployment-guide.pdf',
+  })
+  @Column({ name: 'original_filename', nullable: true })
+  originalFilename: string;
+
+  @ApiProperty({ description: 'User who created the document' })
+  @ManyToOne(() => User, { eager: true })
+  @JoinColumn({ name: 'created_by_id' })
+  createdBy: User;
+
+  @ApiProperty({ description: 'Creation timestamp' })
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @ApiProperty({ description: 'Last update timestamp' })
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+}

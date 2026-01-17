@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import AmixLogo from './AmixLogo';
 import { ThemeToggle } from './ThemeToggle';
 import { corpId, portalConfig, PortalType } from '@/app/lib/corpId';
+import { useLayout } from '@/app/context/LayoutContext';
 
 export interface NavItem {
   href: string;
@@ -45,6 +46,7 @@ export default function PortalToolbar({
 
   const config = portalConfig[portalType];
   const colors = corpId.colors.portal[portalType];
+  const { maxWidth } = useLayout();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -72,7 +74,7 @@ export default function PortalToolbar({
       className="shadow-lg"
       style={{ backgroundColor: colors.background }}
     >
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+      <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">

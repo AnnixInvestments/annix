@@ -20,6 +20,7 @@
     "@react-google-maps/api": "^2.20.8",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
+    "@uiw/react-md-editor": "^4.0.11",
     "es-toolkit": "^1.43.0",
     "luxon": "^3.7.2",
     "next": "^16.1.1",

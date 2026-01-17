@@ -168,6 +168,38 @@ export interface CustomerDocument {
   validationNotes?: string;
 }
 
+export interface SecureDocument {
+  id: string;
+  title: string;
+  description: string | null;
+  storagePath: string;
+  createdBy: {
+    id: number;
+    firstName?: string | null;
+    lastName?: string | null;
+    username?: string | null;
+    email?: string | null;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SecureDocumentWithContent extends SecureDocument {
+  content: string;
+}
+
+export interface CreateSecureDocumentDto {
+  title: string;
+  description?: string;
+  content: string;
+}
+
+export interface UpdateSecureDocumentDto {
+  title?: string;
+  description?: string;
+  content?: string;
+}
+
 class AdminApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
@@ -494,6 +526,36 @@ class AdminApiClient {
     return this.request<{ success: boolean; message: string }>('/admin/suppliers/invite', {
       method: 'POST',
       body: JSON.stringify({ email, message }),
+    });
+  }
+
+  // Secure Documents endpoints
+
+  async listSecureDocuments(): Promise<SecureDocument[]> {
+    return this.request<SecureDocument[]>('/admin/secure-documents');
+  }
+
+  async getSecureDocument(id: string): Promise<SecureDocumentWithContent> {
+    return this.request<SecureDocumentWithContent>(`/admin/secure-documents/${id}`);
+  }
+
+  async createSecureDocument(dto: CreateSecureDocumentDto): Promise<SecureDocument> {
+    return this.request<SecureDocument>('/admin/secure-documents', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async updateSecureDocument(id: string, dto: UpdateSecureDocumentDto): Promise<SecureDocument> {
+    return this.request<SecureDocument>(`/admin/secure-documents/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async deleteSecureDocument(id: string): Promise<void> {
+    return this.request<void>(`/admin/secure-documents/${id}`, {
+      method: 'DELETE',
     });
   }
 }

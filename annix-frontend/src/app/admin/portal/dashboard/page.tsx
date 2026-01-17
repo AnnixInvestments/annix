@@ -86,8 +86,8 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="relative">
+        <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
           <p className="mt-1 text-sm text-gray-600">Monitor and manage the Annix platform</p>
         </div>

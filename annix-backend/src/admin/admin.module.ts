@@ -35,7 +35,7 @@ import { AuditLog } from '../audit/entities/audit-log.entity';
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: { expiresIn: '4h' },
       }),
@@ -45,6 +45,6 @@ import { AuditLog } from '../audit/entities/audit-log.entity';
   ],
   providers: [AdminAuthService, AdminAuthGuard, AdminDashboardService],
   controllers: [AdminAuthController, AdminDashboardController],
-  exports: [AdminAuthService, AdminAuthGuard],
+  exports: [AdminAuthService, AdminAuthGuard, JwtModule],
 })
 export class AdminModule {}

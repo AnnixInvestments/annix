@@ -59,6 +59,7 @@ import { AdminModule } from './admin/admin.module';
 import { NixModule } from './nix/nix.module';
 import { RubberLiningModule } from './rubber-lining/rubber-lining.module';
 import { PipeSteelWorkModule } from './pipe-steel-work/pipe-steel-work.module';
+import { SecureDocumentsModule } from './secure-documents/secure-documents.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -119,6 +120,7 @@ import typeormConfig from './config/typeorm';
     NixModule,
     RubberLiningModule,
     PipeSteelWorkModule,
+    SecureDocumentsModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],
