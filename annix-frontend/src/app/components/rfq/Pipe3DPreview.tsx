@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Center, Environment, Text, Line, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import { log } from '@/app/lib/logger';
+import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
 
 const useDebouncedProps = <T extends Record<string, any>>(props: T, delay: number = 150): T => {
   const [debouncedProps, setDebouncedProps] = useState(props);
@@ -44,11 +45,27 @@ interface Pipe3DPreviewProps {
   savedCameraTarget?: [number, number, number];
   onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
   selectedNotes?: string[];
+  flangeSpecs?: FlangeSpecData | null;
 }
 
 // Standard flange dimensions based on SABS 1123 Table 1000/4 (PN16) - Slip-on flanges
 // Bolt length calculated for: 2 x flange thickness + gasket (3mm) + nut + washer + thread engagement
-const getFlangeSpecs = (nominalBore: number) => {
+// If apiSpecs are provided (from dynamic flange lookup), use those values instead
+const getFlangeSpecs = (nominalBore: number, apiSpecs?: FlangeSpecData | null) => {
+  // If API specs are provided, use them
+  if (apiSpecs) {
+    return {
+      flangeOD: apiSpecs.flangeOdMm,
+      pcd: apiSpecs.flangePcdMm,
+      boltHoles: apiSpecs.flangeNumHoles,
+      holeID: apiSpecs.flangeBoltHoleDiameterMm,
+      thickness: apiSpecs.flangeThicknessMm,
+      boltSize: apiSpecs.boltDiameterMm || 16,
+      boltLength: apiSpecs.boltLengthMm || 70,
+    };
+  }
+
+  // Fall back to local lookup
   const flangeData: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; thickness: number; boltSize: number; boltLength: number } } = {
     15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, thickness: 14, boltSize: 12, boltLength: 55 },
     20: { flangeOD: 105, pcd: 75, boltHoles: 4, holeID: 14, thickness: 14, boltSize: 12, boltLength: 55 },
@@ -691,7 +708,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           const matProps = getMaterialProps(props.materialName);
           const configUpper = (props.endConfiguration || 'PE').toUpperCase();
           const hasFlanges = configUpper !== 'PE';
-          const flangeSpecs = hasFlanges && props.nominalBoreMm ? getFlangeSpecs(props.nominalBoreMm) : null;
+          const flangeSpecs = hasFlanges && props.nominalBoreMm ? getFlangeSpecs(props.nominalBoreMm, props.flangeSpecs) : null;
 
           // Check for R/F (rotating flange) or L/F (loose flange) configurations
           // These require longer bolts to accommodate the backing ring

@@ -5,6 +5,7 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, Center, Environment, ContactShadows, Tube } from '@react-three/drei'
 import * as THREE from 'three'
 import { log } from '@/app/lib/logger'
+import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs'
 
 type StubOrientation = 'top' | 'bottom' | 'inside' | 'outside'
 
@@ -36,6 +37,7 @@ interface Props {
   savedCameraTarget?: [number, number, number]
   onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void
   selectedNotes?: string[]
+  flangeSpecs?: FlangeSpecData | null
 }
 
 const SCALE = 200
@@ -80,6 +82,19 @@ const FLANGE_DATA: { [key: number]: { flangeOD: number; pcd: number; boltHoles: 
   450: { flangeOD: 640, pcd: 585, boltHoles: 20, holeID: 30, boltSize: 27 },
   500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, boltSize: 24 },
   600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, boltSize: 27 },
+}
+
+const resolveFlangeData = (nb: number, apiSpecs?: FlangeSpecData | null) => {
+  if (apiSpecs) {
+    return {
+      flangeOD: apiSpecs.flangeOdMm,
+      pcd: apiSpecs.flangePcdMm,
+      boltHoles: apiSpecs.flangeNumHoles,
+      holeID: apiSpecs.flangeBoltHoleDiameterMm,
+      boltSize: apiSpecs.boltDiameterMm || 16,
+    }
+  }
+  return FLANGE_DATA[nb] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nb).pop() || 200]
 }
 
 class ArcCurve extends THREE.Curve<THREE.Vector3> {

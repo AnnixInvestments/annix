@@ -6,17 +6,42 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { FlangeDimensionService } from './flange-dimension.service';
 import { CreateFlangeDimensionDto } from './dto/create-flange-dimension.dto';
 import { UpdateFlangeDimensionDto } from './dto/update-flange-dimension.dto';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 
 @Controller('flange-dimension')
 export class FlangeDimensionController {
   constructor(
     private readonly flangeDimensionService: FlangeDimensionService,
   ) {}
+
+  @Get('lookup')
+  @ApiOperation({
+    summary: 'Look up flange dimensions by NB, standard, and pressure class',
+  })
+  @ApiQuery({ name: 'nominalBoreMm', type: Number, required: true })
+  @ApiQuery({ name: 'standardId', type: Number, required: true })
+  @ApiQuery({ name: 'pressureClassId', type: Number, required: true })
+  @ApiResponse({
+    status: 200,
+    description: 'Flange dimensions found or null if not found',
+  })
+  async lookup(
+    @Query('nominalBoreMm', ParseIntPipe) nominalBoreMm: number,
+    @Query('standardId', ParseIntPipe) standardId: number,
+    @Query('pressureClassId', ParseIntPipe) pressureClassId: number,
+  ) {
+    return this.flangeDimensionService.findBySpecs(
+      nominalBoreMm,
+      standardId,
+      pressureClassId,
+    );
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create a new bolt mass' })

@@ -78,6 +78,7 @@ import {
   getScheduleListForSpec,
 } from '@/app/lib/config/rfq';
 import { generateUniqueId, nowISO } from '@/app/lib/datetime';
+import { fetchFlangeSpecsStatic, FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
 import ProjectDetailsStep, { PendingDocument } from './steps/ProjectDetailsStep';
 import SpecificationsStep from './steps/SpecificationsStep';
 import ItemUploadStep from './steps/ItemUploadStep';
@@ -1496,7 +1497,22 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         )?.designation || 'PN16';
 
         if (result && result.numberOfFlanges > 0) {
-          const flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation);
+          // Try to fetch dynamic flange specs from database
+          let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation);
+          let flangeSpecData: FlangeSpecData | null = null;
+
+          if (flangeStandardId && flangePressureClassId && entry.specs.nominalBoreMm) {
+            flangeSpecData = await fetchFlangeSpecsStatic(
+              entry.specs.nominalBoreMm,
+              flangeStandardId,
+              flangePressureClassId
+            );
+            if (flangeSpecData) {
+              flangeWeightPerUnit = flangeSpecData.flangeMassKg;
+              log.debug(`🔧 Using dynamic flange specs: ${flangeWeightPerUnit}kg/flange`);
+            }
+          }
+
           const totalFlangeWeight = result.numberOfFlanges * flangeWeightPerUnit;
           const totalSystemWeight = (result.totalPipeWeight || 0) + totalFlangeWeight;
 
@@ -1507,7 +1523,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             flangeWeightPerUnit,
             totalFlangeWeight,
             totalSystemWeight,
-            pressureClassUsed: pressureClassDesignation
+            pressureClassUsed: pressureClassDesignation,
+            flangeSpecs: flangeSpecData
           } as any);
         } else {
           updateEntryCalculation(entry.id, result);
@@ -1804,7 +1821,22 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           )?.designation || 'PN16';
 
           if (result && result.numberOfFlanges > 0) {
-            const flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation);
+            // Try to fetch dynamic flange specs from database
+            let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation);
+            let flangeSpecData: FlangeSpecData | null = null;
+
+            if (flangeStandardId && flangePressureClassId && entry.specs.nominalBoreMm) {
+              flangeSpecData = await fetchFlangeSpecsStatic(
+                entry.specs.nominalBoreMm,
+                flangeStandardId,
+                flangePressureClassId
+              );
+              if (flangeSpecData) {
+                flangeWeightPerUnit = flangeSpecData.flangeMassKg;
+                log.debug(`🔧 Manual calc using dynamic flange specs: ${flangeWeightPerUnit}kg/flange`);
+              }
+            }
+
             const totalFlangeWeight = result.numberOfFlanges * flangeWeightPerUnit;
             const totalSystemWeight = (result.totalPipeWeight || 0) + totalFlangeWeight;
 
@@ -1815,7 +1847,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               flangeWeightPerUnit,
               totalFlangeWeight,
               totalSystemWeight,
-              pressureClassUsed: pressureClassDesignation
+              pressureClassUsed: pressureClassDesignation,
+              flangeSpecs: flangeSpecData
             } as any);
           } else {
             updateEntryCalculation(entry.id, result);
@@ -1913,6 +1946,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
       const { bendRfqApi } = await import('@/app/lib/api/client');
 
+      // Use item-level flange specs if set, otherwise use global
+      const useGlobal = bendEntry.specs?.useGlobalFlangeSpecs !== false;
+      const flangeStandardId = useGlobal
+        ? (bendEntry.specs?.flangeStandardId || rfqData.globalSpecs?.flangeStandardId)
+        : bendEntry.specs?.flangeStandardId;
+      const flangePressureClassId = useGlobal
+        ? (bendEntry.specs?.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId)
+        : bendEntry.specs?.flangePressureClassId;
+
       const calculationData = {
         nominalBoreMm: bendEntry.specs?.nominalBoreMm || 40,
         scheduleNumber: bendEntry.specs?.scheduleNumber || '40',
@@ -1925,13 +1967,32 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         workingPressureBar: bendEntry.specs?.workingPressureBar || rfqData.globalSpecs.workingPressureBar || 10,
         workingTemperatureC: bendEntry.specs?.workingTemperatureC || rfqData.globalSpecs.workingTemperatureC || 20,
         steelSpecificationId: bendEntry.specs?.steelSpecificationId || rfqData.globalSpecs.steelSpecificationId || 2,
-        useGlobalFlangeSpecs: true,
+        useGlobalFlangeSpecs: useGlobal,
+        flangeStandardId,
+        flangePressureClassId,
       };
 
       const result = await bendRfqApi.calculate(calculationData);
 
+      // Fetch dynamic flange specs if available
+      let flangeSpecData: FlangeSpecData | null = null;
+      const nominalBoreMm = bendEntry.specs?.nominalBoreMm;
+      if (flangeStandardId && flangePressureClassId && nominalBoreMm) {
+        flangeSpecData = await fetchFlangeSpecsStatic(
+          nominalBoreMm,
+          flangeStandardId,
+          flangePressureClassId
+        );
+        if (flangeSpecData) {
+          log.debug(`🔧 Bend using dynamic flange specs: ${flangeSpecData.flangeMassKg}kg/flange`);
+        }
+      }
+
       updateItem(entryId, {
-        calculation: result,
+        calculation: {
+          ...result,
+          flangeSpecs: flangeSpecData,
+        },
       });
 
     } catch (error: any) {
@@ -2020,8 +2081,27 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       const result = await masterDataApi.calculateFitting(calculationData);
       log.debug('API result:', result);
 
+      // Fetch dynamic flange specs if available
+      const effectiveFlangeStandardId = fittingEntry.specs?.flangeStandardId || rfqData.globalSpecs?.flangeStandardId;
+      const effectiveFlangePressureClassId = fittingEntry.specs?.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
+      let flangeSpecData: FlangeSpecData | null = null;
+
+      if (effectiveFlangeStandardId && effectiveFlangePressureClassId && fittingEntry.specs?.nominalDiameterMm) {
+        flangeSpecData = await fetchFlangeSpecsStatic(
+          fittingEntry.specs.nominalDiameterMm,
+          effectiveFlangeStandardId,
+          effectiveFlangePressureClassId
+        );
+        if (flangeSpecData) {
+          log.debug(`🔧 Fitting using dynamic flange specs: ${flangeSpecData.flangeMassKg}kg/flange`);
+        }
+      }
+
       updateItem(entryId, {
-        calculation: result,
+        calculation: {
+          ...result,
+          flangeSpecs: flangeSpecData,
+        },
       });
       log.debug('Updated entry with calculation');
 

@@ -179,4 +179,25 @@ export class FlangeDimensionService {
     const flange = await this.findOne(id);
     await this.flangeRepo.remove(flange);
   }
+
+  async findBySpecs(
+    nominalBoreMm: number,
+    standardId: number,
+    pressureClassId: number,
+  ): Promise<FlangeDimension | null> {
+    const flange = await this.flangeRepo.findOne({
+      where: {
+        nominalOutsideDiameter: { nominal_diameter_mm: nominalBoreMm },
+        standard: { id: standardId },
+        pressureClass: { id: pressureClassId },
+      },
+      relations: [
+        'nominalOutsideDiameter',
+        'standard',
+        'pressureClass',
+        'bolt',
+      ],
+    });
+    return flange;
+  }
 }

@@ -245,6 +245,28 @@ export interface FlangePressureClass {
   standard?: FlangeStandard;
 }
 
+export interface FlangeDimensionLookup {
+  id: number;
+  D: number;
+  b: number;
+  d4: number;
+  f: number;
+  num_holes: number;
+  d1: number;
+  pcd: number;
+  mass_kg: number;
+  nominalOutsideDiameter: NominalOutsideDiameter;
+  standard: FlangeStandard;
+  pressureClass: FlangePressureClass;
+  bolt?: {
+    id: number;
+    diameter_mm: number;
+    thread_pitch: number;
+    length_mm: number;
+    mass_kg: number;
+  };
+}
+
 export interface NominalOutsideDiameter {
   id: number;
   nominal_diameter_mm: number;
@@ -709,6 +731,19 @@ class ApiClient {
     return this.request<FlangePressureClass[]>(`/flange-pressure-class/standard/${standardId}`);
   }
 
+  async lookupFlangeDimension(
+    nominalBoreMm: number,
+    standardId: number,
+    pressureClassId: number
+  ): Promise<FlangeDimensionLookup | null> {
+    const params = new URLSearchParams({
+      nominalBoreMm: nominalBoreMm.toString(),
+      standardId: standardId.toString(),
+      pressureClassId: pressureClassId.toString(),
+    });
+    return this.request<FlangeDimensionLookup | null>(`/flange-dimension/lookup?${params.toString()}`);
+  }
+
   // Pipe data endpoints
   async getPipeDimensions(
     nominalBore?: number,
@@ -1155,6 +1190,8 @@ export const masterDataApi = {
   getFlangeStandards: () => apiClient.getFlangeStandards(),
   getFlangePressureClasses: () => apiClient.getFlangePressureClasses(),
   getFlangePressureClassesByStandard: (standardId: number) => apiClient.getFlangePressureClassesByStandard(standardId),
+  lookupFlangeDimension: (nominalBoreMm: number, standardId: number, pressureClassId: number) =>
+    apiClient.lookupFlangeDimension(nominalBoreMm, standardId, pressureClassId),
   getPipeDimensions: (nominalBore?: number, steelSpecId?: number, minPressure?: number, temperature?: number) => 
     apiClient.getPipeDimensions(nominalBore, steelSpecId, minPressure, temperature),
   getNominalBores: (steelSpecId?: number) => apiClient.getNominalBores(steelSpecId),
