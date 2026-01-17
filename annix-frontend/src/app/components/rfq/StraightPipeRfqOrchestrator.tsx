@@ -1173,10 +1173,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
       // Auto-select recommended pressure class if working pressure is available
       if (workingPressureBar && classes.length > 0) {
-        // Try P/T rating API for temperature-based selection (works for any standard with P/T data)
-        if (temperatureCelsius !== undefined) {
+        const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
+        const standardCode = standard?.code || String(standardId);
+
+        // Try P/T rating API for temperature-based selection (only for ASME standards with P/T data)
+        // SABS 1123, BS 4504, and other PN standards don't have P/T rating data in the database
+        const hasGTPData = standardCode.includes('ASME') || standardCode.includes('ANSI');
+
+        if (temperatureCelsius !== undefined && hasGTPData) {
           try {
-            // Build URL with material group if provided
             const ptMaterialGroup = materialGroup || 'Carbon Steel A105 (Group 1.1)';
             const response = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/flange-pt-ratings/recommended-class?standardId=${standardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`
@@ -1186,10 +1191,13 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               if (text && text.trim()) {
                 try {
                   const recommendedClassId = JSON.parse(text);
-                  if (recommendedClassId) {
-                    const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
-                    log.debug(`P/T rating: Selected class ID ${recommendedClassId} for ${standard?.code || standardId} at ${workingPressureBar} bar, ${temperatureCelsius}°C (${ptMaterialGroup})`);
+                  // Validate the returned class ID is in our fetched classes for this standard
+                  const matchingClass = classes.find((c: any) => c.id === recommendedClassId);
+                  if (recommendedClassId && matchingClass) {
+                    log.debug(`P/T rating: Selected ${matchingClass.designation} (ID ${recommendedClassId}) for ${standardCode} at ${workingPressureBar} bar, ${temperatureCelsius}°C`);
                     return recommendedClassId;
+                  } else if (recommendedClassId) {
+                    log.debug(`P/T rating returned ID ${recommendedClassId} but it's not in the classes for ${standardCode}, falling back to calculation`);
                   }
                 } catch {
                   // Invalid JSON, fall through to fallback
@@ -1201,9 +1209,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           }
         }
 
-        // Fallback to temperature-derated calculation if P/T API not available
+        // Use pressure-based calculation for all standards (with temperature derating if applicable)
         const recommended = getRecommendedPressureClass(workingPressureBar, classes, temperatureCelsius);
         if (recommended) {
+          log.debug(`Pressure calculation: Selected ${recommended.designation} (ID ${recommended.id}) for ${standardCode} at ${workingPressureBar} bar - capacity: ${recommended.barRating?.toFixed(1) || recommended.ambientRating} bar`);
           return recommended.id;
         }
       }
@@ -1221,8 +1230,11 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
       // Auto-select recommended from fallback classes with temperature derating
       if (workingPressureBar && fallbackClasses.length > 0) {
+        const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
+        const standardCode = standard?.code || String(standardId);
         const recommended = getRecommendedPressureClass(workingPressureBar, fallbackClasses, temperatureCelsius);
         if (recommended) {
+          log.debug(`Fallback calculation: Selected ${recommended.designation} (ID ${recommended.id}) for ${standardCode} at ${workingPressureBar} bar - capacity: ${recommended.barRating?.toFixed(1) || recommended.ambientRating} bar`);
           return recommended.id;
         }
       }
