@@ -304,7 +304,7 @@ export default function CustomerRfqsPage() {
                     RFQ Number
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Project Name
+                    Your Reference / Project
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -328,8 +328,13 @@ export default function CustomerRfqsPage() {
                         {rfq.rfqNumber || rfq.draftNumber}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900">{rfq.projectName || 'Untitled Project'}</span>
+                    <td className="px-6 py-4">
+                      <div>
+                        <span className="text-sm font-medium text-gray-900">{rfq.customerRfqReference || '-'}</span>
+                        {rfq.projectName && (
+                          <p className="text-xs text-gray-500">{rfq.projectName}</p>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(rfq.status)}`}>

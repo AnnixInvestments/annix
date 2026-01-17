@@ -1068,34 +1068,43 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                 required
               >
                 <option value="">Select class...</option>
-                {availablePressureClasses.map((pc: any) => (
-                  <option key={pc.id} value={pc.id}>{pc.designation}</option>
-                ))}
+                {availablePressureClasses.map((pc: any) => {
+                  const selectedStandard = masterData.flangeStandards?.find((s: any) => s.id === globalSpecs?.flangeStandardId);
+                  const isSabsOrBs4504 = selectedStandard?.code === 'SABS 1123' || selectedStandard?.code === 'BS 4504';
+                  const displayValue = isSabsOrBs4504 ? pc.designation.replace(/\/3$/, '') : pc.designation;
+                  return (
+                    <option key={pc.id} value={pc.id}>{displayValue}</option>
+                  );
+                })}
               </select>
               )}
             </div>
 
-            {/* SABS 1123 Flange Type - Only show when SABS 1123 is selected */}
-            {masterData.flangeStandards?.find((s: any) => s.id === globalSpecs?.flangeStandardId)?.code === 'SABS 1123' && (
-              <div>
-                <label className="block text-xs font-semibold text-gray-900 mb-1">
-                  Flange Type
-                </label>
-                <select
-                  value={globalSpecs?.flangeTypeCode || ''}
-                  onChange={(e) => onUpdateGlobalSpecs({
-                    ...globalSpecs,
-                    flangeTypeCode: e.target.value || undefined
-                  })}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                >
-                  <option value="">Select type...</option>
-                  {SABS_1123_FLANGE_TYPES.map((ft) => (
-                    <option key={ft.code} value={ft.code}>{ft.code} - {ft.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            {/* Flange Type - Show for SABS 1123 and BS 4504 */}
+            {(() => {
+              const selectedStandard = masterData.flangeStandards?.find((s: any) => s.id === globalSpecs?.flangeStandardId);
+              const showFlangeType = selectedStandard?.code === 'SABS 1123' || selectedStandard?.code === 'BS 4504';
+              return showFlangeType ? (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-900 mb-1">
+                    Flange Type
+                  </label>
+                  <select
+                    value={globalSpecs?.flangeTypeCode || ''}
+                    onChange={(e) => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      flangeTypeCode: e.target.value || undefined
+                    })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                  >
+                    <option value="">Select type...</option>
+                    {SABS_1123_FLANGE_TYPES.map((ft) => (
+                      <option key={ft.code} value={ft.code}>{ft.code} - {ft.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
 
