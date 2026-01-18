@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import AmixLogo from './AmixLogo';
 import { ThemeToggle } from './ThemeToggle';
+import { Tooltip } from './Tooltip';
 import { corpId, portalConfig, PortalType } from '@/app/lib/corpId';
 import { useLayout } from '@/app/context/LayoutContext';
 
@@ -31,6 +32,25 @@ export interface PortalToolbarProps {
   additionalActions?: React.ReactNode;
   statusBadge?: React.ReactNode;
 }
+
+// Descriptive tooltips for navigation items
+const NAV_TOOLTIPS: Record<string, string> = {
+  'Dashboard': 'View your portal overview and key metrics',
+  'Customers': 'Manage customer accounts and onboarding',
+  'Suppliers': 'Manage supplier accounts and approvals',
+  'RFQs': 'View and manage request for quotations',
+  'Admin Users': 'Manage administrator accounts and permissions',
+  'Secure Docs': 'Access encrypted customer documents',
+  'My RFQs': 'View and manage your submitted quotations',
+  'New RFQ': 'Create a new request for quotation',
+  'Profile': 'View and update your profile settings',
+  'Company': 'Manage your company information',
+  'Documents': 'View and upload your documents',
+  'Onboarding': 'Complete your account setup',
+  'BOQs': 'View and respond to bill of quantities',
+};
+
+const getNavTooltip = (label: string): string => NAV_TOOLTIPS[label] || label;
 
 export default function PortalToolbar({
   portalType,
@@ -88,41 +108,42 @@ export default function PortalToolbar({
                 </span>
               </Link>
             </div>
-            <div className="hidden lg:ml-8 lg:flex lg:space-x-1">
+            <div className="hidden xl:ml-8 xl:flex xl:space-x-1">
               {visibleNavItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                    style={{
-                      color: isActive ? corpId.colors.accent.orange : colors.text,
-                      backgroundColor: isActive ? colors.active : 'transparent',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = colors.hover;
-                        e.currentTarget.style.color = corpId.colors.accent.orange;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = colors.text;
-                      }
-                    }}
-                  >
-                    <svg
-                      className="w-5 h-5 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  <Tooltip key={item.href} text={getNavTooltip(item.label)} position="bottom">
+                    <Link
+                      href={item.href}
+                      className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+                      style={{
+                        color: isActive ? corpId.colors.accent.orange : colors.text,
+                        backgroundColor: isActive ? colors.active : 'transparent',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = colors.hover;
+                          e.currentTarget.style.color = corpId.colors.accent.orange;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = colors.text;
+                        }
+                      }}
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
-                    </svg>
-                    {item.label}
-                  </Link>
+                      <svg
+                        className="w-5 h-5 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                      </svg>
+                      {item.label}
+                    </Link>
+                  </Tooltip>
                 );
               })}
             </div>
@@ -133,29 +154,30 @@ export default function PortalToolbar({
             {additionalActions}
 
             {/* Back Home button */}
-            <Link
-              href="/"
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors"
-              style={{ color: colors.text }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.hover;
-                e.currentTarget.style.color = corpId.colors.accent.orange;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = colors.text;
-              }}
-              title="Return to home page"
-            >
-              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              <span className="hidden sm:inline">Back Home</span>
-            </Link>
+            <Tooltip text="Return back to Annix Landing Page" position="bottom">
+              <Link
+                href="/"
+                className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors"
+                style={{ color: colors.text }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = colors.hover;
+                  e.currentTarget.style.color = corpId.colors.accent.orange;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = colors.text;
+                }}
+              >
+                <svg className="w-4 h-4 sm:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span className="hidden sm:inline">Back Home</span>
+              </Link>
+            </Tooltip>
 
             <ThemeToggle />
 
-            <div className="relative" ref={menuRef}>
+            <div className="relative group/user" ref={menuRef}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="flex items-center space-x-3 focus:outline-none"
@@ -184,6 +206,11 @@ export default function PortalToolbar({
                   </div>
                 </div>
               </button>
+              {!isUserMenuOpen && (
+                <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs text-white bg-slate-800 rounded opacity-0 group-hover/user:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
+                  Account menu and settings
+                </span>
+              )}
 
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
@@ -294,23 +321,43 @@ export default function PortalToolbar({
           </div>
         </div>
 
-        {/* Mobile navigation */}
-        <div className="lg:hidden py-2 border-t" style={{ borderColor: corpId.colors.primary.navyLight }}>
-          <div className="flex flex-wrap gap-2">
+        {/* Mobile/tablet navigation - icons only with styled tooltips */}
+        <div className="xl:hidden py-2 border-t" style={{ borderColor: corpId.colors.primary.navyLight }}>
+          <div className="flex flex-wrap gap-1 justify-center">
             {visibleNavItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md"
-                  style={{
-                    color: isActive ? corpId.colors.accent.orange : colors.text,
-                    backgroundColor: isActive ? colors.active : 'transparent',
-                  }}
-                >
-                  {item.label}
-                </Link>
+                <Tooltip key={item.href} text={getNavTooltip(item.label)} position="top">
+                  <Link
+                    href={item.href}
+                    className="inline-flex items-center justify-center p-2 rounded-md transition-colors"
+                    style={{
+                      color: isActive ? corpId.colors.accent.orange : colors.text,
+                      backgroundColor: isActive ? colors.active : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = colors.hover;
+                        e.currentTarget.style.color = corpId.colors.accent.orange;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = colors.text;
+                      }
+                    }}
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                    </svg>
+                  </Link>
+                </Tooltip>
               );
             })}
           </div>
