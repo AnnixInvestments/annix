@@ -31,8 +31,10 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     const [internalOpen, setInternalOpen] = React.useState(false);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [highlightedIndex, setHighlightedIndex] = React.useState(0);
+    const [shouldScrollToHighlighted, setShouldScrollToHighlighted] = React.useState(false);
     const searchInputRef = React.useRef<HTMLInputElement>(null);
     const listRef = React.useRef<HTMLDivElement>(null);
+    const highlightedOptionRef = React.useRef<HTMLButtonElement>(null);
 
     const isControlled = controlledOpen !== undefined;
     const isOpen = isControlled ? controlledOpen : internalOpen;
@@ -94,9 +96,11 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
+        setShouldScrollToHighlighted(true);
         setHighlightedIndex((prev) => Math.min(prev + 1, filteredOptions.length - 1));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
+        setShouldScrollToHighlighted(true);
         setHighlightedIndex((prev) => Math.max(prev - 1, 0));
       } else if (e.key === 'Enter' && filteredOptions[highlightedIndex]) {
         e.preventDefault();
@@ -107,13 +111,11 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     };
 
     React.useEffect(() => {
-      if (listRef.current && highlightedIndex >= 0) {
-        const highlightedElement = listRef.current.children[highlightedIndex] as HTMLElement;
-        if (highlightedElement) {
-          highlightedElement.scrollIntoView({ block: 'nearest' });
-        }
+      if (shouldScrollToHighlighted && highlightedOptionRef.current) {
+        highlightedOptionRef.current.scrollIntoView({ block: 'nearest' });
+        setShouldScrollToHighlighted(false);
       }
-    }, [highlightedIndex]);
+    }, [highlightedIndex, shouldScrollToHighlighted]);
 
     return (
       <Popover.Root open={isOpen} onOpenChange={handleOpenChange}>
@@ -162,14 +164,16 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                       </div>
                       {group.options.map((option) => {
                         const currentIndex = globalIndex++;
+                        const isHighlighted = currentIndex === highlightedIndex;
                         return (
                           <button
                             key={option.value}
+                            ref={isHighlighted ? highlightedOptionRef : undefined}
                             type="button"
                             onClick={() => handleSelect(option.value)}
                             onMouseEnter={() => setHighlightedIndex(currentIndex)}
                             className={`relative flex items-center w-full px-8 py-2 text-sm rounded cursor-pointer select-none text-left ${
-                              currentIndex === highlightedIndex ? 'bg-green-50' : ''
+                              isHighlighted ? 'bg-green-50' : ''
                             } ${option.value === value ? 'text-green-700 font-medium' : 'text-gray-900'} hover:bg-green-50`}
                           >
                             {option.value === value && (
@@ -185,24 +189,28 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                   ));
                 })()
               ) : (
-                filteredOptions.map((option, index) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleSelect(option.value)}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                    className={`relative flex items-center w-full px-8 py-2 text-sm rounded cursor-pointer select-none text-left ${
-                      index === highlightedIndex ? 'bg-green-50' : ''
-                    } ${option.value === value ? 'text-green-700 font-medium' : 'text-gray-900'} hover:bg-green-50`}
-                  >
-                    {option.value === value && (
-                      <span className="absolute left-2 inline-flex items-center">
-                        <CheckIcon />
-                      </span>
-                    )}
-                    {option.label}
-                  </button>
-                ))
+                filteredOptions.map((option, index) => {
+                  const isHighlighted = index === highlightedIndex;
+                  return (
+                    <button
+                      key={option.value}
+                      ref={isHighlighted ? highlightedOptionRef : undefined}
+                      type="button"
+                      onClick={() => handleSelect(option.value)}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                      className={`relative flex items-center w-full px-8 py-2 text-sm rounded cursor-pointer select-none text-left ${
+                        isHighlighted ? 'bg-green-50' : ''
+                      } ${option.value === value ? 'text-green-700 font-medium' : 'text-gray-900'} hover:bg-green-50`}
+                    >
+                      {option.value === value && (
+                        <span className="absolute left-2 inline-flex items-center">
+                          <CheckIcon />
+                        </span>
+                      )}
+                      {option.label}
+                    </button>
+                  );
+                })
               )}
             </div>
           </Popover.Content>
