@@ -478,15 +478,66 @@ export default function StraightPipeForm({
                             value={String(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || '')}
                             onChange={(value) => {
                               const specId = value ? Number(value) : undefined;
-                              onUpdateEntry(entry.id, {
+                              const nominalBore = entry.specs?.nominalBoreMm;
+
+                              if (!specId || !nominalBore) {
+                                onUpdateEntry(entry.id, {
+                                  specs: {
+                                    ...entry.specs,
+                                    steelSpecificationId: specId
+                                  }
+                                });
+                                if (specId && !nominalBore) {
+                                  setTimeout(() => focusAndOpenSelect(`pipe-nb-${entry.id}`), 100);
+                                }
+                                return;
+                              }
+
+                              const schedules = getScheduleListForSpec(nominalBore, specId);
+                              const pressure = globalSpecs?.workingPressureBar || 0;
+                              const temperature = globalSpecs?.workingTemperatureC || 50;
+
+                              let matchedSchedule: string | undefined;
+                              let matchedWT: number | undefined;
+
+                              if (pressure > 0 && schedules.length > 0) {
+                                const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
+                                const minWT = calculateMinWallThickness(od, pressure, temperature);
+
+                                const eligibleSchedules = schedules
+                                  .filter((s: any) => (s.wallThicknessMm || 0) >= minWT)
+                                  .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+
+                                if (eligibleSchedules.length > 0) {
+                                  matchedSchedule = eligibleSchedules[0].scheduleDesignation;
+                                  matchedWT = eligibleSchedules[0].wallThicknessMm;
+                                } else if (schedules.length > 0) {
+                                  const sorted = [...schedules].sort((a: any, b: any) => (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0));
+                                  matchedSchedule = sorted[0].scheduleDesignation;
+                                  matchedWT = sorted[0].wallThicknessMm;
+                                }
+                              } else if (schedules.length > 0) {
+                                const sch40 = schedules.find((s: any) => s.scheduleDesignation === '40' || s.scheduleDesignation === 'Sch 40');
+                                if (sch40) {
+                                  matchedSchedule = sch40.scheduleDesignation;
+                                  matchedWT = sch40.wallThicknessMm;
+                                } else {
+                                  matchedSchedule = schedules[0].scheduleDesignation;
+                                  matchedWT = schedules[0].wallThicknessMm;
+                                }
+                              }
+
+                              const updatedEntry: any = {
+                                ...entry,
                                 specs: {
                                   ...entry.specs,
-                                  steelSpecificationId: specId
+                                  steelSpecificationId: specId,
+                                  scheduleNumber: matchedSchedule,
+                                  wallThicknessMm: matchedWT
                                 }
-                              });
-                              if (specId && !entry.specs?.nominalBoreMm) {
-                                setTimeout(() => focusAndOpenSelect(`pipe-nb-${entry.id}`), 100);
-                              }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
                             }}
                             options={[]}
                             groupedOptions={groupedOptions}

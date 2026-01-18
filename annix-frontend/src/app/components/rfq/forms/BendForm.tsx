@@ -287,33 +287,85 @@ export default function BendForm({
                             value={String(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || '')}
                             onChange={(value) => {
                               const newSpecId = value ? Number(value) : undefined;
+                              const nominalBore = entry.specs?.nominalBoreMm;
+
+                              const newSpec = newSpecId ? masterData.steelSpecs?.find((s: any) => s.id === newSpecId) : null;
+                              const newSpecName = newSpec?.steelSpecName || '';
+                              const isNewSABS719 = newSpecName.includes('SABS 719') || newSpecName.includes('SANS 719');
+
+                              const oldSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                              const oldSpec = oldSpecId ? masterData.steelSpecs?.find((s: any) => s.id === oldSpecId) : null;
+                              const oldSpecName = oldSpec?.steelSpecName || '';
+                              const wasOldSABS719 = oldSpecName.includes('SABS 719') || oldSpecName.includes('SANS 719');
+
+                              const specTypeChanged = isNewSABS719 !== wasOldSABS719;
+
+                              let matchedSchedule: string | undefined;
+                              let matchedWT: number | undefined;
+                              let keepNB = false;
+
+                              if (nominalBore && newSpecId && !specTypeChanged) {
+                                keepNB = true;
+                                const schedules = getScheduleListForSpec(nominalBore, newSpecId);
+                                const pressure = globalSpecs?.workingPressureBar || 0;
+
+                                if (pressure > 0 && schedules.length > 0) {
+                                  const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
+                                  const pressureMpa = pressure * 0.1;
+                                  const allowableStress = 137.9;
+                                  const safetyFactor = 1.2;
+                                  const minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
+
+                                  const eligibleSchedules = schedules
+                                    .filter((s: any) => (s.wallThicknessMm || 0) >= minWT)
+                                    .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+
+                                  if (eligibleSchedules.length > 0) {
+                                    matchedSchedule = eligibleSchedules[0].scheduleDesignation;
+                                    matchedWT = eligibleSchedules[0].wallThicknessMm;
+                                  } else if (schedules.length > 0) {
+                                    const sorted = [...schedules].sort((a: any, b: any) => (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0));
+                                    matchedSchedule = sorted[0].scheduleDesignation;
+                                    matchedWT = sorted[0].wallThicknessMm;
+                                  }
+                                } else if (schedules.length > 0) {
+                                  const sch40 = schedules.find((s: any) => s.scheduleDesignation === '40' || s.scheduleDesignation === 'Sch 40');
+                                  if (sch40) {
+                                    matchedSchedule = sch40.scheduleDesignation;
+                                    matchedWT = sch40.wallThicknessMm;
+                                  } else {
+                                    matchedSchedule = schedules[0].scheduleDesignation;
+                                    matchedWT = schedules[0].wallThicknessMm;
+                                  }
+                                }
+                              }
+
                               const updatedEntry: any = {
                                 ...entry,
                                 specs: {
                                   ...entry.specs,
                                   steelSpecificationId: newSpecId,
-                                  nominalBoreMm: undefined,
-                                  scheduleNumber: undefined,
-                                  wallThicknessMm: undefined,
-                                  bendType: undefined,
-                                  bendRadiusType: undefined,
-                                  bendDegrees: undefined,
-                                  numberOfSegments: undefined,
-                                  centerToFaceMm: undefined,
-                                  bendRadiusMm: undefined
+                                  nominalBoreMm: keepNB ? nominalBore : undefined,
+                                  scheduleNumber: keepNB ? matchedSchedule : undefined,
+                                  wallThicknessMm: keepNB ? matchedWT : undefined,
+                                  bendType: specTypeChanged ? undefined : entry.specs?.bendType,
+                                  bendRadiusType: specTypeChanged ? undefined : entry.specs?.bendRadiusType,
+                                  bendDegrees: specTypeChanged ? undefined : entry.specs?.bendDegrees,
+                                  numberOfSegments: specTypeChanged ? undefined : entry.specs?.numberOfSegments,
+                                  centerToFaceMm: specTypeChanged ? undefined : entry.specs?.centerToFaceMm,
+                                  bendRadiusMm: specTypeChanged ? undefined : entry.specs?.bendRadiusMm
                                 }
                               };
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
 
-                              if (newSpecId) {
-                                const newSpec = masterData.steelSpecs?.find((s: any) => s.id === newSpecId);
-                                const newSpecName = newSpec?.steelSpecName || '';
-                                const isNewSABS719 = newSpecName.includes('SABS 719') || newSpecName.includes('SANS 719');
+                              if (newSpecId && specTypeChanged) {
                                 const nextFieldId = isNewSABS719
                                   ? `bend-radius-type-${entry.id}`
                                   : `bend-type-${entry.id}`;
                                 setTimeout(() => focusAndOpenSelect(nextFieldId), 100);
+                              } else if (keepNB && matchedSchedule) {
+                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                               }
                             }}
                             options={[]}

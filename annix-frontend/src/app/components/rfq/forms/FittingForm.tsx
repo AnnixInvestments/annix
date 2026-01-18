@@ -276,8 +276,37 @@ export default function FittingForm({
                                     key={spec.id}
                                     type="button"
                                     onClick={() => {
+                                      const nominalDiameter = entry.specs?.nominalDiameterMm;
+                                      let scheduleNumber = entry.specs?.scheduleNumber;
+                                      let wallThicknessMm = entry.specs?.wallThicknessMm;
+
+                                      if (nominalDiameter && globalSpecs?.workingPressureBar) {
+                                        const schedules = getScheduleListForSpec(nominalDiameter, spec.id);
+                                        const minWT = getMinimumWallThickness(nominalDiameter, globalSpecs.workingPressureBar);
+
+                                        const eligibleSchedules = schedules
+                                          .filter((s: any) => (s.wallThicknessMm || 0) >= minWT)
+                                          .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+
+                                        if (eligibleSchedules.length > 0) {
+                                          scheduleNumber = eligibleSchedules[0].scheduleDesignation;
+                                          wallThicknessMm = eligibleSchedules[0].wallThicknessMm;
+                                        } else if (schedules.length > 0) {
+                                          const sorted = [...schedules].sort((a: any, b: any) =>
+                                            (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0)
+                                          );
+                                          scheduleNumber = sorted[0].scheduleDesignation;
+                                          wallThicknessMm = sorted[0].wallThicknessMm;
+                                        }
+                                      }
+
                                       onUpdateEntry(entry.id, {
-                                        specs: { ...entry.specs, steelSpecificationId: spec.id }
+                                        specs: {
+                                          ...entry.specs,
+                                          steelSpecificationId: spec.id,
+                                          scheduleNumber,
+                                          wallThicknessMm
+                                        }
                                       });
                                     }}
                                     className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs hover:bg-orange-200 font-medium"
