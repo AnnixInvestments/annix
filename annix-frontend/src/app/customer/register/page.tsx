@@ -1178,12 +1178,13 @@ export default function CustomerRegistrationPage() {
 
           {currentStep !== 'complete' && (
             <p className="text-center mt-6 text-blue-200">
-            Already have an account?{' '}
-            <Link href="/customer/login" className="text-white hover:underline font-medium">
-              Sign in
-            </Link>
-          </p>
-        )}
+              Already have an account?{' '}
+              <Link href="/customer/login" className="text-white hover:underline font-medium">
+                Sign in
+              </Link>
+            </p>
+          )}
+        </div>
       </div>
 
       {nixState.isVerifying && (

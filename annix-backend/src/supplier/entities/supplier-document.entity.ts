@@ -95,6 +95,15 @@ export class SupplierDocument {
   @Column({ name: 'expiry_date', type: 'date', nullable: true })
   expiryDate: Date | null;
 
+  @Column({ name: 'is_expired', default: false })
+  isExpired: boolean;
+
+  @Column({ name: 'expiry_warning_sent_at', type: 'timestamp', nullable: true })
+  expiryWarningSentAt: Date | null;
+
+  @Column({ name: 'expiry_notification_sent_at', type: 'timestamp', nullable: true })
+  expiryNotificationSentAt: Date | null;
+
   @Column({ name: 'is_required', default: true })
   isRequired: boolean;
 

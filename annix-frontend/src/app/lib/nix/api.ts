@@ -148,6 +148,33 @@ export interface RegistrationBatchResult {
   totalProcessingTimeMs: number;
 }
 
+export interface PdfPageImage {
+  pageNumber: number;
+  imageData: string;
+  width: number;
+  height: number;
+}
+
+export interface RegionCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  pageNumber: number;
+}
+
+export interface ExtractionRegionData {
+  documentCategory: RegistrationDocumentType;
+  fieldName: string;
+  regionCoordinates: RegionCoordinates;
+  sampleValue: string;
+}
+
+export interface RegionExtractionResult {
+  text: string;
+  confidence: number;
+}
+
 export const nixApi = {
   uploadAndProcess: async (file: File, userId?: number, rfqId?: number): Promise<NixProcessResponse> => {
     if (!file || !(file instanceof File)) {
@@ -391,6 +418,111 @@ export const nixApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Batch verification failed: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  documentPages: async (
+    file: File,
+    scale: number = 1.5,
+  ): Promise<{ pages: PdfPageImage[] }> => {
+    if (!file || !(file instanceof File)) {
+      throw new Error('Invalid file object provided');
+    }
+
+    let fileData: ArrayBuffer;
+    try {
+      fileData = await file.arrayBuffer();
+    } catch {
+      throw new Error(
+        `Cannot read "${file.name}". The file may be open in another application. Please close it and try again.`,
+      );
+    }
+
+    const blob = new Blob([fileData], { type: file.type });
+    const formData = new FormData();
+    formData.append('file', blob, file.name);
+    formData.append('scale', scale.toString());
+
+    const baseUrl = browserBaseUrl();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    const response = await fetch(`${baseUrl}/nix/document-pages`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to convert document to images: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  extractFromRegion: async (
+    file: File,
+    regionCoordinates: RegionCoordinates,
+    fieldName: string,
+  ): Promise<RegionExtractionResult> => {
+    if (!file || !(file instanceof File)) {
+      throw new Error('Invalid file object provided');
+    }
+
+    let fileData: ArrayBuffer;
+    try {
+      fileData = await file.arrayBuffer();
+    } catch {
+      throw new Error(
+        `Cannot read "${file.name}". The file may be open in another application. Please close it and try again.`,
+      );
+    }
+
+    const blob = new Blob([fileData], { type: file.type });
+    const formData = new FormData();
+    formData.append('file', blob, file.name);
+    formData.append('regionCoordinates', JSON.stringify(regionCoordinates));
+    formData.append('fieldName', fieldName);
+
+    const baseUrl = browserBaseUrl();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    const response = await fetch(`${baseUrl}/nix/extract-from-region`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to extract text from region: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  saveExtractionRegion: async (data: ExtractionRegionData): Promise<{ success: boolean }> => {
+    const baseUrl = browserBaseUrl();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    const response = await fetch(`${baseUrl}/nix/save-extraction-region`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      console.warn('[Nix] Failed to save extraction region:', await response.text());
+      return { success: false };
     }
 
     return response.json();
