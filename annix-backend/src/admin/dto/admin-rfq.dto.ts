@@ -1,4 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsNumber, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum RfqStatus {
   DRAFT = 'DRAFT',
@@ -19,6 +20,7 @@ export class RfqQueryDto {
   status?: RfqStatus;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   customerId?: number;
 
@@ -39,11 +41,13 @@ export class RfqQueryDto {
   sortOrder?: 'ASC' | 'DESC';
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   page?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   limit?: number;

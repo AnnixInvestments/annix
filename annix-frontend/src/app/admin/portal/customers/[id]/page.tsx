@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { adminApiClient, CustomerDetail, CustomerDocument, LoginHistoryItem } from '@/app/lib/api/adminApi';
+import { adminApiClient, CustomerDetail, CustomerDocument, LoginHistoryItem, AdminRfqListItem } from '@/app/lib/api/adminApi';
 import { useToast } from '@/app/components/Toast';
-import { formatDateTimeZA } from '@/app/lib/datetime';
+import { formatDateTimeZA, formatDateZA } from '@/app/lib/datetime';
+import { StatusBadge } from '@/app/admin/components';
 
-type TabType = 'overview' | 'documents' | 'activity';
+type TabType = 'overview' | 'documents' | 'activity' | 'rfqs';
 
 export default function CustomerDetailPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function CustomerDetailPage() {
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>([]);
   const [documents, setDocuments] = useState<CustomerDocument[]>([]);
+  const [customerRfqs, setCustomerRfqs] = useState<AdminRfqListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
@@ -30,15 +32,17 @@ export default function CustomerDetailPage() {
       setIsLoading(true);
       setError(null);
 
-      const [customerData, loginHistoryData, documentsData] = await Promise.all([
+      const [customerData, loginHistoryData, documentsData, rfqsData] = await Promise.all([
         adminApiClient.getCustomerDetail(customerId),
         adminApiClient.getCustomerLoginHistory(customerId, 20),
         adminApiClient.getCustomerDocuments(customerId),
+        adminApiClient.listRfqs({ customerId, limit: 100 }),
       ]);
 
       setCustomer(customerData);
       setLoginHistory(loginHistoryData);
       setDocuments(documentsData);
+      setCustomerRfqs(rfqsData.items);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch customer details');
       console.error('Error fetching customer:', err);
@@ -250,6 +254,16 @@ export default function CustomerDetailPage() {
             }`}
           >
             Activity
+          </button>
+          <button
+            onClick={() => setActiveTab('rfqs')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'rfqs'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            RFQs ({customerRfqs.length})
           </button>
         </nav>
       </div>
@@ -486,6 +500,89 @@ export default function CustomerDetailPage() {
                           {log.failureReason || 'Failed'}
                         </span>
                       )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'rfqs' && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          {customerRfqs.length === 0 ? (
+            <div className="text-center py-12">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No RFQs</h3>
+              <p className="mt-1 text-sm text-gray-500">This customer has not created any RFQs yet.</p>
+            </div>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {customerRfqs.map((rfq) => (
+                  <tr
+                    key={rfq.id}
+                    onClick={() => router.push(`/admin/portal/rfqs/${rfq.id}`)}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{rfq.projectName}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <StatusBadge status={rfq.status} />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rfq.itemCount} item{rfq.itemCount !== 1 ? 's' : ''}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDateZA(rfq.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDateZA(rfq.updatedAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/admin/portal/rfqs/${rfq.id}`);
+                          }}
+                          title="View a read-only summary of this RFQ draft"
+                          className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          View
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/customer/portal/rfqs/create?draft=${rfq.id}`);
+                          }}
+                          title="Open and edit this RFQ in the customer form"
+                          className="inline-flex items-center px-3 py-1.5 text-sm text-green-600 hover:text-green-800 hover:bg-green-50 rounded-md transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

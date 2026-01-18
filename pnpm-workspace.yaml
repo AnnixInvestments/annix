@@ -1,3 +1,11 @@
 packages:
-  - 'annix-backend'
-  - 'annix-frontend'
+  - annix-backend
+  - annix-frontend
+ignoredBuiltDependencies:
+  - '@nestjs/core'
+  - '@openapitools/openapi-generator-cli'
+  - '@scarf/scarf'
+  - bcrypt
+  - sharp
+  - tesseract.js
+  - unrs-resolver

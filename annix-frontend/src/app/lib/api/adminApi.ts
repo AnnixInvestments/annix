@@ -217,6 +217,43 @@ export interface LocalDocumentWithContent extends LocalDocument {
   content: string;
 }
 
+// Re-export RfqDraftStatus from client for admin use
+export { type RfqDraftStatus } from './client';
+
+// Admin RFQ types - extends existing types with admin-specific fields
+export interface AdminRfqListItem {
+  id: number;
+  rfqNumber?: string;
+  projectName: string;
+  customerName: string;
+  customerEmail: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  itemCount: number;
+  documentCount?: number;
+}
+
+export interface AdminRfqListResponse {
+  items: AdminRfqListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface AdminRfqQueryDto {
+  search?: string;
+  status?: string;
+  customerId?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
+  page?: number;
+  limit?: number;
+}
+
 class AdminApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
@@ -591,6 +628,34 @@ class AdminApiClient {
       `/admin/secure-documents/local/${encodedPath}`
     );
     return { ...response.document, content: response.content };
+  }
+
+  // Admin RFQ Management - view all RFQs across all customers
+
+  async listRfqs(query?: AdminRfqQueryDto): Promise<AdminRfqListResponse> {
+    const params = new URLSearchParams();
+    if (query?.search) params.append('search', query.search);
+    if (query?.status) params.append('status', query.status);
+    if (query?.customerId) params.append('customerId', query.customerId.toString());
+    if (query?.dateFrom) params.append('dateFrom', query.dateFrom);
+    if (query?.dateTo) params.append('dateTo', query.dateTo);
+    if (query?.page) params.append('page', query.page.toString());
+    if (query?.limit) params.append('limit', query.limit.toString());
+    if (query?.sortBy) params.append('sortBy', query.sortBy);
+    if (query?.sortOrder) params.append('sortOrder', query.sortOrder);
+
+    const queryString = params.toString();
+    return this.request<AdminRfqListResponse>(
+      `/admin/rfqs${queryString ? `?${queryString}` : ''}`
+    );
+  }
+
+  async getRfqDetail(id: number): Promise<any> {
+    return this.request<any>(`/admin/rfqs/${id}`);
+  }
+
+  async getRfqItems(id: number): Promise<any[]> {
+    return this.request<any[]>(`/admin/rfqs/${id}/items`);
   }
 }
 

@@ -7,6 +7,7 @@ import { StreamableFile } from '@nestjs/common';
 import { fromISO } from '../lib/datetime';
 
 import { Rfq } from '../rfq/entities/rfq.entity';
+import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
 import { RfqItem } from '../rfq/entities/rfq-item.entity';
 import { RfqDocument } from '../rfq/entities/rfq-document.entity';
 import {
@@ -25,6 +26,8 @@ export class AdminRfqService {
   constructor(
     @InjectRepository(Rfq)
     private readonly rfqRepo: Repository<Rfq>,
+    @InjectRepository(RfqDraft)
+    private readonly rfqDraftRepo: Repository<RfqDraft>,
     @InjectRepository(RfqItem)
     private readonly rfqItemRepo: Repository<RfqItem>,
     @InjectRepository(RfqDocument)
@@ -32,7 +35,7 @@ export class AdminRfqService {
   ) {}
 
   /**
-   * Get all RFQs with filtering and pagination (VIEW-ONLY)
+   * Get all RFQ Drafts with filtering and pagination (VIEW-ONLY)
    */
   async getAllRfqs(queryDto: RfqQueryDto): Promise<RfqListResponseDto> {
     const {
@@ -47,22 +50,26 @@ export class AdminRfqService {
       limit = 20,
     } = queryDto;
 
-    const queryBuilder = this.rfqRepo
-      .createQueryBuilder('rfq')
-      .leftJoinAndSelect('rfq.createdBy', 'user')
-      .leftJoin('rfq.items', 'items');
+    const queryBuilder = this.rfqDraftRepo
+      .createQueryBuilder('draft')
+      .leftJoinAndSelect('draft.createdBy', 'user');
 
     // Apply search filter
     if (search) {
       queryBuilder.andWhere(
-        '(rfq.projectName LIKE :search OR rfq.customerName LIKE :search)',
+        '(draft.projectName ILIKE :search OR draft.draftNumber ILIKE :search OR user.email ILIKE :search)',
         { search: `%${search}%` },
       );
     }
 
-    // Apply status filter
+    // Apply status filter - map to currentStep for drafts
     if (status) {
-      queryBuilder.andWhere('rfq.status = :status', { status });
+      // For drafts, status is based on completion/conversion
+      if (status === 'DRAFT') {
+        queryBuilder.andWhere('draft.isConverted = false');
+      } else if (status === 'PENDING') {
+        queryBuilder.andWhere('draft.isConverted = true');
+      }
     }
 
     // Apply customer filter
@@ -72,7 +79,7 @@ export class AdminRfqService {
 
     // Apply date range filter
     if (dateFrom && dateTo) {
-      queryBuilder.andWhere('rfq.createdAt BETWEEN :dateFrom AND :dateTo', {
+      queryBuilder.andWhere('draft.createdAt BETWEEN :dateFrom AND :dateTo', {
         dateFrom: fromISO(dateFrom).toJSDate(),
         dateTo: fromISO(dateTo).toJSDate(),
       });
@@ -80,7 +87,7 @@ export class AdminRfqService {
 
     // Apply sorting
     const sortField =
-      sortBy === 'projectName' ? 'rfq.projectName' : 'rfq.createdAt';
+      sortBy === 'projectName' ? 'draft.projectName' : 'draft.createdAt';
     queryBuilder.orderBy(sortField, sortOrder);
 
     // Get total count
@@ -91,28 +98,18 @@ export class AdminRfqService {
     queryBuilder.skip(skip).take(limit);
 
     // Execute query
-    const rfqs = await queryBuilder.getMany();
-
-    // Get item counts for each RFQ
-    const itemCounts = await Promise.all(
-      rfqs.map(async (rfq) => {
-        const count = await this.rfqItemRepo.count({
-          where: { rfq: { id: rfq.id } },
-        });
-        return { rfqId: rfq.id, count };
-      }),
-    );
+    const drafts = await queryBuilder.getMany();
 
     // Map to DTOs
-    const items: RfqListItemDto[] = rfqs.map((rfq) => ({
-      id: rfq.id,
-      projectName: rfq.projectName,
-      customerName: rfq.customerName || '',
-      customerEmail: rfq.customerEmail || '',
-      status: rfq.status,
-      createdAt: rfq.createdAt,
-      updatedAt: rfq.updatedAt,
-      itemCount: itemCounts.find((ic) => ic.rfqId === rfq.id)?.count || 0,
+    const items: RfqListItemDto[] = drafts.map((draft) => ({
+      id: draft.id,
+      projectName: draft.projectName || draft.draftNumber,
+      customerName: draft.createdBy?.username || '',
+      customerEmail: draft.createdBy?.email || '',
+      status: draft.isConverted ? 'SUBMITTED' : 'DRAFT',
+      createdAt: draft.createdAt,
+      updatedAt: draft.updatedAt,
+      itemCount: draft.straightPipeEntries?.length || 0,
     }));
 
     return {
@@ -125,83 +122,92 @@ export class AdminRfqService {
   }
 
   /**
-   * Get RFQ detail by ID (VIEW-ONLY)
+   * Get RFQ Draft detail by ID (VIEW-ONLY)
    */
   async getRfqDetail(rfqId: number): Promise<RfqDetailDto> {
-    const rfq = await this.rfqRepo.findOne({
+    const draft = await this.rfqDraftRepo.findOne({
       where: { id: rfqId },
       relations: ['createdBy'],
     });
 
-    if (!rfq) {
-      throw new NotFoundException(`RFQ with ID ${rfqId} not found`);
+    if (!draft) {
+      throw new NotFoundException(`RFQ Draft with ID ${rfqId} not found`);
     }
 
     return {
-      id: rfq.id,
-      projectName: rfq.projectName,
-      description: rfq.description,
-      requiredDate: rfq.requiredDate,
-      customerName: rfq.customerName || '',
-      customerEmail: rfq.customerEmail || '',
-      customerPhone: rfq.customerPhone,
-      status: rfq.status,
-      createdAt: rfq.createdAt,
-      updatedAt: rfq.updatedAt,
-      createdBy: rfq.createdBy
+      id: draft.id,
+      projectName: draft.projectName || draft.draftNumber,
+      description: draft.formData?.description || undefined,
+      requiredDate: draft.formData?.requiredDate || undefined,
+      customerName: draft.createdBy?.username || '',
+      customerEmail: draft.createdBy?.email || '',
+      customerPhone: draft.formData?.customerPhone || undefined,
+      status: draft.isConverted ? 'SUBMITTED' : 'DRAFT',
+      createdAt: draft.createdAt,
+      updatedAt: draft.updatedAt,
+      createdBy: draft.createdBy
         ? {
-            id: rfq.createdBy.id,
-            email: rfq.createdBy.email,
-            name: rfq.createdBy.username || '',
+            id: draft.createdBy.id,
+            email: draft.createdBy.email,
+            name: draft.createdBy.username || '',
           }
         : undefined,
     };
   }
 
   /**
-   * Get RFQ items with specifications (VIEW-ONLY)
+   * Get RFQ Draft items with specifications (VIEW-ONLY)
    */
   async getRfqItems(rfqId: number): Promise<RfqItemDetailDto[]> {
-    const items = await this.rfqItemRepo.find({
-      where: { rfq: { id: rfqId } },
-      relations: ['straightPipeDetails', 'bendDetails'],
-      order: { id: 'ASC' },
+    const draft = await this.rfqDraftRepo.findOne({
+      where: { id: rfqId },
     });
 
-    return items.map((item) => ({
-      id: item.id,
-      type: item.itemType,
-      quantity: item.quantity,
-      weightPerUnit: item.weightPerUnitKg,
-      totalWeight: item.totalWeightKg,
-      unitPrice: item.unitPrice,
-      totalPrice: item.totalPrice,
-      specifications: item.straightPipeDetails || item.bendDetails || null,
+    if (!draft) {
+      throw new NotFoundException(`RFQ Draft with ID ${rfqId} not found`);
+    }
+
+    // Extract items from draft's straightPipeEntries
+    const entries = draft.straightPipeEntries || [];
+    return entries.map((entry, index) => ({
+      id: index + 1,
+      type: 'STRAIGHT_PIPE',
+      quantity: entry.quantity || 1,
+      weightPerUnit: entry.weightPerUnit || undefined,
+      totalWeight: entry.totalWeight || undefined,
+      unitPrice: undefined,
+      totalPrice: undefined,
+      specifications: entry,
     }));
   }
 
   /**
-   * Get RFQ documents (VIEW-ONLY)
+   * Get RFQ Draft documents (VIEW-ONLY)
    */
   async getRfqDocuments(rfqId: number): Promise<RfqDocumentDto[]> {
-    const documents = await this.rfqDocumentRepo.find({
-      where: { rfq: { id: rfqId } },
-      relations: ['uploadedBy'],
-      order: { createdAt: 'DESC' },
+    const draft = await this.rfqDraftRepo.findOne({
+      where: { id: rfqId },
+      relations: ['createdBy'],
     });
 
-    return documents.map((doc) => ({
-      id: doc.id,
-      fileName: doc.filename,
-      filePath: doc.filePath,
-      mimeType: doc.mimeType,
-      fileSize: doc.fileSizeBytes,
-      uploadedAt: doc.createdAt,
-      uploadedBy: doc.uploadedBy
+    if (!draft) {
+      throw new NotFoundException(`RFQ Draft with ID ${rfqId} not found`);
+    }
+
+    // Extract documents from draft's pendingDocuments
+    const docs = draft.pendingDocuments || [];
+    return docs.map((doc, index) => ({
+      id: index + 1,
+      fileName: doc.fileName || doc.name || 'Unknown',
+      filePath: doc.filePath || '',
+      mimeType: doc.mimeType || 'application/octet-stream',
+      fileSize: doc.fileSize || 0,
+      uploadedAt: draft.createdAt,
+      uploadedBy: draft.createdBy
         ? {
-            id: doc.uploadedBy.id,
-            email: doc.uploadedBy.email,
-            name: doc.uploadedBy.username || '',
+            id: draft.createdBy.id,
+            email: draft.createdBy.email,
+            name: draft.createdBy.username || '',
           }
         : undefined,
     }));
