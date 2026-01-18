@@ -194,3 +194,25 @@ export function useCustomerAuth() {
   }
   return context;
 }
+
+/**
+ * Optional version of useCustomerAuth that returns a safe default
+ * when used outside of CustomerAuthProvider (e.g., in admin portal).
+ * Use this in components that may be rendered in non-customer contexts.
+ */
+export function useOptionalCustomerAuth(): CustomerAuthContextType {
+  const context = useContext(CustomerAuthContext);
+  if (context === undefined) {
+    // Return a safe default state for non-customer contexts
+    return {
+      isAuthenticated: false,
+      isLoading: false,
+      customer: null,
+      profile: null,
+      login: async () => { throw new Error('Customer login not available in this context'); },
+      logout: async () => { /* no-op */ },
+      refreshProfile: async () => { /* no-op */ },
+    };
+  }
+  return context;
+}

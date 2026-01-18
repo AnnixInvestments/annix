@@ -9,7 +9,7 @@ import { useEnvironmentalIntelligence } from '@/app/lib/hooks/useEnvironmentalIn
 import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
 import { AutoFilledInput, AutoFilledSelect, AutoFilledDisplay } from '@/app/components/rfq/AutoFilledField';
 import AddMineModal from '@/app/components/rfq/AddMineModal';
-import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
+import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
 import { log } from '@/app/lib/logger';
 import { useToast } from '@/app/components/Toast';
@@ -727,8 +727,8 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
     setIsEditingEnvironmental(true);
   };
 
-  // Customer auth for auto-filling customer fields
-  const { isAuthenticated, customer, profile } = useCustomerAuth();
+  // Customer auth for auto-filling customer fields (optional - may be used in admin context)
+  const { isAuthenticated, customer, profile } = useOptionalCustomerAuth();
 
   // Track which customer fields were auto-filled
   const [customerAutoFilled, setCustomerAutoFilled] = useState<{
