@@ -1,22 +1,34 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useDeviceFingerprint } from '@/app/hooks/useDeviceFingerprint';
 import {
   customerAuthApi,
   CustomerCompanyDto,
   CustomerUserDto,
-  CustomerRegistrationDto,
-  DocumentValidationResult,
 } from '@/app/lib/api/customerApi';
-import DocumentIssueModal from '@/app/components/customer/DocumentIssueModal';
 import { CurrencySelect, DEFAULT_CURRENCY } from '@/app/components/ui/CurrencySelect';
 import { currencyCodeForCountry } from '@/app/lib/currencies';
 import { log } from '@/app/lib/logger';
+import { nixApi, RegistrationBatchResult } from '@/app/lib/nix/api';
+import AmixLogo from '@/app/components/AmixLogo';
+import {
+  RegistrationTopToolbar,
+  RegistrationBottomToolbar,
+  StepConfig,
+} from '@/app/components/RegistrationToolbar';
 
-type Step = 'company' | 'documents' | 'profile' | 'security' | 'complete';
+type Step = 'documents' | 'company' | 'profile' | 'security' | 'complete';
+
+const REGISTRATION_STEPS: StepConfig[] = [
+  { id: 'documents', label: 'Documents' },
+  { id: 'company', label: 'Company' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'security', label: 'Security' },
+];
 
 const COMPANY_SIZE_OPTIONS = [
   { value: 'micro', label: 'Micro (1-9 employees)' },
@@ -54,20 +66,17 @@ export default function CustomerRegistrationPage() {
   const router = useRouter();
   const { fingerprint, browserInfo, isLoading: isFingerprintLoading } = useDeviceFingerprint();
 
-  const [currentStep, setCurrentStep] = useState<Step>('company');
+  const [currentStep, setCurrentStep] = useState<Step>('documents');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Company data
   const [company, setCompany] = useState<Partial<CustomerCompanyDto>>({
     country: 'South Africa',
     currencyCode: DEFAULT_CURRENCY,
   });
 
-  // User data (profile + credentials)
   const [user, setUser] = useState<Partial<CustomerUserDto>>({});
 
-  // Security/form data
   const [security, setSecurity] = useState<{
     confirmPassword: string;
     termsAccepted: boolean;
@@ -78,7 +87,6 @@ export default function CustomerRegistrationPage() {
     securityPolicyAccepted: false,
   });
 
-  // Document upload state
   const [documents, setDocuments] = useState<{
     vatDocument: File | null;
     companyRegDocument: File | null;
@@ -87,64 +95,38 @@ export default function CustomerRegistrationPage() {
     companyRegDocument: null,
   });
 
-  // Document validation state
-  const [validationState, setValidationState] = useState<{
-    isValidating: boolean;
-    showIssueModal: boolean;
-    issueType: 'mismatch' | 'ocr_failed' | null;
-    validationResult: null | {
-      documentType: 'vat' | 'registration';
-      mismatches: Array<{
-        field: string;
-        expected: string;
-        extracted: string;
-        similarity?: number;
-      }>;
-      extractedData: any;
-    };
+  const [nixState, setNixState] = useState<{
+    isVerifying: boolean;
+    verificationComplete: boolean;
+    batchResult: RegistrationBatchResult | null;
+    autoFilledFields: string[];
   }>({
-    isValidating: false,
-    showIssueModal: false,
-    issueType: null,
-    validationResult: null,
+    isVerifying: false,
+    verificationComplete: false,
+    batchResult: null,
+    autoFilledFields: [],
   });
 
-  const [documentsValidated, setDocumentsValidated] = useState<{
-    vat: boolean;
-    registration: boolean;
+  const [dragState, setDragState] = useState<{
+    vatDragging: boolean;
+    regDragging: boolean;
   }>({
-    vat: false,
-    registration: false,
+    vatDragging: false,
+    regDragging: false,
   });
 
-  const [pendingManualReview, setPendingManualReview] = useState<{
-    vat: boolean;
-    registration: boolean;
-  }>({
-    vat: false,
-    registration: false,
-  });
+  const [showSkipConfirmation, setShowSkipConfirmation] = useState(false);
+  const [documentsSkipped, setDocumentsSkipped] = useState(false);
 
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
 
-  // Validate password requirements
   const validatePassword = (password: string): string[] => {
     const errors: string[] = [];
-    if (password.length < 10) {
-      errors.push('Password must be at least 10 characters');
-    }
-    if (!/[A-Z]/.test(password)) {
-      errors.push('Password must contain at least one uppercase letter');
-    }
-    if (!/[a-z]/.test(password)) {
-      errors.push('Password must contain at least one lowercase letter');
-    }
-    if (!/[0-9]/.test(password)) {
-      errors.push('Password must contain at least one number');
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      errors.push('Password must contain at least one special character');
-    }
+    if (password.length < 10) errors.push('Password must be at least 10 characters');
+    if (!/[A-Z]/.test(password)) errors.push('Password must contain at least one uppercase letter');
+    if (!/[a-z]/.test(password)) errors.push('Password must contain at least one lowercase letter');
+    if (!/[0-9]/.test(password)) errors.push('Password must contain at least one number');
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('Password must contain at least one special character');
     return errors;
   };
 
@@ -161,9 +143,7 @@ export default function CustomerRegistrationPage() {
       const updates: Partial<CustomerCompanyDto> = { [field]: value };
       if (field === 'country') {
         const suggestedCurrency = currencyCodeForCountry(value);
-        if (suggestedCurrency) {
-          updates.currencyCode = suggestedCurrency;
-        }
+        if (suggestedCurrency) updates.currencyCode = suggestedCurrency;
       }
       return { ...prev, ...updates };
     });
@@ -177,121 +157,161 @@ export default function CustomerRegistrationPage() {
     setSecurity((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Document validation handlers
-  const validateDocument = async (file: File, documentType: 'vat' | 'registration') => {
-    setValidationState(prev => ({ ...prev, isValidating: true }));
+  const handleFileDrop = useCallback((file: File, documentType: 'vat' | 'registration') => {
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      setError('Invalid file type. Please upload PDF, JPG, or PNG files.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File too large. Maximum size is 10MB.');
+      return;
+    }
+    setError(null);
+    const docKey = documentType === 'vat' ? 'vatDocument' : 'companyRegDocument';
+    setDocuments(prev => ({ ...prev, [docKey]: file }));
+    setNixState(prev => ({ ...prev, verificationComplete: false, batchResult: null }));
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, documentType: 'vat' | 'registration') => {
+    e.preventDefault();
+    e.stopPropagation();
+    const key = documentType === 'vat' ? 'vatDragging' : 'regDragging';
+    setDragState(prev => ({ ...prev, [key]: true }));
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent, documentType: 'vat' | 'registration') => {
+    e.preventDefault();
+    e.stopPropagation();
+    const key = documentType === 'vat' ? 'vatDragging' : 'regDragging';
+    setDragState(prev => ({ ...prev, [key]: false }));
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, documentType: 'vat' | 'registration') => {
+    e.preventDefault();
+    e.stopPropagation();
+    const key = documentType === 'vat' ? 'vatDragging' : 'regDragging';
+    setDragState(prev => ({ ...prev, [key]: false }));
+
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileDrop(file, documentType);
+  }, [handleFileDrop]);
+
+  const handleConfirmAndVerify = async () => {
+    if (!documents.vatDocument || !documents.companyRegDocument) return;
+
+    setNixState(prev => ({ ...prev, isVerifying: true }));
     setError(null);
 
     try {
-      const expectedData = documentType === 'vat'
-        ? {
-            vatNumber: company.vatNumber,
-            registrationNumber: company.registrationNumber,
-            companyName: company.legalName,
-          }
-        : {
-            registrationNumber: company.registrationNumber,
-            companyName: company.legalName,
-            streetAddress: company.streetAddress,
-            city: company.city,
-            provinceState: company.provinceState,
-            postalCode: company.postalCode,
-          };
+      const files = [
+        { file: documents.vatDocument, documentType: 'vat' as const },
+        { file: documents.companyRegDocument, documentType: 'registration' as const },
+      ];
 
-      const result = await customerAuthApi.validateDocument(file, documentType, expectedData);
+      const result = await nixApi.verifyRegistrationBatch(files, {});
 
-      log.debug('=== VALIDATION RESULT ===');
-      log.debug('Document Type:', documentType);
-      log.debug('Expected Data:', expectedData);
-      log.debug('Validation Result:', result);
-      log.debug('=========================');
+      log.debug('=== NIX BATCH VERIFICATION RESULT ===');
+      log.debug('Result:', result);
+      log.debug('=====================================');
 
-      if (result.ocrFailed) {
-        // OCR failed - show modal with option to go back or proceed with manual review
-        setValidationState({
-          isValidating: false,
-          showIssueModal: true,
-          issueType: 'ocr_failed',
-          validationResult: {
-            documentType,
-            mismatches: [],
-            extractedData: result.extractedData,
-          },
-        });
-        return;
-      }
+      const autoFilledFields: string[] = [];
+      const companyUpdates: Partial<CustomerCompanyDto> = {};
 
-      if (!result.isValid && result.mismatches.length > 0) {
-        // Show modal with mismatches
-        setValidationState({
-          isValidating: false,
-          showIssueModal: true,
-          issueType: 'mismatch',
-          validationResult: {
-            documentType,
-            mismatches: result.mismatches,
-            extractedData: result.extractedData,
-          },
-        });
-      } else {
-        // Document validated successfully
-        setDocumentsValidated(prev => ({ ...prev, [documentType]: true }));
-        setValidationState(prev => ({ ...prev, isValidating: false }));
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Validation failed';
-      // Show OCR failed modal on error
-      setValidationState({
-        isValidating: false,
-        showIssueModal: true,
-        issueType: 'ocr_failed',
-        validationResult: {
-          documentType,
-          mismatches: [],
-          extractedData: {},
-        },
+      result.combinedAutoCorrections.forEach(({ field, value }) => {
+        const stringValue = String(value);
+        if (field === 'companyName' || field === 'legalName') {
+          companyUpdates.legalName = stringValue;
+          autoFilledFields.push('legalName');
+        } else if (field === 'vatNumber') {
+          companyUpdates.vatNumber = stringValue;
+          autoFilledFields.push('vatNumber');
+        } else if (field === 'registrationNumber') {
+          companyUpdates.registrationNumber = stringValue;
+          autoFilledFields.push('registrationNumber');
+        } else if (field === 'streetAddress') {
+          companyUpdates.streetAddress = stringValue;
+          autoFilledFields.push('streetAddress');
+        } else if (field === 'city') {
+          companyUpdates.city = stringValue;
+          autoFilledFields.push('city');
+        } else if (field === 'provinceState') {
+          companyUpdates.provinceState = stringValue;
+          autoFilledFields.push('provinceState');
+        } else if (field === 'postalCode') {
+          companyUpdates.postalCode = stringValue;
+          autoFilledFields.push('postalCode');
+        }
       });
+
+      result.results.forEach(docResult => {
+        docResult.fieldResults.forEach(fieldResult => {
+          if (fieldResult.extracted && !autoFilledFields.includes(fieldResult.field)) {
+            const stringValue = String(fieldResult.extracted);
+            if (fieldResult.field === 'companyName' || fieldResult.field === 'legalName') {
+              companyUpdates.legalName = companyUpdates.legalName || stringValue;
+              autoFilledFields.push('legalName');
+            } else if (fieldResult.field === 'vatNumber') {
+              companyUpdates.vatNumber = companyUpdates.vatNumber || stringValue;
+              autoFilledFields.push('vatNumber');
+            } else if (fieldResult.field === 'registrationNumber') {
+              companyUpdates.registrationNumber = companyUpdates.registrationNumber || stringValue;
+              autoFilledFields.push('registrationNumber');
+            } else if (fieldResult.field === 'streetAddress') {
+              companyUpdates.streetAddress = companyUpdates.streetAddress || stringValue;
+              autoFilledFields.push('streetAddress');
+            } else if (fieldResult.field === 'city') {
+              companyUpdates.city = companyUpdates.city || stringValue;
+              autoFilledFields.push('city');
+            } else if (fieldResult.field === 'provinceState') {
+              companyUpdates.provinceState = companyUpdates.provinceState || stringValue;
+              autoFilledFields.push('provinceState');
+            } else if (fieldResult.field === 'postalCode') {
+              companyUpdates.postalCode = companyUpdates.postalCode || stringValue;
+              autoFilledFields.push('postalCode');
+            }
+          }
+        });
+      });
+
+      if (Object.keys(companyUpdates).length > 0) {
+        setCompany(prev => ({ ...prev, ...companyUpdates }));
+      }
+
+      setNixState({
+        isVerifying: false,
+        verificationComplete: true,
+        batchResult: result,
+        autoFilledFields: [...new Set(autoFilledFields)],
+      });
+
+      setCurrentStep('company');
+    } catch (err) {
+      log.error('Nix batch verification failed:', err);
+      setError(err instanceof Error ? err.message : 'Document verification failed. Please try again.');
+      setNixState(prev => ({ ...prev, isVerifying: false }));
     }
   };
 
-  const handleFileSelect = async (file: File, documentType: 'vat' | 'registration') => {
+  const removeDocument = (documentType: 'vat' | 'registration') => {
     const docKey = documentType === 'vat' ? 'vatDocument' : 'companyRegDocument';
-    setDocuments(prev => ({ ...prev, [docKey]: file }));
-
-    // Trigger validation immediately
-    await validateDocument(file, documentType);
+    setDocuments(prev => ({ ...prev, [docKey]: null }));
+    setNixState(prev => ({ ...prev, verificationComplete: false, batchResult: null }));
   };
 
-  const handleGoBackToReview = () => {
-    // Clear the document that had issues
-    const { documentType } = validationState.validationResult!;
-
-    if (documentType === 'vat') {
-      setDocuments(prev => ({ ...prev, vatDocument: null }));
-      setDocumentsValidated(prev => ({ ...prev, vat: false }));
-      setPendingManualReview(prev => ({ ...prev, vat: false }));
-    } else {
-      setDocuments(prev => ({ ...prev, companyRegDocument: null }));
-      setDocumentsValidated(prev => ({ ...prev, registration: false }));
-      setPendingManualReview(prev => ({ ...prev, registration: false }));
-    }
-
-    // Close modal
-    setValidationState({ isValidating: false, showIssueModal: false, issueType: null, validationResult: null });
-
-    // Take user back to Step 1
+  const handleSkipDocuments = () => {
+    log.info('User skipped document upload during registration', {
+      timestamp: new Date().toISOString(),
+      userEmail: user.email || 'not yet provided',
+      companyName: company.legalName || 'not yet provided',
+    });
+    setDocumentsSkipped(true);
+    setShowSkipConfirmation(false);
     setCurrentStep('company');
   };
 
-  const handleProceedWithManualReview = () => {
-    const { documentType } = validationState.validationResult!;
-
-    // Mark document as pending manual review
-    setPendingManualReview(prev => ({ ...prev, [documentType]: true }));
-    setDocumentsValidated(prev => ({ ...prev, [documentType]: true }));
-
-    // Close modal
-    setValidationState({ isValidating: false, showIssueModal: false, issueType: null, validationResult: null });
+  const isDocumentsValid = (): boolean => {
+    return !!(documents.vatDocument && documents.companyRegDocument);
   };
 
   const isCompanyValid = (): boolean => {
@@ -305,10 +325,6 @@ export default function CustomerRegistrationPage() {
       company.country &&
       company.primaryPhone
     );
-  };
-
-  const isDocumentsValid = (): boolean => {
-    return !!(documents.vatDocument && documents.companyRegDocument);
   };
 
   const isUserValid = (): boolean => {
@@ -327,6 +343,24 @@ export default function CustomerRegistrationPage() {
     );
   };
 
+  const canNavigateToStep = (step: string): boolean => {
+    const stepIndex = REGISTRATION_STEPS.findIndex((s) => s.id === step);
+    const currentIndex = REGISTRATION_STEPS.findIndex((s) => s.id === currentStep);
+
+    if (stepIndex <= currentIndex) return true;
+    if (step === 'documents') return true;
+    if (step === 'company') return documentsSkipped || nixState.verificationComplete || isDocumentsValid();
+    if (step === 'profile') return isCompanyValid();
+    if (step === 'security') return isCompanyValid() && isUserValid();
+    return false;
+  };
+
+  const handleStepChange = (step: string) => {
+    if (canNavigateToStep(step)) {
+      setCurrentStep(step as Step);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!fingerprint || !browserInfo) {
       setError('Device fingerprint not available. Please refresh the page.');
@@ -337,13 +371,8 @@ export default function CustomerRegistrationPage() {
     setError(null);
 
     try {
-      // Create FormData for file uploads
       const formData = new FormData();
-
-      // Add company data
       formData.append('company', JSON.stringify(company));
-
-      // Add user data
       formData.append('user', JSON.stringify({
         firstName: user.firstName!,
         lastName: user.lastName!,
@@ -353,27 +382,18 @@ export default function CustomerRegistrationPage() {
         directPhone: user.directPhone,
         mobilePhone: user.mobilePhone,
       }));
-
-      // Add security data
       formData.append('security', JSON.stringify({
         deviceFingerprint: fingerprint,
         browserInfo,
         termsAccepted: security.termsAccepted,
         securityPolicyAccepted: security.securityPolicyAccepted,
+        documentsSkipped,
       }));
 
-      // Add document files
-      if (documents.vatDocument) {
-        formData.append('vatDocument', documents.vatDocument);
-      }
-      if (documents.companyRegDocument) {
-        formData.append('companyRegDocument', documents.companyRegDocument);
-      }
+      if (documents.vatDocument) formData.append('vatDocument', documents.vatDocument);
+      if (documents.companyRegDocument) formData.append('companyRegDocument', documents.companyRegDocument);
 
-      // Call API with FormData - this will auto-login and store tokens
       await customerAuthApi.registerWithFormData(formData);
-
-      // Redirect directly to dashboard (email verification disabled for development)
       router.push('/customer/portal/dashboard');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed. Please try again.');
@@ -383,8 +403,8 @@ export default function CustomerRegistrationPage() {
   };
 
   const renderStepIndicator = () => {
-    const steps = ['company', 'documents', 'profile', 'security'];
-    const stepLabels = ['Company', 'Documents', 'Profile', 'Security'];
+    const steps = ['documents', 'company', 'profile', 'security'];
+    const stepLabels = ['Documents', 'Company', 'Profile', 'Security'];
 
     return (
       <div className="mb-8">
@@ -409,13 +429,7 @@ export default function CustomerRegistrationPage() {
                 )}
               </div>
               {index < steps.length - 1 && (
-                <div
-                  className={`w-16 h-1 ${
-                    steps.indexOf(currentStep) > index
-                      ? 'bg-green-500'
-                      : 'bg-gray-300'
-                  }`}
-                />
+                <div className={`w-16 h-1 ${steps.indexOf(currentStep) > index ? 'bg-green-500' : 'bg-gray-300'}`} />
               )}
             </React.Fragment>
           ))}
@@ -424,10 +438,8 @@ export default function CustomerRegistrationPage() {
           {steps.map((step, index) => (
             <React.Fragment key={`label-${step}`}>
               <div
-                className={`text-xs font-medium ${
-                  currentStep === step ? 'text-blue-600' : 'text-gray-500'
-                } ${index === 0 ? 'text-left' : index === steps.length - 1 ? 'text-right' : 'text-center'}`}
-                style={{ width: index < steps.length - 1 ? '104px' : '40px' }}
+                className={`text-xs font-medium ${currentStep === step ? 'text-blue-600' : 'text-gray-500'}`}
+                style={{ width: index < steps.length - 1 ? '104px' : '40px', textAlign: 'center' }}
               >
                 {stepLabels[index]}
               </div>
@@ -438,20 +450,221 @@ export default function CustomerRegistrationPage() {
     );
   };
 
+  const renderDocumentUploadBox = (
+    documentType: 'vat' | 'registration',
+    label: string,
+    description: string,
+    file: File | null,
+    isDragging: boolean
+  ) => (
+    <div
+      className={`border-2 border-dashed rounded-lg p-6 transition-all duration-200 ${
+        isDragging
+          ? 'border-orange-400 bg-orange-50'
+          : file
+          ? 'border-green-400 bg-green-50'
+          : 'border-gray-300 hover:border-gray-400'
+      }`}
+      onDragOver={(e) => handleDragOver(e, documentType)}
+      onDragLeave={(e) => handleDragLeave(e, documentType)}
+      onDrop={(e) => handleDrop(e, documentType)}
+    >
+      <div className="text-center">
+        {file ? (
+          <div className="space-y-3">
+            <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">{file.name}</p>
+              <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => removeDocument(documentType)}
+              className="text-sm text-red-600 hover:text-red-700 underline"
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="w-12 h-12 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-700">{label} <span className="text-red-500">*</span></p>
+              <p className="text-xs text-gray-500 mt-1">{description}</p>
+            </div>
+            <div className="text-xs text-gray-400">
+              Drag and drop or{' '}
+              <label className="text-blue-600 hover:text-blue-700 cursor-pointer underline">
+                browse
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => {
+                    const selectedFile = e.target.files?.[0];
+                    if (selectedFile) handleFileDrop(selectedFile, documentType);
+                  }}
+                />
+              </label>
+            </div>
+            <p className="text-xs text-gray-400">PDF, JPG, PNG up to 10MB</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderDocumentsStep = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-xl font-semibold text-gray-900">Upload Your Company Documents</h2>
+        <p className="text-sm text-gray-600 mt-2">
+          Upload your documents and Nix AI will automatically extract your company information
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {renderDocumentUploadBox(
+          'vat',
+          'VAT Registration Certificate',
+          'Your official SARS VAT registration document',
+          documents.vatDocument,
+          dragState.vatDragging
+        )}
+        {renderDocumentUploadBox(
+          'registration',
+          'Company Registration (CIPC)',
+          'Your official CIPC company registration certificate',
+          documents.companyRegDocument,
+          dragState.regDragging
+        )}
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
+      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 flex-shrink-0 rounded-full overflow-hidden border-2 border-orange-400">
+            <Image
+              src="/nix-avatar.png"
+              alt="Nix AI"
+              width={40}
+              height={40}
+              className="object-cover object-top scale-125"
+            />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-orange-800">Nix AI Assistant</p>
+            <p className="text-xs text-orange-700 mt-1">
+              Once you upload both documents and click confirm, I will read them and automatically fill in your company details. You can review and edit the information on the next page.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center mt-8">
+        <button
+          onClick={() => setShowSkipConfirmation(true)}
+          disabled={nixState.isVerifying}
+          className="px-6 py-3 text-gray-600 hover:text-gray-800 underline text-sm disabled:opacity-50"
+        >
+          Skip for now
+        </button>
+        <button
+          onClick={handleConfirmAndVerify}
+          disabled={!isDocumentsValid() || nixState.isVerifying}
+          className="px-8 py-3 bg-orange-500 text-white rounded-md hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+        >
+          {nixState.isVerifying ? (
+            <>
+              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Nix is Reading Documents...
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Confirm & Let Nix Extract Info
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
   const renderCompanyStep = () => (
     <div className="space-y-6">
+      {documentsSkipped && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-yellow-800">Documents not uploaded</p>
+              <p className="text-xs text-yellow-700 mt-1">
+                You will need to upload your VAT Certificate and Company Registration documents from your dashboard to complete verification.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {nixState.autoFilledFields.length > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 flex-shrink-0 rounded-full overflow-hidden border-2 border-green-400">
+              <Image
+                src="/nix-avatar.png"
+                alt="Nix AI"
+                width={40}
+                height={40}
+                className="object-cover object-top scale-125"
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-green-800">Nix extracted {nixState.autoFilledFields.length} fields from your documents</p>
+              <p className="text-xs text-green-700 mt-1">
+                I&apos;ve filled in what I found. Please review the information below and complete any missing fields.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h2 className="text-xl font-semibold text-gray-900">Company Information</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700">
             Legal Company Name <span className="text-red-500">*</span>
+            {nixState.autoFilledFields.includes('legalName') && (
+              <span className="ml-2 text-xs text-green-600 font-normal">(Auto-filled by Nix)</span>
+            )}
           </label>
           <input
             type="text"
             value={company.legalName || ''}
             onChange={(e) => handleCompanyChange('legalName', e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+              nixState.autoFilledFields.includes('legalName') ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
             placeholder="Full legal company name"
           />
         </div>
@@ -470,23 +683,35 @@ export default function CustomerRegistrationPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Company Registration Number <span className="text-red-500">*</span>
+            {nixState.autoFilledFields.includes('registrationNumber') && (
+              <span className="ml-2 text-xs text-green-600 font-normal">(Auto-filled)</span>
+            )}
           </label>
           <input
             type="text"
             value={company.registrationNumber || ''}
             onChange={(e) => handleCompanyChange('registrationNumber', e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+              nixState.autoFilledFields.includes('registrationNumber') ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
             placeholder="e.g., 2023/123456/07"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">VAT Number</label>
+          <label className="block text-sm font-medium text-gray-700">
+            VAT Number
+            {nixState.autoFilledFields.includes('vatNumber') && (
+              <span className="ml-2 text-xs text-green-600 font-normal">(Auto-filled)</span>
+            )}
+          </label>
           <input
             type="text"
             value={company.vatNumber || ''}
             onChange={(e) => handleCompanyChange('vatNumber', e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+              nixState.autoFilledFields.includes('vatNumber') ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
             placeholder="VAT registration number"
           />
         </div>
@@ -500,9 +725,7 @@ export default function CustomerRegistrationPage() {
           >
             <option value="">Select industry</option>
             {INDUSTRY_OPTIONS.map((ind) => (
-              <option key={ind} value={ind}>
-                {ind}
-              </option>
+              <option key={ind} value={ind}>{ind}</option>
             ))}
           </select>
         </div>
@@ -516,9 +739,7 @@ export default function CustomerRegistrationPage() {
           >
             <option value="">Select size</option>
             {COMPANY_SIZE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
         </div>
@@ -530,41 +751,54 @@ export default function CustomerRegistrationPage() {
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700">
             Street Address <span className="text-red-500">*</span>
+            {nixState.autoFilledFields.includes('streetAddress') && (
+              <span className="ml-2 text-xs text-green-600 font-normal">(Auto-filled)</span>
+            )}
           </label>
           <input
             type="text"
             value={company.streetAddress || ''}
             onChange={(e) => handleCompanyChange('streetAddress', e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+              nixState.autoFilledFields.includes('streetAddress') ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700">
             City <span className="text-red-500">*</span>
+            {nixState.autoFilledFields.includes('city') && (
+              <span className="ml-2 text-xs text-green-600 font-normal">(Auto-filled)</span>
+            )}
           </label>
           <input
             type="text"
             value={company.city || ''}
             onChange={(e) => handleCompanyChange('city', e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+              nixState.autoFilledFields.includes('city') ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Province <span className="text-red-500">*</span>
+            {nixState.autoFilledFields.includes('provinceState') && (
+              <span className="ml-2 text-xs text-green-600 font-normal">(Auto-filled)</span>
+            )}
           </label>
           <select
             value={company.provinceState || ''}
             onChange={(e) => handleCompanyChange('provinceState', e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+              nixState.autoFilledFields.includes('provinceState') ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
           >
             <option value="">Select a province...</option>
             {SOUTH_AFRICAN_PROVINCES.map((province) => (
-              <option key={province} value={province}>
-                {province}
-              </option>
+              <option key={province} value={province}>{province}</option>
             ))}
           </select>
         </div>
@@ -572,19 +806,22 @@ export default function CustomerRegistrationPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Postal Code <span className="text-red-500">*</span>
+            {nixState.autoFilledFields.includes('postalCode') && (
+              <span className="ml-2 text-xs text-green-600 font-normal">(Auto-filled)</span>
+            )}
           </label>
           <input
             type="text"
             value={company.postalCode || ''}
             onChange={(e) => handleCompanyChange('postalCode', e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+              nixState.autoFilledFields.includes('postalCode') ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Country <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Country <span className="text-red-500">*</span></label>
           <input
             type="text"
             value={company.country || ''}
@@ -594,9 +831,7 @@ export default function CustomerRegistrationPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Preferred Currency <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Preferred Currency <span className="text-red-500">*</span></label>
           <CurrencySelect
             value={company.currencyCode || DEFAULT_CURRENCY}
             onChange={(value) => handleCompanyChange('currencyCode', value)}
@@ -609,9 +844,7 @@ export default function CustomerRegistrationPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Primary Phone <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Primary Phone <span className="text-red-500">*</span></label>
           <input
             type="tel"
             value={company.primaryPhone || ''}
@@ -654,152 +887,16 @@ export default function CustomerRegistrationPage() {
         </div>
       </div>
 
-      <div className="flex justify-end mt-8">
-        <button
-          onClick={() => setCurrentStep('documents')}
-          disabled={!isCompanyValid()}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          Continue
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderDocumentsStep = () => (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-900">Upload Company Documents</h2>
-      <p className="text-sm text-gray-600">
-        Please upload the required documents. We will verify that the information matches your company details.
-      </p>
-
-      <div className="space-y-6">
-        {/* VAT Registration Document */}
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            VAT Registration Document <span className="text-red-500">*</span>
-          </label>
-          <p className="text-xs text-gray-500 mb-3">
-            Upload your official VAT registration certificate. We will verify the VAT number matches: {company.vatNumber || 'Not provided'}
-          </p>
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                handleFileSelect(file, 'vat');
-              }
-            }}
-            disabled={validationState.isValidating}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-          />
-          {validationState.isValidating && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
-              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Validating document...
-            </div>
-          )}
-          {documents.vatDocument && !validationState.isValidating && (
-            <p className="mt-2 text-sm text-green-600">✓ {documents.vatDocument.name} selected</p>
-          )}
-          {documentsValidated.vat && !validationState.isValidating && !pendingManualReview.vat && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              Document validated successfully
-            </div>
-          )}
-          {pendingManualReview.vat && !validationState.isValidating && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-orange-600">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              Pending manual verification - limited access until verified
-            </div>
-          )}
-        </div>
-
-        {/* Company Registration Document */}
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Company Registration Document <span className="text-red-500">*</span>
-          </label>
-          <p className="text-xs text-gray-500 mb-3">
-            Upload your official company registration certificate (CIPC). We will verify:
-          </p>
-          <ul className="text-xs text-gray-500 list-disc list-inside mb-3">
-            <li>Registration number: {company.registrationNumber}</li>
-            <li>Company name: {company.legalName}</li>
-            <li>Registered address matches: {company.streetAddress}, {company.city}, {company.provinceState}</li>
-          </ul>
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                handleFileSelect(file, 'registration');
-              }
-            }}
-            disabled={validationState.isValidating}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-          />
-          {validationState.isValidating && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
-              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Validating document...
-            </div>
-          )}
-          {documents.companyRegDocument && !validationState.isValidating && (
-            <p className="mt-2 text-sm text-green-600">✓ {documents.companyRegDocument.name} selected</p>
-          )}
-          {documentsValidated.registration && !validationState.isValidating && !pendingManualReview.registration && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              Document validated successfully
-            </div>
-          )}
-          {pendingManualReview.registration && !validationState.isValidating && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-orange-600">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              Pending manual verification - limited access until verified
-            </div>
-          )}
-        </div>
-
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-          <h3 className="text-sm font-medium text-blue-900 mb-2">Document Requirements</h3>
-          <ul className="text-xs text-blue-800 space-y-1">
-            <li>• Accepted formats: PDF, JPG, PNG</li>
-            <li>• Maximum file size: 10MB per document</li>
-            <li>• Documents must be clear and readable</li>
-            <li>• Information must match the company details you provided</li>
-          </ul>
-        </div>
-      </div>
-
       <div className="flex justify-between mt-8">
         <button
-          onClick={() => setCurrentStep('company')}
+          onClick={() => setCurrentStep('documents')}
           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
         >
           Back
         </button>
         <button
           onClick={() => setCurrentStep('profile')}
-          disabled={!isDocumentsValid()}
+          disabled={!isCompanyValid()}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           Continue
@@ -814,9 +911,7 @@ export default function CustomerRegistrationPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            First Name <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-sm font-medium text-gray-700">First Name <span className="text-red-500">*</span></label>
           <input
             type="text"
             value={user.firstName || ''}
@@ -826,9 +921,7 @@ export default function CustomerRegistrationPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Last Name <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Last Name <span className="text-red-500">*</span></label>
           <input
             type="text"
             value={user.lastName || ''}
@@ -873,7 +966,7 @@ export default function CustomerRegistrationPage() {
 
       <div className="flex justify-between mt-8">
         <button
-          onClick={() => setCurrentStep('documents')}
+          onClick={() => setCurrentStep('company')}
           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
         >
           Back
@@ -902,7 +995,6 @@ export default function CustomerRegistrationPage() {
             <h3 className="text-sm font-medium text-yellow-800">Important Security Notice</h3>
             <p className="mt-1 text-sm text-yellow-700">
               Your account will be bound to this device. You will only be able to access your account from this device.
-              If you need to change devices, please contact support.
             </p>
           </div>
         </div>
@@ -910,9 +1002,7 @@ export default function CustomerRegistrationPage() {
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Email Address <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Email Address <span className="text-red-500">*</span></label>
           <input
             type="email"
             value={user.email || ''}
@@ -923,9 +1013,7 @@ export default function CustomerRegistrationPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Password <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Password <span className="text-red-500">*</span></label>
           <input
             type="password"
             value={user.password || ''}
@@ -934,9 +1022,7 @@ export default function CustomerRegistrationPage() {
           />
           {passwordErrors.length > 0 && (
             <ul className="mt-2 text-sm text-red-600 list-disc list-inside">
-              {passwordErrors.map((err, i) => (
-                <li key={i}>{err}</li>
-              ))}
+              {passwordErrors.map((err, i) => (<li key={i}>{err}</li>))}
             </ul>
           )}
           {user.password && passwordErrors.length === 0 && (
@@ -945,9 +1031,7 @@ export default function CustomerRegistrationPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Confirm Password <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Confirm Password <span className="text-red-500">*</span></label>
           <input
             type="password"
             value={security.confirmPassword}
@@ -965,18 +1049,11 @@ export default function CustomerRegistrationPage() {
             <p className="text-sm text-gray-500">Generating device fingerprint...</p>
           ) : fingerprint ? (
             <div className="text-sm text-gray-600">
-              <p>
-                <span className="font-medium">Device ID:</span>{' '}
-                {fingerprint.substring(0, 16)}...
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                This device will be registered for secure access.
-              </p>
+              <p><span className="font-medium">Device ID:</span> {fingerprint.substring(0, 16)}...</p>
+              <p className="mt-1 text-xs text-gray-500">This device will be registered for secure access.</p>
             </div>
           ) : (
-            <p className="text-sm text-red-600">
-              Unable to generate device fingerprint. Please refresh the page.
-            </p>
+            <p className="text-sm text-red-600">Unable to generate device fingerprint. Please refresh the page.</p>
           )}
         </div>
 
@@ -1017,7 +1094,7 @@ export default function CustomerRegistrationPage() {
             className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
           <label htmlFor="securityPolicy" className="ml-2 text-sm text-gray-700">
-            I understand and accept that my account will be locked to this device for security purposes <span className="text-red-500">*</span>
+            I understand and accept that my account will be locked to this device <span className="text-red-500">*</span>
           </label>
         </div>
       </div>
@@ -1059,18 +1136,7 @@ export default function CustomerRegistrationPage() {
       </p>
       <p className="text-gray-600 mb-8">
         Please check your inbox and click the verification link to activate your account.
-        The link will expire in 24 hours.
       </p>
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-md mx-auto mb-6">
-        <div className="flex items-start">
-          <svg className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <p className="text-sm text-yellow-700 text-left">
-            Don&apos;t see the email? Check your spam folder or click below to resend.
-          </p>
-        </div>
-      </div>
       <div className="space-y-3">
         <button
           onClick={() => router.push('/customer/login')}
@@ -1080,39 +1146,38 @@ export default function CustomerRegistrationPage() {
         </button>
         <p className="text-sm text-gray-500">
           Need help?{' '}
-          <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">
-            Contact support
-          </a>
+          <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">Contact support</a>
         </p>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen py-12">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
+    <>
+      <RegistrationTopToolbar title="Customer Registration" homeHref="/" />
+
+      <div className="min-h-screen pt-20 pb-24">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold text-white">Customer Registration</h1>
+            <p className="mt-2 text-blue-200">Create your Annix customer portal account</p>
           </div>
-          <h1 className="text-3xl font-bold text-white">Customer Registration</h1>
-          <p className="mt-2 text-blue-200">Create your Annix customer portal account</p>
-        </div>
 
-        {currentStep !== 'complete' && renderStepIndicator()}
+          <div className="bg-white shadow rounded-lg p-8">
+            {currentStep === 'documents' && renderDocumentsStep()}
+            {currentStep === 'company' && renderCompanyStep()}
+            {currentStep === 'profile' && renderProfileStep()}
+            {currentStep === 'security' && renderSecurityStep()}
+            {currentStep === 'complete' && renderCompleteStep()}
+          </div>
 
-        <div className="bg-white shadow rounded-lg p-8">
-          {currentStep === 'company' && renderCompanyStep()}
-          {currentStep === 'documents' && renderDocumentsStep()}
-          {currentStep === 'profile' && renderProfileStep()}
-          {currentStep === 'security' && renderSecurityStep()}
-          {currentStep === 'complete' && renderCompleteStep()}
-        </div>
-
-        {currentStep !== 'complete' && (
-          <p className="text-center mt-6 text-blue-200">
+          {currentStep !== 'complete' && (
+            <p className="text-center mt-6 text-blue-200">
             Already have an account?{' '}
             <Link href="/customer/login" className="text-white hover:underline font-medium">
               Sign in
@@ -1121,18 +1186,113 @@ export default function CustomerRegistrationPage() {
         )}
       </div>
 
-      {/* Document Issue Modal */}
-      {validationState.validationResult && (
-        <DocumentIssueModal
-          isOpen={validationState.showIssueModal}
-          onClose={() => setValidationState(prev => ({ ...prev, showIssueModal: false }))}
-          documentType={validationState.validationResult.documentType}
-          issueType={validationState.issueType || 'mismatch'}
-          mismatches={validationState.validationResult.mismatches}
-          onGoBackToReview={handleGoBackToReview}
-          onProceedWithManualReview={handleProceedWithManualReview}
-        />
+      {nixState.isVerifying && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="px-4 py-3 flex items-center justify-center" style={{ backgroundColor: '#323288' }}>
+              <AmixLogo size="md" showText useSignatureFont />
+            </div>
+            <div className="px-6 py-8">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 flex-shrink-0 rounded-full overflow-hidden shadow-lg border-3 border-orange-400 relative">
+                  <Image
+                    src="/nix-avatar.png"
+                    alt="Nix AI Assistant"
+                    width={64}
+                    height={64}
+                    className="object-cover object-top scale-125"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-orange-400/20 to-transparent animate-pulse" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h2 className="text-lg font-bold text-gray-900">Nix is Reading Your Documents...</h2>
+                  <p className="text-sm text-gray-600 mt-1">Extracting company information</p>
+                </div>
+              </div>
+              <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full"
+                  style={{
+                    width: '70%',
+                    background: 'linear-gradient(90deg, #FFA500 0%, #FF8C00 50%, #FFA500 100%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmer 2s infinite linear',
+                  }}
+                />
+              </div>
+            </div>
+            <div className="h-1" style={{ backgroundColor: '#FFA500' }} />
+          </div>
+          <style jsx>{`
+            @keyframes shimmer {
+              0% { background-position: 200% 0; }
+              100% { background-position: -200% 0; }
+            }
+          `}</style>
+        </div>
       )}
-    </div>
+
+      {showSkipConfirmation && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowSkipConfirmation(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="px-4 py-3 flex items-center justify-center bg-yellow-500">
+              <svg className="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="text-white font-semibold">Document Upload Required</span>
+            </div>
+            <div className="px-6 py-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Are you sure you want to skip?</h3>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <ul className="text-sm text-yellow-800 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>You will be required to upload your VAT Certificate and Company Registration documents <strong>before your account can be fully verified</strong>.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>Some features may be <strong>limited</strong> until documents are uploaded and verified.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>You will need to manually enter all company information.</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSkipConfirmation(false)}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium"
+                >
+                  Go Back
+                </button>
+                <button
+                  onClick={handleSkipDocuments}
+                  className="flex-1 px-4 py-3 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 font-medium"
+                >
+                  I Understand, Skip
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <RegistrationBottomToolbar
+        steps={REGISTRATION_STEPS}
+        currentStep={currentStep}
+        onStepChange={handleStepChange}
+        canNavigateToStep={canNavigateToStep}
+      />
+    </>
   );
 }

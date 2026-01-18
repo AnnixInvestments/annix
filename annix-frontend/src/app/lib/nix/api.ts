@@ -84,6 +84,70 @@ export interface NixCorrectionPayload {
   userId?: number;
 }
 
+export type RegistrationDocumentType = 'vat' | 'registration' | 'bee';
+
+export interface ExpectedCompanyData {
+  vatNumber?: string;
+  registrationNumber?: string;
+  companyName?: string;
+  streetAddress?: string;
+  city?: string;
+  provinceState?: string;
+  postalCode?: string;
+  beeLevel?: number;
+}
+
+export interface FieldVerificationResult {
+  field: string;
+  expected: string | number | null;
+  extracted: string | number | null;
+  match: boolean;
+  similarity?: number;
+  autoCorrectValue?: string | number;
+}
+
+export interface ExtractedRegistrationData {
+  vatNumber?: string;
+  registrationNumber?: string;
+  companyName?: string;
+  streetAddress?: string;
+  city?: string;
+  provinceState?: string;
+  postalCode?: string;
+  beeLevel?: number;
+  beeExpiryDate?: string;
+  verificationAgency?: string;
+  confidence: number;
+  fieldsExtracted: string[];
+}
+
+export interface AutoCorrection {
+  field: string;
+  value: string | number;
+}
+
+export interface RegistrationVerificationResult {
+  success: boolean;
+  documentType: RegistrationDocumentType;
+  extractedData: ExtractedRegistrationData;
+  fieldResults: FieldVerificationResult[];
+  overallConfidence: number;
+  allFieldsMatch: boolean;
+  autoCorrections: AutoCorrection[];
+  warnings: string[];
+  ocrMethod: 'pdf-parse' | 'tesseract' | 'ai' | 'none';
+  processingTimeMs: number;
+  mismatchReport?: string;
+}
+
+export interface RegistrationBatchResult {
+  results: RegistrationVerificationResult[];
+  allSuccess: boolean;
+  allFieldsMatch: boolean;
+  combinedAutoCorrections: AutoCorrection[];
+  totalProcessingTimeMs: number;
+}
+
 export const nixApi = {
   uploadAndProcess: async (file: File, userId?: number, rfqId?: number): Promise<NixProcessResponse> => {
     if (!file || !(file instanceof File)) {
@@ -232,6 +296,101 @@ export const nixApi = {
     if (!response.ok) {
       console.warn('[Nix] Failed to submit correction:', await response.text());
       return { success: false };
+    }
+
+    return response.json();
+  },
+
+  verifyRegistrationDocument: async (
+    file: File,
+    documentType: RegistrationDocumentType,
+    expectedData: ExpectedCompanyData,
+  ): Promise<RegistrationVerificationResult> => {
+    if (!file || !(file instanceof File)) {
+      throw new Error('Invalid file object provided');
+    }
+
+    let fileData: ArrayBuffer;
+    try {
+      fileData = await file.arrayBuffer();
+    } catch {
+      throw new Error(
+        `Cannot read "${file.name}". The file may be open in another application. Please close it and try again.`,
+      );
+    }
+
+    const blob = new Blob([fileData], { type: file.type });
+    const formData = new FormData();
+    formData.append('file', blob, file.name);
+    formData.append('documentType', documentType);
+    formData.append('expectedData', JSON.stringify(expectedData));
+
+    const baseUrl = browserBaseUrl();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    console.log('[Nix] Verifying registration document:', file.name, documentType);
+
+    const response = await fetch(`${baseUrl}/nix/verify-registration-document`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Document verification failed: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  verifyRegistrationBatch: async (
+    files: Array<{ file: File; documentType: RegistrationDocumentType }>,
+    expectedData: ExpectedCompanyData,
+  ): Promise<RegistrationBatchResult> => {
+    const formData = new FormData();
+    const documentTypes: RegistrationDocumentType[] = [];
+
+    for (const { file, documentType } of files) {
+      if (!file || !(file instanceof File)) {
+        throw new Error('Invalid file object provided');
+      }
+
+      let fileData: ArrayBuffer;
+      try {
+        fileData = await file.arrayBuffer();
+      } catch {
+        throw new Error(
+          `Cannot read "${file.name}". The file may be open in another application. Please close it and try again.`,
+        );
+      }
+
+      const blob = new Blob([fileData], { type: file.type });
+      formData.append('files', blob, file.name);
+      documentTypes.push(documentType);
+    }
+
+    formData.append('documentTypes', JSON.stringify(documentTypes));
+    formData.append('expectedData', JSON.stringify(expectedData));
+
+    const baseUrl = browserBaseUrl();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    console.log('[Nix] Verifying registration batch:', files.length, 'documents');
+
+    const response = await fetch(`${baseUrl}/nix/verify-registration-batch`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Batch verification failed: ${errorText}`);
     }
 
     return response.json();

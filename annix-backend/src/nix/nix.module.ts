@@ -10,6 +10,7 @@ import { NixClarification } from './entities/nix-clarification.entity';
 import { ExcelExtractorService } from './services/excel-extractor.service';
 import { PdfExtractorService } from './services/pdf-extractor.service';
 import { AiExtractionService } from './ai-providers/ai-extraction.service';
+import { RegistrationDocumentVerifierService } from './services/registration-document-verifier.service';
 
 @Module({
   imports: [
@@ -27,7 +28,13 @@ import { AiExtractionService } from './ai-providers/ai-extraction.service';
     }),
   ],
   controllers: [NixController],
-  providers: [NixService, ExcelExtractorService, PdfExtractorService, AiExtractionService],
-  exports: [NixService, AiExtractionService],
+  providers: [
+    NixService,
+    ExcelExtractorService,
+    PdfExtractorService,
+    AiExtractionService,
+    RegistrationDocumentVerifierService,
+  ],
+  exports: [NixService, AiExtractionService, RegistrationDocumentVerifierService],
 })
 export class NixModule {}

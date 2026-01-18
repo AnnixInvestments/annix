@@ -7,8 +7,28 @@ import { useDeviceFingerprint } from '@/app/hooks/useDeviceFingerprint';
 import { supplierAuthApi, SupplierCompanyDto, SupplierProfileDto } from '@/app/lib/api/supplierApi';
 import { CurrencySelect, DEFAULT_CURRENCY } from '@/app/components/ui/CurrencySelect';
 import { currencyCodeForCountry } from '@/app/lib/currencies';
+import { log } from '@/app/lib/logger';
+import NixRegistrationVerifier, {
+  VerificationResult,
+  AutoCorrection,
+  RegistrationDocumentType,
+} from '@/app/lib/nix/components/NixRegistrationVerifier';
+import { nixApi } from '@/app/lib/nix/api';
+import {
+  RegistrationTopToolbar,
+  RegistrationBottomToolbar,
+  StepConfig,
+} from '@/app/components/RegistrationToolbar';
 
 type Step = 'company' | 'bee' | 'documents' | 'profile' | 'security' | 'complete';
+
+const REGISTRATION_STEPS: StepConfig[] = [
+  { id: 'company', label: 'Company' },
+  { id: 'bee', label: 'BEE' },
+  { id: 'documents', label: 'Documents' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'security', label: 'Security' },
+];
 
 const COMPANY_SIZE_OPTIONS = [
   { value: 'micro', label: 'Micro (1-9 employees)' },
@@ -102,6 +122,38 @@ export default function SupplierRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const [nixVerification, setNixVerification] = useState<{
+    isVisible: boolean;
+    isProcessing: boolean;
+    currentDocumentType: RegistrationDocumentType;
+    result: VerificationResult | null;
+  }>({
+    isVisible: false,
+    isProcessing: false,
+    currentDocumentType: 'vat',
+    result: null,
+  });
+
+  const [documentsValidated, setDocumentsValidated] = useState<{
+    vat: boolean;
+    registration: boolean;
+    bee: boolean;
+  }>({
+    vat: false,
+    registration: false,
+    bee: false,
+  });
+
+  const [pendingManualReview, setPendingManualReview] = useState<{
+    vat: boolean;
+    registration: boolean;
+    bee: boolean;
+  }>({
+    vat: false,
+    registration: false,
+    bee: false,
+  });
+
   // Validate password requirements
   const validatePassword = (password: string): string[] => {
     const errors: string[] = [];
@@ -152,9 +204,116 @@ export default function SupplierRegistrationPage() {
     setSecurity((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleFileSelect = (file: File | null, documentType: 'vat' | 'registration' | 'bee') => {
+  const handleFileSelect = async (file: File | null, documentType: 'vat' | 'registration' | 'bee') => {
     const key = documentType === 'vat' ? 'vatDocument' : documentType === 'registration' ? 'companyRegDocument' : 'beeDocument';
     setDocuments((prev) => ({ ...prev, [key]: file }));
+
+    if (!file) return;
+
+    setNixVerification({
+      isVisible: true,
+      isProcessing: true,
+      currentDocumentType: documentType,
+      result: null,
+    });
+
+    try {
+      let expectedData: any;
+
+      if (documentType === 'vat') {
+        expectedData = {
+          vatNumber: company.vatNumber,
+          registrationNumber: company.registrationNumber,
+          companyName: company.legalName,
+        };
+      } else if (documentType === 'registration') {
+        expectedData = {
+          registrationNumber: company.registrationNumber,
+          companyName: company.legalName,
+          streetAddress: company.streetAddress,
+          city: company.city,
+          provinceState: company.provinceState,
+          postalCode: company.postalCode,
+        };
+      } else {
+        expectedData = {
+          companyName: company.legalName,
+          beeLevel: company.beeLevel,
+        };
+      }
+
+      const result = await nixApi.verifyRegistrationDocument(file, documentType, expectedData);
+
+      log.debug('=== NIX VERIFICATION RESULT ===');
+      log.debug('Document Type:', documentType);
+      log.debug('Expected Data:', expectedData);
+      log.debug('Result:', result);
+      log.debug('===============================');
+
+      setNixVerification(prev => ({
+        ...prev,
+        isProcessing: false,
+        result,
+      }));
+
+      if (result.allFieldsMatch) {
+        setDocumentsValidated(prev => ({ ...prev, [documentType]: true }));
+      }
+    } catch (err) {
+      log.error('Nix verification failed:', err);
+      setNixVerification(prev => ({
+        ...prev,
+        isProcessing: false,
+        result: {
+          success: false,
+          documentType,
+          extractedData: { confidence: 0, fieldsExtracted: [] },
+          fieldResults: [],
+          overallConfidence: 0,
+          allFieldsMatch: false,
+          autoCorrections: [],
+          warnings: [err instanceof Error ? err.message : 'Verification failed'],
+          ocrMethod: 'none',
+          processingTimeMs: 0,
+        },
+      }));
+    }
+  };
+
+  const handleNixApplyCorrections = (corrections: AutoCorrection[]) => {
+    corrections.forEach(({ field, value }) => {
+      if (field in company || field === 'companyName') {
+        const companyField = field === 'companyName' ? 'legalName' : field;
+        setCompany(prev => ({ ...prev, [companyField]: value }));
+      }
+    });
+
+    if (nixVerification.result) {
+      setDocumentsValidated(prev => ({ ...prev, [nixVerification.currentDocumentType]: true }));
+    }
+
+    setNixVerification(prev => ({ ...prev, isVisible: false, result: null }));
+  };
+
+  const handleNixProceedWithMismatch = () => {
+    setPendingManualReview(prev => ({ ...prev, [nixVerification.currentDocumentType]: true }));
+    setDocumentsValidated(prev => ({ ...prev, [nixVerification.currentDocumentType]: true }));
+    setNixVerification(prev => ({ ...prev, isVisible: false, result: null }));
+  };
+
+  const handleNixRetryUpload = () => {
+    const docType = nixVerification.currentDocumentType;
+    const key = docType === 'vat' ? 'vatDocument' : docType === 'registration' ? 'companyRegDocument' : 'beeDocument';
+    setDocuments(prev => ({ ...prev, [key]: null }));
+    setDocumentsValidated(prev => ({ ...prev, [docType]: false }));
+    setNixVerification(prev => ({ ...prev, isVisible: false, result: null }));
+  };
+
+  const handleNixClose = () => {
+    if (nixVerification.result?.allFieldsMatch) {
+      setDocumentsValidated(prev => ({ ...prev, [nixVerification.currentDocumentType]: true }));
+    }
+    setNixVerification(prev => ({ ...prev, isVisible: false, result: null }));
   };
 
   const isCompanyValid = (): boolean => {
@@ -199,6 +358,25 @@ export default function SupplierRegistrationPage() {
       passwordErrors.length === 0 &&
       fingerprint
     );
+  };
+
+  const canNavigateToStep = (step: string): boolean => {
+    const stepIndex = REGISTRATION_STEPS.findIndex((s) => s.id === step);
+    const currentIndex = REGISTRATION_STEPS.findIndex((s) => s.id === currentStep);
+
+    if (stepIndex <= currentIndex) return true;
+    if (step === 'company') return true;
+    if (step === 'bee') return isCompanyValid();
+    if (step === 'documents') return isCompanyValid() && isBeeValid();
+    if (step === 'profile') return isCompanyValid() && isBeeValid() && isDocumentsValid();
+    if (step === 'security') return isCompanyValid() && isBeeValid() && isDocumentsValid() && isProfileValid();
+    return false;
+  };
+
+  const handleStepChange = (step: string) => {
+    if (canNavigateToStep(step)) {
+      setCurrentStep(step as Step);
+    }
   };
 
   const handleSubmit = async () => {
@@ -1055,39 +1233,60 @@ export default function SupplierRegistrationPage() {
   );
 
   return (
-    <div className="min-h-screen py-12">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
+    <>
+      <RegistrationTopToolbar title="Supplier Registration" homeHref="/" />
+
+      <div className="min-h-screen pt-20 pb-24">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold text-white">Supplier Registration</h1>
+            <p className="mt-2 text-blue-200">Create your supplier account to start onboarding</p>
           </div>
-          <h1 className="text-3xl font-bold text-white">Supplier Registration</h1>
-          <p className="mt-2 text-blue-200">Create your supplier account to start onboarding</p>
+
+          <div className="bg-white shadow rounded-lg p-8">
+            {currentStep === 'company' && renderCompanyStep()}
+            {currentStep === 'bee' && renderBeeStep()}
+            {currentStep === 'documents' && renderDocumentsStep()}
+            {currentStep === 'profile' && renderProfileStep()}
+            {currentStep === 'security' && renderSecurityStep()}
+            {currentStep === 'complete' && renderCompleteStep()}
+          </div>
+
+          {currentStep !== 'complete' && (
+            <p className="text-center mt-6 text-blue-200">
+              Already have an account?{' '}
+              <Link href="/supplier/login" className="text-white hover:underline font-medium">
+                Sign in
+              </Link>
+            </p>
+          )}
         </div>
 
-        {currentStep !== 'complete' && renderStepIndicator()}
-
-        <div className="bg-white shadow rounded-lg p-8">
-          {currentStep === 'company' && renderCompanyStep()}
-          {currentStep === 'bee' && renderBeeStep()}
-          {currentStep === 'documents' && renderDocumentsStep()}
-          {currentStep === 'profile' && renderProfileStep()}
-          {currentStep === 'security' && renderSecurityStep()}
-          {currentStep === 'complete' && renderCompleteStep()}
-        </div>
-
-        {currentStep !== 'complete' && (
-          <p className="text-center mt-6 text-blue-200">
-            Already have an account?{' '}
-            <Link href="/supplier/login" className="text-white hover:underline font-medium">
-              Sign in
-            </Link>
-          </p>
-        )}
+        {/* Nix AI Registration Document Verifier */}
+        <NixRegistrationVerifier
+          isVisible={nixVerification.isVisible}
+          isProcessing={nixVerification.isProcessing}
+          verificationResult={nixVerification.result}
+          documentType={nixVerification.currentDocumentType}
+          onApplyCorrections={handleNixApplyCorrections}
+          onProceedWithMismatch={handleNixProceedWithMismatch}
+          onRetryUpload={handleNixRetryUpload}
+          onClose={handleNixClose}
+        />
       </div>
-    </div>
+
+      <RegistrationBottomToolbar
+        steps={REGISTRATION_STEPS}
+        currentStep={currentStep}
+        onStepChange={handleStepChange}
+        canNavigateToStep={canNavigateToStep}
+      />
+    </>
   );
 }

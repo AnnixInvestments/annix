@@ -7,9 +7,10 @@ import {
   ParseIntPipe,
   UseInterceptors,
   UploadedFile,
+  UploadedFiles,
   BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -26,14 +27,26 @@ import {
   SubmitClarificationDto,
   SubmitClarificationResponseDto,
 } from './dto/submit-clarification.dto';
+import {
+  VerifyRegistrationDocumentResponseDto,
+  VerifyRegistrationBatchResponseDto,
+} from './dto/verify-registration-document.dto';
 import { NixExtraction } from './entities/nix-extraction.entity';
 import { NixClarification } from './entities/nix-clarification.entity';
 import { NixLearning } from './entities/nix-learning.entity';
+import {
+  RegistrationDocumentVerifierService,
+  RegistrationDocumentType,
+  ExpectedCompanyData,
+} from './services/registration-document-verifier.service';
 
 @ApiTags('Nix AI Assistant')
 @Controller('nix')
 export class NixController {
-  constructor(private readonly nixService: NixService) {}
+  constructor(
+    private readonly nixService: NixService,
+    private readonly registrationVerifier: RegistrationDocumentVerifierService,
+  ) {}
 
   @Post('process')
   @ApiOperation({ summary: 'Process a document for extraction' })
@@ -157,5 +170,127 @@ export class NixController {
     },
   ): Promise<{ success: boolean }> {
     return this.nixService.recordCorrection(body);
+  }
+
+  @Post('verify-registration-document')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Verify a registration document against expected company data' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        documentType: { type: 'string', enum: ['vat', 'registration', 'bee'] },
+        expectedData: { type: 'string', description: 'JSON stringified ExpectedCompanyData' },
+      },
+      required: ['file', 'documentType', 'expectedData'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Document verification result', type: VerifyRegistrationDocumentResponseDto })
+  async verifyRegistrationDocument(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('documentType') documentType: string,
+    @Body('expectedData') expectedDataJson: string,
+  ): Promise<VerifyRegistrationDocumentResponseDto> {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    if (!['vat', 'registration', 'bee'].includes(documentType)) {
+      throw new BadRequestException('Invalid document type. Must be one of: vat, registration, bee');
+    }
+
+    let expectedData: ExpectedCompanyData;
+    try {
+      expectedData = JSON.parse(expectedDataJson);
+    } catch {
+      throw new BadRequestException('Invalid expectedData JSON');
+    }
+
+    const result = await this.registrationVerifier.verifyDocument(
+      file,
+      documentType as RegistrationDocumentType,
+      expectedData,
+    );
+
+    return {
+      ...result,
+      mismatchReport: this.registrationVerifier.generateMismatchReport(result),
+    };
+  }
+
+  @Post('verify-registration-batch')
+  @UseInterceptors(FilesInterceptor('files', 5))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Verify multiple registration documents at once' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        files: { type: 'array', items: { type: 'string', format: 'binary' } },
+        documentTypes: { type: 'string', description: 'JSON array of document types matching files order' },
+        expectedData: { type: 'string', description: 'JSON stringified ExpectedCompanyData' },
+      },
+      required: ['files', 'documentTypes', 'expectedData'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Batch verification result', type: VerifyRegistrationBatchResponseDto })
+  async verifyRegistrationBatch(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body('documentTypes') documentTypesJson: string,
+    @Body('expectedData') expectedDataJson: string,
+  ): Promise<VerifyRegistrationBatchResponseDto> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files uploaded');
+    }
+
+    let documentTypes: RegistrationDocumentType[];
+    try {
+      documentTypes = JSON.parse(documentTypesJson);
+    } catch {
+      throw new BadRequestException('Invalid documentTypes JSON');
+    }
+
+    if (documentTypes.length !== files.length) {
+      throw new BadRequestException('Number of document types must match number of files');
+    }
+
+    let expectedData: ExpectedCompanyData;
+    try {
+      expectedData = JSON.parse(expectedDataJson);
+    } catch {
+      throw new BadRequestException('Invalid expectedData JSON');
+    }
+
+    const fileDocuments = files.map((file, index) => ({
+      file,
+      documentType: documentTypes[index],
+    }));
+
+    const results = await this.registrationVerifier.verifyBatch(fileDocuments, expectedData);
+
+    const resultsWithReports = results.map(result => ({
+      ...result,
+      mismatchReport: this.registrationVerifier.generateMismatchReport(result),
+    }));
+
+    const combinedAutoCorrections = resultsWithReports
+      .flatMap(r => r.autoCorrections)
+      .reduce((acc, correction) => {
+        const existing = acc.find(c => c.field === correction.field);
+        if (!existing) {
+          acc.push(correction);
+        }
+        return acc;
+      }, [] as Array<{ field: string; value: string | number }>);
+
+    return {
+      results: resultsWithReports,
+      allSuccess: resultsWithReports.every(r => r.success),
+      allFieldsMatch: resultsWithReports.every(r => r.allFieldsMatch),
+      combinedAutoCorrections,
+      totalProcessingTimeMs: resultsWithReports.reduce((sum, r) => sum + r.processingTimeMs, 0),
+    };
   }
 }
