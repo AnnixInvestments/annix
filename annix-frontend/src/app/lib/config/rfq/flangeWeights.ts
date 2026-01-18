@@ -126,6 +126,120 @@ export const SANS_1123_PLATE_FLANGE_WEIGHT: Record<string, Record<number, number
   }
 };
 
+export const SANS_1123_BACKING_RING_WEIGHT: Record<string, Record<number, number>> = {
+  '600/1': {
+    15: 0.18, 20: 0.25, 25: 0.30, 32: 0.48, 40: 0.55, 50: 0.60, 65: 0.75, 80: 1.20,
+    100: 1.33, 125: 1.75, 150: 1.93, 200: 2.78, 250: 3.60, 300: 4.80, 350: 6.75,
+    400: 8.0, 450: 9.7, 500: 10.6, 600: 14.0, 700: 21.2, 750: 25.0,
+    800: 28.8, 900: 38.3, 1000: 50.0, 1050: 59.0, 1200: 82.5
+  },
+  '1000/1': {
+    15: 0.27, 20: 0.38, 25: 0.45, 32: 0.74, 40: 0.84, 50: 1.11, 65: 1.28, 80: 1.45,
+    100: 1.78, 125: 2.19, 150: 2.89, 200: 3.75, 250: 4.75, 300: 5.50, 350: 8.25,
+    400: 11.1, 450: 13.75, 500: 16.42, 600: 22.25, 700: 33.5, 750: 39.75,
+    800: 47.25, 900: 63.0, 1000: 77.42, 1050: 89.0, 1200: 124.0
+  },
+  '1600/1': {
+    15: 0.27, 20: 0.38, 25: 0.45, 32: 0.74, 40: 0.84, 50: 1.11, 65: 1.41, 80: 1.75,
+    100: 2.45, 125: 3.31, 150: 4.16, 200: 7.25, 250: 11.85, 300: 18.2, 350: 26.9,
+    400: 30.25, 450: 25.0, 500: 26.25, 600: 41.75, 700: 45.75, 750: 55.5,
+    800: 65.25, 900: 86.5, 1000: 116.0, 1050: 136.5, 1200: 198.0
+  },
+  '2500/1': {
+    15: 0.27, 20: 0.38, 25: 0.45, 32: 0.74, 40: 0.84, 50: 1.11, 65: 1.41, 80: 1.75,
+    100: 2.45, 125: 3.31, 150: 4.16, 200: 7.25, 250: 11.85, 300: 18.2, 350: 26.9,
+    400: 39.2, 450: 48.5, 500: 35.7, 600: 52.25, 700: 79.5, 750: 94.75,
+    800: 109.65, 900: 148.25, 1000: 198.0, 1050: 231.0, 1200: 338.0
+  },
+  '4000/1': {
+    15: 0.33, 20: 0.45, 25: 0.53, 32: 0.89, 40: 1.01, 50: 1.34, 65: 1.70, 80: 2.10,
+    100: 2.95, 125: 3.96, 150: 5.0, 200: 8.7, 250: 14.2, 300: 21.8, 350: 32.25,
+    400: 46.85, 450: 58.5, 500: 43.3, 600: 64.0, 700: 97.0, 750: 115.5,
+    800: 132.25, 900: 177.0, 1000: 239.5, 1050: 280.5, 1200: 411.5
+  }
+};
+
+export const SANS_1123_WELD_NECK_WEIGHT: Record<string, Record<number, number>> = {
+  '600/2': {
+    15: 0.46, 20: 0.65, 25: 0.78, 32: 1.24, 40: 1.43, 50: 1.56, 65: 1.95, 80: 3.12,
+    100: 3.45, 125: 4.55, 150: 5.01, 200: 7.22, 250: 9.36, 300: 12.48, 350: 17.55,
+    400: 20.8, 450: 25.22, 500: 27.56, 600: 36.4, 700: 54.99, 750: 65.0,
+    800: 74.75, 900: 99.45, 1000: 130.0, 1050: 153.4, 1200: 214.5
+  },
+  '1000/2': {
+    15: 0.70, 20: 0.99, 25: 1.17, 32: 1.91, 40: 2.18, 50: 2.87, 65: 3.32, 80: 3.77,
+    100: 4.62, 125: 5.68, 150: 7.50, 200: 9.75, 250: 12.35, 300: 14.3, 350: 21.45,
+    400: 28.86, 450: 35.75, 500: 42.69, 600: 57.85, 700: 87.1, 750: 103.35,
+    800: 122.85, 900: 163.8, 1000: 201.29, 1050: 231.4, 1200: 322.4
+  },
+  '1600/2': {
+    15: 0.70, 20: 0.99, 25: 1.17, 32: 1.91, 40: 2.18, 50: 2.87, 65: 3.65, 80: 4.55,
+    100: 6.37, 125: 8.59, 150: 10.82, 200: 18.85, 250: 30.81, 300: 47.32, 350: 69.94,
+    400: 78.65, 450: 65.0, 500: 68.25, 600: 108.55, 700: 118.95, 750: 144.3,
+    800: 169.65, 900: 224.9, 1000: 301.6, 1050: 354.9, 1200: 514.8
+  },
+  '2500/2': {
+    15: 0.70, 20: 0.99, 25: 1.17, 32: 1.91, 40: 2.18, 50: 2.87, 65: 3.65, 80: 4.55,
+    100: 6.37, 125: 8.59, 150: 10.82, 200: 18.85, 250: 30.81, 300: 47.32, 350: 69.94,
+    400: 101.92, 450: 126.1, 500: 92.82, 600: 135.85, 700: 206.7, 750: 246.35,
+    800: 285.09, 900: 385.45, 1000: 514.8, 1050: 600.6, 1200: 878.8
+  },
+  '4000/2': {
+    15: 0.85, 20: 1.16, 25: 1.37, 32: 2.31, 40: 2.63, 50: 3.47, 65: 4.42, 80: 5.46,
+    100: 7.67, 125: 10.30, 150: 13.0, 200: 22.62, 250: 36.92, 300: 56.68, 350: 83.85,
+    400: 121.81, 450: 152.1, 500: 112.58, 600: 166.4, 700: 252.2, 750: 300.3,
+    800: 343.85, 900: 460.2, 1000: 622.7, 1050: 729.3, 1200: 1069.9
+  }
+};
+
+export const SANS_1123_THREADED_WEIGHT: Record<string, Record<number, number>> = {
+  '600/4': {
+    15: 0.32, 20: 0.45, 25: 0.54, 32: 0.86, 40: 0.99, 50: 1.08, 65: 1.35, 80: 2.16,
+    100: 2.39, 125: 3.15, 150: 3.47, 200: 4.99, 250: 6.48, 300: 8.64
+  },
+  '1000/4': {
+    15: 0.49, 20: 0.68, 25: 0.81, 32: 1.32, 40: 1.51, 50: 1.99, 65: 2.30, 80: 2.61,
+    100: 3.20, 125: 3.93, 150: 5.19, 200: 6.75, 250: 8.55, 300: 9.9
+  },
+  '1600/4': {
+    15: 0.49, 20: 0.68, 25: 0.81, 32: 1.32, 40: 1.51, 50: 1.99, 65: 2.53, 80: 3.15,
+    100: 4.41, 125: 5.95, 150: 7.49, 200: 13.05, 250: 21.33, 300: 32.76
+  }
+};
+
+export const SANS_1123_SLIP_ON_BOSS_WEIGHT: Record<string, Record<number, number>> = {
+  '600/5': {
+    15: 0.39, 20: 0.55, 25: 0.66, 32: 1.04, 40: 1.21, 50: 1.32, 65: 1.65, 80: 2.64,
+    100: 2.92, 125: 3.85, 150: 4.24, 200: 6.11, 250: 7.92, 300: 10.56, 350: 14.85,
+    400: 17.6, 450: 21.34, 500: 23.32, 600: 30.8, 700: 46.53, 750: 55.0,
+    800: 63.25, 900: 84.15, 1000: 110.0, 1050: 129.8, 1200: 181.5
+  },
+  '1000/5': {
+    15: 0.59, 20: 0.84, 25: 0.99, 32: 1.62, 40: 1.85, 50: 2.43, 65: 2.81, 80: 3.19,
+    100: 3.91, 125: 4.81, 150: 6.35, 200: 8.25, 250: 10.45, 300: 12.1, 350: 18.15,
+    400: 24.42, 450: 30.25, 500: 36.12, 600: 48.95, 700: 73.7, 750: 87.45,
+    800: 103.95, 900: 138.6, 1000: 170.32, 1050: 195.8, 1200: 272.8
+  },
+  '1600/5': {
+    15: 0.59, 20: 0.84, 25: 0.99, 32: 1.62, 40: 1.85, 50: 2.43, 65: 3.09, 80: 3.85,
+    100: 5.39, 125: 7.27, 150: 9.15, 200: 15.95, 250: 26.07, 300: 40.04, 350: 59.18,
+    400: 66.55, 450: 55.0, 500: 57.75, 600: 91.85, 700: 100.65, 750: 122.1,
+    800: 143.55, 900: 190.3, 1000: 255.2, 1050: 300.3, 1200: 435.6
+  },
+  '2500/5': {
+    15: 0.59, 20: 0.84, 25: 0.99, 32: 1.62, 40: 1.85, 50: 2.43, 65: 3.09, 80: 3.85,
+    100: 5.39, 125: 7.27, 150: 9.15, 200: 15.95, 250: 26.07, 300: 40.04, 350: 59.18,
+    400: 86.24, 450: 106.7, 500: 78.54, 600: 114.95, 700: 174.9, 750: 208.45,
+    800: 241.23, 900: 326.15, 1000: 435.6, 1050: 508.2, 1200: 743.6
+  },
+  '4000/5': {
+    15: 0.72, 20: 0.98, 25: 1.16, 32: 1.96, 40: 2.22, 50: 2.94, 65: 3.74, 80: 4.62,
+    100: 6.49, 125: 8.71, 150: 11.0, 200: 19.14, 250: 31.24, 300: 47.96, 350: 70.95,
+    400: 103.07, 450: 128.7, 500: 95.26, 600: 140.8, 700: 213.4, 750: 254.1,
+    800: 290.95, 900: 389.4, 1000: 526.9, 1050: 617.1, 1200: 905.3
+  }
+};
+
 export const SANS_1123_BLIND_FLANGE_WEIGHT: Record<string, Record<number, number>> = {
   '600/8': {
     15: 0.36, 20: 0.48, 25: 0.58, 32: 0.94, 40: 1.09, 50: 1.54, 65: 2.02, 80: 3.07,
@@ -354,46 +468,72 @@ export const flangeWeight = (
 ): number => {
   const designation = pressureClassDesignation || 'PN16';
 
-  // Check if this is a SABS/SANS 1123 standard (South African standard - both naming conventions)
   const isSabsSans1123 = flangeStandard && (
     flangeStandard.toUpperCase().includes('SABS') && flangeStandard.includes('1123') ||
     flangeStandard.toUpperCase().includes('SANS') && flangeStandard.includes('1123')
   );
 
   const sansTableMatch = designation.match(/^(\d+)\/(\d)$/);
-  // Also match pure numeric designations like "1000" for SABS 1123
   const numericMatch = designation.match(/^(\d+)$/);
 
   if (sansTableMatch || isSabsSans1123) {
-    // For SABS/SANS 1123, always use /3 table (plate flanges) as the base
-    // Handle both "1000/3" format and pure "1000" format
-    let tableDesignation: string;
     let kpa: number;
+    let flangeType: string;
 
     if (sansTableMatch) {
-      tableDesignation = `${sansTableMatch[1]}/3`;
       kpa = parseInt(sansTableMatch[1]);
+      flangeType = sansTableMatch[2];
     } else if (numericMatch) {
-      // Pure numeric like "1000" - append /3 for table lookup
-      tableDesignation = `${numericMatch[1]}/3`;
       kpa = parseInt(numericMatch[1]);
+      flangeType = '3';
     } else {
-      // Fallback - try to extract kPa value from designation
       const kpaMatch = designation.match(/(\d{3,4})/);
       kpa = kpaMatch ? parseInt(kpaMatch[1]) : 1000;
-      tableDesignation = `${kpa}/3`;
+      flangeType = '3';
     }
 
-    const sansWeight = SANS_1123_PLATE_FLANGE_WEIGHT[tableDesignation]?.[nominalBoreMm];
-    if (sansWeight) {
-      return sansWeight;
+    const tableDesignation = `${kpa}/${flangeType}`;
+    const fallbackKpa = kpa <= 600 ? '600' : kpa <= 1000 ? '1000' : kpa <= 1600 ? '1600' : kpa <= 2500 ? '2500' : '4000';
+    const fallbackDesignation = `${fallbackKpa}/${flangeType}`;
+
+    let weightTable: Record<string, Record<number, number>> | null = null;
+
+    if (flangeType === '1') {
+      weightTable = SANS_1123_BACKING_RING_WEIGHT;
+    } else if (flangeType === '2') {
+      weightTable = SANS_1123_WELD_NECK_WEIGHT;
+    } else if (flangeType === '3') {
+      weightTable = SANS_1123_PLATE_FLANGE_WEIGHT;
+    } else if (flangeType === '4') {
+      weightTable = SANS_1123_THREADED_WEIGHT;
+    } else if (flangeType === '5') {
+      weightTable = SANS_1123_SLIP_ON_BOSS_WEIGHT;
+    } else if (flangeType === '8') {
+      weightTable = SANS_1123_BLIND_FLANGE_WEIGHT;
+    } else {
+      weightTable = SANS_1123_PLATE_FLANGE_WEIGHT;
     }
 
-    // Fallback to nearest pressure class if exact match not found
-    const fallbackTable = kpa <= 600 ? '600/3' : kpa <= 1000 ? '1000/3' : kpa <= 1600 ? '1600/3' : kpa <= 2500 ? '2500/3' : '4000/3';
-    const fallbackWeight = SANS_1123_PLATE_FLANGE_WEIGHT[fallbackTable]?.[nominalBoreMm];
-    if (fallbackWeight) {
-      return fallbackWeight;
+    if (weightTable) {
+      const exactWeight = weightTable[tableDesignation]?.[nominalBoreMm];
+      if (exactWeight) {
+        return exactWeight;
+      }
+
+      const fallbackWeight = weightTable[fallbackDesignation]?.[nominalBoreMm];
+      if (fallbackWeight) {
+        return fallbackWeight;
+      }
+
+      const plateWeight = SANS_1123_PLATE_FLANGE_WEIGHT[`${fallbackKpa}/3`]?.[nominalBoreMm];
+      if (plateWeight) {
+        if (flangeType === '1') return plateWeight * 0.5;
+        if (flangeType === '2') return plateWeight * 1.3;
+        if (flangeType === '4') return plateWeight * 0.9;
+        if (flangeType === '5') return plateWeight * 1.1;
+        if (flangeType === '8') return plateWeight * 1.5;
+        return plateWeight;
+      }
     }
   }
 
@@ -436,15 +576,12 @@ export interface Sabs1123FlangeType {
 }
 
 export const SABS_1123_FLANGE_TYPES: Sabs1123FlangeType[] = [
-  { code: '/1', name: 'Weld Neck', description: 'WN - Weld Neck flange for high pressure applications' },
-  { code: '/2', name: 'Threaded', description: 'THD - Threaded flange for low pressure, non-critical services' },
-  { code: '/3', name: 'Slip-On', description: 'SO - Slip-On flange, most common type' },
-  { code: '/4', name: 'Lap Joint', description: 'LJ - Lap Joint flange with stub end' },
-  { code: '/5', name: 'Socket Weld', description: 'SW - Socket Weld flange for small bore piping' },
-  { code: '/6', name: 'Blind', description: 'BL - Blind flange to close pipe ends' },
-  { code: '/7', name: 'Orifice', description: 'Orifice flange for flow measurement' },
-  { code: '/8', name: 'Spectacle Blind', description: 'Spectacle Blind for isolation purposes' },
-  { code: '/9', name: 'Reducing', description: 'Reducing flange for pipe size transitions' },
+  { code: '/1', name: 'Backing Ring', description: 'BR - Backing Ring flange for rotating flange assemblies' },
+  { code: '/2', name: 'Weld Neck', description: 'WN - Weld Neck flange for high pressure applications' },
+  { code: '/3', name: 'Slip-On', description: 'SO - Slip-On Plate flange, most common type' },
+  { code: '/4', name: 'Threaded', description: 'THD - Screwed/Threaded flange for low pressure services' },
+  { code: '/5', name: 'Slip-On Boss', description: 'SOB - Slip-On Boss flange' },
+  { code: '/8', name: 'Blind', description: 'BL - Blind/Blank flange to close pipe ends' },
 ];
 
 export const SABS_1123_PRESSURE_CLASSES = [
@@ -456,15 +593,12 @@ export const SABS_1123_PRESSURE_CLASSES = [
 ];
 
 export const BS_4504_FLANGE_TYPES: Sabs1123FlangeType[] = [
-  { code: '/1', name: 'Weld Neck', description: 'WN - Weld Neck flange for high pressure applications' },
-  { code: '/2', name: 'Threaded', description: 'THD - Threaded flange for low pressure, non-critical services' },
-  { code: '/3', name: 'Slip-On', description: 'SO - Slip-On flange, most common type' },
-  { code: '/4', name: 'Lap Joint', description: 'LJ - Lap Joint flange with stub end' },
-  { code: '/5', name: 'Socket Weld', description: 'SW - Socket Weld flange for small bore piping' },
-  { code: '/6', name: 'Blind', description: 'BL - Blind flange to close pipe ends' },
-  { code: '/7', name: 'Orifice', description: 'Orifice flange for flow measurement' },
-  { code: '/8', name: 'Spectacle Blind', description: 'Spectacle Blind for isolation purposes' },
-  { code: '/9', name: 'Reducing', description: 'Reducing flange for pipe size transitions' },
+  { code: '/1', name: 'Backing Ring', description: 'BR - Backing Ring flange for rotating flange assemblies' },
+  { code: '/2', name: 'Weld Neck', description: 'WN - Weld Neck flange for high pressure applications' },
+  { code: '/3', name: 'Slip-On', description: 'SO - Slip-On Plate flange, most common type' },
+  { code: '/4', name: 'Threaded', description: 'THD - Screwed/Threaded flange for low pressure services' },
+  { code: '/5', name: 'Slip-On Boss', description: 'SOB - Slip-On Boss flange' },
+  { code: '/8', name: 'Blind', description: 'BL - Blind/Blank flange to close pipe ends' },
 ];
 
 export const BS_4504_PRESSURE_CLASSES = [
@@ -477,6 +611,59 @@ export const BS_4504_PRESSURE_CLASSES = [
   { value: 100, label: 'PN100' },
   { value: 160, label: 'PN160' },
 ];
+
+export const tackWeldWeight = (nominalBoreMm: number, tackWeldEnds: number = 0): number => {
+  if (tackWeldEnds <= 0) return 0;
+
+  const pipeOd = NB_TO_OD_LOOKUP[nominalBoreMm] || nominalBoreMm * 1.1;
+  const tacksPerEnd = 4;
+  const tackLengthMm = 20;
+  const legSizeMm = Math.max(3, Math.min(6, nominalBoreMm * 0.02));
+
+  const totalTacks = tacksPerEnd * tackWeldEnds;
+  const totalTackLengthMm = totalTacks * tackLengthMm;
+
+  const volumePerMmMm3 = (legSizeMm * legSizeMm) / 2;
+  const totalVolumeMm3 = volumePerMmMm3 * totalTackLengthMm;
+
+  const steelDensityKgPerMm3 = 0.00000785;
+  const weightKg = totalVolumeMm3 * steelDensityKgPerMm3;
+
+  return Math.round(weightKg * 1000) / 1000;
+};
+
+export const closureWeight = (
+  nominalBoreMm: number,
+  closureLengthMm: number,
+  wallThicknessMm: number
+): number => {
+  if (!closureLengthMm || closureLengthMm <= 0) return 0;
+
+  const pipeOd = NB_TO_OD_LOOKUP[nominalBoreMm] || nominalBoreMm * 1.1;
+  const pipeId = pipeOd - (2 * wallThicknessMm);
+
+  const closureLengthM = closureLengthMm / 1000;
+  const odM = pipeOd / 1000;
+  const idM = pipeId / 1000;
+
+  const volumeM3 = Math.PI * ((Math.pow(odM, 2) - Math.pow(idM, 2)) / 4) * closureLengthM;
+  const steelDensity = 7850;
+  const weightKg = volumeM3 * steelDensity;
+
+  return Math.round(weightKg * 100) / 100;
+};
+
+export const closureLengthLimits = (nominalBoreMm: number): { min: number; max: number; recommended: number } => {
+  const minLength = Math.max(50, nominalBoreMm * 0.5);
+  const maxLength = Math.min(500, nominalBoreMm * 3);
+  const recommended = Math.max(100, Math.min(300, nominalBoreMm * 1.5));
+
+  return {
+    min: Math.round(minLength),
+    max: Math.round(maxLength),
+    recommended: Math.round(recommended)
+  };
+};
 
 export const retainingRingWeight = (nbMm: number, pipeOdMm?: number): number => {
   const pipeOd = pipeOdMm || NB_TO_OD_LOOKUP[nbMm] || nbMm * 1.05;

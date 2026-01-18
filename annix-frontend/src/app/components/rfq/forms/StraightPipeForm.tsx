@@ -7,6 +7,7 @@ import { getPipeEndConfigurationDetails } from '@/app/lib/utils/systemUtils';
 import { log } from '@/app/lib/logger';
 import {
   PIPE_END_OPTIONS,
+  BEND_END_OPTIONS,
   getScheduleListForSpec,
   NB_TO_OD_LOOKUP,
   weldCountPerPipe as getWeldCountPerPipe,
@@ -17,6 +18,14 @@ import {
   SABS_1123_PRESSURE_CLASSES,
   BS_4504_FLANGE_TYPES,
   BS_4504_PRESSURE_CLASSES,
+  flangeWeight as getFlangeWeight,
+  blankFlangeWeight as getBlankFlangeWeight,
+  sansBlankFlangeWeight,
+  tackWeldWeight as getTackWeldWeight,
+  closureWeight as getClosureWeight,
+  closureLengthLimits,
+  recommendedFlangeTypeCode,
+  recommendedPressureClassId,
 } from '@/app/lib/config/rfq';
 import {
   calculateMinWallThickness,
@@ -187,6 +196,7 @@ export default function StraightPipeForm({
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Working Pressure (bar)
+                        <span className="ml-1 text-gray-400 font-normal cursor-help" title="Design pressure for the piping system. Affects minimum wall thickness and recommended flange pressure class.">?</span>
                       </label>
                       <select
                         value={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || ''}
@@ -248,11 +258,15 @@ export default function StraightPipeForm({
                             }
                           }
 
+                          const endConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                          const newFlangeTypeCode = recommendedFlangeTypeCode(endConfig);
+
                           onUpdateEntry(entry.id, {
                             specs: {
                               ...entry.specs,
                               workingPressureBar: value,
-                              flangePressureClassId: recommendedPressureClassId
+                              flangePressureClassId: recommendedPressureClassId,
+                              flangeTypeCode: newFlangeTypeCode
                             }
                           });
                         }}
@@ -267,6 +281,7 @@ export default function StraightPipeForm({
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Working Temperature (°C)
+                        <span className="ml-1 text-gray-400 font-normal cursor-help" title="Operating temperature of the system. Affects material suitability and de-rating factors.">?</span>
                       </label>
                       <select
                         value={entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC || ''}
@@ -673,19 +688,30 @@ export default function StraightPipeForm({
                           effectiveWeldThickness = pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness;
                         } else {
                           const scheduleUpper = schedule.toUpperCase();
-                          fittingClass =
-                            scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
-                              ? 'XXH'
-                              : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
-                                ? 'XH'
-                                : 'STD';
-                          effectiveWeldThickness = FITTING_WALL_THICKNESS[fittingClass]?.[dn] || pipeWallThickness;
+                          const isStdSchedule = scheduleUpper.includes('40') || scheduleUpper === 'STD';
+                          const isXhSchedule = scheduleUpper.includes('80') || scheduleUpper === 'XS' || scheduleUpper === 'XH';
+                          const isXxhSchedule = scheduleUpper.includes('160') || scheduleUpper === 'XXS' || scheduleUpper === 'XXH';
+
+                          if (isXxhSchedule) {
+                            fittingClass = 'XXH';
+                          } else if (isXhSchedule) {
+                            fittingClass = 'XH';
+                          } else if (isStdSchedule) {
+                            fittingClass = 'STD';
+                          } else {
+                            fittingClass = '';
+                          }
+
+                          const rawThickness = fittingClass && FITTING_WALL_THICKNESS[fittingClass]?.[dn]
+                            ? FITTING_WALL_THICKNESS[fittingClass][dn]
+                            : pipeWallThickness;
+                          effectiveWeldThickness = rawThickness ? roundToWeldIncrement(rawThickness) : rawThickness;
                         }
 
                         const descText = isSABS719
                           ? `SABS 719 ERW - pipe WT (${schedule || 'WT'})`
-                          : usingPipeThickness
-                            ? 'Using pipe WT'
+                          : !fittingClass || usingPipeThickness
+                            ? `Pipe WT (${schedule || 'WT'})`
                             : `${fittingClass} fitting class`;
 
                         return (
@@ -782,15 +808,53 @@ export default function StraightPipeForm({
                         <div className="grid grid-cols-4 gap-3">
                           {/* Flange Standard */}
                           <div>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">Standard</label>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
+                              Standard
+                              <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange standard determines pressure class options and flange dimensions">?</span>
+                            </label>
                             <select
                               value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
                               onChange={(e) => {
                                 const newFlangeStandardId = e.target.value ? Number(e.target.value) : undefined;
-                                const updatedEntry = { ...entry, specs: { ...entry.specs, flangeStandardId: newFlangeStandardId, flangeTypeCode: undefined, flangePressureClassId: undefined } };
+                                const newStandard = masterData.flangeStandards?.find((s: any) => s.id === newFlangeStandardId);
+                                const newStandardCode = newStandard?.code || '';
+                                const isSabs1123New = newStandardCode.includes('SABS 1123') || newStandardCode.includes('SANS 1123');
+
+                                const endConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                                const newFlangeTypeCode = recommendedFlangeTypeCode(endConfig);
+
+                                const workingPressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+
+                                let newPressureClassId: number | undefined = undefined;
+                                if (newFlangeStandardId && workingPressure > 0) {
+                                  let availableClasses = pressureClassesByStandard[newFlangeStandardId] || [];
+                                  if (availableClasses.length === 0) {
+                                    availableClasses = masterData.pressureClasses?.filter((pc: any) =>
+                                      pc.flangeStandardId === newFlangeStandardId || pc.standardId === newFlangeStandardId
+                                    ) || [];
+                                  }
+                                  if (availableClasses.length > 0) {
+                                    newPressureClassId = recommendedPressureClassId(workingPressure, availableClasses, newStandardCode) || undefined;
+                                  }
+                                }
+
+                                const updatedEntry = {
+                                  ...entry,
+                                  specs: {
+                                    ...entry.specs,
+                                    flangeStandardId: newFlangeStandardId,
+                                    flangeTypeCode: newFlangeTypeCode,
+                                    flangePressureClassId: newPressureClassId
+                                  }
+                                };
                                 const newDescription = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, {
-                                  specs: { ...entry.specs, flangeStandardId: newFlangeStandardId, flangeTypeCode: undefined, flangePressureClassId: undefined },
+                                  specs: {
+                                    ...entry.specs,
+                                    flangeStandardId: newFlangeStandardId,
+                                    flangeTypeCode: newFlangeTypeCode,
+                                    flangePressureClassId: newPressureClassId
+                                  },
                                   description: newDescription,
                                   hasFlangeOverride: true
                                 });
@@ -814,6 +878,7 @@ export default function StraightPipeForm({
                           <div>
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
                               {isSabs1123 ? 'Class (kPa)' : 'Class'}
+                              <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange pressure rating. Should match or exceed working pressure. Auto-selected based on working pressure.">?</span>
                             </label>
                             <select
                               value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
@@ -907,7 +972,10 @@ export default function StraightPipeForm({
 
                           {/* Pipe End Configuration */}
                           <div>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">Config</label>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
+                              Config
+                              <span className="ml-1 text-gray-400 font-normal cursor-help" title="Pipe end configuration determines flange types, weld counts, and material requirements. PE=Plain End, FOE=Flanged One End, FBE=Flanged Both Ends, R/F=Rotating Flange, L/F=Loose Flange.">?</span>
+                            </label>
                             <select
                               value={entry.specs.pipeEndConfiguration || 'PE'}
                               onChange={async (e) => {
@@ -918,8 +986,35 @@ export default function StraightPipeForm({
                                 } catch (error) {
                                   console.warn('Could not get pipe end configuration details:', error);
                                 }
+
+                                const newFlangeTypeCode = recommendedFlangeTypeCode(newConfig);
+
+                                const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                                const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+                                const flangeCode = flangeStandard?.code || '';
+                                const isSabs1123 = flangeCode.includes('SABS 1123') || flangeCode.includes('SANS 1123');
+
+                                const workingPressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                                let availableClasses = flangeStandardId ? (pressureClassesByStandard[flangeStandardId] || []) : [];
+                                if (availableClasses.length === 0) {
+                                  availableClasses = masterData.pressureClasses?.filter((pc: any) =>
+                                    pc.flangeStandardId === flangeStandardId || pc.standardId === flangeStandardId
+                                  ) || [];
+                                }
+                                const newPressureClassId = workingPressure > 0 && availableClasses.length > 0
+                                  ? recommendedPressureClassId(workingPressure, availableClasses, flangeCode)
+                                  : (entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId);
+
                                 const updatedEntry: any = {
-                                  specs: { ...entry.specs, pipeEndConfiguration: newConfig, blankFlangePositions: [], addBlankFlange: false, blankFlangeCount: 0 },
+                                  specs: {
+                                    ...entry.specs,
+                                    pipeEndConfiguration: newConfig,
+                                    blankFlangePositions: [],
+                                    addBlankFlange: false,
+                                    blankFlangeCount: 0,
+                                    flangeTypeCode: newFlangeTypeCode,
+                                    ...(newPressureClassId && { flangePressureClassId: newPressureClassId })
+                                  },
                                   ...(weldDetails && { weldInfo: weldDetails })
                                 };
                                 updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
@@ -989,31 +1084,76 @@ export default function StraightPipeForm({
               {/* Closure Length Field - Only shown when L/F configuration is selected */}
               {hasLooseFlange(entry.specs.pipeEndConfiguration || '') && (
                 <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-1">
-                      <label className="block text-xs font-semibold text-purple-900 dark:text-purple-300 mb-1">
-                        Closure Length (mm) *
-                      </label>
-                      <input
-                        type="number"
-                        value={entry.specs?.closureLengthMm || ''}
-                        onChange={(e) => {
-                          const closureLength = e.target.value ? Number(e.target.value) : undefined;
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, closureLengthMm: closureLength }
-                          });
-                        }}
-                        placeholder="e.g., 150"
-                        min={50}
-                        max={500}
-                        className="w-full px-2 py-1.5 bg-white dark:bg-purple-900/20 border border-purple-300 dark:border-purple-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
-                      />
-                    </div>
-                    <div className="flex-1 text-xs text-purple-700 dark:text-purple-400">
-                      <p className="font-semibold">L/F Tack Welds:</p>
-                      <p>8 total (~20mm each), 4 per side</p>
-                    </div>
-                  </div>
+                  {(() => {
+                    const nb = entry.specs?.nominalBoreMm || 100;
+                    const limits = closureLengthLimits(nb);
+                    const currentValue = entry.specs?.closureLengthMm || 0;
+                    const isOutOfRange = currentValue > 0 && (currentValue < limits.min || currentValue > limits.max);
+                    const wallThickness = entry.specs?.wallThicknessMm || 5;
+                    const closureWeightKg = currentValue > 0 ? getClosureWeight(nb, currentValue, wallThickness) : 0;
+
+                    return (
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1">
+                          <label className="block text-xs font-semibold text-purple-900 dark:text-purple-300 mb-1">
+                            Closure Length (mm) *
+                            <span className="ml-1 text-purple-600 font-normal" title={`Recommended: ${limits.recommended}mm for ${nb}NB`}>
+                              (Rec: {limits.recommended}mm)
+                            </span>
+                          </label>
+                          <div className="flex gap-1 mb-1">
+                            {[100, 150, 200, 250].map((length) => (
+                              <button
+                                key={length}
+                                type="button"
+                                onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: length } })}
+                                className={`px-1.5 py-0.5 text-xs rounded border ${
+                                  entry.specs?.closureLengthMm === length
+                                    ? 'bg-purple-200 dark:bg-purple-700 border-purple-400 dark:border-purple-500 font-medium text-purple-900 dark:text-purple-100'
+                                    : 'bg-white dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-800/40 border-purple-300 dark:border-purple-600 text-gray-700 dark:text-gray-300'
+                                }`}
+                              >
+                                {length}mm
+                              </button>
+                            ))}
+                          </div>
+                          <input
+                            type="number"
+                            value={entry.specs?.closureLengthMm || ''}
+                            onChange={(e) => {
+                              const closureLength = e.target.value ? Number(e.target.value) : undefined;
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, closureLengthMm: closureLength }
+                              });
+                            }}
+                            placeholder={`${limits.min}-${limits.max}mm`}
+                            min={limits.min}
+                            max={limits.max}
+                            className={`w-full px-2 py-1.5 bg-white dark:bg-purple-900/20 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 ${
+                              isOutOfRange ? 'border-red-400 dark:border-red-500' : 'border-purple-300 dark:border-purple-600'
+                            }`}
+                          />
+                          {isOutOfRange && (
+                            <p className="mt-1 text-xs text-red-600">
+                              Should be {limits.min}-{limits.max}mm for {nb}NB
+                            </p>
+                          )}
+                          {closureWeightKg > 0 && (
+                            <p className="mt-1 text-xs text-purple-600">
+                              Closure weight: {closureWeightKg.toFixed(2)}kg each
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex-1 text-xs text-purple-700 dark:text-purple-400">
+                          <p className="font-semibold">L/F Tack Welds:</p>
+                          <p>8 total (~20mm each), 4 per side</p>
+                          <p className="mt-1 text-gray-500">
+                            Closure adds to total pipe weight
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -1203,6 +1343,7 @@ export default function StraightPipeForm({
                           {(() => {
                             const configUpper = (entry.specs.pipeEndConfiguration || 'PE').toUpperCase();
                             const hasRotatingFlange = ['FOE_RF', '2X_RF'].includes(configUpper);
+                            const hasLooseFlangeConfig = hasLooseFlange(entry.specs.pipeEndConfiguration || '');
 
                             let backingRingTotalWeight = 0;
                             if (hasRotatingFlange) {
@@ -1213,12 +1354,54 @@ export default function StraightPipeForm({
                               backingRingTotalWeight = ringWeightEach * totalBackingRings;
                             }
 
-                            const totalWithRings = (entry.calculation.totalSystemWeight || 0) + backingRingTotalWeight;
+                            const physicalFlanges = getPhysicalFlangeCount(entry.specs.pipeEndConfiguration || 'PE');
+                            const totalFlanges = physicalFlanges * (entry.calculation?.calculatedPipeCount || 0);
+                            const nominalBore = entry.specs?.nominalBoreMm;
+
+                            const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                            const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+
+                            const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+                            const flangeStandardCode = flangeStandard?.code || '';
+                            const pressureClass = masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId);
+                            const pressureClassDesignation = pressureClass?.designation || '';
+
+                            const flangeWeightPerUnit = nominalBore && pressureClassDesignation
+                              ? getFlangeWeight(nominalBore, pressureClassDesignation, flangeStandardCode)
+                              : (entry.calculation?.flangeWeightPerUnit || 0);
+                            const dynamicTotalFlangeWeight = totalFlanges * flangeWeightPerUnit;
+
+                            const blankPositions = entry.specs?.blankFlangePositions || [];
+                            const blankFlangeCount = blankPositions.length * (entry.calculation?.calculatedPipeCount || 0);
+                            const isSans1123 = flangeStandardCode.includes('SABS 1123') || flangeStandardCode.includes('SANS 1123');
+                            const blankWeightPerUnit = nominalBore && pressureClassDesignation
+                              ? (isSans1123 ? sansBlankFlangeWeight(nominalBore, pressureClassDesignation) : getBlankFlangeWeight(nominalBore, pressureClassDesignation))
+                              : 0;
+                            const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
+
+                            const bendEndOption = BEND_END_OPTIONS.find(o => o.value === entry.specs.pipeEndConfiguration);
+                            const tackWeldEnds = (bendEndOption as any)?.tackWeldEnds || 0;
+                            const tackWeldTotalWeight = nominalBore && tackWeldEnds > 0
+                              ? getTackWeldWeight(nominalBore, tackWeldEnds) * (entry.calculation?.calculatedPipeCount || 0)
+                              : 0;
+
+                            const closureLengthMm = entry.specs?.closureLengthMm || 0;
+                            const wallThickness = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 0;
+                            const closureTotalWeight = nominalBore && closureLengthMm > 0 && wallThickness > 0
+                              ? getClosureWeight(nominalBore, closureLengthMm, wallThickness) * (entry.calculation?.calculatedPipeCount || 0)
+                              : 0;
+
+                            const totalWeight = (entry.calculation.totalPipeWeight || 0)
+                              + dynamicTotalFlangeWeight
+                              + backingRingTotalWeight
+                              + totalBlankFlangeWeight
+                              + tackWeldTotalWeight
+                              + closureTotalWeight;
 
                             return (
                               <div className="bg-green-50 p-2 rounded text-center border border-green-200">
                                 <p className="text-xs text-green-800 font-medium">Total Weight</p>
-                                <p className="text-lg font-bold text-green-900">{formatWeight(totalWithRings)}</p>
+                                <p className="text-lg font-bold text-green-900">{formatWeight(totalWeight)}</p>
                                 <p className="text-xs text-green-600">
                                   (Pipe: {formatWeight(entry.calculation.totalPipeWeight)})
                                 </p>
@@ -1227,20 +1410,48 @@ export default function StraightPipeForm({
                                     (incl. {backingRingTotalWeight.toFixed(1)}kg R/F rings)
                                   </p>
                                 )}
+                                {totalBlankFlangeWeight > 0 && (
+                                  <p className="text-xs text-gray-600">
+                                    (incl. {totalBlankFlangeWeight.toFixed(1)}kg blanks)
+                                  </p>
+                                )}
+                                {closureTotalWeight > 0 && (
+                                  <p className="text-xs text-purple-600">
+                                    (incl. {closureTotalWeight.toFixed(1)}kg closures)
+                                  </p>
+                                )}
                               </div>
                             );
                           })()}
 
-                          <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
-                            <p className="text-xs text-amber-800 font-medium">Total Flange Weight</p>
-                            <p className="text-lg font-bold text-amber-900">{formatWeight(entry.calculation.totalFlangeWeight)}</p>
-                            <p className="text-xs text-amber-600">
-                              {(() => {
-                                const physicalFlanges = getPhysicalFlangeCount(entry.specs.pipeEndConfiguration || 'PE');
-                                return physicalFlanges * (entry.calculation?.calculatedPipeCount || 0);
-                              })()} flanges
-                            </p>
-                          </div>
+                          {(() => {
+                            const physicalFlanges = getPhysicalFlangeCount(entry.specs.pipeEndConfiguration || 'PE');
+                            const totalFlanges = physicalFlanges * (entry.calculation?.calculatedPipeCount || 0);
+                            const nominalBore = entry.specs?.nominalBoreMm;
+
+                            const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                            const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+
+                            const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+                            const flangeStandardCode = flangeStandard?.code || '';
+                            const pressureClass = masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId);
+                            const pressureClassDesignation = pressureClass?.designation || '';
+
+                            const flangeWeightPerUnit = nominalBore && pressureClassDesignation
+                              ? getFlangeWeight(nominalBore, pressureClassDesignation, flangeStandardCode)
+                              : (entry.calculation?.flangeWeightPerUnit || 0);
+                            const totalFlangeWeight = totalFlanges * flangeWeightPerUnit;
+
+                            return (
+                              <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
+                                <p className="text-xs text-amber-800 font-medium">Total Flange Weight</p>
+                                <p className="text-lg font-bold text-amber-900">{formatWeight(totalFlangeWeight)}</p>
+                                <p className="text-xs text-amber-600">
+                                  {totalFlanges} flanges × {flangeWeightPerUnit.toFixed(2)}kg
+                                </p>
+                              </div>
+                            );
+                          })()}
 
                           {(() => {
                             const configUpper = (entry.specs.pipeEndConfiguration || 'PE').toUpperCase();

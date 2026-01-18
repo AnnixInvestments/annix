@@ -278,3 +278,74 @@ export const boltSetCountPerFitting = (fittingEndConfig: string, hasEqualBranch:
   const mainBoltSets = mainFlangeCount > 1 ? mainFlangeCount - 1 : mainFlangeCount;
   return { mainBoltSets, branchBoltSets: branchFlangeCount };
 };
+
+export const recommendedFlangeTypeCode = (endConfig: string): string => {
+  const configUpper = endConfig.toUpperCase();
+
+  if (configUpper.includes('RF') || configUpper.includes('R/F') || configUpper === '2X_RF' || configUpper === '3X_RF') {
+    return '/1';
+  }
+
+  if (configUpper.includes('LF') || configUpper.includes('L/F') || configUpper === '2XLF') {
+    return '/3';
+  }
+
+  if (configUpper === 'PE') {
+    return '/3';
+  }
+
+  return '/2';
+};
+
+export const recommendedPressureClassId = (
+  workingPressureBar: number,
+  availableClasses: Array<{ id: number; designation: string; flangeStandardId?: number }>,
+  flangeStandardCode?: string
+): number | null => {
+  if (!workingPressureBar || availableClasses.length === 0) {
+    return null;
+  }
+
+  const isSabs1123 = flangeStandardCode?.toUpperCase().includes('SABS') && flangeStandardCode?.includes('1123') ||
+                     flangeStandardCode?.toUpperCase().includes('SANS') && flangeStandardCode?.includes('1123');
+  const isBs4504 = flangeStandardCode?.includes('BS') && flangeStandardCode?.includes('4504');
+
+  const classesWithRating = availableClasses.map((pc) => {
+    const designation = pc.designation || '';
+    let barRating = 0;
+
+    const pnMatch = designation.match(/PN\s*(\d+)/i);
+    if (pnMatch) {
+      barRating = parseInt(pnMatch[1]);
+    } else if (isSabs1123) {
+      const kpaMatch = designation.match(/^(\d+)/);
+      if (kpaMatch) {
+        barRating = parseInt(kpaMatch[1]) / 100;
+      }
+    } else if (isBs4504) {
+      const numMatch = designation.match(/^(\d+)/);
+      if (numMatch) {
+        barRating = parseInt(numMatch[1]);
+      }
+    } else {
+      const numMatch = designation.match(/^(\d+)/);
+      if (numMatch) {
+        const num = parseInt(numMatch[1]);
+        barRating = num >= 500 ? num / 100 : num;
+      }
+    }
+
+    return { ...pc, barRating };
+  }).filter((pc) => pc.barRating > 0);
+
+  classesWithRating.sort((a, b) => a.barRating - b.barRating);
+
+  const suitableClass = classesWithRating.find((pc) => pc.barRating >= workingPressureBar);
+
+  return suitableClass?.id || null;
+};
+
+export const hasRotatingFlange = (endConfig: string): boolean => {
+  const configUpper = endConfig.toUpperCase();
+  return configUpper.includes('RF') || configUpper.includes('R/F') || configUpper === '2X_RF' || configUpper === '3X_RF';
+};

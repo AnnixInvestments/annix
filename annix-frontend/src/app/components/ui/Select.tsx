@@ -6,6 +6,8 @@ import * as Popover from '@radix-ui/react-popover';
 interface SelectOption {
   value: string;
   label: string;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 interface SelectOptionGroup {
@@ -88,23 +90,36 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
 
     const selectedOption = allOptions.find((opt) => opt.value === value);
 
-    const handleSelect = (optionValue: string) => {
-      onChange(optionValue);
+    const handleSelect = (option: SelectOption) => {
+      if (option.disabled) return;
+      onChange(option.value);
       handleOpenChange(false);
+    };
+
+    const findNextEnabledIndex = (currentIndex: number, direction: 'up' | 'down'): number => {
+      const step = direction === 'down' ? 1 : -1;
+      let nextIndex = currentIndex + step;
+      while (nextIndex >= 0 && nextIndex < filteredOptions.length) {
+        if (!filteredOptions[nextIndex].disabled) {
+          return nextIndex;
+        }
+        nextIndex += step;
+      }
+      return currentIndex;
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setShouldScrollToHighlighted(true);
-        setHighlightedIndex((prev) => Math.min(prev + 1, filteredOptions.length - 1));
+        setHighlightedIndex((prev) => findNextEnabledIndex(prev, 'down'));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setShouldScrollToHighlighted(true);
-        setHighlightedIndex((prev) => Math.max(prev - 1, 0));
-      } else if (e.key === 'Enter' && filteredOptions[highlightedIndex]) {
+        setHighlightedIndex((prev) => findNextEnabledIndex(prev, 'up'));
+      } else if (e.key === 'Enter' && filteredOptions[highlightedIndex] && !filteredOptions[highlightedIndex].disabled) {
         e.preventDefault();
-        handleSelect(filteredOptions[highlightedIndex].value);
+        handleSelect(filteredOptions[highlightedIndex]);
       } else if (e.key === 'Escape') {
         handleOpenChange(false);
       }
@@ -165,12 +180,24 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                       {group.options.map((option) => {
                         const currentIndex = globalIndex++;
                         const isHighlighted = currentIndex === highlightedIndex;
-                        return (
+                        const isDisabled = option.disabled;
+                        return isDisabled ? (
+                          <div
+                            key={option.value}
+                            className="relative flex items-center w-full px-8 py-2 text-sm rounded select-none text-left text-gray-400 cursor-not-allowed"
+                            title={option.disabledReason}
+                          >
+                            {option.label}
+                            {option.disabledReason && (
+                              <span className="ml-2 text-xs text-red-400">- {option.disabledReason}</span>
+                            )}
+                          </div>
+                        ) : (
                           <button
                             key={option.value}
                             ref={isHighlighted ? highlightedOptionRef : undefined}
                             type="button"
-                            onClick={() => handleSelect(option.value)}
+                            onClick={() => handleSelect(option)}
                             onMouseEnter={() => setHighlightedIndex(currentIndex)}
                             className={`relative flex items-center w-full px-8 py-2 text-sm rounded cursor-pointer select-none text-left ${
                               isHighlighted ? 'bg-green-50' : ''
@@ -191,12 +218,24 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               ) : (
                 filteredOptions.map((option, index) => {
                   const isHighlighted = index === highlightedIndex;
-                  return (
+                  const isDisabled = option.disabled;
+                  return isDisabled ? (
+                    <div
+                      key={option.value}
+                      className="relative flex items-center w-full px-8 py-2 text-sm rounded select-none text-left text-gray-400 cursor-not-allowed"
+                      title={option.disabledReason}
+                    >
+                      {option.label}
+                      {option.disabledReason && (
+                        <span className="ml-2 text-xs text-red-400">- {option.disabledReason}</span>
+                      )}
+                    </div>
+                  ) : (
                     <button
                       key={option.value}
                       ref={isHighlighted ? highlightedOptionRef : undefined}
                       type="button"
-                      onClick={() => handleSelect(option.value)}
+                      onClick={() => handleSelect(option)}
                       onMouseEnter={() => setHighlightedIndex(index)}
                       className={`relative flex items-center w-full px-8 py-2 text-sm rounded cursor-pointer select-none text-left ${
                         isHighlighted ? 'bg-green-50' : ''

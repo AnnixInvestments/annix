@@ -13,10 +13,18 @@ import {
   fittingFlangeConfig as getFittingFlangeConfig,
   hasLooseFlange,
   retainingRingWeight,
+  flangeWeight as getFlangeWeight,
+  blankFlangeWeight as getBlankFlangeWeight,
+  sansBlankFlangeWeight,
+  tackWeldWeight as getTackWeldWeight,
+  closureWeight as getClosureWeight,
+  closureLengthLimits,
   SABS_1123_FLANGE_TYPES,
   SABS_1123_PRESSURE_CLASSES,
   BS_4504_FLANGE_TYPES,
   BS_4504_PRESSURE_CLASSES,
+  recommendedFlangeTypeCode,
+  recommendedPressureClassId,
 } from '@/app/lib/config/rfq';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
@@ -1400,7 +1408,6 @@ export default function FittingForm({
                         onChange={async (e) => {
                           const newConfig = e.target.value as any;
 
-                          // Get weld details for this configuration
                           let weldDetails = null;
                           try {
                             weldDetails = await getPipeEndConfigurationDetails(newConfig);
@@ -1408,17 +1415,36 @@ export default function FittingForm({
                             console.warn('Could not get pipe end configuration details:', error);
                           }
 
+                          const newFlangeTypeCode = recommendedFlangeTypeCode(newConfig);
+
+                          const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                          const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+                          const flangeCode = flangeStandard?.code || '';
+
+                          const workingPressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                          let availableClasses = flangeStandardId ? (pressureClassesByStandard[flangeStandardId] || []) : [];
+                          if (availableClasses.length === 0) {
+                            availableClasses = masterData.pressureClasses?.filter((pc: any) =>
+                              pc.flangeStandardId === flangeStandardId || pc.standardId === flangeStandardId
+                            ) || [];
+                          }
+                          const newPressureClassId = workingPressure > 0 && availableClasses.length > 0
+                            ? recommendedPressureClassId(workingPressure, availableClasses, flangeCode)
+                            : (entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId);
+
                           const updatedEntry: any = {
-                            specs: { ...entry.specs, pipeEndConfiguration: newConfig },
-                            // Store weld count information if available
+                            specs: {
+                              ...entry.specs,
+                              pipeEndConfiguration: newConfig,
+                              flangeTypeCode: newFlangeTypeCode,
+                              ...(newPressureClassId && { flangePressureClassId: newPressureClassId })
+                            },
                             ...(weldDetails && { weldInfo: weldDetails })
                           };
 
-                          // Auto-update description
                           updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
 
                           onUpdateEntry(entry.id, updatedEntry);
-                          // Auto-calculate fitting
                           setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
@@ -1587,7 +1613,13 @@ export default function FittingForm({
                         const isSABS719 = steelSpecName.includes('SABS 719') || steelSpecName.includes('SANS 719');
 
                         const scheduleUpper = schedule.toUpperCase();
-                        const fittingClass = scheduleUpper.includes('160') || scheduleUpper.includes('XXS') ? 'XXH' : scheduleUpper.includes('80') || scheduleUpper.includes('XS') ? 'XH' : 'STD';
+                        const isStdSchedule = scheduleUpper.includes('40') || scheduleUpper === 'STD';
+                        const isXhSchedule = scheduleUpper.includes('80') || scheduleUpper === 'XS' || scheduleUpper === 'XH';
+                        const isXxhSchedule = scheduleUpper.includes('160') || scheduleUpper === 'XXS' || scheduleUpper === 'XXH';
+                        let fittingClass = '';
+                        if (isXxhSchedule) fittingClass = 'XXH';
+                        else if (isXhSchedule) fittingClass = 'XH';
+                        else if (isStdSchedule) fittingClass = 'STD';
 
                         const FITTING_WT: Record<string, Record<number, number>> = {
                           'STD': { 50: 3.91, 65: 5.16, 80: 5.49, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53 },
@@ -1595,12 +1627,14 @@ export default function FittingForm({
                           'XXH': { 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
                         };
 
-                        const fittingWeldThickness = isSABS719
-                          ? roundToWeldIncrement(pipeWallThickness || 6)
+                        const fittingRawThickness = (isSABS719 || !fittingClass)
+                          ? (pipeWallThickness || 6)
                           : (FITTING_WT[fittingClass]?.[nominalBore] || pipeWallThickness || 6);
-                        const branchWeldThickness = isSABS719
-                          ? roundToWeldIncrement(pipeWallThickness || 6)
-                          : (FITTING_WT[fittingClass]?.[branchNB] || fittingWeldThickness);
+                        const fittingWeldThickness = roundToWeldIncrement(fittingRawThickness);
+                        const branchRawThickness = (isSABS719 || !fittingClass)
+                          ? (pipeWallThickness || 6)
+                          : (FITTING_WT[fittingClass]?.[branchNB] || pipeWallThickness || 6);
+                        const branchWeldThickness = roundToWeldIncrement(branchRawThickness);
 
                         const rotatingFlangeCount =
                           (flangeConfig.inletType === 'rotating' ? 1 : 0) +
@@ -1617,12 +1651,50 @@ export default function FittingForm({
                         const mainRingsCount = (flangeConfig.inletType === 'rotating' ? 1 : 0) + (flangeConfig.outletType === 'rotating' ? 1 : 0);
                         const totalRingWeight = (mainRingsCount * mainRingWeight) + (flangeConfig.branchType === 'rotating' ? branchRingWeight : 0);
 
-                        const baseWeight = entry.calculation.totalWeight ||
-                          ((entry.calculation.fittingWeight || 0) + (entry.calculation.pipeWeight || 0) +
-                           (entry.calculation.flangeWeight || 0) + (entry.calculation.boltWeight || 0) +
-                           (entry.calculation.nutWeight || 0));
+                        const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                        const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                        const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+                        const flangeStandardCode = flangeStandard?.code || '';
+                        const pressureClass = masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId);
+                        const pressureClassDesignation = pressureClass?.designation || '';
 
-                        const totalWeight = baseWeight + totalRingWeight;
+                        const mainFlangeWeightPerUnit = nominalBore && pressureClassDesignation
+                          ? getFlangeWeight(nominalBore, pressureClassDesignation, flangeStandardCode)
+                          : 0;
+                        const branchFlangeWeightPerUnit = branchNB && pressureClassDesignation
+                          ? getFlangeWeight(branchNB, pressureClassDesignation, flangeStandardCode)
+                          : 0;
+
+                        const mainFlangeCount = (flangeConfig.hasInlet ? 1 : 0) + (flangeConfig.hasOutlet ? 1 : 0);
+                        const branchFlangeCount = flangeConfig.hasBranch ? 1 : 0;
+                        const dynamicTotalFlangeWeight = (mainFlangeCount * mainFlangeWeightPerUnit) + (branchFlangeCount * branchFlangeWeightPerUnit);
+
+                        const blankPositions = entry.specs?.blankFlangePositions || [];
+                        const blankFlangeCount = blankPositions.length;
+                        const isSans1123 = flangeStandardCode.includes('SABS 1123') || flangeStandardCode.includes('SANS 1123');
+                        const blankWeightPerUnit = nominalBore && pressureClassDesignation
+                          ? (isSans1123 ? sansBlankFlangeWeight(nominalBore, pressureClassDesignation) : getBlankFlangeWeight(nominalBore, pressureClassDesignation))
+                          : 0;
+                        const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
+
+                        const fittingEndOption = FITTING_END_OPTIONS.find(o => o.value === entry.specs.fittingEndConfiguration);
+                        const hasLooseFlangeConfig = hasLooseFlange(entry.specs.fittingEndConfiguration || '');
+                        const tackWeldEnds = hasLooseFlangeConfig ? 1 : 0;
+                        const tackWeldTotalWeight = nominalBore && tackWeldEnds > 0
+                          ? getTackWeldWeight(nominalBore, tackWeldEnds)
+                          : 0;
+
+                        const closureLengthMm = entry.specs?.closureLengthMm || 0;
+                        const closureWallThickness = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || pipeWallThickness || 5;
+                        const closureTotalWeight = nominalBore && closureLengthMm > 0 && closureWallThickness > 0
+                          ? getClosureWeight(nominalBore, closureLengthMm, closureWallThickness)
+                          : 0;
+
+                        const baseWeight = (entry.calculation.fittingWeight || 0) + (entry.calculation.pipeWeight || 0) +
+                           dynamicTotalFlangeWeight + (entry.calculation.boltWeight || 0) +
+                           (entry.calculation.nutWeight || 0);
+
+                        const totalWeight = baseWeight + totalRingWeight + totalBlankFlangeWeight + tackWeldTotalWeight + closureTotalWeight;
 
                         return (
                           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
@@ -1652,6 +1724,12 @@ export default function FittingForm({
                               <p className="text-xs text-green-800 font-medium">Total Weight</p>
                               <p className="text-lg font-bold text-green-900">{totalWeight.toFixed(1)} kg</p>
                               <p className="text-[10px] text-green-600">per fitting</p>
+                              {(totalBlankFlangeWeight > 0 || closureTotalWeight > 0) && (
+                                <p className="text-[10px] text-gray-500">
+                                  {totalBlankFlangeWeight > 0 && `+${totalBlankFlangeWeight.toFixed(1)}kg blanks`}
+                                  {closureTotalWeight > 0 && ` +${closureTotalWeight.toFixed(1)}kg closures`}
+                                </p>
+                              )}
                             </div>
 
                             {/* Weight Breakdown - Green for auto-calculated */}
@@ -1664,11 +1742,17 @@ export default function FittingForm({
                                 {(entry.calculation.pipeWeight || 0) > 0 && (
                                   <p className="text-[10px] text-green-700">Pipe: {entry.calculation.pipeWeight.toFixed(1)}kg</p>
                                 )}
-                                {(entry.calculation.flangeWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-green-700">Flanges: {entry.calculation.flangeWeight.toFixed(1)}kg</p>
+                                {dynamicTotalFlangeWeight > 0 && (
+                                  <p className="text-[10px] text-green-700">Flanges: {dynamicTotalFlangeWeight.toFixed(1)}kg</p>
                                 )}
                                 {totalRingWeight > 0 && (
                                   <p className="text-[10px] text-amber-700 font-medium">R/F Rings: {totalRingWeight.toFixed(2)}kg ({rotatingFlangeCount}×)</p>
+                                )}
+                                {totalBlankFlangeWeight > 0 && (
+                                  <p className="text-[10px] text-gray-700">Blanks: {totalBlankFlangeWeight.toFixed(1)}kg</p>
+                                )}
+                                {closureTotalWeight > 0 && (
+                                  <p className="text-[10px] text-purple-700">Closures: {closureTotalWeight.toFixed(1)}kg</p>
                                 )}
                               </div>
                             </div>

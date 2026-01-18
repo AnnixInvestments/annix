@@ -13,11 +13,18 @@ import {
   getScheduleListForSpec,
   NB_TO_OD_LOOKUP,
   flangeWeight as getFlangeWeight,
+  blankFlangeWeight as getBlankFlangeWeight,
+  sansBlankFlangeWeight,
+  tackWeldWeight as getTackWeldWeight,
+  closureWeight as getClosureWeight,
+  closureLengthLimits,
   retainingRingWeight,
   SABS_1123_FLANGE_TYPES,
   SABS_1123_PRESSURE_CLASSES,
   BS_4504_FLANGE_TYPES,
   BS_4504_PRESSURE_CLASSES,
+  recommendedFlangeTypeCode,
+  recommendedPressureClassId,
 } from '@/app/lib/config/rfq';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 import { checkMaterialSuitability, suitableMaterials } from '@/app/lib/config/rfq/materialLimits';
@@ -1305,9 +1312,32 @@ export default function BendForm({
                         value={entry.specs?.bendEndConfiguration || 'PE'}
                         onChange={(e) => {
                           const newConfig = e.target.value;
+
+                          const newFlangeTypeCode = recommendedFlangeTypeCode(newConfig);
+
+                          const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                          const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+                          const flangeCode = flangeStandard?.code || '';
+
+                          const workingPressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                          let availableClasses = flangeStandardId ? (pressureClassesByStandard[flangeStandardId] || []) : [];
+                          if (availableClasses.length === 0) {
+                            availableClasses = masterData.pressureClasses?.filter((pc: any) =>
+                              pc.flangeStandardId === flangeStandardId || pc.standardId === flangeStandardId
+                            ) || [];
+                          }
+                          const newPressureClassId = workingPressure > 0 && availableClasses.length > 0
+                            ? recommendedPressureClassId(workingPressure, availableClasses, flangeCode)
+                            : (entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId);
+
                           const updatedEntry: any = {
                             ...entry,
-                            specs: { ...entry.specs, bendEndConfiguration: newConfig }
+                            specs: {
+                              ...entry.specs,
+                              bendEndConfiguration: newConfig,
+                              flangeTypeCode: newFlangeTypeCode,
+                              ...(newPressureClassId && { flangePressureClassId: newPressureClassId })
+                            }
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
@@ -1462,14 +1492,23 @@ export default function BendForm({
                               effectiveThickness = pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness;
                             } else {
                               const scheduleUpper = schedule.toUpperCase();
-                              fittingClass =
-                                scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
-                                  ? 'XXH'
-                                  : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
-                                    ? 'XH'
-                                    : 'STD';
-                              weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
-                              effectiveThickness = weldThickness || pipeWallThickness;
+                              const isStdSchedule = scheduleUpper.includes('40') || scheduleUpper === 'STD';
+                              const isXhSchedule = scheduleUpper.includes('80') || scheduleUpper === 'XS' || scheduleUpper === 'XH';
+                              const isXxhSchedule = scheduleUpper.includes('160') || scheduleUpper === 'XXS' || scheduleUpper === 'XXH';
+
+                              if (isXxhSchedule) {
+                                fittingClass = 'XXH';
+                              } else if (isXhSchedule) {
+                                fittingClass = 'XH';
+                              } else if (isStdSchedule) {
+                                fittingClass = 'STD';
+                              } else {
+                                fittingClass = '';
+                              }
+
+                              weldThickness = fittingClass && dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
+                              const rawThickness = weldThickness || pipeWallThickness;
+                              effectiveThickness = rawThickness ? roundToWeldIncrement(rawThickness) : rawThickness;
                             }
 
                             // Calculate circumference
@@ -1491,7 +1530,7 @@ export default function BendForm({
                                   <span className="font-medium">{numTangents} full penetration weld{numTangents > 1 ? 's' : ''}</span>
                                 </p>
                                 <p className="text-xs text-orange-700">
-                                  Weld thickness: {effectiveThickness.toFixed(2)}mm ({isSABS719 ? 'SABS 719 WT' : weldThickness ? fittingClass : 'from schedule'})
+                                  Weld thickness: {effectiveThickness.toFixed(2)}mm ({isSABS719 ? 'SABS 719 WT' : weldThickness && fittingClass ? fittingClass : `${schedule} WT`})
                                 </p>
                                 <p className="text-xs text-orange-700">
                                   Linear meterage: {totalWeldLength.toFixed(0)}mm ({numTangents} x {circumference.toFixed(0)}mm circ)
@@ -1533,14 +1572,23 @@ export default function BendForm({
                         usingScheduleThickness = true;
                       } else {
                         const scheduleUpper = schedule.toUpperCase();
-                        fittingClass =
-                          scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
-                            ? 'XXH'
-                            : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
-                              ? 'XH'
-                              : 'STD';
-                        weldThickness = dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
-                        effectiveWeldThickness = weldThickness || pipeWallThickness;
+                        const isStdSchedule = scheduleUpper.includes('40') || scheduleUpper === 'STD';
+                        const isXhSchedule = scheduleUpper.includes('80') || scheduleUpper === 'XS' || scheduleUpper === 'XH';
+                        const isXxhSchedule = scheduleUpper.includes('160') || scheduleUpper === 'XXS' || scheduleUpper === 'XXH';
+
+                        if (isXxhSchedule) {
+                          fittingClass = 'XXH';
+                        } else if (isXhSchedule) {
+                          fittingClass = 'XH';
+                        } else if (isStdSchedule) {
+                          fittingClass = 'STD';
+                        } else {
+                          fittingClass = '';
+                        }
+
+                        weldThickness = fittingClass && dn ? FITTING_WALL_THICKNESS[fittingClass]?.[dn] : null;
+                        const rawWeldThickness = weldThickness || pipeWallThickness;
+                        effectiveWeldThickness = rawWeldThickness ? roundToWeldIncrement(rawWeldThickness) : rawWeldThickness;
                         usingScheduleThickness = !weldThickness && !!pipeWallThickness;
                       }
 
@@ -1565,10 +1613,10 @@ export default function BendForm({
                       // For SABS 719, round pipe WT to 1.5mm increments; for others, use fitting lookup
                       const stub1Thickness = isSABS719
                         ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : 0)
-                        : (stub1NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub1NB] || pipeWallThickness) : 0);
+                        : (stub1NB ? roundToWeldIncrement(FITTING_WALL_THICKNESS[fittingClass]?.[stub1NB] || pipeWallThickness || 0) : 0);
                       const stub2Thickness = isSABS719
                         ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : 0)
-                        : (stub2NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub2NB] || pipeWallThickness) : 0);
+                        : (stub2NB ? roundToWeldIncrement(FITTING_WALL_THICKNESS[fittingClass]?.[stub2NB] || pipeWallThickness || 0) : 0);
 
                       // Only show if there are bend flanges or stubs
                       if (weldCount === 0 && numStubs === 0) return null;
@@ -2455,12 +2503,18 @@ export default function BendForm({
                             };
 
                             const scheduleUpper = schedule.toUpperCase();
-                            const fittingClass =
-                              scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH')
-                                ? 'XXH'
-                                : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH')
-                                  ? 'XH'
-                                  : 'STD';
+                            const isStdSchedule = scheduleUpper.includes('40') || scheduleUpper === 'STD';
+                            const isXhSchedule = scheduleUpper.includes('80') || scheduleUpper === 'XS' || scheduleUpper === 'XH';
+                            const isXxhSchedule = scheduleUpper.includes('160') || scheduleUpper === 'XXS' || scheduleUpper === 'XXH';
+
+                            let fittingClass = '';
+                            if (isXxhSchedule) {
+                              fittingClass = 'XXH';
+                            } else if (isXhSchedule) {
+                              fittingClass = 'XH';
+                            } else if (isStdSchedule) {
+                              fittingClass = 'STD';
+                            }
 
                             const stub1NB = stubs[0]?.nominalBoreMm;
                             const stub2NB = stubs[1]?.nominalBoreMm;
@@ -2468,13 +2522,15 @@ export default function BendForm({
                             const stub2OD = stub2NB ? (NB_TO_OD_LOOKUP[stub2NB] || (stub2NB * 1.05)) : 0;
                             const stub1Circumference = Math.PI * stub1OD;
                             const stub2Circumference = Math.PI * stub2OD;
-                            // For SABS 719: round pipe WT to 1.5mm increments; for ASTM/ASME: use fitting lookup
-                            const stub1Thickness = isSABS719
-                              ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : 0)
-                              : (stub1NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub1NB] || pipeWallThickness) : 0);
-                            const stub2Thickness = isSABS719
-                              ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : 0)
-                              : (stub2NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub2NB] || pipeWallThickness) : 0);
+                            // For SABS 719: round pipe WT to 1.5mm increments; for ASTM/ASME: use fitting lookup or pipe WT
+                            const stub1RawThickness = isSABS719 || !fittingClass
+                              ? pipeWallThickness
+                              : (stub1NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub1NB] || pipeWallThickness) : pipeWallThickness);
+                            const stub2RawThickness = isSABS719 || !fittingClass
+                              ? pipeWallThickness
+                              : (stub2NB ? (FITTING_WALL_THICKNESS[fittingClass]?.[stub2NB] || pipeWallThickness) : pipeWallThickness);
+                            const stub1Thickness = stub1NB && stub1RawThickness ? roundToWeldIncrement(stub1RawThickness) : 0;
+                            const stub2Thickness = stub2NB && stub2RawThickness ? roundToWeldIncrement(stub2RawThickness) : 0;
 
                             if (!stub1NB && !stub2NB) {
                               return (
@@ -2665,21 +2721,65 @@ export default function BendForm({
                           const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
                           const isSABS719 = steelSpecId === 8;
                           const scheduleUpper = schedule.toUpperCase();
-                          const fittingClass = scheduleUpper.includes('160') || scheduleUpper.includes('XXS') || scheduleUpper.includes('XXH') ? 'XXH' : scheduleUpper.includes('80') || scheduleUpper.includes('XS') || scheduleUpper.includes('XH') ? 'XH' : 'STD';
+                          const isStdSchedule = scheduleUpper.includes('40') || scheduleUpper === 'STD';
+                          const isXhSchedule = scheduleUpper.includes('80') || scheduleUpper === 'XS' || scheduleUpper === 'XH';
+                          const isXxhSchedule = scheduleUpper.includes('160') || scheduleUpper === 'XXS' || scheduleUpper === 'XXH';
+                          let fittingClass = '';
+                          if (isXxhSchedule) fittingClass = 'XXH';
+                          else if (isXhSchedule) fittingClass = 'XH';
+                          else if (isStdSchedule) fittingClass = 'STD';
                           const FITTING_WT: Record<string, Record<number, number>> = {
                             'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53, 750: 9.53, 900: 9.53, 1000: 9.53, 1050: 9.53, 1200: 9.53 },
                             'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70, 750: 12.70, 900: 12.70, 1000: 12.70, 1050: 12.70, 1200: 12.70 },
                             'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
                           };
                           const NB_TO_OD: Record<number, number> = { 15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9, 100: 114.3, 125: 141.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6, 700: 711.2, 750: 762.0, 800: 812.8, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2 };
-                          const fittingWt = isSABS719 ? null : (dn ? FITTING_WT[fittingClass]?.[dn] : null);
-                          const effectiveWt = isSABS719 ? (pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness) : (fittingWt || pipeWallThickness);
+                          const fittingWt = (isSABS719 || !fittingClass) ? null : (dn ? FITTING_WT[fittingClass]?.[dn] : null);
+                          const rawEffectiveWt = fittingWt || pipeWallThickness;
+                          const effectiveWt = rawEffectiveWt ? roundToWeldIncrement(rawEffectiveWt) : rawEffectiveWt;
                           const stub1Length = stubs[0]?.lengthMm || 0;
                           const stub2Length = stubs[1]?.lengthMm || 0;
-                          const stub1Wt = stub1NB ? (isSABS719 ? roundToWeldIncrement(pipeWallThickness || 6) : (FITTING_WT[fittingClass]?.[stub1NB] || pipeWallThickness)) : 0;
-                          const stub2Wt = stub2NB ? (isSABS719 ? roundToWeldIncrement(pipeWallThickness || 6) : (FITTING_WT[fittingClass]?.[stub2NB] || pipeWallThickness)) : 0;
-                          const totalWeight = entry.calculation.totalWeight || 0;
+                          const stub1RawWt = (isSABS719 || !fittingClass) ? pipeWallThickness : (FITTING_WT[fittingClass]?.[stub1NB] || pipeWallThickness);
+                          const stub2RawWt = (isSABS719 || !fittingClass) ? pipeWallThickness : (FITTING_WT[fittingClass]?.[stub2NB] || pipeWallThickness);
+                          const stub1Wt = stub1NB && stub1RawWt ? roundToWeldIncrement(stub1RawWt) : 0;
+                          const stub2Wt = stub2NB && stub2RawWt ? roundToWeldIncrement(stub2RawWt) : 0;
                           const totalWeldLength = entry.calculation.totalWeldLengthMm || 0;
+
+                          const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                          const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                          const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+                          const flangeStandardCode = flangeStandard?.code || '';
+                          const pressureClass = masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId);
+                          const pressureClassDesignation = pressureClass?.designation || '';
+
+                          const flangeWeightPerUnit = dn && pressureClassDesignation
+                            ? getFlangeWeight(dn, pressureClassDesignation, flangeStandardCode)
+                            : (entry.calculation?.flangeWeightPerUnit || 0);
+                          const dynamicTotalFlangeWeight = totalFlanges * flangeWeightPerUnit;
+
+                          const bendQuantity = entry.specs?.quantityValue || 1;
+                          const blankPositions = entry.specs?.blankFlangePositions || [];
+                          const blankFlangeCount = blankPositions.length * bendQuantity;
+                          const isSans1123 = flangeStandardCode.includes('SABS 1123') || flangeStandardCode.includes('SANS 1123');
+                          const blankWeightPerUnit = dn && pressureClassDesignation
+                            ? (isSans1123 ? sansBlankFlangeWeight(dn, pressureClassDesignation) : getBlankFlangeWeight(dn, pressureClassDesignation))
+                            : 0;
+                          const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
+
+                          const bendEndOption = BEND_END_OPTIONS.find(o => o.value === entry.specs.bendEndConfiguration);
+                          const tackWeldEnds = (bendEndOption as any)?.tackWeldEnds || 0;
+                          const tackWeldTotalWeight = dn && tackWeldEnds > 0
+                            ? getTackWeldWeight(dn, tackWeldEnds) * bendQuantity
+                            : 0;
+
+                          const closureLengthMm = entry.specs?.closureLengthMm || 0;
+                          const closureWallThickness = pipeWallThickness || 5;
+                          const closureTotalWeight = dn && closureLengthMm > 0 && closureWallThickness > 0
+                            ? getClosureWeight(dn, closureLengthMm, closureWallThickness) * bendQuantity
+                            : 0;
+
+                          const bendWeightOnly = entry.calculation.bendWeight || 0;
+                          const totalWeight = bendWeightOnly + dynamicTotalFlangeWeight + totalBlankFlangeWeight + tackWeldTotalWeight + closureTotalWeight;
 
                           return (
                             <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))' }}>
@@ -2690,10 +2790,17 @@ export default function BendForm({
                               <div className="bg-purple-100 p-2 rounded text-center">
                                 <p className="text-xs text-purple-600 font-medium">Flanges</p>
                                 <p className="text-lg font-bold text-purple-900">{totalFlanges}</p>
+                                <p className="text-xs text-purple-500">{dynamicTotalFlangeWeight.toFixed(1)}kg</p>
                               </div>
                               <div className="bg-purple-100 p-2 rounded text-center">
                                 <p className="text-xs text-purple-600 font-medium">Weight (kg)</p>
                                 <p className="text-lg font-bold text-purple-900">{totalWeight.toFixed(1)}</p>
+                                {(totalBlankFlangeWeight > 0 || closureTotalWeight > 0) && (
+                                  <p className="text-xs text-purple-500">
+                                    {totalBlankFlangeWeight > 0 && `+${totalBlankFlangeWeight.toFixed(1)}kg blanks`}
+                                    {closureTotalWeight > 0 && ` +${closureTotalWeight.toFixed(1)}kg closures`}
+                                  </p>
+                                )}
                               </div>
                               <div className="bg-purple-100 p-2 rounded text-center">
                                 <p className="text-xs text-purple-600 font-medium">Weld (mm)</p>
