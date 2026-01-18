@@ -6,6 +6,7 @@ interface SplitPaneLayoutProps {
   entryId: string;
   formContent: React.ReactNode;
   previewContent: React.ReactNode;
+  calcResultsContent?: React.ReactNode;
   showSplitToggle: boolean;
   itemType: 'straight_pipe' | 'bend' | 'fitting' | 'pipe_steel_work';
 }
@@ -14,6 +15,7 @@ export default function SplitPaneLayout({
   entryId,
   formContent,
   previewContent,
+  calcResultsContent,
   showSplitToggle,
   itemType
 }: SplitPaneLayoutProps) {
@@ -167,30 +169,32 @@ export default function SplitPaneLayout({
   }[itemType];
 
   return (
-    <div className={isEnabled ? "flex gap-0" : "space-y-5"}>
-      {/* Left Pane - Form Fields */}
-      <div className={isEnabled ? "flex-1 space-y-5 pr-4" : "space-y-5"}>
-        {formContent}
+    <div className="space-y-5">
+      {/* Main content container - flex in split mode, stacked in non-split */}
+      <div className={isEnabled ? "flex gap-0" : "space-y-5"}>
+        {/* Left Pane - Form Fields */}
+        <div className={isEnabled ? "flex-1 space-y-5 pr-4" : "space-y-5"}>
+          {formContent}
 
-        {/* Toggle Button for Split-Pane 3D Preview */}
-        {showSplitToggle && (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                const newValue = !isEnabled;
-                setSplitPaneEnabled(prev => ({ ...prev, [entryId]: newValue }), newValue);
-              }}
-              className={`px-4 py-2 text-sm font-medium bg-gradient-to-r ${colorScheme.from} ${colorScheme.to} ${colorScheme.hoverFrom} ${colorScheme.hoverTo} text-white rounded-lg shadow-md transition-all flex items-center gap-2`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
-              {isEnabled ? 'Disable Split View' : 'Enable Split View'}
-            </button>
-          </div>
-        )}
-      </div>
+          {/* Toggle Button for Split-Pane 3D Preview */}
+          {showSplitToggle && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  const newValue = !isEnabled;
+                  setSplitPaneEnabled(prev => ({ ...prev, [entryId]: newValue }), newValue);
+                }}
+                className={`px-4 py-2 text-sm font-medium bg-gradient-to-r ${colorScheme.from} ${colorScheme.to} ${colorScheme.hoverFrom} ${colorScheme.hoverTo} text-white rounded-lg shadow-md transition-all flex items-center gap-2`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                {isEnabled ? 'Disable Split View' : 'Enable Split View'}
+              </button>
+            </div>
+          )}
+        </div>
 
       {/* Draggable Divider */}
       {isEnabled && previewContent && (
@@ -230,13 +234,13 @@ export default function SplitPaneLayout({
         />
       )}
 
-      {/* Right Pane - 3D Preview */}
+      {/* Right Pane - 3D Preview (split mode) */}
       {isEnabled && showSplitToggle && previewContent && (
         <div
-          className="flex-shrink-0 sticky top-4 self-start relative"
-          style={{ width: `${100 - width}%`, height: `${height}px`, minHeight: '350px', maxHeight: 'calc(100vh - 120px)' }}
+          className="flex-shrink-0 relative"
+          style={{ width: `${100 - width}%`, minHeight: '350px' }}
         >
-          <div className="h-full w-full">
+          <div className="h-full w-full overflow-y-auto">
             {previewContent}
           </div>
           <div
@@ -288,10 +292,19 @@ export default function SplitPaneLayout({
         </div>
       )}
 
-      {/* 3D Preview - shown below when split-pane is disabled */}
-      {!isEnabled && showSplitToggle && previewContent && (
-        <div style={{ height: '450px' }}>
+      {/* Calc Results + 3D Preview - shown below when split-pane is disabled */}
+      {!isEnabled && showSplitToggle && (
+        <div>
+          {calcResultsContent}
           {previewContent}
+        </div>
+      )}
+      </div>
+
+      {/* Calc Results - shown below both panes when split-pane is enabled */}
+      {isEnabled && showSplitToggle && calcResultsContent && (
+        <div>
+          {calcResultsContent}
         </div>
       )}
     </div>

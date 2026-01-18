@@ -13,7 +13,7 @@ interface LayoutContextValue {
 const LayoutContext = createContext<LayoutContextValue | null>(null);
 
 export function LayoutProvider({ children }: { children: ReactNode }) {
-  const [maxWidth, setMaxWidth] = useState<MaxWidth>('max-w-7xl');
+  const [maxWidth, setMaxWidth] = useState<MaxWidth>('max-w-full');
 
   const setFullWidth = useCallback(() => setMaxWidth('max-w-full'), []);
   const setConstrainedWidth = useCallback(() => setMaxWidth('max-w-7xl'), []);
@@ -29,7 +29,7 @@ export function useLayout(): LayoutContextValue {
   const context = useContext(LayoutContext);
   if (!context) {
     return {
-      maxWidth: 'max-w-7xl',
+      maxWidth: 'max-w-full',
       setFullWidth: () => {},
       setConstrainedWidth: () => {},
     };

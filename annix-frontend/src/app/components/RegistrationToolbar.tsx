@@ -30,7 +30,7 @@ export function RegistrationTopToolbar({
       className="fixed top-0 left-0 right-0 z-50 shadow-lg"
       style={{ backgroundColor: '#323288' }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-4">
             <Link
@@ -90,7 +90,7 @@ export function RegistrationBottomToolbar({
       className="fixed bottom-0 left-0 right-0 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]"
       style={{ backgroundColor: '#323288' }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <button
             onClick={() => previousStep && onStepChange(previousStep.id)}

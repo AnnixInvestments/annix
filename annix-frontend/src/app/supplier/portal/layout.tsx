@@ -87,7 +87,7 @@ export default function SupplierPortalLayout({
   );
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-900">
       <PortalToolbar
         portalType="supplier"
         navItems={navItems}
@@ -102,7 +102,7 @@ export default function SupplierPortalLayout({
         additionalActions={additionalActions}
       />
 
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <main className="w-full">{children}</main>
       </div>
     </div>

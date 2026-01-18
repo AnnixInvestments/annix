@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdminAuth } from '@/app/context/AdminAuthContext';
-import { LayoutProvider, useLayout } from '@/app/context/LayoutContext';
+import { LayoutProvider } from '@/app/context/LayoutContext';
 import PortalToolbar from '@/app/components/PortalToolbar';
 
 const navItems = [
@@ -68,13 +68,11 @@ function AdminNavigation() {
 }
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
-  const { maxWidth } = useLayout();
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <AdminNavigation />
       <main className="py-6">
-        <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           {children}
         </div>
       </main>

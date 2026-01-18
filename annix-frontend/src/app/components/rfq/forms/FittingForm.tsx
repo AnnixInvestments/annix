@@ -30,6 +30,9 @@ export interface FittingFormProps {
   masterData: any;
   onUpdateEntry: (id: string, updates: any) => void;
   onRemoveEntry: (id: string) => void;
+  onDuplicateEntry?: (entry: any, index: number) => void;
+  onCopyEntry?: (entry: any) => void;
+  copiedItemId?: string | null;
   onCalculateFitting?: (id: string) => void;
   openSelects: Record<string, boolean>;
   openSelect: (id: string) => void;
@@ -59,12 +62,15 @@ const getMinimumWallThickness = (nominalBore: number, pressure: number): number 
 
 export default function FittingForm({
   entry,
-  index: _index,
+  index,
   entries,
   globalSpecs,
   masterData,
   onUpdateEntry,
   onRemoveEntry,
+  onDuplicateEntry,
+  onCopyEntry,
+  copiedItemId,
   onCalculateFitting,
   openSelects,
   openSelect,
@@ -917,15 +923,17 @@ export default function FittingForm({
                       </label>
                       <input
                         type="number"
-                        value={entry.specs?.quantityValue || 1}
+                        value={entry.specs?.quantityValue ?? ''}
                         onChange={(e) => {
+                          const qty = e.target.value === '' ? 1 : Number(e.target.value);
                           onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, quantityValue: Number(e.target.value) }
+                            specs: { ...entry.specs, quantityValue: qty }
                           });
                           setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                         }}
                         className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
                         min="1"
+                        placeholder="1"
                       />
                     </div>
 
@@ -1733,17 +1741,59 @@ export default function FittingForm({
                 }
               />
 
-                {/* Remove Item Button */}
-                {entries.length > 1 && (
-                  <div className="mt-4 flex justify-end">
+                {/* Item Action Buttons */}
+                <div className="mt-4 flex justify-end gap-2">
+                  {onDuplicateEntry && (
+                    <button
+                      onClick={() => onDuplicateEntry(entry, index)}
+                      className="flex items-center gap-1 px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 text-sm font-medium border border-blue-300 rounded-md transition-colors"
+                      title="Duplicate this item"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                      </svg>
+                      Duplicate
+                    </button>
+                  )}
+                  {onCopyEntry && (
+                    <button
+                      onClick={() => onCopyEntry(entry)}
+                      className={`flex items-center gap-1 px-3 py-2 text-sm font-medium border rounded-md transition-colors ${
+                        copiedItemId === entry.id
+                          ? 'bg-green-100 text-green-700 border-green-300'
+                          : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50 border-gray-300'
+                      }`}
+                      title="Copy item data to clipboard"
+                    >
+                      {copiedItemId === entry.id ? (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {entries.length > 1 && (
                     <button
                       onClick={() => onRemoveEntry(entry.id)}
-                      className="px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 text-sm font-medium border border-red-300 rounded-md transition-colors"
+                      className="flex items-center gap-1 px-3 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 text-sm font-medium border border-red-300 rounded-md transition-colors"
                     >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                       Remove Item
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </>
   );
 }
