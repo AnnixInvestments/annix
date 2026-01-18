@@ -280,9 +280,9 @@ export default function AdminRfqsPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            router.push(`/customer/portal/rfqs/create?draft=${rfq.id}`);
+                            router.push(`/admin/portal/rfqs/${rfq.id}/edit`);
                           }}
-                          title="Open and edit this RFQ in the customer form"
+                          title="Edit this RFQ draft"
                           className="inline-flex items-center px-3 py-1.5 text-sm text-green-600 hover:text-green-800 hover:bg-green-50 rounded-md transition-colors"
                         >
                           <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
