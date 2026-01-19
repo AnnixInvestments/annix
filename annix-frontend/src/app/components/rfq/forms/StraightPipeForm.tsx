@@ -646,6 +646,62 @@ export default function StraightPipeForm({
                           </>
                         )}
                       </select>
+                      {/* Schedule validation warning */}
+                      {(() => {
+                        const minimumWT = entry.minimumWallThickness || 0;
+                        const selectedWT = entry.specs?.wallThicknessMm || 0;
+                        const hasSchedule = entry.specs?.scheduleNumber;
+
+                        if (!hasSchedule || minimumWT <= 0) return null;
+                        if (selectedWT >= minimumWT) return null;
+
+                        const shortfall = minimumWT - selectedWT;
+                        const fallbackEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                        const allSchedules = getScheduleListForSpec(entry.specs?.nominalBoreMm, fallbackEffectiveSpecId);
+                        const eligibleSchedules = allSchedules
+                          .filter((dim: any) => (dim.wallThicknessMm || 0) >= minimumWT)
+                          .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+                        const recommendedSchedule = eligibleSchedules[0];
+
+                        return (
+                          <div className="mt-1.5 p-2 bg-red-50 border border-red-300 rounded">
+                            <div className="flex items-start gap-1.5">
+                              <span className="text-red-600 text-sm">⚠</span>
+                              <div className="text-xs flex-1">
+                                <p className="font-semibold text-red-700">
+                                  Schedule does not meet pressure requirements
+                                </p>
+                                <p className="text-red-600 mt-0.5">
+                                  Selected: {selectedWT.toFixed(2)}mm | Required: {minimumWT.toFixed(2)}mm (short by {shortfall.toFixed(2)}mm)
+                                </p>
+                                {recommendedSchedule && (
+                                  <div className="mt-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const schedValue = recommendedSchedule.scheduleDesignation;
+                                        const updatedEntry: any = {
+                                          specs: {
+                                            ...entry.specs,
+                                            scheduleNumber: schedValue,
+                                            wallThicknessMm: recommendedSchedule.wallThicknessMm
+                                          },
+                                          isScheduleOverridden: false
+                                        };
+                                        updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
+                                        onUpdateEntry(entry.id, updatedEntry);
+                                      }}
+                                      className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 font-medium"
+                                    >
+                                      Use {recommendedSchedule.scheduleDesignation} ({recommendedSchedule.wallThicknessMm?.toFixed(2)}mm)
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Weld Thickness Display */}
