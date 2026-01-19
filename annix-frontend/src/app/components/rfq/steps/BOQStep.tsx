@@ -3,7 +3,7 @@
 import React from 'react';
 import * as XLSX from 'xlsx';
 import { RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
-import { flangeWeight as getFlangeWeight, bnwSetInfo as getBnwSetInfo, gasketWeight as getGasketWeight, blankFlangeSurfaceArea } from '@/app/lib/config/rfq';
+import { flangeWeight as getFlangeWeight, bnwSetInfo as getBnwSetInfo, gasketWeight as getGasketWeight, blankFlangeSurfaceArea, DEFAULT_PIPE_LENGTH_M } from '@/app/lib/config/rfq';
 import { boltSetCountPerBend, boltSetCountPerPipe, boltSetCountPerFitting } from '@/app/lib/config/rfq/pipeEndOptions';
 import { nowISO, formatDateLongZA, fromJSDate } from '@/app/lib/datetime';
 
@@ -653,7 +653,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
       // STRAIGHT PIPE
       const nb = entry.specs?.nominalBoreMm || 100;
       const schedule = entry.specs?.scheduleNumber || '';
-      const pipeLength = entry.specs?.individualPipeLength || 12.192;
+      const pipeLength = entry.specs?.individualPipeLength || DEFAULT_PIPE_LENGTH_M;
       const pipeQty = entry.calculation?.calculatedPipeCount || qty;
 
       const key = `PIPE_${nb}_${schedule}_${steelSpec}_${pipeLength}`;

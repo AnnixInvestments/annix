@@ -25,6 +25,8 @@ import {
   BS_4504_PRESSURE_CLASSES,
   recommendedFlangeTypeCode,
   recommendedPressureClassId,
+  WORKING_PRESSURE_BAR,
+  WORKING_TEMPERATURE_CELSIUS,
 } from '@/app/lib/config/rfq';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 import { checkMaterialSuitability, suitableMaterials } from '@/app/lib/config/rfq/materialLimits';
@@ -173,7 +175,7 @@ export default function BendForm({
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
                       >
                         <option value="">Select pressure...</option>
-                        {[6, 10, 16, 25, 40, 63, 100, 160, 250, 320, 400, 630].map((pressure) => (
+                        {WORKING_PRESSURE_BAR.map((pressure) => (
                           <option key={pressure} value={pressure}>{pressure} bar</option>
                         ))}
                       </select>
@@ -193,7 +195,7 @@ export default function BendForm({
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
                       >
                         <option value="">Select temperature...</option>
-                        {[-29, -20, 0, 20, 50, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500].map((temp) => (
+                        {WORKING_TEMPERATURE_CELSIUS.map((temp) => (
                           <option key={temp} value={temp}>{temp}°C</option>
                         ))}
                       </select>

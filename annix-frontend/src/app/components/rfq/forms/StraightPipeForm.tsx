@@ -26,6 +26,10 @@ import {
   closureLengthLimits,
   recommendedFlangeTypeCode,
   recommendedPressureClassId,
+  WORKING_PRESSURE_BAR,
+  WORKING_TEMPERATURE_CELSIUS,
+  STANDARD_PIPE_LENGTHS_M,
+  DEFAULT_PIPE_LENGTH_M,
 } from '@/app/lib/config/rfq';
 import {
   calculateMinWallThickness,
@@ -45,7 +49,7 @@ const formatWeight = (weight: number | undefined) => {
 };
 
 const calculateQuantities = (entry: any, field: string, value: number) => {
-  const pipeLength = entry.specs?.individualPipeLength || 12.192;
+  const pipeLength = entry.specs?.individualPipeLength || DEFAULT_PIPE_LENGTH_M;
 
   if (field === 'totalLength') {
     const quantity = Math.ceil(value / pipeLength);
@@ -273,7 +277,7 @@ export default function StraightPipeForm({
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                       >
                         <option value="">Select pressure...</option>
-                        {[6, 10, 16, 25, 40, 63, 100, 160, 250, 320, 400, 630].map((pressure) => (
+                        {WORKING_PRESSURE_BAR.map((pressure) => (
                           <option key={pressure} value={pressure}>{pressure} bar</option>
                         ))}
                       </select>
@@ -294,7 +298,7 @@ export default function StraightPipeForm({
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                       >
                         <option value="">Select temperature...</option>
-                        {[-29, -20, 0, 20, 50, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500].map((temp) => (
+                        {WORKING_TEMPERATURE_CELSIUS.map((temp) => (
                           <option key={temp} value={temp}>{temp}°C</option>
                         ))}
                       </select>
@@ -1166,63 +1170,28 @@ export default function StraightPipeForm({
                       Pipe Length (m)
                     </label>
                     <div className="flex gap-1 mb-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const pipeLength = 6.1;
-                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
-                            ? (entry.specs.quantityValue || 1)
-                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
-                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
-                          const newDescription = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, individualPipeLength: pipeLength },
-                            calculatedPipes: numPipes,
-                            description: newDescription
-                          });
-                        }}
-                        className={`px-1.5 py-0.5 text-xs rounded border ${entry.specs.individualPipeLength === 6.1 ? 'bg-blue-200 dark:bg-blue-700 border-blue-400 dark:border-blue-500 font-medium text-blue-900 dark:text-blue-100' : 'bg-white dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/40 border-blue-300 dark:border-blue-600 text-gray-700 dark:text-gray-300'}`}
-                      >
-                        6.1m
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const pipeLength = 9.144;
-                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
-                            ? (entry.specs.quantityValue || 1)
-                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
-                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
-                          const newDescription = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, individualPipeLength: pipeLength },
-                            calculatedPipes: numPipes,
-                            description: newDescription
-                          });
-                        }}
-                        className={`px-1.5 py-0.5 text-xs rounded border ${entry.specs.individualPipeLength === 9.144 ? 'bg-blue-200 dark:bg-blue-700 border-blue-400 dark:border-blue-500 font-medium text-blue-900 dark:text-blue-100' : 'bg-white dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/40 border-blue-300 dark:border-blue-600 text-gray-700 dark:text-gray-300'}`}
-                      >
-                        9.144m
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const pipeLength = 12.192;
-                          const numPipes = entry.specs.quantityType === 'number_of_pipes'
-                            ? (entry.specs.quantityValue || 1)
-                            : Math.ceil((entry.specs.quantityValue || pipeLength) / pipeLength);
-                          const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pipeLength } };
-                          const newDescription = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, individualPipeLength: pipeLength },
-                            calculatedPipes: numPipes,
-                            description: newDescription
-                          });
-                        }}
-                        className={`px-1.5 py-0.5 text-xs rounded border ${entry.specs.individualPipeLength === 12.192 ? 'bg-blue-200 dark:bg-blue-700 border-blue-400 dark:border-blue-500 font-medium text-blue-900 dark:text-blue-100' : 'bg-white dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/40 border-blue-300 dark:border-blue-600 text-gray-700 dark:text-gray-300'}`}
-                      >
-                        12.192m
-                      </button>
+                      {STANDARD_PIPE_LENGTHS_M.map((pl) => (
+                        <button
+                          key={pl.value}
+                          type="button"
+                          title={pl.description}
+                          onClick={() => {
+                            const numPipes = entry.specs.quantityType === 'number_of_pipes'
+                              ? (entry.specs.quantityValue || 1)
+                              : Math.ceil((entry.specs.quantityValue || pl.value) / pl.value);
+                            const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pl.value } };
+                            const newDescription = generateItemDescription(updatedEntry);
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, individualPipeLength: pl.value },
+                              calculatedPipes: numPipes,
+                              description: newDescription
+                            });
+                          }}
+                          className={`px-1.5 py-0.5 text-xs rounded border ${entry.specs.individualPipeLength === pl.value ? 'bg-blue-200 dark:bg-blue-700 border-blue-400 dark:border-blue-500 font-medium text-blue-900 dark:text-blue-100' : 'bg-white dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/40 border-blue-300 dark:border-blue-600 text-gray-700 dark:text-gray-300'}`}
+                        >
+                          {pl.label}
+                        </button>
+                      ))}
                     </div>
                     <input
                       type="number"
@@ -1300,7 +1269,7 @@ export default function StraightPipeForm({
                 previewContent={
                   Pipe3DPreview ? (
                     <Pipe3DPreview
-                      length={entry.specs.individualPipeLength || 12.192}
+                      length={entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M}
                       outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
                       wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
                       endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}

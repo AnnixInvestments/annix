@@ -1,3 +1,11 @@
+import {
+  STEEL_DENSITY_KG_M3,
+  STEEL_DENSITY_KG_MM3,
+  TACK_WELD_CONFIG,
+  CLOSURE_LENGTH_CONFIG,
+  RETAINING_RING_CONFIG,
+} from './constants';
+
 export const BLANK_FLANGE_WEIGHT: Record<string, Record<number, number>> = {
   'PN6': { 15: 0.44, 20: 0.59, 25: 0.72, 32: 1.16, 40: 1.35, 50: 1.9, 65: 2.5, 80: 3.8, 100: 4.8, 125: 6.0, 150: 7.5, 200: 11.5, 250: 17.0, 300: 24.0, 350: 33.0, 400: 43.0, 450: 54.0, 500: 60.0, 600: 85.0, 700: 115.0, 750: 130.0, 800: 150.0, 900: 190.0, 1000: 240.0, 1200: 350.0 },
   'PN10': { 15: 0.67, 20: 0.94, 25: 1.1, 32: 1.8, 40: 2.1, 50: 2.7, 65: 3.5, 80: 4.5, 100: 5.8, 125: 7.5, 150: 10.0, 200: 16.5, 250: 25.0, 300: 36.0, 350: 48.0, 400: 62.0, 450: 78.0, 500: 95.0, 600: 135.0, 700: 180.0, 750: 205.0, 800: 235.0, 900: 300.0, 1000: 380.0, 1200: 560.0 },
@@ -616,18 +624,18 @@ export const tackWeldWeight = (nominalBoreMm: number, tackWeldEnds: number = 0):
   if (tackWeldEnds <= 0) return 0;
 
   const pipeOd = NB_TO_OD_LOOKUP[nominalBoreMm] || nominalBoreMm * 1.1;
-  const tacksPerEnd = 4;
-  const tackLengthMm = 20;
-  const legSizeMm = Math.max(3, Math.min(6, nominalBoreMm * 0.02));
+  const legSizeMm = Math.max(
+    TACK_WELD_CONFIG.minLegSizeMm,
+    Math.min(TACK_WELD_CONFIG.maxLegSizeMm, nominalBoreMm * TACK_WELD_CONFIG.legSizeFactor)
+  );
 
-  const totalTacks = tacksPerEnd * tackWeldEnds;
-  const totalTackLengthMm = totalTacks * tackLengthMm;
+  const totalTacks = TACK_WELD_CONFIG.tacksPerEnd * tackWeldEnds;
+  const totalTackLengthMm = totalTacks * TACK_WELD_CONFIG.tackLengthMm;
 
   const volumePerMmMm3 = (legSizeMm * legSizeMm) / 2;
   const totalVolumeMm3 = volumePerMmMm3 * totalTackLengthMm;
 
-  const steelDensityKgPerMm3 = 0.00000785;
-  const weightKg = totalVolumeMm3 * steelDensityKgPerMm3;
+  const weightKg = totalVolumeMm3 * STEEL_DENSITY_KG_MM3;
 
   return Math.round(weightKg * 1000) / 1000;
 };
@@ -647,16 +655,16 @@ export const closureWeight = (
   const idM = pipeId / 1000;
 
   const volumeM3 = Math.PI * ((Math.pow(odM, 2) - Math.pow(idM, 2)) / 4) * closureLengthM;
-  const steelDensity = 7850;
-  const weightKg = volumeM3 * steelDensity;
+  const weightKg = volumeM3 * STEEL_DENSITY_KG_M3;
 
   return Math.round(weightKg * 100) / 100;
 };
 
 export const closureLengthLimits = (nominalBoreMm: number): { min: number; max: number; recommended: number } => {
-  const minLength = Math.max(50, nominalBoreMm * 0.5);
-  const maxLength = Math.min(500, nominalBoreMm * 3);
-  const recommended = Math.max(100, Math.min(300, nominalBoreMm * 1.5));
+  const { absoluteMinMm, absoluteMaxMm, minLengthFactor, maxLengthFactor, recommendedFactor, recommendedMinMm, recommendedMaxMm } = CLOSURE_LENGTH_CONFIG;
+  const minLength = Math.max(absoluteMinMm, nominalBoreMm * minLengthFactor);
+  const maxLength = Math.min(absoluteMaxMm, nominalBoreMm * maxLengthFactor);
+  const recommended = Math.max(recommendedMinMm, Math.min(recommendedMaxMm, nominalBoreMm * recommendedFactor));
 
   return {
     min: Math.round(minLength),
@@ -667,19 +675,18 @@ export const closureLengthLimits = (nominalBoreMm: number): { min: number; max: 
 
 export const retainingRingWeight = (nbMm: number, pipeOdMm?: number): number => {
   const pipeOd = pipeOdMm || NB_TO_OD_LOOKUP[nbMm] || nbMm * 1.05;
+  const { odMultiplier, minThicknessMm, maxThicknessMm, thicknessFactor } = RETAINING_RING_CONFIG;
 
-  const ringOdMm = pipeOd * 1.15;
+  const ringOdMm = pipeOd * odMultiplier;
   const ringIdMm = pipeOd;
-  const ringThicknessMm = Math.max(15, Math.min(25, nbMm * 0.04));
-
-  const steelDensity = 7850;
+  const ringThicknessMm = Math.max(minThicknessMm, Math.min(maxThicknessMm, nbMm * thicknessFactor));
 
   const ringOdM = ringOdMm / 1000;
   const ringIdM = ringIdMm / 1000;
   const thicknessM = ringThicknessMm / 1000;
 
   const volumeM3 = Math.PI * ((Math.pow(ringOdM, 2) - Math.pow(ringIdM, 2)) / 4) * thicknessM;
-  const weightKg = volumeM3 * steelDensity;
+  const weightKg = volumeM3 * STEEL_DENSITY_KG_M3;
 
   return Math.round(weightKg * 100) / 100;
 };

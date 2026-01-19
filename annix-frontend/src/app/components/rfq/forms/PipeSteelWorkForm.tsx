@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Select } from '@/app/components/ui/Select';
 import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
 import { SmartNotesDropdown } from '@/app/components/rfq/SmartNotesDropdown';
+import { STEEL_DENSITY_KG_M3 } from '@/app/lib/config/rfq';
 
 export interface PipeSteelWorkFormProps {
   entry: any;
@@ -154,7 +155,7 @@ export default function PipeSteelWorkForm({
     const padThickness = Math.max(6, Math.round(headerOd / 50));
     const padArea = (Math.PI / 4) * (padOd * padOd - branchOd * branchOd);
     const padVolume = (padArea * padThickness) / 1e9;
-    const padWeight = padVolume * 7850;
+    const padWeight = padVolume * STEEL_DENSITY_KG_M3;
     const unitCost = Math.round(padWeight * 25 * 2.5);
 
     return {

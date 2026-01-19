@@ -25,6 +25,8 @@ import {
   BS_4504_PRESSURE_CLASSES,
   recommendedFlangeTypeCode,
   recommendedPressureClassId,
+  WORKING_PRESSURE_BAR,
+  WORKING_TEMPERATURE_CELSIUS,
 } from '@/app/lib/config/rfq';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
@@ -167,7 +169,7 @@ export default function FittingForm({
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
                       >
                         <option value="">Select pressure...</option>
-                        {[6, 10, 16, 25, 40, 63, 100, 160, 250, 320, 400, 630].map((pressure) => (
+                        {WORKING_PRESSURE_BAR.map((pressure) => (
                           <option key={pressure} value={pressure}>{pressure} bar</option>
                         ))}
                       </select>
@@ -187,7 +189,7 @@ export default function FittingForm({
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
                       >
                         <option value="">Select temperature...</option>
-                        {[-29, -20, 0, 20, 50, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500].map((temp) => (
+                        {WORKING_TEMPERATURE_CELSIUS.map((temp) => (
                           <option key={temp} value={temp}>{temp}°C</option>
                         ))}
                       </select>
@@ -1466,41 +1468,78 @@ export default function FittingForm({
 
                     {/* Closure Length Field - Only shown when L/F configuration is selected */}
                     {hasLooseFlange(entry.specs?.pipeEndConfiguration || '') && (
-                      <div className="mt-3 bg-blue-50 p-3 rounded-md border border-blue-200">
-                        <label className="block text-xs font-semibold text-blue-900 mb-1">
-                          Closure Length (mm) *
-                          <span className="text-blue-600 text-xs ml-2">(Site weld extension past L/F)</span>
-                        </label>
-                        <input
-                          type="number"
-                          value={entry.specs?.closureLengthMm || ''}
-                          onChange={(e) => {
-                            const closureLength = e.target.value ? Number(e.target.value) : undefined;
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, closureLengthMm: closureLength }
-                            });
-                          }}
-                          placeholder="e.g., 150"
-                          min={50}
-                          max={500}
-                          className="w-full px-3 py-2 bg-blue-50 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        />
-                        <p className="mt-0.5 text-xs text-blue-700">
-                          Additional pipe length extending past the loose flange for site weld connection (typically 100-200mm)
-                        </p>
-                        {/* Tack Weld Information */}
-                        <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded-md">
-                          <p className="text-xs font-bold text-purple-800">
-                            Loose Flange Tack Welds Required:
-                          </p>
-                          <ul className="text-xs text-purple-700 mt-1 list-disc list-inside">
-                            <li>8 tack welds total (~20mm each)</li>
-                            <li>4 tack welds on each side of loose flange</li>
-                          </ul>
-                          <p className="text-xs text-purple-600 mt-1 italic">
-                            Tack weld charge applies per L/F end
-                          </p>
-                        </div>
+                      <div className="mt-3 bg-purple-50 p-3 rounded-md border border-purple-200">
+                        {(() => {
+                          const nb = entry.specs?.nominalDiameterMm || 100;
+                          const limits = closureLengthLimits(nb);
+                          const currentValue = entry.specs?.closureLengthMm || 0;
+                          const isOutOfRange = currentValue > 0 && (currentValue < limits.min || currentValue > limits.max);
+                          const wallThickness = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5;
+                          const closureWeightKg = currentValue > 0 ? getClosureWeight(nb, currentValue, wallThickness) : 0;
+
+                          return (
+                            <>
+                              <label className="block text-xs font-semibold text-purple-900 mb-1">
+                                Closure Length (mm) *
+                                <span className="ml-1 text-purple-600 font-normal" title={`Recommended: ${limits.recommended}mm for ${nb}NB`}>
+                                  (Rec: {limits.recommended}mm)
+                                </span>
+                              </label>
+                              <div className="flex gap-1 mb-1">
+                                {[100, 150, 200, 250].map((length) => (
+                                  <button
+                                    key={length}
+                                    type="button"
+                                    onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: length } })}
+                                    className={`px-1.5 py-0.5 text-xs rounded border ${
+                                      entry.specs?.closureLengthMm === length
+                                        ? 'bg-purple-200 border-purple-400 font-medium text-purple-900'
+                                        : 'bg-white hover:bg-purple-100 border-purple-300 text-gray-700'
+                                    }`}
+                                  >
+                                    {length}mm
+                                  </button>
+                                ))}
+                              </div>
+                              <input
+                                type="number"
+                                value={entry.specs?.closureLengthMm || ''}
+                                onChange={(e) => {
+                                  const closureLength = e.target.value ? Number(e.target.value) : undefined;
+                                  onUpdateEntry(entry.id, {
+                                    specs: { ...entry.specs, closureLengthMm: closureLength }
+                                  });
+                                }}
+                                placeholder={`${limits.min}-${limits.max}mm`}
+                                min={limits.min}
+                                max={limits.max}
+                                className={`w-full px-3 py-2 bg-white border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 ${
+                                  isOutOfRange ? 'border-red-400' : 'border-purple-300'
+                                }`}
+                              />
+                              {isOutOfRange && (
+                                <p className="mt-1 text-xs text-red-600">
+                                  Should be {limits.min}-{limits.max}mm for {nb}NB
+                                </p>
+                              )}
+                              {closureWeightKg > 0 && (
+                                <p className="mt-1 text-xs text-purple-600">
+                                  Closure weight: {closureWeightKg.toFixed(2)}kg each
+                                </p>
+                              )}
+                              <p className="mt-1 text-xs text-purple-700">
+                                Pipe extension past L/F for site weld connection
+                              </p>
+                              {/* Tack Weld Information */}
+                              <div className="mt-2 p-2 bg-purple-100 border border-purple-300 rounded-md">
+                                <p className="text-xs font-bold text-purple-800">
+                                  L/F Tack Welds:
+                                </p>
+                                <p className="text-xs text-purple-700">8 total (~20mm each), 4 per side</p>
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
@@ -1677,8 +1716,8 @@ export default function FittingForm({
                           : 0;
                         const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
-                        const fittingEndOption = FITTING_END_OPTIONS.find(o => o.value === entry.specs.fittingEndConfiguration);
-                        const hasLooseFlangeConfig = hasLooseFlange(entry.specs.fittingEndConfiguration || '');
+                        const fittingEndOption = FITTING_END_OPTIONS.find(o => o.value === entry.specs.pipeEndConfiguration);
+                        const hasLooseFlangeConfig = hasLooseFlange(entry.specs.pipeEndConfiguration || '');
                         const tackWeldEnds = hasLooseFlangeConfig ? 1 : 0;
                         const tackWeldTotalWeight = nominalBore && tackWeldEnds > 0
                           ? getTackWeldWeight(nominalBore, tackWeldEnds)

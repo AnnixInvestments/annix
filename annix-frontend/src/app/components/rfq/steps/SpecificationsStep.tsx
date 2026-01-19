@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { type MaterialLimits, materialLimits as getMaterialLimits, checkMaterialSuitability } from '@/app/lib/config/rfq';
+import { type MaterialLimits, materialLimits as getMaterialLimits, checkMaterialSuitability, WORKING_PRESSURE_BAR, WORKING_TEMPERATURE_CELSIUS } from '@/app/lib/config/rfq';
 import { materialValidationApi, coatingSpecificationApi, type ISO12944System, type ISO12944SystemsByDurabilityResult } from '@/app/lib/api/client';
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
 import { log } from '@/app/lib/logger';
@@ -519,8 +519,8 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
   const showStructuralSteel = requiredProducts.includes('structural_steel');
   const showSurfaceProtection = requiredProducts.includes('surface_protection');
   const showTransportInstall = requiredProducts.includes('transport_install');
-  const workingPressures = [6, 10, 16, 25, 40, 63, 100, 160, 250, 320, 400, 630]; // Bar values
-  const workingTemperatures = [-29, -20, 0, 20, 50, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500]; // Celsius values
+  const workingPressures = WORKING_PRESSURE_BAR;
+  const workingTemperatures = WORKING_TEMPERATURE_CELSIUS;
 
   // Material suitability warning modal state
   const [materialWarning, setMaterialWarning] = useState<{

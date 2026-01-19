@@ -76,6 +76,8 @@ import {
   type MaterialLimits,
   materialLimits as getMaterialLimits,
   getScheduleListForSpec,
+  STEEL_DENSITY_KG_M3,
+  DEFAULT_PIPE_LENGTH_M,
 } from '@/app/lib/config/rfq';
 import { generateUniqueId, nowISO } from '@/app/lib/datetime';
 import { fetchFlangeSpecsStatic, FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
@@ -1555,7 +1557,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         // Calculate number of flanges from pipe configuration if not in result
         const pipeEndConfig = entry.specs.pipeEndConfiguration || 'PE';
         const physicalFlangesPerPipe = getPhysicalFlangeCount(pipeEndConfig);
-        const calculatedPipeCount = result?.calculatedPipeCount || Math.ceil((entry.specs.quantityValue || 1) / (entry.specs.individualPipeLength || 12.192));
+        const calculatedPipeCount = result?.calculatedPipeCount || Math.ceil((entry.specs.quantityValue || 1) / (entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M));
         const numberOfFlanges = result?.numberOfFlanges || (physicalFlangesPerPipe * calculatedPipeCount);
 
         if (result && numberOfFlanges > 0) {
@@ -1909,7 +1911,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           // Calculate number of flanges from pipe configuration if not in result
           const pipeEndConfig = entry.specs.pipeEndConfiguration || 'PE';
           const physicalFlangesPerPipe = getPhysicalFlangeCount(pipeEndConfig);
-          const calculatedPipeCount = result?.calculatedPipeCount || Math.ceil((entry.specs.quantityValue || 1) / (entry.specs.individualPipeLength || 12.192));
+          const calculatedPipeCount = result?.calculatedPipeCount || Math.ceil((entry.specs.quantityValue || 1) / (entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M));
           const numberOfFlanges = result?.numberOfFlanges || (physicalFlangesPerPipe * calculatedPipeCount);
 
           if (result && numberOfFlanges > 0) {
@@ -2023,9 +2025,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         // Estimate bend arc length based on angle and C/F
         const arcLength = (bendDegrees / 90) * (centerToFace * 2);
 
-        // Weight calculation: π/4 × (OD² - ID²) × length × density (7850 kg/m³ for steel)
+        // Weight calculation: π/4 × (OD² - ID²) × length × density (kg/m³ for steel)
         const crossSectionArea = (Math.PI / 4) * ((od * od) - (id * id)); // mm²
-        const bendWeight = (crossSectionArea / 1000000) * (arcLength / 1000) * 7850; // kg
+        const bendWeight = (crossSectionArea / 1000000) * (arcLength / 1000) * STEEL_DENSITY_KG_M3; // kg
 
         const totalWeight = bendWeight * quantity;
 
