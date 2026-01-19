@@ -39,25 +39,159 @@ Each Claude session works on its own branch, then rebases to main when done.
 
 ---
 
-## Planned: Parallel Claude Manager TUI
+## Parallel Claude Tool
 
-A TypeScript-based TUI tool will simplify this workflow - no git knowledge required.
+A simple menu-driven tool for running multiple Claude sessions at once. No git knowledge needed - just follow the menus.
 
-**Branch management:**
-- Show all `claude/*` branches with status (ahead/behind main)
-- Switch to a branch and spin up the app to test
-- Approve changes: rebase onto main, fast-forward merge (no merge commits)
-- Delete merged branches
+### How to Start
 
-**Session monitoring:**
-- Track all running Claude Code sessions across terminals
-- Show status of each: Working, Complete, Error, Idle
-- Preview recent output without switching terminals
-- Highlight sessions needing attention
+**On Mac:**
+```bash
+./parallel-claude.sh
+```
 
-**Why TypeScript:** Single implementation works on both macOS and Windows.
+**On Windows:**
+```
+parallel-claude.bat
+```
 
-See [GitHub Issue #34](https://github.com/nbarrett/Annix-sync/issues/34) for details and progress.
+Or from any terminal in the project folder:
+```bash
+pnpm parallel-claude
+```
+
+### What You'll See
+
+When you start, you'll see a status screen showing:
+- Which branch you're on (usually `main`)
+- Any Claude sessions currently running
+- Whether the app (frontend/backend) is running
+
+Below the status, there's a menu. You can either:
+- Use arrow keys to navigate, then press Enter
+- Press the shortcut key shown in brackets (e.g., `s` for Sessions)
+
+### Keyboard Shortcuts
+
+| Key | What it does |
+|-----|--------------|
+| `s` | Start or manage Claude sessions |
+| `b` | Manage branches (for advanced users) |
+| `a` | Start the app (frontend + backend) |
+| `x` | Stop the app |
+| `l` | View app logs (useful for debugging) |
+| `p` | Pull latest changes from GitHub |
+| `r` | Refresh the status display |
+| `q` | Quit |
+
+---
+
+### Starting a New Claude Session
+
+1. Press `s` to open Sessions
+2. Select **"Start new session"**
+3. Choose how you want to work:
+
+| Option | When to use it |
+|--------|----------------|
+| **Quick start on main** | Simple tasks, quick fixes |
+| **Start with GitHub issue** | Working on a specific ticket |
+| **Start on specific branch** | Continuing previous work |
+
+4. If you chose GitHub issue or branch, you'll be asked where to work:
+
+| Option | What it means |
+|--------|---------------|
+| **Main directory** | Work directly in the project folder (simple, but can conflict with other sessions) |
+| **New worktree** | Creates a separate copy of the project for this task (recommended for bigger work) |
+| **Existing worktree** | Use a branch you already started |
+
+5. Choose your session mode:
+   - **Interactive** (recommended) - Claude asks before making changes
+   - **Headless** - Claude works autonomously (only for trusted, well-defined tasks)
+
+6. A new terminal tab opens with Claude ready to work!
+
+---
+
+### Working with GitHub Issues
+
+This is the easiest way to assign work to Claude:
+
+1. Press `s` then **"Start new session"**
+2. Choose **"Start with GitHub issue"**
+3. Select the issue from the list (it shows issue numbers and titles)
+4. Choose where to work (main or new worktree)
+5. Claude opens with the full issue description already loaded
+
+**Tip:** If you have an existing branch for this issue, choose "Existing worktree/branch" to continue that work.
+
+---
+
+### Understanding Worktrees (The Simple Version)
+
+Think of a worktree as a separate workspace:
+- A new folder is created next to your project (in `../annix-worktrees/`)
+- Claude works there instead of in your main project folder
+- Multiple Claudes can work on different things without conflicts
+
+**When you're done with a worktree:**
+1. Claude commits the changes
+2. Go back to Parallel Claude and terminate the session
+3. It asks if you want to clean up the folder
+4. Use "Manage branches" to merge the work back to main
+
+---
+
+### Managing the App
+
+The tool can start and stop the development app for you:
+
+- Press `a` to **start** the app (runs both frontend and backend)
+- Press `x` to **stop** the app
+- Press `l` to **view logs** if something seems wrong
+
+The status display shows the app state:
+| Status | Meaning |
+|--------|---------|
+| **Stopped** | App not running |
+| **Starting...** | App is booting up |
+| **Compiling...** | Code is being built |
+| **Ready** | App is running - you can use it |
+| **Error** | Something went wrong - check the logs |
+
+---
+
+### Pulling Latest Changes
+
+Press `p` to get the latest code from GitHub. The tool will:
+1. Download the latest changes
+2. Automatically install any new dependencies if needed
+3. Run database migrations if there are any
+
+---
+
+### Tips for Success
+
+- **Start simple:** Use "Quick start on main" for small tasks
+- **Use worktrees for bigger work:** They prevent conflicts when multiple people are coding
+- **One app at a time:** Only run the app from one place (usually from main)
+- **Watch the status:** The display refreshes every 5 seconds
+
+---
+
+### Works on Both Mac and Windows
+
+| Your Computer | What Opens |
+|---------------|------------|
+| Mac with iTerm2 | New tab in your iTerm window |
+| Mac with Terminal | New tab in Terminal |
+| Windows with Windows Terminal | New tab |
+| Windows with Command Prompt | New window |
+
+---
+
+See [GitHub Issue #34](https://github.com/nbarrett/Annix-sync/issues/34) for development history.
 
 ---
 

@@ -12,10 +12,9 @@ pkill -f "annix-backend.*node" 2>/dev/null
 pkill -f "next dev" 2>/dev/null
 pkill -f "annix-frontend.*node" 2>/dev/null
 
-# Kill any processes on the app ports
+# Kill any processes on Annix ports (backend: 4001, frontend: 3000)
 lsof -ti:4001 2>/dev/null | xargs kill -9 2>/dev/null
 lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null
-lsof -ti:4200 2>/dev/null | xargs kill -9 2>/dev/null
 
 echo "✅ All development processes stopped"
 echo ""

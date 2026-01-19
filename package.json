@@ -4,6 +4,7 @@
   "description": "Full-stack application with NestJS backend and Next.js frontend",
   "private": true,
   "scripts": {
+    "parallel-claude": "npx ts-node --transpile-only scripts/parallel-claude.ts",
     "test:backend": "cd annix-backend && pnpm test",
     "test:frontend": "cd annix-frontend && pnpm type-check",
     "test:all": "pnpm test:backend && pnpm test:frontend",
@@ -20,6 +21,11 @@
     "type-check": "cd annix-frontend && pnpm type-check"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@inquirer/prompts": "^8.2.0",
+    "@types/node": "^25.0.9",
+    "chalk": "^4.1.2",
+    "concurrently": "^8.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }

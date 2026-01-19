@@ -12,8 +12,8 @@ Get-Process -Name "node" -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -like "*annix-frontend*" } |
     Stop-Process -Force -ErrorAction SilentlyContinue
 
-# Kill processes on specific ports
-$ports = @(4001, 3000, 4200)
+# Kill processes on Annix ports (backend: 4001, frontend: 3000)
+$ports = @(4001, 3000)
 foreach ($port in $ports) {
     $connections = netstat -ano | Select-String ":$port.*LISTENING"
     foreach ($conn in $connections) {

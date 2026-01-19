@@ -1,0 +1,1357 @@
+#!/usr/bin/env npx ts-node
+
+import { select, confirm, input } from '@inquirer/prompts';
+import chalk from 'chalk';
+import { execSync, spawn, ChildProcess } from 'child_process';
+import { existsSync, openSync, readFileSync, watchFile, unwatchFile } from 'fs';
+import { join } from 'path';
+import { emitKeypressEvents } from 'readline';
+
+const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
+const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
+
+const log = {
+  debug: (message: string) => {
+    if (LOG_LEVELS[LOG_LEVEL as keyof typeof LOG_LEVELS] <= LOG_LEVELS.debug) {
+      console.log(chalk.dim(`[DEBUG] ${message}`));
+    }
+  },
+  info: (message: string) => {
+    if (LOG_LEVELS[LOG_LEVEL as keyof typeof LOG_LEVELS] <= LOG_LEVELS.info) {
+      console.log(chalk.green(`[PC] ${message}`));
+    }
+  },
+  warn: (message: string) => {
+    if (LOG_LEVELS[LOG_LEVEL as keyof typeof LOG_LEVELS] <= LOG_LEVELS.warn) {
+      console.log(chalk.yellow(`[PC] ${message}`));
+    }
+  },
+  error: (message: string) => {
+    console.error(chalk.red(`[PC] ${message}`));
+  },
+  print: (message: string = '') => {
+    console.log(message);
+  },
+};
+
+interface Branch {
+  name: string;
+  isLocal: boolean;
+  isRemote: boolean;
+  ahead: number;
+  behind: number;
+  lastCommit: string;
+  lastCommitTime: string;
+}
+
+interface Session {
+  pid: number;
+  name: string;
+  branch: string;
+  project: string;
+  status: 'working' | 'complete' | 'error' | 'idle';
+  lastActivity: string;
+}
+
+const ROOT_DIR = join(__dirname, '..');
+const WORKTREE_DIR = join(ROOT_DIR, '..', 'annix-worktrees');
+const CLAUDE_BRANCH_PREFIX = 'claude/';
+const APP_LOG_FILE = join(ROOT_DIR, '.parallel-claude-app.log');
+
+function exec(cmd: string, options: { cwd?: string; silent?: boolean } = {}): string {
+  try {
+    return execSync(cmd, {
+      cwd: options.cwd ?? ROOT_DIR,
+      encoding: 'utf-8',
+      stdio: options.silent ? 'pipe' : ['pipe', 'pipe', 'pipe'],
+    }).trim();
+  } catch (error) {
+    if (!options.silent) {
+      log.error(`Command failed: ${cmd}`);
+    }
+    return '';
+  }
+}
+
+function currentBranch(): string {
+  return exec('git branch --show-current');
+}
+
+function claudeBranches(): Branch[] {
+  const branches: Branch[] = [];
+
+  const localOutput = exec('git branch --format="%(refname:short)|%(upstream:track)|%(committerdate:relative)|%(subject)"');
+  const localBranches = localOutput.split('\n').filter(line => line.trim());
+
+  localBranches
+    .filter(line => line.startsWith(CLAUDE_BRANCH_PREFIX))
+    .forEach(line => {
+      const [name, track, time, subject] = line.split('|');
+      const aheadMatch = track?.match(/ahead (\d+)/);
+      const behindMatch = track?.match(/behind (\d+)/);
+
+      branches.push({
+        name,
+        isLocal: true,
+        isRemote: false,
+        ahead: aheadMatch ? parseInt(aheadMatch[1], 10) : 0,
+        behind: behindMatch ? parseInt(behindMatch[1], 10) : 0,
+        lastCommit: subject || '',
+        lastCommitTime: time || '',
+      });
+    });
+
+  return branches;
+}
+
+function allBranches(): string[] {
+  const output = exec('git branch --format="%(refname:short)"');
+  return output.split('\n').filter(line => line.trim());
+}
+
+function branchStatus(branch: string): { ahead: number; behind: number } {
+  const output = exec(`git rev-list --left-right --count origin/main...${branch}`, { silent: true });
+  if (!output) return { ahead: 0, behind: 0 };
+
+  const [behind, ahead] = output.split('\t').map(n => parseInt(n, 10) || 0);
+  return { ahead, behind };
+}
+
+function formatBranchDisplay(branch: Branch, current: string): string {
+  const isCurrent = branch.name === current;
+  const marker = isCurrent ? chalk.green('●') : chalk.dim('○');
+  const name = isCurrent ? chalk.green(branch.name) : branch.name;
+
+  let status = '';
+  if (branch.ahead > 0 && branch.behind > 0) {
+    status = chalk.yellow(`↑${branch.ahead} ↓${branch.behind}`);
+  } else if (branch.ahead > 0) {
+    status = chalk.green(`↑${branch.ahead} ahead`);
+  } else if (branch.behind > 0) {
+    status = chalk.red(`↓${branch.behind} behind`);
+  } else {
+    status = chalk.dim('up to date');
+  }
+
+  const time = branch.lastCommitTime ? chalk.dim(`(${branch.lastCommitTime})`) : '';
+
+  return `${marker} ${name} ${status} ${time}`;
+}
+
+function detectClaudeSessions(): Session[] {
+  const sessions: Session[] = [];
+  const managedPids = new Set(
+    Array.from(managedSessions.values())
+      .map(s => s.process.pid)
+      .filter(Boolean)
+  );
+
+  try {
+    const platform = process.platform;
+    let output = '';
+
+    if (platform === 'darwin' || platform === 'linux') {
+      output = exec('ps aux | grep -E "claude" | grep -v grep | grep -v "parallel-claude"', { silent: true });
+    } else if (platform === 'win32') {
+      output = exec('tasklist /FI "IMAGENAME eq node.exe" /FO CSV', { silent: true });
+    }
+
+    const lines = output.split('\n').filter(line => line.includes('claude'));
+
+    lines.forEach((line) => {
+      const pidMatch = line.match(/\s+(\d+)\s+/);
+      if (pidMatch) {
+        const pid = parseInt(pidMatch[1], 10);
+
+        if (managedPids.has(pid)) return;
+
+        let branch = 'unknown';
+        let cwd = '';
+
+        let project = 'unknown';
+
+        if (platform === 'darwin' || platform === 'linux') {
+          const lsofOutput = exec(`lsof -p ${pid} 2>/dev/null | grep cwd | head -1`, { silent: true });
+          const cwdMatch = lsofOutput.match(/\s(\/\S+)$/);
+          if (cwdMatch) {
+            cwd = cwdMatch[1];
+            const branchOutput = exec(`git -C "${cwd}" branch --show-current 2>/dev/null`, { silent: true });
+            if (branchOutput) {
+              branch = branchOutput;
+            }
+            const repoRoot = exec(`git -C "${cwd}" rev-parse --show-toplevel 2>/dev/null`, { silent: true });
+            if (repoRoot) {
+              project = repoRoot.split('/').pop() || 'unknown';
+            }
+          }
+        }
+
+        sessions.push({
+          pid,
+          name: cwd ? cwd.split('/').pop() || 'unknown' : `PID ${pid}`,
+          branch,
+          project,
+          status: 'working',
+          lastActivity: 'active',
+        });
+      }
+    });
+  } catch {
+    // Session detection failed silently
+  }
+
+  return sessions;
+}
+
+const BOX_WIDTH = 80;
+const BOX_CONTENT_WIDTH = BOX_WIDTH - 2;
+
+function printHeader(): void {
+  console.clear();
+  log.print(chalk.bold.cyan('┌' + '─'.repeat(BOX_CONTENT_WIDTH) + '┐'));
+  const title = '  Parallel Claude';
+  log.print(chalk.bold.cyan('│') + chalk.bold(title) + ' '.repeat(BOX_CONTENT_WIDTH - title.length) + chalk.bold.cyan('│'));
+  log.print(chalk.bold.cyan('├' + '─'.repeat(BOX_CONTENT_WIDTH) + '┤'));
+}
+
+function printFooter(): void {
+  log.print(chalk.bold.cyan('└' + '─'.repeat(BOX_CONTENT_WIDTH) + '┘'));
+}
+
+function printSection(title: string): void {
+  const text = `  ${title}`;
+  log.print(chalk.bold.cyan('│') + chalk.bold(text) + ' '.repeat(BOX_CONTENT_WIDTH - text.length) + chalk.bold.cyan('│'));
+}
+
+function printBoxLine(content: string, indent: number = 2): void {
+  const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+  const cleanContent = stripAnsi(content);
+  const maxWidth = BOX_CONTENT_WIDTH - indent;
+
+  if (cleanContent.length > maxWidth) {
+    const truncated = cleanContent.slice(0, maxWidth - 1) + '…';
+    log.print(chalk.bold.cyan('│') + ' '.repeat(indent) + truncated + chalk.bold.cyan('│'));
+  } else {
+    const padding = maxWidth - cleanContent.length;
+    log.print(chalk.bold.cyan('│') + ' '.repeat(indent) + content + ' '.repeat(padding) + chalk.bold.cyan('│'));
+  }
+}
+
+function printEmptyLine(): void {
+  log.print(chalk.bold.cyan('│') + ' '.repeat(BOX_CONTENT_WIDTH) + chalk.bold.cyan('│'));
+}
+
+async function switchToBranch(branch: string): Promise<void> {
+  log.warn(`\nSwitching to ${branch}...`);
+
+  const result = exec(`git checkout ${branch}`);
+  if (result !== undefined) {
+    log.info(`✓ Switched to ${branch}`);
+  }
+}
+
+async function rebaseBranch(branch: string): Promise<boolean> {
+  log.warn(`\nRebasing ${branch} onto main...`);
+
+  exec('git fetch origin');
+
+  const current = currentBranch();
+  if (current !== branch) {
+    exec(`git checkout ${branch}`);
+  }
+
+  try {
+    execSync('git rebase origin/main', { cwd: ROOT_DIR, stdio: 'inherit' });
+    log.info(`✓ Rebased ${branch} onto main`);
+    return true;
+  } catch {
+    log.error(`✗ Rebase failed. Resolve conflicts and run: git rebase --continue`);
+    return false;
+  }
+}
+
+async function mergeBranch(branch: string): Promise<boolean> {
+  log.warn(`\nMerging ${branch} to main (fast-forward)...`);
+
+  exec('git checkout main');
+  exec('git fetch origin');
+
+  try {
+    execSync('git rebase origin/main', { cwd: ROOT_DIR, stdio: 'inherit' });
+  } catch {
+    log.error(`✗ Failed to sync main with origin. Resolve conflicts first.`);
+    return false;
+  }
+
+  try {
+    execSync(`git merge --ff-only ${branch}`, { cwd: ROOT_DIR, stdio: 'inherit' });
+    log.info(`✓ Merged ${branch} to main`);
+    return true;
+  } catch {
+    log.error(`✗ Fast-forward merge failed. Branch may need rebasing first.`);
+    return false;
+  }
+}
+
+async function pullChanges(): Promise<void> {
+  const branch = currentBranch();
+
+  const appWasRunning = appProcess !== null ||
+    exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== '' ||
+    exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== '';
+
+  const headBefore = exec('git rev-parse HEAD', { silent: true });
+
+  log.warn(`\nPulling changes for ${branch}...`);
+  exec('git fetch origin');
+
+  try {
+    execSync(`git pull --rebase origin ${branch}`, { cwd: ROOT_DIR, stdio: 'inherit' });
+    log.info(`✓ Pulled latest changes for ${branch}`);
+  } catch {
+    log.error(`✗ Pull failed. You may have local changes or conflicts to resolve.`);
+    return;
+  }
+
+  const headAfter = exec('git rev-parse HEAD', { silent: true });
+  if (headBefore === headAfter) {
+    log.info('Already up to date.');
+    return;
+  }
+
+  const changedFiles = exec(`git diff --name-only ${headBefore}..${headAfter}`, { silent: true });
+
+  const depsChanged = changedFiles.includes('package.json') || changedFiles.includes('pnpm-lock.yaml');
+  if (depsChanged) {
+    log.warn('Dependencies changed. Running pnpm install...');
+    try {
+      execSync('pnpm install', { cwd: ROOT_DIR, stdio: 'inherit' });
+      log.info('✓ Dependencies installed');
+    } catch {
+      log.error('✗ Failed to install dependencies');
+    }
+  }
+
+  const migrationsChanged = changedFiles.split('\n').some(f => f.includes('migrations/'));
+  if (migrationsChanged) {
+    log.warn('New migrations detected. Running migrations...');
+    try {
+      execSync('pnpm --filter annix-backend migration:run', { cwd: ROOT_DIR, stdio: 'inherit' });
+      log.info('✓ Migrations applied');
+    } catch {
+      log.error('✗ Failed to run migrations');
+    }
+  }
+
+  if (appWasRunning) {
+    const appStillRunning = exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== '' ||
+      exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== '';
+
+    if (!appStillRunning) {
+      log.warn('App stopped after pull.');
+      const restart = await confirm({
+        message: 'Restart the app?',
+        default: true,
+      });
+      if (restart) {
+        await startApp();
+      }
+    }
+  }
+}
+
+async function deleteBranch(branch: string): Promise<void> {
+  const deleteLocal = await confirm({
+    message: `Delete local branch ${branch}?`,
+    default: true,
+  });
+
+  if (deleteLocal) {
+    exec(`git branch -d ${branch}`);
+    log.info(`✓ Deleted local branch ${branch}`);
+  }
+
+  const hasRemote = exec(`git ls-remote --heads origin ${branch}`, { silent: true });
+  if (hasRemote) {
+    const deleteRemote = await confirm({
+      message: `Delete remote branch ${branch}?`,
+      default: true,
+    });
+
+    if (deleteRemote) {
+      exec(`git push origin --delete ${branch}`);
+      log.info(`✓ Deleted remote branch ${branch}`);
+    }
+  }
+}
+
+let appProcess: ChildProcess | null = null;
+
+interface ManagedSession {
+  id: string;
+  name: string;
+  process: ChildProcess;
+  branch: string;
+  worktreePath?: string;
+  startTime: Date;
+  status: 'running' | 'stopped';
+  headless: boolean;
+  task?: string;
+}
+
+const managedSessions: Map<string, ManagedSession> = new Map();
+let sessionCounter = 0;
+
+function killExistingProcesses(): void {
+  log.info('Stopping any existing dev processes...');
+
+  const isWindows = process.platform === 'win32';
+
+  if (isWindows) {
+    exec('powershell -ExecutionPolicy Bypass -File kill-dev.ps1', { silent: true });
+  } else {
+    exec('bash kill-dev.sh', { silent: true });
+  }
+}
+
+async function startApp(): Promise<void> {
+  killExistingProcesses();
+
+  log.info('\nStarting development server in background...');
+
+  const isWindows = process.platform === 'win32';
+  const script = isWindows ? 'run-dev.ps1' : './run-dev.sh';
+  const shell = isWindows ? 'powershell' : 'bash';
+
+  const logFd = openSync(APP_LOG_FILE, 'w');
+
+  appProcess = spawn(shell, [script], {
+    cwd: ROOT_DIR,
+    stdio: ['ignore', logFd, logFd],
+    detached: true,
+  });
+
+  appProcess.unref();
+
+  appProcess.on('exit', () => {
+    appProcess = null;
+  });
+
+  log.info('✓ App started in background. Use "View logs" to see output.');
+}
+
+async function stopApp(): Promise<void> {
+  log.info('\nStopping development server...');
+
+  killExistingProcesses();
+
+  if (appProcess) {
+    appProcess.kill('SIGTERM');
+    appProcess = null;
+  }
+
+  log.info('✓ App stopped.');
+}
+
+async function showAppLogs(): Promise<void> {
+  if (!existsSync(APP_LOG_FILE)) {
+    log.warn('\nNo log file found. Start the app first.');
+    await confirm({ message: 'Press Enter to continue...', default: true });
+    return;
+  }
+
+  const BOX_WIDTH = 80;
+  const getTerminalHeight = () => process.stdout.rows || 24;
+
+  const renderLogView = () => {
+    const termHeight = getTerminalHeight();
+    const contentHeight = termHeight - 4;
+
+    let lines: string[] = [];
+    try {
+      const content = readFileSync(APP_LOG_FILE, 'utf-8');
+      lines = content.split('\n').slice(-contentHeight);
+    } catch {
+      lines = ['[Unable to read log file]'];
+    }
+
+    console.clear();
+
+    log.print(chalk.bold.cyan('┌' + '─'.repeat(BOX_WIDTH - 2) + '┐'));
+    log.print(chalk.bold.cyan('│') + chalk.bold('  📄 App Logs (live)') + ' '.repeat(BOX_WIDTH - 23) + chalk.bold.cyan('│'));
+    log.print(chalk.bold.cyan('├' + '─'.repeat(BOX_WIDTH - 2) + '┤'));
+
+    const displayLines = lines.length < contentHeight
+      ? [...Array(contentHeight - lines.length).fill(''), ...lines]
+      : lines;
+
+    displayLines.forEach(line => {
+      const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+      const cleanLine = stripAnsi(line);
+      const maxLen = BOX_WIDTH - 4;
+      const truncated = cleanLine.length > maxLen ? cleanLine.slice(0, maxLen - 1) + '…' : cleanLine;
+      const padding = Math.max(0, maxLen - truncated.length);
+      log.print(chalk.bold.cyan('│') + '  ' + truncated + ' '.repeat(padding) + chalk.bold.cyan('│'));
+    });
+
+    log.print(chalk.bold.cyan('├' + '─'.repeat(BOX_WIDTH - 2) + '┤'));
+    const footerText = '  Press any key to return to menu';
+    log.print(chalk.bold.cyan('│') + chalk.yellow(footerText) + ' '.repeat(BOX_WIDTH - footerText.length - 2) + chalk.bold.cyan('│'));
+    log.print(chalk.bold.cyan('└' + '─'.repeat(BOX_WIDTH - 2) + '┘'));
+  };
+
+  renderLogView();
+
+  const intervalId = setInterval(renderLogView, 1000);
+
+  await new Promise<void>((resolve) => {
+    const handler = () => {
+      clearInterval(intervalId);
+      process.stdin.removeListener('data', handler);
+      process.stdin.setRawMode(false);
+      resolve();
+    };
+
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.once('data', handler);
+  });
+
+  console.clear();
+}
+
+async function showBranchMenu(): Promise<void> {
+  const branches = claudeBranches();
+  const current = currentBranch();
+
+  if (branches.length === 0) {
+    log.warn('\nNo claude/* branches found.');
+    log.info('Claude branches are used for parallel development work.\n');
+
+    const action = await select({
+      message: 'What would you like to do?',
+      choices: [
+        { name: '➕ Create a new claude/* branch', value: 'create' },
+        { name: chalk.dim('← Back'), value: 'back' },
+      ],
+    });
+
+    if (action === 'create') {
+      const branchName = await input({
+        message: 'Branch name (will be prefixed with claude/):',
+        validate: (val) => val.trim() ? true : 'Branch name required',
+      });
+
+      const fullBranchName = `claude/${branchName.trim()}`;
+      exec(`git checkout -b ${fullBranchName}`);
+      log.info(`✓ Created and switched to ${fullBranchName}`);
+    }
+    return;
+  }
+
+  const choices = branches.map(branch => ({
+    name: formatBranchDisplay(branch, current),
+    value: branch.name,
+  }));
+
+  choices.push(
+    { name: '➕ Create new claude/* branch', value: 'create' },
+    { name: chalk.dim('← Back'), value: 'back' }
+  );
+
+  const selected = await select({
+    message: 'Select a branch:',
+    choices,
+  });
+
+  if (selected === 'back') return;
+
+  if (selected === 'create') {
+    const branchName = await input({
+      message: 'Branch name (will be prefixed with claude/):',
+      validate: (val) => val.trim() ? true : 'Branch name required',
+    });
+
+    const fullBranchName = `claude/${branchName.trim()}`;
+    exec(`git checkout -b ${fullBranchName}`);
+    log.info(`✓ Created and switched to ${fullBranchName}`);
+    return;
+  }
+
+  await branchActions(selected);
+}
+
+async function branchActions(branch: string): Promise<void> {
+  const action = await select({
+    message: `Actions for ${branch}:`,
+    choices: [
+      { name: 'Switch to this branch', value: 'switch' },
+      { name: 'Start app to test', value: 'test' },
+      { name: 'Rebase onto main', value: 'rebase' },
+      { name: 'Approve (rebase + merge + delete)', value: 'approve' },
+      { name: 'Delete branch', value: 'delete' },
+      { name: chalk.dim('← Back'), value: 'back' },
+    ],
+  });
+
+  switch (action) {
+    case 'switch':
+      await switchToBranch(branch);
+      break;
+    case 'test':
+      await switchToBranch(branch);
+      await startApp();
+      break;
+    case 'rebase':
+      await rebaseBranch(branch);
+      break;
+    case 'approve':
+      await approveBranch(branch);
+      break;
+    case 'delete':
+      await deleteBranch(branch);
+      break;
+  }
+}
+
+async function approveBranch(branch: string): Promise<void> {
+  log.info(`\n=== Approving ${branch} ===\n`);
+
+  const confirmed = await confirm({
+    message: `This will:\n  1. Rebase ${branch} onto main\n  2. Fast-forward merge to main\n  3. Delete the branch\n\nContinue?`,
+    default: false,
+  });
+
+  if (!confirmed) {
+    log.warn('Cancelled.');
+    return;
+  }
+
+  const rebased = await rebaseBranch(branch);
+  if (!rebased) {
+    log.error('Approval stopped due to rebase failure.');
+    return;
+  }
+
+  const merged = await mergeBranch(branch);
+  if (!merged) {
+    log.error('Approval stopped due to merge failure.');
+    return;
+  }
+
+  await deleteBranch(branch);
+
+  log.info(`\n✓ Branch ${branch} approved and merged to main!`);
+
+  const push = await confirm({
+    message: 'Push main to origin?',
+    default: true,
+  });
+
+  if (push) {
+    log.warn('Pushing to origin...');
+    execSync('git push origin main', { cwd: ROOT_DIR, stdio: 'inherit' });
+    log.info('✓ Pushed to origin.');
+  }
+}
+
+interface SpawnOptions {
+  branch?: string;
+  createBranch?: boolean;
+  headless?: boolean;
+  task?: string;
+}
+
+async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
+  const { branch, createBranch = false, headless = false, task } = options;
+
+  sessionCounter++;
+  const sessionId = `session-${sessionCounter}`;
+  const modeLabel = headless ? 'headless' : 'interactive';
+  const sessionName = `Claude ${sessionCounter} (${modeLabel})`;
+
+  const branchName = branch ?? 'main';
+  const useWorktree = branch && branch !== 'main';
+
+  let worktreePath: string | undefined;
+  let sessionDir = ROOT_DIR;
+
+  if (useWorktree) {
+    const worktreeName = branch.replace(CLAUDE_BRANCH_PREFIX, '').replace(/[^a-z0-9-]/gi, '-');
+    worktreePath = join(WORKTREE_DIR, worktreeName);
+    sessionDir = worktreePath;
+
+    if (!existsSync(WORKTREE_DIR)) {
+      execSync(`mkdir -p "${WORKTREE_DIR}"`, { cwd: ROOT_DIR });
+    }
+
+    const existingWorktrees = exec('git worktree list --porcelain', { silent: true });
+    const worktreeExists = existingWorktrees.includes(worktreePath);
+
+    if (!worktreeExists) {
+      log.info(`Creating worktree at ${worktreePath}...`);
+      if (createBranch) {
+        exec(`git worktree add "${worktreePath}" -b ${branch}`, { silent: false });
+      } else {
+        exec(`git worktree add "${worktreePath}" ${branch}`, { silent: false });
+      }
+    } else {
+      log.info(`Using existing worktree at ${worktreePath}`);
+    }
+  }
+
+  log.warn(`\nStarting new Claude Code session on ${branchName} (${modeLabel})...`);
+  if (task) {
+    log.info(`Task: ${task.slice(0, 60)}${task.length > 60 ? '...' : ''}`);
+  }
+
+  const isWindows = process.platform === 'win32';
+
+  const escapedTask = task ? task.replace(/"/g, '\\"').replace(/'/g, "'\\''") : '';
+  let claudeCmd = 'claude';
+  if (headless) {
+    claudeCmd = task
+      ? `claude --dangerously-skip-permissions "${escapedTask}"`
+      : 'claude --dangerously-skip-permissions';
+  } else if (task) {
+    claudeCmd = `claude "${escapedTask}"`;
+  }
+
+  let sessionProcess: ChildProcess;
+
+  if (isWindows) {
+    let winCmd = 'claude';
+    if (headless) {
+      winCmd = task
+        ? `claude --dangerously-skip-permissions "${escapedTask.replace(/"/g, '""')}"`
+        : 'claude --dangerously-skip-permissions';
+    } else if (task) {
+      winCmd = `claude "${escapedTask.replace(/"/g, '""')}"`;
+    }
+
+    const fullCmd = `cd /d "${sessionDir}" && ${winCmd}`;
+    const hasWindowsTerminal = exec('where wt', { silent: true }) !== '';
+
+    if (hasWindowsTerminal) {
+      sessionProcess = spawn('wt', ['-w', '0', 'new-tab', 'cmd', '/k', fullCmd], {
+        cwd: ROOT_DIR,
+        detached: true,
+        stdio: 'ignore',
+        shell: true,
+      });
+    } else {
+      sessionProcess = spawn('cmd', ['/c', 'start', 'cmd', '/k', fullCmd], {
+        cwd: ROOT_DIR,
+        detached: true,
+        stdio: 'ignore',
+      });
+    }
+  } else {
+    const terminalApp = process.env.TERM_PROGRAM === 'iTerm.app' ? 'iTerm' : 'Terminal';
+    const shellCmd = `cd "${sessionDir}" && ${claudeCmd}`;
+
+    if (terminalApp === 'iTerm') {
+      try {
+        execSync(`osascript <<EOF
+tell application "iTerm"
+  tell current window
+    create tab with default profile
+    tell current session
+      write text "${shellCmd.replace(/"/g, '\\"')}"
+    end tell
+  end tell
+end tell
+EOF`, { cwd: ROOT_DIR, stdio: 'inherit' });
+      } catch (e) {
+        log.error('Failed to open iTerm tab. Trying new window...');
+        try {
+          execSync(`osascript <<EOF
+tell application "iTerm"
+  activate
+  create window with default profile
+  tell current session of current window
+    write text "${shellCmd.replace(/"/g, '\\"')}"
+  end tell
+end tell
+EOF`, { cwd: ROOT_DIR, stdio: 'inherit' });
+        } catch {
+          log.error('Failed to open iTerm. Trying Terminal...');
+          execSync(`osascript -e 'tell application "Terminal" to do script "${shellCmd.replace(/"/g, '\\"')}"'`, { cwd: ROOT_DIR, stdio: 'inherit' });
+        }
+      }
+    } else {
+      execSync(`osascript -e 'tell application "Terminal" to do script "${shellCmd.replace(/"/g, '\\"')}" in front window'`, { cwd: ROOT_DIR, stdio: 'inherit' });
+    }
+
+    sessionProcess = spawn('echo', ['Session started in new terminal'], {
+      cwd: ROOT_DIR,
+      detached: true,
+      stdio: 'ignore',
+    });
+  }
+
+  sessionProcess.unref();
+
+  const session: ManagedSession = {
+    id: sessionId,
+    name: sessionName,
+    process: sessionProcess,
+    branch: branchName,
+    worktreePath,
+    startTime: new Date(),
+    status: 'running',
+    headless,
+    task,
+  };
+
+  managedSessions.set(sessionId, session);
+
+  log.info(`✓ ${sessionName} started on branch ${branchName}`);
+  if (headless) {
+    log.warn('  ⚠️  Headless mode: Claude will auto-accept all actions');
+  }
+}
+
+async function terminateSession(sessionId: string): Promise<void> {
+  const session = managedSessions.get(sessionId);
+  if (!session) {
+    log.error('Session not found.');
+    return;
+  }
+
+  const confirmed = await confirm({
+    message: `Terminate ${session.name} on branch ${session.branch}?`,
+    default: false,
+  });
+
+  if (!confirmed) {
+    log.warn('Cancelled.');
+    return;
+  }
+
+  try {
+    if (session.process.pid) {
+      process.kill(session.process.pid, 'SIGTERM');
+    }
+    session.status = 'stopped';
+    log.info(`✓ ${session.name} terminated.`);
+  } catch {
+    log.warn(`Note: Session may need to be closed manually in its terminal.`);
+  }
+
+  if (session.worktreePath) {
+    const removeWorktree = await confirm({
+      message: `Remove worktree at ${session.worktreePath}?`,
+      default: true,
+    });
+
+    if (removeWorktree) {
+      try {
+        exec(`git worktree remove "${session.worktreePath}" --force`, { silent: false });
+        log.info(`✓ Worktree removed.`);
+      } catch {
+        log.warn(`Could not remove worktree. Remove manually with: git worktree remove "${session.worktreePath}"`);
+      }
+    }
+  }
+
+  managedSessions.delete(sessionId);
+}
+
+async function showSessionsMenu(): Promise<void> {
+  while (true) {
+    const detectedSessions = detectClaudeSessions();
+    const managed = Array.from(managedSessions.values());
+
+    log.print('\n' + chalk.bold('=== Claude Sessions ===') + '\n');
+
+    log.print(chalk.bold('Managed Sessions:'));
+    if (managed.length === 0) {
+      log.print(chalk.dim('  No sessions started from this manager.'));
+    } else {
+      managed.forEach(session => {
+        const runtime = Math.round((Date.now() - session.startTime.getTime()) / 60000);
+        const statusColor = session.status === 'running' ? chalk.green : chalk.dim;
+        const modeIcon = session.headless ? '⚡' : '🛡️';
+        const taskPreview = session.task
+          ? chalk.dim(` "${session.task.slice(0, 40)}${session.task.length > 40 ? '...' : ''}"`)
+          : '';
+        log.print(`  ${statusColor('●')} ${modeIcon} ${chalk.cyan(session.branch)} [${runtime}m]${taskPreview}`);
+      });
+    }
+
+    log.print('\n' + chalk.bold('Other Claude Processes:'));
+    if (detectedSessions.length === 0) {
+      log.print(chalk.dim('  No other Claude processes detected.'));
+    } else {
+      detectedSessions.forEach(session => {
+        const projectDisplay = session.project !== 'unknown'
+          ? chalk.bold(session.project)
+          : chalk.dim('unknown project');
+        const branchDisplay = session.branch !== 'unknown'
+          ? chalk.cyan(session.branch)
+          : chalk.dim('unknown branch');
+        log.print(`  ${chalk.yellow('●')} ${projectDisplay} on ${branchDisplay} (PID ${session.pid})`);
+      });
+    }
+
+    log.print('');
+
+    const choices = [
+      { name: '➕ Start new session', value: 'new' },
+    ];
+
+    if (managed.length > 0) {
+      choices.push({ name: '🛑 Terminate a session', value: 'terminate' });
+    }
+
+    choices.push({ name: chalk.dim('← Back'), value: 'back' });
+
+    const action = await select({
+      message: 'Session actions:',
+      choices,
+    });
+
+    if (action === 'back') return;
+
+    if (action === 'new') {
+      const startType = await select({
+        message: 'How would you like to start?',
+        choices: [
+          { name: '🚀 Quick start on main (Recommended)', value: 'main' },
+          { name: '🎫 Start with GitHub issue', value: 'issue' },
+          { name: '🌿 Start on specific branch', value: 'branch' },
+          { name: chalk.dim('← Cancel'), value: 'cancel' },
+        ],
+      });
+
+      if (startType === 'cancel') continue;
+
+      let selectedBranch: string | undefined;
+      let task: string | undefined;
+      let createNewBranch = false;
+
+      if (startType === 'issue') {
+        log.info('\nFetching open GitHub issues...');
+        const issuesJson = exec('gh issue list --state open --limit 20 --json number,title', { silent: true });
+
+        if (!issuesJson) {
+          log.error('Could not fetch GitHub issues. Is gh CLI configured?');
+          continue;
+        }
+
+        let issues: Array<{ number: number; title: string }> = [];
+        try {
+          issues = JSON.parse(issuesJson);
+        } catch {
+          log.error('Could not parse GitHub issues.');
+          continue;
+        }
+
+        if (issues.length === 0) {
+          log.warn('No open issues found.');
+          continue;
+        }
+
+        const issueChoices = [
+          ...issues.map(i => ({ name: `#${i.number} ${i.title}`, value: String(i.number) })),
+          { name: chalk.dim('← Cancel'), value: 'cancel' },
+        ];
+
+        const selectedIssue = await select({
+          message: 'Select an issue:',
+          choices: issueChoices,
+        });
+
+        if (selectedIssue === 'cancel') continue;
+
+        const issueJson = exec(`gh issue view ${selectedIssue} --json title,body`, { silent: true });
+        if (issueJson) {
+          try {
+            const issue = JSON.parse(issueJson);
+            task = `GitHub Issue #${selectedIssue}: ${issue.title}\n\n${issue.body}`;
+            log.info(`Selected: ${issue.title}`);
+          } catch {
+            task = `Work on GitHub issue #${selectedIssue}`;
+          }
+        }
+
+        const existingBranches = claudeBranches();
+        const branchChoiceOptions = [
+          { name: '📍 Main directory (no isolation)', value: 'main' },
+          { name: '🌿 New worktree (isolated directory with new branch)', value: 'create' },
+        ];
+
+        if (existingBranches.length > 0) {
+          branchChoiceOptions.push({ name: '📂 Existing worktree/branch', value: 'existing' });
+        }
+
+        branchChoiceOptions.push({ name: chalk.dim('← Cancel'), value: 'cancel' });
+
+        const branchChoice = await select({
+          message: 'Where should this session work?',
+          choices: branchChoiceOptions,
+        });
+
+        if (branchChoice === 'cancel') continue;
+
+        if (branchChoice === 'create') {
+          const issueData = JSON.parse(issueJson || '{}');
+          const suggestedName = (issueData.title || `issue-${selectedIssue}`)
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '')
+            .slice(0, 40);
+
+          const branchName = await input({
+            message: 'Branch name (will be prefixed with claude/):',
+            default: suggestedName,
+            validate: (val) => val.trim() ? true : 'Branch name required',
+          });
+
+          selectedBranch = `claude/${branchName.trim()}`;
+          createNewBranch = true;
+        } else if (branchChoice === 'existing') {
+          const existingBranchChoices = [
+            ...existingBranches.map(b => ({ name: b.name, value: b.name })),
+            { name: chalk.dim('← Cancel'), value: 'cancel' },
+          ];
+
+          selectedBranch = await select({
+            message: 'Select existing branch:',
+            choices: existingBranchChoices,
+          });
+
+          if (selectedBranch === 'cancel') continue;
+        } else {
+          selectedBranch = 'main';
+        }
+      } else if (startType === 'branch') {
+        const branches = claudeBranches();
+        const allBranchesList = allBranches();
+
+        const branchChoices = [
+          { name: chalk.green('+ Create new worktree with new branch'), value: 'create-new' },
+          ...branches.map(b => ({ name: `${b.name} (claude branch)`, value: b.name })),
+          ...allBranchesList
+            .filter(b => !b.startsWith(CLAUDE_BRANCH_PREFIX) && b !== 'main')
+            .map(b => ({ name: b, value: b })),
+          { name: chalk.dim('← Cancel'), value: 'cancel' },
+        ];
+
+        selectedBranch = await select({
+          message: 'Select branch (will use/create worktree):',
+          choices: branchChoices,
+        });
+
+        if (selectedBranch === 'cancel') continue;
+
+        if (selectedBranch === 'create-new') {
+          const branchName = await input({
+            message: 'Branch name (will be prefixed with claude/):',
+            validate: (val) => val.trim() ? true : 'Branch name required',
+          });
+          selectedBranch = `claude/${branchName.trim()}`;
+          createNewBranch = true;
+        }
+
+        const taskInput = await input({
+          message: 'Task description (optional, press Enter to skip):',
+        });
+        if (taskInput.trim()) {
+          task = taskInput.trim();
+        }
+      } else {
+        selectedBranch = 'main';
+      }
+
+      const mode = await select({
+        message: 'Session mode:',
+        choices: [
+          { name: '🛡️  Interactive - prompts for confirmation (Recommended)', value: 'interactive' },
+          { name: '⚡ Headless - auto-accepts all actions', value: 'headless' },
+          { name: chalk.dim('← Cancel'), value: 'cancel' },
+        ],
+      });
+
+      if (mode === 'cancel') continue;
+
+      const headless = mode === 'headless';
+
+      if (headless && !task) {
+        task = await input({
+          message: 'Task for headless session:',
+          validate: (val) => val.trim() ? true : 'Task required for headless mode',
+        });
+      }
+
+      await spawnClaudeSession({ branch: selectedBranch, createBranch: createNewBranch, headless, task });
+    } else if (action === 'terminate') {
+      const sessionChoices = managed.map(s => ({
+        name: `${s.name} on ${s.branch}`,
+        value: s.id,
+      }));
+      sessionChoices.push({ name: chalk.dim('← Cancel'), value: 'cancel' });
+
+      const selectedSession = await select({
+        message: 'Select session to terminate:',
+        choices: sessionChoices,
+      });
+
+      if (selectedSession !== 'cancel') {
+        await terminateSession(selectedSession);
+      }
+    }
+  }
+}
+
+async function showStatus(): Promise<void> {
+  const branches = claudeBranches();
+  const current = currentBranch();
+  const managed = Array.from(managedSessions.values());
+
+  printHeader();
+
+  printSection('Current branch');
+  printBoxLine(chalk.green(current));
+  printEmptyLine();
+
+  printSection('Claude branches');
+  if (branches.length === 0) {
+    printBoxLine(chalk.dim('No claude/* branches'));
+  } else {
+    branches.forEach(branch => {
+      const display = formatBranchDisplay(branch, current);
+      printBoxLine(display);
+    });
+  }
+  printEmptyLine();
+
+  printSection('Sessions');
+  if (managed.length === 0) {
+    printBoxLine(chalk.dim('No managed sessions'));
+  } else {
+    managed.forEach(session => {
+      const runtime = Math.round((Date.now() - session.startTime.getTime()) / 60000);
+      const statusIcon = session.status === 'running' ? chalk.green('●') : chalk.dim('○');
+      const issueMatch = session.task?.match(/GitHub Issue #(\d+)/);
+      const issueLabel = issueMatch ? chalk.yellow(`#${issueMatch[1]}`) + ' ' : '';
+      const worktreeIcon = session.worktreePath ? chalk.cyan('⎔ ') : '';
+      const line = `${statusIcon} ${worktreeIcon}${issueLabel}${session.name} on ${session.branch} [${runtime}m]`;
+      printBoxLine(line);
+    });
+  }
+  printEmptyLine();
+
+  printSection('App');
+  let appStatusText = '';
+  let appStatusColor = chalk.dim;
+  let appStatusIcon = '○';
+
+  const backendRunning = exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== '';
+  const frontendRunning = exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== '';
+  const appRunning = appProcess !== null || backendRunning || frontendRunning;
+
+  if (!appRunning) {
+    appStatusText = 'Stopped (use [a] to start)';
+    appStatusColor = chalk.dim;
+    appStatusIcon = '○';
+  } else {
+    let state = 'Starting...';
+
+    if (backendRunning && frontendRunning) {
+      state = 'Ready';
+      appStatusColor = chalk.green;
+    } else if (backendRunning) {
+      state = 'Backend ready, frontend starting...';
+      appStatusColor = chalk.yellow;
+    } else if (frontendRunning) {
+      state = 'Frontend ready, backend starting...';
+      appStatusColor = chalk.yellow;
+    } else if (existsSync(APP_LOG_FILE)) {
+      try {
+        const logContent = readFileSync(APP_LOG_FILE, 'utf-8');
+        const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+        const cleanLog = stripAnsi(logContent);
+
+        if (cleanLog.includes('Compiling')) {
+          state = 'Compiling...';
+          appStatusColor = chalk.yellow;
+        } else if (cleanLog.includes('error') || cleanLog.includes('Error') || cleanLog.includes('ERROR')) {
+          state = 'Error (check [l]ogs)';
+          appStatusColor = chalk.red;
+        }
+      } catch {
+        state = 'Starting...';
+      }
+    }
+
+    appStatusText = `${state} (use [x] to stop)`;
+    appStatusIcon = state === 'Ready' ? '●' : state.includes('Error') ? '✗' : '◐';
+  }
+
+  const statusLine = appStatusColor(appStatusIcon) + ' ' + appStatusText;
+  printBoxLine(statusLine);
+
+  printFooter();
+  log.print('');
+}
+
+interface MenuChoice {
+  name: string;
+  value: string;
+  key: string;
+}
+
+async function selectWithShortcuts(
+  message: string,
+  choices: MenuChoice[],
+  autoRefreshMs?: number
+): Promise<string> {
+  const shortcuts: Record<string, string> = {};
+  choices.forEach(c => {
+    shortcuts[c.key.toLowerCase()] = c.value;
+  });
+
+  return new Promise((resolve) => {
+    const controller = new AbortController();
+    let refreshInterval: NodeJS.Timeout | null = null;
+    let resolved = false;
+
+    if (autoRefreshMs && autoRefreshMs > 0) {
+      refreshInterval = setInterval(() => {
+        if (!resolved) {
+          resolved = true;
+          controller.abort();
+          cleanup();
+          resolve('refresh');
+        }
+      }, autoRefreshMs);
+    }
+
+    const cleanup = () => {
+      if (refreshInterval) clearInterval(refreshInterval);
+      process.stdin.removeListener('keypress', keypressListener);
+    };
+
+    const pauseAutoRefresh = () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+      }
+    };
+
+    const keypressListener = (_ch: string, key: { name: string; ctrl: boolean }) => {
+      if (key && key.name === 'up' || key && key.name === 'down') {
+        pauseAutoRefresh();
+      }
+      if (key && !key.ctrl && key.name && shortcuts[key.name]) {
+        if (!resolved) {
+          resolved = true;
+          controller.abort();
+          cleanup();
+          resolve(shortcuts[key.name]);
+        }
+      }
+    };
+
+    process.stdin.on('keypress', keypressListener);
+
+    select({
+      message,
+      choices: choices.map(c => ({
+        name: c.name,
+        value: c.value,
+      })),
+    }, { signal: controller.signal })
+      .then((result) => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve(result);
+        }
+      })
+      .catch(() => {
+        cleanup();
+      });
+  });
+}
+
+async function mainMenu(): Promise<void> {
+  while (true) {
+    await showStatus();
+
+    const sessionCount = managedSessions.size;
+    const sessionInfo = sessionCount > 0 ? ` (${sessionCount} running)` : '';
+
+    const padLabel = (text: string, width: number) => text + ' '.repeat(Math.max(0, width - text.length));
+
+    const choices: MenuChoice[] = [
+      { name: `📋 ${padLabel('Manage branches', 28)}${chalk.cyan('[b]')}`, value: 'branches', key: 'b' },
+      { name: `🖥️ ${padLabel('Manage sessions' + sessionInfo, 28)}${chalk.cyan('[s]')}`, value: 'sessions', key: 's' },
+      { name: `📥 ${padLabel('Pull changes', 28)}${chalk.cyan('[p]')}`, value: 'pull', key: 'p' },
+      { name: `🚀 ${padLabel('Start app', 28)}${chalk.cyan('[a]')}`, value: 'start', key: 'a' },
+      { name: `📄 ${padLabel('View app logs', 28)}${chalk.cyan('[l]')}`, value: 'logs', key: 'l' },
+      { name: `🛑 ${padLabel('Stop app', 28)}${chalk.cyan('[x]')}`, value: 'stop', key: 'x' },
+      { name: `🔄 ${padLabel('Refresh', 28)}${chalk.cyan('[r]')}`, value: 'refresh', key: 'r' },
+      { name: chalk.dim(`❌ ${padLabel('Quit', 28)}[q]`), value: 'quit', key: 'q' },
+    ];
+
+    const action = await selectWithShortcuts('What would you like to do?', choices, 5000);
+
+    switch (action) {
+      case 'branches':
+        await showBranchMenu();
+        break;
+      case 'sessions':
+        await showSessionsMenu();
+        break;
+      case 'pull':
+        await pullChanges();
+        break;
+      case 'start':
+        await startApp();
+        break;
+      case 'logs':
+        await showAppLogs();
+        break;
+      case 'stop':
+        await stopApp();
+        break;
+      case 'refresh':
+        // Just loop again
+        break;
+      case 'quit':
+        if (appProcess) {
+          const confirmQuit = await confirm({
+            message: 'App is still running. Stop it before quitting?',
+            default: true,
+          });
+          if (confirmQuit) {
+            await stopApp();
+          }
+        }
+        log.debug('\nGoodbye!');
+        process.exit(0);
+    }
+  }
+}
+
+async function main(): Promise<void> {
+  log.info('\n  Parallel Claude\n');
+
+  emitKeypressEvents(process.stdin);
+
+  const isGitRepo = existsSync(join(ROOT_DIR, '.git'));
+  if (!isGitRepo) {
+    log.error('Error: Not a git repository.');
+    process.exit(1);
+  }
+
+  await mainMenu();
+}
+
+main().catch(error => {
+  log.error(`Error: ${error.message}`);
+  process.exit(1);
+});

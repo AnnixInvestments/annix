@@ -17,6 +17,8 @@ annix-backend-latest.tar.gz
 # Log files
 backend-dev.log
 frontend-dev.log
+.parallel-claude-app.log
+.pcm-app.log
 
 # OS files
 .DS_Store
