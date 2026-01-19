@@ -314,36 +314,39 @@ export default function BendForm({
                               let matchedWT: number | undefined;
                               let keepNB = false;
 
-                              if (nominalBore && newSpecId && !specTypeChanged) {
-                                keepNB = true;
-                                const schedules = getScheduleListForSpec(nominalBore, newSpecId);
-                                const pressure = globalSpecs?.workingPressureBar || 0;
+                              if (nominalBore && newSpecId) {
+                                const nbValidForNewSpec = isNominalBoreValidForSpec(newSpecName, nominalBore);
+                                if (nbValidForNewSpec) {
+                                  keepNB = true;
+                                  const schedules = getScheduleListForSpec(nominalBore, newSpecId);
+                                  const pressure = globalSpecs?.workingPressureBar || 0;
 
-                                if (pressure > 0 && schedules.length > 0) {
-                                  const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
-                                  const temperature = globalSpecs?.workingTemperatureCelsius || 20;
-                                  const minWT = calculateMinWallThickness(od, pressure, 'ASTM_A106_Grade_B', temperature, 1.0, 0, 1.2);
+                                  if (pressure > 0 && schedules.length > 0) {
+                                    const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
+                                    const temperature = globalSpecs?.workingTemperatureCelsius || 20;
+                                    const minWT = calculateMinWallThickness(od, pressure, 'ASTM_A106_Grade_B', temperature, 1.0, 0, 1.2);
 
-                                  const eligibleSchedules = schedules
-                                    .filter((s: any) => (s.wallThicknessMm || 0) >= minWT)
-                                    .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+                                    const eligibleSchedules = schedules
+                                      .filter((s: any) => (s.wallThicknessMm || 0) >= minWT)
+                                      .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
 
-                                  if (eligibleSchedules.length > 0) {
-                                    matchedSchedule = eligibleSchedules[0].scheduleDesignation;
-                                    matchedWT = eligibleSchedules[0].wallThicknessMm;
+                                    if (eligibleSchedules.length > 0) {
+                                      matchedSchedule = eligibleSchedules[0].scheduleDesignation;
+                                      matchedWT = eligibleSchedules[0].wallThicknessMm;
+                                    } else if (schedules.length > 0) {
+                                      const sorted = [...schedules].sort((a: any, b: any) => (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0));
+                                      matchedSchedule = sorted[0].scheduleDesignation;
+                                      matchedWT = sorted[0].wallThicknessMm;
+                                    }
                                   } else if (schedules.length > 0) {
-                                    const sorted = [...schedules].sort((a: any, b: any) => (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0));
-                                    matchedSchedule = sorted[0].scheduleDesignation;
-                                    matchedWT = sorted[0].wallThicknessMm;
-                                  }
-                                } else if (schedules.length > 0) {
-                                  const sch40 = schedules.find((s: any) => s.scheduleDesignation === '40' || s.scheduleDesignation === 'Sch 40');
-                                  if (sch40) {
-                                    matchedSchedule = sch40.scheduleDesignation;
-                                    matchedWT = sch40.wallThicknessMm;
-                                  } else {
-                                    matchedSchedule = schedules[0].scheduleDesignation;
-                                    matchedWT = schedules[0].wallThicknessMm;
+                                    const sch40 = schedules.find((s: any) => s.scheduleDesignation === '40' || s.scheduleDesignation === 'Sch 40');
+                                    if (sch40) {
+                                      matchedSchedule = sch40.scheduleDesignation;
+                                      matchedWT = sch40.wallThicknessMm;
+                                    } else {
+                                      matchedSchedule = schedules[0].scheduleDesignation;
+                                      matchedWT = schedules[0].wallThicknessMm;
+                                    }
                                   }
                                 }
                               }
@@ -706,7 +709,9 @@ export default function BendForm({
                             22.5,
                             ...Array.from({ length: 15 }, (_, i) => i + 23),
                             37.5,
-                            ...Array.from({ length: 53 }, (_, i) => i + 38)
+                            ...Array.from({ length: 52 }, (_, i) => i + 38),
+                            90,
+                            ...Array.from({ length: 90 }, (_, i) => i + 91)
                           ];
                           return sabs719Angles.map(deg => ({
                             value: String(deg),
@@ -719,7 +724,10 @@ export default function BendForm({
                             id={selectId}
                             value={entry.specs?.bendDegrees ? String(entry.specs.bendDegrees) : ''}
                             onChange={(value) => {
-                              const bendDegrees = value ? parseFloat(value) : undefined;
+                              const rawDegrees = value ? parseFloat(value) : undefined;
+                              const bendDegrees = rawDegrees !== undefined
+                                ? Math.max(0, Math.min(180, rawDegrees))
+                                : undefined;
                               let centerToFaceMm: number | undefined;
                               let bendRadiusMm: number | undefined;
                               if (!isSABS719 && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {

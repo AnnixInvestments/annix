@@ -495,11 +495,16 @@ export default function FittingForm({
                                 }
                               }
 
+                              const isReducingTeeType = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(entry.specs?.fittingType || '');
+                              const currentBranchNB = entry.specs?.branchNominalDiameterMm;
+                              const shouldClearBranch = isReducingTeeType && currentBranchNB && currentBranchNB >= nominalDiameter;
+
                               const newSpecs = {
                                 ...entry.specs,
                                 nominalDiameterMm: nominalDiameter,
                                 scheduleNumber: matchedSchedule,
-                                wallThicknessMm: matchedWT
+                                wallThicknessMm: matchedWT,
+                                branchNominalDiameterMm: shouldClearBranch ? undefined : entry.specs?.branchNominalDiameterMm
                               };
                               const immediateEntry = { ...entry, specs: newSpecs };
                               immediateEntry.description = generateItemDescription(immediateEntry);
@@ -1285,6 +1290,7 @@ export default function FittingForm({
                               onChange={(value) => {
                                 if (!value) return;
                                 const branchDiameter = Number(value);
+                                if (branchDiameter >= mainNB) return;
                                 onUpdateEntry(entry.id, {
                                   specs: {
                                     ...entry.specs,
