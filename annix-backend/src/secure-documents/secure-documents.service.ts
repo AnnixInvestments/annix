@@ -45,10 +45,12 @@ function slugify(text: string): string {
 @Injectable()
 export class SecureDocumentsService {
   private readonly logger = new Logger(SecureDocumentsService.name);
-  private readonly s3Client: S3Client;
+  private readonly s3Client: S3Client | null;
   private readonly bucket: string;
   private readonly encryptionKey: string;
   private readonly projectRoot: string;
+  private readonly useLocalStorage: boolean;
+  private readonly localStoragePath: string;
 
   constructor(
     @InjectRepository(SecureDocument)
@@ -69,14 +71,27 @@ export class SecureDocumentsService {
       this.projectRoot = path.resolve(process.cwd(), '..');
     }
 
-    this.s3Client = new S3Client({
-      region,
-      credentials: {
-        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID') || '',
-        secretAccessKey:
-          this.configService.get<string>('AWS_SECRET_ACCESS_KEY') || '',
-      },
-    });
+    const awsAccessKey = this.configService.get<string>('AWS_ACCESS_KEY_ID');
+    const awsSecretKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
+    this.useLocalStorage = !awsAccessKey || !awsSecretKey;
+    this.localStoragePath = path.join(process.cwd(), 'secure-documents-storage');
+
+    if (this.useLocalStorage) {
+      this.s3Client = null;
+      if (!fs.existsSync(this.localStoragePath)) {
+        fs.mkdirSync(this.localStoragePath, { recursive: true });
+      }
+      this.logger.log('SecureDocumentsService using LOCAL storage');
+    } else {
+      this.s3Client = new S3Client({
+        region,
+        credentials: {
+          accessKeyId: awsAccessKey || '',
+          secretAccessKey: awsSecretKey || '',
+        },
+      });
+      this.logger.log(`SecureDocumentsService using S3 storage (bucket: ${this.bucket})`);
+    }
 
     if (!this.encryptionKey) {
       this.logger.warn(
@@ -191,7 +206,7 @@ export class SecureDocumentsService {
     }
 
     if (dto.content !== undefined) {
-      await this.deleteFromS3(document.storagePath);
+      await this.deleteFromStorage(document.storagePath);
       document.storagePath = await this.encryptAndUpload(dto.content);
     }
 
@@ -202,7 +217,7 @@ export class SecureDocumentsService {
 
   async remove(id: string): Promise<void> {
     const document = await this.findOne(id);
-    await this.deleteFromS3(document.storagePath);
+    await this.deleteFromStorage(document.storagePath);
     await this.documentRepo.remove(document);
     this.logger.log(`Deleted secure document: ${id}`);
   }
@@ -214,6 +229,17 @@ export class SecureDocumentsService {
 
     const encrypted = encrypt(content, this.encryptionKey);
     const key = `secure-documents/${uuidv4()}.enc`;
+
+    if (this.useLocalStorage) {
+      const filePath = path.join(this.localStoragePath, `${uuidv4()}.enc`);
+      await fs.promises.writeFile(filePath, encrypted);
+      this.logger.log(`Saved encrypted document locally: ${filePath}`);
+      return `local:${path.basename(filePath)}`;
+    }
+
+    if (!this.s3Client) {
+      throw new InternalServerErrorException('S3 client not configured');
+    }
 
     await this.s3Client.send(
       new PutObjectCommand({
@@ -234,6 +260,20 @@ export class SecureDocumentsService {
   private async downloadAndDecrypt(storagePath: string): Promise<string> {
     if (!this.encryptionKey) {
       throw new InternalServerErrorException('Encryption key not configured');
+    }
+
+    if (this.useLocalStorage || storagePath.startsWith('local:')) {
+      const fileName = storagePath.replace('local:', '');
+      const filePath = path.join(this.localStoragePath, fileName);
+      if (!fs.existsSync(filePath)) {
+        throw new NotFoundException(`File not found: ${storagePath}`);
+      }
+      const encrypted = await fs.promises.readFile(filePath);
+      return decrypt(encrypted, this.encryptionKey);
+    }
+
+    if (!this.s3Client) {
+      throw new InternalServerErrorException('S3 client not configured');
     }
 
     const response = await this.s3Client.send(
@@ -257,7 +297,21 @@ export class SecureDocumentsService {
     return decrypt(encrypted, this.encryptionKey);
   }
 
-  private async deleteFromS3(storagePath: string): Promise<void> {
+  private async deleteFromStorage(storagePath: string): Promise<void> {
+    if (this.useLocalStorage || storagePath.startsWith('local:')) {
+      const fileName = storagePath.replace('local:', '');
+      const filePath = path.join(this.localStoragePath, fileName);
+      if (fs.existsSync(filePath)) {
+        await fs.promises.unlink(filePath);
+        this.logger.log(`Deleted encrypted document locally: ${filePath}`);
+      }
+      return;
+    }
+
+    if (!this.s3Client) {
+      throw new InternalServerErrorException('S3 client not configured');
+    }
+
     await this.s3Client.send(
       new DeleteObjectCommand({
         Bucket: this.bucket,

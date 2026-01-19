@@ -9,6 +9,7 @@ import {
   UploadedFile,
   UploadedFiles,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
@@ -17,6 +18,7 @@ import {
   ApiResponse,
   ApiConsumes,
   ApiBody,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { NixService } from './nix.service';
 import {
@@ -39,6 +41,9 @@ import {
   RegistrationDocumentType,
   ExpectedCompanyData,
 } from './services/registration-document-verifier.service';
+import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @ApiTags('Nix AI Assistant')
 @Controller('nix')
@@ -292,5 +297,54 @@ export class NixController {
       combinedAutoCorrections,
       totalProcessingTimeMs: resultsWithReports.reduce((sum, r) => sum + r.processingTimeMs, 0),
     };
+  }
+
+  @Post('admin/upload-document')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload and process a document, saving extracted content to Secure Documents' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        title: { type: 'string', description: 'Optional title for the document' },
+        description: { type: 'string', description: 'Optional description' },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Document processed and saved to Secure Documents' })
+  async uploadAndSaveDocument(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('title') title?: string,
+    @Body('description') description?: string,
+    @Body('userId') userId?: string,
+  ): Promise<{ success: boolean; documentId?: string; documentSlug?: string; message?: string; error?: string }> {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const adminUserId = userId ? parseInt(userId, 10) : 1;
+
+    return this.nixService.processAndSaveToSecureDocuments(
+      file,
+      adminUserId,
+      title,
+      description,
+    );
+  }
+
+  @Get('admin/documents')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all Nix-processed documents in Secure Documents' })
+  @ApiResponse({ status: 200, description: 'List of Nix folder documents' })
+  async listNixDocuments(): Promise<{ documents: Array<{ id: string; slug: string; title: string; description: string | null; createdAt: string; updatedAt: string }> }> {
+    return this.nixService.listNixSecureDocuments();
   }
 }

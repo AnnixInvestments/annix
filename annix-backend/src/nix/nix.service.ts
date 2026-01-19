@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -28,6 +28,8 @@ import {
 import { ExcelExtractorService, ExtractedItem, SpecificationCellData, ExtractionResult } from './services/excel-extractor.service';
 import { PdfExtractorService } from './services/pdf-extractor.service';
 import { AiExtractionService } from './ai-providers/ai-extraction.service';
+import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
+import * as fs from 'fs';
 
 @Injectable()
 export class NixService {
@@ -45,6 +47,8 @@ export class NixService {
     private readonly excelExtractor: ExcelExtractorService,
     private readonly pdfExtractor: PdfExtractorService,
     private readonly aiExtractor: AiExtractionService,
+    @Inject(forwardRef(() => SecureDocumentsService))
+    private readonly secureDocumentsService: SecureDocumentsService,
   ) {}
 
   async processDocument(dto: ProcessDocumentDto): Promise<ProcessDocumentResponseDto> {
@@ -587,5 +591,241 @@ export class NixService {
     }
 
     return { success: true };
+  }
+
+  async processAndSaveToSecureDocuments(
+    file: Express.Multer.File,
+    userId: number,
+    customTitle?: string,
+    customDescription?: string,
+  ): Promise<{ success: boolean; documentId?: string; documentSlug?: string; message?: string; error?: string }> {
+    const startTime = Date.now();
+    const fileName = file.originalname;
+    const filePath = file.path;
+
+    this.logger.log(`Processing document for Secure Documents: ${fileName}`);
+
+    try {
+      const documentType = this.detectDocumentType(fileName);
+      let extractedContent: string;
+      let metadata: Record<string, unknown> = {};
+
+      if (documentType === DocumentType.PDF) {
+        const result = await this.pdfExtractor.extractFromPdf(filePath);
+        extractedContent = this.formatPdfExtractionAsMarkdown(fileName, result);
+        metadata = result.metadata || {};
+      } else if (documentType === DocumentType.EXCEL) {
+        const result = await this.excelExtractor.extractFromExcel(filePath);
+        extractedContent = this.formatExcelExtractionAsMarkdown(fileName, result);
+        metadata = result.metadata || {};
+      } else {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        extractedContent = this.formatTextAsMarkdown(fileName, content);
+      }
+
+      const title = customTitle || fileName.replace(/\.[^.]+$/, '');
+      const description = customDescription || this.generateDescription(metadata, extractedContent);
+
+      const document = await this.secureDocumentsService.create(
+        {
+          title,
+          description,
+          content: extractedContent,
+          folder: 'Nix',
+        },
+        userId,
+      );
+
+      const processingTimeMs = Date.now() - startTime;
+      this.logger.log(`Document saved to Secure Documents: ${document.id} (${processingTimeMs}ms)`);
+
+      this.cleanupUploadedFile(filePath);
+
+      return {
+        success: true,
+        documentId: document.id,
+        documentSlug: document.slug,
+        message: `Document processed and saved successfully in ${processingTimeMs}ms`,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to process document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.cleanupUploadedFile(filePath);
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
+
+  async listNixSecureDocuments(): Promise<{ documents: Array<{ id: string; slug: string; title: string; description: string | null; createdAt: string; updatedAt: string }> }> {
+    const allDocuments = await this.secureDocumentsService.findAll();
+    const nixDocuments = allDocuments
+      .filter(doc => doc.folder === 'Nix')
+      .map(doc => ({
+        id: doc.id,
+        slug: doc.slug,
+        title: doc.title,
+        description: doc.description,
+        createdAt: doc.createdAt.toISOString(),
+        updatedAt: doc.updatedAt.toISOString(),
+      }));
+
+    return { documents: nixDocuments };
+  }
+
+  private formatPdfExtractionAsMarkdown(fileName: string, result: ExtractionResult): string {
+    const lines: string[] = [
+      `# ${fileName.replace(/\.[^.]+$/, '')}`,
+      '',
+      `> Processed by Nix on ${new Date().toISOString()}`,
+      '',
+    ];
+
+    if (result.metadata) {
+      lines.push('## Document Metadata', '');
+      const meta = result.metadata;
+      if (meta.projectName) lines.push(`- **Project Name:** ${meta.projectName}`);
+      if (meta.projectReference) lines.push(`- **Project Reference:** ${meta.projectReference}`);
+      if (meta.projectLocation) lines.push(`- **Location:** ${meta.projectLocation}`);
+      if (meta.standard) lines.push(`- **Standard:** ${meta.standard}`);
+      if (meta.materialGrade) lines.push(`- **Material Grade:** ${meta.materialGrade}`);
+      if (meta.coating) lines.push(`- **Coating:** ${meta.coating}`);
+      if (meta.lining) lines.push(`- **Lining:** ${meta.lining}`);
+      lines.push('');
+    }
+
+    if (result.items && result.items.length > 0) {
+      lines.push('## Extracted Items', '');
+      lines.push('| # | Description | Type | Size | Material | Qty |');
+      lines.push('|---|-------------|------|------|----------|-----|');
+
+      result.items.forEach((item, index) => {
+        const description = item.description || '-';
+        const type = item.itemType || '-';
+        const size = item.diameter ? `${item.diameter}${item.diameterUnit === 'mm' ? 'mm' : '"'}` : '-';
+        const material = item.materialGrade || item.material || '-';
+        const qty = item.quantity || '-';
+        lines.push(`| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`);
+      });
+      lines.push('');
+    }
+
+    if (result.specificationCells && result.specificationCells.length > 0) {
+      lines.push('## Specification Data', '');
+      result.specificationCells.forEach(spec => {
+        lines.push(`### ${spec.rawText || 'Specification'}`);
+        if (spec.parsedData) {
+          const parsed = spec.parsedData;
+          if (parsed.materialGrade) lines.push(`- **Material Grade:** ${parsed.materialGrade}`);
+          if (parsed.wallThickness) lines.push(`- **Wall Thickness:** ${parsed.wallThickness}`);
+          if (parsed.lining) lines.push(`- **Lining:** ${parsed.lining}`);
+          if (parsed.externalCoating) lines.push(`- **Coating:** ${parsed.externalCoating}`);
+          if (parsed.standard) lines.push(`- **Standard:** ${parsed.standard}`);
+          if (parsed.schedule) lines.push(`- **Schedule:** ${parsed.schedule}`);
+        }
+        lines.push('');
+      });
+    }
+
+    lines.push('---', '');
+    lines.push(`*Source file: ${fileName}*`);
+    lines.push(`*Total rows processed: ${result.totalRows}*`);
+    lines.push(`*Items extracted: ${result.items?.length || 0}*`);
+
+    return lines.join('\n');
+  }
+
+  private formatExcelExtractionAsMarkdown(fileName: string, result: ExtractionResult): string {
+    const lines: string[] = [
+      `# ${fileName.replace(/\.[^.]+$/, '')}`,
+      '',
+      `> Processed by Nix on ${new Date().toISOString()}`,
+      '',
+      `**Sheet:** ${result.sheetName || 'Unknown'}`,
+      '',
+    ];
+
+    if (result.metadata) {
+      lines.push('## Document Metadata', '');
+      const meta = result.metadata;
+      if (meta.projectName) lines.push(`- **Project Name:** ${meta.projectName}`);
+      if (meta.projectReference) lines.push(`- **Project Reference:** ${meta.projectReference}`);
+      if (meta.projectLocation) lines.push(`- **Location:** ${meta.projectLocation}`);
+      if (meta.standard) lines.push(`- **Standard:** ${meta.standard}`);
+      if (meta.materialGrade) lines.push(`- **Material Grade:** ${meta.materialGrade}`);
+      lines.push('');
+    }
+
+    if (result.items && result.items.length > 0) {
+      lines.push('## Extracted Items', '');
+      lines.push('| # | Description | Type | Size | Material | Qty |');
+      lines.push('|---|-------------|------|------|----------|-----|');
+
+      result.items.forEach((item, index) => {
+        const description = item.description || '-';
+        const type = item.itemType || '-';
+        const size = item.diameter ? `${item.diameter}${item.diameterUnit === 'mm' ? 'mm' : '"'}` : '-';
+        const material = item.materialGrade || item.material || '-';
+        const qty = item.quantity || '-';
+        lines.push(`| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`);
+      });
+      lines.push('');
+    }
+
+    lines.push('---', '');
+    lines.push(`*Source file: ${fileName}*`);
+    lines.push(`*Total rows processed: ${result.totalRows}*`);
+    lines.push(`*Items extracted: ${result.items?.length || 0}*`);
+
+    return lines.join('\n');
+  }
+
+  private formatTextAsMarkdown(fileName: string, content: string): string {
+    const lines: string[] = [
+      `# ${fileName.replace(/\.[^.]+$/, '')}`,
+      '',
+      `> Processed by Nix on ${new Date().toISOString()}`,
+      '',
+      '## Content',
+      '',
+      content,
+      '',
+      '---',
+      `*Source file: ${fileName}*`,
+    ];
+
+    return lines.join('\n');
+  }
+
+  private generateDescription(metadata: Record<string, unknown>, content: string): string {
+    const parts: string[] = [];
+
+    if (metadata.projectName) {
+      parts.push(`Project: ${metadata.projectName}`);
+    }
+    if (metadata.projectReference) {
+      parts.push(`Ref: ${metadata.projectReference}`);
+    }
+
+    if (parts.length === 0) {
+      const firstLine = content.split('\n').find(line => line.trim() && !line.startsWith('#') && !line.startsWith('>'));
+      if (firstLine) {
+        parts.push(firstLine.trim().substring(0, 100));
+      }
+    }
+
+    return parts.join(' | ') || 'Nix processed document';
+  }
+
+  private cleanupUploadedFile(filePath: string): void {
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        this.logger.log(`Cleaned up temporary file: ${filePath}`);
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to cleanup file ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }

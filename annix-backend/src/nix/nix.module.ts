@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
 import { NixController } from './nix.controller';
@@ -11,6 +11,8 @@ import { ExcelExtractorService } from './services/excel-extractor.service';
 import { PdfExtractorService } from './services/pdf-extractor.service';
 import { AiExtractionService } from './ai-providers/ai-extraction.service';
 import { RegistrationDocumentVerifierService } from './services/registration-document-verifier.service';
+import { SecureDocumentsModule } from '../secure-documents/secure-documents.module';
+import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { RegistrationDocumentVerifierService } from './services/registration-doc
         fileSize: 100 * 1024 * 1024, // 100 MB for tender documents
       },
     }),
+    forwardRef(() => SecureDocumentsModule),
+    AdminModule,
   ],
   controllers: [NixController],
   providers: [

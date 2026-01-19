@@ -657,6 +657,57 @@ class AdminApiClient {
   async getRfqItems(id: number): Promise<any[]> {
     return this.request<any[]>(`/admin/rfqs/${id}/items`);
   }
+
+  async uploadNixDocument(
+    file: File,
+    title?: string,
+    description?: string,
+  ): Promise<NixUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (title) formData.append('title', title);
+    if (description) formData.append('description', description);
+
+    const response = await fetch(`${this.baseURL}/nix/admin/upload-document`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Upload failed: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async listNixDocuments(): Promise<NixDocumentListResponse> {
+    return this.request<NixDocumentListResponse>('/nix/admin/documents');
+  }
+}
+
+export interface NixUploadResponse {
+  success: boolean;
+  documentId?: string;
+  documentSlug?: string;
+  message?: string;
+  error?: string;
+}
+
+export interface NixDocument {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NixDocumentListResponse {
+  documents: NixDocument[];
 }
 
 export const adminApiClient = new AdminApiClient();
