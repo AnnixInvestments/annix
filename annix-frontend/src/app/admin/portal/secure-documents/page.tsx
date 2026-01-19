@@ -322,25 +322,33 @@ export default function SecureDocumentsPage() {
       setEditorFullscreen(false);
     }
 
-    if (!selectedDocument && !selectedLocalDocument && !isLoadingDocument) {
+    if (!selectedDocument && !selectedLocalDocument && !isLoadingDocument && !isLoading) {
       const targetMode = urlMode === 'edit' ? 'edit' : 'view';
       handleViewDocumentBySlug(docSlug, targetMode);
     }
-  }, [searchParams, selectedDocument, selectedLocalDocument, isLoadingDocument]);
+  }, [searchParams, selectedDocument, selectedLocalDocument, isLoadingDocument, isLoading, localDocuments]);
 
   const updateUrl = (slug: string | null, mode?: UrlMode, pane?: EditorPaneMode, fullscreen?: boolean) => {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams.toString());
     if (slug) {
       params.set('doc', slug);
+    } else {
+      params.delete('doc');
     }
     if (mode) {
       params.set('mode', mode);
+    } else {
+      params.delete('mode');
     }
     if (pane) {
       params.set('pane', pane);
+    } else {
+      params.delete('pane');
     }
     if (fullscreen !== undefined) {
       params.set('fullscreen', String(fullscreen));
+    } else {
+      params.delete('fullscreen');
     }
     const queryString = params.toString();
     const url = queryString
