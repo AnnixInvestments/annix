@@ -322,11 +322,11 @@ export default function SecureDocumentsPage() {
       setEditorFullscreen(false);
     }
 
-    if (!selectedDocument && !isLoadingDocument) {
+    if (!selectedDocument && !selectedLocalDocument && !isLoadingDocument) {
       const targetMode = urlMode === 'edit' ? 'edit' : 'view';
       handleViewDocumentBySlug(docSlug, targetMode);
     }
-  }, [searchParams, selectedDocument, isLoadingDocument]);
+  }, [searchParams, selectedDocument, selectedLocalDocument, isLoadingDocument]);
 
   const updateUrl = (slug: string | null, mode?: UrlMode, pane?: EditorPaneMode, fullscreen?: boolean) => {
     const params = new URLSearchParams();

@@ -16,7 +16,7 @@ import {
   AdminLoginResponseDto,
   TokenResponseDto,
 } from './dto/admin-auth.dto';
-import { now } from '../lib/datetime';
+import { now, fromJSDate } from '../lib/datetime';
 
 @Injectable()
 export class AdminAuthService {
@@ -205,8 +205,14 @@ export class AdminAuthService {
       throw new UnauthorizedException('Invalid or expired session');
     }
 
-    session.lastActiveAt = now().toJSDate();
-    await this.adminSessionRepository.save(session);
+    const lastActive = session.lastActiveAt
+      ? now().diff(fromJSDate(session.lastActiveAt), 'minutes').minutes
+      : Infinity;
+
+    if (lastActive > 1) {
+      session.lastActiveAt = now().toJSDate();
+      await this.adminSessionRepository.save(session);
+    }
 
     return session.user;
   }
