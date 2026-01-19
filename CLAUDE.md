@@ -52,14 +52,14 @@
 ### Autonomous Operation Mode
 - **Proceed without asking for simple yes/no questions**: The user's answer is always "Yes" for confirmation-type questions
 - **Only ask when there are multiple different approaches**: If there are genuinely different outcomes or architectural decisions to choose from, then ask
-- **Commits and pushes**: Proceed automatically - do not ask "May I commit?" or "May I push?" - just do it
-- **Continue working**: When given a task, complete it fully without stopping to ask for permission to continue
 
 ### Commit Process
 1. Stage changes with `git add`
-2. Create commit with appropriate semantic message
-3. Push to remote
-4. Report what was done
+2. Show the user what will be committed (`git status`)
+3. Propose a commit message
+4. **ASK**: "May I commit with this message?"
+5. Wait for explicit "yes" before running `git commit`
+6. Then ask before pushing: "May I push to remote?"
 
 ### Commit Standards
 - **Complete features only**: Each commit should represent a complete, logical feature - not intermediate iterations
