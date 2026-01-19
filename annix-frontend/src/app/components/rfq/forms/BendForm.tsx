@@ -61,6 +61,7 @@ import {
 } from '@/app/lib/utils/sabs62CfData';
 import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
+import { calculateMinWallThickness } from '@/app/lib/utils/pipeCalculations';
 import {
   steelStandardBendRules,
   allowedBendTypes,
@@ -320,10 +321,8 @@ export default function BendForm({
 
                                 if (pressure > 0 && schedules.length > 0) {
                                   const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
-                                  const pressureMpa = pressure * 0.1;
-                                  const allowableStress = 137.9;
-                                  const safetyFactor = 1.2;
-                                  const minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
+                                  const temperature = globalSpecs?.workingTemperatureCelsius || 20;
+                                  const minWT = calculateMinWallThickness(od, pressure, 'ASTM_A106_Grade_B', temperature, 1.0, 0, 1.2);
 
                                   const eligibleSchedules = schedules
                                     .filter((s: any) => (s.wallThicknessMm || 0) >= minWT)
@@ -442,10 +441,8 @@ export default function BendForm({
 
                                 if (pressure > 0 && schedules.length > 0) {
                                   const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
-                                  const pressureMpa = pressure * 0.1;
-                                  const allowableStress = 137.9;
-                                  const safetyFactor = 1.2;
-                                  const minWT = (pressureMpa * od * safetyFactor) / (2 * allowableStress * 1.0);
+                                  const temperature = globalSpecs?.workingTemperatureCelsius || 20;
+                                  const minWT = calculateMinWallThickness(od, pressure, 'ASTM_A106_Grade_B', temperature, 1.0, 0, 1.2);
 
                                   const eligibleSchedules = schedules
                                     .filter(s => s.wallThicknessMm >= minWT)

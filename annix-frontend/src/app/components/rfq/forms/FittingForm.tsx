@@ -27,10 +27,12 @@ import {
   recommendedPressureClassId,
   WORKING_PRESSURE_BAR,
   WORKING_TEMPERATURE_CELSIUS,
+  NB_TO_OD_LOOKUP,
 } from '@/app/lib/config/rfq';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 import { checkMaterialSuitability, suitableMaterials } from '@/app/lib/config/rfq/materialLimits';
+import { calculateMinWallThickness } from '@/app/lib/utils/pipeCalculations';
 
 export interface FittingFormProps {
   entry: any;
@@ -55,19 +57,9 @@ export interface FittingFormProps {
   requiredProducts?: string[];
 }
 
-const getMinimumWallThickness = (nominalBore: number, pressure: number): number => {
-  const odLookup: Record<number, number> = {
-    15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9,
-    100: 114.3, 125: 141.3, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
-    350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6, 700: 711.2,
-    800: 812.8, 900: 914.4, 1000: 1016.0, 1200: 1219.2
-  };
-  const od = odLookup[nominalBore] || (nominalBore * 1.05);
-  const pressureMpa = pressure * 0.1;
-  const allowableStress = 137.9;
-  const jointEfficiency = 1.0;
-  const safetyFactor = 1.2;
-  return (pressureMpa * od * safetyFactor) / (2 * allowableStress * jointEfficiency);
+const getMinimumWallThickness = (nominalBore: number, pressureBar: number, temperatureC: number = 20): number => {
+  const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
+  return calculateMinWallThickness(od, pressureBar, 'ASTM_A106_Grade_B', temperatureC, 1.0, 0, 1.2);
 };
 
 export default function FittingForm({
@@ -338,7 +330,7 @@ export default function FittingForm({
                   <h4 className="text-sm font-bold text-green-900 border-b border-green-400 pb-1.5 mb-3">
                     Fitting Specifications
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     {/* Fitting Type */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
@@ -708,6 +700,87 @@ export default function FittingForm({
                         </div>
                       );
                     })()}
+
+                    {/* Weld Thickness Display */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Flange Weld WT
+                        <span className="ml-1 text-xs font-normal text-green-600">(Auto)</span>
+                      </label>
+                      {(() => {
+                        const dn = entry.specs?.nominalDiameterMm;
+                        const schedule = entry.specs?.scheduleNumber || '';
+                        const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                        const isSABS719 = steelSpecId === 8;
+                        const pipeWallThickness = entry.specs?.wallThicknessMm;
+                        const numFlanges = entry.calculation?.numberOfFlanges || 0;
+
+                        if (numFlanges === 0) {
+                          return (
+                            <div className="px-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500">
+                              No welds (PE)
+                            </div>
+                          );
+                        }
+
+                        if (!dn || !pipeWallThickness) {
+                          return (
+                            <div className="px-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500">
+                              Select NB first
+                            </div>
+                          );
+                        }
+
+                        const FITTING_WT: Record<string, Record<number, number>> = {
+                          'STD': { 50: 3.91, 65: 5.16, 80: 5.49, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53 },
+                          'XH': { 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70 },
+                          'XXH': { 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
+                        };
+
+                        let effectiveWeldThickness: number | null = null;
+                        let fittingClass = 'STD';
+                        const usingPipeThickness = isSABS719 || !dn || dn > 600;
+
+                        if (isSABS719) {
+                          effectiveWeldThickness = pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness;
+                        } else {
+                          const scheduleUpper = schedule.toUpperCase();
+                          const isStdSchedule = scheduleUpper.includes('40') || scheduleUpper === 'STD';
+                          const isXhSchedule = scheduleUpper.includes('80') || scheduleUpper === 'XS' || scheduleUpper === 'XH';
+                          const isXxhSchedule = scheduleUpper.includes('160') || scheduleUpper === 'XXS' || scheduleUpper === 'XXH';
+
+                          if (isXxhSchedule) {
+                            fittingClass = 'XXH';
+                          } else if (isXhSchedule) {
+                            fittingClass = 'XH';
+                          } else if (isStdSchedule) {
+                            fittingClass = 'STD';
+                          } else {
+                            fittingClass = '';
+                          }
+
+                          const rawThickness = fittingClass && FITTING_WT[fittingClass]?.[dn]
+                            ? FITTING_WT[fittingClass][dn]
+                            : pipeWallThickness;
+                          effectiveWeldThickness = rawThickness ? roundToWeldIncrement(rawThickness) : rawThickness;
+                        }
+
+                        const descText = isSABS719
+                          ? 'SABS 719 ERW - pipe WT'
+                          : !fittingClass || usingPipeThickness
+                            ? `Pipe WT (${schedule || 'WT'})`
+                            : `${fittingClass} fitting class`;
+
+                        return (
+                          <div>
+                            <div className="px-2 py-1.5 bg-emerald-100 border border-emerald-300 rounded text-xs font-medium text-emerald-800">
+                              {effectiveWeldThickness?.toFixed(2)} mm
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">{descText}</p>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
 

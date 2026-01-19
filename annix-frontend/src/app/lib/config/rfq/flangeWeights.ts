@@ -25,7 +25,12 @@ export const blankFlangeWeight = (nbMm: number, pressureClass: string): number =
   return BLANK_FLANGE_WEIGHT[pcLookup]?.[nbMm] || (nbMm * 0.15);
 };
 
-const FLANGE_OD: Record<number, number> = { 50: 165, 65: 185, 80: 200, 100: 220, 125: 250, 150: 285, 200: 340, 250: 395, 300: 445, 350: 505, 400: 565, 450: 615, 500: 670, 600: 780, 700: 885, 750: 940, 800: 1015, 900: 1115 };
+const FLANGE_OD: Record<number, number> = {
+  15: 95, 20: 105, 25: 115, 32: 140, 40: 150, 50: 165, 65: 185, 80: 200,
+  100: 220, 125: 250, 150: 285, 200: 340, 250: 395, 300: 445, 350: 505,
+  400: 565, 450: 615, 500: 670, 600: 780, 700: 885, 750: 940, 800: 1015,
+  900: 1115, 1000: 1230, 1050: 1290, 1200: 1455
+};
 
 export const blankFlangeSurfaceArea = (nbMm: number): { external: number; internal: number } => {
   const flangeOdMm = FLANGE_OD[nbMm] || nbMm * 1.7;
