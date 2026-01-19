@@ -330,6 +330,17 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     setPendingTenderDocuments(prev => prev.filter(doc => doc.id !== id));
   };
 
+  const handleSetValidationError = (field: string, message: string | null) => {
+    setValidationErrors(prev => {
+      if (message === null) {
+        const { [field]: _, ...rest } = prev;
+        return rest;
+      } else {
+        return { ...prev, [field]: message };
+      }
+    });
+  };
+
   // Nix AI Assistant handlers
   const handleShowNixPopup = () => {
     log.debug('🤖 handleShowNixPopup called, nixPopupShown:', rfqData.nixPopupShown);
@@ -2891,6 +2902,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               rfqData={rfqData}
               onUpdate={updateRfqField as (field: string, value: any) => void}
               errors={validationErrors}
+              onSetValidationError={handleSetValidationError}
               globalSpecs={rfqData.globalSpecs}
               onUpdateGlobalSpecs={updateGlobalSpecs}
               pendingDocuments={pendingDocuments}
@@ -2975,6 +2987,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               rfqData={rfqData}
               onUpdate={updateRfqField as (field: string, value: any) => void}
               errors={validationErrors}
+              onSetValidationError={handleSetValidationError}
               globalSpecs={rfqData.globalSpecs}
               onUpdateGlobalSpecs={updateGlobalSpecs}
               pendingDocuments={pendingDocuments}

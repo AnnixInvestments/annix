@@ -25,6 +25,7 @@ interface ProjectDetailsStepProps {
   rfqData: any;
   onUpdate: (field: string, value: any) => void;
   errors: Record<string, string>;
+  onSetValidationError: (field: string, message: string | null) => void;
   globalSpecs: any;
   onUpdateGlobalSpecs: (specs: any) => void;
   pendingDocuments: PendingDocument[];
@@ -40,7 +41,7 @@ interface ProjectDetailsStepProps {
   isNixProcessing?: boolean;
 }
 
-export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSpecs, onUpdateGlobalSpecs, pendingDocuments, onAddDocument, onRemoveDocument, pendingTenderDocuments, onAddTenderDocument, onRemoveTenderDocument, useNix, onShowNixPopup, onStopUsingNix, onProcessWithNix, isNixProcessing }: ProjectDetailsStepProps) {
+export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetValidationError, globalSpecs, onUpdateGlobalSpecs, pendingDocuments, onAddDocument, onRemoveDocument, pendingTenderDocuments, onAddTenderDocument, onRemoveTenderDocument, useNix, onShowNixPopup, onStopUsingNix, onProcessWithNix, isNixProcessing }: ProjectDetailsStepProps) {
   const { showToast } = useToast();
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);
@@ -1051,13 +1052,15 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, globalSp
                 type="button"
                 onClick={() => {
                   if (!rfqData.projectType) {
-                    showToast('Please select a Project Type before confirming.', 'error');
+                    onSetValidationError('projectType', 'Please select a Project Type before confirming.');
                     return;
                   }
                   if (!rfqData.requiredProducts || rfqData.requiredProducts.length === 0) {
-                    showToast('Please select at least one Required Product/Service before confirming.', 'error');
+                    onSetValidationError('requiredProducts', 'Please select at least one Required Product/Service before confirming.');
                     return;
                   }
+                  onSetValidationError('projectType', null);
+                  onSetValidationError('requiredProducts', null);
                   log.debug('✅ Project type & products confirmed:', {
                     projectType: rfqData.projectType,
                     requiredProducts: rfqData.requiredProducts
