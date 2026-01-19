@@ -155,6 +155,12 @@ Want to test changes from a worktree session before fully merging?
 
 The changes are copied to main so you can test them. If they work, push when ready. If they don't work, the tool tells you how to undo.
 
+**After pushing to main**, tell the other Claude session to sync up:
+```
+git fetch origin && git rebase origin/main
+```
+This puts their remaining commits on top of the updated main.
+
 ---
 
 ### Managing the App
