@@ -1350,7 +1350,7 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   }
 
   return (
-    <div className="w-full bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative" style={{ height: '100%', minHeight: '500px' }}>
+    <div className="w-full min-h-[400px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative" style={{ height: 'max(100%, 400px)' }}>
       <Canvas shadows dpr={[1, 2]} camera={{ position: defaultCameraPosition, fov: 50 }} style={{ width: '100%', height: '100%' }}>
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />

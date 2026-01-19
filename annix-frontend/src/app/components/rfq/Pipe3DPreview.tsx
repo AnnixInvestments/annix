@@ -645,7 +645,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   }
 
   return (
-    <div className="h-full w-full min-h-[300px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
+    <div className="w-full min-h-[400px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative" style={{ height: 'max(100%, 400px)' }}>
       <div className="absolute top-2 left-2 z-10 flex gap-2">
         <button
           onClick={() => setViewMode('iso')}

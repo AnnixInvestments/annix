@@ -362,8 +362,8 @@ export const useRfqForm = () => {
         stubs: [],
         quantityValue: 1,
         quantityType: 'number_of_items',
-        workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
-        workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 120,
+        workingPressureBar: undefined, // Inherit from globalSpecs, can be overridden
+        workingTemperatureC: undefined, // Inherit from globalSpecs, can be overridden
         steelSpecificationId: undefined, // Inherit from globalSpecs, can be overridden
         useGlobalFlangeSpecs: true,
       },
@@ -376,7 +376,7 @@ export const useRfqForm = () => {
     }));
 
     return newEntry.id;
-  }, []);
+  }, [rfqData.globalSpecs?.steelSpecificationId]);
 
   const addFittingEntry = useCallback((description?: string) => {
     // Inherit steel specification from global specs if available
@@ -395,8 +395,8 @@ export const useRfqForm = () => {
         pipeLengthBMm: undefined, // Will be auto-filled from API
         quantityValue: 1,
         quantityType: 'number_of_items',
-        workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
-        workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
+        workingPressureBar: undefined, // Inherit from globalSpecs, can be overridden
+        workingTemperatureC: undefined, // Inherit from globalSpecs, can be overridden
         steelSpecificationId: undefined, // Inherit from globalSpecs, can be overridden
       },
       notes: 'Fitting with pipe sections',
@@ -408,7 +408,7 @@ export const useRfqForm = () => {
     }));
 
     return newEntry.id;
-  }, [rfqData.globalSpecs?.steelSpecificationId, rfqData.globalSpecs?.workingPressureBar, rfqData.globalSpecs?.workingTemperatureC]);
+  }, [rfqData.globalSpecs?.steelSpecificationId]);
 
   const addPipeSteelWorkEntry = useCallback((description?: string) => {
     const newEntry: PipeSteelWorkEntry = {

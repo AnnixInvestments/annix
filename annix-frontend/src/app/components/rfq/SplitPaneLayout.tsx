@@ -237,10 +237,10 @@ export default function SplitPaneLayout({
       {/* Right Pane - 3D Preview (split mode) */}
       {isEnabled && showSplitToggle && previewContent && (
         <div
-          className="flex-shrink-0 relative"
-          style={{ width: `${100 - width}%`, minHeight: '350px' }}
+          className="flex-shrink-0 relative flex flex-col"
+          style={{ width: `${100 - width}%`, minHeight: '400px', height: `${height}px` }}
         >
-          <div className="h-full w-full overflow-y-auto">
+          <div className="flex-1 w-full min-h-0">
             {previewContent}
           </div>
           <div
@@ -294,9 +294,11 @@ export default function SplitPaneLayout({
 
       {/* Calc Results + 3D Preview - shown below when split-pane is disabled */}
       {!isEnabled && showSplitToggle && (
-        <div>
+        <div className="space-y-4">
           {calcResultsContent}
-          {previewContent}
+          <div className="min-h-[400px]">
+            {previewContent}
+          </div>
         </div>
       )}
       </div>

@@ -272,14 +272,14 @@ export default function StraightPipeForm({
                           }
 
                           const endConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                          const newFlangeTypeCode = recommendedFlangeTypeCode(endConfig);
+                          const effectiveFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(endConfig);
 
                           onUpdateEntry(entry.id, {
                             specs: {
                               ...entry.specs,
                               workingPressureBar: value,
                               flangePressureClassId: recommendedPressureClassId,
-                              flangeTypeCode: newFlangeTypeCode
+                              flangeTypeCode: effectiveFlangeTypeCode
                             }
                           });
                         }}
@@ -863,7 +863,7 @@ export default function StraightPipeForm({
                                 const isSabs1123New = newStandardCode.includes('SABS 1123') || newStandardCode.includes('SANS 1123');
 
                                 const endConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                                const newFlangeTypeCode = recommendedFlangeTypeCode(endConfig);
+                                const effectiveFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(endConfig);
 
                                 const workingPressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
 
@@ -885,7 +885,7 @@ export default function StraightPipeForm({
                                   specs: {
                                     ...entry.specs,
                                     flangeStandardId: newFlangeStandardId,
-                                    flangeTypeCode: newFlangeTypeCode,
+                                    flangeTypeCode: effectiveFlangeTypeCode,
                                     flangePressureClassId: newPressureClassId
                                   }
                                 };
@@ -894,7 +894,7 @@ export default function StraightPipeForm({
                                   specs: {
                                     ...entry.specs,
                                     flangeStandardId: newFlangeStandardId,
-                                    flangeTypeCode: newFlangeTypeCode,
+                                    flangeTypeCode: effectiveFlangeTypeCode,
                                     flangePressureClassId: newPressureClassId
                                   },
                                   description: newDescription,
@@ -1029,7 +1029,7 @@ export default function StraightPipeForm({
                                   log.warn('Could not get pipe end configuration details:', error);
                                 }
 
-                                const newFlangeTypeCode = recommendedFlangeTypeCode(newConfig);
+                                const effectiveFlangeTypeCode = globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(newConfig);
 
                                 const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                                 const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
@@ -1054,7 +1054,7 @@ export default function StraightPipeForm({
                                     blankFlangePositions: [],
                                     addBlankFlange: false,
                                     blankFlangeCount: 0,
-                                    flangeTypeCode: newFlangeTypeCode,
+                                    flangeTypeCode: effectiveFlangeTypeCode,
                                     ...(newPressureClassId && { flangePressureClassId: newPressureClassId })
                                   },
                                   ...(weldDetails && { weldInfo: weldDetails })
