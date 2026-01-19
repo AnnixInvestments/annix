@@ -1053,7 +1053,7 @@ export default function CSGBend3DPreview(props: Props) {
   const cameraPosition = props.savedCameraPosition || autoCameraPosition
 
   return (
-    <div className="w-full min-h-[400px] bg-slate-50 rounded-md border overflow-hidden relative" style={{ height: 'max(100%, 400px)' }}>
+    <div className="w-full h-[500px] bg-slate-50 rounded-md border overflow-hidden relative">
       <Canvas shadows dpr={[1, 2]} camera={{ position: cameraPosition, fov: 45 }}>
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} intensity={1} castShadow />

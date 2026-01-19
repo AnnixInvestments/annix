@@ -1603,7 +1603,14 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             flangeSpecs: flangeSpecData
           } as any);
         } else {
-          updateEntryCalculation(entry.id, result);
+          // No flanges - totalSystemWeight is just pipe weight
+          updateEntryCalculation(entry.id, {
+            ...result,
+            totalSystemWeight: result.totalPipeWeight || 0,
+            numberOfFlanges: 0,
+            totalFlangeWeight: 0,
+            flangeWeightPerUnit: 0,
+          } as any);
         }
       } catch (error: any) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -1957,7 +1964,14 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               flangeSpecs: flangeSpecData
             } as any);
           } else {
-            updateEntryCalculation(entry.id, result);
+            // No flanges - totalSystemWeight is just pipe weight
+            updateEntryCalculation(entry.id, {
+              ...result,
+              totalSystemWeight: result.totalPipeWeight || 0,
+              numberOfFlanges: 0,
+              totalFlangeWeight: 0,
+              flangeWeightPerUnit: 0,
+            } as any);
           }
         } catch (error: any) {
           console.error(`Calculation error for entry ${entry.id}:`, error);

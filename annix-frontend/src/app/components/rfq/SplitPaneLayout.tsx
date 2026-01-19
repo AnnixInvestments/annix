@@ -296,9 +296,7 @@ export default function SplitPaneLayout({
       {!isEnabled && showSplitToggle && (
         <div className="space-y-4">
           {calcResultsContent}
-          <div className="min-h-[400px]">
-            {previewContent}
-          </div>
+          {previewContent}
         </div>
       )}
       </div>
