@@ -614,7 +614,14 @@ export default function StraightPipeForm({
                               const fallbackSchedules = getScheduleListForSpec(entry.specs?.nominalBoreMm, fallbackEffectiveSpecId);
                               const mapSchedules = availableSchedulesMap[entry.id] || [];
                               const allSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
-                              const minimumWT = entry.minimumWallThickness || 0;
+                              const effectivePressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                              const effectiveTemp = entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC || 20;
+                              const nominalBore = entry.specs?.nominalBoreMm;
+                              const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
+                              const materialCode = fallbackEffectiveSpecId === 1 ? 'ASTM_A53_Grade_B' : 'ASTM_A106_Grade_B';
+                              const minimumWT = effectivePressure > 0
+                                ? calculateMinWallThickness(od, effectivePressure, materialCode, effectiveTemp, 1.0, 0, 1.2)
+                                : 0;
                               const eligibleSchedules = allSchedules
                                 .filter((dim: any) => {
                                   const wt = dim.wallThicknessMm || dim.wall_thickness_mm || 0;
@@ -626,7 +633,10 @@ export default function StraightPipeForm({
                                   return wtA - wtB;
                                 });
                               const recommendedSchedule = eligibleSchedules.length > 0 ? eligibleSchedules[0] : null;
-                              if (eligibleSchedules.length === 0) {
+                              if (eligibleSchedules.length === 0 && effectivePressure > 0) {
+                                return <option disabled>No schedules meet {minimumWT.toFixed(2)}mm min WT</option>;
+                              }
+                              if (allSchedules.length === 0) {
                                 return <option disabled>No schedules available</option>;
                               }
                               return eligibleSchedules.map((dim: any) => {
@@ -1148,7 +1158,6 @@ export default function StraightPipeForm({
                     const nb = entry.specs?.nominalBoreMm || 100;
                     const limits = closureLengthLimits(nb);
                     const currentValue = entry.specs?.closureLengthMm || 0;
-                    const isOutOfRange = currentValue > 0 && (currentValue < limits.min || currentValue > limits.max);
                     const wallThickness = entry.specs?.wallThicknessMm || 5;
                     const closureWeightKg = currentValue > 0 ? getClosureWeight(nb, currentValue, wallThickness) : 0;
 
@@ -1162,26 +1171,31 @@ export default function StraightPipeForm({
                             </span>
                           </label>
                           <div className="flex gap-1 mb-1">
-                            {[100, 150, 200, 250].map((length) => (
-                              <button
-                                key={length}
-                                type="button"
-                                onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: length } })}
-                                className={`px-1.5 py-0.5 text-xs rounded border ${
-                                  entry.specs?.closureLengthMm === length
-                                    ? 'bg-purple-200 dark:bg-purple-700 border-purple-400 dark:border-purple-500 font-medium text-purple-900 dark:text-purple-100'
-                                    : 'bg-white dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-800/40 border-purple-300 dark:border-purple-600 text-gray-700 dark:text-gray-300'
-                                }`}
-                              >
-                                {length}mm
-                              </button>
-                            ))}
+                            {[100, 150, 200, 250]
+                              .filter((length) => length >= limits.min && length <= limits.max)
+                              .map((length) => (
+                                <button
+                                  key={length}
+                                  type="button"
+                                  onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: length } })}
+                                  className={`px-1.5 py-0.5 text-xs rounded border ${
+                                    entry.specs?.closureLengthMm === length
+                                      ? 'bg-purple-200 dark:bg-purple-700 border-purple-400 dark:border-purple-500 font-medium text-purple-900 dark:text-purple-100'
+                                      : 'bg-white dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-800/40 border-purple-300 dark:border-purple-600 text-gray-700 dark:text-gray-300'
+                                  }`}
+                                >
+                                  {length}mm
+                                </button>
+                              ))}
                           </div>
                           <input
                             type="number"
                             value={entry.specs?.closureLengthMm || ''}
                             onChange={(e) => {
-                              const closureLength = e.target.value ? Number(e.target.value) : undefined;
+                              const rawValue = e.target.value ? Number(e.target.value) : null;
+                              const closureLength = rawValue !== null
+                                ? Math.max(limits.min, Math.min(limits.max, rawValue))
+                                : null;
                               onUpdateEntry(entry.id, {
                                 specs: { ...entry.specs, closureLengthMm: closureLength }
                               });
@@ -1189,15 +1203,11 @@ export default function StraightPipeForm({
                             placeholder={`${limits.min}-${limits.max}mm`}
                             min={limits.min}
                             max={limits.max}
-                            className={`w-full px-2 py-1.5 bg-white dark:bg-purple-900/20 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 ${
-                              isOutOfRange ? 'border-red-400 dark:border-red-500' : 'border-purple-300 dark:border-purple-600'
-                            }`}
+                            className="w-full px-2 py-1.5 bg-white dark:bg-purple-900/20 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 border-purple-300 dark:border-purple-600"
                           />
-                          {isOutOfRange && (
-                            <p className="mt-1 text-xs text-red-600">
-                              Should be {limits.min}-{limits.max}mm for {nb}NB
-                            </p>
-                          )}
+                          <p className="mt-1 text-xs text-purple-600">
+                            Valid range: {limits.min}-{limits.max}mm for {nb}NB
+                          </p>
                           {closureWeightKg > 0 && (
                             <p className="mt-1 text-xs text-purple-600">
                               Closure weight: {closureWeightKg.toFixed(2)}kg each
