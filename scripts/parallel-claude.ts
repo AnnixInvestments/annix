@@ -13,21 +13,21 @@ const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
 const log = {
   debug: (message: string) => {
     if (LOG_LEVELS[LOG_LEVEL as keyof typeof LOG_LEVELS] <= LOG_LEVELS.debug) {
-      console.log(chalk.dim(`[DEBUG] ${message}`));
+      console.log(chalk.dim(message));
     }
   },
   info: (message: string) => {
     if (LOG_LEVELS[LOG_LEVEL as keyof typeof LOG_LEVELS] <= LOG_LEVELS.info) {
-      console.log(chalk.green(`[PC] ${message}`));
+      console.log(chalk.green(message));
     }
   },
   warn: (message: string) => {
     if (LOG_LEVELS[LOG_LEVEL as keyof typeof LOG_LEVELS] <= LOG_LEVELS.warn) {
-      console.log(chalk.yellow(`[PC] ${message}`));
+      console.log(chalk.yellow(message));
     }
   },
   error: (message: string) => {
-    console.error(chalk.red(`[PC] ${message}`));
+    console.error(chalk.red(message));
   },
   print: (message: string = '') => {
     console.log(message);
@@ -362,14 +362,44 @@ async function pullChanges(): Promise<void> {
 }
 
 async function deleteBranch(branch: string): Promise<void> {
+  const worktreeList = exec('git worktree list --porcelain', { silent: true });
+  const worktreeMatch = worktreeList.match(new RegExp(`worktree ([^\\n]+)\\n[^\\n]*\\nbranch refs/heads/${branch.replace('/', '\\/')}`, 'm'));
+  const worktreePath = worktreeMatch ? worktreeMatch[1] : null;
+
+  if (worktreePath) {
+    log.warn(`Branch ${branch} is linked to worktree at ${worktreePath}`);
+    const removeWorktree = await confirm({
+      message: `Remove worktree first?`,
+      default: true,
+    });
+
+    if (removeWorktree) {
+      try {
+        execSync(`git worktree remove "${worktreePath}" --force`, { cwd: ROOT_DIR, stdio: 'inherit' });
+        log.info(`✓ Worktree removed`);
+      } catch {
+        log.error(`Failed to remove worktree. Delete it manually: git worktree remove "${worktreePath}" --force`);
+        return;
+      }
+    } else {
+      log.warn('Cannot delete branch while worktree exists.');
+      return;
+    }
+  }
+
   const deleteLocal = await confirm({
     message: `Delete local branch ${branch}?`,
     default: true,
   });
 
   if (deleteLocal) {
-    exec(`git branch -d ${branch}`);
-    log.info(`✓ Deleted local branch ${branch}`);
+    try {
+      execSync(`git branch -D ${branch}`, { cwd: ROOT_DIR, stdio: 'inherit' });
+      log.info(`✓ Deleted local branch ${branch}`);
+    } catch {
+      log.error(`Failed to delete local branch ${branch}`);
+      return;
+    }
   }
 
   const hasRemote = exec(`git ls-remote --heads origin ${branch}`, { silent: true });
