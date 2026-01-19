@@ -80,22 +80,23 @@ function currentBranch(): string {
 function claudeBranches(): Branch[] {
   const branches: Branch[] = [];
 
-  const localOutput = exec('git branch --format="%(refname:short)|%(upstream:track)|%(committerdate:relative)|%(subject)"');
+  const localOutput = exec('git branch --format="%(refname:short)|%(committerdate:relative)|%(subject)"');
   const localBranches = localOutput.split('\n').filter(line => line.trim());
 
   localBranches
     .filter(line => line.startsWith(CLAUDE_BRANCH_PREFIX))
     .forEach(line => {
-      const [name, track, time, subject] = line.split('|');
-      const aheadMatch = track?.match(/ahead (\d+)/);
-      const behindMatch = track?.match(/behind (\d+)/);
+      const [name, time, subject] = line.split('|');
+
+      const aheadCount = exec(`git rev-list --count main..${name}`, { silent: true });
+      const behindCount = exec(`git rev-list --count ${name}..main`, { silent: true });
 
       branches.push({
         name,
         isLocal: true,
         isRemote: false,
-        ahead: aheadMatch ? parseInt(aheadMatch[1], 10) : 0,
-        behind: behindMatch ? parseInt(behindMatch[1], 10) : 0,
+        ahead: parseInt(aheadCount, 10) || 0,
+        behind: parseInt(behindCount, 10) || 0,
         lastCommit: subject || '',
         lastCommitTime: time || '',
       });
@@ -858,6 +859,97 @@ async function terminateSession(sessionId: string): Promise<void> {
   managedSessions.delete(sessionId);
 }
 
+async function pullChangesFromBranch(branch: string): Promise<void> {
+  if (branch === 'main') {
+    log.warn('Cannot pull from main to main.');
+    return;
+  }
+
+  const current = currentBranch();
+  if (current !== 'main') {
+    log.warn(`You are on ${current}, not main. Switch to main first to pull changes for testing.`);
+    return;
+  }
+
+  log.info(`\nChecking for commits on ${branch}...`);
+
+  const commitsOutput = exec(`git log main..${branch} --oneline`, { silent: true });
+
+  if (!commitsOutput) {
+    log.warn('No new commits found on this branch yet.');
+    log.info('Ask the Claude session to commit its changes first.');
+    await confirm({ message: 'Press Enter to continue...', default: true });
+    return;
+  }
+
+  const commits = commitsOutput.split('\n').filter(line => line.trim());
+  log.print('\n' + chalk.bold(`Commits on ${branch}:`));
+  commits.forEach(commit => {
+    log.print(`  ${chalk.cyan(commit)}`);
+  });
+  log.print('');
+
+  const pullChoice = await selectWithEscape('What would you like to do?', [
+    { name: '🍒 Cherry-pick all commits to main (for testing)', value: 'cherry-pick-all' },
+    { name: '🍒 Cherry-pick latest commit only', value: 'cherry-pick-latest' },
+    { name: chalk.dim('← Cancel'), value: 'cancel' },
+  ], 'cancel');
+
+  if (pullChoice === 'cancel') return;
+
+  const latestCommit = commits[0].split(' ')[0];
+  const oldestCommit = commits[commits.length - 1].split(' ')[0];
+
+  const cherryPickWithRetry = async (commitRange: string): Promise<boolean> => {
+    try {
+      execSync(`git cherry-pick -X theirs ${commitRange}`, { cwd: ROOT_DIR, stdio: 'inherit' });
+      return true;
+    } catch {
+      log.error('Cherry-pick failed.');
+
+      const abortChoice = await selectWithEscape('What would you like to do?', [
+        { name: '🔙 Abort and return to menu', value: 'abort' },
+        { name: '🛠️  Leave as-is for manual resolution', value: 'manual' },
+      ], 'abort');
+
+      if (abortChoice === 'abort') {
+        try {
+          execSync('git cherry-pick --abort', { cwd: ROOT_DIR, stdio: 'pipe' });
+          log.info('Cherry-pick aborted.');
+        } catch {
+          // Already aborted
+        }
+      } else {
+        log.info('Resolve conflicts manually, then run "git cherry-pick --continue".');
+      }
+      return false;
+    }
+  };
+
+  let success = false;
+  if (pullChoice === 'cherry-pick-all') {
+    const commitRange = commits.length === 1 ? latestCommit : `${oldestCommit}^..${latestCommit}`;
+    success = await cherryPickWithRetry(commitRange);
+    if (success) {
+      log.info(`✓ Cherry-picked ${commits.length} commit(s) to main for testing.`);
+    }
+  } else {
+    success = await cherryPickWithRetry(latestCommit);
+    if (success) {
+      log.info(`✓ Cherry-picked latest commit to main for testing.`);
+    }
+  }
+
+  if (success) {
+    log.print('');
+    log.info('Changes are now on main. Test them locally.');
+    log.info('If they work: push when ready.');
+    log.info('If they don\'t work: run "git reset --hard HEAD~1" to undo.');
+  }
+
+  await confirm({ message: 'Press Enter to continue...', default: true });
+}
+
 async function showSessionsMenu(): Promise<void> {
   while (true) {
     const detectedSessions = detectClaudeSessions();
@@ -897,9 +989,16 @@ async function showSessionsMenu(): Promise<void> {
 
     log.print('');
 
+    const existingBranches = claudeBranches();
+    const branchesWithCommits = existingBranches.filter(b => b.ahead > 0);
+
     const choices = [
       { name: '➕ Start new session', value: 'new' },
     ];
+
+    if (branchesWithCommits.length > 0) {
+      choices.push({ name: '🍒 Pull changes for testing', value: 'pull-changes' });
+    }
 
     if (managed.length > 0) {
       choices.push({ name: '🛑 Terminate a session', value: 'terminate' });
@@ -907,23 +1006,32 @@ async function showSessionsMenu(): Promise<void> {
 
     choices.push({ name: chalk.dim('← Back'), value: 'back' });
 
-    const action = await select({
-      message: 'Session actions:',
-      choices,
-    });
+    const action = await selectWithEscape('Session actions:', choices, 'back');
 
     if (action === 'back') return;
 
+    if (action === 'pull-changes') {
+      const branchChoices = branchesWithCommits.map(b => ({
+        name: `${b.name} (${b.ahead} commit${b.ahead > 1 ? 's' : ''} ahead)`,
+        value: b.name,
+      }));
+      branchChoices.push({ name: chalk.dim('← Cancel'), value: 'cancel' });
+
+      const selectedBranch = await selectWithEscape('Pull changes from which branch?', branchChoices, 'cancel');
+
+      if (selectedBranch !== 'cancel') {
+        await pullChangesFromBranch(selectedBranch);
+      }
+      continue;
+    }
+
     if (action === 'new') {
-      const startType = await select({
-        message: 'How would you like to start?',
-        choices: [
-          { name: '🚀 Quick start on main (Recommended)', value: 'main' },
-          { name: '🎫 Start with GitHub issue', value: 'issue' },
-          { name: '🌿 Start on specific branch', value: 'branch' },
-          { name: chalk.dim('← Cancel'), value: 'cancel' },
-        ],
-      });
+      const startType = await selectWithEscape('How would you like to start?', [
+        { name: '🚀 Quick start on main (Recommended)', value: 'main' },
+        { name: '🎫 Start with GitHub issue', value: 'issue' },
+        { name: '🌿 Start on specific branch', value: 'branch' },
+        { name: chalk.dim('← Cancel'), value: 'cancel' },
+      ], 'cancel');
 
       if (startType === 'cancel') continue;
 
@@ -958,10 +1066,7 @@ async function showSessionsMenu(): Promise<void> {
           { name: chalk.dim('← Cancel'), value: 'cancel' },
         ];
 
-        const selectedIssue = await select({
-          message: 'Select an issue:',
-          choices: issueChoices,
-        });
+        const selectedIssue = await selectWithEscape('Select an issue:', issueChoices, 'cancel');
 
         if (selectedIssue === 'cancel') continue;
 
@@ -988,10 +1093,7 @@ async function showSessionsMenu(): Promise<void> {
 
         branchChoiceOptions.push({ name: chalk.dim('← Cancel'), value: 'cancel' });
 
-        const branchChoice = await select({
-          message: 'Where should this session work?',
-          choices: branchChoiceOptions,
-        });
+        const branchChoice = await selectWithEscape('Where should this session work?', branchChoiceOptions, 'cancel');
 
         if (branchChoice === 'cancel') continue;
 
@@ -1017,10 +1119,7 @@ async function showSessionsMenu(): Promise<void> {
             { name: chalk.dim('← Cancel'), value: 'cancel' },
           ];
 
-          selectedBranch = await select({
-            message: 'Select existing branch:',
-            choices: existingBranchChoices,
-          });
+          selectedBranch = await selectWithEscape('Select existing branch:', existingBranchChoices, 'cancel');
 
           if (selectedBranch === 'cancel') continue;
         } else {
@@ -1039,10 +1138,7 @@ async function showSessionsMenu(): Promise<void> {
           { name: chalk.dim('← Cancel'), value: 'cancel' },
         ];
 
-        selectedBranch = await select({
-          message: 'Select branch (will use/create worktree):',
-          choices: branchChoices,
-        });
+        selectedBranch = await selectWithEscape('Select branch (will use/create worktree):', branchChoices, 'cancel');
 
         if (selectedBranch === 'cancel') continue;
 
@@ -1065,14 +1161,11 @@ async function showSessionsMenu(): Promise<void> {
         selectedBranch = 'main';
       }
 
-      const mode = await select({
-        message: 'Session mode:',
-        choices: [
-          { name: '🛡️  Interactive - prompts for confirmation (Recommended)', value: 'interactive' },
-          { name: '⚡ Headless - auto-accepts all actions', value: 'headless' },
-          { name: chalk.dim('← Cancel'), value: 'cancel' },
-        ],
-      });
+      const mode = await selectWithEscape('Session mode:', [
+        { name: '🛡️  Interactive - prompts for confirmation (Recommended)', value: 'interactive' },
+        { name: '⚡ Headless - auto-accepts all actions', value: 'headless' },
+        { name: chalk.dim('← Cancel'), value: 'cancel' },
+      ], 'cancel');
 
       if (mode === 'cancel') continue;
 
@@ -1093,10 +1186,7 @@ async function showSessionsMenu(): Promise<void> {
       }));
       sessionChoices.push({ name: chalk.dim('← Cancel'), value: 'cancel' });
 
-      const selectedSession = await select({
-        message: 'Select session to terminate:',
-        choices: sessionChoices,
-      });
+      const selectedSession = await selectWithEscape('Select session to terminate:', sessionChoices, 'cancel');
 
       if (selectedSession !== 'cancel') {
         await terminateSession(selectedSession);
@@ -1203,6 +1293,50 @@ interface MenuChoice {
   key: string;
 }
 
+async function selectWithEscape<T extends string>(
+  message: string,
+  choices: Array<{ name: string; value: T }>,
+  cancelValue: T = 'cancel' as T
+): Promise<T> {
+  return new Promise((resolve) => {
+    const controller = new AbortController();
+    let resolved = false;
+
+    const cleanup = () => {
+      process.stdin.removeListener('keypress', keypressListener);
+    };
+
+    const keypressListener = (_ch: string, key: { name: string; escape?: boolean }) => {
+      if (key && (key.name === 'escape' || key.escape || key.name === 'q')) {
+        if (!resolved) {
+          resolved = true;
+          controller.abort();
+          cleanup();
+          resolve(cancelValue);
+        }
+      }
+    };
+
+    process.stdin.on('keypress', keypressListener);
+
+    select({ message, choices }, { signal: controller.signal })
+      .then((result) => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve(result as T);
+        }
+      })
+      .catch(() => {
+        cleanup();
+        if (!resolved) {
+          resolved = true;
+          resolve(cancelValue);
+        }
+      });
+  });
+}
+
 async function selectWithShortcuts(
   message: string,
   choices: MenuChoice[],
@@ -1241,9 +1375,18 @@ async function selectWithShortcuts(
       }
     };
 
-    const keypressListener = (_ch: string, key: { name: string; ctrl: boolean }) => {
+    const keypressListener = (_ch: string, key: { name: string; ctrl: boolean; escape?: boolean }) => {
       if (key && key.name === 'up' || key && key.name === 'down') {
         pauseAutoRefresh();
+      }
+      if (key && (key.name === 'escape' || key.escape)) {
+        if (!resolved) {
+          resolved = true;
+          controller.abort();
+          cleanup();
+          resolve('back');
+        }
+        return;
       }
       if (key && !key.ctrl && key.name && shortcuts[key.name]) {
         if (!resolved) {

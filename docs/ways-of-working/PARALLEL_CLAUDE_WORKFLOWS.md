@@ -143,6 +143,20 @@ Think of a worktree as a separate workspace:
 
 ---
 
+### Pulling Changes for Testing
+
+Want to test changes from a worktree session before fully merging?
+
+1. Press `s` to open Sessions
+2. Select **"Pull changes for testing"** (only appears when you have worktree sessions)
+3. Choose which session to pull from
+4. You'll see the commits on that branch
+5. Choose to cherry-pick all commits or just the latest one
+
+The changes are copied to main so you can test them. If they work, push when ready. If they don't work, the tool tells you how to undo.
+
+---
+
 ### Managing the App
 
 The tool can start and stop the development app for you:
