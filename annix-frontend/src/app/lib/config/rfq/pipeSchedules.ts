@@ -408,6 +408,49 @@ export const SABS62_FITTING_SIZES = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 1
 export const SABS719_FITTING_SIZES = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900] as const;
 export const ALL_FITTING_SIZES = [...SABS62_FITTING_SIZES, ...SABS719_FITTING_SIZES, 1000, 1050, 1200] as const;
 
+// Fitting class wall thickness (mm) by NB - used for weld thickness calculations
+// For ASTM/ASME specs, uses fitting class (STD/XH/XXH) wall thickness
+// STD = Standard, XH = Extra Heavy (Schedule 80), XXH = Double Extra Heavy
+export const FITTING_CLASS_WALL_THICKNESS: Record<'STD' | 'XH' | 'XXH', Record<number, number>> = {
+  'STD': {
+    15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74,
+    100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53,
+    450: 9.53, 500: 9.53, 600: 9.53, 750: 9.53, 900: 9.53, 1000: 9.53, 1050: 9.53, 1200: 9.53
+  },
+  'XH': {
+    15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62,
+    100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70,
+    400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70, 750: 12.70, 900: 12.70, 1000: 12.70,
+    1050: 12.70, 1200: 12.70
+  },
+  'XXH': {
+    15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24,
+    100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40,
+    400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40
+  }
+};
+
+// Standard closure length options (mm) for bent pipe closures
+export const CLOSURE_LENGTH_OPTIONS = [100, 150, 200, 250] as const;
+
+// ASME B31.3 pressure calculation parameters
+export const PRESSURE_CALC_JOINT_EFFICIENCY = 1.0;
+export const PRESSURE_CALC_CORROSION_ALLOWANCE = 0;
+export const PRESSURE_CALC_SAFETY_FACTOR = 1.2;
+
+// Bend angle limits (degrees)
+export const MIN_BEND_DEGREES = 0;
+export const MAX_BEND_DEGREES = 180;
+
+// Helper to get fitting class wall thickness with fallback
+export const fittingClassWallThickness = (fittingClass: 'STD' | 'XH' | 'XXH' | string | null, nb: number): number | null => {
+  const classKey = fittingClass === 'STD' || fittingClass === 'XH' || fittingClass === 'XXH'
+    ? fittingClass
+    : null;
+  if (!classKey) return null;
+  return FITTING_CLASS_WALL_THICKNESS[classKey][nb] || null;
+};
+
 // Valid NB ranges for each steel spec type
 export const STEEL_SPEC_NB_RANGES: Record<string, number[]> = {
   'SABS 62 ERW Medium': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150],

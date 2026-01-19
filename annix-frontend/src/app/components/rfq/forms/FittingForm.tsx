@@ -18,7 +18,6 @@ import {
   sansBlankFlangeWeight,
   tackWeldWeight as getTackWeldWeight,
   closureWeight as getClosureWeight,
-  closureLengthLimits,
   SABS_1123_FLANGE_TYPES,
   SABS_1123_PRESSURE_CLASSES,
   BS_4504_FLANGE_TYPES,
@@ -31,11 +30,13 @@ import {
   SABS62_FITTING_SIZES,
   SABS719_FITTING_SIZES,
   ALL_FITTING_SIZES,
+  FITTING_CLASS_WALL_THICKNESS,
 } from '@/app/lib/config/rfq';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 import { WorkingConditionsSection } from '@/app/components/rfq/WorkingConditionsSection';
 import { MaterialSuitabilityWarning } from '@/app/components/rfq/MaterialSuitabilityWarning';
+import { ClosureLengthSelector } from '@/app/components/rfq/ClosureLengthSelector';
 import { getMinWallThicknessForNB, calculateFittingWeldVolume, calculateComprehensiveSurfaceArea } from '@/app/lib/utils/pipeCalculations';
 
 export interface FittingFormProps {
@@ -665,14 +666,8 @@ export default function FittingForm({
                           );
                         }
 
-                        const FITTING_WT: Record<string, Record<number, number>> = {
-                          'STD': { 50: 3.91, 65: 5.16, 80: 5.49, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53 },
-                          'XH': { 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70 },
-                          'XXH': { 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
-                        };
-
                         let effectiveWeldThickness: number | null = null;
-                        let fittingClass = 'STD';
+                        let fittingClass: 'STD' | 'XH' | 'XXH' | '' = 'STD';
                         const usingPipeThickness = isSABS719 || !dn || dn > 600;
 
                         if (isSABS719) {
@@ -693,8 +688,8 @@ export default function FittingForm({
                             fittingClass = '';
                           }
 
-                          const rawThickness = fittingClass && FITTING_WT[fittingClass]?.[dn]
-                            ? FITTING_WT[fittingClass][dn]
+                          const rawThickness = fittingClass && FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[dn]
+                            ? FITTING_CLASS_WALL_THICKNESS[fittingClass][dn]
                             : pipeWallThickness;
                           effectiveWeldThickness = rawThickness ? roundToWeldIncrement(rawThickness) : rawThickness;
                         }
@@ -1079,12 +1074,13 @@ export default function FittingForm({
                           }}
                           className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
                             isEqualTee
-                              ? 'bg-blue-100 border-blue-400 text-blue-900 cursor-not-allowed font-medium'
-                              : 'bg-blue-50 border-blue-300 focus:ring-blue-500 text-gray-900'
+                              ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-400 dark:border-blue-600 text-blue-900 dark:text-blue-100 cursor-not-allowed font-medium'
+                              : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600 focus:ring-blue-500 text-gray-900 dark:text-gray-100'
                           }`}
                           placeholder="e.g., 1000"
                           min="0"
                           readOnly={isEqualTee}
+                          aria-readonly={isEqualTee}
                         />
                         {(isUnequalTee || isReducingTee) && (
                           <p className="text-xs text-blue-600 mt-1 font-medium">Can Change Lengths</p>
@@ -1174,12 +1170,13 @@ export default function FittingForm({
                           }}
                           className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
                             isEqualTee
-                              ? 'bg-blue-100 border-blue-400 text-blue-900 cursor-not-allowed font-medium'
-                              : 'bg-blue-50 border-blue-300 focus:ring-blue-500 text-gray-900'
+                              ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-400 dark:border-blue-600 text-blue-900 dark:text-blue-100 cursor-not-allowed font-medium'
+                              : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600 focus:ring-blue-500 text-gray-900 dark:text-gray-100'
                           }`}
                           placeholder="e.g., 1000"
                           min="0"
                           readOnly={isEqualTee}
+                          aria-readonly={isEqualTee}
                         />
                         {(isUnequalTee || isReducingTee) && (
                           <p className="text-xs text-blue-600 mt-1 font-medium">Can Change Lengths</p>
@@ -1426,7 +1423,7 @@ export default function FittingForm({
                           try {
                             weldDetails = await getPipeEndConfigurationDetails(newConfig);
                           } catch (error) {
-                            console.warn('Could not get pipe end configuration details:', error);
+                            log.warn('Could not get pipe end configuration details:', error);
                           }
 
                           const newFlangeTypeCode = recommendedFlangeTypeCode(newConfig);
@@ -1484,80 +1481,14 @@ export default function FittingForm({
                     {/* Closure Length Field - Only shown when L/F configuration is selected */}
                     {hasLooseFlange(entry.specs?.pipeEndConfiguration || '') && (
                       <div className="mt-3 bg-purple-50 dark:bg-purple-900/30 p-3 rounded-md border border-purple-200 dark:border-purple-700">
-                        {(() => {
-                          const nb = entry.specs?.nominalDiameterMm || 100;
-                          const limits = closureLengthLimits(nb);
-                          const currentValue = entry.specs?.closureLengthMm || 0;
-                          const wallThickness = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5;
-                          const closureWeightKg = currentValue > 0 ? getClosureWeight(nb, currentValue, wallThickness) : 0;
-
-                          return (
-                            <>
-                              <label className="block text-xs font-semibold text-purple-900 mb-1">
-                                Closure Length (mm) *
-                                <span className="ml-1 text-purple-600 font-normal" title={`Recommended: ${limits.recommended}mm for ${nb}NB`}>
-                                  (Rec: {limits.recommended}mm)
-                                </span>
-                              </label>
-                              <div className="flex gap-1 mb-1">
-                                {[100, 150, 200, 250]
-                                  .filter((length) => length >= limits.min && length <= limits.max)
-                                  .map((length) => (
-                                    <button
-                                      key={length}
-                                      type="button"
-                                      onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: length } })}
-                                      className={`px-1.5 py-0.5 text-xs rounded border ${
-                                        entry.specs?.closureLengthMm === length
-                                          ? 'bg-purple-200 border-purple-400 font-medium text-purple-900'
-                                          : 'bg-white hover:bg-purple-100 border-purple-300 text-gray-700'
-                                      }`}
-                                    >
-                                      {length}mm
-                                    </button>
-                                  ))}
-                              </div>
-                              <input
-                                type="number"
-                                value={entry.specs?.closureLengthMm || ''}
-                                onChange={(e) => {
-                                  const rawValue = e.target.value ? Number(e.target.value) : null;
-                                  const closureLength = rawValue !== null
-                                    ? Math.max(limits.min, Math.min(limits.max, rawValue))
-                                    : null;
-                                  onUpdateEntry(entry.id, {
-                                    specs: { ...entry.specs, closureLengthMm: closureLength }
-                                  });
-                                }}
-                                placeholder={`${limits.min}-${limits.max}mm`}
-                                min={limits.min}
-                                max={limits.max}
-                                className="w-full px-3 py-2 bg-white border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 border-purple-300"
-                              />
-                              {errors[`fitting_${index}_closureLength`] && (
-                                <p role="alert" className="mt-1 text-xs text-red-600">{errors[`fitting_${index}_closureLength`]}</p>
-                              )}
-                              <p className="mt-1 text-xs text-purple-600">
-                                Valid range: {limits.min}-{limits.max}mm for {nb}NB
-                              </p>
-                              {closureWeightKg > 0 && (
-                                <p className="mt-1 text-xs text-purple-600">
-                                  Closure weight: {closureWeightKg.toFixed(2)}kg each
-                                </p>
-                              )}
-                              <p className="mt-1 text-xs text-purple-700">
-                                Pipe extension past L/F for site weld connection
-                              </p>
-                              {/* Tack Weld Information */}
-                              <div className="mt-2 p-2 bg-purple-100 border border-purple-300 rounded-md">
-                                <p className="text-xs font-bold text-purple-800">
-                                  L/F Tack Welds:
-                                </p>
-                                <p className="text-xs text-purple-700">8 total (~20mm each), 4 per side</p>
-                              </div>
-                            </>
-                          );
-                        })()}
+                        <ClosureLengthSelector
+                          nominalBore={entry.specs?.nominalDiameterMm || 100}
+                          currentValue={entry.specs?.closureLengthMm || null}
+                          wallThickness={entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5}
+                          onUpdate={(closureLength) => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: closureLength } })}
+                          error={errors[`fitting_${index}_closureLength`]}
+                          variant="compact"
+                        />
                       </div>
                     )}
                   </div>
@@ -1674,24 +1605,18 @@ export default function FittingForm({
                         const isStdSchedule = scheduleUpper.includes('40') || scheduleUpper === 'STD';
                         const isXhSchedule = scheduleUpper.includes('80') || scheduleUpper === 'XS' || scheduleUpper === 'XH';
                         const isXxhSchedule = scheduleUpper.includes('160') || scheduleUpper === 'XXS' || scheduleUpper === 'XXH';
-                        let fittingClass = '';
+                        let fittingClass: 'STD' | 'XH' | 'XXH' | '' = '';
                         if (isXxhSchedule) fittingClass = 'XXH';
                         else if (isXhSchedule) fittingClass = 'XH';
                         else if (isStdSchedule) fittingClass = 'STD';
 
-                        const FITTING_WT: Record<string, Record<number, number>> = {
-                          'STD': { 50: 3.91, 65: 5.16, 80: 5.49, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 450: 9.53, 500: 9.53, 600: 9.53 },
-                          'XH': { 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70, 350: 12.70, 400: 12.70, 450: 12.70, 500: 12.70, 600: 12.70 },
-                          'XXH': { 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40, 350: 25.40, 400: 25.40, 450: 25.40, 500: 25.40, 600: 25.40 }
-                        };
-
                         const fittingRawThickness = (isSABS719 || !fittingClass)
                           ? (pipeWallThickness || 6)
-                          : (FITTING_WT[fittingClass]?.[nominalBore] || pipeWallThickness || 6);
+                          : (FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[nominalBore] || pipeWallThickness || 6);
                         const fittingWeldThickness = roundToWeldIncrement(fittingRawThickness);
                         const branchRawThickness = (isSABS719 || !fittingClass)
                           ? (pipeWallThickness || 6)
-                          : (FITTING_WT[fittingClass]?.[branchNB] || pipeWallThickness || 6);
+                          : (FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[branchNB] || pipeWallThickness || 6);
                         const branchWeldThickness = roundToWeldIncrement(branchRawThickness);
 
                         const mainOdMm = entry.calculation?.outsideDiameterMm || (nominalBore ? NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.05 : 0);
@@ -1795,12 +1720,12 @@ export default function FittingForm({
                             {/* Total Weight - Green for auto-calculated */}
                             <div className="bg-green-50 p-2 rounded text-center border border-green-200">
                               <p className="text-xs text-green-800 font-medium">Total Weight</p>
-                              <p className="text-lg font-bold text-green-900">{totalWeight.toFixed(1)} kg</p>
+                              <p className="text-lg font-bold text-green-900">{totalWeight.toFixed(2)} kg</p>
                               <p className="text-[10px] text-green-600">per fitting</p>
                               {(totalBlankFlangeWeight > 0 || closureTotalWeight > 0) && (
                                 <p className="text-[10px] text-gray-500">
-                                  {totalBlankFlangeWeight > 0 && `+${totalBlankFlangeWeight.toFixed(1)}kg blanks`}
-                                  {closureTotalWeight > 0 && ` +${closureTotalWeight.toFixed(1)}kg closures`}
+                                  {totalBlankFlangeWeight > 0 && `+${totalBlankFlangeWeight.toFixed(2)}kg blanks`}
+                                  {closureTotalWeight > 0 && ` +${closureTotalWeight.toFixed(2)}kg closures`}
                                 </p>
                               )}
                             </div>
@@ -1810,22 +1735,22 @@ export default function FittingForm({
                               <p className="text-xs text-green-800 font-medium">Weight Breakdown</p>
                               <div className="text-left mt-1 space-y-0.5">
                                 {(entry.calculation.fittingWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-green-700">Fitting: {entry.calculation.fittingWeight.toFixed(1)}kg</p>
+                                  <p className="text-[10px] text-green-700">Fitting: {entry.calculation.fittingWeight.toFixed(2)}kg</p>
                                 )}
                                 {(entry.calculation.pipeWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-green-700">Pipe: {entry.calculation.pipeWeight.toFixed(1)}kg</p>
+                                  <p className="text-[10px] text-green-700">Pipe: {entry.calculation.pipeWeight.toFixed(2)}kg</p>
                                 )}
                                 {dynamicTotalFlangeWeight > 0 && (
-                                  <p className="text-[10px] text-green-700">Flanges: {dynamicTotalFlangeWeight.toFixed(1)}kg</p>
+                                  <p className="text-[10px] text-green-700">Flanges: {dynamicTotalFlangeWeight.toFixed(2)}kg</p>
                                 )}
                                 {totalRingWeight > 0 && (
                                   <p className="text-[10px] text-amber-700 font-medium">R/F Rings: {totalRingWeight.toFixed(2)}kg ({rotatingFlangeCount}×)</p>
                                 )}
                                 {totalBlankFlangeWeight > 0 && (
-                                  <p className="text-[10px] text-gray-700">Blanks: {totalBlankFlangeWeight.toFixed(1)}kg</p>
+                                  <p className="text-[10px] text-gray-700">Blanks: {totalBlankFlangeWeight.toFixed(2)}kg</p>
                                 )}
                                 {closureTotalWeight > 0 && (
-                                  <p className="text-[10px] text-purple-700">Closures: {closureTotalWeight.toFixed(1)}kg</p>
+                                  <p className="text-[10px] text-purple-700">Closures: {closureTotalWeight.toFixed(2)}kg</p>
                                 )}
                               </div>
                             </div>

@@ -23,13 +23,16 @@ import {
   sansBlankFlangeWeight,
   tackWeldWeight as getTackWeldWeight,
   closureWeight as getClosureWeight,
-  closureLengthLimits,
+  FITTING_CLASS_WALL_THICKNESS,
   recommendedFlangeTypeCode,
   recommendedPressureClassId,
   WORKING_PRESSURE_BAR,
   WORKING_TEMPERATURE_CELSIUS,
   STANDARD_PIPE_LENGTHS_M,
   DEFAULT_PIPE_LENGTH_M,
+  PRESSURE_CALC_JOINT_EFFICIENCY,
+  PRESSURE_CALC_CORROSION_ALLOWANCE,
+  PRESSURE_CALC_SAFETY_FACTOR,
 } from '@/app/lib/config/rfq';
 import {
   calculateMinWallThickness,
@@ -43,6 +46,7 @@ import { recommendWallThicknessCarbonPipe, roundToWeldIncrement } from '@/app/li
 import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 import { MaterialSuitabilityWarning } from '@/app/components/rfq/MaterialSuitabilityWarning';
+import { ClosureLengthSelector } from '@/app/components/rfq/ClosureLengthSelector';
 
 const formatWeight = (weight: number | undefined) => {
   if (weight === undefined || weight === null || isNaN(weight)) return 'Not calculated';
@@ -153,7 +157,7 @@ export default function StraightPipeForm({
                     id={`pipe-description-${entry.id}`}
                     value={entry.description || generateItemDescription(entry)}
                     onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
                     rows={2}
                     placeholder="Enter item description..."
                     required
@@ -279,7 +283,7 @@ export default function StraightPipeForm({
                             }
                           });
                         }}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
                       >
                         <option value="">Select pressure...</option>
                         {WORKING_PRESSURE_BAR.map((pressure) => (
@@ -302,7 +306,7 @@ export default function StraightPipeForm({
                             specs: { ...entry.specs, workingTemperatureC: value }
                           });
                         }}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
                       >
                         <option value="">Select temperature...</option>
                         {WORKING_TEMPERATURE_CELSIUS.map((temp) => (
@@ -351,10 +355,10 @@ export default function StraightPipeForm({
                             if (pressure > 0) {
                               const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
                               const materialCode = steelSpecId === 1 ? 'ASTM_A53_Grade_B' : 'ASTM_A106_Grade_B';
-                              minWT = calculateMinWallThickness(od, pressure, materialCode, temperature, 1.0, 0, 1.2);
+                              minWT = calculateMinWallThickness(od, pressure, materialCode, temperature, PRESSURE_CALC_JOINT_EFFICIENCY, PRESSURE_CALC_CORROSION_ALLOWANCE, PRESSURE_CALC_SAFETY_FACTOR);
                               log.debug(`[NB onChange] ASME B31.3 calc minWT: ${minWT.toFixed(2)}mm for ${pressure} bar @ ${temperature}°C, OD=${od}mm`);
 
-                              const recommendation = findRecommendedSchedule(schedules, od, pressure, materialCode, temperature, 1.2);
+                              const recommendation = findRecommendedSchedule(schedules, od, pressure, materialCode, temperature, PRESSURE_CALC_SAFETY_FACTOR);
 
                               if (recommendation.schedule) {
                                 matchedSchedule = recommendation.schedule.scheduleDesignation;
@@ -718,14 +722,8 @@ export default function StraightPipeForm({
                           );
                         }
 
-                        const FITTING_WALL_THICKNESS: Record<string, Record<number, number>> = {
-                          'STD': { 15: 2.77, 20: 2.87, 25: 3.38, 32: 3.56, 40: 3.68, 50: 3.91, 65: 5.16, 80: 5.49, 90: 5.74, 100: 6.02, 125: 6.55, 150: 7.11, 200: 8.18, 250: 9.27, 300: 9.53 },
-                          'XH': { 15: 3.73, 20: 3.91, 25: 4.55, 32: 4.85, 40: 5.08, 50: 5.54, 65: 7.01, 80: 7.62, 100: 8.56, 125: 9.53, 150: 10.97, 200: 12.70, 250: 12.70, 300: 12.70 },
-                          'XXH': { 15: 7.47, 20: 7.82, 25: 9.09, 32: 9.70, 40: 10.16, 50: 11.07, 65: 14.02, 80: 15.24, 100: 17.12, 125: 19.05, 150: 22.23, 200: 22.23, 250: 25.40, 300: 25.40 }
-                        };
-
                         let effectiveWeldThickness: number | null = null;
-                        let fittingClass = 'STD';
+                        let fittingClass: 'STD' | 'XH' | 'XXH' | '' = 'STD';
                         const usingPipeThickness = isSABS719 || !dn || dn > 300;
 
                         if (isSABS719) {
@@ -746,8 +744,8 @@ export default function StraightPipeForm({
                             fittingClass = '';
                           }
 
-                          const rawThickness = fittingClass && FITTING_WALL_THICKNESS[fittingClass]?.[dn]
-                            ? FITTING_WALL_THICKNESS[fittingClass][dn]
+                          const rawThickness = fittingClass && FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[dn]
+                            ? FITTING_CLASS_WALL_THICKNESS[fittingClass][dn]
                             : pipeWallThickness;
                           effectiveWeldThickness = rawThickness ? roundToWeldIncrement(rawThickness) : rawThickness;
                         }
@@ -1129,79 +1127,13 @@ export default function StraightPipeForm({
               {/* Closure Length Field - Only shown when L/F configuration is selected */}
               {hasLooseFlange(entry.specs.pipeEndConfiguration || '') && (
                 <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
-                  {(() => {
-                    const nb = entry.specs?.nominalBoreMm || 100;
-                    const limits = closureLengthLimits(nb);
-                    const currentValue = entry.specs?.closureLengthMm || 0;
-                    const wallThickness = entry.specs?.wallThicknessMm || 5;
-                    const closureWeightKg = currentValue > 0 ? getClosureWeight(nb, currentValue, wallThickness) : 0;
-
-                    return (
-                      <div className="flex items-start gap-4">
-                        <div className="flex-1">
-                          <label className="block text-xs font-semibold text-purple-900 dark:text-purple-300 mb-1">
-                            Closure Length (mm) *
-                            <span className="ml-1 text-purple-600 font-normal" title={`Recommended: ${limits.recommended}mm for ${nb}NB`}>
-                              (Rec: {limits.recommended}mm)
-                            </span>
-                          </label>
-                          <div className="flex gap-1 mb-1">
-                            {[100, 150, 200, 250]
-                              .filter((length) => length >= limits.min && length <= limits.max)
-                              .map((length) => (
-                                <button
-                                  key={length}
-                                  type="button"
-                                  onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: length } })}
-                                  className={`px-1.5 py-0.5 text-xs rounded border ${
-                                    entry.specs?.closureLengthMm === length
-                                      ? 'bg-purple-200 dark:bg-purple-700 border-purple-400 dark:border-purple-500 font-medium text-purple-900 dark:text-purple-100'
-                                      : 'bg-white dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-800/40 border-purple-300 dark:border-purple-600 text-gray-700 dark:text-gray-300'
-                                  }`}
-                                >
-                                  {length}mm
-                                </button>
-                              ))}
-                          </div>
-                          <input
-                            type="number"
-                            value={entry.specs?.closureLengthMm || ''}
-                            onChange={(e) => {
-                              const rawValue = e.target.value ? Number(e.target.value) : null;
-                              const closureLength = rawValue !== null
-                                ? Math.max(limits.min, Math.min(limits.max, rawValue))
-                                : null;
-                              onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, closureLengthMm: closureLength }
-                              });
-                            }}
-                            placeholder={`${limits.min}-${limits.max}mm`}
-                            min={limits.min}
-                            max={limits.max}
-                            className="w-full px-2 py-1.5 bg-white dark:bg-purple-900/20 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 border-purple-300 dark:border-purple-600"
-                          />
-                          <p className="mt-1 text-xs text-purple-600">
-                            Valid range: {limits.min}-{limits.max}mm for {nb}NB
-                          </p>
-                          {closureWeightKg > 0 && (
-                            <p className="mt-1 text-xs text-purple-600">
-                              Closure weight: {closureWeightKg.toFixed(2)}kg each
-                            </p>
-                          )}
-                          {errors[`pipe_${index}_closure_length`] && (
-                            <p role="alert" className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_closure_length`]}</p>
-                          )}
-                        </div>
-                        <div className="flex-1 text-xs text-purple-700 dark:text-purple-400">
-                          <p className="font-semibold">L/F Tack Welds:</p>
-                          <p>8 total (~20mm each), 4 per side</p>
-                          <p className="mt-1 text-gray-500">
-                            Closure adds to total pipe weight
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  <ClosureLengthSelector
+                    nominalBore={entry.specs?.nominalBoreMm || 100}
+                    currentValue={entry.specs?.closureLengthMm || null}
+                    wallThickness={entry.specs?.wallThicknessMm || 5}
+                    onUpdate={(closureLength) => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: closureLength } })}
+                    error={errors[`pipe_${index}_closure_length`]}
+                  />
                 </div>
               )}
 
@@ -1420,17 +1352,17 @@ export default function StraightPipeForm({
                                 </p>
                                 {backingRingTotalWeight > 0 && (
                                   <p className="text-xs text-amber-600">
-                                    (incl. {backingRingTotalWeight.toFixed(1)}kg R/F rings)
+                                    (incl. {backingRingTotalWeight.toFixed(2)}kg R/F rings)
                                   </p>
                                 )}
                                 {totalBlankFlangeWeight > 0 && (
                                   <p className="text-xs text-gray-600">
-                                    (incl. {totalBlankFlangeWeight.toFixed(1)}kg blanks)
+                                    (incl. {totalBlankFlangeWeight.toFixed(2)}kg blanks)
                                   </p>
                                 )}
                                 {closureTotalWeight > 0 && (
                                   <p className="text-xs text-purple-600">
-                                    (incl. {closureTotalWeight.toFixed(1)}kg closures)
+                                    (incl. {closureTotalWeight.toFixed(2)}kg closures)
                                   </p>
                                 )}
                               </div>
@@ -1481,7 +1413,7 @@ export default function StraightPipeForm({
                             return (
                               <div className="bg-orange-50 p-2 rounded text-center border border-orange-200">
                                 <p className="text-xs text-orange-700 font-medium">R/F Retaining Rings</p>
-                                <p className="text-lg font-bold text-orange-900">{totalWeight.toFixed(1)} kg</p>
+                                <p className="text-lg font-bold text-orange-900">{totalWeight.toFixed(2)} kg</p>
                                 <p className="text-xs text-orange-600">
                                   {totalBackingRings} rings × {ringWeightEach.toFixed(2)}kg
                                 </p>
