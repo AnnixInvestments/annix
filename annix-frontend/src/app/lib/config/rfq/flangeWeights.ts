@@ -4,6 +4,8 @@ import {
   TACK_WELD_CONFIG,
   CLOSURE_LENGTH_CONFIG,
   RETAINING_RING_CONFIG,
+  tackWeldConfig,
+  TackWeldConfig,
 } from './constants';
 
 export const BLANK_FLANGE_WEIGHT: Record<string, Record<number, number>> = {
@@ -29,7 +31,8 @@ const FLANGE_OD: Record<number, number> = {
   15: 95, 20: 105, 25: 115, 32: 140, 40: 150, 50: 165, 65: 185, 80: 200,
   100: 220, 125: 250, 150: 285, 200: 340, 250: 395, 300: 445, 350: 505,
   400: 565, 450: 615, 500: 670, 600: 780, 700: 885, 750: 940, 800: 1015,
-  900: 1115, 1000: 1230, 1050: 1290, 1200: 1455
+  900: 1115, 1000: 1230, 1050: 1290, 1200: 1455, 1400: 1675, 1500: 1785,
+  1600: 1915, 1800: 2115, 2000: 2325, 2200: 2550, 2400: 2760, 2500: 2880
 };
 
 export const blankFlangeSurfaceArea = (nbMm: number): { external: number; internal: number } => {
@@ -44,7 +47,9 @@ export const NB_TO_OD_LOOKUP: Record<number, number> = {
   15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9,
   100: 114.3, 125: 139.7, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
   350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6, 700: 711.2,
-  750: 762.0, 800: 812.8, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2
+  750: 762.0, 800: 812.8, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2,
+  1400: 1422.4, 1500: 1524.0, 1600: 1625.6, 1800: 1828.8, 2000: 2032.0,
+  2200: 2235.2, 2400: 2438.4, 2500: 2540.0
 };
 
 export const FLANGE_WEIGHT_BY_PRESSURE_CLASS: Record<string, Record<number, number>> = {
@@ -625,17 +630,21 @@ export const BS_4504_PRESSURE_CLASSES = [
   { value: 160, label: 'PN160' },
 ];
 
-export const tackWeldWeight = (nominalBoreMm: number, tackWeldEnds: number = 0): number => {
+export const tackWeldWeight = (
+  nominalBoreMm: number,
+  tackWeldEnds: number = 0,
+  configOverrides?: Partial<TackWeldConfig>
+): number => {
   if (tackWeldEnds <= 0) return 0;
 
-  const pipeOd = NB_TO_OD_LOOKUP[nominalBoreMm] || nominalBoreMm * 1.1;
+  const config = tackWeldConfig(configOverrides);
   const legSizeMm = Math.max(
-    TACK_WELD_CONFIG.minLegSizeMm,
-    Math.min(TACK_WELD_CONFIG.maxLegSizeMm, nominalBoreMm * TACK_WELD_CONFIG.legSizeFactor)
+    config.minLegSizeMm,
+    Math.min(config.maxLegSizeMm, nominalBoreMm * config.legSizeFactor)
   );
 
-  const totalTacks = TACK_WELD_CONFIG.tacksPerEnd * tackWeldEnds;
-  const totalTackLengthMm = totalTacks * TACK_WELD_CONFIG.tackLengthMm;
+  const totalTacks = config.tacksPerEnd * tackWeldEnds;
+  const totalTackLengthMm = totalTacks * config.tackLengthMm;
 
   const volumePerMmMm3 = (legSizeMm * legSizeMm) / 2;
   const totalVolumeMm3 = volumePerMmMm3 * totalTackLengthMm;
@@ -678,7 +687,18 @@ export const closureLengthLimits = (nominalBoreMm: number): { min: number; max: 
   };
 };
 
+const RETAINING_RING_WEIGHT_LOOKUP: Record<number, number> = {
+  200: 1.8, 250: 2.5, 300: 3.4, 350: 4.5, 400: 5.8, 450: 7.2, 500: 8.8,
+  550: 10.5, 600: 12.5, 650: 14.8, 700: 17.2, 750: 19.8, 800: 22.6,
+  850: 25.6, 900: 28.8, 950: 32.2, 1000: 35.8, 1050: 39.6, 1200: 52.0
+};
+
 export const retainingRingWeight = (nbMm: number, pipeOdMm?: number): number => {
+  const lookupWeight = RETAINING_RING_WEIGHT_LOOKUP[nbMm];
+  if (lookupWeight) {
+    return lookupWeight;
+  }
+
   const pipeOd = pipeOdMm || NB_TO_OD_LOOKUP[nbMm] || nbMm * 1.05;
   const { odMultiplier, minThicknessMm, maxThicknessMm, thicknessFactor } = RETAINING_RING_CONFIG;
 

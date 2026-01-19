@@ -13,13 +13,26 @@ export const STANDARD_PIPE_LENGTHS_M = [
 
 export const DEFAULT_PIPE_LENGTH_M = 12.192;
 
-export const TACK_WELD_CONFIG = {
+export interface TackWeldConfig {
+  tacksPerEnd: number;
+  tackLengthMm: number;
+  minLegSizeMm: number;
+  maxLegSizeMm: number;
+  legSizeFactor: number;
+}
+
+export const TACK_WELD_CONFIG: TackWeldConfig = {
   tacksPerEnd: 4,
   tackLengthMm: 20,
   minLegSizeMm: 3,
   maxLegSizeMm: 6,
   legSizeFactor: 0.02,
-} as const;
+};
+
+export const tackWeldConfig = (overrides?: Partial<TackWeldConfig>): TackWeldConfig => ({
+  ...TACK_WELD_CONFIG,
+  ...overrides,
+});
 
 export const CLOSURE_LENGTH_CONFIG = {
   minLengthFactor: 0.5,

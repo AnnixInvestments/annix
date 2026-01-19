@@ -32,7 +32,7 @@ import {
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 import { checkMaterialSuitability, suitableMaterials } from '@/app/lib/config/rfq/materialLimits';
-import { calculateMinWallThickness } from '@/app/lib/utils/pipeCalculations';
+import { getMinWallThicknessForNB } from '@/app/lib/utils/pipeCalculations';
 
 export interface FittingFormProps {
   entry: any;
@@ -57,10 +57,6 @@ export interface FittingFormProps {
   requiredProducts?: string[];
 }
 
-const getMinimumWallThickness = (nominalBore: number, pressureBar: number, temperatureC: number = 20): number => {
-  const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
-  return calculateMinWallThickness(od, pressureBar, 'ASTM_A106_Grade_B', temperatureC, 1.0, 0, 1.2);
-};
 
 export default function FittingForm({
   entry,
@@ -284,7 +280,7 @@ export default function FittingForm({
 
                                       if (nominalDiameter && globalSpecs?.workingPressureBar) {
                                         const schedules = getScheduleListForSpec(nominalDiameter, spec.id);
-                                        const minWT = getMinimumWallThickness(nominalDiameter, globalSpecs.workingPressureBar);
+                                        const minWT = getMinWallThicknessForNB(nominalDiameter, globalSpecs.workingPressureBar);
 
                                         const eligibleSchedules = schedules
                                           .filter((s: any) => (s.wallThicknessMm || 0) >= minWT)
@@ -479,7 +475,7 @@ export default function FittingForm({
                                 const effectiveSpecId2 = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                                 const availableSchedules = getScheduleListForSpec(nominalDiameter, effectiveSpecId2);
                                 if (availableSchedules.length > 0) {
-                                  const minWT = getMinimumWallThickness(nominalDiameter, globalSpecs.workingPressureBar);
+                                  const minWT = getMinWallThicknessForNB(nominalDiameter, globalSpecs.workingPressureBar);
                                   const sorted = [...availableSchedules].sort((a: any, b: any) =>
                                     (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0)
                                   );
@@ -603,7 +599,7 @@ export default function FittingForm({
                       const allSchedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
 
                       if (globalSpecs?.workingPressureBar && entry.specs?.nominalDiameterMm) {
-                        const minWT = getMinimumWallThickness(nbValue, globalSpecs?.workingPressureBar || 0);
+                        const minWT = getMinWallThicknessForNB(nbValue, globalSpecs?.workingPressureBar || 0);
                         const eligibleSchedules = allSchedules
                           .filter((dim: any) => (dim.wallThicknessMm || 0) >= minWT)
                           .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));

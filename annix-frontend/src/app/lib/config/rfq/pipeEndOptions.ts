@@ -103,6 +103,14 @@ export const weldCountPerPipe = (pipeEndConfig: string): number => {
   return config?.weldCount ?? 0;
 };
 
+/**
+ * Returns the number of flanged connections at pipe ends.
+ * This represents how many flanged openings/joints exist, NOT the number of physical pieces.
+ *
+ * Use this for: weld calculations, joint counts, connection specifications
+ *
+ * Example: 2xLF (loose flange both ends) = 2 connections (one at each end)
+ */
 export const flangesPerPipe = (pipeEndConfig: string): number => {
   switch (pipeEndConfig) {
     case 'PE':
@@ -124,6 +132,19 @@ export const flangesPerPipe = (pipeEndConfig: string): number => {
   }
 };
 
+/**
+ * Returns the total number of physical flange pieces needed.
+ * This accounts for assemblies that require multiple pieces per connection.
+ *
+ * Use this for: weight calculations, material ordering, BOM generation
+ *
+ * Key difference from flangesPerPipe:
+ * - 2xLF (loose flange both ends) = 4 pieces (2 plate flanges + 2 backing rings)
+ * - FOE_RF (fixed + rotating) = 2 pieces (1 fixed flange + 1 backing ring)
+ *
+ * Note: For rotating flanges (RF), the backing ring is counted but the loose
+ * plate flange weight is calculated separately as it's a standard catalog item.
+ */
 export const physicalFlangeCount = (pipeEndConfig: string): number => {
   switch (pipeEndConfig) {
     case 'PE':
