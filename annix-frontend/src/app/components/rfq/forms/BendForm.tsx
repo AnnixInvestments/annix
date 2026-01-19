@@ -27,31 +27,11 @@ import {
   recommendedPressureClassId,
   WORKING_PRESSURE_BAR,
   WORKING_TEMPERATURE_CELSIUS,
+  STEEL_SPEC_NB_FALLBACK,
 } from '@/app/lib/config/rfq';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
-import { checkMaterialSuitability, suitableMaterials } from '@/app/lib/config/rfq/materialLimits';
-
-const STEEL_SPEC_NB_FALLBACK: Record<string, number[]> = {
-  'SABS 62': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150],
-  'SANS 62': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150],
-  'SABS 719': [200, 250, 300, 350, 400, 450, 500, 600, 700, 750, 800, 900, 1000, 1050, 1200],
-  'SANS 719': [200, 250, 300, 350, 400, 450, 500, 600, 700, 750, 800, 900, 1000, 1050, 1200],
-  'ASTM A106': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600],
-  'ASTM A53': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600],
-  'API 5L': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 750, 800, 900, 1000, 1050, 1200],
-  'ASTM A333': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600],
-  'ASTM A179': [15, 20, 25, 32, 40, 50, 65, 80],
-  'ASTM A192': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150],
-  'ASTM A209': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300],
-  'ASTM A210': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150],
-  'ASTM A213': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150],
-  'ASTM A312': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600],
-  'ASTM A335': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600],
-  'ASTM A358': [200, 250, 300, 350, 400, 450, 500, 600, 700, 750, 800, 900, 1000, 1050, 1200],
-  'ASTM A790': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400],
-  'EN 10216': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600],
-  'EN 10217': [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000],
-};
+import { WorkingConditionsSection } from '@/app/components/rfq/WorkingConditionsSection';
+import { MaterialSuitabilityWarning } from '@/app/components/rfq/MaterialSuitabilityWarning';
 import {
   SABS62_NB_OPTIONS,
   SABS62_BEND_RADIUS,
@@ -61,7 +41,7 @@ import {
 } from '@/app/lib/utils/sabs62CfData';
 import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
-import { calculateMinWallThickness } from '@/app/lib/utils/pipeCalculations';
+import { calculateMinWallThickness, calculateBendWeldVolume, calculateComprehensiveSurfaceArea } from '@/app/lib/utils/pipeCalculations';
 import {
   steelStandardBendRules,
   allowedBendTypes,
@@ -91,6 +71,9 @@ export interface BendFormProps {
   Bend3DPreview?: React.ComponentType<any> | null;
   pressureClassesByStandard: Record<number, any[]>;
   getFilteredPressureClasses: (standardId: number) => void;
+  errors?: Record<string, string>;
+  isLoadingNominalBores?: boolean;
+  requiredProducts?: string[];
 }
 
 export default function BendForm({
@@ -113,6 +96,9 @@ export default function BendForm({
   Bend3DPreview,
   pressureClassesByStandard,
   getFilteredPressureClasses,
+  errors = {},
+  isLoadingNominalBores = false,
+  requiredProducts = [],
 }: BendFormProps) {
   return (
               <SplitPaneLayout
@@ -123,142 +109,46 @@ export default function BendForm({
                   <>
                 {/* Item Description */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-900 mb-1">
+                  <label htmlFor={`bend-description-${entry.id}`} className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                     Item Description *
                   </label>
                   <textarea
+                    id={`bend-description-${entry.id}`}
                     value={entry.description || ''}
                     onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                     rows={2}
                     placeholder="e.g., 40NB 90° 1.5D Bend"
                     required
+                    aria-required="true"
                   />
                 </div>
 
                 {/* Working Conditions - Item Override */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-xs font-semibold text-gray-800">
-                      Working Conditions
-                      {(!entry.specs?.workingPressureBar && !entry.specs?.workingTemperatureC) && (
-                        <span className="ml-2 text-xs font-normal text-green-600">(From Global Spec)</span>
-                      )}
-                      {(entry.specs?.workingPressureBar || entry.specs?.workingTemperatureC) && (
-                        <span className="ml-2 text-xs font-normal text-purple-600">(Override)</span>
-                      )}
-                    </h4>
-                    {(entry.specs?.workingPressureBar || entry.specs?.workingTemperatureC) && (
-                      <button
-                        type="button"
-                        onClick={() => onUpdateEntry(entry.id, {
-                          specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined }
-                        })}
-                        className="text-xs text-purple-600 hover:text-purple-800 font-medium"
-                      >
-                        Reset to Global
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Working Pressure (bar)
-                      </label>
-                      <select
-                        value={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || ''}
-                        onChange={(e) => {
-                          const value = e.target.value ? Number(e.target.value) : undefined;
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, workingPressureBar: value }
-                          });
-                        }}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                      >
-                        <option value="">Select pressure...</option>
-                        {WORKING_PRESSURE_BAR.map((pressure) => (
-                          <option key={pressure} value={pressure}>{pressure} bar</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Working Temperature (°C)
-                      </label>
-                      <select
-                        value={entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC || ''}
-                        onChange={(e) => {
-                          const value = e.target.value ? Number(e.target.value) : undefined;
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, workingTemperatureC: value }
-                          });
-                        }}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
-                      >
-                        <option value="">Select temperature...</option>
-                        {WORKING_TEMPERATURE_CELSIUS.map((temp) => (
-                          <option key={temp} value={temp}>{temp}°C</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  {(() => {
-                    const effectivePressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
-                    const effectiveTemperature = entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC;
+                <WorkingConditionsSection
+                  color="purple"
+                  entryId={entry.id}
+                  idPrefix="bend"
+                  workingPressureBar={entry.specs?.workingPressureBar}
+                  workingTemperatureC={entry.specs?.workingTemperatureC}
+                  globalPressureBar={globalSpecs?.workingPressureBar}
+                  globalTemperatureC={globalSpecs?.workingTemperatureC}
+                  onPressureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: value } })}
+                  onTemperatureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingTemperatureC: value } })}
+                  onReset={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined } })}
+                  gridCols={2}
+                />
+                <MaterialSuitabilityWarning
+                  color="purple"
+                  steelSpecName={(() => {
                     const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                    const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
-                    const steelSpecName = steelSpec?.steelSpecName || '';
-
-                    if (!steelSpecName || (!effectivePressure && !effectiveTemperature)) return null;
-
-                    const suitability = checkMaterialSuitability(steelSpecName, effectiveTemperature, effectivePressure);
-
-                    if (suitability.isSuitable && suitability.warnings.length === 0) return null;
-
-                    const suitableSpecPatterns = suitableMaterials(effectiveTemperature, effectivePressure);
-                    const recommendedSpecs = masterData.steelSpecs?.filter((s: any) =>
-                      suitableSpecPatterns.some(pattern => s.steelSpecName?.includes(pattern))
-                    ) || [];
-
-                    return (
-                      <div className={`mt-2 p-2 rounded border ${!suitability.isSuitable ? 'bg-red-50 border-red-300' : 'bg-amber-50 border-amber-300'}`}>
-                        <div className="flex items-start gap-2">
-                          <span className={`text-sm ${!suitability.isSuitable ? 'text-red-600' : 'text-amber-600'}`}>⚠</span>
-                          <div className="text-xs flex-1">
-                            {!suitability.isSuitable && (
-                              <p className="font-semibold text-red-700 mb-1">Steel spec not suitable - must be changed:</p>
-                            )}
-                            {suitability.warnings.map((warning, idx) => (
-                              <p key={idx} className={!suitability.isSuitable ? 'text-red-800' : 'text-amber-800'}>{warning}</p>
-                            ))}
-                            {suitability.recommendation && (
-                              <p className="mt-1 text-gray-700 italic">{suitability.recommendation}</p>
-                            )}
-                            {!suitability.isSuitable && recommendedSpecs.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                <span className="text-gray-600">Suitable specs:</span>
-                                {recommendedSpecs.slice(0, 3).map((spec: any) => (
-                                  <button
-                                    key={spec.id}
-                                    type="button"
-                                    onClick={() => {
-                                      onUpdateEntry(entry.id, {
-                                        specs: { ...entry.specs, steelSpecificationId: spec.id }
-                                      });
-                                    }}
-                                    className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200 font-medium"
-                                  >
-                                    {spec.steelSpecName}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
+                    return masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || '';
                   })()}
-                </div>
+                  effectivePressure={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar}
+                  effectiveTemperature={entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC}
+                  allSteelSpecs={masterData.steelSpecs || []}
+                  onSelectSpec={(spec) => onUpdateEntry(entry.id, { specs: { ...entry.specs, steelSpecificationId: spec.id } })}
+                />
 
                 {/* Conditional Bend Layout - SABS 719 vs SABS 62 */}
                 {(() => {
@@ -275,7 +165,7 @@ export default function BendForm({
                   // Common Steel Spec dropdown (used in both layouts)
                   const SteelSpecDropdown = (
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Steel Specification
                         {(() => {
                           const isUsingGlobal = !entry.specs?.steelSpecificationId && globalSpecs?.steelSpecificationId;
@@ -323,7 +213,7 @@ export default function BendForm({
 
                                   if (pressure > 0 && schedules.length > 0) {
                                     const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
-                                    const temperature = globalSpecs?.workingTemperatureCelsius || 20;
+                                    const temperature = globalSpecs?.workingTemperatureC || 20;
                                     const minWT = calculateMinWallThickness(od, pressure, 'ASTM_A106_Grade_B', temperature, 1.0, 0, 1.2);
 
                                     const eligibleSchedules = schedules
@@ -387,14 +277,18 @@ export default function BendForm({
                           />
                         );
                       })()}
+                      {errors[`bend_${index}_steelSpec`] && (
+                        <p role="alert" className="mt-1 text-xs text-red-600">{errors[`bend_${index}_steelSpec`]}</p>
+                      )}
                     </div>
                   );
 
                   // NB Dropdown (shared logic but different placement)
                   const NBDropdown = (
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Nominal Bore (mm) *
+                        <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Internal pipe diameter designation. NB (Nominal Bore) is the standard way to specify pipe size. Actual OD (Outside Diameter) varies by schedule.">?</span>
                         {!isSABS719 && !entry.specs?.bendType && (
                           <span className="text-orange-500 text-xs ml-1">(Select Bend Type first)</span>
                         )}
@@ -444,7 +338,7 @@ export default function BendForm({
 
                                 if (pressure > 0 && schedules.length > 0) {
                                   const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
-                                  const temperature = globalSpecs?.workingTemperatureCelsius || 20;
+                                  const temperature = globalSpecs?.workingTemperatureC || 20;
                                   const minWT = calculateMinWallThickness(od, pressure, 'ASTM_A106_Grade_B', temperature, 1.0, 0, 1.2);
 
                                   const eligibleSchedules = schedules
@@ -527,6 +421,9 @@ export default function BendForm({
                                 {selectedNB} NB outside typical range ({nbRules.minNominalBoreMm}-{nbRules.maxNominalBoreMm} NB) for {nbRules.category.replace('_', ' ')}
                               </p>
                             )}
+                            {errors[`bend_${index}_nb`] && (
+                              <p role="alert" className="mt-1 text-xs text-red-600">{errors[`bend_${index}_nb`]}</p>
+                            )}
                           </>
                         );
                       })()}
@@ -536,8 +433,9 @@ export default function BendForm({
                   // Schedule Dropdown (shared)
                   const ScheduleDropdown = (
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Schedule *
+                        <span className="ml-1 text-gray-400 font-normal cursor-help" title="Schedule determines wall thickness. Auto-selected based on ASME B31.3 pressure requirements when working pressure is set. Higher schedules = thicker walls = higher pressure rating.">?</span>
                         {entry.specs?.scheduleNumber && globalSpecs?.workingPressureBar && (
                           <span className="text-green-600 text-xs ml-2">(Auto)</span>
                         )}
@@ -576,14 +474,18 @@ export default function BendForm({
                       {entry.specs?.wallThicknessMm && (
                         <p className="text-xs text-green-700 mt-0.5">WT: {entry.specs.wallThicknessMm}mm</p>
                       )}
+                      {errors[`bend_${index}_schedule`] && (
+                        <p role="alert" className="mt-1 text-xs text-red-600">{errors[`bend_${index}_schedule`]}</p>
+                      )}
                     </div>
                   );
 
                   // SABS 62 Bend Type Dropdown
                   const BendTypeDropdown = (
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Bend Type *
+                        <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Radius multiplier of nominal bore. 1D = tight elbow (radius = 1×NB). 1.5D = short radius (1.5×NB). 2D = standard (2×NB). 3D = long radius (3×NB). 5D = extra long (5×NB). Larger D = gentler curve, lower pressure drop.">?</span>
                         <span className="text-purple-600 text-xs ml-1">(SABS 62)</span>
                       </label>
                       {(() => {
@@ -632,9 +534,10 @@ export default function BendForm({
                   // SABS 719 Radius Type Dropdown
                   const RadiusTypeDropdown = (
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Bend Radius *
-                        <span className="text-blue-600 text-xs ml-1">(SABS 719)</span>
+                        <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="LRSE = Long Radius Single End (3D radius, gentler curve). MRSE = Medium Radius Single End (2.5D radius, tighter curve). Larger radius = lower pressure drop, easier flow.">?</span>
+                        <span className="text-purple-600 text-xs ml-1">(SABS 719)</span>
                       </label>
                       {(() => {
                         const selectId = `bend-radius-type-${entry.id}`;
@@ -687,8 +590,9 @@ export default function BendForm({
 
                   const AngleDropdown = (
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Bend Angle *
+                        <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="The angle of direction change. 90° is a right-angle turn, 45° is a diagonal, 180° is a U-turn (return bend).">?</span>
                         {!isSABS719 && sabs62BendType && (
                           <span className="text-purple-600 text-xs ml-1">({sabs62BendType})</span>
                         )}
@@ -759,7 +663,7 @@ export default function BendForm({
                   // SABS 62 C/F Display
                   const CFDisplay = (
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         C/F (mm)
                         {entry.specs?.centerToFaceMm && <span className="text-green-600 text-xs ml-1">(Auto)</span>}
                       </label>
@@ -789,8 +693,8 @@ export default function BendForm({
                         if (!bendRadiusType || bendDeg <= 0) {
                           return (
                             <>
-                              <label className="block text-xs font-semibold text-gray-900 mb-1">
-                                Segments <span className="text-blue-600 text-xs ml-1">(SABS 719)</span>
+                              <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                                Segments <span className="text-purple-600 text-xs ml-1">(SABS 719)</span>
                               </label>
                               <input type="text" value="Select radius & angle" disabled className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-500 cursor-not-allowed" />
                             </>
@@ -830,7 +734,7 @@ export default function BendForm({
                         if (isAutoFill) {
                           return (
                             <>
-                              <label className="block text-xs font-semibold text-gray-900 mb-1">
+                              <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                                 Segments <span className="text-green-600 text-xs ml-1">(Auto: 2)</span>
                               </label>
                               <input type="text" value="2 segments" disabled className="w-full px-3 py-2 border border-green-300 rounded-md text-sm bg-green-50 text-green-900 font-medium cursor-not-allowed" />
@@ -843,8 +747,10 @@ export default function BendForm({
 
                         return (
                           <>
-                            <label className="block text-xs font-semibold text-gray-900 mb-1">
-                              Segments * <span className="text-blue-600 text-xs ml-1">({segmentOptions.join(' or ')})</span>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Segments *
+                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Number of welded pipe sections forming the bend. More segments = smoother curve but more mitre welds. Fewer segments = simpler fabrication but more abrupt angle changes.">?</span>
+                              <span className="text-purple-600 text-xs ml-1">({segmentOptions.join(' or ')})</span>
                             </label>
                             <select
                               value={entry.specs?.numberOfSegments || ''}
@@ -866,7 +772,7 @@ export default function BendForm({
                                   setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                                 }
                               }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                             >
                               <option value="">Select</option>
                               {segmentOptions.map(seg => (
@@ -887,19 +793,19 @@ export default function BendForm({
                     // SABS 719 Layout: Steel Spec -> NB -> Schedule | Radius Type -> Angle -> Segments
                     return (
                       <>
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                             {SteelSpecDropdown}
                             {NBDropdown}
                             {ScheduleDropdown}
                           </div>
                         </div>
                         {bendRules && (
-                          <div className="bg-green-600 border border-green-700 rounded-lg p-2 mt-2 text-xs text-white">
+                          <div className="bg-purple-600 border border-purple-700 rounded-lg p-2 mt-2 text-xs text-white">
                             <span className="font-semibold">Segmented Bend:</span> {bendRules.notes}
                           </div>
                         )}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-3">
                           {RadiusTypeDropdown}
                           {AngleDropdown}
                           {SegmentsDropdown}
@@ -910,15 +816,15 @@ export default function BendForm({
                     // Non-SABS 719 Layout: Steel Spec -> Bend Type -> NB | Schedule -> Angle -> C/F
                     return (
                       <>
-                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                             {SteelSpecDropdown}
                             {BendTypeDropdown}
                             {NBDropdown}
                           </div>
                         </div>
                         {bendRules && isPulledOnly && (
-                          <div className="bg-blue-50 border border-blue-300 rounded-lg p-2 mt-2 text-xs text-blue-800">
+                          <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded-lg p-2 mt-2 text-xs text-purple-800 dark:text-purple-300">
                             <span className="font-semibold">Pulled Bend Only:</span> {bendRules.notes}
                           </div>
                         )}
@@ -927,7 +833,7 @@ export default function BendForm({
                             <span className="font-semibold">Small Bore Spec:</span> {bendRules.notes}
                           </div>
                         )}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-3">
                           {ScheduleDropdown}
                           {AngleDropdown}
                           {CFDisplay}
@@ -938,16 +844,16 @@ export default function BendForm({
                 })()}
 
                 {/* Three-Column Layout Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                   {/* Column 1 - Quantity & Config */}
                   <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-gray-900 border-b border-purple-500 pb-1.5">
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 border-b border-purple-500 dark:border-purple-400 pb-1.5">
                       Quantity & Config
                     </h4>
 
                     {/* Quantity */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Quantity *
                       </label>
                       <input
@@ -962,7 +868,7 @@ export default function BendForm({
                             setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                           }
                         }}
-                        className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
+                        className="w-full px-3 py-2 border border-purple-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 bg-purple-50"
                         min="1"
                         placeholder="1"
                       />
@@ -970,11 +876,11 @@ export default function BendForm({
 
                     {/* Center-to-Face Display */}
                     {entry.specs?.centerToFaceMm && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                        <h5 className="text-xs font-bold text-green-900 mb-1">Center-to-Face</h5>
-                        <p className="text-sm font-bold text-green-800">{Number(entry.specs.centerToFaceMm).toFixed(1)} mm</p>
+                      <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
+                        <h5 className="text-xs font-bold text-purple-900 mb-1">Center-to-Face</h5>
+                        <p className="text-sm font-bold text-purple-800">{Number(entry.specs.centerToFaceMm).toFixed(1)} mm</p>
                         {entry.specs?.bendRadiusMm && (
-                          <p className="text-xs text-green-700 mt-0.5">Radius: {Number(entry.specs.bendRadiusMm).toFixed(1)} mm</p>
+                          <p className="text-xs text-purple-700 mt-0.5">Radius: {Number(entry.specs.bendRadiusMm).toFixed(1)} mm</p>
                         )}
                       </div>
                     )}
@@ -990,15 +896,15 @@ export default function BendForm({
                       const od = NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05);
                       const thinning = calculateWallThinning(entry.specs.bendRadiusMm, od, entry.specs.wallThicknessMm);
                       return (
-                        <div className={`border rounded-lg p-3 ${thinning.withinAcceptableLimit ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-300'}`}>
-                          <h5 className={`text-xs font-bold mb-1 ${thinning.withinAcceptableLimit ? 'text-blue-900' : 'text-red-900'}`}>
+                        <div className={`border rounded-lg p-3 ${thinning.withinAcceptableLimit ? 'bg-purple-50 border-purple-200' : 'bg-red-50 border-red-300'}`}>
+                          <h5 className={`text-xs font-bold mb-1 ${thinning.withinAcceptableLimit ? 'text-purple-900' : 'text-red-900'}`}>
                             Pulled Bend Wall Thinning
                           </h5>
                           <div className="grid grid-cols-2 gap-x-2 text-xs">
-                            <p className={thinning.withinAcceptableLimit ? 'text-blue-700' : 'text-red-700'}>
+                            <p className={thinning.withinAcceptableLimit ? 'text-purple-700' : 'text-red-700'}>
                               Extrados: {thinning.extradosThicknessMm}mm ({thinning.thinningPercent}% thin)
                             </p>
-                            <p className={thinning.withinAcceptableLimit ? 'text-blue-700' : 'text-red-700'}>
+                            <p className={thinning.withinAcceptableLimit ? 'text-purple-700' : 'text-red-700'}>
                               Intrados: {thinning.intradosThicknessMm}mm (+{thinning.thickeningPercent}%)
                             </p>
                           </div>
@@ -1040,10 +946,10 @@ export default function BendForm({
                     {/* Flange Specifications - Uses Global Specs with Override Option */}
                     <div>
                       <div className="flex justify-between items-start mb-2">
-                        <h5 className="text-xs font-bold text-gray-900">
+                        <h5 className="text-xs font-bold text-gray-900 dark:text-gray-100">
                           Flanges
                           {entry.hasFlangeOverride ? (
-                            <span className="text-blue-600 text-xs ml-2 font-normal">(Override Active)</span>
+                            <span className="text-purple-600 text-xs ml-2 font-normal">(Override Active)</span>
                           ) : globalSpecs?.flangeStandardId ? (
                             <span className="text-green-600 text-xs ml-2 font-normal">(From Global Specs)</span>
                           ) : (
@@ -1072,7 +978,7 @@ export default function BendForm({
                                   }
                                 });
                               }}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span className="font-medium">Override</span>
                           </label>
@@ -1107,23 +1013,23 @@ export default function BendForm({
                       })()}
 
                       {globalSpecs?.flangeStandardId && !entry.hasFlangeOverride ? (
-                        <div className="bg-green-50 p-3 rounded-md border border-green-200">
+                        <div className="bg-purple-50 p-3 rounded-md border border-purple-200">
                           <div className="flex justify-between items-center mb-2">
-                            <p className="text-green-800 text-xs font-semibold">
+                            <p className="text-purple-800 text-xs font-semibold">
                               Global Flange Specification
                             </p>
-                            <span className="text-green-600 text-xs">(From Page 2)</span>
+                            <span className="text-purple-600 text-xs">(From Page 2)</span>
                           </div>
                           <div className="space-y-2">
-                            <div className="bg-white p-2 rounded border border-green-200">
+                            <div className="bg-white p-2 rounded border border-purple-200">
                               <label className="block text-xs text-gray-500 mb-0.5">Flange Standard</label>
-                              <p className="text-sm font-medium text-gray-900">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {masterData.flangeStandards?.find((fs: any) => fs.id === globalSpecs.flangeStandardId)?.code || 'Not set'}
                               </p>
                             </div>
-                            <div className="bg-white p-2 rounded border border-green-200">
+                            <div className="bg-white p-2 rounded border border-purple-200">
                               <label className="block text-xs text-gray-500 mb-0.5">Pressure Class</label>
-                              <p className="text-sm font-medium text-gray-900">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {masterData.pressureClasses?.find((pc: any) => pc.id === globalSpecs.flangePressureClassId)?.designation || 'Not set'}
                               </p>
                             </div>
@@ -1134,9 +1040,9 @@ export default function BendForm({
                               const flangeType = (selectedStandard?.code === 'SABS 1123' ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES)
                                 .find(ft => ft.code === globalSpecs.flangeTypeCode);
                               return (
-                                <div className="bg-white p-2 rounded border border-green-200">
+                                <div className="bg-white p-2 rounded border border-purple-200">
                                   <label className="block text-xs text-gray-500 mb-0.5">Flange Type</label>
-                                  <p className="text-sm font-medium text-gray-900">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                     {flangeType ? `${flangeType.name} (${flangeType.code})` : 'Not set'}
                                   </p>
                                 </div>
@@ -1145,25 +1051,25 @@ export default function BendForm({
                           </div>
                         </div>
                       ) : !globalSpecs?.flangeStandardId ? (
-                        <p className="text-xs text-gray-500">Set flange specs in Global Specifications</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Set flange specs in Global Specifications</p>
                       ) : (
                         <div className="space-y-2">
                           {entry.flangeOverrideConfirmed ? (
-                            <div className="bg-blue-50 border-2 border-blue-400 p-2 rounded-md">
+                            <div className="bg-purple-50 border-2 border-purple-400 p-2 rounded-md">
                               <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-bold text-blue-900 flex items-center gap-1">
+                                <span className="text-xs font-bold text-purple-900 flex items-center gap-1">
                                   <span className="text-green-600">✓</span> Item-Specific Flange Confirmed
                                 </span>
                                 <button
                                   type="button"
                                   onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: false })}
-                                  className="px-2 py-0.5 text-xs font-medium text-blue-700 bg-white border border-blue-300 rounded hover:bg-blue-50 transition-colors"
+                                  className="px-2 py-0.5 text-xs font-medium text-purple-700 bg-white border border-purple-300 rounded hover:bg-purple-50 transition-colors"
                                 >
                                   Edit
                                 </button>
                               </div>
-                              <div className="bg-white p-1.5 rounded border border-blue-200">
-                                <p className="text-sm font-bold text-blue-800">
+                              <div className="bg-white p-1.5 rounded border border-purple-200">
+                                <p className="text-sm font-bold text-purple-800">
                                   {(() => {
                                     const flangeStandard = masterData.flangeStandards?.find(
                                       (fs: any) => fs.id === entry.specs?.flangeStandardId
@@ -1194,7 +1100,7 @@ export default function BendForm({
                                 return (
                                   <div className={`grid gap-2 ${hasThreeDropdowns ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                     <div>
-                                      <label className="block text-xs font-semibold text-gray-900 mb-1">Standard</label>
+                                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">Standard</label>
                                       <select
                                         value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
                                         onChange={async (e) => {
@@ -1206,7 +1112,7 @@ export default function BendForm({
                                             getFilteredPressureClasses(standardId);
                                           }
                                         }}
-                                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                       >
                                         <option value="">Select...</option>
                                         {masterData.flangeStandards?.map((standard: any) => (
@@ -1215,14 +1121,14 @@ export default function BendForm({
                                       </select>
                                     </div>
                                     <div>
-                                      <label className="block text-xs font-semibold text-gray-900 mb-1">{isSabs1123 ? 'Class (kPa)' : hasThreeDropdowns ? 'Class (PN)' : 'Class'}</label>
+                                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">{isSabs1123 ? 'Class (kPa)' : hasThreeDropdowns ? 'Class (PN)' : 'Class'}</label>
                                       {hasThreeDropdowns ? (
                                         <select
                                           value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
                                           onChange={(e) => onUpdateEntry(entry.id, {
                                             specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                                           })}
-                                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                         >
                                           <option value="">Select...</option>
                                           {(isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES).map((pc) => {
@@ -1240,7 +1146,7 @@ export default function BendForm({
                                           onChange={(e) => onUpdateEntry(entry.id, {
                                             specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                                           })}
-                                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                         >
                                           <option value="">Select...</option>
                                           {(() => {
@@ -1255,13 +1161,13 @@ export default function BendForm({
                                     </div>
                                     {hasThreeDropdowns && (
                                       <div>
-                                        <label className="block text-xs font-semibold text-gray-900 mb-1">Type</label>
+                                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">Type</label>
                                         <select
                                           value={entry.specs?.flangeTypeCode || ''}
                                           onChange={(e) => onUpdateEntry(entry.id, {
                                             specs: { ...entry.specs, flangeTypeCode: e.target.value || undefined }
                                           })}
-                                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                         >
                                           <option value="">Select...</option>
                                           {(isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES).map((ft) => (
@@ -1312,8 +1218,9 @@ export default function BendForm({
 
                     {/* Bend End Configuration */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Bend End Config
+                        <span className="ml-1 text-gray-400 font-normal cursor-help" title="PE = Plain End (for butt welding). FOE = Flanged One End. FBE = Flanged Both Ends. L/F = Loose Flange (slip-on, needs closure). R/F = Rotating Flange (backing ring for alignment).">?</span>
                       </label>
                       <select
                         value={entry.specs?.bendEndConfiguration || 'PE'}
@@ -1349,7 +1256,7 @@ export default function BendForm({
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                       >
                         {BEND_END_OPTIONS.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1359,9 +1266,9 @@ export default function BendForm({
 
                     {/* Closure Length - Only for L/F configs */}
                     {hasLooseFlange(entry.specs?.bendEndConfiguration || '') && (
-                      <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
-                        <label className="block text-xs font-semibold text-blue-900 mb-1">
-                          Closure Length (mm)
+                      <div className="bg-purple-50 p-2 rounded-md border border-purple-200">
+                        <label className="block text-xs font-semibold text-purple-900 mb-1">
+                          Closure Length (mm) *
                         </label>
                         <input
                           type="number"
@@ -1372,21 +1279,24 @@ export default function BendForm({
                             });
                           }}
                           placeholder="150"
-                          className="w-full px-3 py-2 bg-blue-50 border border-blue-300 rounded-md text-sm text-gray-900"
+                          className="w-full px-3 py-2 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded-md text-sm text-gray-900 dark:text-gray-100"
                         />
+                        {errors[`bend_${index}_closureLength`] && (
+                          <p role="alert" className="mt-1 text-xs text-red-600">{errors[`bend_${index}_closureLength`]}</p>
+                        )}
                       </div>
                     )}
                   </div>
 
                   {/* Column 2 - Tangents & Length */}
                   <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-gray-900 border-b border-blue-500 pb-1.5">
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 border-b border-purple-500 dark:border-purple-400 pb-1.5">
                       Tangents & Length
                     </h4>
 
                     {/* Tangents Section */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <h5 className="text-xs font-bold text-blue-900 mb-2">Tangent Extensions</h5>
+                    <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
+                      <h5 className="text-xs font-bold text-purple-900 mb-2">Tangent Extensions</h5>
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Number of Tangents
@@ -1413,7 +1323,7 @@ export default function BendForm({
                               setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                             }
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                         >
                           <option value="0">0 - No Tangents</option>
                           <option value="1">1 - Single Tangent</option>
@@ -1422,8 +1332,8 @@ export default function BendForm({
                       </div>
 
                       {(entry.specs?.numberOfTangents || 0) >= 1 && (
-                        <div className="mt-2 bg-blue-50 p-2 rounded-md border border-blue-200">
-                          <label className="block text-xs font-semibold text-blue-900 mb-1">
+                        <div className="mt-2 bg-purple-50 dark:bg-purple-900/30 p-2 rounded-md border border-purple-200 dark:border-purple-700">
+                          <label className="block text-xs font-semibold text-purple-900 mb-1">
                             Tangent 1 Length (mm)
                           </label>
                           <input
@@ -1439,7 +1349,7 @@ export default function BendForm({
                                 setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                               }
                             }}
-                            className="w-full px-3 py-2 bg-blue-50 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                            className="w-full px-3 py-2 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                             min="0"
                             placeholder="150"
                           />
@@ -1447,8 +1357,8 @@ export default function BendForm({
                       )}
 
                       {(entry.specs?.numberOfTangents || 0) >= 2 && (
-                        <div className="mt-2 bg-blue-50 p-2 rounded-md border border-blue-200">
-                          <label className="block text-xs font-semibold text-blue-900 mb-1">
+                        <div className="mt-2 bg-purple-50 dark:bg-purple-900/30 p-2 rounded-md border border-purple-200 dark:border-purple-700">
+                          <label className="block text-xs font-semibold text-purple-900 mb-1">
                             Tangent 2 Length (mm)
                           </label>
                           <input
@@ -1464,7 +1374,7 @@ export default function BendForm({
                                 setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                               }
                             }}
-                            className="w-full px-3 py-2 bg-blue-50 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                            className="w-full px-3 py-2 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                             min="0"
                             placeholder="150"
                           />
@@ -1629,17 +1539,20 @@ export default function BendForm({
                       if (weldCount === 0 && numStubs === 0) return null;
 
                       return (
-                        <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
-                          <h6 className="text-xs font-bold text-green-900 mb-2">Flange Weld Data</h6>
+                        <div className="mt-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
+                          <h6 className="text-xs font-bold text-purple-900 mb-2">
+                            Flange Weld Data
+                            <span className="ml-1 text-gray-400 font-normal cursor-help" title="Weld thickness based on fitting class (STD/XH/XXH) for ASTM specs, or pipe wall thickness for SABS 719. Rounded to 0.5mm increments for WPS matching.">?</span>
+                          </h6>
 
                           {/* Bend Flange Welds */}
                           {weldCount > 0 && dn && effectiveWeldThickness && (
                             <div className="mb-2">
-                              <p className="text-xs font-medium text-green-800">Bend Flanges ({weldCount}):</p>
-                              <p className="text-xs text-green-700">
+                              <p className="text-xs font-medium text-purple-800">Bend Flanges ({weldCount}):</p>
+                              <p className="text-xs text-purple-700">
                                 {dn}NB - {effectiveWeldThickness?.toFixed(2)}mm weld{isSABS719 ? ' (SABS 719 WT)' : usingScheduleThickness ? ' (sch)' : ` (${fittingClass})`}
                               </p>
-                              <p className="text-xs text-green-600">
+                              <p className="text-xs text-purple-600">
                                 Weld length: {(circumference * 2 * weldCount).toFixed(0)}mm ({weldCount}x2x{circumference.toFixed(0)}mm circ)
                               </p>
                             </div>
@@ -1647,21 +1560,21 @@ export default function BendForm({
 
                           {/* Stub Flange Welds */}
                           {numStubs > 0 && (
-                            <div className={weldCount > 0 ? 'pt-2 border-t border-green-200' : ''}>
-                              <p className="text-xs font-medium text-green-800">Stub Flanges:</p>
+                            <div className={weldCount > 0 ? 'pt-2 border-t border-purple-200' : ''}>
+                              <p className="text-xs font-medium text-purple-800">Stub Flanges:</p>
                               {numStubs >= 1 && stub1NB && (
                                 <div className="ml-2">
                                   {stub1HasFlange ? (
                                     <>
-                                      <p className="text-xs text-green-700">
+                                      <p className="text-xs text-purple-700">
                                         Stub 1: {stub1NB}NB - {stub1Thickness?.toFixed(2)}mm weld
                                       </p>
-                                      <p className="text-xs text-green-600">
+                                      <p className="text-xs text-purple-600">
                                         Weld length: {(stub1Circumference * 2).toFixed(0)}mm (2x{stub1Circumference.toFixed(0)}mm circ)
                                       </p>
                                     </>
                                   ) : (
-                                    <p className="text-xs text-gray-500">Stub 1: {stub1NB}NB - OE (no weld data)</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Stub 1: {stub1NB}NB - OE (no weld data)</p>
                                   )}
                                 </div>
                               )}
@@ -1669,15 +1582,15 @@ export default function BendForm({
                                 <div className="ml-2 mt-1">
                                   {stub2HasFlange ? (
                                     <>
-                                      <p className="text-xs text-green-700">
+                                      <p className="text-xs text-purple-700">
                                         Stub 2: {stub2NB}NB - {stub2Thickness?.toFixed(2)}mm weld
                                       </p>
-                                      <p className="text-xs text-green-600">
+                                      <p className="text-xs text-purple-600">
                                         Weld length: {(stub2Circumference * 2).toFixed(0)}mm (2x{stub2Circumference.toFixed(0)}mm circ)
                                       </p>
                                     </>
                                   ) : (
-                                    <p className="text-xs text-gray-500">Stub 2: {stub2NB}NB - OE (no weld data)</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Stub 2: {stub2NB}NB - OE (no weld data)</p>
                                   )}
                                 </div>
                               )}
@@ -1695,7 +1608,7 @@ export default function BendForm({
 
                     {/* Total Bend Length - Auto-calculated */}
                     {entry.specs?.centerToFaceMm && (
-                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                      <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
                         <h5 className="text-xs font-bold text-purple-900 mb-1">Total Bend Length</h5>
                         {(() => {
                           const cf = Number(entry.specs.centerToFaceMm) || 0;
@@ -1778,6 +1691,7 @@ export default function BendForm({
                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-sm font-semibold text-amber-800">Add Blank Flange(s)</span>
+                            <span className="ml-1 text-gray-400 font-normal cursor-help" title="Blank flanges for hydrostatic testing, isolation, or future connections. Select all flanged ends when items will be pressure tested before installation.">?</span>
                             <span className="text-xs text-amber-600">({availablePositions.length} positions available)</span>
                           </div>
                           <div className="flex flex-wrap gap-4">
@@ -1814,8 +1728,8 @@ export default function BendForm({
                     })()}
 
                     {/* Stubs Section - Compact */}
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                      <h5 className="text-xs font-bold text-green-900 mb-2">Stub Connections</h5>
+                    <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
+                      <h5 className="text-xs font-bold text-purple-900 mb-2">Stub Connections</h5>
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Number of Stubs
@@ -1865,8 +1779,8 @@ export default function BendForm({
                       </div>
 
                       {(entry.specs?.numberOfStubs || 0) >= 1 && (
-                        <div className="mt-2 p-2 bg-white rounded border border-green-300">
-                          <p className="text-xs font-medium text-green-900 mb-1">Stub 1 <span className="text-gray-500 font-normal">(on horizontal tangent - vertical stub)</span></p>
+                        <div className="mt-2 p-2 bg-white rounded border border-purple-300">
+                          <p className="text-xs font-medium text-purple-900 mb-1">Stub 1 <span className="text-gray-500 font-normal">(on horizontal tangent - vertical stub)</span></p>
                           <div className="grid grid-cols-1 gap-2 mb-2">
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">NB</label>
@@ -1907,7 +1821,7 @@ export default function BendForm({
                               <label className="block text-xs text-gray-600 mb-0.5">
                                 W/T (mm)
                                 {entry.specs?.stubs?.[0]?.wallThicknessOverride ? (
-                                  <span className="text-blue-600 ml-1">(Override)</span>
+                                  <span className="text-purple-600 ml-1">(Override)</span>
                                 ) : entry.specs?.stubs?.[0]?.nominalBoreMm ? (
                                   <span className="text-green-600 ml-1">(Auto)</span>
                                 ) : null}
@@ -2026,8 +1940,8 @@ export default function BendForm({
                                 );
                               })()}
                             </div>
-                            <div className="bg-blue-50 p-1 rounded border border-blue-200">
-                              <label className="block text-xs text-blue-800 mb-0.5">Length (mm)</label>
+                            <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
+                              <label className="block text-xs text-purple-800 mb-0.5">Length (mm)</label>
                               <input
                                 type="number"
                                 value={entry.specs?.stubs?.[0]?.length || ''}
@@ -2038,12 +1952,12 @@ export default function BendForm({
                                   updatedEntry.description = generateItemDescription(updatedEntry);
                                   onUpdateEntry(entry.id, updatedEntry);
                                 }}
-                                className="w-full px-2 py-1 bg-blue-50 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500 text-gray-900"
+                                className="w-full px-2 py-1 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded text-xs focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                                 placeholder="150"
                               />
                             </div>
-                            <div className="bg-blue-50 p-1 rounded border border-blue-200">
-                              <label className="block text-xs text-blue-800 mb-0.5">Location (mm)</label>
+                            <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
+                              <label className="block text-xs text-purple-800 mb-0.5">Location (mm)</label>
                               <input
                                 type="number"
                                 value={entry.specs?.stubs?.[0]?.locationFromFlange || ''}
@@ -2054,7 +1968,7 @@ export default function BendForm({
                                   updatedEntry.description = generateItemDescription(updatedEntry);
                                   onUpdateEntry(entry.id, updatedEntry);
                                 }}
-                                className="w-full px-2 py-1 bg-blue-50 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500 text-gray-900"
+                                className="w-full px-2 py-1 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded text-xs focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                                 placeholder="From flange"
                               />
                             </div>
@@ -2065,7 +1979,7 @@ export default function BendForm({
                               <span className="text-xs font-medium text-orange-900">
                                 Flange
                                 {entry.specs?.stubs?.[0]?.hasFlangeOverride ? (
-                                  <span className="text-blue-600 ml-1">(Override)</span>
+                                  <span className="text-purple-600 ml-1">(Override)</span>
                                 ) : globalSpecs?.flangeStandardId ? (
                                   <span className="text-green-600 ml-1">(Global)</span>
                                 ) : null}
@@ -2085,7 +1999,7 @@ export default function BendForm({
                                       };
                                       onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
                                     }}
-                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                                   />
                                   <span className="text-gray-600">Override</span>
                                 </label>
@@ -2113,7 +2027,7 @@ export default function BendForm({
                                       getFilteredPressureClasses(standardId);
                                     }
                                   }}
-                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                  className="w-full px-1 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                 >
                                   <option value="">Standard</option>
                                   {masterData.flangeStandards?.map((s: any) => (
@@ -2127,7 +2041,7 @@ export default function BendForm({
                                     stubs[0] = { ...stubs[0], flangePressureClassId: parseInt(e.target.value) || undefined };
                                     onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
                                   }}
-                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                  className="w-full px-1 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                 >
                                   <option value="">Class</option>
                                   {(() => {
@@ -2147,7 +2061,7 @@ export default function BendForm({
                                     updatedEntry.description = generateItemDescription(updatedEntry);
                                     onUpdateEntry(entry.id, updatedEntry);
                                   }}
-                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                  className="w-full px-1 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                 >
                                   <option value="S/O">S/O (Slip-On)</option>
                                   <option value="L/F">L/F (Loose)</option>
@@ -2177,8 +2091,8 @@ export default function BendForm({
                       )}
 
                       {(entry.specs?.numberOfStubs || 0) >= 2 && (
-                        <div className="mt-2 p-2 bg-white rounded border border-green-300">
-                          <p className="text-xs font-medium text-green-900 mb-1">Stub 2 <span className="text-gray-500 font-normal">(on angled tangent)</span></p>
+                        <div className="mt-2 p-2 bg-white rounded border border-purple-300">
+                          <p className="text-xs font-medium text-purple-900 mb-1">Stub 2 <span className="text-gray-500 font-normal">(on angled tangent)</span></p>
                           <div className="grid grid-cols-1 gap-2 mb-2">
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">NB</label>
@@ -2219,7 +2133,7 @@ export default function BendForm({
                               <label className="block text-xs text-gray-600 mb-0.5">
                                 W/T (mm)
                                 {entry.specs?.stubs?.[1]?.wallThicknessOverride ? (
-                                  <span className="text-blue-600 ml-1">(Override)</span>
+                                  <span className="text-purple-600 ml-1">(Override)</span>
                                 ) : entry.specs?.stubs?.[1]?.nominalBoreMm ? (
                                   <span className="text-green-600 ml-1">(Auto)</span>
                                 ) : null}
@@ -2338,8 +2252,8 @@ export default function BendForm({
                                 );
                               })()}
                             </div>
-                            <div className="bg-blue-50 p-1 rounded border border-blue-200">
-                              <label className="block text-xs text-blue-800 mb-0.5">Length (mm)</label>
+                            <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
+                              <label className="block text-xs text-purple-800 mb-0.5">Length (mm)</label>
                               <input
                                 type="number"
                                 value={entry.specs?.stubs?.[1]?.length || ''}
@@ -2350,12 +2264,12 @@ export default function BendForm({
                                   updatedEntry.description = generateItemDescription(updatedEntry);
                                   onUpdateEntry(entry.id, updatedEntry);
                                 }}
-                                className="w-full px-2 py-1 bg-blue-50 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500 text-gray-900"
+                                className="w-full px-2 py-1 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded text-xs focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                                 placeholder="150"
                               />
                             </div>
-                            <div className="bg-blue-50 p-1 rounded border border-blue-200">
-                              <label className="block text-xs text-blue-800 mb-0.5">Location (mm)</label>
+                            <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
+                              <label className="block text-xs text-purple-800 mb-0.5">Location (mm)</label>
                               <input
                                 type="number"
                                 value={entry.specs?.stubs?.[1]?.locationFromFlange || ''}
@@ -2366,7 +2280,7 @@ export default function BendForm({
                                   updatedEntry.description = generateItemDescription(updatedEntry);
                                   onUpdateEntry(entry.id, updatedEntry);
                                 }}
-                                className="w-full px-2 py-1 bg-blue-50 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500 text-gray-900"
+                                className="w-full px-2 py-1 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded text-xs focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                                 placeholder="From flange"
                               />
                             </div>
@@ -2377,7 +2291,7 @@ export default function BendForm({
                               <span className="text-xs font-medium text-orange-900">
                                 Flange
                                 {entry.specs?.stubs?.[1]?.hasFlangeOverride ? (
-                                  <span className="text-blue-600 ml-1">(Override)</span>
+                                  <span className="text-purple-600 ml-1">(Override)</span>
                                 ) : globalSpecs?.flangeStandardId ? (
                                   <span className="text-green-600 ml-1">(Global)</span>
                                 ) : null}
@@ -2397,7 +2311,7 @@ export default function BendForm({
                                       };
                                       onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
                                     }}
-                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                                   />
                                   <span className="text-gray-600">Override</span>
                                 </label>
@@ -2425,7 +2339,7 @@ export default function BendForm({
                                       getFilteredPressureClasses(standardId);
                                     }
                                   }}
-                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                  className="w-full px-1 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                 >
                                   <option value="">Standard</option>
                                   {masterData.flangeStandards?.map((s: any) => (
@@ -2439,7 +2353,7 @@ export default function BendForm({
                                     stubs[1] = { ...stubs[1], flangePressureClassId: parseInt(e.target.value) || undefined };
                                     onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
                                   }}
-                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                  className="w-full px-1 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                 >
                                   <option value="">Class</option>
                                   {(() => {
@@ -2459,7 +2373,7 @@ export default function BendForm({
                                     updatedEntry.description = generateItemDescription(updatedEntry);
                                     onUpdateEntry(entry.id, updatedEntry);
                                   }}
-                                  className="w-full px-1 py-1 border border-gray-300 rounded text-xs text-gray-900"
+                                  className="w-full px-1 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                 >
                                   <option value="S/O">S/O (Slip-On)</option>
                                   <option value="L/F">L/F (Loose)</option>
@@ -2551,7 +2465,7 @@ export default function BendForm({
                               <>
                                 <p className="text-xs text-teal-800 mb-1">
                                   <span className="font-medium">{numStubs} Tee weld{numStubs > 1 ? 's' : ''}</span> (full penetration)
-                                  {isSABS719 && <span className="text-blue-600 ml-1">(SABS 719 WT)</span>}
+                                  {isSABS719 && <span className="text-purple-600 ml-1">(SABS 719 WT)</span>}
                                 </p>
                                 {numStubs >= 1 && stub1NB && (
                                   <p className="text-xs text-teal-700">
@@ -2582,7 +2496,7 @@ export default function BendForm({
                   {onDuplicateEntry && (
                     <button
                       onClick={() => onDuplicateEntry(entry, index)}
-                      className="flex items-center gap-1 px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 text-sm font-medium border border-blue-300 rounded-md transition-colors"
+                      className="flex items-center gap-1 px-3 py-2 text-purple-600 hover:text-purple-800 hover:bg-purple-50 text-sm font-medium border border-purple-300 rounded-md transition-colors"
                       title="Duplicate this item"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2690,7 +2604,7 @@ export default function BendForm({
                       <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
                         Calculation Results
                       </h4>
-                      <div className="bg-purple-50 border border-purple-200 p-3 rounded-md">
+                      <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 p-3 rounded-md">
                         {(() => {
                           const cf = Number(entry.specs?.centerToFaceMm) || 0;
                           const tangent1 = entry.specs?.tangentLengths?.[0] || 0;
@@ -2751,6 +2665,19 @@ export default function BendForm({
                           const stub1Wt = stub1NB && stub1RawWt ? roundToWeldIncrement(stub1RawWt) : 0;
                           const stub2Wt = stub2NB && stub2RawWt ? roundToWeldIncrement(stub2RawWt) : 0;
                           const totalWeldLength = entry.calculation.totalWeldLengthMm || 0;
+
+                          const mainOdMm = dn ? (NB_TO_OD[dn] || dn * 1.05) : 0;
+                          const mitreWeldCount = numSegments > 1 ? numSegments - 1 : 0;
+                          const weldVolume = mainOdMm && pipeWallThickness ? calculateBendWeldVolume({
+                            mainOdMm,
+                            mainWallThicknessMm: pipeWallThickness,
+                            numberOfFlangeWelds: bendFlangeCount,
+                            numberOfMitreWelds: mitreWeldCount,
+                            stubs: [
+                              stub1NB && stub1HasFlange ? { odMm: NB_TO_OD[stub1NB] || stub1NB * 1.05, wallThicknessMm: pipeWallThickness, hasFlangeWeld: true } : null,
+                              stub2NB && stub2HasFlange ? { odMm: NB_TO_OD[stub2NB] || stub2NB * 1.05, wallThicknessMm: pipeWallThickness, hasFlangeWeld: true } : null,
+                            ].filter(Boolean) as Array<{odMm: number; wallThicknessMm: number; hasFlangeWeld: boolean}>,
+                          }) : null;
 
                           const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                           const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
@@ -2813,6 +2740,32 @@ export default function BendForm({
                                 <p className="text-xs text-purple-600 font-medium">Weld (mm)</p>
                                 <p className="text-lg font-bold text-purple-900">{totalWeldLength.toFixed(0)}</p>
                               </div>
+                              {weldVolume && (
+                                <div className="bg-fuchsia-100 p-2 rounded text-center">
+                                  <p className="text-xs text-fuchsia-600 font-medium">Weld Vol</p>
+                                  <p className="text-lg font-bold text-fuchsia-900">{(weldVolume.totalVolumeCm3 * bendQuantity).toFixed(1)}</p>
+                                  <p className="text-xs text-fuchsia-500">cm³</p>
+                                </div>
+                              )}
+                              {mainOdMm && pipeWallThickness && (() => {
+                                const bendLengthM = (entry.calculation?.totalBendLengthMm || 0) / 1000;
+                                const insideDiameterMm = mainOdMm - (2 * pipeWallThickness);
+                                const surfaceArea = calculateComprehensiveSurfaceArea({
+                                  outsideDiameterMm: mainOdMm,
+                                  insideDiameterMm,
+                                  pipeLengthM: bendLengthM,
+                                  numberOfFlanges: totalFlanges,
+                                  dn,
+                                  pressureClass: pressureClassDesignation,
+                                });
+                                return (
+                                  <div className="bg-indigo-100 p-2 rounded text-center">
+                                    <p className="text-xs text-indigo-600 font-medium">Surface m²</p>
+                                    <p className="text-lg font-bold text-indigo-900">{(surfaceArea.totalExternalAreaM2 * bendQuantity).toFixed(2)}</p>
+                                    <p className="text-xs text-indigo-500">external</p>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           );
                         })()}

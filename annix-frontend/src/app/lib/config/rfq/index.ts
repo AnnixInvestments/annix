@@ -6,3 +6,4 @@ export * from './materialLimits';
 export * from './pipeSchedules';
 export * from './bendSpecifications';
 export * from './asmeIXClassification';
+export * from './fittingWallThickness';

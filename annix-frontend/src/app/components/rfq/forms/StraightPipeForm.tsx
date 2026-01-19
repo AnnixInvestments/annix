@@ -37,11 +37,12 @@ import {
   validateScheduleForPressure,
   calculateTotalSurfaceArea,
   calculateInsideDiameter,
+  calculateFlangeWeldVolume,
 } from '@/app/lib/utils/pipeCalculations';
 import { recommendWallThicknessCarbonPipe, roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
-import { checkMaterialSuitability, suitableMaterials } from '@/app/lib/config/rfq/materialLimits';
+import { MaterialSuitabilityWarning } from '@/app/components/rfq/MaterialSuitabilityWarning';
 
 const formatWeight = (weight: number | undefined) => {
   if (weight === undefined || weight === null || isNaN(weight)) return 'Not calculated';
@@ -145,16 +146,18 @@ export default function StraightPipeForm({
                   <>
                 {/* Item Description - Single Field */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-900 mb-1">
+                  <label htmlFor={`pipe-description-${entry.id}`} className="block text-xs font-semibold text-gray-900 mb-1">
                     Item Description *
                   </label>
                   <textarea
+                    id={`pipe-description-${entry.id}`}
                     value={entry.description || generateItemDescription(entry)}
                     onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                     rows={2}
                     placeholder="Enter item description..."
                     required
+                    aria-required="true"
                   />
                   <div className="flex justify-between items-center mt-0.5">
                     <p className="text-xs text-gray-500">
@@ -173,12 +176,12 @@ export default function StraightPipeForm({
                 </div>
 
                 {/* Working Conditions - Item Override */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
                   <div className="flex justify-between items-center mb-2">
                     <h4 className="text-xs font-semibold text-gray-800">
                       Working Conditions
                       {(!entry.specs?.workingPressureBar && !entry.specs?.workingTemperatureC) && (
-                        <span className="ml-2 text-xs font-normal text-green-600">(From Global Spec)</span>
+                        <span className="ml-2 text-xs font-normal text-blue-600">(From Global Spec)</span>
                       )}
                       {(entry.specs?.workingPressureBar || entry.specs?.workingTemperatureC) && (
                         <span className="ml-2 text-xs font-normal text-blue-600">(Override)</span>
@@ -196,13 +199,15 @@ export default function StraightPipeForm({
                       </button>
                     )}
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label htmlFor={`pipe-pressure-${entry.id}`} className="block text-xs font-semibold text-gray-900 mb-1">
                         Working Pressure (bar)
-                        <span className="ml-1 text-gray-400 font-normal cursor-help" title="Design pressure for the piping system. Affects minimum wall thickness and recommended flange pressure class.">?</span>
+                        <span id={`pipe-pressure-help-${entry.id}`} className="ml-1 text-gray-400 font-normal cursor-help" title="Design pressure for the piping system. Affects minimum wall thickness and recommended flange pressure class.">?</span>
                       </label>
                       <select
+                        id={`pipe-pressure-${entry.id}`}
+                        aria-describedby={`pipe-pressure-help-${entry.id}`}
                         value={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || ''}
                         onChange={(e) => {
                           const value = e.target.value ? Number(e.target.value) : undefined;
@@ -283,11 +288,13 @@ export default function StraightPipeForm({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label htmlFor={`pipe-temp-${entry.id}`} className="block text-xs font-semibold text-gray-900 mb-1">
                         Working Temperature (°C)
-                        <span className="ml-1 text-gray-400 font-normal cursor-help" title="Operating temperature of the system. Affects material suitability and de-rating factors.">?</span>
+                        <span id={`pipe-temp-help-${entry.id}`} className="ml-1 text-gray-400 font-normal cursor-help" title="Operating temperature of the system. Affects material suitability and de-rating factors.">?</span>
                       </label>
                       <select
+                        id={`pipe-temp-${entry.id}`}
+                        aria-describedby={`pipe-temp-help-${entry.id}`}
                         value={entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC || ''}
                         onChange={(e) => {
                           const value = e.target.value ? Number(e.target.value) : undefined;
@@ -304,7 +311,7 @@ export default function StraightPipeForm({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label htmlFor={`pipe-nb-pressure-${entry.id}`} className="block text-xs font-semibold text-gray-900 mb-1">
                         Nominal Bore (mm) *
                       </label>
                       {(() => {
@@ -360,7 +367,7 @@ export default function StraightPipeForm({
                                 matchedSchedule = sorted[0].scheduleDesignation;
                                 matchedWT = sorted[0].wallThicknessMm;
                                 const validation = validateScheduleForPressure(od, matchedWT, pressure, materialCode, temperature);
-                                console.warn(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm minWT, using thickest: ${matchedSchedule} (${matchedWT}mm). ${validation.message}`);
+                                log.warn(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm minWT, using thickest: ${matchedSchedule} (${matchedWT}mm). ${validation.message}`);
                               }
                             } else {
                               const sorted = [...schedules].sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
@@ -399,79 +406,36 @@ export default function StraightPipeForm({
                             disabled={isLoadingNominalBores}
                             open={openSelects[selectId] || false}
                             onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            aria-required={true}
+                            aria-invalid={!!errors[`pipe_${index}_nb`]}
                           />
                         );
                       })()}
                       {errors[`pipe_${index}_nb`] && (
-                        <p className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_nb`]}</p>
+                        <p role="alert" className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_nb`]}</p>
                       )}
                     </div>
                   </div>
-                  {(() => {
-                    const effectivePressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
-                    const effectiveTemperature = entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC;
-                    const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                    const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
-                    const steelSpecName = steelSpec?.steelSpecName || '';
-
-                    if (!steelSpecName || (!effectivePressure && !effectiveTemperature)) return null;
-
-                    const suitability = checkMaterialSuitability(steelSpecName, effectiveTemperature, effectivePressure);
-
-                    if (suitability.isSuitable && suitability.warnings.length === 0) return null;
-
-                    const suitableSpecPatterns = suitableMaterials(effectiveTemperature, effectivePressure);
-                    const recommendedSpecs = masterData.steelSpecs?.filter((s: any) =>
-                      suitableSpecPatterns.some(pattern => s.steelSpecName?.includes(pattern))
-                    ) || [];
-
-                    return (
-                      <div className={`mt-2 p-2 rounded border ${!suitability.isSuitable ? 'bg-red-50 border-red-300' : 'bg-amber-50 border-amber-300'}`}>
-                        <div className="flex items-start gap-2">
-                          <span className={`text-sm ${!suitability.isSuitable ? 'text-red-600' : 'text-amber-600'}`}>⚠</span>
-                          <div className="text-xs flex-1">
-                            {!suitability.isSuitable && (
-                              <p className="font-semibold text-red-700 mb-1">Steel spec not suitable - must be changed:</p>
-                            )}
-                            {suitability.warnings.map((warning, idx) => (
-                              <p key={idx} className={!suitability.isSuitable ? 'text-red-800' : 'text-amber-800'}>{warning}</p>
-                            ))}
-                            {suitability.recommendation && (
-                              <p className="mt-1 text-gray-700 italic">{suitability.recommendation}</p>
-                            )}
-                            {!suitability.isSuitable && recommendedSpecs.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                <span className="text-gray-600">Suitable specs:</span>
-                                {recommendedSpecs.slice(0, 3).map((spec: any) => (
-                                  <button
-                                    key={spec.id}
-                                    type="button"
-                                    onClick={() => {
-                                      onUpdateEntry(entry.id, {
-                                        specs: { ...entry.specs, steelSpecificationId: spec.id }
-                                      });
-                                    }}
-                                    className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 font-medium"
-                                  >
-                                    {spec.steelSpecName}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  <MaterialSuitabilityWarning
+                    color="blue"
+                    steelSpecName={(() => {
+                      const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      return masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || '';
+                    })()}
+                    effectivePressure={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar}
+                    effectiveTemperature={entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC}
+                    allSteelSpecs={masterData.steelSpecs || []}
+                    onSelectSpec={(spec) => onUpdateEntry(entry.id, { specs: { ...entry.specs, steelSpecificationId: spec.id } })}
+                  />
                 </div>
 
-                {/* Material & Dimensions - Second Green Box */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3">
+                {/* Material & Dimensions */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
                   <h4 className="text-xs font-semibold text-gray-800 mb-2">Material & Dimensions</h4>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {/* Steel Specification */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label htmlFor={`pipe-steel-spec-${entry.id}`} className="block text-xs font-semibold text-gray-900 mb-1">
                         Steel Specification *
                         {(() => {
                           const globalSpecId = globalSpecs?.steelSpecificationId;
@@ -514,7 +478,7 @@ export default function StraightPipeForm({
 
                               const schedules = getScheduleListForSpec(nominalBore, specId);
                               const pressure = globalSpecs?.workingPressureBar || 0;
-                              const temperature = globalSpecs?.workingTemperatureC || 50;
+                              const temperature = globalSpecs?.workingTemperatureC || 20;
 
                               let matchedSchedule: string | undefined;
                               let matchedWT: number | undefined;
@@ -564,15 +528,21 @@ export default function StraightPipeForm({
                             className="w-full"
                             open={openSelects[selectId] || false}
                             onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            aria-required={true}
+                            aria-invalid={!!errors[`pipe_${index}_steel_spec`]}
                           />
                         );
                       })()}
+                      {errors[`pipe_${index}_steel_spec`] && (
+                        <p role="alert" className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_steel_spec`]}</p>
+                      )}
                     </div>
 
                     {/* Schedule */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Schedule
+                        <span className="ml-1 text-gray-400 font-normal cursor-help" title="★ = Minimum schedule meeting ASME B31.3 pressure requirements with 1.2x safety margin. Higher schedules provide thicker walls and greater pressure capacity.">?</span>
                         {entry.specs?.scheduleNumber && (
                           <span className="ml-1 text-green-600 text-xs">({entry.specs.wallThicknessMm?.toFixed(2)}mm)</span>
                         )}
@@ -712,6 +682,9 @@ export default function StraightPipeForm({
                           </div>
                         );
                       })()}
+                      {errors[`pipe_${index}_schedule`] && (
+                        <p role="alert" className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_schedule`]}</p>
+                      )}
                     </div>
 
                     {/* Weld Thickness Display */}
@@ -719,6 +692,7 @@ export default function StraightPipeForm({
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Flange Weld WT
                         <span className="ml-1 text-xs font-normal text-green-600 dark:text-green-400">(Auto)</span>
+                        <span className="ml-1 text-gray-400 font-normal cursor-help" title="For ASTM/ASME specs: Uses fitting class wall thickness (STD/XH/XXH based on schedule). For SABS 719: Uses pipe wall thickness. Rounded to nearest 0.5mm for WPS matching.">?</span>
                       </label>
                       {(() => {
                         const weldCount = getWeldCountPerPipe(entry.specs?.pipeEndConfiguration || 'PE');
@@ -797,7 +771,7 @@ export default function StraightPipeForm({
                   </div>
                   {/* Wall Thickness & Schedule Summary */}
                   {entry.specs?.scheduleNumber && (
-                    <div className="mt-2 pt-2 border-t border-green-200 flex items-center justify-between text-xs">
+                    <div className="mt-2 pt-2 border-t border-blue-200 flex items-center justify-between text-xs">
                       <div>
                         <span className="text-gray-600">Schedule: </span>
                         <span className="font-medium text-gray-900">{entry.specs.scheduleNumber}</span>
@@ -875,7 +849,7 @@ export default function StraightPipeForm({
 
                     return (
                       <>
-                        <div className="grid grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                           {/* Flange Standard */}
                           <div>
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
@@ -1044,7 +1018,7 @@ export default function StraightPipeForm({
                           <div>
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
                               Config
-                              <span className="ml-1 text-gray-400 font-normal cursor-help" title="Pipe end configuration determines flange types, weld counts, and material requirements. PE=Plain End, FOE=Flanged One End, FBE=Flanged Both Ends, R/F=Rotating Flange, L/F=Loose Flange.">?</span>
+                              <span className="ml-1 text-gray-400 font-normal cursor-help" title="PE = Plain End (no flanges, for butt welding to other pipes). FOE = Flanged One End (connect to equipment/valve). FBE = Flanged Both Ends (spool piece). L/F = Loose Flange (slip-on, easier bolt alignment). R/F = Rotating Flange (backing ring allows rotation for bolt hole alignment).">?</span>
                             </label>
                             <select
                               value={entry.specs.pipeEndConfiguration || 'PE'}
@@ -1054,7 +1028,7 @@ export default function StraightPipeForm({
                                 try {
                                   weldDetails = await getPipeEndConfigurationDetails(newConfig);
                                 } catch (error) {
-                                  console.warn('Could not get pipe end configuration details:', error);
+                                  log.warn('Could not get pipe end configuration details:', error);
                                 }
 
                                 const newFlangeTypeCode = recommendedFlangeTypeCode(newConfig);
@@ -1104,6 +1078,7 @@ export default function StraightPipeForm({
                           <div className="mt-2 flex justify-end">
                             <div className="flex items-center gap-3">
                               <span className="text-xs font-semibold text-gray-900 dark:text-gray-900">Blank:</span>
+                              <span className="text-gray-400 font-normal cursor-help text-xs" title="Add blank flanges for hydrostatic testing, isolation, or future connections. Select both ends when pipes will be tested individually before installation.">?</span>
                               {availableBlankPositions.map(pos => (
                                 <label key={pos.key} className="flex items-center gap-1 cursor-pointer">
                                   <input
@@ -1213,6 +1188,9 @@ export default function StraightPipeForm({
                               Closure weight: {closureWeightKg.toFixed(2)}kg each
                             </p>
                           )}
+                          {errors[`pipe_${index}_closure_length`] && (
+                            <p role="alert" className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_closure_length`]}</p>
+                          )}
                         </div>
                         <div className="flex-1 text-xs text-purple-700 dark:text-purple-400">
                           <p className="font-semibold">L/F Tack Welds:</p>
@@ -1229,7 +1207,7 @@ export default function StraightPipeForm({
 
               {/* Quantity & Lengths - Blue Box */}
               <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-3 mt-3">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {/* Pipe Length */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
@@ -1253,7 +1231,7 @@ export default function StraightPipeForm({
                               description: newDescription
                             });
                           }}
-                          className={`px-1.5 py-0.5 text-xs rounded border ${entry.specs.individualPipeLength === pl.value ? 'bg-blue-200 dark:bg-blue-700 border-blue-400 dark:border-blue-500 font-medium text-blue-900 dark:text-blue-100' : 'bg-white dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/40 border-blue-300 dark:border-blue-600 text-gray-700 dark:text-gray-300'}`}
+                          className={`px-1.5 py-0.5 text-xs rounded border ${entry.specs.individualPipeLength && Math.abs(entry.specs.individualPipeLength - pl.value) < 0.001 ? 'bg-blue-200 dark:bg-blue-700 border-blue-400 dark:border-blue-500 font-medium text-blue-900 dark:text-blue-100' : 'bg-white dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/40 border-blue-300 dark:border-blue-600 text-gray-700 dark:text-gray-300'}`}
                         >
                           {pl.label}
                         </button>
@@ -1516,6 +1494,23 @@ export default function StraightPipeForm({
                             <p className="text-lg font-bold text-purple-900">{entry.calculation.numberOfFlangeWelds}</p>
                             <p className="text-xs text-purple-600">{entry.calculation.totalFlangeWeldLength?.toFixed(2)}m</p>
                           </div>
+
+                          {entry.calculation?.numberOfFlangeWelds > 0 && entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (() => {
+                            const weldVolume = calculateFlangeWeldVolume({
+                              outsideDiameterMm: entry.calculation.outsideDiameterMm,
+                              wallThicknessMm: entry.specs.wallThicknessMm,
+                              numberOfFlangeWelds: entry.calculation.numberOfFlangeWelds,
+                            });
+                            const totalPipes = entry.calculation?.calculatedPipeCount || 1;
+                            const totalVolumeCm3 = weldVolume.volumeCm3 * totalPipes;
+                            return (
+                              <div className="bg-fuchsia-50 p-2 rounded text-center border border-fuchsia-200">
+                                <p className="text-xs text-fuchsia-700 font-medium">Weld Volume</p>
+                                <p className="text-lg font-bold text-fuchsia-900">{totalVolumeCm3.toFixed(1)} cm³</p>
+                                <p className="text-xs text-fuchsia-600">{weldVolume.legSizeMm.toFixed(1)}mm leg</p>
+                              </div>
+                            );
+                          })()}
 
                           {showSurfaceProtection && entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (() => {
                             const pressureClassId = entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId;

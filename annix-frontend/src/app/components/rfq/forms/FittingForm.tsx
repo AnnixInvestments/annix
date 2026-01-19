@@ -28,11 +28,15 @@ import {
   WORKING_PRESSURE_BAR,
   WORKING_TEMPERATURE_CELSIUS,
   NB_TO_OD_LOOKUP,
+  SABS62_FITTING_SIZES,
+  SABS719_FITTING_SIZES,
+  ALL_FITTING_SIZES,
 } from '@/app/lib/config/rfq';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
-import { checkMaterialSuitability, suitableMaterials } from '@/app/lib/config/rfq/materialLimits';
-import { getMinWallThicknessForNB } from '@/app/lib/utils/pipeCalculations';
+import { WorkingConditionsSection } from '@/app/components/rfq/WorkingConditionsSection';
+import { MaterialSuitabilityWarning } from '@/app/components/rfq/MaterialSuitabilityWarning';
+import { getMinWallThicknessForNB, calculateFittingWeldVolume, calculateComprehensiveSurfaceArea } from '@/app/lib/utils/pipeCalculations';
 
 export interface FittingFormProps {
   entry: any;
@@ -55,6 +59,8 @@ export interface FittingFormProps {
   pressureClassesByStandard: Record<number, any[]>;
   getFilteredPressureClasses: (standardId: number) => void;
   requiredProducts?: string[];
+  errors?: Record<string, string>;
+  isLoadingNominalBores?: boolean;
 }
 
 
@@ -79,6 +85,8 @@ export default function FittingForm({
   pressureClassesByStandard,
   getFilteredPressureClasses,
   requiredProducts = [],
+  errors = {},
+  isLoadingNominalBores = false,
 }: FittingFormProps) {
   return (
     <>
@@ -90,19 +98,21 @@ export default function FittingForm({
                   <>
                 {/* Item Description */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-900 mb-1">
+                  <label htmlFor={`fitting-description-${entry.id}`} className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                     Item Description *
                   </label>
                   <textarea
+                    id={`fitting-description-${entry.id}`}
                     value={entry.description || generateItemDescription(entry)}
                     onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                     rows={2}
                     placeholder="e.g., 100NB Short Equal Tee Sch40 SABS719"
                     required
+                    aria-required="true"
                   />
                   <div className="flex justify-between items-center mt-0.5">
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       Edit the description or use the auto-generated one
                     </p>
                     {entry.description && entry.description !== generateItemDescription(entry) && (
@@ -118,79 +128,29 @@ export default function FittingForm({
                 </div>
 
                 {/* Working Conditions - Item Override */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3 mb-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-xs font-semibold text-gray-800">
-                      Working Conditions
-                      {(!entry.specs?.workingPressureBar && !entry.specs?.workingTemperatureC) && (
-                        <span className="ml-2 text-xs font-normal text-green-600">(From Global Spec)</span>
-                      )}
-                      {(entry.specs?.workingPressureBar || entry.specs?.workingTemperatureC) && (
-                        <span className="ml-2 text-xs font-normal text-orange-600">(Override)</span>
-                      )}
-                    </h4>
-                    {(entry.specs?.workingPressureBar || entry.specs?.workingTemperatureC) && (
-                      <button
-                        type="button"
-                        onClick={() => onUpdateEntry(entry.id, {
-                          specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined }
-                        })}
-                        className="text-xs text-orange-600 hover:text-orange-800 font-medium"
-                      >
-                        Reset to Global
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <WorkingConditionsSection
+                  color="green"
+                  entryId={entry.id}
+                  idPrefix="fitting"
+                  workingPressureBar={entry.specs?.workingPressureBar}
+                  workingTemperatureC={entry.specs?.workingTemperatureC}
+                  globalPressureBar={globalSpecs?.workingPressureBar}
+                  globalTemperatureC={globalSpecs?.workingTemperatureC}
+                  onPressureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: value } })}
+                  onTemperatureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingTemperatureC: value } })}
+                  onReset={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined } })}
+                  gridCols={3}
+                  className="mb-3"
+                  extraFields={
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Working Pressure (bar)
-                      </label>
-                      <select
-                        value={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || ''}
-                        onChange={(e) => {
-                          const value = e.target.value ? Number(e.target.value) : undefined;
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, workingPressureBar: value }
-                          });
-                        }}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
-                      >
-                        <option value="">Select pressure...</option>
-                        {WORKING_PRESSURE_BAR.map((pressure) => (
-                          <option key={pressure} value={pressure}>{pressure} bar</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Working Temperature (°C)
-                      </label>
-                      <select
-                        value={entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC || ''}
-                        onChange={(e) => {
-                          const value = e.target.value ? Number(e.target.value) : undefined;
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, workingTemperatureC: value }
-                          });
-                        }}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
-                      >
-                        <option value="">Select temperature...</option>
-                        {WORKING_TEMPERATURE_CELSIUS.map((temp) => (
-                          <option key={temp} value={temp}>{temp}°C</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-green-900 mb-1">
+                      <label className="block text-xs font-semibold text-green-900 dark:text-green-300 mb-1">
                         Fitting Standard *
                         {(() => {
                           const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                           const derived = isSABS719 ? 'SABS719' : 'SABS62';
                           const hasGlobal = !!globalSpecs?.steelSpecificationId;
                           const current = entry.specs?.fittingStandard || derived;
-                          if (hasGlobal && current === derived) return <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>;
+                          if (hasGlobal && current === derived) return <span className="text-green-600 dark:text-green-400 text-xs ml-1 font-normal">(Auto)</span>;
                           if (hasGlobal && current !== derived) return <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>;
                           return null;
                         })()}
@@ -233,103 +193,62 @@ export default function FittingForm({
                         );
                       })()}
                     </div>
-                  </div>
-                  {(() => {
-                    const effectivePressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
-                    const effectiveTemperature = entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC;
+                  }
+                />
+                <MaterialSuitabilityWarning
+                  color="green"
+                  steelSpecName={(() => {
                     const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                    const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
-                    const steelSpecName = steelSpec?.steelSpecName || '';
-
-                    if (!steelSpecName || (!effectivePressure && !effectiveTemperature)) return null;
-
-                    const suitability = checkMaterialSuitability(steelSpecName, effectiveTemperature, effectivePressure);
-
-                    if (suitability.isSuitable && suitability.warnings.length === 0) return null;
-
-                    const suitableSpecPatterns = suitableMaterials(effectiveTemperature, effectivePressure);
-                    const recommendedSpecs = masterData.steelSpecs?.filter((s: any) =>
-                      suitableSpecPatterns.some(pattern => s.steelSpecName?.includes(pattern))
-                    ) || [];
-
-                    return (
-                      <div className={`mt-2 p-2 rounded border ${!suitability.isSuitable ? 'bg-red-50 border-red-300' : 'bg-amber-50 border-amber-300'}`}>
-                        <div className="flex items-start gap-2">
-                          <span className={`text-sm ${!suitability.isSuitable ? 'text-red-600' : 'text-amber-600'}`}>⚠</span>
-                          <div className="text-xs flex-1">
-                            {!suitability.isSuitable && (
-                              <p className="font-semibold text-red-700 mb-1">Steel spec not suitable - must be changed:</p>
-                            )}
-                            {suitability.warnings.map((warning, idx) => (
-                              <p key={idx} className={!suitability.isSuitable ? 'text-red-800' : 'text-amber-800'}>{warning}</p>
-                            ))}
-                            {suitability.recommendation && (
-                              <p className="mt-1 text-gray-700 italic">{suitability.recommendation}</p>
-                            )}
-                            {!suitability.isSuitable && recommendedSpecs.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                <span className="text-gray-600">Suitable specs:</span>
-                                {recommendedSpecs.slice(0, 3).map((spec: any) => (
-                                  <button
-                                    key={spec.id}
-                                    type="button"
-                                    onClick={() => {
-                                      const nominalDiameter = entry.specs?.nominalDiameterMm;
-                                      let scheduleNumber = entry.specs?.scheduleNumber;
-                                      let wallThicknessMm = entry.specs?.wallThicknessMm;
-
-                                      if (nominalDiameter && globalSpecs?.workingPressureBar) {
-                                        const schedules = getScheduleListForSpec(nominalDiameter, spec.id);
-                                        const minWT = getMinWallThicknessForNB(nominalDiameter, globalSpecs.workingPressureBar);
-
-                                        const eligibleSchedules = schedules
-                                          .filter((s: any) => (s.wallThicknessMm || 0) >= minWT)
-                                          .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
-
-                                        if (eligibleSchedules.length > 0) {
-                                          scheduleNumber = eligibleSchedules[0].scheduleDesignation;
-                                          wallThicknessMm = eligibleSchedules[0].wallThicknessMm;
-                                        } else if (schedules.length > 0) {
-                                          const sorted = [...schedules].sort((a: any, b: any) =>
-                                            (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0)
-                                          );
-                                          scheduleNumber = sorted[0].scheduleDesignation;
-                                          wallThicknessMm = sorted[0].wallThicknessMm;
-                                        }
-                                      }
-
-                                      onUpdateEntry(entry.id, {
-                                        specs: {
-                                          ...entry.specs,
-                                          steelSpecificationId: spec.id,
-                                          scheduleNumber,
-                                          wallThicknessMm
-                                        }
-                                      });
-                                    }}
-                                    className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs hover:bg-orange-200 font-medium"
-                                  >
-                                    {spec.steelSpecName}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
+                    return masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || '';
                   })()}
-                </div>
+                  effectivePressure={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar}
+                  effectiveTemperature={entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC}
+                  allSteelSpecs={masterData.steelSpecs || []}
+                  onSelectSpec={(spec) => {
+                    const nominalDiameter = entry.specs?.nominalDiameterMm;
+                    let scheduleNumber = entry.specs?.scheduleNumber;
+                    let wallThicknessMm = entry.specs?.wallThicknessMm;
+
+                    if (nominalDiameter && globalSpecs?.workingPressureBar) {
+                      const schedules = getScheduleListForSpec(nominalDiameter, spec.id);
+                      const minWT = getMinWallThicknessForNB(nominalDiameter, globalSpecs.workingPressureBar);
+
+                      const eligibleSchedules = schedules
+                        .filter((s: any) => (s.wallThicknessMm || 0) >= minWT)
+                        .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+
+                      if (eligibleSchedules.length > 0) {
+                        scheduleNumber = eligibleSchedules[0].scheduleDesignation;
+                        wallThicknessMm = eligibleSchedules[0].wallThicknessMm;
+                      } else if (schedules.length > 0) {
+                        const sorted = [...schedules].sort((a: any, b: any) =>
+                          (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0)
+                        );
+                        scheduleNumber = sorted[0].scheduleDesignation;
+                        wallThicknessMm = sorted[0].wallThicknessMm;
+                      }
+                    }
+
+                    onUpdateEntry(entry.id, {
+                      specs: {
+                        ...entry.specs,
+                        steelSpecificationId: spec.id,
+                        scheduleNumber,
+                        wallThicknessMm
+                      }
+                    });
+                  }}
+                />
 
                 {/* ROW 1: Primary Specs Header (Green Background) */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
-                  <h4 className="text-sm font-bold text-green-900 border-b border-green-400 pb-1.5 mb-3">
+                <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-3 mb-3">
+                  <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">
                     Fitting Specifications
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                     {/* Fitting Type */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Fitting Type *
                       </label>
                       {(() => {
@@ -439,14 +358,17 @@ export default function FittingForm({
                           />
                         );
                       })()}
+                      {errors[`fitting_${index}_type`] && (
+                        <p role="alert" className="mt-1 text-xs text-red-600">{errors[`fitting_${index}_type`]}</p>
+                      )}
                     </div>
 
                     {/* Nominal Diameter - Linked to Steel Specification */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Nominal Diameter (mm) *
                         {globalSpecs?.steelSpecificationId && (
-                          <span className="text-green-600 text-xs ml-2">(From Steel Spec)</span>
+                          <span className="text-green-600 dark:text-green-400 text-xs ml-2">(From Steel Spec)</span>
                         )}
                       </label>
                       {(() => {
@@ -454,8 +376,8 @@ export default function FittingForm({
                         const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                         const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
                         const sizes = effectiveStandard === 'SABS719'
-                          ? [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900]
-                          : [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150];
+                          ? [...SABS719_FITTING_SIZES]
+                          : [...SABS62_FITTING_SIZES];
                         const options = sizes.map((nb: number) => ({ value: String(nb), label: `${nb}mm` }));
 
                         return (
@@ -566,14 +488,17 @@ export default function FittingForm({
                         const isSABS719 = (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                         const effectiveStandard = entry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
                         const sizes = effectiveStandard === 'SABS719'
-                          ? [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900]
-                          : [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150];
+                          ? [...SABS719_FITTING_SIZES]
+                          : [...SABS62_FITTING_SIZES];
                         return (
-                          <p className="mt-1 text-xs text-gray-500">
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             {sizes.length} sizes available ({effectiveStandard})
                           </p>
                         );
                       })()}
+                      {errors[`fitting_${index}_nb`] && (
+                        <p role="alert" className="mt-1 text-xs text-red-600">{errors[`fitting_${index}_nb`]}</p>
+                      )}
                     </div>
 
                     {/* Schedule/Wall Thickness */}
@@ -584,7 +509,7 @@ export default function FittingForm({
 
                       if (!showSchedule) {
                         return (
-                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-2">
+                          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
                             <label className="block text-xs font-semibold text-gray-500 mb-1">
                               Wall Thickness
                             </label>
@@ -615,10 +540,11 @@ export default function FittingForm({
                         });
 
                         return (
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                          <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-2">
                             <label className="block text-xs font-semibold text-green-900 mb-1">
                               Schedule / W/T *
-                              <span className="text-green-600 text-xs ml-1 font-normal">(Auto)</span>
+                              <span className="text-green-600 dark:text-green-400 text-xs ml-1 font-normal">(Auto)</span>
+                              <span className="ml-1 text-gray-400 font-normal cursor-help" title="★ = Minimum schedule meeting pressure requirements. Auto-selected based on ASME B31.3 when working pressure is set.">?</span>
                             </label>
                             <Select
                               id={selectId}
@@ -645,6 +571,9 @@ export default function FittingForm({
                             {entry.specs?.wallThicknessMm && (
                               <p className="text-xs text-green-700 mt-1">WT: {entry.specs.wallThicknessMm}mm</p>
                             )}
+                            {errors[`fitting_${index}_schedule`] && (
+                              <p role="alert" className="mt-1 text-xs text-red-600">{errors[`fitting_${index}_schedule`]}</p>
+                            )}
                           </div>
                         );
                       }
@@ -663,9 +592,10 @@ export default function FittingForm({
 
                       return (
                         <div>
-                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                             Schedule / W/T *
-                            <span className="text-orange-600 text-xs ml-1 font-normal">(Manual)</span>
+                            <span className="text-green-600 dark:text-green-400 text-xs ml-1 font-normal">(Manual)</span>
+                            <span className="ml-1 text-gray-400 font-normal cursor-help" title="Manual selection when working pressure not set. Higher schedules provide thicker walls and greater pressure capacity.">?</span>
                           </label>
                           <Select
                             id={selectId}
@@ -698,13 +628,16 @@ export default function FittingForm({
                           {entry.specs?.wallThicknessMm && (
                             <p className="text-xs text-gray-600 mt-1">WT: {entry.specs.wallThicknessMm}mm</p>
                           )}
+                          {errors[`fitting_${index}_schedule`] && (
+                            <p role="alert" className="mt-1 text-xs text-red-600">{errors[`fitting_${index}_schedule`]}</p>
+                          )}
                         </div>
                       );
                     })()}
 
                     {/* Weld Thickness Display */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Flange Weld WT
                         <span className="ml-1 text-xs font-normal text-green-600">(Auto)</span>
                       </label>
@@ -718,7 +651,7 @@ export default function FittingForm({
 
                         if (numFlanges === 0) {
                           return (
-                            <div className="px-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500">
+                            <div className="px-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 dark:text-gray-400">
                               No welds (PE)
                             </div>
                           );
@@ -726,7 +659,7 @@ export default function FittingForm({
 
                         if (!dn || !pipeWallThickness) {
                           return (
-                            <div className="px-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500">
+                            <div className="px-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 dark:text-gray-400">
                               Select NB first
                             </div>
                           );
@@ -786,16 +719,16 @@ export default function FittingForm({
                 </div>
 
                 {/* ROW 2: Flange Specifications - Horizontal Layout */}
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+                <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-3 mb-3">
                   <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-sm font-bold text-orange-900 border-b border-orange-400 pb-1.5">
+                    <h4 className="text-sm font-bold text-green-900 dark:text-green-300 border-b border-green-400 pb-1.5">
                       Flanges
                       {entry.hasFlangeOverride ? (
                         <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>
                       ) : globalSpecs?.flangeStandardId ? (
-                        <span className="text-green-600 text-xs ml-1 font-normal">(Global)</span>
+                        <span className="text-green-600 dark:text-green-400 text-xs ml-1 font-normal">(Global)</span>
                       ) : (
-                        <span className="text-orange-600 text-xs ml-1 font-normal">(Not Set)</span>
+                        <span className="text-green-600 dark:text-green-400 text-xs ml-1 font-normal">(Not Set)</span>
                       )}
                     </h4>
                     {globalSpecs?.flangeStandardId && (
@@ -827,16 +760,16 @@ export default function FittingForm({
                   </div>
 
                   {globalSpecs?.flangeStandardId && !entry.hasFlangeOverride ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                       <div className="bg-white p-2 rounded border border-green-200">
                         <label className="block text-xs text-gray-500 mb-0.5">Flange Standard</label>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {masterData.flangeStandards?.find((fs: any) => fs.id === globalSpecs.flangeStandardId)?.code || 'Not set'}
                         </p>
                       </div>
                       <div className="bg-white p-2 rounded border border-green-200">
                         <label className="block text-xs text-gray-500 mb-0.5">Pressure Class</label>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {masterData.pressureClasses?.find((pc: any) => pc.id === globalSpecs.flangePressureClassId)?.designation || 'Not set'}
                         </p>
                       </div>
@@ -849,7 +782,7 @@ export default function FittingForm({
                         return (
                           <div className="bg-white p-2 rounded border border-green-200">
                             <label className="block text-xs text-gray-500 mb-0.5">Flange Type</label>
-                            <p className="text-sm font-medium text-gray-900">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {flangeType ? `${flangeType.name} (${flangeType.code})` : 'Not set'}
                             </p>
                           </div>
@@ -902,9 +835,9 @@ export default function FittingForm({
                             const hasThreeDropdowns = isSabs1123 || isBs4504;
 
                             return (
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                 <div>
-                                  <label className="block text-xs font-semibold text-orange-900 mb-1">Standard</label>
+                                  <label className="block text-xs font-semibold text-green-900 mb-1">Standard</label>
                                   <select
                                     value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
                                     onChange={(e) => {
@@ -916,7 +849,7 @@ export default function FittingForm({
                                         getFilteredPressureClasses(standardId);
                                       }
                                     }}
-                                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                    className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                   >
                                     <option value="">Select Standard...</option>
                                     {masterData.flangeStandards?.map((standard: any) => (
@@ -925,14 +858,14 @@ export default function FittingForm({
                                   </select>
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-semibold text-orange-900 mb-1">Pressure Class</label>
+                                  <label className="block text-xs font-semibold text-green-900 mb-1">Pressure Class</label>
                                   {hasThreeDropdowns ? (
                                     <select
                                       value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
                                       onChange={(e) => onUpdateEntry(entry.id, {
                                         specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                                       })}
-                                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                      className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                     >
                                       <option value="">Select Class...</option>
                                       {(isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES).map((pc) => {
@@ -950,7 +883,7 @@ export default function FittingForm({
                                       onChange={(e) => onUpdateEntry(entry.id, {
                                         specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                                       })}
-                                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                      className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                     >
                                       <option value="">Select Class...</option>
                                       {(() => {
@@ -964,14 +897,14 @@ export default function FittingForm({
                                   )}
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-semibold text-orange-900 mb-1">Flange Type</label>
+                                  <label className="block text-xs font-semibold text-green-900 mb-1">Flange Type</label>
                                   {hasThreeDropdowns ? (
                                     <select
                                       value={entry.specs?.flangeTypeCode || ''}
                                       onChange={(e) => onUpdateEntry(entry.id, {
                                         specs: { ...entry.specs, flangeTypeCode: e.target.value || undefined }
                                       })}
-                                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900"
+                                      className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                                     >
                                       <option value="">Select Type...</option>
                                       {(isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES).map((ft) => (
@@ -1028,7 +961,7 @@ export default function FittingForm({
                   <h4 className="text-sm font-bold text-blue-900 border-b border-blue-400 pb-1.5 mb-3">
                     Quantity & Dimensions
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {/* Quantity */}
                     <div>
                       <label className="block text-xs font-semibold text-blue-900 mb-1">
@@ -1063,7 +996,7 @@ export default function FittingForm({
                     if (isLateral) {
                       return (
                         <div>
-                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                             Angle Range *
                           </label>
                           <select
@@ -1114,7 +1047,7 @@ export default function FittingForm({
                                 }
                               });
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                           >
                             <option value="">Select angle range...</option>
                             <option value="60-90">60° - 90°</option>
@@ -1174,7 +1107,7 @@ export default function FittingForm({
                     if (isLateral) {
                       return (
                         <div>
-                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                             Degrees *
                           </label>
                           <input
@@ -1185,7 +1118,7 @@ export default function FittingForm({
                                 specs: { ...entry.specs, degrees: Number(e.target.value) }
                               });
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                             placeholder="e.g., 45, 60, 90"
                             min="30"
                             max="90"
@@ -1258,7 +1191,7 @@ export default function FittingForm({
                 </div>
 
                 {/* ROW 4: Remaining fields in 3-column grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {/* Column 1 - Additional Specs */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
@@ -1268,14 +1201,14 @@ export default function FittingForm({
                     {/* Branch Nominal Diameter - For Reducing Tees */}
                     {(entry.specs?.fittingType === 'SHORT_REDUCING_TEE' || entry.specs?.fittingType === 'GUSSET_REDUCING_TEE') && (
                       <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                           Branch Nominal Diameter (mm) *
                           <span className="text-blue-600 text-xs ml-2">(Tee Outlet Size)</span>
                         </label>
                         {(() => {
                           const selectId = `fitting-branch-nb-${entry.id}`;
                           const mainNB = entry.specs?.nominalDiameterMm || 0;
-                          const sizes = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900]
+                          const sizes = [...SABS719_FITTING_SIZES]
                             .filter(nb => nb < mainNB);
                           const options = sizes.map((nb: number) => ({ value: String(nb), label: `${nb}mm` }));
 
@@ -1302,7 +1235,10 @@ export default function FittingForm({
                             />
                           );
                         })()}
-                        <p className="mt-1 text-xs text-gray-500">
+                        {errors[`fitting_${index}_branchNb`] && (
+                          <p role="alert" className="mt-1 text-xs text-red-600">{errors[`fitting_${index}_branchNb`]}</p>
+                        )}
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                           Branch/outlet size must be smaller than main pipe ({entry.specs?.nominalDiameterMm || '--'}mm)
                         </p>
                       </div>
@@ -1403,14 +1339,14 @@ export default function FittingForm({
                     {/* Tee NB - For Unequal Tees */}
                     {['UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE'].includes(entry.specs?.fittingType || '') && (
                       <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                           Tee NB (mm) *
                           <span className="text-blue-600 text-xs ml-2">(Branch Outlet Size)</span>
                         </label>
                         {(() => {
                           const selectId = `fitting-tee-nb-${entry.id}`;
                           const mainNB = entry.specs?.nominalDiameterMm || 0;
-                          const sizes = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 1000, 1050, 1200]
+                          const sizes = [...ALL_FITTING_SIZES]
                             .filter(nb => nb < mainNB);
                           const options = sizes.map((nb: number) => ({ value: String(nb), label: `${nb}mm` }));
 
@@ -1436,7 +1372,7 @@ export default function FittingForm({
                             />
                           );
                         })()}
-                        <p className="mt-1 text-xs text-gray-500">
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                           Branch/outlet size must be smaller than main pipe ({entry.specs?.nominalDiameterMm || '--'}mm)
                         </p>
                       </div>
@@ -1453,7 +1389,7 @@ export default function FittingForm({
                     {/* Stub/Lateral Location - Only for Unequal and Reducing Tees */}
                     {!['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(entry.specs?.fittingType || '') && (
                       <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                           Location of Stub/Lateral (mm from left flange)
                         </label>
                         <input
@@ -1465,11 +1401,11 @@ export default function FittingForm({
                               specs: { ...entry.specs, stubLocation: value }
                             });
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                           placeholder="e.g., 500"
                           min="0"
                         />
-                        <p className="mt-0.5 text-xs text-gray-500">
+                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                           Distance from left flange to center of tee outlet
                         </p>
                       </div>
@@ -1477,8 +1413,9 @@ export default function FittingForm({
 
                     {/* Fitting End Configuration */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Fitting End Configuration *
+                        <span className="ml-1 text-gray-400 font-normal cursor-help" title="PE = Plain End (butt weld). FOE = Flanged One End. FBE = Flanged Both Ends. 3F = All Three Ends Flanged. L/F = Loose Flange. R/F = Rotating Flange.">?</span>
                       </label>
                       <select
                         value={entry.specs?.pipeEndConfiguration || 'PE'}
@@ -1524,13 +1461,16 @@ export default function FittingForm({
                           onUpdateEntry(entry.id, updatedEntry);
                           setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                         required
                       >
                         {FITTING_END_OPTIONS.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
+                      {errors[`fitting_${index}_endConfig`] && (
+                        <p role="alert" className="mt-1 text-xs text-red-600">{errors[`fitting_${index}_endConfig`]}</p>
+                      )}
                       <p className="mt-0.5 text-xs text-gray-700">
                         Select how the fitting ends should be configured
                         {entry.specs?.pipeEndConfiguration && (
@@ -1543,12 +1483,11 @@ export default function FittingForm({
 
                     {/* Closure Length Field - Only shown when L/F configuration is selected */}
                     {hasLooseFlange(entry.specs?.pipeEndConfiguration || '') && (
-                      <div className="mt-3 bg-purple-50 p-3 rounded-md border border-purple-200">
+                      <div className="mt-3 bg-purple-50 dark:bg-purple-900/30 p-3 rounded-md border border-purple-200 dark:border-purple-700">
                         {(() => {
                           const nb = entry.specs?.nominalDiameterMm || 100;
                           const limits = closureLengthLimits(nb);
                           const currentValue = entry.specs?.closureLengthMm || 0;
-                          const isOutOfRange = currentValue > 0 && (currentValue < limits.min || currentValue > limits.max);
                           const wallThickness = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5;
                           const closureWeightKg = currentValue > 0 ? getClosureWeight(nb, currentValue, wallThickness) : 0;
 
@@ -1561,26 +1500,31 @@ export default function FittingForm({
                                 </span>
                               </label>
                               <div className="flex gap-1 mb-1">
-                                {[100, 150, 200, 250].map((length) => (
-                                  <button
-                                    key={length}
-                                    type="button"
-                                    onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: length } })}
-                                    className={`px-1.5 py-0.5 text-xs rounded border ${
-                                      entry.specs?.closureLengthMm === length
-                                        ? 'bg-purple-200 border-purple-400 font-medium text-purple-900'
-                                        : 'bg-white hover:bg-purple-100 border-purple-300 text-gray-700'
-                                    }`}
-                                  >
-                                    {length}mm
-                                  </button>
-                                ))}
+                                {[100, 150, 200, 250]
+                                  .filter((length) => length >= limits.min && length <= limits.max)
+                                  .map((length) => (
+                                    <button
+                                      key={length}
+                                      type="button"
+                                      onClick={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: length } })}
+                                      className={`px-1.5 py-0.5 text-xs rounded border ${
+                                        entry.specs?.closureLengthMm === length
+                                          ? 'bg-purple-200 border-purple-400 font-medium text-purple-900'
+                                          : 'bg-white hover:bg-purple-100 border-purple-300 text-gray-700'
+                                      }`}
+                                    >
+                                      {length}mm
+                                    </button>
+                                  ))}
                               </div>
                               <input
                                 type="number"
                                 value={entry.specs?.closureLengthMm || ''}
                                 onChange={(e) => {
-                                  const closureLength = e.target.value ? Number(e.target.value) : undefined;
+                                  const rawValue = e.target.value ? Number(e.target.value) : null;
+                                  const closureLength = rawValue !== null
+                                    ? Math.max(limits.min, Math.min(limits.max, rawValue))
+                                    : null;
                                   onUpdateEntry(entry.id, {
                                     specs: { ...entry.specs, closureLengthMm: closureLength }
                                   });
@@ -1588,15 +1532,14 @@ export default function FittingForm({
                                 placeholder={`${limits.min}-${limits.max}mm`}
                                 min={limits.min}
                                 max={limits.max}
-                                className={`w-full px-3 py-2 bg-white border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 ${
-                                  isOutOfRange ? 'border-red-400' : 'border-purple-300'
-                                }`}
+                                className="w-full px-3 py-2 bg-white border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 border-purple-300"
                               />
-                              {isOutOfRange && (
-                                <p className="mt-1 text-xs text-red-600">
-                                  Should be {limits.min}-{limits.max}mm for {nb}NB
-                                </p>
+                              {errors[`fitting_${index}_closureLength`] && (
+                                <p role="alert" className="mt-1 text-xs text-red-600">{errors[`fitting_${index}_closureLength`]}</p>
                               )}
+                              <p className="mt-1 text-xs text-purple-600">
+                                Valid range: {limits.min}-{limits.max}mm for {nb}NB
+                              </p>
                               {closureWeightKg > 0 && (
                                 <p className="mt-1 text-xs text-purple-600">
                                   Closure weight: {closureWeightKg.toFixed(2)}kg each
@@ -1644,6 +1587,7 @@ export default function FittingForm({
                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-xs font-semibold text-amber-800">Add Blank Flange(s)</span>
+                            <span className="ml-1 text-gray-400 font-normal cursor-help" title="Blank flanges for hydrostatic testing, isolation, or future connections. Select all flanged ends when items will be pressure tested before installation.">?</span>
                             <span className="text-xs text-amber-600">({availablePositions.length} positions available)</span>
                           </div>
                           <div className="flex flex-wrap gap-3">
@@ -1705,7 +1649,7 @@ export default function FittingForm({
                     <h4 className="text-sm font-bold text-gray-900 border-b-2 border-green-500 pb-1.5 mb-3">
                       Calculation Results
                     </h4>
-                    <div className="bg-green-50 border border-green-200 p-3 rounded-md">
+                    <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 p-3 rounded-md">
                       {(() => {
                         const fittingType = entry.specs?.fittingType || 'Tee';
                         const nominalBore = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 0;
@@ -1749,6 +1693,21 @@ export default function FittingForm({
                           ? (pipeWallThickness || 6)
                           : (FITTING_WT[fittingClass]?.[branchNB] || pipeWallThickness || 6);
                         const branchWeldThickness = roundToWeldIncrement(branchRawThickness);
+
+                        const mainOdMm = entry.calculation?.outsideDiameterMm || (nominalBore ? NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.05 : 0);
+                        const branchOdMm = branchNB ? NB_TO_OD_LOOKUP[branchNB] || branchNB * 1.05 : 0;
+                        const flangeConfigCalc = getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || 'PE');
+                        const mainFlangeWeldCount = (flangeConfigCalc.hasInlet ? 1 : 0) + (flangeConfigCalc.hasOutlet ? 1 : 0);
+                        const branchFlangeWeldCount = flangeConfigCalc.hasBranch ? 1 : 0;
+                        const fittingWeldVolume = mainOdMm && pipeWallThickness ? calculateFittingWeldVolume({
+                          mainOdMm,
+                          mainWallThicknessMm: pipeWallThickness,
+                          branchOdMm: branchOdMm || undefined,
+                          branchWallThicknessMm: pipeWallThickness,
+                          numberOfMainFlangeWelds: mainFlangeWeldCount,
+                          numberOfBranchFlangeWelds: branchFlangeWeldCount,
+                          hasTeeJunctionWeld: true,
+                        }) : null;
 
                         const rotatingFlangeCount =
                           (flangeConfig.inletType === 'rotating' ? 1 : 0) +
@@ -1889,8 +1848,11 @@ export default function FittingForm({
                             </div>
 
                             {/* Weld Summary - Purple for weld info */}
-                            <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
-                              <p className="text-xs text-purple-800 font-medium">Weld Summary</p>
+                            <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded text-center border border-purple-200 dark:border-purple-700">
+                              <p className="text-xs text-purple-800 font-medium">
+                                Weld Summary
+                                <span className="ml-1 text-gray-400 font-normal cursor-help" title="Thickness based on fitting class (STD/XH/XXH) for ASTM specs, or pipe wall for SABS 719. Rounded to 0.5mm for WPS matching.">?</span>
+                              </p>
                               <div className="text-left mt-1 space-y-0.5">
                                 <p className="text-[10px] text-purple-700 font-medium">
                                   Tee Junction: 1 weld @ {branchWeldThickness?.toFixed(1)}mm
@@ -1902,6 +1864,37 @@ export default function FittingForm({
                                 )}
                               </div>
                             </div>
+
+                            {/* Weld Volume - Fuchsia */}
+                            {fittingWeldVolume && (
+                              <div className="bg-fuchsia-50 p-2 rounded text-center border border-fuchsia-200">
+                                <p className="text-xs text-fuchsia-800 font-medium">Weld Volume</p>
+                                <p className="text-lg font-bold text-fuchsia-900">{(fittingWeldVolume.totalVolumeCm3 * quantity).toFixed(1)}</p>
+                                <p className="text-xs text-fuchsia-600">cm³ total</p>
+                              </div>
+                            )}
+
+                            {/* Surface Area - Indigo */}
+                            {mainOdMm && pipeWallThickness && (() => {
+                              const totalLengthMm = (pipeALength || 0) + (pipeBLength || 0) + (teeHeight || 0);
+                              const pipeLengthM = totalLengthMm / 1000;
+                              const insideDiameterMm = mainOdMm - (2 * pipeWallThickness);
+                              const surfaceArea = calculateComprehensiveSurfaceArea({
+                                outsideDiameterMm: mainOdMm,
+                                insideDiameterMm,
+                                pipeLengthM,
+                                numberOfFlanges: numFlanges,
+                                dn: nominalBore,
+                                pressureClass: pressureClassDesignation,
+                              });
+                              return (
+                                <div className="bg-indigo-50 p-2 rounded text-center border border-indigo-200">
+                                  <p className="text-xs text-indigo-800 font-medium">Surface Area</p>
+                                  <p className="text-lg font-bold text-indigo-900">{(surfaceArea.totalExternalAreaM2 * quantity).toFixed(2)}</p>
+                                  <p className="text-xs text-indigo-600">m² external</p>
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })()}

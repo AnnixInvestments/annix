@@ -6,6 +6,8 @@
  * and surface area calculations.
  */
 
+import { STEEL_DENSITY_KG_CM3 } from '@/app/lib/config/rfq/constants';
+
 /**
  * Calculate weight per meter for carbon steel pipes and fittings
  * Formula: ((OD - WT) * WT) * 0.02466 = Kg/m
@@ -1852,5 +1854,241 @@ export function calculateTotalSurfaceArea(params: {
       totalInternalAreaM2: perPipe.totalInternalAreaM2 * params.numberOfPipes,
       totalSurfaceAreaM2: perPipe.totalSurfaceAreaM2 * params.numberOfPipes,
     },
+  };
+}
+
+export interface WeldVolumeConfig {
+  filletLegSizeMm?: number;
+  rootGapMm?: number;
+  grooveAngleDeg?: number;
+  reinforcementMm?: number;
+}
+
+export interface WeldVolumeResult {
+  filletVolumeMm3: number;
+  filletVolumeCm3: number;
+  buttWeldVolumeMm3: number;
+  buttWeldVolumeCm3: number;
+  totalVolumeMm3: number;
+  totalVolumeCm3: number;
+  weldMetalWeightKg: number;
+}
+
+const DEFAULT_WELD_CONFIG: Required<WeldVolumeConfig> = {
+  filletLegSizeMm: 6,
+  rootGapMm: 3,
+  grooveAngleDeg: 60,
+  reinforcementMm: 2,
+};
+
+function filletWeldCrossSectionMm2(legSizeMm: number): number {
+  return 0.5 * legSizeMm * legSizeMm;
+}
+
+function buttWeldCrossSectionMm2(
+  wallThicknessMm: number,
+  rootGapMm: number,
+  grooveAngleDeg: number,
+  reinforcementMm: number
+): number {
+  const halfAngleRad = (grooveAngleDeg / 2) * (Math.PI / 180);
+  const rootArea = wallThicknessMm * rootGapMm;
+  const grooveArea = wallThicknessMm * wallThicknessMm * Math.tan(halfAngleRad);
+  const capArea = reinforcementMm * wallThicknessMm * 0.5;
+  return rootArea + grooveArea + capArea;
+}
+
+function calculateFilletWeldLegSize(wallThicknessMm: number): number {
+  const legSize = wallThicknessMm * 0.7;
+  return Math.max(3, Math.min(12, legSize));
+}
+
+export function calculateFlangeWeldVolume(params: {
+  outsideDiameterMm: number;
+  wallThicknessMm: number;
+  numberOfFlangeWelds: number;
+  config?: WeldVolumeConfig;
+}): { volumeMm3: number; volumeCm3: number; legSizeMm: number; weldLengthMm: number } {
+  const { outsideDiameterMm, wallThicknessMm, numberOfFlangeWelds, config } = params;
+  const legSizeMm = config?.filletLegSizeMm || calculateFilletWeldLegSize(wallThicknessMm);
+  const circumferenceMm = Math.PI * outsideDiameterMm;
+  const crossSectionMm2 = filletWeldCrossSectionMm2(legSizeMm);
+  const weldLengthMm = circumferenceMm * 2 * numberOfFlangeWelds;
+  const volumeMm3 = crossSectionMm2 * weldLengthMm;
+  const volumeCm3 = volumeMm3 / 1000;
+
+  return { volumeMm3, volumeCm3, legSizeMm, weldLengthMm };
+}
+
+export function calculateButtWeldVolume(params: {
+  outsideDiameterMm: number;
+  wallThicknessMm: number;
+  numberOfButtWelds: number;
+  config?: WeldVolumeConfig;
+}): { volumeMm3: number; volumeCm3: number; weldLengthMm: number } {
+  const { outsideDiameterMm, wallThicknessMm, numberOfButtWelds, config } = params;
+  const rootGapMm = config?.rootGapMm ?? DEFAULT_WELD_CONFIG.rootGapMm;
+  const grooveAngleDeg = config?.grooveAngleDeg ?? DEFAULT_WELD_CONFIG.grooveAngleDeg;
+  const reinforcementMm = config?.reinforcementMm ?? DEFAULT_WELD_CONFIG.reinforcementMm;
+
+  const circumferenceMm = Math.PI * outsideDiameterMm;
+  const crossSectionMm2 = buttWeldCrossSectionMm2(wallThicknessMm, rootGapMm, grooveAngleDeg, reinforcementMm);
+  const weldLengthMm = circumferenceMm * numberOfButtWelds;
+  const volumeMm3 = crossSectionMm2 * weldLengthMm;
+  const volumeCm3 = volumeMm3 / 1000;
+
+  return { volumeMm3, volumeCm3, weldLengthMm };
+}
+
+export function calculateTotalWeldVolume(params: {
+  outsideDiameterMm: number;
+  wallThicknessMm: number;
+  numberOfFlangeWelds: number;
+  numberOfButtWelds: number;
+  config?: WeldVolumeConfig;
+}): WeldVolumeResult {
+  const flangeWeld = calculateFlangeWeldVolume({
+    outsideDiameterMm: params.outsideDiameterMm,
+    wallThicknessMm: params.wallThicknessMm,
+    numberOfFlangeWelds: params.numberOfFlangeWelds,
+    config: params.config,
+  });
+
+  const buttWeld = calculateButtWeldVolume({
+    outsideDiameterMm: params.outsideDiameterMm,
+    wallThicknessMm: params.wallThicknessMm,
+    numberOfButtWelds: params.numberOfButtWelds,
+    config: params.config,
+  });
+
+  const totalVolumeMm3 = flangeWeld.volumeMm3 + buttWeld.volumeMm3;
+  const totalVolumeCm3 = flangeWeld.volumeCm3 + buttWeld.volumeCm3;
+  const WELD_METAL_DENSITY_KG_CM3 = STEEL_DENSITY_KG_CM3;
+  const weldMetalWeightKg = totalVolumeCm3 * WELD_METAL_DENSITY_KG_CM3;
+
+  return {
+    filletVolumeMm3: flangeWeld.volumeMm3,
+    filletVolumeCm3: flangeWeld.volumeCm3,
+    buttWeldVolumeMm3: buttWeld.volumeMm3,
+    buttWeldVolumeCm3: buttWeld.volumeCm3,
+    totalVolumeMm3,
+    totalVolumeCm3,
+    weldMetalWeightKg,
+  };
+}
+
+export function calculateBendWeldVolume(params: {
+  mainOdMm: number;
+  mainWallThicknessMm: number;
+  numberOfFlangeWelds: number;
+  numberOfMitreWelds: number;
+  stubs?: Array<{
+    odMm: number;
+    wallThicknessMm: number;
+    hasFlangeWeld: boolean;
+  }>;
+  config?: WeldVolumeConfig;
+}): WeldVolumeResult & { stubWeldVolumeMm3: number; stubWeldVolumeCm3: number } {
+  const mainFlangeWeld = calculateFlangeWeldVolume({
+    outsideDiameterMm: params.mainOdMm,
+    wallThicknessMm: params.mainWallThicknessMm,
+    numberOfFlangeWelds: params.numberOfFlangeWelds,
+    config: params.config,
+  });
+
+  const mitreWeld = calculateButtWeldVolume({
+    outsideDiameterMm: params.mainOdMm,
+    wallThicknessMm: params.mainWallThicknessMm,
+    numberOfButtWelds: params.numberOfMitreWelds,
+    config: params.config,
+  });
+
+  let stubWeldVolumeMm3 = 0;
+  if (params.stubs) {
+    params.stubs
+      .filter(stub => stub.hasFlangeWeld)
+      .forEach(stub => {
+        const stubWeld = calculateFlangeWeldVolume({
+          outsideDiameterMm: stub.odMm,
+          wallThicknessMm: stub.wallThicknessMm,
+          numberOfFlangeWelds: 1,
+          config: params.config,
+        });
+        stubWeldVolumeMm3 += stubWeld.volumeMm3;
+      });
+  }
+  const stubWeldVolumeCm3 = stubWeldVolumeMm3 / 1000;
+
+  const totalVolumeMm3 = mainFlangeWeld.volumeMm3 + mitreWeld.volumeMm3 + stubWeldVolumeMm3;
+  const totalVolumeCm3 = totalVolumeMm3 / 1000;
+  const WELD_METAL_DENSITY_KG_CM3 = STEEL_DENSITY_KG_CM3;
+  const weldMetalWeightKg = totalVolumeCm3 * WELD_METAL_DENSITY_KG_CM3;
+
+  return {
+    filletVolumeMm3: mainFlangeWeld.volumeMm3 + stubWeldVolumeMm3,
+    filletVolumeCm3: (mainFlangeWeld.volumeMm3 + stubWeldVolumeMm3) / 1000,
+    buttWeldVolumeMm3: mitreWeld.volumeMm3,
+    buttWeldVolumeCm3: mitreWeld.volumeCm3,
+    stubWeldVolumeMm3,
+    stubWeldVolumeCm3,
+    totalVolumeMm3,
+    totalVolumeCm3,
+    weldMetalWeightKg,
+  };
+}
+
+export function calculateFittingWeldVolume(params: {
+  mainOdMm: number;
+  mainWallThicknessMm: number;
+  branchOdMm?: number;
+  branchWallThicknessMm?: number;
+  numberOfMainFlangeWelds: number;
+  numberOfBranchFlangeWelds: number;
+  hasTeeJunctionWeld: boolean;
+  config?: WeldVolumeConfig;
+}): WeldVolumeResult & { teeJunctionVolumeMm3: number; teeJunctionVolumeCm3: number } {
+  const mainFlangeWeld = calculateFlangeWeldVolume({
+    outsideDiameterMm: params.mainOdMm,
+    wallThicknessMm: params.mainWallThicknessMm,
+    numberOfFlangeWelds: params.numberOfMainFlangeWelds,
+    config: params.config,
+  });
+
+  let branchFlangeVolumeMm3 = 0;
+  if (params.branchOdMm && params.branchWallThicknessMm && params.numberOfBranchFlangeWelds > 0) {
+    const branchFlangeWeld = calculateFlangeWeldVolume({
+      outsideDiameterMm: params.branchOdMm,
+      wallThicknessMm: params.branchWallThicknessMm,
+      numberOfFlangeWelds: params.numberOfBranchFlangeWelds,
+      config: params.config,
+    });
+    branchFlangeVolumeMm3 = branchFlangeWeld.volumeMm3;
+  }
+
+  let teeJunctionVolumeMm3 = 0;
+  if (params.hasTeeJunctionWeld && params.branchOdMm && params.branchWallThicknessMm) {
+    const branchCircumferenceMm = Math.PI * params.branchOdMm;
+    const legSize = calculateFilletWeldLegSize(params.branchWallThicknessMm);
+    const crossSection = filletWeldCrossSectionMm2(legSize);
+    teeJunctionVolumeMm3 = crossSection * branchCircumferenceMm;
+  }
+  const teeJunctionVolumeCm3 = teeJunctionVolumeMm3 / 1000;
+
+  const totalFilletVolumeMm3 = mainFlangeWeld.volumeMm3 + branchFlangeVolumeMm3 + teeJunctionVolumeMm3;
+  const totalVolumeMm3 = totalFilletVolumeMm3;
+  const totalVolumeCm3 = totalVolumeMm3 / 1000;
+  const WELD_METAL_DENSITY_KG_CM3 = STEEL_DENSITY_KG_CM3;
+  const weldMetalWeightKg = totalVolumeCm3 * WELD_METAL_DENSITY_KG_CM3;
+
+  return {
+    filletVolumeMm3: totalFilletVolumeMm3,
+    filletVolumeCm3: totalFilletVolumeMm3 / 1000,
+    buttWeldVolumeMm3: 0,
+    buttWeldVolumeCm3: 0,
+    teeJunctionVolumeMm3,
+    teeJunctionVolumeCm3,
+    totalVolumeMm3,
+    totalVolumeCm3,
+    weldMetalWeightKg,
   };
 }

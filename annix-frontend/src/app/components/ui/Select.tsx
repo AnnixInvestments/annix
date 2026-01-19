@@ -24,12 +24,17 @@ interface SelectProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  loading?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  'aria-required'?: boolean;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
+  'aria-label'?: string;
 }
 
 const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
-  ({ id, value, onChange, options, groupedOptions, placeholder = 'Select...', className, disabled, open: controlledOpen, onOpenChange }, ref) => {
+  ({ id, value, onChange, options, groupedOptions, placeholder = 'Select...', className, disabled, loading, open: controlledOpen, onOpenChange, 'aria-required': ariaRequired, 'aria-invalid': ariaInvalid, 'aria-describedby': ariaDescribedby, 'aria-label': ariaLabel }, ref) => {
     const [internalOpen, setInternalOpen] = React.useState(false);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [highlightedIndex, setHighlightedIndex] = React.useState(0);
@@ -139,13 +144,20 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             ref={ref}
             id={id}
             type="button"
-            disabled={disabled}
+            disabled={disabled || loading}
+            role="combobox"
+            aria-haspopup="listbox"
+            aria-expanded={isOpen}
+            aria-required={ariaRequired}
+            aria-invalid={ariaInvalid}
+            aria-describedby={ariaDescribedby}
+            aria-label={ariaLabel}
             className={`flex items-center justify-between w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-left ${className || ''}`}
           >
             <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>
-              {selectedOption?.label || placeholder}
+              {loading ? 'Loading...' : (selectedOption?.label || placeholder)}
             </span>
-            <ChevronDownIcon />
+            {loading ? <LoadingSpinner /> : <ChevronDownIcon />}
           </button>
         </Popover.Trigger>
 
@@ -166,7 +178,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                 className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
               />
             </div>
-            <div ref={listRef} className="max-h-64 overflow-y-auto p-1">
+            <div ref={listRef} role="listbox" className="max-h-64 overflow-y-auto p-1">
               {filteredOptions.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-gray-500">No results found</div>
               ) : filteredGroupedOptions ? (
@@ -273,6 +285,15 @@ function CheckIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function LoadingSpinner() {
+  return (
+    <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.25" />
+      <path d="M6 1C8.76142 1 11 3.23858 11 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }

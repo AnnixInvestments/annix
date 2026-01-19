@@ -370,3 +370,51 @@ export const hasRotatingFlange = (endConfig: string): boolean => {
   const configUpper = endConfig.toUpperCase();
   return configUpper.includes('RF') || configUpper.includes('R/F') || configUpper === '2X_RF' || configUpper === '3X_RF';
 };
+
+export interface PressureClass {
+  id: number;
+  designation: string;
+  flangeStandardId?: number;
+  standardId?: number;
+}
+
+export const availablePressureClasses = (
+  flangeStandardId: number | undefined,
+  pressureClassesByStandard: Record<number, PressureClass[]>,
+  allPressureClasses: PressureClass[]
+): PressureClass[] => {
+  if (!flangeStandardId) {
+    return [];
+  }
+
+  let classes = pressureClassesByStandard[flangeStandardId] || [];
+
+  if (classes.length === 0) {
+    classes = allPressureClasses.filter((pc) =>
+      pc.flangeStandardId === flangeStandardId || pc.standardId === flangeStandardId
+    );
+  }
+
+  return classes;
+};
+
+export const selectPressureClassForWorking = (
+  workingPressureBar: number,
+  flangeStandardId: number | undefined,
+  flangeStandardCode: string | undefined,
+  pressureClassesByStandard: Record<number, PressureClass[]>,
+  allPressureClasses: PressureClass[],
+  currentPressureClassId?: number
+): number | null => {
+  if (!workingPressureBar || workingPressureBar <= 0) {
+    return currentPressureClassId || null;
+  }
+
+  const classes = availablePressureClasses(flangeStandardId, pressureClassesByStandard, allPressureClasses);
+
+  if (classes.length === 0) {
+    return currentPressureClassId || null;
+  }
+
+  return recommendedPressureClassId(workingPressureBar, classes, flangeStandardCode) || currentPressureClassId || null;
+};
