@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { adminApiClient, SecureDocument, SecureDocumentWithContent, LocalDocument, LocalDocumentWithContent } from '@/app/lib/api/adminApi';
-import { formatDateZA, fromISO } from '@/app/lib/datetime';
+import { adminApiClient, SecureDocument, SecureDocumentWithContent, LocalDocument, LocalDocumentWithContent, NixUploadResponse } from '@/app/lib/api/adminApi';
+import { formatDateZA, fromISO, nowMillis } from '@/app/lib/datetime';
 import SecureDocumentEditor, { EditorPaneMode, EditorState } from './SecureDocumentEditor';
 import SecureDocumentViewer from './SecureDocumentViewer';
 
@@ -37,6 +37,59 @@ interface FileError {
 interface ImportResult {
   successful: string[];
   failed: { filename: string; error: string }[];
+}
+
+interface UploadingFile {
+  id: string;
+  file: File;
+  title: string;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  progress: number;
+  error?: string;
+  documentSlug?: string;
+}
+
+interface NixUploadResult {
+  fileName: string;
+  success: boolean;
+  documentSlug?: string;
+  documentPath?: string;
+  error?: string;
+}
+
+function fileTypeIcon(filename: string): { color: string; label: string } {
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  const icons: Record<string, { color: string; label: string }> = {
+    pdf: { color: 'text-red-500', label: 'PDF' },
+    xlsx: { color: 'text-green-600', label: 'XLS' },
+    xls: { color: 'text-green-600', label: 'XLS' },
+    doc: { color: 'text-blue-600', label: 'DOC' },
+    docx: { color: 'text-blue-600', label: 'DOC' },
+    txt: { color: 'text-gray-500', label: 'TXT' },
+    md: { color: 'text-purple-500', label: 'MD' },
+    csv: { color: 'text-green-500', label: 'CSV' },
+  };
+  return icons[ext] || { color: 'text-gray-400', label: ext.toUpperCase() || 'FILE' };
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function isTextFile(filename: string): boolean {
+  const lowerName = filename.toLowerCase();
+  return lowerName.endsWith('.md') || lowerName.endsWith('.markdown') || lowerName.endsWith('.txt');
+}
+
+function isBinaryFile(filename: string): boolean {
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  return ['pdf', 'xlsx', 'xls', 'doc', 'docx', 'csv'].includes(ext);
+}
+
+function isSupportedFile(filename: string): boolean {
+  return isTextFile(filename) || isBinaryFile(filename);
 }
 
 function authorDisplay(doc: SecureDocument): string {
@@ -89,6 +142,9 @@ export default function SecureDocumentsPage() {
   const [fileError, setFileError] = useState<FileError | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [nixUploadResult, setNixUploadResult] = useState<NixUploadResult | null>(null);
+  const [copiedPath, setCopiedPath] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [editorPaneMode, setEditorPaneMode] = useState<EditorPaneMode>('live');
@@ -529,9 +585,82 @@ export default function SecureDocumentsPage() {
     });
   };
 
-  const isTextFile = (filename: string): boolean => {
-    const lowerName = filename.toLowerCase();
-    return lowerName.endsWith('.md') || lowerName.endsWith('.markdown') || lowerName.endsWith('.txt');
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPath(true);
+      setTimeout(() => setCopiedPath(false), 2000);
+    } catch {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedPath(true);
+      setTimeout(() => setCopiedPath(false), 2000);
+    }
+  };
+
+  const uploadNixFile = useCallback(async (uploadingFile: UploadingFile) => {
+    setUploadingFiles(prev =>
+      prev.map(f => f.id === uploadingFile.id ? { ...f, status: 'uploading', progress: 10 } : f)
+    );
+
+    try {
+      setUploadingFiles(prev =>
+        prev.map(f => f.id === uploadingFile.id ? { ...f, progress: 50 } : f)
+      );
+
+      const result = await adminApiClient.uploadNixDocument(
+        uploadingFile.file,
+        uploadingFile.title || undefined,
+      );
+
+      if (result.success) {
+        setUploadingFiles(prev =>
+          prev.map(f => f.id === uploadingFile.id ? { ...f, status: 'success', progress: 100, documentSlug: result.documentSlug } : f)
+        );
+        const documentPath = result.documentSlug
+          ? `Secure Documents / Nix / ${result.documentSlug}`
+          : null;
+        setNixUploadResult({
+          fileName: uploadingFile.file.name,
+          success: true,
+          documentSlug: result.documentSlug,
+          documentPath: documentPath || undefined,
+        });
+        fetchDocuments();
+      } else {
+        setUploadingFiles(prev =>
+          prev.map(f => f.id === uploadingFile.id ? { ...f, status: 'error', error: result.error || 'Upload failed' } : f)
+        );
+        setNixUploadResult({
+          fileName: uploadingFile.file.name,
+          success: false,
+          error: result.error || 'Upload failed',
+        });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      setUploadingFiles(prev =>
+        prev.map(f => f.id === uploadingFile.id ? { ...f, status: 'error', error: message } : f)
+      );
+      setNixUploadResult({
+        fileName: uploadingFile.file.name,
+        success: false,
+        error: message,
+      });
+    }
+  }, []);
+
+  const removeUploadingFile = (id: string) => {
+    setUploadingFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  const viewNixDocument = (slug: string) => {
+    updateUrl(slug, 'view');
+    handleViewDocumentBySlug(slug, 'view');
   };
 
   const processFiles = useCallback(async (files: File[]) => {
@@ -539,18 +668,35 @@ export default function SecureDocumentsPage() {
     setImportResult(null);
 
     const textFiles = files.filter(f => isTextFile(f.name));
-    const unsupportedFiles = files.filter(f => !isTextFile(f.name));
+    const binaryFiles = files.filter(f => isBinaryFile(f.name));
+    const unsupportedFiles = files.filter(f => !isSupportedFile(f.name));
 
-    if (unsupportedFiles.length > 0 && textFiles.length === 0) {
+    if (unsupportedFiles.length > 0 && textFiles.length === 0 && binaryFiles.length === 0) {
       const extensions = [...new Set(unsupportedFiles.map(f => f.name.split('.').pop()?.toUpperCase() || 'Unknown'))].join(', ');
       setFileError({
         filename: unsupportedFiles.map(f => f.name).join(', '),
-        message: `${extensions} files are not yet supported. Currently only Markdown (.md) and Text (.txt) files can be imported, but I'm sure Andy will ask for all manner of things to be dropped here in the future. We just need to conserve poor old Claude's credits for the moment.`
+        message: `${extensions} files are not supported. Supported formats: Markdown (.md), Text (.txt), PDF, Excel (.xlsx, .xls), Word (.doc, .docx), CSV`
       });
       return;
     }
 
-    if (textFiles.length === 1 && unsupportedFiles.length === 0) {
+    if (binaryFiles.length > 0) {
+      const newUploadingFiles: UploadingFile[] = binaryFiles.map(file => ({
+        id: `${nowMillis()}-${Math.random().toString(36).substr(2, 9)}`,
+        file,
+        title: file.name.replace(/\.[^.]+$/, ''),
+        status: 'pending' as const,
+        progress: 0,
+      }));
+
+      setUploadingFiles(prev => [...prev, ...newUploadingFiles]);
+
+      for (const uploadingFile of newUploadingFiles) {
+        await uploadNixFile(uploadingFile);
+      }
+    }
+
+    if (textFiles.length === 1 && binaryFiles.length === 0 && unsupportedFiles.length === 0) {
       const file = textFiles[0];
       try {
         const content = await readFileAsText(file);
@@ -567,36 +713,38 @@ export default function SecureDocumentsPage() {
       return;
     }
 
-    setIsImporting(true);
-    const successful: string[] = [];
-    const failed: { filename: string; error: string }[] = [];
+    if (textFiles.length > 1 || (textFiles.length === 1 && binaryFiles.length > 0)) {
+      setIsImporting(true);
+      const successful: string[] = [];
+      const failed: { filename: string; error: string }[] = [];
 
-    if (unsupportedFiles.length > 0) {
-      unsupportedFiles.forEach(f => {
-        const ext = f.name.split('.').pop()?.toUpperCase() || 'Unknown';
-        failed.push({ filename: f.name, error: `${ext} files not supported` });
-      });
-    }
+      if (unsupportedFiles.length > 0) {
+        unsupportedFiles.forEach(f => {
+          const ext = f.name.split('.').pop()?.toUpperCase() || 'Unknown';
+          failed.push({ filename: f.name, error: `${ext} files not supported` });
+        });
+      }
 
-    for (const file of textFiles) {
-      try {
-        const content = await readFileAsText(file);
-        const title = file.name.replace(/\.(md|markdown|txt)$/i, '');
-        const description = extractDescription(content);
-        await adminApiClient.createSecureDocument({ title, description, content });
-        successful.push(file.name);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        failed.push({ filename: file.name, error: message });
+      for (const file of textFiles) {
+        try {
+          const content = await readFileAsText(file);
+          const title = file.name.replace(/\.(md|markdown|txt)$/i, '');
+          const description = extractDescription(content);
+          await adminApiClient.createSecureDocument({ title, description, content });
+          successful.push(file.name);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Unknown error';
+          failed.push({ filename: file.name, error: message });
+        }
+      }
+
+      setIsImporting(false);
+      setImportResult({ successful, failed });
+      if (successful.length > 0) {
+        fetchDocuments();
       }
     }
-
-    setIsImporting(false);
-    setImportResult({ successful, failed });
-    if (successful.length > 0) {
-      fetchDocuments();
-    }
-  }, []);
+  }, [uploadNixFile]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1059,6 +1207,81 @@ export default function SecureDocumentsPage() {
         )}
       </div>
 
+      {uploadingFiles.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Processing Documents</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Files are being processed by Nix and saved to Secure Documents
+            </p>
+          </div>
+          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+            {uploadingFiles.map(file => {
+              const icon = fileTypeIcon(file.file.name);
+              return (
+                <li key={file.id} className="px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center min-w-0 flex-1">
+                      <span className={`flex-shrink-0 w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs font-bold ${icon.color}`}>
+                        {icon.label}
+                      </span>
+                      <div className="ml-4 min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {file.file.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {formatFileSize(file.file.size)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="ml-4 flex items-center space-x-3">
+                      {file.status === 'uploading' && (
+                        <div className="w-24">
+                          <div className="bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                            <div
+                              className="bg-[#323288] h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${file.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {file.status === 'success' && (
+                        <>
+                          <span className="text-green-500">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </span>
+                          {file.documentSlug && (
+                            <button
+                              onClick={() => viewNixDocument(file.documentSlug!)}
+                              className="text-sm text-[#323288] hover:text-[#4a4da3]"
+                            >
+                              View
+                            </button>
+                          )}
+                        </>
+                      )}
+                      {file.status === 'error' && (
+                        <span className="text-red-500 text-sm">{file.error}</span>
+                      )}
+                      <button
+                        onClick={() => removeUploadingFile(file.id)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {fileError && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <div className="flex items-start">
@@ -1165,10 +1388,10 @@ export default function SecureDocumentsPage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          <span className="font-medium">Drop files here</span> to import markdown documents
+          <span className="font-medium">Drop files here</span> to import documents
         </p>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
-          Supports .md, .markdown, and .txt files
+          Markdown, Text, PDF, Excel, Word, and CSV files supported
         </p>
       </div>
 
@@ -1225,6 +1448,99 @@ export default function SecureDocumentsPage() {
                   {isDeleting ? 'Deleting...' : `Delete ${selectedIds.size}`}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {nixUploadResult && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center">
+                {nixUploadResult.success ? (
+                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mr-3">
+                    <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center mr-3">
+                    <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                )}
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  {nixUploadResult.success ? 'Document Processed Successfully' : 'Processing Failed'}
+                </h3>
+              </div>
+            </div>
+            <div className="px-6 py-4">
+              <div className="mb-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">File Name</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{nixUploadResult.fileName}</p>
+              </div>
+              {nixUploadResult.success && nixUploadResult.documentPath && (
+                <div className="mb-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Saved Location</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded text-sm font-mono text-gray-800 dark:text-gray-200 break-all">
+                      {nixUploadResult.documentPath}
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(nixUploadResult.documentPath!)}
+                      className={`flex-shrink-0 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                        copiedPath
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500'
+                      }`}
+                      title="Copy path to clipboard"
+                    >
+                      {copiedPath ? (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Copied
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          Copy
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!nixUploadResult.success && nixUploadResult.error && (
+                <div className="mb-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Error</p>
+                  <p className="text-sm text-red-600 dark:text-red-400">{nixUploadResult.error}</p>
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+              {nixUploadResult.success && nixUploadResult.documentSlug && (
+                <button
+                  onClick={() => {
+                    setNixUploadResult(null);
+                    viewNixDocument(nixUploadResult.documentSlug!);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-[#323288] hover:text-[#4a4da3] border border-[#323288] rounded-md hover:bg-[#323288]/5"
+                >
+                  View Document
+                </button>
+              )}
+              <button
+                onClick={() => setNixUploadResult(null)}
+                className="px-4 py-2 text-sm font-medium text-white bg-[#323288] rounded-md hover:bg-[#4a4da3]"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
