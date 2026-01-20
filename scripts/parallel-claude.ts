@@ -68,6 +68,10 @@ function exec(cmd: string, options: { cwd?: string; silent?: boolean } = {}): st
   } catch (error) {
     if (!options.silent) {
       log.error(`Command failed: ${cmd}`);
+      const stderr = (error as { stderr?: string })?.stderr?.toString().trim();
+      if (stderr) {
+        log.error(stderr);
+      }
     }
     return '';
   }
@@ -727,6 +731,11 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
         exec(`git worktree add "${worktreePath}" -b ${branch}`, { silent: false });
       } else {
         exec(`git worktree add "${worktreePath}" ${branch}`, { silent: false });
+      }
+
+      if (!existsSync(worktreePath)) {
+        log.error(`Failed to create worktree at ${worktreePath}`);
+        return;
       }
     } else {
       log.info(`Using existing worktree at ${worktreePath}`);
