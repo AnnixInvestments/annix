@@ -788,41 +788,10 @@ export default function StraightPipeForm({
 
                 {/* Flange Specification - Third Box (Amber) */}
                 <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mt-3">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="mb-2">
                     <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-900">
                       Flange Specification
-                      {entry.hasFlangeOverride ? (
-                        <span className="text-blue-600 dark:text-blue-700 ml-2">(Override)</span>
-                      ) : globalSpecs?.flangeStandardId ? (
-                        <span className="text-green-600 dark:text-green-700 ml-2">(Global)</span>
-                      ) : null}
                     </h4>
-                    {globalSpecs?.flangeStandardId && (
-                      <label className="flex items-center gap-1 text-xs cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={entry.hasFlangeOverride || false}
-                          onChange={(e) => {
-                            const override = e.target.checked;
-                            onUpdateEntry(entry.id, {
-                              hasFlangeOverride: override,
-                              flangeOverrideConfirmed: false,
-                              specs: override ? {
-                                ...entry.specs,
-                                flangeStandardId: entry.specs.flangeStandardId || globalSpecs?.flangeStandardId,
-                                flangePressureClassId: entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId
-                              } : {
-                                ...entry.specs,
-                                flangeStandardId: undefined,
-                                flangePressureClassId: undefined
-                              }
-                            });
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-gray-600 dark:text-gray-800">Override</span>
-                      </label>
-                    )}
                   </div>
                   {(() => {
                     const selectedStandard = masterData.flangeStandards?.find(
@@ -845,6 +814,10 @@ export default function StraightPipeForm({
                     ];
                     const currentBlankPositions = entry.specs?.blankFlangePositions || [];
 
+                    const isStandardFromGlobal = globalSpecs?.flangeStandardId && !entry.specs?.flangeStandardId;
+                    const isClassFromGlobal = globalSpecs?.flangePressureClassId && !entry.specs?.flangePressureClassId;
+                    const isTypeFromGlobal = globalSpecs?.flangeTypeCode && !entry.specs?.flangeTypeCode;
+
                     return (
                       <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
@@ -852,6 +825,8 @@ export default function StraightPipeForm({
                           <div>
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
                               Standard
+                              {isStandardFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
+                              {entry.specs?.flangeStandardId && entry.specs?.flangeStandardId !== globalSpecs?.flangeStandardId && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
                               <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange standard determines pressure class options and flange dimensions">?</span>
                             </label>
                             <select
@@ -860,7 +835,6 @@ export default function StraightPipeForm({
                                 const newFlangeStandardId = e.target.value ? Number(e.target.value) : undefined;
                                 const newStandard = masterData.flangeStandards?.find((s: any) => s.id === newFlangeStandardId);
                                 const newStandardCode = newStandard?.code || '';
-                                const isSabs1123New = newStandardCode.includes('SABS 1123') || newStandardCode.includes('SANS 1123');
 
                                 const endConfig = entry.specs?.pipeEndConfiguration || 'PE';
                                 const effectiveFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(endConfig);
@@ -897,15 +871,13 @@ export default function StraightPipeForm({
                                     flangeTypeCode: effectiveFlangeTypeCode,
                                     flangePressureClassId: newPressureClassId
                                   },
-                                  description: newDescription,
-                                  hasFlangeOverride: true
+                                  description: newDescription
                                 });
                                 if (newFlangeStandardId && !pressureClassesByStandard[newFlangeStandardId]) {
                                   getFilteredPressureClasses(newFlangeStandardId);
                                 }
                               }}
-                              disabled={globalSpecs?.flangeStandardId && !entry.hasFlangeOverride}
-                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-900 disabled:bg-gray-100 disabled:text-gray-600"
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-900"
                             >
                               <option value="">Select...</option>
                               {masterData.flangeStandards?.map((standard: any) => (
@@ -920,6 +892,8 @@ export default function StraightPipeForm({
                           <div>
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
                               {isSabs1123 ? 'Class (kPa)' : 'Class'}
+                              {isClassFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
+                              {entry.specs?.flangePressureClassId && entry.specs?.flangePressureClassId !== globalSpecs?.flangePressureClassId && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
                               <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange pressure rating. Should match or exceed working pressure. Auto-selected based on working pressure.">?</span>
                             </label>
                             <select
@@ -930,12 +904,10 @@ export default function StraightPipeForm({
                                 const newDescription = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, {
                                   specs: { ...entry.specs, flangePressureClassId: newFlangePressureClassId },
-                                  description: newDescription,
-                                  hasFlangeOverride: true
+                                  description: newDescription
                                 });
                               }}
-                              disabled={globalSpecs?.flangeStandardId && !entry.hasFlangeOverride}
-                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-900 disabled:bg-gray-100 disabled:text-gray-600"
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-900"
                               onFocus={() => {
                                 const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                                 if (stdId && !pressureClassesByStandard[stdId]) {
@@ -982,7 +954,11 @@ export default function StraightPipeForm({
 
                           {/* Flange Type */}
                           <div>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">Type</label>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
+                              Type
+                              {isTypeFromGlobal && showFlangeType && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
+                              {entry.specs?.flangeTypeCode && entry.specs?.flangeTypeCode !== globalSpecs?.flangeTypeCode && showFlangeType && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
+                            </label>
                             {showFlangeType ? (
                               <select
                                 value={entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode || ''}
@@ -991,12 +967,10 @@ export default function StraightPipeForm({
                                   const newDescription = generateItemDescription(updatedEntry);
                                   onUpdateEntry(entry.id, {
                                     specs: { ...entry.specs, flangeTypeCode: e.target.value || undefined },
-                                    description: newDescription,
-                                    hasFlangeOverride: true
+                                    description: newDescription
                                   });
                                 }}
-                                disabled={globalSpecs?.flangeStandardId && !entry.hasFlangeOverride}
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-900 disabled:bg-gray-100 disabled:text-gray-600"
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-900"
                               >
                                 <option value="">Select...</option>
                                 {(isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES).map((ft) => (
@@ -1109,9 +1083,9 @@ export default function StraightPipeForm({
                   })()}
                   {/* Warning for pressure override */}
                   {(() => {
-                    const currentClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                    const currentClassId = entry.specs?.flangePressureClassId;
                     const recommendedClassId = globalSpecs?.flangePressureClassId;
-                    if (entry.hasFlangeOverride && currentClassId && recommendedClassId && currentClassId !== recommendedClassId) {
+                    if (currentClassId && recommendedClassId && currentClassId !== recommendedClassId) {
                       const currentClass = masterData.pressureClasses?.find((p: any) => p.id === currentClassId);
                       const recommendedClass = masterData.pressureClasses?.find((p: any) => p.id === recommendedClassId);
                       return (

@@ -194,6 +194,13 @@ export default function SplitPaneLayout({
               </button>
             </div>
           )}
+
+          {/* Calc Results - shown below toggle button, above preview (non-split mode) */}
+          {!isEnabled && showSplitToggle && calcResultsContent && (
+            <div className="mt-4">
+              {calcResultsContent}
+            </div>
+          )}
         </div>
 
       {/* Draggable Divider */}
@@ -292,16 +299,15 @@ export default function SplitPaneLayout({
         </div>
       )}
 
-      {/* Calc Results + 3D Preview - shown below when split-pane is disabled */}
-      {!isEnabled && showSplitToggle && (
-        <div className="space-y-4">
-          {calcResultsContent}
+      {/* 3D Preview - shown below calc results when split-pane is disabled */}
+      {!isEnabled && showSplitToggle && previewContent && (
+        <div>
           {previewContent}
         </div>
       )}
       </div>
 
-      {/* Calc Results - shown below both panes when split-pane is enabled */}
+      {/* Calc Results - shown above preview when split-pane is enabled */}
       {isEnabled && showSplitToggle && calcResultsContent && (
         <div>
           {calcResultsContent}

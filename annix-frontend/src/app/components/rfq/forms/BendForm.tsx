@@ -127,7 +127,7 @@ export default function BendForm({
                   />
                 </div>
 
-                {/* Working Conditions - Item Override */}
+                {/* Working Conditions - Item Override + Steel Spec */}
                 <WorkingConditionsSection
                   color="purple"
                   entryId={entry.id}
@@ -138,8 +138,76 @@ export default function BendForm({
                   globalTemperatureC={globalSpecs?.workingTemperatureC}
                   onPressureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: value } })}
                   onTemperatureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingTemperatureC: value } })}
-                  onReset={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined } })}
-                  gridCols={2}
+                  onReset={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined, steelSpecificationId: undefined } })}
+                  gridCols={3}
+                  extraFields={
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        Steel Specification
+                        {(() => {
+                          const isUsingGlobal = !entry.specs?.steelSpecificationId && globalSpecs?.steelSpecificationId;
+                          const isOverride = entry.specs?.steelSpecificationId && entry.specs.steelSpecificationId !== globalSpecs?.steelSpecificationId;
+                          if (isUsingGlobal) return <span className="text-green-600 text-xs ml-2">(Global)</span>;
+                          if (isOverride) return <span className="text-orange-600 text-xs ml-2">(Override)</span>;
+                          return null;
+                        })()}
+                      </label>
+                      {(() => {
+                        const selectId = `bend-steel-spec-${entry.id}`;
+                        const groupedOptions = masterData.steelSpecs
+                          ? groupSteelSpecifications(masterData.steelSpecs)
+                          : [];
+
+                        return (
+                          <Select
+                            id={selectId}
+                            value={String(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || '')}
+                            onChange={(value) => {
+                              const newSpecId = value ? Number(value) : undefined;
+                              const nominalBore = entry.specs?.nominalBoreMm;
+
+                              const newSpec = newSpecId ? masterData.steelSpecs?.find((s: any) => s.id === newSpecId) : null;
+                              const newSpecName = newSpec?.steelSpecName || '';
+                              const isNewSABS719 = newSpecName.includes('SABS 719') || newSpecName.includes('SANS 719');
+
+                              const oldSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                              const oldSpec = oldSpecId ? masterData.steelSpecs?.find((s: any) => s.id === oldSpecId) : null;
+                              const oldSpecName = oldSpec?.steelSpecName || '';
+                              const wasOldSABS719 = oldSpecName.includes('SABS 719') || oldSpecName.includes('SANS 719');
+
+                              const specTypeChanged = isNewSABS719 !== wasOldSABS719;
+                              const updatedEntry: any = {
+                                ...entry,
+                                specs: {
+                                  ...entry.specs,
+                                  steelSpecificationId: newSpecId,
+                                  scheduleNumber: specTypeChanged ? undefined : entry.specs?.scheduleNumber,
+                                  wallThicknessMm: specTypeChanged ? undefined : entry.specs?.wallThicknessMm,
+                                  bendType: specTypeChanged ? undefined : entry.specs?.bendType,
+                                  bendRadiusType: specTypeChanged ? undefined : entry.specs?.bendRadiusType,
+                                  bendDegrees: specTypeChanged ? undefined : entry.specs?.bendDegrees,
+                                  numberOfSegments: specTypeChanged ? undefined : entry.specs?.numberOfSegments,
+                                  centerToFaceMm: specTypeChanged ? undefined : entry.specs?.centerToFaceMm,
+                                  bendRadiusMm: specTypeChanged ? undefined : entry.specs?.bendRadiusMm
+                                }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+
+                              if (!specTypeChanged && nominalBore && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              }
+                            }}
+                            options={[]}
+                            groupedOptions={groupedOptions}
+                            placeholder="Select Steel Spec"
+                            open={openSelects[selectId]}
+                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
+                    </div>
+                  }
                 />
                 <MaterialSuitabilityWarning
                   color="purple"
@@ -164,6 +232,10 @@ export default function BendForm({
                   const isSABS62 = steelSpecName.includes('SABS 62') || steelSpecName.includes('SANS 62');
                   const isSegmentedAllowed = allowedTypes.includes('segmented');
                   const isPulledOnly = allowedTypes.length === 1 && allowedTypes[0] === 'pulled';
+
+                  // Determine effective bend style (explicit selection or default from spec)
+                  const effectiveBendStyle = entry.specs?.bendStyle || (isSABS719 ? 'segmented' : 'pulled');
+                  const isSegmentedStyle = effectiveBendStyle === 'segmented';
 
                   // Common Steel Spec dropdown (used in both layouts)
                   const SteelSpecDropdown = (
@@ -292,23 +364,12 @@ export default function BendForm({
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Nominal Bore (mm) *
                         <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Internal pipe diameter designation. NB (Nominal Bore) is the standard way to specify pipe size. Actual OD (Outside Diameter) varies by schedule.">?</span>
-                        {!isSABS719 && !entry.specs?.bendType && (
-                          <span className="text-orange-500 text-xs ml-1">(Select Bend Type first)</span>
-                        )}
                       </label>
                       {(() => {
                         const selectId = `bend-nb-${entry.id}`;
-                        const isDisabled = !isSABS719 && !entry.specs?.bendType;
+                        const isDisabled = false;
 
                         const nbOptions = (() => {
-                          if (!isSABS719 && entry.specs?.bendType) {
-                            const bendType = entry.specs.bendType as SABS62BendType;
-                            const sabs62NBs = SABS62_NB_OPTIONS[bendType] || [];
-                            return sabs62NBs.map((nb: number) => ({
-                              value: String(nb),
-                              label: `${nb} NB`
-                            }));
-                          }
                           const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === effectiveSteelSpecId);
                           const steelSpecName = steelSpec?.steelSpecName || '';
                           const fallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => steelSpecName.includes(pattern))?.[1];
@@ -370,7 +431,7 @@ export default function BendForm({
                                 let newCenterToFace: number | undefined = undefined;
                                 let newBendRadius: number | undefined = undefined;
 
-                                if (isSABS719 && entry.specs?.bendRadiusType && entry.specs?.numberOfSegments) {
+                                if (isSegmentedStyle && entry.specs?.bendRadiusType && entry.specs?.numberOfSegments) {
                                   const cfResult = getSABS719CenterToFaceBySegments(
                                     entry.specs.bendRadiusType,
                                     nominalBore,
@@ -382,7 +443,7 @@ export default function BendForm({
                                   }
                                 }
 
-                                if (!isSABS719 && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                                if (!isSegmentedStyle && entry.specs?.bendType && entry.specs?.bendDegrees) {
                                   const bendType = entry.specs.bendType as SABS62BendType;
                                   newCenterToFace = getSabs62CFInterpolated(bendType, entry.specs.bendDegrees, nominalBore);
                                   newBendRadius = SABS62_BEND_RADIUS[bendType]?.[nominalBore];
@@ -402,7 +463,7 @@ export default function BendForm({
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
 
-                                const hasBendSpecs = isSABS719
+                                const hasBendSpecs = isSegmentedStyle
                                   ? (entry.specs?.bendRadiusType && entry.specs?.bendDegrees)
                                   : (entry.specs?.bendType && entry.specs?.bendDegrees);
                                 if (matchedSchedule && hasBendSpecs) {
@@ -414,7 +475,7 @@ export default function BendForm({
                                 }
                               }}
                               options={nbOptions}
-                              placeholder={isDisabled ? 'Select Bend Type first' : 'Select NB'}
+                              placeholder="Select NB"
                               disabled={isDisabled}
                               open={openSelects[selectId] || false}
                               onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
@@ -483,13 +544,58 @@ export default function BendForm({
                     </div>
                   );
 
-                  // SABS 62 Bend Type Dropdown
+                  // Bend Style Dropdown (Segmented vs Pulled)
+                  const BendStyleDropdown = (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        Bend Style *
+                        <span className="ml-1 text-gray-400 font-normal cursor-help" title="Segmented = welded mitre segments (SABS 719). Pulled = smooth induction bends (SABS 62). Steel spec may restrict options.">?</span>
+                      </label>
+                      {(() => {
+                        const selectId = `bend-style-${entry.id}`;
+                        const options = [
+                          { value: 'segmented', label: 'Segmented Bend', disabled: !isSegmentedAllowed },
+                          { value: 'pulled', label: 'Pulled Bend' }
+                        ];
+                        const currentStyle = entry.specs?.bendStyle || (isSABS719 ? 'segmented' : 'pulled');
+
+                        return (
+                          <Select
+                            id={selectId}
+                            value={currentStyle}
+                            onChange={(style) => {
+                              const updatedEntry: any = {
+                                ...entry,
+                                specs: {
+                                  ...entry.specs,
+                                  bendStyle: style,
+                                  bendType: undefined,
+                                  bendRadiusType: undefined,
+                                  numberOfSegments: undefined,
+                                  bendDegrees: undefined,
+                                  centerToFaceMm: undefined,
+                                  bendRadiusMm: undefined
+                                }
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            options={options}
+                            placeholder="Select Bend Style"
+                            open={openSelects[selectId] || false}
+                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                          />
+                        );
+                      })()}
+                    </div>
+                  );
+
+                  // Pulled Bend Type Dropdown (1D, 1.5D, 2D, etc.)
                   const BendTypeDropdown = (
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        Bend Type *
+                        Bend Radius *
                         <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Radius multiplier of nominal bore. 1D = tight elbow (radius = 1×NB). 1.5D = short radius (1.5×NB). 2D = standard (2×NB). 3D = long radius (3×NB). 5D = extra long (5×NB). Larger D = gentler curve, lower pressure drop.">?</span>
-                        <span className="text-purple-600 text-xs ml-1">(SABS 62)</span>
                       </label>
                       {(() => {
                         const selectId = `bend-type-${entry.id}`;
@@ -534,13 +640,12 @@ export default function BendForm({
                     </div>
                   );
 
-                  // SABS 719 Radius Type Dropdown
+                  // Segmented Bend Radius Type Dropdown (Short/Medium/Long)
                   const RadiusTypeDropdown = (
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Bend Radius *
-                        <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="LRSE = Long Radius Single End (3D radius, gentler curve). MRSE = Medium Radius Single End (2.5D radius, tighter curve). Larger radius = lower pressure drop, easier flow.">?</span>
-                        <span className="text-purple-600 text-xs ml-1">(SABS 719)</span>
+                        <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="LRSE = Long Radius (3D, gentler curve). MRSE = Medium Radius (2.5D, tighter curve). Larger radius = lower pressure drop, easier flow.">?</span>
                       </label>
                       {(() => {
                         const selectId = `bend-radius-type-${entry.id}`;
@@ -583,12 +688,11 @@ export default function BendForm({
                     </div>
                   );
 
-                  // Angle Dropdown (shared) - uses getSabs62AvailableAngles for SABS 62 bends
-                  // This pulls ALL available angles from the Excel data for the selected bend type AND NB
-                  const sabs62BendType = entry.specs?.bendType as SABS62BendType | undefined;
-                  const sabs62NB = entry.specs?.nominalBoreMm;
-                  const availableAngles = !isSABS719 && sabs62BendType && sabs62NB
-                    ? getSabs62AvailableAngles(sabs62BendType, sabs62NB)
+                  // Angle Dropdown - uses different angle lists based on bend style
+                  const pulledBendType = entry.specs?.bendType as SABS62BendType | undefined;
+                  const currentNB = entry.specs?.nominalBoreMm;
+                  const availableAngles = !isSegmentedStyle && pulledBendType && currentNB
+                    ? getSabs62AvailableAngles(pulledBendType, currentNB)
                     : [];
 
                   const AngleDropdown = (
@@ -596,16 +700,13 @@ export default function BendForm({
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Bend Angle *
                         <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="The angle of direction change. 90° is a right-angle turn, 45° is a diagonal, 180° is a U-turn (return bend).">?</span>
-                        {!isSABS719 && sabs62BendType && (
-                          <span className="text-purple-600 text-xs ml-1">({sabs62BendType})</span>
-                        )}
                       </label>
                       {(() => {
                         const selectId = `bend-angle-${entry.id}`;
-                        const isDisabled = !isSABS719 && !sabs62BendType;
+                        const isDisabled = !isSegmentedStyle && !pulledBendType;
 
                         const angleOptions = (() => {
-                          if (!isSABS719) {
+                          if (!isSegmentedStyle) {
                             return availableAngles.map(deg => ({
                               value: String(deg),
                               label: `${deg}°`
@@ -637,14 +738,14 @@ export default function BendForm({
                                 : undefined;
                               let centerToFaceMm: number | undefined;
                               let bendRadiusMm: number | undefined;
-                              if (!isSABS719 && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
+                              if (!isSegmentedStyle && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
                                 const bendType = entry.specs.bendType as SABS62BendType;
                                 centerToFaceMm = getSabs62CFInterpolated(bendType, bendDegrees, entry.specs.nominalBoreMm);
                                 bendRadiusMm = SABS62_BEND_RADIUS[bendType]?.[entry.specs.nominalBoreMm];
                               }
                               const updatedEntry: any = {
                                 ...entry,
-                                specs: { ...entry.specs, bendDegrees, centerToFaceMm, bendRadiusMm, numberOfSegments: isSABS719 ? undefined : entry.specs?.numberOfSegments }
+                                specs: { ...entry.specs, bendDegrees, centerToFaceMm, bendRadiusMm, numberOfSegments: isSegmentedStyle ? undefined : entry.specs?.numberOfSegments }
                               };
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
@@ -653,7 +754,7 @@ export default function BendForm({
                               }
                             }}
                             options={angleOptions}
-                            placeholder={isDisabled ? 'Select Bend Type first' : 'Select Angle'}
+                            placeholder={isDisabled ? 'Select Bend Radius first' : 'Select Angle'}
                             disabled={isDisabled}
                             open={openSelects[selectId] || false}
                             onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
@@ -741,9 +842,6 @@ export default function BendForm({
                                 Segments <span className="text-green-600 text-xs ml-1">(Auto: 2)</span>
                               </label>
                               <input type="text" value="2 segments" disabled className="w-full px-3 py-2 border border-green-300 rounded-md text-sm bg-green-50 text-green-900 font-medium cursor-not-allowed" />
-                              {entry.specs?.centerToFaceMm && (
-                                <p className="text-xs text-green-600 mt-0.5">C/F: {Number(entry.specs.centerToFaceMm).toFixed(1)}mm</p>
-                              )}
                             </>
                           );
                         }
@@ -782,79 +880,14 @@ export default function BendForm({
                                 <option key={seg} value={seg}>{seg} segments</option>
                               ))}
                             </select>
-                            {entry.specs?.centerToFaceMm && (
-                              <p className="text-xs text-green-600 mt-0.5">C/F: {Number(entry.specs.centerToFaceMm).toFixed(1)}mm</p>
-                            )}
                           </>
                         );
                       })()}
                     </div>
                   );
 
-                  // Render the appropriate layout
-                  if (isSABS719) {
-                    // SABS 719 Layout: Steel Spec -> NB -> Schedule | Radius Type -> Angle -> Segments
-                    return (
-                      <>
-                        <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                            {SteelSpecDropdown}
-                            {NBDropdown}
-                            {ScheduleDropdown}
-                          </div>
-                        </div>
-                        {bendRules && (
-                          <div className="bg-purple-600 border border-purple-700 rounded-lg p-2 mt-2 text-xs text-white">
-                            <span className="font-semibold">Segmented Bend:</span> {bendRules.notes}
-                          </div>
-                        )}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                          {RadiusTypeDropdown}
-                          {AngleDropdown}
-                          {SegmentsDropdown}
-                        </div>
-                      </>
-                    );
-                  } else {
-                    // Non-SABS 719 Layout: Steel Spec -> Bend Type -> NB | Schedule -> Angle -> C/F
-                    return (
-                      <>
-                        <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                            {SteelSpecDropdown}
-                            {BendTypeDropdown}
-                            {NBDropdown}
-                          </div>
-                        </div>
-                        {bendRules && isPulledOnly && (
-                          <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded-lg p-2 mt-2 text-xs text-purple-800 dark:text-purple-300">
-                            <span className="font-semibold">Pulled Bend Only:</span> {bendRules.notes}
-                          </div>
-                        )}
-                        {bendRules && !isPulledOnly && isSABS62 && (
-                          <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded-lg p-2 mt-2 text-xs text-purple-800 dark:text-purple-300">
-                            <span className="font-semibold">Small Bore Spec:</span> {bendRules.notes}
-                          </div>
-                        )}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                          {ScheduleDropdown}
-                          {AngleDropdown}
-                          {CFDisplay}
-                        </div>
-                      </>
-                    );
-                  }
-                })()}
-
-                {/* Three-Column Layout Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                  {/* Column 1 - Quantity & Config */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 border-b border-purple-500 dark:border-purple-400 pb-1.5">
-                      Quantity & Config
-                    </h4>
-
-                    {/* Quantity */}
+                  // Quantity Input (shared by both layouts)
+                  const QuantityInput = (
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Quantity *
@@ -871,22 +904,284 @@ export default function BendForm({
                             setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                           }
                         }}
-                        className="w-full px-3 py-2 border border-purple-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 bg-purple-50"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                         min="1"
                         placeholder="1"
                       />
                     </div>
+                  );
 
-                    {/* Center-to-Face Display */}
-                    {entry.specs?.centerToFaceMm && (
+                  // Unified Layout: Row 1: NB | Schedule | Bend Style, Row 2: depends on style
+                  return (
+                    <>
+                      {/* Row 1: NB | Schedule | Bend Style */}
                       <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
-                        <h5 className="text-xs font-bold text-purple-900 mb-1">Center-to-Face</h5>
-                        <p className="text-sm font-bold text-purple-800">{Number(entry.specs.centerToFaceMm).toFixed(1)} mm</p>
-                        {entry.specs?.bendRadiusMm && (
-                          <p className="text-xs text-purple-700 mt-0.5">Radius: {Number(entry.specs.bendRadiusMm).toFixed(1)} mm</p>
-                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                          {NBDropdown}
+                          {ScheduleDropdown}
+                          {BendStyleDropdown}
+                        </div>
                       </div>
-                    )}
+
+                      {/* Row 2: Based on Bend Style selection */}
+                      {isSegmentedStyle ? (
+                        <>
+                          {/* Segmented: Radius Type | Angle | Segments */}
+                          <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                              {RadiusTypeDropdown}
+                              {AngleDropdown}
+                              {SegmentsDropdown}
+                              {QuantityInput}
+                            </div>
+                          </div>
+                          {/* Pressure Derating for Segmented Bends - Single line */}
+                          {entry.specs?.numberOfSegments && entry.specs?.numberOfSegments > 1 && entry.specs?.bendDegrees && (() => {
+                            const derating = segmentedBendDeratingFactor(entry.specs.numberOfSegments, entry.specs.bendDegrees);
+                            const deratingPercent = Math.round((1 - derating) * 100);
+                            return (
+                              <div className="bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-700 rounded-lg px-3 py-2 mt-3">
+                                <p className="text-xs text-orange-800 dark:text-orange-200 flex flex-wrap items-center gap-x-4 gap-y-1">
+                                  <span className="font-bold">Segmented Bend Pressure Derating:</span>
+                                  <span className="text-orange-700 dark:text-orange-300">{entry.specs.numberOfSegments} segments ({entry.specs.numberOfSegments - 1} mitre welds)</span>
+                                  <span className="font-medium">Effective pressure: {Math.round(derating * 100)}% ({deratingPercent}% reduction)</span>
+                                  <span className="text-orange-600 dark:text-orange-400 italic">Per ASME B31.3</span>
+                                </p>
+                              </div>
+                            );
+                          })()}
+                        </>
+                      ) : (
+                        <>
+                          {/* Pulled: Bend Type | Angle | C/F | QTY */}
+                          <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                              {BendTypeDropdown}
+                              {AngleDropdown}
+                              {CFDisplay}
+                              {QuantityInput}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
+
+                {/* Flange Configuration Row - 4 columns (matching Pipes form) */}
+                <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mt-3">
+                  <div className="mb-2">
+                    <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                      Flange Specification
+                    </h4>
+                  </div>
+                  {(() => {
+                    const effectiveStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                    const effectivePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                    const effectiveFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const selectedStandard = masterData.flangeStandards?.find((fs: any) => fs.id === effectiveStandardId);
+                    const isSabs1123 = selectedStandard?.code?.toUpperCase().includes('SABS') && selectedStandard?.code?.includes('1123');
+                    const isBs4504 = selectedStandard?.code?.toUpperCase().includes('BS') && selectedStandard?.code?.includes('4504');
+                    const showFlangeType = isSabs1123 || isBs4504;
+                    const flangeTypes = isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES;
+                    const pressureClasses = isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES;
+                    const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                    const configUpper = bendEndConfig.toUpperCase();
+                    const hasInletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2xLF'].includes(configUpper);
+                    const hasOutletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2xLF'].includes(configUpper);
+                    const hasFlanges = hasInletFlange || hasOutletFlange;
+                    const availableBlankPositions: { key: string; label: string }[] = [
+                      ...(hasInletFlange ? [{ key: 'inlet', label: 'Inlet' }] : []),
+                      ...(hasOutletFlange ? [{ key: 'outlet', label: 'Outlet' }] : [])
+                    ];
+                    const currentBlankPositions = entry.specs?.blankFlangePositions || [];
+
+                    const isStandardFromGlobal = globalSpecs?.flangeStandardId && !entry.specs?.flangeStandardId;
+                    const isClassFromGlobal = globalSpecs?.flangePressureClassId && !entry.specs?.flangePressureClassId;
+                    const isTypeFromGlobal = globalSpecs?.flangeTypeCode && !entry.specs?.flangeTypeCode;
+
+                    return (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Standard
+                              {isStandardFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
+                              {entry.specs?.flangeStandardId && entry.specs?.flangeStandardId !== globalSpecs?.flangeStandardId && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
+                              <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange standard determines pressure class options and flange dimensions">?</span>
+                            </label>
+                            <select
+                              value={effectiveStandardId || ''}
+                              onChange={(e) => {
+                                const standardId = parseInt(e.target.value) || undefined;
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined, flangeTypeCode: undefined }
+                                });
+                                if (standardId) {
+                                  getFilteredPressureClasses(standardId);
+                                }
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                            >
+                              <option value="">Select...</option>
+                              {masterData.flangeStandards?.map((standard: any) => (
+                                <option key={standard.id} value={standard.id}>{standard.code}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              {isSabs1123 ? 'Class (kPa)' : 'Class'}
+                              {isClassFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
+                              {entry.specs?.flangePressureClassId && entry.specs?.flangePressureClassId !== globalSpecs?.flangePressureClassId && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
+                              <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange pressure rating. Should match or exceed working pressure.">?</span>
+                            </label>
+                            {showFlangeType ? (
+                              <select
+                                value={effectivePressureClassId || ''}
+                                onChange={(e) => onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
+                                })}
+                                className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              >
+                                <option value="">Select...</option>
+                                {pressureClasses.map((pc) => {
+                                  const matchingPc = masterData.pressureClasses?.find((mpc: any) => mpc.designation?.includes(String(pc.value)));
+                                  return matchingPc ? (
+                                    <option key={matchingPc.id} value={matchingPc.id}>{isSabs1123 ? pc.value : pc.label}</option>
+                                  ) : null;
+                                })}
+                              </select>
+                            ) : (
+                              <select
+                                value={effectivePressureClassId || ''}
+                                onChange={(e) => onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
+                                })}
+                                className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              >
+                                <option value="">Select...</option>
+                                {(pressureClassesByStandard[effectiveStandardId || 0] || masterData.pressureClasses || []).map((pc: any) => (
+                                  <option key={pc.id} value={pc.id}>{pc.designation}</option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Type
+                              {isTypeFromGlobal && showFlangeType && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
+                              {entry.specs?.flangeTypeCode && entry.specs?.flangeTypeCode !== globalSpecs?.flangeTypeCode && showFlangeType && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
+                            </label>
+                            {showFlangeType ? (
+                              <select
+                                value={effectiveFlangeTypeCode || ''}
+                                onChange={(e) => onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, flangeTypeCode: e.target.value || undefined }
+                                })}
+                                className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              >
+                                <option value="">Select...</option>
+                                {flangeTypes.map((ft) => (
+                                  <option key={ft.code} value={ft.code}>{ft.name} ({ft.code})</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <div className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                                N/A
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Config
+                              <span className="ml-1 text-gray-400 font-normal cursor-help" title="PE = Plain End (for butt welding). FOE = Flanged One End. FBE = Flanged Both Ends. L/F = Loose Flange (slip-on). R/F = Rotating Flange (backing ring).">?</span>
+                            </label>
+                            <select
+                              value={entry.specs?.bendEndConfiguration || 'PE'}
+                              onChange={(e) => {
+                                const newConfig = e.target.value;
+                                const newFlangeTypeCode = recommendedFlangeTypeCode(newConfig);
+                                const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                                const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+                                const flangeCode = flangeStandard?.code || '';
+                                const workingPressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                                let availableClasses = flangeStandardId ? (pressureClassesByStandard[flangeStandardId] || []) : [];
+                                if (availableClasses.length === 0) {
+                                  availableClasses = masterData.pressureClasses?.filter((pc: any) =>
+                                    pc.flangeStandardId === flangeStandardId || pc.standardId === flangeStandardId
+                                  ) || [];
+                                }
+                                const newPressureClassId = workingPressure > 0 && availableClasses.length > 0
+                                  ? recommendedPressureClassId(workingPressure, availableClasses, flangeCode)
+                                  : (entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId);
+                                const updatedEntry: any = {
+                                  ...entry,
+                                  specs: {
+                                    ...entry.specs,
+                                    bendEndConfiguration: newConfig,
+                                    flangeTypeCode: newFlangeTypeCode,
+                                    blankFlangePositions: [],
+                                    addBlankFlange: false,
+                                    blankFlangeCount: 0,
+                                    ...(newPressureClassId && { flangePressureClassId: newPressureClassId })
+                                  }
+                                };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                            >
+                              {BEND_END_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        {hasFlanges && availableBlankPositions.length > 0 && (
+                          <div className="mt-2 flex justify-end">
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Blank:</span>
+                              <span className="text-gray-400 font-normal cursor-help text-xs" title="Add blank flanges for hydrostatic testing, isolation, or future connections.">?</span>
+                              {availableBlankPositions.map(pos => (
+                                <label key={pos.key} className="flex items-center gap-1 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={currentBlankPositions.includes(pos.key)}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      const newPositions = checked
+                                        ? [...currentBlankPositions, pos.key]
+                                        : currentBlankPositions.filter((p: string) => p !== pos.key);
+                                      onUpdateEntry(entry.id, {
+                                        specs: {
+                                          ...entry.specs,
+                                          addBlankFlange: newPositions.length > 0,
+                                          blankFlangeCount: newPositions.length,
+                                          blankFlangePositions: newPositions
+                                        }
+                                      });
+                                    }}
+                                    className="w-3.5 h-3.5 text-amber-600 border-amber-400 dark:border-amber-600 rounded focus:ring-amber-500"
+                                  />
+                                  <span className="text-xs text-gray-800 dark:text-gray-300">{pos.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Three-Column Layout Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                  {/* Column 1 - Bend Info */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 border-b border-purple-500 dark:border-purple-400 pb-1.5">
+                      Bend Info
+                    </h4>
 
                     {/* Wall Thinning Info for Pulled Bends */}
                     {entry.specs?.bendRadiusMm && entry.specs?.nominalBoreMm && entry.specs?.wallThicknessMm && (() => {
@@ -919,353 +1214,6 @@ export default function BendForm({
                         </div>
                       );
                     })()}
-
-                    {/* Pressure Derating for Segmented Bends */}
-                    {entry.specs?.numberOfSegments && entry.specs?.numberOfSegments > 1 && entry.specs?.bendDegrees && (() => {
-                      const specId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                      const spec = masterData.steelSpecs?.find((s: any) => s.id === specId);
-                      const specName = spec?.steelSpecName || '';
-                      const isSegmented = specName.includes('SABS 719') || specName.includes('SANS 719');
-                      if (!isSegmented) return null;
-
-                      const derating = segmentedBendDeratingFactor(entry.specs.numberOfSegments, entry.specs.bendDegrees);
-                      const deratingPercent = Math.round((1 - derating) * 100);
-                      return (
-                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                          <h5 className="text-xs font-bold text-orange-900 mb-1">Segmented Bend Pressure Derating</h5>
-                          <p className="text-xs text-orange-700">
-                            {entry.specs.numberOfSegments} segments ({entry.specs.numberOfSegments - 1} mitre welds)
-                          </p>
-                          <p className="text-xs text-orange-800 font-medium mt-0.5">
-                            Effective pressure: {Math.round(derating * 100)}% of pipe rating ({deratingPercent}% reduction)
-                          </p>
-                          <p className="text-xs text-orange-600 mt-1 italic">
-                            Per ASME B31.3 - stress concentration at mitre joints
-                          </p>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Flange Specifications - Uses Global Specs with Override Option */}
-                    <div>
-                      <div className="flex justify-between items-start mb-2">
-                        <h5 className="text-xs font-bold text-gray-900 dark:text-gray-100">
-                          Flanges
-                          {entry.hasFlangeOverride ? (
-                            <span className="text-purple-600 text-xs ml-2 font-normal">(Override Active)</span>
-                          ) : globalSpecs?.flangeStandardId ? (
-                            <span className="text-green-600 text-xs ml-2 font-normal">(From Global Specs)</span>
-                          ) : (
-                            <span className="text-gray-500 text-xs ml-2 font-normal">(Not Set)</span>
-                          )}
-                        </h5>
-                        {globalSpecs?.flangeStandardId && (
-                          <label className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer">
-                            <span className="text-gray-500 italic">(click to change)</span>
-                            <input
-                              type="checkbox"
-                              checked={entry.hasFlangeOverride || false}
-                              onChange={(e) => {
-                                const override = e.target.checked;
-                                onUpdateEntry(entry.id, {
-                                  hasFlangeOverride: override,
-                                  flangeOverrideConfirmed: false,
-                                  specs: override ? {
-                                    ...entry.specs,
-                                    flangeStandardId: entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId,
-                                    flangePressureClassId: entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId
-                                  } : {
-                                    ...entry.specs,
-                                    flangeStandardId: undefined,
-                                    flangePressureClassId: undefined
-                                  }
-                                });
-                              }}
-                              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                            />
-                            <span className="font-medium">Override</span>
-                          </label>
-                        )}
-                      </div>
-
-                      {/* Warning if deviating from recommended pressure class */}
-                      {(() => {
-                        const currentClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
-                        const recommendedClassId = globalSpecs?.flangePressureClassId;
-                        const isOverride = entry.hasFlangeOverride && currentClassId && recommendedClassId && currentClassId !== recommendedClassId;
-
-                        if (isOverride) {
-                          const currentClass = masterData.pressureClasses?.find((p: any) => p.id === currentClassId);
-                          const recommendedClass = masterData.pressureClasses?.find((p: any) => p.id === recommendedClassId);
-                          return (
-                            <div className="bg-red-50 border-2 border-red-400 rounded-lg p-2 mb-2">
-                              <div className="flex items-start gap-2">
-                                <span className="text-red-600 text-base">⚠️</span>
-                                <div className="flex-1">
-                                  <p className="text-xs font-bold text-red-900">Pressure Rating Override</p>
-                                  <p className="text-xs text-red-700 mt-0.5">
-                                    Selected <span className="font-semibold">{currentClass?.designation}</span> instead of recommended{' '}
-                                    <span className="font-semibold">{recommendedClass?.designation}</span>
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-
-                      {globalSpecs?.flangeStandardId && !entry.hasFlangeOverride ? (
-                        <div className="bg-purple-50 p-3 rounded-md border border-purple-200">
-                          <div className="flex justify-between items-center mb-2">
-                            <p className="text-purple-800 text-xs font-semibold">
-                              Global Flange Specification
-                            </p>
-                            <span className="text-purple-600 text-xs">(From Page 2)</span>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="bg-white p-2 rounded border border-purple-200">
-                              <label className="block text-xs text-gray-500 mb-0.5">Flange Standard</label>
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {masterData.flangeStandards?.find((fs: any) => fs.id === globalSpecs.flangeStandardId)?.code || 'Not set'}
-                              </p>
-                            </div>
-                            <div className="bg-white p-2 rounded border border-purple-200">
-                              <label className="block text-xs text-gray-500 mb-0.5">Pressure Class</label>
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {masterData.pressureClasses?.find((pc: any) => pc.id === globalSpecs.flangePressureClassId)?.designation || 'Not set'}
-                              </p>
-                            </div>
-                            {(() => {
-                              const selectedStandard = masterData.flangeStandards?.find((fs: any) => fs.id === globalSpecs.flangeStandardId);
-                              const showFlangeType = selectedStandard?.code === 'SABS 1123' || selectedStandard?.code === 'BS 4504';
-                              if (!showFlangeType) return null;
-                              const flangeType = (selectedStandard?.code === 'SABS 1123' ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES)
-                                .find(ft => ft.code === globalSpecs.flangeTypeCode);
-                              return (
-                                <div className="bg-white p-2 rounded border border-purple-200">
-                                  <label className="block text-xs text-gray-500 mb-0.5">Flange Type</label>
-                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    {flangeType ? `${flangeType.name} (${flangeType.code})` : 'Not set'}
-                                  </p>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      ) : !globalSpecs?.flangeStandardId ? (
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Set flange specs in Global Specifications</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {entry.flangeOverrideConfirmed ? (
-                            <div className="bg-purple-50 border-2 border-purple-400 p-2 rounded-md">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-bold text-purple-900 flex items-center gap-1">
-                                  <span className="text-green-600">✓</span> Item-Specific Flange Confirmed
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: false })}
-                                  className="px-2 py-0.5 text-xs font-medium text-purple-700 bg-white border border-purple-300 rounded hover:bg-purple-50 transition-colors"
-                                >
-                                  Edit
-                                </button>
-                              </div>
-                              <div className="bg-white p-1.5 rounded border border-purple-200">
-                                <p className="text-sm font-bold text-purple-800">
-                                  {(() => {
-                                    const flangeStandard = masterData.flangeStandards?.find(
-                                      (fs: any) => fs.id === entry.specs?.flangeStandardId
-                                    );
-                                    const pressureClass = masterData.pressureClasses?.find(
-                                      (pc: any) => pc.id === entry.specs?.flangePressureClassId
-                                    );
-                                    if (flangeStandard && pressureClass) {
-                                      return `${flangeStandard.code} / ${pressureClass.designation}`;
-                                    }
-                                    return 'N/A';
-                                  })()}
-                                </p>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              {(() => {
-                                const selectedStandard = masterData.flangeStandards?.find(
-                                  (fs: any) => fs.id === (entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId)
-                                );
-                                const isSabs1123 = selectedStandard?.code?.toUpperCase().includes('SABS') &&
-                                                   selectedStandard?.code?.includes('1123');
-                                const isBs4504 = selectedStandard?.code?.toUpperCase().includes('BS') &&
-                                                 selectedStandard?.code?.includes('4504');
-                                const hasThreeDropdowns = isSabs1123 || isBs4504;
-
-                                return (
-                                  <div className={`grid gap-2 ${hasThreeDropdowns ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                                    <div>
-                                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">Standard</label>
-                                      <select
-                                        value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
-                                        onChange={async (e) => {
-                                          const standardId = parseInt(e.target.value) || undefined;
-                                          onUpdateEntry(entry.id, {
-                                            specs: { ...entry.specs, flangeStandardId: standardId, flangePressureClassId: undefined, flangeTypeCode: undefined }
-                                          });
-                                          if (standardId) {
-                                            getFilteredPressureClasses(standardId);
-                                          }
-                                        }}
-                                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                                      >
-                                        <option value="">Select...</option>
-                                        {masterData.flangeStandards?.map((standard: any) => (
-                                          <option key={standard.id} value={standard.id}>{standard.code}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                    <div>
-                                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">{isSabs1123 ? 'Class (kPa)' : hasThreeDropdowns ? 'Class (PN)' : 'Class'}</label>
-                                      {hasThreeDropdowns ? (
-                                        <select
-                                          value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
-                                          onChange={(e) => onUpdateEntry(entry.id, {
-                                            specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
-                                          })}
-                                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                                        >
-                                          <option value="">Select...</option>
-                                          {(isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES).map((pc) => {
-                                            const matchingPc = masterData.pressureClasses?.find(
-                                              (mpc: any) => mpc.designation?.includes(String(pc.value))
-                                            );
-                                            return matchingPc ? (
-                                              <option key={matchingPc.id} value={matchingPc.id}>{isSabs1123 ? pc.value : pc.label}</option>
-                                            ) : null;
-                                          })}
-                                        </select>
-                                      ) : (
-                                        <select
-                                          value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
-                                          onChange={(e) => onUpdateEntry(entry.id, {
-                                            specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
-                                          })}
-                                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                                        >
-                                          <option value="">Select...</option>
-                                          {(() => {
-                                            const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                                            const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
-                                            return filtered.map((pressureClass: any) => (
-                                              <option key={pressureClass.id} value={pressureClass.id}>{pressureClass.designation}</option>
-                                            ));
-                                          })()}
-                                        </select>
-                                      )}
-                                    </div>
-                                    {hasThreeDropdowns && (
-                                      <div>
-                                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">Type</label>
-                                        <select
-                                          value={entry.specs?.flangeTypeCode || ''}
-                                          onChange={(e) => onUpdateEntry(entry.id, {
-                                            specs: { ...entry.specs, flangeTypeCode: e.target.value || undefined }
-                                          })}
-                                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                                        >
-                                          <option value="">Select...</option>
-                                          {(isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES).map((ft) => (
-                                            <option key={ft.code} value={ft.code} title={ft.description}>
-                                              {ft.name} ({ft.code})
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-
-                              {entry.hasFlangeOverride && entry.specs?.flangeStandardId && entry.specs?.flangePressureClassId && (
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => onUpdateEntry(entry.id, { flangeOverrideConfirmed: true })}
-                                    className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-green-600 rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
-                                  >
-                                    <span>✓</span> Confirm Override
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      onUpdateEntry(entry.id, {
-                                        hasFlangeOverride: false,
-                                        flangeOverrideConfirmed: false,
-                                        specs: {
-                                          ...entry.specs,
-                                          flangeStandardId: undefined,
-                                          flangePressureClassId: undefined
-                                        }
-                                      });
-                                    }}
-                                    className="px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Bend End Configuration */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        Bend End Config
-                        <span className="ml-1 text-gray-400 font-normal cursor-help" title="PE = Plain End (for butt welding). FOE = Flanged One End. FBE = Flanged Both Ends. L/F = Loose Flange (slip-on, needs closure). R/F = Rotating Flange (backing ring for alignment).">?</span>
-                      </label>
-                      <select
-                        value={entry.specs?.bendEndConfiguration || 'PE'}
-                        onChange={(e) => {
-                          const newConfig = e.target.value;
-
-                          const newFlangeTypeCode = recommendedFlangeTypeCode(newConfig);
-
-                          const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                          const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
-                          const flangeCode = flangeStandard?.code || '';
-
-                          const workingPressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
-                          let availableClasses = flangeStandardId ? (pressureClassesByStandard[flangeStandardId] || []) : [];
-                          if (availableClasses.length === 0) {
-                            availableClasses = masterData.pressureClasses?.filter((pc: any) =>
-                              pc.flangeStandardId === flangeStandardId || pc.standardId === flangeStandardId
-                            ) || [];
-                          }
-                          const newPressureClassId = workingPressure > 0 && availableClasses.length > 0
-                            ? recommendedPressureClassId(workingPressure, availableClasses, flangeCode)
-                            : (entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId);
-
-                          const updatedEntry: any = {
-                            ...entry,
-                            specs: {
-                              ...entry.specs,
-                              bendEndConfiguration: newConfig,
-                              flangeTypeCode: newFlangeTypeCode,
-                              ...(newPressureClassId && { flangePressureClassId: newPressureClassId })
-                            }
-                          };
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                      >
-                        {BEND_END_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
 
                     {/* Closure Length - Only for L/F configs */}
                     {hasLooseFlange(entry.specs?.bendEndConfiguration || '') && (
@@ -1594,61 +1542,6 @@ export default function BendForm({
                         </div>
                       );
                     })()}
-
-                    {/* Total Bend Length - Auto-calculated */}
-                    {entry.specs?.centerToFaceMm && (
-                      <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
-                        <h5 className="text-xs font-bold text-purple-900 mb-1">Total Bend Length</h5>
-                        {(() => {
-                          const cf = Number(entry.specs.centerToFaceMm) || 0;
-                          const tangent1 = entry.specs?.tangentLengths?.[0] || 0;
-                          const tangent2 = entry.specs?.tangentLengths?.[1] || 0;
-                          const numTangents = entry.specs?.numberOfTangents || 0;
-                          const numStubs = entry.specs?.numberOfStubs || 0;
-                          const stubs = entry.specs?.stubs || [];
-                          const stub1Length = stubs[0]?.length || 0;
-                          const stub2Length = stubs[1]?.length || 0;
-                          const stubsTotal = stub1Length + stub2Length;
-
-                          const totalLength = (cf * 2) + tangent1 + tangent2 + stubsTotal;
-                          const end1 = cf + tangent1;
-                          const end2 = cf + tangent2;
-
-                          // Format like description: "455x555 C/F" or "C/F 305mm"
-                          let cfDisplay = '';
-                          if (numTangents > 0 && (tangent1 > 0 || tangent2 > 0)) {
-                            if (numTangents === 2 && tangent1 > 0 && tangent2 > 0) {
-                              cfDisplay = `${end1.toFixed(0)}x${end2.toFixed(0)} C/F`;
-                            } else if (tangent1 > 0) {
-                              cfDisplay = `${end1.toFixed(0)}x${cf.toFixed(0)} C/F`;
-                            } else if (tangent2 > 0) {
-                              cfDisplay = `${cf.toFixed(0)}x${end2.toFixed(0)} C/F`;
-                            }
-                          } else {
-                            cfDisplay = `C/F ${cf.toFixed(0)}mm`;
-                          }
-
-                          // Format stub display
-                          let stubDisplay = '';
-                          if (numStubs === 1 && stub1Length > 0) {
-                            stubDisplay = ` + ${stub1Length}mm Stub`;
-                          } else if (numStubs === 2 && stub1Length > 0 && stub2Length > 0) {
-                            if (stub1Length === stub2Length) {
-                              stubDisplay = ` + 2xStubs ${stub1Length}mm`;
-                            } else {
-                              stubDisplay = ` + 1xStub ${stub1Length}mm and 1xStub ${stub2Length}mm`;
-                            }
-                          }
-
-                          return (
-                            <>
-                              <p className="text-sm font-bold text-purple-800">{totalLength.toFixed(0)} mm</p>
-                              <p className="text-xs text-purple-700 mt-0.5">{cfDisplay}{stubDisplay}</p>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
                   </div>
 
                   {/* Column 3 - Stubs */}
@@ -1658,63 +1551,6 @@ export default function BendForm({
                     </h4>
 
 
-
-                    {/* Blank Flange Option for Bends - Position selector */}
-                    {(() => {
-                      const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                      const configUpper = bendEndConfig.toUpperCase();
-                      // Determine available flange positions based on config
-                      const hasInletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2xLF'].includes(configUpper);
-                      const hasOutletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2xLF'].includes(configUpper);
-
-                      const availablePositions: { key: string; label: string; hasFlange: boolean }[] = [
-                        { key: 'inlet', label: 'Inlet (Bottom)', hasFlange: hasInletFlange },
-                        { key: 'outlet', label: 'Outlet (Top)', hasFlange: hasOutletFlange },
-                      ].filter(p => p.hasFlange);
-
-                      if (availablePositions.length === 0) return null;
-
-                      const currentPositions = entry.specs?.blankFlangePositions || [];
-
-                      return (
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm font-semibold text-amber-800">Add Blank Flange(s)</span>
-                            <span className="ml-1 text-gray-400 font-normal cursor-help" title="Blank flanges for hydrostatic testing, isolation, or future connections. Select all flanged ends when items will be pressure tested before installation.">?</span>
-                            <span className="text-xs text-amber-600">({availablePositions.length} positions available)</span>
-                          </div>
-                          <div className="flex flex-wrap gap-4">
-                            {availablePositions.map(pos => (
-                              <label key={pos.key} className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={currentPositions.includes(pos.key)}
-                                  onChange={(e) => {
-                                    const checked = e.target.checked;
-                                    let newPositions: string[];
-                                    if (checked) {
-                                      newPositions = [...currentPositions, pos.key];
-                                    } else {
-                                      newPositions = currentPositions.filter((p: string) => p !== pos.key);
-                                    }
-                                    onUpdateEntry(entry.id, {
-                                      specs: {
-                                        ...entry.specs,
-                                        addBlankFlange: newPositions.length > 0,
-                                        blankFlangeCount: newPositions.length,
-                                        blankFlangePositions: newPositions
-                                      }
-                                    });
-                                  }}
-                                  className="w-4 h-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500"
-                                />
-                                <span className="text-sm text-amber-800">{pos.label}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
 
                     {/* Stubs Section - Compact */}
                     <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
@@ -2578,9 +2414,10 @@ export default function BendForm({
                       placeholder="Select quality/inspection requirements..."
                     />
                   </div>
-
-                  {/* Calculation Results - Below 3D Preview */}
-                  {entry.calculation && (
+                  </>
+                }
+                calcResultsContent={
+                  entry.calculation && (
                     <div className="mt-4">
                       <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
                         Calculation Results
@@ -2691,6 +2528,7 @@ export default function BendForm({
                           const totalWeight = bendWeightOnly + dynamicTotalFlangeWeight + totalBlankFlangeWeight + tackWeldTotalWeight + closureTotalWeight;
 
                           return (
+                            <>
                             <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))' }}>
                               <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
                                 <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">C/F (mm)</p>
@@ -2742,12 +2580,75 @@ export default function BendForm({
                                 );
                               })()}
                             </div>
+
+                            {/* Dimension Info - C/F with Radius and Total Bend Length */}
+                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {/* C/F and Radius */}
+                              <div className="bg-purple-100 dark:bg-purple-900/40 p-3 rounded">
+                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">Center-to-Face</p>
+                                <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{Number(entry.specs?.centerToFaceMm || 0).toFixed(1)} mm</p>
+                                {entry.specs?.bendRadiusMm && (
+                                  <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">Radius: {Number(entry.specs.bendRadiusMm).toFixed(1)} mm</p>
+                                )}
+                              </div>
+
+                              {/* Total Bend Length */}
+                              <div className="bg-purple-100 dark:bg-purple-900/40 p-3 rounded">
+                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">Total Bend Length</p>
+                                {(() => {
+                                  const cfVal = Number(entry.specs?.centerToFaceMm) || 0;
+                                  const tan1 = entry.specs?.tangentLengths?.[0] || 0;
+                                  const tan2 = entry.specs?.tangentLengths?.[1] || 0;
+                                  const numTan = entry.specs?.numberOfTangents || 0;
+                                  const numSt = entry.specs?.numberOfStubs || 0;
+                                  const stubsList = entry.specs?.stubs || [];
+                                  const st1Len = stubsList[0]?.length || 0;
+                                  const st2Len = stubsList[1]?.length || 0;
+                                  const stubsTot = st1Len + st2Len;
+
+                                  const totLen = (cfVal * 2) + tan1 + tan2 + stubsTot;
+                                  const e1 = cfVal + tan1;
+                                  const e2 = cfVal + tan2;
+
+                                  let cfDisp = '';
+                                  if (numTan > 0 && (tan1 > 0 || tan2 > 0)) {
+                                    if (numTan === 2 && tan1 > 0 && tan2 > 0) {
+                                      cfDisp = `${e1.toFixed(0)}x${e2.toFixed(0)} C/F`;
+                                    } else if (tan1 > 0) {
+                                      cfDisp = `${e1.toFixed(0)}x${cfVal.toFixed(0)} C/F`;
+                                    } else if (tan2 > 0) {
+                                      cfDisp = `${cfVal.toFixed(0)}x${e2.toFixed(0)} C/F`;
+                                    }
+                                  } else {
+                                    cfDisp = `C/F ${cfVal.toFixed(0)}mm`;
+                                  }
+
+                                  let stubDisp = '';
+                                  if (numSt === 1 && st1Len > 0) {
+                                    stubDisp = ` + ${st1Len}mm Stub`;
+                                  } else if (numSt === 2 && st1Len > 0 && st2Len > 0) {
+                                    if (st1Len === st2Len) {
+                                      stubDisp = ` + 2xStubs ${st1Len}mm`;
+                                    } else {
+                                      stubDisp = ` + 1xStub ${st1Len}mm and 1xStub ${st2Len}mm`;
+                                    }
+                                  }
+
+                                  return (
+                                    <>
+                                      <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{totLen.toFixed(0)} mm</p>
+                                      <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{cfDisp}{stubDisp}</p>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                            </>
                           );
                         })()}
                       </div>
                     </div>
-                  )}
-                  </>
+                  )
                 }
               />
   );
