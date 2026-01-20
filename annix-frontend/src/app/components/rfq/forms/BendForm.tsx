@@ -2417,11 +2417,11 @@ export default function BendForm({
                   </>
                 }
                 calcResultsContent={
-                  entry.calculation && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
-                        Calculation Results
-                      </h4>
+                  <div className="mt-4">
+                    <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
+                      Calculation Results
+                    </h4>
+                    {entry.calculation ? (
                       <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 p-3 rounded-md">
                         {(() => {
                           const cf = Number(entry.specs?.centerToFaceMm) || 0;
@@ -2647,8 +2647,12 @@ export default function BendForm({
                           );
                         })()}
                       </div>
-                    </div>
-                  )
+                    ) : (
+                      <div className="bg-gray-50 border border-gray-200 p-3 rounded-md text-center text-sm text-gray-500">
+                        Complete bend specifications to see calculation results
+                      </div>
+                    )}
+                  </div>
                 }
               />
   );
