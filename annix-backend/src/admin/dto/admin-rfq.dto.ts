@@ -115,3 +115,20 @@ export class RfqDocumentDto {
     name: string;
   };
 }
+
+export class RfqFullDraftDto {
+  id: number;
+  draftNumber: string;
+  projectName?: string;
+  currentStep: number;
+  completionPercentage: number;
+  isConverted: boolean;
+  convertedRfqId?: number;
+  formData: Record<string, any>;
+  globalSpecs?: Record<string, any>;
+  requiredProducts?: string[];
+  straightPipeEntries?: Record<string, any>[];
+  pendingDocuments?: Record<string, any>[];
+  createdAt: Date;
+  updatedAt: Date;
+}

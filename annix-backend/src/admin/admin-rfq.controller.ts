@@ -25,6 +25,7 @@ import {
   RfqDetailDto,
   RfqItemDetailDto,
   RfqDocumentDto,
+  RfqFullDraftDto,
 } from './dto/admin-rfq.dto';
 
 @ApiTags('Admin RFQ Management')
@@ -60,6 +61,20 @@ export class AdminRfqController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<RfqDetailDto> {
     return this.rfqService.getRfqDetail(id);
+  }
+
+  @Get(':id/full')
+  @ApiOperation({ summary: 'Get full RFQ draft data for editing' })
+  @ApiResponse({
+    status: 200,
+    description: 'Full RFQ draft retrieved successfully',
+    type: RfqFullDraftDto,
+  })
+  @ApiResponse({ status: 404, description: 'RFQ not found' })
+  async getRfqFullDraft(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<RfqFullDraftDto> {
+    return this.rfqService.getRfqFullDraft(id);
   }
 
   @Get(':id/items')

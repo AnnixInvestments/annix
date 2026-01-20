@@ -242,6 +242,23 @@ export interface AdminRfqListResponse {
   totalPages: number;
 }
 
+export interface RfqFullDraftResponse {
+  id: number;
+  draftNumber: string;
+  projectName?: string;
+  currentStep: number;
+  completionPercentage: number;
+  isConverted: boolean;
+  convertedRfqId?: number;
+  formData: Record<string, any>;
+  globalSpecs?: Record<string, any>;
+  requiredProducts?: string[];
+  straightPipeEntries?: Record<string, any>[];
+  pendingDocuments?: Record<string, any>[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface AdminRfqQueryDto {
   search?: string;
   status?: string;
@@ -656,6 +673,10 @@ class AdminApiClient {
 
   async getRfqItems(id: number): Promise<any[]> {
     return this.request<any[]>(`/admin/rfqs/${id}/items`);
+  }
+
+  async getRfqFullDraft(id: number): Promise<RfqFullDraftResponse> {
+    return this.request<RfqFullDraftResponse>(`/admin/rfqs/${id}/full`);
   }
 
   async uploadNixDocument(

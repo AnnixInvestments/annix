@@ -17,6 +17,7 @@ import {
   RfqDetailDto,
   RfqItemDetailDto,
   RfqDocumentDto,
+  RfqFullDraftDto,
 } from './dto/admin-rfq.dto';
 
 @Injectable()
@@ -152,6 +153,36 @@ export class AdminRfqService {
             name: draft.createdBy.username || '',
           }
         : undefined,
+    };
+  }
+
+  /**
+   * Get full RFQ Draft data for editing
+   */
+  async getRfqFullDraft(rfqId: number): Promise<RfqFullDraftDto> {
+    const draft = await this.rfqDraftRepo.findOne({
+      where: { id: rfqId },
+    });
+
+    if (!draft) {
+      throw new NotFoundException(`RFQ Draft with ID ${rfqId} not found`);
+    }
+
+    return {
+      id: draft.id,
+      draftNumber: draft.draftNumber,
+      projectName: draft.projectName,
+      currentStep: draft.currentStep,
+      completionPercentage: draft.completionPercentage,
+      isConverted: draft.isConverted,
+      convertedRfqId: draft.convertedRfqId,
+      formData: draft.formData || {},
+      globalSpecs: draft.globalSpecs,
+      requiredProducts: draft.requiredProducts,
+      straightPipeEntries: draft.straightPipeEntries,
+      pendingDocuments: draft.pendingDocuments,
+      createdAt: draft.createdAt,
+      updatedAt: draft.updatedAt,
     };
   }
 

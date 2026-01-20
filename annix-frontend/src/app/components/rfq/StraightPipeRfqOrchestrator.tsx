@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { StraightPipeEntry, BendEntry, FittingEntry, PipeItem, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
 import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, boqApi, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
+import { adminApiClient } from '@/app/lib/api/adminApi';
 import { nixApi, NixAiPopup, NixFloatingAvatar, NixClarificationPopup, NixProcessingPopup, type NixExtractedItem, type NixClarificationDto } from '@/app/lib/nix';
 import { consolidateBoqData } from '@/app/lib/utils/boqConsolidation';
 import { useToast } from '@/app/components/Toast';
@@ -862,6 +863,44 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
     loadDraft();
   }, [searchParams, restoreFromDraft]);
+
+  // Load RFQ data when editing (editRfqId prop provided)
+  useEffect(() => {
+    if (!editRfqId) return;
+
+    log.debug('📝 Edit mode detected, loading RFQ via admin API:', editRfqId);
+
+    const loadRfqForEdit = async () => {
+      setIsLoadingDraft(true);
+      try {
+        const draft = await adminApiClient.getRfqFullDraft(editRfqId);
+        log.debug('📦 Loading RFQ for edit:', draft);
+        log.debug('📦 RFQ formData:', draft.formData);
+        log.debug('📦 RFQ requiredProducts:', draft.requiredProducts);
+        log.debug('📦 RFQ globalSpecs:', draft.globalSpecs);
+
+        restoreFromDraft({
+          formData: draft.formData,
+          globalSpecs: draft.globalSpecs,
+          requiredProducts: draft.requiredProducts,
+          straightPipeEntries: draft.straightPipeEntries,
+          currentStep: draft.currentStep,
+        });
+
+        setCurrentDraftId(draft.id);
+        setDraftNumber(draft.draftNumber);
+
+        log.debug(`✅ Loaded RFQ ${draft.draftNumber} for editing`);
+      } catch (error) {
+        console.error('Failed to load RFQ for editing:', error);
+        showToast('Failed to load the RFQ. Please try again.', 'error');
+      } finally {
+        setIsLoadingDraft(false);
+      }
+    };
+
+    loadRfqForEdit();
+  }, [editRfqId, restoreFromDraft, showToast]);
 
   // Capture initial draft state after loading completes for dirty checking
   useEffect(() => {
