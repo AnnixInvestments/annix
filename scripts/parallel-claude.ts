@@ -141,9 +141,9 @@ function formatBranchDisplay(branch: Branch, current: string): string {
 
 function detectClaudeSessions(): Session[] {
   const sessions: Session[] = [];
-  const managedPids = new Set(
+  const managedBranches = new Set(
     Array.from(managedSessions.values())
-      .map(s => s.process.pid)
+      .map(s => s.branch)
       .filter(Boolean)
   );
 
@@ -164,11 +164,8 @@ function detectClaudeSessions(): Session[] {
       if (pidMatch) {
         const pid = parseInt(pidMatch[1], 10);
 
-        if (managedPids.has(pid)) return;
-
         let branch = 'unknown';
         let cwd = '';
-
         let project = 'unknown';
 
         if (platform === 'darwin' || platform === 'linux') {
@@ -187,6 +184,8 @@ function detectClaudeSessions(): Session[] {
           }
         }
 
+        if (managedBranches.has(branch)) return;
+
         sessions.push({
           pid,
           name: cwd ? cwd.split('/').pop() || 'unknown' : `PID ${pid}`,
@@ -204,30 +203,33 @@ function detectClaudeSessions(): Session[] {
   return sessions;
 }
 
-const BOX_WIDTH = 80;
-const BOX_CONTENT_WIDTH = BOX_WIDTH - 2;
+const terminalWidth = () => process.stdout.columns || 80;
+const boxContentWidth = () => terminalWidth() - 2;
 
 function printHeader(): void {
   console.clear();
-  log.print(chalk.bold.cyan('┌' + '─'.repeat(BOX_CONTENT_WIDTH) + '┐'));
+  const width = boxContentWidth();
+  log.print(chalk.bold.cyan('┌' + '─'.repeat(width) + '┐'));
   const title = '  Parallel Claude';
-  log.print(chalk.bold.cyan('│') + chalk.bold(title) + ' '.repeat(BOX_CONTENT_WIDTH - title.length) + chalk.bold.cyan('│'));
-  log.print(chalk.bold.cyan('├' + '─'.repeat(BOX_CONTENT_WIDTH) + '┤'));
+  log.print(chalk.bold.cyan('│') + chalk.bold(title) + ' '.repeat(width - title.length) + chalk.bold.cyan('│'));
+  log.print(chalk.bold.cyan('├' + '─'.repeat(width) + '┤'));
 }
 
 function printFooter(): void {
-  log.print(chalk.bold.cyan('└' + '─'.repeat(BOX_CONTENT_WIDTH) + '┘'));
+  log.print(chalk.bold.cyan('└' + '─'.repeat(boxContentWidth()) + '┘'));
 }
 
 function printSection(title: string): void {
+  const width = boxContentWidth();
   const text = `  ${title}`;
-  log.print(chalk.bold.cyan('│') + chalk.bold(text) + ' '.repeat(BOX_CONTENT_WIDTH - text.length) + chalk.bold.cyan('│'));
+  log.print(chalk.bold.cyan('│') + chalk.bold(text) + ' '.repeat(width - text.length) + chalk.bold.cyan('│'));
 }
 
 function printBoxLine(content: string, indent: number = 2): void {
   const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
   const cleanContent = stripAnsi(content);
-  const maxWidth = BOX_CONTENT_WIDTH - indent;
+  const width = boxContentWidth();
+  const maxWidth = width - indent;
 
   if (cleanContent.length > maxWidth) {
     const truncated = cleanContent.slice(0, maxWidth - 1) + '…';
@@ -239,7 +241,7 @@ function printBoxLine(content: string, indent: number = 2): void {
 }
 
 function printEmptyLine(): void {
-  log.print(chalk.bold.cyan('│') + ' '.repeat(BOX_CONTENT_WIDTH) + chalk.bold.cyan('│'));
+  log.print(chalk.bold.cyan('│') + ' '.repeat(boxContentWidth()) + chalk.bold.cyan('│'));
 }
 
 async function switchToBranch(branch: string): Promise<void> {
@@ -491,11 +493,10 @@ async function showAppLogs(): Promise<void> {
     return;
   }
 
-  const BOX_WIDTH = 80;
-  const getTerminalHeight = () => process.stdout.rows || 24;
-
   const renderLogView = () => {
-    const termHeight = getTerminalHeight();
+    const width = terminalWidth();
+    const contentWidth = width - 2;
+    const termHeight = process.stdout.rows || 24;
     const contentHeight = termHeight - 4;
 
     let lines: string[] = [];
@@ -508,9 +509,10 @@ async function showAppLogs(): Promise<void> {
 
     console.clear();
 
-    log.print(chalk.bold.cyan('┌' + '─'.repeat(BOX_WIDTH - 2) + '┐'));
-    log.print(chalk.bold.cyan('│') + chalk.bold('  📄 App Logs (live)') + ' '.repeat(BOX_WIDTH - 23) + chalk.bold.cyan('│'));
-    log.print(chalk.bold.cyan('├' + '─'.repeat(BOX_WIDTH - 2) + '┤'));
+    const title = '  📄 App Logs (live)';
+    log.print(chalk.bold.cyan('┌' + '─'.repeat(contentWidth) + '┐'));
+    log.print(chalk.bold.cyan('│') + chalk.bold(title) + ' '.repeat(contentWidth - title.length) + chalk.bold.cyan('│'));
+    log.print(chalk.bold.cyan('├' + '─'.repeat(contentWidth) + '┤'));
 
     const displayLines = lines.length < contentHeight
       ? [...Array(contentHeight - lines.length).fill(''), ...lines]
@@ -519,16 +521,16 @@ async function showAppLogs(): Promise<void> {
     displayLines.forEach(line => {
       const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
       const cleanLine = stripAnsi(line);
-      const maxLen = BOX_WIDTH - 4;
+      const maxLen = contentWidth - 2;
       const truncated = cleanLine.length > maxLen ? cleanLine.slice(0, maxLen - 1) + '…' : cleanLine;
       const padding = Math.max(0, maxLen - truncated.length);
       log.print(chalk.bold.cyan('│') + '  ' + truncated + ' '.repeat(padding) + chalk.bold.cyan('│'));
     });
 
-    log.print(chalk.bold.cyan('├' + '─'.repeat(BOX_WIDTH - 2) + '┤'));
+    log.print(chalk.bold.cyan('├' + '─'.repeat(contentWidth) + '┤'));
     const footerText = '  Press any key to return to menu';
-    log.print(chalk.bold.cyan('│') + chalk.yellow(footerText) + ' '.repeat(BOX_WIDTH - footerText.length - 2) + chalk.bold.cyan('│'));
-    log.print(chalk.bold.cyan('└' + '─'.repeat(BOX_WIDTH - 2) + '┘'));
+    log.print(chalk.bold.cyan('│') + chalk.yellow(footerText) + ' '.repeat(contentWidth - footerText.length) + chalk.bold.cyan('│'));
+    log.print(chalk.bold.cyan('└' + '─'.repeat(contentWidth) + '┘'));
   };
 
   renderLogView();
