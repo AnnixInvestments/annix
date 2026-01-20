@@ -347,8 +347,8 @@ export default function BendForm({
                             options={[]}
                             groupedOptions={groupedOptions}
                             placeholder="Select Steel Spec"
-                            open={openSelects[selectId] || false}
-                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            open={openSelects[selectId]}
+                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -477,8 +477,8 @@ export default function BendForm({
                               options={nbOptions}
                               placeholder="Select NB"
                               disabled={isDisabled}
-                              open={openSelects[selectId] || false}
-                              onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                              open={openSelects[selectId]}
+                              onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                             />
                             {selectedNB && !nbValid && nbRules && (
                               <p className="text-xs text-orange-600 mt-0.5">
@@ -530,8 +530,8 @@ export default function BendForm({
                             options={options}
                             placeholder={entry.specs?.nominalBoreMm ? 'Select Schedule' : 'Select NB first'}
                             disabled={!entry.specs?.nominalBoreMm}
-                            open={openSelects[selectId] || false}
-                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            open={openSelects[selectId]}
+                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -582,8 +582,8 @@ export default function BendForm({
                             }}
                             options={options}
                             placeholder="Select Bend Style"
-                            open={openSelects[selectId] || false}
-                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            open={openSelects[selectId]}
+                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -632,8 +632,8 @@ export default function BendForm({
                             }}
                             options={options}
                             placeholder="Select Bend Type"
-                            open={openSelects[selectId] || false}
-                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            open={openSelects[selectId]}
+                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -680,8 +680,8 @@ export default function BendForm({
                             }}
                             options={options}
                             placeholder="Select Radius Type"
-                            open={openSelects[selectId] || false}
-                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            open={openSelects[selectId]}
+                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -756,8 +756,8 @@ export default function BendForm({
                             options={angleOptions}
                             placeholder={isDisabled ? 'Select Bend Radius first' : 'Select Angle'}
                             disabled={isDisabled}
-                            open={openSelects[selectId] || false}
-                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                            open={openSelects[selectId]}
+                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -1175,443 +1175,200 @@ export default function BendForm({
                   })()}
                 </div>
 
-                {/* Three-Column Layout Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                  {/* Column 1 - Bend Info */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 border-b border-purple-500 dark:border-purple-400 pb-1.5">
-                      Bend Info
+                {/* Tangent Extensions Row */}
+                <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
+                  <div className="mb-2">
+                    <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                      Tangent Extensions
                     </h4>
-
-                    {/* Wall Thinning Info for Pulled Bends */}
-                    {entry.specs?.bendRadiusMm && entry.specs?.nominalBoreMm && entry.specs?.wallThicknessMm && (() => {
-                      const specId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                      const spec = masterData.steelSpecs?.find((s: any) => s.id === specId);
-                      const specName = spec?.steelSpecName || '';
-                      const isPulledBend = !specName.includes('SABS 719') && !specName.includes('SANS 719');
-                      if (!isPulledBend) return null;
-
-                      const od = NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05);
-                      const thinning = calculateWallThinning(entry.specs.bendRadiusMm, od, entry.specs.wallThicknessMm);
-                      return (
-                        <div className={`border rounded-lg p-3 ${thinning.withinAcceptableLimit ? 'bg-purple-50 border-purple-200' : 'bg-red-50 border-red-300'}`}>
-                          <h5 className={`text-xs font-bold mb-1 ${thinning.withinAcceptableLimit ? 'text-purple-900' : 'text-red-900'}`}>
-                            Pulled Bend Wall Thinning
-                          </h5>
-                          <div className="grid grid-cols-2 gap-x-2 text-xs">
-                            <p className={thinning.withinAcceptableLimit ? 'text-purple-700' : 'text-red-700'}>
-                              Extrados: {thinning.extradosThicknessMm}mm ({thinning.thinningPercent}% thin)
-                            </p>
-                            <p className={thinning.withinAcceptableLimit ? 'text-purple-700' : 'text-red-700'}>
-                              Intrados: {thinning.intradosThicknessMm}mm (+{thinning.thickeningPercent}%)
-                            </p>
-                          </div>
-                          {!thinning.withinAcceptableLimit && (
-                            <p className="text-xs text-red-800 font-medium mt-1">
-                              ⚠️ Exceeds {thinning.maxAllowedThinningPercent}% max thinning - consider thicker pipe or larger bend radius
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Closure Length - Only for L/F configs */}
-                    {hasLooseFlange(entry.specs?.bendEndConfiguration || '') && (
-                      <div className="bg-purple-50 p-2 rounded-md border border-purple-200">
-                        <label className="block text-xs font-semibold text-purple-900 mb-1">
-                          Closure Length (mm) *
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        Number of Tangents
+                      </label>
+                      <select
+                        value={entry.specs?.numberOfTangents || 0}
+                        onChange={(e) => {
+                          const count = parseInt(e.target.value) || 0;
+                          const currentLengths = entry.specs?.tangentLengths || [];
+                          const newLengths = count === 0 ? [] :
+                                           count === 1 ? [currentLengths[0] || 150] :
+                                           [currentLengths[0] || 150, currentLengths[1] || 150];
+                          const updatedEntry = {
+                            ...entry,
+                            specs: {
+                              ...entry.specs,
+                              numberOfTangents: count,
+                              tangentLengths: newLengths
+                            }
+                          };
+                          updatedEntry.description = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, updatedEntry);
+                          if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                          }
+                        }}
+                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                      >
+                        <option value="0">0 - No Tangents</option>
+                        <option value="1">1 - Single Tangent</option>
+                        <option value="2">2 - Both Tangents</option>
+                      </select>
+                    </div>
+                    {(entry.specs?.numberOfTangents || 0) >= 1 && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                          Tangent 1 Length (mm)
                         </label>
                         <input
                           type="number"
-                          value={entry.specs?.closureLengthMm || ''}
+                          value={entry.specs?.tangentLengths?.[0] || ''}
                           onChange={(e) => {
+                            const lengths = [...(entry.specs?.tangentLengths || [])];
+                            lengths[0] = parseInt(e.target.value) || 0;
                             onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, closureLengthMm: e.target.value ? Number(e.target.value) : undefined }
+                              specs: { ...entry.specs, tangentLengths: lengths }
                             });
-                          }}
-                          placeholder="150"
-                          className="w-full px-3 py-2 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded-md text-sm text-gray-900 dark:text-gray-100"
-                        />
-                        {errors[`bend_${index}_closureLength`] && (
-                          <p role="alert" className="mt-1 text-xs text-red-600">{errors[`bend_${index}_closureLength`]}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Column 2 - Tangents & Length */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 border-b border-purple-500 dark:border-purple-400 pb-1.5">
-                      Tangents & Length
-                    </h4>
-
-                    {/* Tangents Section */}
-                    <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
-                      <h5 className="text-xs font-bold text-purple-900 mb-2">Tangent Extensions</h5>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Number of Tangents
-                        </label>
-                        <select
-                          value={entry.specs?.numberOfTangents || 0}
-                          onChange={(e) => {
-                            const count = parseInt(e.target.value) || 0;
-                            const currentLengths = entry.specs?.tangentLengths || [];
-                            const newLengths = count === 0 ? [] :
-                                             count === 1 ? [currentLengths[0] || 150] :
-                                             [currentLengths[0] || 150, currentLengths[1] || 150];
-                            const updatedEntry = {
-                              ...entry,
-                              specs: {
-                                ...entry.specs,
-                                numberOfTangents: count,
-                                tangentLengths: newLengths
-                              }
-                            };
-                            updatedEntry.description = generateItemDescription(updatedEntry);
-                            onUpdateEntry(entry.id, updatedEntry);
                             if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
                               setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                             }
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                        >
-                          <option value="0">0 - No Tangents</option>
-                          <option value="1">1 - Single Tangent</option>
-                          <option value="2">2 - Both Tangents</option>
-                        </select>
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                          min="0"
+                          placeholder="150"
+                        />
                       </div>
-
-                      {(entry.specs?.numberOfTangents || 0) >= 1 && (
-                        <div className="mt-2 bg-purple-50 dark:bg-purple-900/30 p-2 rounded-md border border-purple-200 dark:border-purple-700">
-                          <label className="block text-xs font-semibold text-purple-900 mb-1">
-                            Tangent 1 Length (mm)
-                          </label>
-                          <input
-                            type="number"
-                            value={entry.specs?.tangentLengths?.[0] || ''}
-                            onChange={(e) => {
-                              const lengths = [...(entry.specs?.tangentLengths || [])];
-                              lengths[0] = parseInt(e.target.value) || 0;
-                              onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, tangentLengths: lengths }
-                              });
-                              if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                              }
-                            }}
-                            className="w-full px-3 py-2 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
-                            min="0"
-                            placeholder="150"
-                          />
-                        </div>
-                      )}
-
-                      {(entry.specs?.numberOfTangents || 0) >= 2 && (
-                        <div className="mt-2 bg-purple-50 dark:bg-purple-900/30 p-2 rounded-md border border-purple-200 dark:border-purple-700">
-                          <label className="block text-xs font-semibold text-purple-900 mb-1">
-                            Tangent 2 Length (mm)
-                          </label>
-                          <input
-                            type="number"
-                            value={entry.specs?.tangentLengths?.[1] || ''}
-                            onChange={(e) => {
-                              const lengths = [...(entry.specs?.tangentLengths || [])];
-                              lengths[1] = parseInt(e.target.value) || 0;
-                              onUpdateEntry(entry.id, {
-                                specs: { ...entry.specs, tangentLengths: lengths }
-                              });
-                              if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
-                              }
-                            }}
-                            className="w-full px-3 py-2 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
-                            min="0"
-                            placeholder="150"
-                          />
-                        </div>
-                      )}
-
-                      {/* Tangent Buttweld Data - shows when tangents are added */}
-                      {(entry.specs?.numberOfTangents || 0) > 0 && (
-                        <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg p-3">
-                          <h6 className="text-xs font-bold text-orange-900 mb-1">Tangent Buttweld Data</h6>
-                          {(() => {
-                            const dn = entry.specs?.nominalBoreMm;
-                            const schedule = entry.specs?.scheduleNumber || '';
-                            const pipeWallThickness = entry.specs?.wallThicknessMm;
-                            const numTangents = entry.specs?.numberOfTangents || 0;
-                            const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                            const isSABS719 = steelSpecId === 8;
-
-                            let effectiveThickness: number | null = null;
-                            let fittingClass: 'STD' | 'XH' | 'XXH' | '' = 'STD';
-                            let weldThickness: number | null = null;
-
-                            if (isSABS719) {
-                              effectiveThickness = pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness;
-                            } else {
-                              const scheduleUpper = schedule.toUpperCase();
-                              const isStdSchedule = scheduleUpper.includes('40') || scheduleUpper === 'STD';
-                              const isXhSchedule = scheduleUpper.includes('80') || scheduleUpper === 'XS' || scheduleUpper === 'XH';
-                              const isXxhSchedule = scheduleUpper.includes('160') || scheduleUpper === 'XXS' || scheduleUpper === 'XXH';
-
-                              if (isXxhSchedule) {
-                                fittingClass = 'XXH';
-                              } else if (isXhSchedule) {
-                                fittingClass = 'XH';
-                              } else if (isStdSchedule) {
-                                fittingClass = 'STD';
-                              } else {
-                                fittingClass = '';
-                              }
-
-                              weldThickness = fittingClass && dn ? FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[dn] : null;
-                              const rawThickness = weldThickness || pipeWallThickness;
-                              effectiveThickness = rawThickness ? roundToWeldIncrement(rawThickness) : rawThickness;
+                    )}
+                    {(entry.specs?.numberOfTangents || 0) >= 2 && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                          Tangent 2 Length (mm)
+                        </label>
+                        <input
+                          type="number"
+                          value={entry.specs?.tangentLengths?.[1] || ''}
+                          onChange={(e) => {
+                            const lengths = [...(entry.specs?.tangentLengths || [])];
+                            lengths[1] = parseInt(e.target.value) || 0;
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, tangentLengths: lengths }
+                            });
+                            if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                              setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                             }
+                          }}
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                          min="0"
+                          placeholder="150"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                            // Calculate circumference
-                            const od = dn ? (NB_TO_OD_LOOKUP[dn] || (dn * 1.05)) : 0;
-                            const circumference = Math.PI * od;
-                            const totalWeldLength = circumference * numTangents;
-
-                            if (!dn || !effectiveThickness) {
-                              return (
-                                <p className="text-xs text-orange-700">
-                                  Select NB and schedule for weld data
-                                </p>
-                              );
-                            }
-
-                            return (
-                              <>
-                                <p className="text-xs text-orange-800">
-                                  <span className="font-medium">{numTangents} full penetration weld{numTangents > 1 ? 's' : ''}</span>
-                                </p>
-                                <p className="text-xs text-orange-700">
-                                  Weld thickness: {effectiveThickness.toFixed(2)}mm ({isSABS719 ? 'SABS 719 WT' : weldThickness && fittingClass ? fittingClass : `${schedule} WT`})
-                                </p>
-                                <p className="text-xs text-orange-700">
-                                  Linear meterage: {totalWeldLength.toFixed(0)}mm ({numTangents} x {circumference.toFixed(0)}mm circ)
-                                </p>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Flange Weld Data - Bend flanges and Stub flanges */}
+                {/* Stub Connections Section */}
+                <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-3 mt-3">
+                  <div className="mb-2">
+                    <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                      Stub Connections
+                    </h4>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                      Number of Stubs
+                    </label>
                     {(() => {
-                      const weldCount = getWeldCountPerBend(entry.specs?.bendEndConfiguration || 'PE');
-                      const dn = entry.specs?.nominalBoreMm;
-                      const schedule = entry.specs?.scheduleNumber || '';
-                      const pipeWallThickness = entry.specs?.wallThicknessMm;
-                      const numStubs = entry.specs?.numberOfStubs || 0;
-                      const stubs = entry.specs?.stubs || [];
-                      // Use item-level steel spec with global fallback
-                      const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                      const isSABS719 = steelSpecId === 8;
-
-                      let effectiveWeldThickness: number | undefined | null = null;
-                      let fittingClass: 'STD' | 'XH' | 'XXH' | '' = 'STD';
-                      let weldThickness: number | null = null;
-                      let usingScheduleThickness = false;
-
-                      if (isSABS719) {
-                        effectiveWeldThickness = pipeWallThickness ? roundToWeldIncrement(pipeWallThickness) : pipeWallThickness;
-                        usingScheduleThickness = true;
-                      } else {
-                        const scheduleUpper = schedule.toUpperCase();
-                        const isStdSchedule = scheduleUpper.includes('40') || scheduleUpper === 'STD';
-                        const isXhSchedule = scheduleUpper.includes('80') || scheduleUpper === 'XS' || scheduleUpper === 'XH';
-                        const isXxhSchedule = scheduleUpper.includes('160') || scheduleUpper === 'XXS' || scheduleUpper === 'XXH';
-
-                        if (isXxhSchedule) {
-                          fittingClass = 'XXH';
-                        } else if (isXhSchedule) {
-                          fittingClass = 'XH';
-                        } else if (isStdSchedule) {
-                          fittingClass = 'STD';
-                        } else {
-                          fittingClass = '';
-                        }
-
-                        weldThickness = fittingClass && dn ? FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[dn] : null;
-                        const rawWeldThickness = weldThickness || pipeWallThickness;
-                        effectiveWeldThickness = rawWeldThickness ? roundToWeldIncrement(rawWeldThickness) : rawWeldThickness;
-                        usingScheduleThickness = !weldThickness && !!pipeWallThickness;
-                      }
-
-                      // Calculate circumference for bend flanges
-                      const od = dn ? (NB_TO_OD_LOOKUP[dn] || (dn * 1.05)) : 0;
-                      const circumference = Math.PI * od;
-
-                      // Stub flange info - also use SABS 719 logic for stubs
-                      const stub1NB = stubs[0]?.nominalBoreMm;
-                      const stub2NB = stubs[1]?.nominalBoreMm;
-                      // Check if stub has flange - either via override or using global flange specs
-                      const stub1HasFlange = stubs[0]?.hasFlangeOverride
-                        || (stubs[0]?.flangeStandardId && stubs[0]?.flangePressureClassId)
-                        || (globalSpecs?.flangeStandardId && globalSpecs?.flangePressureClassId && stubs[0]?.nominalBoreMm);
-                      const stub2HasFlange = stubs[1]?.hasFlangeOverride
-                        || (stubs[1]?.flangeStandardId && stubs[1]?.flangePressureClassId)
-                        || (globalSpecs?.flangeStandardId && globalSpecs?.flangePressureClassId && stubs[1]?.nominalBoreMm);
-                      const stub1OD = stub1NB ? (NB_TO_OD_LOOKUP[stub1NB] || (stub1NB * 1.05)) : 0;
-                      const stub2OD = stub2NB ? (NB_TO_OD_LOOKUP[stub2NB] || (stub2NB * 1.05)) : 0;
-                      const stub1Circumference = Math.PI * stub1OD;
-                      const stub2Circumference = Math.PI * stub2OD;
-                      // For SABS 719, round pipe WT to 1.5mm increments; for others, use fitting lookup
-                      const stub1RawWt = (isSABS719 || !fittingClass)
-                        ? pipeWallThickness
-                        : (stub1NB ? (FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[stub1NB] || pipeWallThickness) : pipeWallThickness);
-                      const stub2RawWt = (isSABS719 || !fittingClass)
-                        ? pipeWallThickness
-                        : (stub2NB ? (FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[stub2NB] || pipeWallThickness) : pipeWallThickness);
-                      const stub1Thickness = stub1NB && stub1RawWt ? roundToWeldIncrement(stub1RawWt) : 0;
-                      const stub2Thickness = stub2NB && stub2RawWt ? roundToWeldIncrement(stub2RawWt) : 0;
-
-                      // Only show if there are bend flanges or stubs
-                      if (weldCount === 0 && numStubs === 0) return null;
+                      const selectId = `bend-num-stubs-${entry.id}`;
+                      const options = [
+                        { value: '0', label: '0 - No Stubs' },
+                        { value: '1', label: '1 - Single Stub' },
+                        { value: '2', label: '2 - Both Stubs' }
+                      ];
 
                       return (
-                        <div className="mt-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
-                          <h6 className="text-xs font-bold text-purple-900 mb-2">
-                            Flange Weld Data
-                            <span className="ml-1 text-gray-400 font-normal cursor-help" title="Weld thickness based on fitting class (STD/XH/XXH) for ASTM specs, or pipe wall thickness for SABS 719. Rounded to 0.5mm increments for WPS matching.">?</span>
-                          </h6>
-
-                          {/* Bend Flange Welds */}
-                          {weldCount > 0 && dn && effectiveWeldThickness && (
-                            <div className="mb-2">
-                              <p className="text-xs font-medium text-purple-800">Bend Flanges ({weldCount}):</p>
-                              <p className="text-xs text-purple-700">
-                                {dn}NB - {effectiveWeldThickness?.toFixed(2)}mm weld{isSABS719 ? ' (SABS 719 WT)' : usingScheduleThickness ? ' (sch)' : ` (${fittingClass})`}
-                              </p>
-                              <p className="text-xs text-purple-600">
-                                Weld length: {(circumference * 2 * weldCount).toFixed(0)}mm ({weldCount}x2x{circumference.toFixed(0)}mm circ)
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Stub Flange Welds */}
-                          {numStubs > 0 && (
-                            <div className={weldCount > 0 ? 'pt-2 border-t border-purple-200' : ''}>
-                              <p className="text-xs font-medium text-purple-800">Stub Flanges:</p>
-                              {numStubs >= 1 && stub1NB && (
-                                <div className="ml-2">
-                                  {stub1HasFlange ? (
-                                    <>
-                                      <p className="text-xs text-purple-700">
-                                        Stub 1: {stub1NB}NB - {stub1Thickness?.toFixed(2)}mm weld
-                                      </p>
-                                      <p className="text-xs text-purple-600">
-                                        Weld length: {(stub1Circumference * 2).toFixed(0)}mm (2x{stub1Circumference.toFixed(0)}mm circ)
-                                      </p>
-                                    </>
-                                  ) : (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Stub 1: {stub1NB}NB - OE (no weld data)</p>
-                                  )}
-                                </div>
-                              )}
-                              {numStubs >= 2 && stub2NB && (
-                                <div className="ml-2 mt-1">
-                                  {stub2HasFlange ? (
-                                    <>
-                                      <p className="text-xs text-purple-700">
-                                        Stub 2: {stub2NB}NB - {stub2Thickness?.toFixed(2)}mm weld
-                                      </p>
-                                      <p className="text-xs text-purple-600">
-                                        Weld length: {(stub2Circumference * 2).toFixed(0)}mm (2x{stub2Circumference.toFixed(0)}mm circ)
-                                      </p>
-                                    </>
-                                  ) : (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Stub 2: {stub2NB}NB - OE (no weld data)</p>
-                                  )}
-                                </div>
-                              )}
-                              {numStubs >= 1 && !stub1NB && (
-                                <p className="text-xs text-amber-600 ml-2">Stub 1: Select NB</p>
-                              )}
-                              {numStubs >= 2 && !stub2NB && (
-                                <p className="text-xs text-amber-600 ml-2">Stub 2: Select NB</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                        <Select
+                          id={selectId}
+                          value={String(entry.specs?.numberOfStubs || 0)}
+                          onChange={(value) => {
+                            const count = parseInt(value) || 0;
+                            const currentStubs = entry.specs?.stubs || [];
+                            const mainNB = entry.specs?.nominalBoreMm || 50;
+                            const defaultStubNB = mainNB <= 50 ? mainNB : 50;
+                            const defaultStub = { nominalBoreMm: defaultStubNB, length: 150, orientation: 'outside', flangeSpec: '' };
+                            const newStubs = count === 0 ? [] :
+                                            count === 1 ? [currentStubs[0] || defaultStub] :
+                                            [
+                                              currentStubs[0] || defaultStub,
+                                              currentStubs[1] || defaultStub
+                                            ];
+                            const updatedEntry = {
+                              ...entry,
+                              specs: {
+                                ...entry.specs,
+                                numberOfStubs: count,
+                                stubs: newStubs
+                              }
+                            };
+                            updatedEntry.description = generateItemDescription(updatedEntry);
+                            onUpdateEntry(entry.id, updatedEntry);
+                          }}
+                          options={options}
+                          placeholder="Select number of stubs"
+                          open={openSelects[selectId]}
+                          onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
+                        />
                       );
                     })()}
                   </div>
 
-                  {/* Column 3 - Stubs */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
-                      Stub Connections
-                    </h4>
+                  {(entry.specs?.numberOfStubs || 0) >= 1 && (
+                        <div className="mt-2 p-2 bg-white rounded border border-green-300">
+                          <p className="text-xs font-medium text-green-900 mb-2">Stub 1 <span className="text-gray-500 font-normal">(on horizontal tangent)</span></p>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-2">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">
+                                Steel Spec
+                                {entry.specs?.stubs?.[0]?.steelSpecificationId && <span className="text-purple-600 ml-1">*</span>}
+                              </label>
+                              {(() => {
+                                const selectId = `bend-stub1-steel-spec-${entry.id}`;
+                                const stub1EffectiveSpecId = entry.specs?.stubs?.[0]?.steelSpecificationId || entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                const groupedOptions = masterData.steelSpecs
+                                  ? groupSteelSpecifications(masterData.steelSpecs)
+                                  : [];
 
-
-
-                    {/* Stubs Section - Compact */}
-                    <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
-                      <h5 className="text-xs font-bold text-purple-900 mb-2">Stub Connections</h5>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Number of Stubs
-                        </label>
-                        {(() => {
-                          const selectId = `bend-num-stubs-${entry.id}`;
-                          const options = [
-                            { value: '0', label: '0 - No Stubs' },
-                            { value: '1', label: '1 - Single Stub' },
-                            { value: '2', label: '2 - Both Stubs' }
-                          ];
-
-                          return (
-                            <Select
-                              id={selectId}
-                              value={String(entry.specs?.numberOfStubs || 0)}
-                              onChange={(value) => {
-                                const count = parseInt(value) || 0;
-                                const currentStubs = entry.specs?.stubs || [];
-                                const mainNB = entry.specs?.nominalBoreMm || 50;
-                                const defaultStubNB = mainNB <= 50 ? mainNB : 50;
-                                const defaultStub = { nominalBoreMm: defaultStubNB, length: 150, orientation: 'outside', flangeSpec: '' };
-                                const newStubs = count === 0 ? [] :
-                                                count === 1 ? [currentStubs[0] || defaultStub] :
-                                                [
-                                                  currentStubs[0] || defaultStub,
-                                                  currentStubs[1] || defaultStub
-                                                ];
-                                const updatedEntry = {
-                                  ...entry,
-                                  specs: {
-                                    ...entry.specs,
-                                    numberOfStubs: count,
-                                    stubs: newStubs
-                                  }
-                                };
-                                updatedEntry.description = generateItemDescription(updatedEntry);
-                                onUpdateEntry(entry.id, updatedEntry);
-                              }}
-                              options={options}
-                              placeholder="Select number of stubs"
-                              open={openSelects[selectId] || false}
-                              onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
-                            />
-                          );
-                        })()}
-                      </div>
-
-                      {(entry.specs?.numberOfStubs || 0) >= 1 && (
-                        <div className="mt-2 p-2 bg-white rounded border border-purple-300">
-                          <p className="text-xs font-medium text-purple-900 mb-1">Stub 1 <span className="text-gray-500 font-normal">(on horizontal tangent - vertical stub)</span></p>
-                          <div className="grid grid-cols-1 gap-2 mb-2">
+                                return (
+                                  <Select
+                                    id={selectId}
+                                    value={String(stub1EffectiveSpecId || '')}
+                                    onChange={(value) => {
+                                      const newSpecId = value ? Number(value) : undefined;
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      stubs[0] = {
+                                        ...stubs[0],
+                                        steelSpecificationId: newSpecId,
+                                        nominalBoreMm: undefined,
+                                        wallThicknessMm: undefined
+                                      };
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                      updatedEntry.description = generateItemDescription(updatedEntry);
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    options={[]}
+                                    groupedOptions={groupedOptions}
+                                    placeholder="Spec"
+                                    open={openSelects[selectId]}
+                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
+                                  />
+                                );
+                              })()}
+                            </div>
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">NB</label>
                               {(() => {
                                 const selectId = `bend-stub1-nb-${entry.id}`;
-                                const stub1EffectiveSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                const stub1EffectiveSpecId = entry.specs?.stubs?.[0]?.steelSpecificationId || entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
                                 const stub1SteelSpec = masterData.steelSpecs?.find((s: any) => s.id === stub1EffectiveSpecId);
                                 const stub1SteelSpecName = stub1SteelSpec?.steelSpecName || '';
                                 const stub1FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => stub1SteelSpecName.includes(pattern))?.[1];
@@ -1636,8 +1393,8 @@ export default function BendForm({
                                     }}
                                     options={options}
                                     placeholder="Select NB"
-                                    open={openSelects[selectId] || false}
-                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                    open={openSelects[selectId]}
+                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                                   />
                                 );
                               })()}
@@ -1654,8 +1411,10 @@ export default function BendForm({
                               {(() => {
                                 const selectId = `bend-stub1-wt-${entry.id}`;
                                 const stub1NB = entry.specs?.stubs?.[0]?.nominalBoreMm;
-                                const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                                const isSABS719 = steelSpecId === 8;
+                                const steelSpecId = entry.specs?.stubs?.[0]?.steelSpecificationId || entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                const stub1SteelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
+                                const stub1SpecName = stub1SteelSpec?.steelSpecName || '';
+                                const isSABS719 = stub1SpecName.includes('SABS 719') || stub1SpecName.includes('SANS 719');
 
                                 const SABS_719_WT: Record<number, number> = {
                                   200: 5.2, 250: 5.2, 300: 6.4, 350: 6.4, 400: 6.4, 450: 6.4, 500: 6.4,
@@ -1726,8 +1485,8 @@ export default function BendForm({
                                     }}
                                     options={wtOptions}
                                     placeholder="Select W/T"
-                                    open={openSelects[selectId] || false}
-                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                    open={openSelects[selectId]}
+                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                                   />
                                 );
                               })()}
@@ -1759,8 +1518,8 @@ export default function BendForm({
                                     }}
                                     options={angleOptions}
                                     placeholder="Select angle"
-                                    open={openSelects[selectId] || false}
-                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                    open={openSelects[selectId]}
+                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                                   />
                                 );
                               })()}
@@ -1916,14 +1675,52 @@ export default function BendForm({
                       )}
 
                       {(entry.specs?.numberOfStubs || 0) >= 2 && (
-                        <div className="mt-2 p-2 bg-white rounded border border-purple-300">
-                          <p className="text-xs font-medium text-purple-900 mb-1">Stub 2 <span className="text-gray-500 font-normal">(on angled tangent)</span></p>
-                          <div className="grid grid-cols-1 gap-2 mb-2">
+                        <div className="mt-2 p-2 bg-white rounded border border-green-300">
+                          <p className="text-xs font-medium text-green-900 mb-2">Stub 2 <span className="text-gray-500 font-normal">(on angled tangent)</span></p>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-2">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-0.5">
+                                Steel Spec
+                                {entry.specs?.stubs?.[1]?.steelSpecificationId && <span className="text-purple-600 ml-1">*</span>}
+                              </label>
+                              {(() => {
+                                const selectId = `bend-stub2-steel-spec-${entry.id}`;
+                                const stub2EffectiveSpecId = entry.specs?.stubs?.[1]?.steelSpecificationId || entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                const groupedOptions = masterData.steelSpecs
+                                  ? groupSteelSpecifications(masterData.steelSpecs)
+                                  : [];
+
+                                return (
+                                  <Select
+                                    id={selectId}
+                                    value={String(stub2EffectiveSpecId || '')}
+                                    onChange={(value) => {
+                                      const newSpecId = value ? Number(value) : undefined;
+                                      const stubs = [...(entry.specs?.stubs || [])];
+                                      stubs[1] = {
+                                        ...stubs[1],
+                                        steelSpecificationId: newSpecId,
+                                        nominalBoreMm: undefined,
+                                        wallThicknessMm: undefined
+                                      };
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                      updatedEntry.description = generateItemDescription(updatedEntry);
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    options={[]}
+                                    groupedOptions={groupedOptions}
+                                    placeholder="Spec"
+                                    open={openSelects[selectId]}
+                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
+                                  />
+                                );
+                              })()}
+                            </div>
                             <div>
                               <label className="block text-xs text-gray-600 mb-0.5">NB</label>
                               {(() => {
                                 const selectId = `bend-stub2-nb-${entry.id}`;
-                                const stub2EffectiveSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                const stub2EffectiveSpecId = entry.specs?.stubs?.[1]?.steelSpecificationId || entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
                                 const stub2SteelSpec = masterData.steelSpecs?.find((s: any) => s.id === stub2EffectiveSpecId);
                                 const stub2SteelSpecName = stub2SteelSpec?.steelSpecName || '';
                                 const stub2FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => stub2SteelSpecName.includes(pattern))?.[1];
@@ -1948,8 +1745,8 @@ export default function BendForm({
                                     }}
                                     options={options}
                                     placeholder="Select NB"
-                                    open={openSelects[selectId] || false}
-                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                    open={openSelects[selectId]}
+                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                                   />
                                 );
                               })()}
@@ -1966,8 +1763,10 @@ export default function BendForm({
                               {(() => {
                                 const selectId = `bend-stub2-wt-${entry.id}`;
                                 const stub2NB = entry.specs?.stubs?.[1]?.nominalBoreMm;
-                                const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                                const isSABS719 = steelSpecId === 8;
+                                const steelSpecId = entry.specs?.stubs?.[1]?.steelSpecificationId || entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                                const stub2SteelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
+                                const stub2SpecName = stub2SteelSpec?.steelSpecName || '';
+                                const isSABS719 = stub2SpecName.includes('SABS 719') || stub2SpecName.includes('SANS 719');
 
                                 const SABS_719_WT: Record<number, number> = {
                                   200: 5.2, 250: 5.2, 300: 6.4, 350: 6.4, 400: 6.4, 450: 6.4, 500: 6.4,
@@ -2038,8 +1837,8 @@ export default function BendForm({
                                     }}
                                     options={wtOptions}
                                     placeholder="Select W/T"
-                                    open={openSelects[selectId] || false}
-                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                    open={openSelects[selectId]}
+                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                                   />
                                 );
                               })()}
@@ -2071,8 +1870,8 @@ export default function BendForm({
                                     }}
                                     options={angleOptions}
                                     placeholder="Select angle"
-                                    open={openSelects[selectId] || false}
-                                    onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                                    open={openSelects[selectId]}
+                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                                   />
                                 );
                               })()}
@@ -2302,8 +2101,6 @@ export default function BendForm({
                           })()}
                         </div>
                       )}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Operating Conditions - Hidden: Uses global specs for working pressure/temp */}
