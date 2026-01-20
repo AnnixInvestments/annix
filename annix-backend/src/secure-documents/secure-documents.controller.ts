@@ -130,6 +130,26 @@ export class SecureDocumentsController {
     return this.service.remove(id);
   }
 
+  @Get(':idOrSlug/attachment-url')
+  @ApiOperation({ summary: 'Get presigned download URL for document attachment' })
+  @ApiResponse({
+    status: 200,
+    description: 'Presigned URL for attachment download',
+    schema: {
+      properties: {
+        url: { type: 'string' },
+        filename: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Document or attachment not found' })
+  async attachmentDownloadUrl(
+    @Param('idOrSlug') idOrSlug: string,
+  ): Promise<{ url: string; filename: string }> {
+    const id = await this.resolveId(idOrSlug);
+    return this.service.attachmentDownloadUrl(id);
+  }
+
   private async resolveId(idOrSlug: string): Promise<string> {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
     if (isUuid) {

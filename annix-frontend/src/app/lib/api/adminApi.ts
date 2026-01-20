@@ -175,6 +175,9 @@ export interface SecureDocument {
   description: string | null;
   folder: string | null;
   storagePath: string;
+  fileType: 'markdown' | 'pdf' | 'excel' | 'word' | 'other';
+  originalFilename: string | null;
+  attachmentPath: string | null;
   createdBy: {
     id: number;
     firstName?: string | null;
@@ -635,6 +638,10 @@ class AdminApiClient {
     });
   }
 
+  async secureDocumentAttachmentUrl(id: string): Promise<{ url: string; filename: string }> {
+    return this.request<{ url: string; filename: string }>(`/admin/secure-documents/${id}/attachment-url`);
+  }
+
   async listLocalDocuments(): Promise<LocalDocument[]> {
     return this.request<LocalDocument[]>('/admin/secure-documents/local');
   }
@@ -683,11 +690,13 @@ class AdminApiClient {
     file: File,
     title?: string,
     description?: string,
+    processWithNix: boolean = true,
   ): Promise<NixUploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
     if (title) formData.append('title', title);
     if (description) formData.append('description', description);
+    formData.append('processWithNix', processWithNix.toString());
 
     const response = await fetch(`${this.baseURL}/nix/admin/upload-document`, {
       method: 'POST',

@@ -21,4 +21,19 @@ export class CreateSecureDocumentDto {
   @IsString()
   @IsOptional()
   folder?: string;
+
+  @ApiProperty({ example: 'excel', required: false, enum: ['markdown', 'pdf', 'excel', 'word', 'other'] })
+  @IsString()
+  @IsOptional()
+  fileType?: string;
+
+  @ApiProperty({ example: 'report.xlsx', required: false })
+  @IsString()
+  @IsOptional()
+  originalFilename?: string;
+
+  @ApiProperty({ example: 'secure-documents/attachments/abc123.xlsx', required: false })
+  @IsString()
+  @IsOptional()
+  attachmentPath?: string;
 }

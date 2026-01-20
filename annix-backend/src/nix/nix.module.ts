@@ -9,10 +9,12 @@ import { NixUserPreference } from './entities/nix-user-preference.entity';
 import { NixClarification } from './entities/nix-clarification.entity';
 import { ExcelExtractorService } from './services/excel-extractor.service';
 import { PdfExtractorService } from './services/pdf-extractor.service';
+import { WordExtractorService } from './services/word-extractor.service';
 import { AiExtractionService } from './ai-providers/ai-extraction.service';
 import { RegistrationDocumentVerifierService } from './services/registration-document-verifier.service';
 import { SecureDocumentsModule } from '../secure-documents/secure-documents.module';
 import { AdminModule } from '../admin/admin.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [
@@ -30,12 +32,14 @@ import { AdminModule } from '../admin/admin.module';
     }),
     forwardRef(() => SecureDocumentsModule),
     AdminModule,
+    StorageModule,
   ],
   controllers: [NixController],
   providers: [
     NixService,
     ExcelExtractorService,
     PdfExtractorService,
+    WordExtractorService,
     AiExtractionService,
     RegistrationDocumentVerifierService,
   ],

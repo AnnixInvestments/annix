@@ -27,8 +27,10 @@ import {
 } from './dto/submit-clarification.dto';
 import { ExcelExtractorService, ExtractedItem, SpecificationCellData, ExtractionResult } from './services/excel-extractor.service';
 import { PdfExtractorService } from './services/pdf-extractor.service';
+import { WordExtractorService } from './services/word-extractor.service';
 import { AiExtractionService } from './ai-providers/ai-extraction.service';
 import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
+import { S3StorageService } from '../storage/s3-storage.service';
 import * as fs from 'fs';
 
 @Injectable()
@@ -46,9 +48,11 @@ export class NixService {
     private readonly clarificationRepo: Repository<NixClarification>,
     private readonly excelExtractor: ExcelExtractorService,
     private readonly pdfExtractor: PdfExtractorService,
+    private readonly wordExtractor: WordExtractorService,
     private readonly aiExtractor: AiExtractionService,
     @Inject(forwardRef(() => SecureDocumentsService))
     private readonly secureDocumentsService: SecureDocumentsService,
+    private readonly s3StorageService: S3StorageService,
   ) {}
 
   async processDocument(dto: ProcessDocumentDto): Promise<ProcessDocumentResponseDto> {
@@ -618,6 +622,10 @@ export class NixService {
         const result = await this.excelExtractor.extractFromExcel(filePath);
         extractedContent = this.formatExcelExtractionAsMarkdown(fileName, result);
         metadata = result.metadata || {};
+      } else if (documentType === DocumentType.WORD) {
+        const result = await this.wordExtractor.extractFromWord(filePath);
+        extractedContent = this.formatWordExtractionAsMarkdown(fileName, result);
+        metadata = result.metadata || {};
       } else {
         const content = fs.readFileSync(filePath, 'utf-8');
         extractedContent = this.formatTextAsMarkdown(fileName, content);
@@ -672,6 +680,97 @@ export class NixService {
       }));
 
     return { documents: nixDocuments };
+  }
+
+  async uploadRawToSecureDocuments(
+    file: Express.Multer.File,
+    userId: number,
+    customTitle?: string,
+    customDescription?: string,
+  ): Promise<{ success: boolean; documentId?: string; documentSlug?: string; message?: string; error?: string }> {
+    const startTime = Date.now();
+    const fileName = file.originalname;
+    const filePath = file.path;
+
+    this.logger.log(`Uploading raw document to S3: ${fileName}`);
+
+    try {
+      const fileBuffer = fs.readFileSync(filePath);
+      const multerFile: Express.Multer.File = {
+        ...file,
+        buffer: fileBuffer,
+      };
+
+      const storageResult = await this.s3StorageService.upload(multerFile, 'secure-documents/attachments');
+
+      const title = customTitle || fileName.replace(/\.[^.]+$/, '');
+      const description = customDescription || `Uploaded file: ${fileName}`;
+      const ext = fileName.split('.').pop()?.toLowerCase() || 'other';
+
+      const fileTypeMap: Record<string, string> = {
+        pdf: 'pdf',
+        xlsx: 'excel',
+        xls: 'excel',
+        csv: 'excel',
+        doc: 'word',
+        docx: 'word',
+      };
+      const fileType = fileTypeMap[ext] || 'other';
+
+      const content = [
+        `# ${title}`,
+        '',
+        `> Uploaded on ${new Date().toISOString()}`,
+        '',
+        '## File Information',
+        '',
+        `- **Original filename:** ${fileName}`,
+        `- **File type:** ${ext.toUpperCase()}`,
+        `- **Size:** ${this.formatFileSize(storageResult.size)}`,
+        `- **MIME type:** ${storageResult.mimeType}`,
+        '',
+        '*This is an attachment. Use the download button to get the original file, or view the preview above.*',
+      ].join('\n');
+
+      const document = await this.secureDocumentsService.create(
+        {
+          title,
+          description,
+          content,
+          folder: 'Attachments',
+          fileType,
+          originalFilename: fileName,
+          attachmentPath: storageResult.path,
+        },
+        userId,
+      );
+
+      const processingTimeMs = Date.now() - startTime;
+      this.logger.log(`Raw document uploaded: ${document.id} (${processingTimeMs}ms)`);
+
+      this.cleanupUploadedFile(filePath);
+
+      return {
+        success: true,
+        documentId: document.id,
+        documentSlug: document.slug,
+        message: `File uploaded successfully in ${processingTimeMs}ms`,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to upload raw document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.cleanupUploadedFile(filePath);
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
+
+  private formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   private formatPdfExtractionAsMarkdown(fileName: string, result: ExtractionResult): string {
@@ -776,6 +875,55 @@ export class NixService {
     lines.push('---', '');
     lines.push(`*Source file: ${fileName}*`);
     lines.push(`*Total rows processed: ${result.totalRows}*`);
+    lines.push(`*Items extracted: ${result.items?.length || 0}*`);
+
+    return lines.join('\n');
+  }
+
+  private formatWordExtractionAsMarkdown(fileName: string, result: ExtractionResult & { rawText?: string }): string {
+    const lines: string[] = [
+      `# ${fileName.replace(/\.[^.]+$/, '')}`,
+      '',
+      `> Processed by Nix on ${new Date().toISOString()}`,
+      '',
+    ];
+
+    if (result.metadata) {
+      lines.push('## Document Metadata', '');
+      const meta = result.metadata;
+      if (meta.projectName) lines.push(`- **Project Name:** ${meta.projectName}`);
+      if (meta.projectReference) lines.push(`- **Project Reference:** ${meta.projectReference}`);
+      if (meta.projectLocation) lines.push(`- **Location:** ${meta.projectLocation}`);
+      if (meta.standard) lines.push(`- **Standard:** ${meta.standard}`);
+      if (meta.materialGrade) lines.push(`- **Material Grade:** ${meta.materialGrade}`);
+      lines.push('');
+    }
+
+    if (result.items && result.items.length > 0) {
+      lines.push('## Extracted Items', '');
+      lines.push('| # | Description | Type | Size | Material | Qty |');
+      lines.push('|---|-------------|------|------|----------|-----|');
+
+      result.items.forEach((item, index) => {
+        const description = item.description || '-';
+        const type = item.itemType || '-';
+        const size = item.diameter ? `${item.diameter}${item.diameterUnit === 'mm' ? 'mm' : '"'}` : '-';
+        const material = item.materialGrade || item.material || '-';
+        const qty = item.quantity || '-';
+        lines.push(`| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`);
+      });
+      lines.push('');
+    }
+
+    if (result.rawText) {
+      lines.push('## Document Content', '');
+      lines.push(result.rawText);
+      lines.push('');
+    }
+
+    lines.push('---', '');
+    lines.push(`*Source file: ${fileName}*`);
+    lines.push(`*Total lines processed: ${result.totalRows}*`);
     lines.push(`*Items extracted: ${result.items?.length || 0}*`);
 
     return lines.join('\n');

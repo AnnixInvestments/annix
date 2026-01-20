@@ -56,8 +56,8 @@ export class SecureDocument {
     description: 'Original filename for binary uploads',
     example: 'deployment-guide.pdf',
   })
-  @Column({ name: 'original_filename', nullable: true })
-  originalFilename: string;
+  @Column({ name: 'original_filename', nullable: true, type: 'varchar' })
+  originalFilename: string | null;
 
   @ApiProperty({
     description: 'Folder path for organizing documents',
@@ -65,6 +65,13 @@ export class SecureDocument {
   })
   @Column({ nullable: true, type: 'varchar' })
   folder: string | null;
+
+  @ApiProperty({
+    description: 'S3 path to original attachment file (for non-processed uploads)',
+    example: 'secure-documents/attachments/abc123.xlsx',
+  })
+  @Column({ name: 'attachment_path', nullable: true, type: 'varchar' })
+  attachmentPath: string | null;
 
   @ApiProperty({ description: 'User who created the document' })
   @ManyToOne(() => User, { eager: true })

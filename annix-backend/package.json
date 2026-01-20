@@ -47,6 +47,7 @@
     "es-toolkit": "^1.43.0",
     "exceljs": "^4.4.0",
     "luxon": "^3.7.2",
+    "mammoth": "^1.11.0",
     "multer": "^2.0.2",
     "nodemailer": "^6.9.16",
     "passport": "^0.7.0",

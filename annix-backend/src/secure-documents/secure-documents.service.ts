@@ -22,6 +22,7 @@ import { UpdateSecureDocumentDto } from './dto/update-secure-document.dto';
 import { encrypt, decrypt } from './crypto.util';
 import { User } from '../user/entities/user.entity';
 import { nowISO } from '../lib/datetime';
+import { S3StorageService } from '../storage/s3-storage.service';
 
 export interface LocalDocument {
   slug: string;
@@ -58,6 +59,7 @@ export class SecureDocumentsService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly configService: ConfigService,
+    private readonly s3StorageService: S3StorageService,
   ) {
     const region = this.configService.get<string>('AWS_REGION') || 'af-south-1';
     this.bucket =
@@ -178,6 +180,9 @@ export class SecureDocumentsService {
       description: dto.description,
       folder: dto.folder || null,
       storagePath,
+      fileType: dto.fileType || 'markdown',
+      originalFilename: dto.originalFilename || null,
+      attachmentPath: dto.attachmentPath || null,
       createdBy: user,
     });
 
@@ -404,5 +409,20 @@ export class SecureDocumentsService {
     };
 
     return { content, document };
+  }
+
+  async attachmentDownloadUrl(id: string): Promise<{ url: string; filename: string }> {
+    const document = await this.findOne(id);
+
+    if (!document.attachmentPath) {
+      throw new NotFoundException(`Document #${id} has no attachment`);
+    }
+
+    const url = await this.s3StorageService.getPresignedUrl(document.attachmentPath, 3600);
+
+    return {
+      url,
+      filename: document.originalFilename || 'download',
+    };
   }
 }

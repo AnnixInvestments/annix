@@ -313,6 +313,7 @@ export class NixController {
         file: { type: 'string', format: 'binary' },
         title: { type: 'string', description: 'Optional title for the document' },
         description: { type: 'string', description: 'Optional description' },
+        processWithNix: { type: 'string', description: 'Whether to process with Nix (default: true)' },
       },
       required: ['file'],
     },
@@ -323,19 +324,30 @@ export class NixController {
     @Body('title') title?: string,
     @Body('description') description?: string,
     @Body('userId') userId?: string,
+    @Body('processWithNix') processWithNix?: string,
   ): Promise<{ success: boolean; documentId?: string; documentSlug?: string; message?: string; error?: string }> {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
     const adminUserId = userId ? parseInt(userId, 10) : 1;
+    const shouldProcess = processWithNix !== 'false';
 
-    return this.nixService.processAndSaveToSecureDocuments(
-      file,
-      adminUserId,
-      title,
-      description,
-    );
+    if (shouldProcess) {
+      return this.nixService.processAndSaveToSecureDocuments(
+        file,
+        adminUserId,
+        title,
+        description,
+      );
+    } else {
+      return this.nixService.uploadRawToSecureDocuments(
+        file,
+        adminUserId,
+        title,
+        description,
+      );
+    }
   }
 
   @Get('admin/documents')

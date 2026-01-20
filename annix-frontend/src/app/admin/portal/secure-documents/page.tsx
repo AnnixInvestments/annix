@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { adminApiClient, SecureDocument, SecureDocumentWithContent, LocalDocument, LocalDocumentWithContent, NixUploadResponse } from '@/app/lib/api/adminApi';
 import { formatDateZA, fromISO, nowMillis } from '@/app/lib/datetime';
 import SecureDocumentEditor, { EditorPaneMode, EditorState } from './SecureDocumentEditor';
@@ -47,6 +48,7 @@ interface UploadingFile {
   progress: number;
   error?: string;
   documentSlug?: string;
+  processWithNix: boolean;
 }
 
 interface NixUploadResult {
@@ -145,6 +147,7 @@ export default function SecureDocumentsPage() {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [nixUploadResult, setNixUploadResult] = useState<NixUploadResult | null>(null);
   const [copiedPath, setCopiedPath] = useState(false);
+  const [pendingBinaryFiles, setPendingBinaryFiles] = useState<File[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [editorPaneMode, setEditorPaneMode] = useState<EditorPaneMode>('live');
@@ -615,14 +618,17 @@ export default function SecureDocumentsPage() {
       const result = await adminApiClient.uploadNixDocument(
         uploadingFile.file,
         uploadingFile.title || undefined,
+        undefined,
+        uploadingFile.processWithNix,
       );
 
       if (result.success) {
         setUploadingFiles(prev =>
           prev.map(f => f.id === uploadingFile.id ? { ...f, status: 'success', progress: 100, documentSlug: result.documentSlug } : f)
         );
+        const folder = uploadingFile.processWithNix ? 'Nix' : 'Attachments';
         const documentPath = result.documentSlug
-          ? `Secure Documents / Nix / ${result.documentSlug}`
+          ? `Secure Documents / ${folder} / ${result.documentSlug}`
           : null;
         setNixUploadResult({
           fileName: uploadingFile.file.name,
@@ -681,19 +687,8 @@ export default function SecureDocumentsPage() {
     }
 
     if (binaryFiles.length > 0) {
-      const newUploadingFiles: UploadingFile[] = binaryFiles.map(file => ({
-        id: `${nowMillis()}-${Math.random().toString(36).substr(2, 9)}`,
-        file,
-        title: file.name.replace(/\.[^.]+$/, ''),
-        status: 'pending' as const,
-        progress: 0,
-      }));
-
-      setUploadingFiles(prev => [...prev, ...newUploadingFiles]);
-
-      for (const uploadingFile of newUploadingFiles) {
-        await uploadNixFile(uploadingFile);
-      }
+      setPendingBinaryFiles(binaryFiles);
+      return;
     }
 
     if (textFiles.length === 1 && binaryFiles.length === 0 && unsupportedFiles.length === 0) {
@@ -745,6 +740,26 @@ export default function SecureDocumentsPage() {
       }
     }
   }, [uploadNixFile]);
+
+  const handleBinaryUploadChoice = async (processWithNix: boolean) => {
+    const files = pendingBinaryFiles;
+    setPendingBinaryFiles([]);
+
+    const newUploadingFiles: UploadingFile[] = files.map(file => ({
+      id: `${nowMillis()}-${Math.random().toString(36).substr(2, 9)}`,
+      file,
+      title: file.name.replace(/\.[^.]+$/, ''),
+      status: 'pending' as const,
+      progress: 0,
+      processWithNix,
+    }));
+
+    setUploadingFiles(prev => [...prev, ...newUploadingFiles]);
+
+    for (const uploadingFile of newUploadingFiles) {
+      await uploadNixFile(uploadingFile);
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -798,6 +813,9 @@ export default function SecureDocumentsPage() {
           description: selectedLocalDocument.description,
           folder: null,
           storagePath: '',
+          fileType: 'markdown',
+          originalFilename: null,
+          attachmentPath: null,
           createdBy: null,
           createdAt: selectedLocalDocument.updatedAt,
           updatedAt: selectedLocalDocument.updatedAt,
@@ -1081,6 +1099,16 @@ export default function SecureDocumentsPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doc.title}</span>
+                            {doc.folder === 'Nix' && (
+                              <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded">
+                                Nix
+                              </span>
+                            )}
+                            {doc.folder === 'Attachments' && (
+                              <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded">
+                                Attachment
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -1453,26 +1481,433 @@ export default function SecureDocumentsPage() {
         </div>
       )}
 
-      {nixUploadResult && (
+      {pendingBinaryFiles.length > 0 && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setPendingBinaryFiles([])} />
+            <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full overflow-hidden">
+              <div className="flex">
+                {/* Left side - Nix avatar */}
+                <div
+                  className="w-1/2 flex items-center justify-center p-8 relative overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(135deg, #323288 0%, #1e1e5c 100%)',
+                  }}
+                >
+                  <div className="relative">
+                    {/* Orbiting binary digits - outer ring */}
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ animation: 'spin 4s linear infinite' }}
+                    >
+                      {['1', '0', '1', '0', '1', '0', '1', '0', '1', '0', '1', '0'].map((digit, i) => {
+                        const angleDeg = i * 30;
+                        return (
+                          <div
+                            key={i}
+                            className="absolute"
+                            style={{
+                              top: '50%',
+                              left: '50%',
+                              transform: `rotate(${angleDeg}deg) translateY(-120px)`,
+                            }}
+                          >
+                            <span
+                              className="block font-mono text-orange-400 font-bold select-none"
+                              style={{
+                                fontSize: `${13 + (i % 3) * 2}px`,
+                                opacity: 0.5 + (i % 2) * 0.3,
+                                transform: `rotate(-${angleDeg}deg)`,
+                                animation: 'counterSpin 4s linear infinite',
+                              }}
+                            >
+                              {digit}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Orbiting binary digits - inner ring */}
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ animation: 'spin 3s linear infinite reverse' }}
+                    >
+                      {['0', '1', '0', '1', '0', '1', '0', '1'].map((digit, i) => {
+                        const angleDeg = (i * 45) + 22.5;
+                        return (
+                          <div
+                            key={i}
+                            className="absolute"
+                            style={{
+                              top: '50%',
+                              left: '50%',
+                              transform: `rotate(${angleDeg}deg) translateY(-145px)`,
+                            }}
+                          >
+                            <span
+                              className="block font-mono text-indigo-300 font-bold select-none"
+                              style={{
+                                fontSize: `${11 + (i % 2) * 3}px`,
+                                opacity: 0.4 + (i % 2) * 0.2,
+                                transform: `rotate(-${angleDeg}deg)`,
+                                animation: 'counterSpin 3s linear infinite reverse',
+                              }}
+                            >
+                              {digit}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <style jsx>{`
+                      @keyframes spin {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
+                      }
+                      @keyframes counterSpin {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(-360deg); }
+                      }
+                    `}</style>
+                    <div
+                      className="absolute inset-0 rounded-full animate-ping opacity-20"
+                      style={{
+                        background: 'radial-gradient(circle, rgba(251, 146, 60, 0.6) 0%, transparent 70%)',
+                        animationDuration: '2s',
+                      }}
+                    />
+                    <div
+                      className="relative w-48 h-48 rounded-full flex items-center justify-center"
+                      style={{
+                        background: 'radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%)',
+                      }}
+                    >
+                      <div
+                        className="w-44 h-44 rounded-full overflow-hidden p-2"
+                        style={{
+                          boxShadow: '0 0 30px rgba(251, 146, 60, 0.5), 0 0 60px rgba(99, 102, 241, 0.4)',
+                          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                          background: 'rgba(50, 50, 136, 0.8)',
+                        }}
+                      >
+                        <div className="w-full h-full rounded-full overflow-hidden">
+                          <Image
+                            src="/nix-avatar-complete.jpg"
+                            alt="Nix AI Assistant"
+                            width={176}
+                            height={176}
+                            className="object-cover w-full h-full"
+                            style={{ objectPosition: '50% 45%' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    {/* Orbiting orange indicator */}
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ animation: 'spin 6s linear infinite' }}
+                    >
+                      <div
+                        className="absolute w-6 h-6"
+                        style={{
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%) translateY(-100px)',
+                        }}
+                      >
+                        <div className="w-6 h-6 bg-orange-500 rounded-full animate-ping" />
+                        <div className="absolute inset-0 w-6 h-6 bg-orange-500 rounded-full" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right side - Content */}
+                <div className="w-1/2 p-6 flex flex-col justify-center">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Upload {pendingBinaryFiles.length} {pendingBinaryFiles.length === 1 ? 'File' : 'Files'}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 truncate">
+                    {pendingBinaryFiles.map(f => f.name).join(', ')}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+                    How would you like to handle {pendingBinaryFiles.length === 1 ? 'this file' : 'these files'}?
+                  </p>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => handleBinaryUploadChoice(true)}
+                      className="w-full px-4 py-3 text-left rounded-lg border-2 border-[#323288] bg-[#323288]/5 hover:bg-[#323288]/10 transition-colors"
+                    >
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mr-3">
+                          <svg className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">Process with Nix</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">Extract and convert content to markdown</div>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleBinaryUploadChoice(false)}
+                      className="w-full px-4 py-3 text-left rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mr-3">
+                          <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">Upload as Attachment</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">Store original file without processing</div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setPendingBinaryFiles([])}
+                    className="mt-4 w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {nixUploadResult && nixUploadResult.success && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setNixUploadResult(null)} />
+            <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full overflow-hidden">
+              <div className="flex">
+                {/* Left side - Nix avatar (done) */}
+                <div
+                  className="w-1/2 flex items-center justify-center p-8 relative overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.7) 0%, rgba(21, 128, 61, 0.8) 100%)',
+                  }}
+                >
+                  <div className="relative">
+                    {/* Orbiting binary digits - outer ring */}
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ animation: 'spinDone 4s linear infinite' }}
+                    >
+                      {['1', '0', '1', '0', '1', '0', '1', '0', '1', '0', '1', '0'].map((digit, i) => {
+                        const angleDeg = i * 30;
+                        return (
+                          <div
+                            key={i}
+                            className="absolute"
+                            style={{
+                              top: '50%',
+                              left: '50%',
+                              transform: `rotate(${angleDeg}deg) translateY(-120px)`,
+                            }}
+                          >
+                            <span
+                              className="block font-mono text-green-200 font-bold select-none"
+                              style={{
+                                fontSize: `${13 + (i % 3) * 2}px`,
+                                opacity: 0.5 + (i % 2) * 0.3,
+                                transform: `rotate(-${angleDeg}deg)`,
+                                animation: 'counterSpinDone 4s linear infinite',
+                              }}
+                            >
+                              {digit}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Orbiting binary digits - inner ring */}
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ animation: 'spinDone 3s linear infinite reverse' }}
+                    >
+                      {['0', '1', '0', '1', '0', '1', '0', '1'].map((digit, i) => {
+                        const angleDeg = (i * 45) + 22.5;
+                        return (
+                          <div
+                            key={i}
+                            className="absolute"
+                            style={{
+                              top: '50%',
+                              left: '50%',
+                              transform: `rotate(${angleDeg}deg) translateY(-145px)`,
+                            }}
+                          >
+                            <span
+                              className="block font-mono text-emerald-300 font-bold select-none"
+                              style={{
+                                fontSize: `${11 + (i % 2) * 3}px`,
+                                opacity: 0.4 + (i % 2) * 0.2,
+                                transform: `rotate(-${angleDeg}deg)`,
+                                animation: 'counterSpinDone 3s linear infinite reverse',
+                              }}
+                            >
+                              {digit}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <style jsx>{`
+                      @keyframes spinDone {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
+                      }
+                      @keyframes counterSpinDone {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(-360deg); }
+                      }
+                    `}</style>
+                    <div
+                      className="absolute inset-0 rounded-full animate-ping opacity-10"
+                      style={{
+                        background: 'radial-gradient(circle, rgba(134, 239, 172, 0.4) 0%, transparent 70%)',
+                        animationDuration: '2s',
+                      }}
+                    />
+                    <div
+                      className="relative w-48 h-48 rounded-full flex items-center justify-center"
+                      style={{
+                        background: 'radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%)',
+                      }}
+                    >
+                      <div
+                        className="w-44 h-44 rounded-full overflow-hidden p-2"
+                        style={{
+                          boxShadow: '0 0 20px rgba(134, 239, 172, 0.3), 0 0 40px rgba(34, 197, 94, 0.2)',
+                          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                          background: 'rgba(21, 128, 61, 0.6)',
+                        }}
+                      >
+                        <div className="w-full h-full rounded-full overflow-hidden">
+                          <Image
+                            src="/nix-avatar-done.jpg"
+                            alt="Nix AI Assistant - Done"
+                            width={176}
+                            height={176}
+                            className="object-cover w-full h-full"
+                            style={{ objectPosition: '50% 45%' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    {/* Orbiting green indicator */}
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ animation: 'spinDone 6s linear infinite' }}
+                    >
+                      <div
+                        className="absolute w-6 h-6"
+                        style={{
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%) translateY(-100px)',
+                        }}
+                      >
+                        <div className="w-6 h-6 bg-green-300 rounded-full animate-ping" />
+                        <div className="absolute inset-0 w-6 h-6 bg-green-300 rounded-full" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right side - Content */}
+                <div className="w-1/2 p-6 flex flex-col justify-center">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Processing Complete
+                  </h3>
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">File Name</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{nixUploadResult.fileName}</p>
+                  </div>
+                  {nixUploadResult.documentPath && (
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Saved Location</p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded text-xs font-mono text-gray-800 dark:text-gray-200 break-all">
+                          {nixUploadResult.documentPath}
+                        </code>
+                        <button
+                          onClick={() => copyToClipboard(nixUploadResult.documentPath!)}
+                          className={`flex-shrink-0 p-2 rounded text-sm font-medium transition-colors ${
+                            copiedPath
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500'
+                          }`}
+                          title="Copy path to clipboard"
+                        >
+                          {copiedPath ? (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-3 mt-4">
+                    {nixUploadResult.documentSlug && (
+                      <button
+                        onClick={() => {
+                          setNixUploadResult(null);
+                          viewNixDocument(nixUploadResult.documentSlug!);
+                        }}
+                        className="w-full px-4 py-3 text-left rounded-lg border-2 border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                      >
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-3">
+                            <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-gray-100">View Document</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Open the processed document</div>
+                          </div>
+                        </div>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setNixUploadResult(null)}
+                      className="w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {nixUploadResult && !nixUploadResult.success && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center">
-                {nixUploadResult.success ? (
-                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mr-3">
-                    <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center mr-3">
-                    <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </div>
-                )}
+                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center mr-3">
+                  <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  {nixUploadResult.success ? 'Document Processed Successfully' : 'Processing Failed'}
+                  Processing Failed
                 </h3>
               </div>
             </div>
@@ -1481,42 +1916,7 @@ export default function SecureDocumentsPage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">File Name</p>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{nixUploadResult.fileName}</p>
               </div>
-              {nixUploadResult.success && nixUploadResult.documentPath && (
-                <div className="mb-4">
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Saved Location</p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded text-sm font-mono text-gray-800 dark:text-gray-200 break-all">
-                      {nixUploadResult.documentPath}
-                    </code>
-                    <button
-                      onClick={() => copyToClipboard(nixUploadResult.documentPath!)}
-                      className={`flex-shrink-0 px-3 py-2 rounded text-sm font-medium transition-colors ${
-                        copiedPath
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500'
-                      }`}
-                      title="Copy path to clipboard"
-                    >
-                      {copiedPath ? (
-                        <span className="flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Copied
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                          Copy
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-              {!nixUploadResult.success && nixUploadResult.error && (
+              {nixUploadResult.error && (
                 <div className="mb-4">
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Error</p>
                   <p className="text-sm text-red-600 dark:text-red-400">{nixUploadResult.error}</p>
@@ -1524,17 +1924,6 @@ export default function SecureDocumentsPage() {
               )}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-              {nixUploadResult.success && nixUploadResult.documentSlug && (
-                <button
-                  onClick={() => {
-                    setNixUploadResult(null);
-                    viewNixDocument(nixUploadResult.documentSlug!);
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-[#323288] hover:text-[#4a4da3] border border-[#323288] rounded-md hover:bg-[#323288]/5"
-                >
-                  View Document
-                </button>
-              )}
               <button
                 onClick={() => setNixUploadResult(null)}
                 className="px-4 py-2 text-sm font-medium text-white bg-[#323288] rounded-md hover:bg-[#4a4da3]"

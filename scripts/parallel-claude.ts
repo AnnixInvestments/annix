@@ -3,7 +3,7 @@
 import { select, confirm, input } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { execSync, spawn, ChildProcess } from 'child_process';
-import { existsSync, openSync, readFileSync, watchFile, unwatchFile } from 'fs';
+import { existsSync, openSync, readFileSync, writeFileSync, watchFile, unwatchFile } from 'fs';
 import { join } from 'path';
 import { emitKeypressEvents } from 'readline';
 
@@ -44,6 +44,17 @@ interface Branch {
   lastCommitTime: string;
 }
 
+interface ProjectConfig {
+  name: string;
+  path: string;
+  worktreeDir?: string;
+}
+
+interface ProjectsConfig {
+  projects: ProjectConfig[];
+  defaultProject?: string;
+}
+
 interface Session {
   pid: number;
   name: string;
@@ -53,15 +64,143 @@ interface Session {
   lastActivity: string;
 }
 
-const ROOT_DIR = join(__dirname, '..');
-const WORKTREE_DIR = join(ROOT_DIR, '..', 'annix-worktrees');
+const DEFAULT_ROOT_DIR = join(__dirname, '..');
 const CLAUDE_BRANCH_PREFIX = 'claude/';
-const APP_LOG_FILE = join(ROOT_DIR, '.parallel-claude-app.log');
+const PROJECTS_CONFIG_FILE = join(DEFAULT_ROOT_DIR, '.parallel-claude-projects.json');
+const APP_LOG_FILE = join(DEFAULT_ROOT_DIR, '.parallel-claude-app.log');
+
+let currentProject: ProjectConfig = {
+  name: 'Annix-sync',
+  path: DEFAULT_ROOT_DIR,
+  worktreeDir: join(DEFAULT_ROOT_DIR, '..', 'annix-worktrees'),
+};
+
+function rootDir(): string {
+  return currentProject.path;
+}
+
+function worktreeDir(): string {
+  return currentProject.worktreeDir ?? join(currentProject.path, '..', `${currentProject.name.toLowerCase()}-worktrees`);
+}
+
+function loadProjectsConfig(): ProjectsConfig {
+  if (!existsSync(PROJECTS_CONFIG_FILE)) {
+    const defaultConfig: ProjectsConfig = {
+      projects: [
+        {
+          name: 'Annix-sync',
+          path: DEFAULT_ROOT_DIR,
+          worktreeDir: join(DEFAULT_ROOT_DIR, '..', 'annix-worktrees'),
+        },
+      ],
+      defaultProject: 'Annix-sync',
+    };
+    saveProjectsConfig(defaultConfig);
+    return defaultConfig;
+  }
+
+  try {
+    const content = readFileSync(PROJECTS_CONFIG_FILE, 'utf-8');
+    return JSON.parse(content) as ProjectsConfig;
+  } catch {
+    log.error('Failed to load projects config, using defaults');
+    return {
+      projects: [
+        {
+          name: 'Annix-sync',
+          path: DEFAULT_ROOT_DIR,
+        },
+      ],
+    };
+  }
+}
+
+function saveProjectsConfig(config: ProjectsConfig): void {
+  try {
+    writeFileSync(PROJECTS_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+  } catch {
+    log.error('Failed to save projects config');
+  }
+}
+
+function addProject(project: ProjectConfig): void {
+  const config = loadProjectsConfig();
+  const existingIndex = config.projects.findIndex(p => p.path === project.path);
+  if (existingIndex >= 0) {
+    config.projects[existingIndex] = project;
+  } else {
+    config.projects.push(project);
+  }
+  saveProjectsConfig(config);
+}
+
+function setCurrentProject(project: ProjectConfig): void {
+  currentProject = project;
+}
+
+async function selectProjectForSession(): Promise<ProjectConfig | null> {
+  const config = loadProjectsConfig();
+
+  const choices = [
+    ...config.projects.map(p => ({
+      name: `${p.name} ${chalk.dim(`(${p.path})`)}`,
+      value: p.path,
+    })),
+    { name: chalk.green('+ Add another project'), value: 'add-new' },
+    { name: chalk.dim('← Cancel'), value: 'cancel' },
+  ];
+
+  const selected = await selectWithEscape('Select project for this session:', choices, 'cancel');
+
+  if (selected === 'cancel') {
+    return null;
+  }
+
+  if (selected === 'add-new') {
+    const projectPath = await input({
+      message: 'Enter full path to project:',
+      validate: (val) => {
+        if (!val.trim()) return 'Path required';
+        if (!existsSync(val.trim())) return 'Path does not exist';
+        if (!existsSync(join(val.trim(), '.git'))) return 'Not a git repository';
+        return true;
+      },
+    });
+
+    const trimmedPath = projectPath.trim();
+    const defaultName = trimmedPath.split('/').pop() || 'Project';
+
+    const projectName = await input({
+      message: 'Project name:',
+      default: defaultName,
+      validate: (val) => val.trim() ? true : 'Name required',
+    });
+
+    const worktreeDirPath = await input({
+      message: 'Worktree directory (leave blank for default):',
+      default: join(trimmedPath, '..', `${projectName.trim().toLowerCase()}-worktrees`),
+    });
+
+    const newProject: ProjectConfig = {
+      name: projectName.trim(),
+      path: trimmedPath,
+      worktreeDir: worktreeDirPath.trim() || undefined,
+    };
+
+    addProject(newProject);
+    log.info(`✓ Added project: ${newProject.name}`);
+
+    return newProject;
+  }
+
+  const project = config.projects.find(p => p.path === selected);
+  return project ?? null;
+}
 
 function exec(cmd: string, options: { cwd?: string; silent?: boolean } = {}): string {
   try {
     return execSync(cmd, {
-      cwd: options.cwd ?? ROOT_DIR,
+      cwd: options.cwd ?? rootDir(),
       encoding: 'utf-8',
       stdio: options.silent ? 'pipe' : ['pipe', 'pipe', 'pipe'],
     }).trim();
@@ -145,11 +284,7 @@ function formatBranchDisplay(branch: Branch, current: string): string {
 
 function detectClaudeSessions(): Session[] {
   const sessions: Session[] = [];
-  const managedBranches = new Set(
-    Array.from(managedSessions.values())
-      .map(s => s.branch)
-      .filter(Boolean)
-  );
+  const seenPids = new Set<number>();
 
   try {
     const platform = process.platform;
@@ -167,6 +302,9 @@ function detectClaudeSessions(): Session[] {
       const pidMatch = line.match(/\s+(\d+)\s+/);
       if (pidMatch) {
         const pid = parseInt(pidMatch[1], 10);
+
+        if (seenPids.has(pid)) return;
+        seenPids.add(pid);
 
         let branch = 'unknown';
         let cwd = '';
@@ -187,8 +325,6 @@ function detectClaudeSessions(): Session[] {
             }
           }
         }
-
-        if (managedBranches.has(branch)) return;
 
         sessions.push({
           pid,
@@ -268,7 +404,7 @@ async function rebaseBranch(branch: string): Promise<boolean> {
   }
 
   try {
-    execSync('git rebase origin/main', { cwd: ROOT_DIR, stdio: 'inherit' });
+    execSync('git rebase origin/main', { cwd: rootDir(), stdio: 'inherit' });
     log.info(`✓ Rebased ${branch} onto main`);
     return true;
   } catch {
@@ -284,14 +420,14 @@ async function mergeBranch(branch: string): Promise<boolean> {
   exec('git fetch origin');
 
   try {
-    execSync('git rebase origin/main', { cwd: ROOT_DIR, stdio: 'inherit' });
+    execSync('git rebase origin/main', { cwd: rootDir(), stdio: 'inherit' });
   } catch {
     log.error(`✗ Failed to sync main with origin. Resolve conflicts first.`);
     return false;
   }
 
   try {
-    execSync(`git merge --ff-only ${branch}`, { cwd: ROOT_DIR, stdio: 'inherit' });
+    execSync(`git merge --ff-only ${branch}`, { cwd: rootDir(), stdio: 'inherit' });
     log.info(`✓ Merged ${branch} to main`);
     return true;
   } catch {
@@ -313,7 +449,7 @@ async function pullChanges(): Promise<void> {
   exec('git fetch origin');
 
   try {
-    execSync(`git pull --rebase origin ${branch}`, { cwd: ROOT_DIR, stdio: 'inherit' });
+    execSync(`git pull --rebase origin ${branch}`, { cwd: rootDir(), stdio: 'inherit' });
     log.info(`✓ Pulled latest changes for ${branch}`);
   } catch {
     log.error(`✗ Pull failed. You may have local changes or conflicts to resolve.`);
@@ -332,7 +468,7 @@ async function pullChanges(): Promise<void> {
   if (depsChanged) {
     log.warn('Dependencies changed. Running pnpm install...');
     try {
-      execSync('pnpm install', { cwd: ROOT_DIR, stdio: 'inherit' });
+      execSync('pnpm install', { cwd: rootDir(), stdio: 'inherit' });
       log.info('✓ Dependencies installed');
     } catch {
       log.error('✗ Failed to install dependencies');
@@ -343,7 +479,7 @@ async function pullChanges(): Promise<void> {
   if (migrationsChanged) {
     log.warn('New migrations detected. Running migrations...');
     try {
-      execSync('pnpm --filter annix-backend migration:run', { cwd: ROOT_DIR, stdio: 'inherit' });
+      execSync('pnpm --filter annix-backend migration:run', { cwd: rootDir(), stdio: 'inherit' });
       log.info('✓ Migrations applied');
     } catch {
       log.error('✗ Failed to run migrations');
@@ -381,7 +517,7 @@ async function deleteBranch(branch: string): Promise<void> {
 
     if (removeWorktree) {
       try {
-        execSync(`git worktree remove "${worktreePath}" --force`, { cwd: ROOT_DIR, stdio: 'inherit' });
+        execSync(`git worktree remove "${worktreePath}" --force`, { cwd: rootDir(), stdio: 'inherit' });
         log.info(`✓ Worktree removed`);
       } catch {
         log.error(`Failed to remove worktree. Delete it manually: git worktree remove "${worktreePath}" --force`);
@@ -400,7 +536,7 @@ async function deleteBranch(branch: string): Promise<void> {
 
   if (deleteLocal) {
     try {
-      execSync(`git branch -D ${branch}`, { cwd: ROOT_DIR, stdio: 'inherit' });
+      execSync(`git branch -D ${branch}`, { cwd: rootDir(), stdio: 'inherit' });
       log.info(`✓ Deleted local branch ${branch}`);
     } catch {
       log.error(`Failed to delete local branch ${branch}`);
@@ -429,6 +565,7 @@ interface ManagedSession {
   name: string;
   process: ChildProcess;
   branch: string;
+  project: ProjectConfig;
   worktreePath?: string;
   startTime: Date;
   status: 'running' | 'stopped';
@@ -463,7 +600,7 @@ async function startApp(): Promise<void> {
   const logFd = openSync(APP_LOG_FILE, 'w');
 
   appProcess = spawn(shell, [script], {
-    cwd: ROOT_DIR,
+    cwd: rootDir(),
     stdio: ['ignore', logFd, logFd],
     detached: true,
   });
@@ -687,7 +824,7 @@ async function approveBranch(branch: string): Promise<void> {
 
   if (push) {
     log.warn('Pushing to origin...');
-    execSync('git push origin main', { cwd: ROOT_DIR, stdio: 'inherit' });
+    execSync('git push origin main', { cwd: rootDir(), stdio: 'inherit' });
     log.info('✓ Pushed to origin.');
   }
 }
@@ -711,15 +848,15 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
   const useWorktree = branch && branch !== 'main';
 
   let worktreePath: string | undefined;
-  let sessionDir = ROOT_DIR;
+  let sessionDir = rootDir();
 
   if (useWorktree) {
     const worktreeName = branch.replace(CLAUDE_BRANCH_PREFIX, '').replace(/[^a-z0-9-]/gi, '-');
-    worktreePath = join(WORKTREE_DIR, worktreeName);
+    worktreePath = join(worktreeDir(), worktreeName);
     sessionDir = worktreePath;
 
-    if (!existsSync(WORKTREE_DIR)) {
-      execSync(`mkdir -p "${WORKTREE_DIR}"`, { cwd: ROOT_DIR });
+    if (!existsSync(worktreeDir())) {
+      execSync(`mkdir -p "${worktreeDir()}"`, { cwd: rootDir() });
     }
 
     const existingWorktrees = exec('git worktree list --porcelain', { silent: true });
@@ -776,14 +913,14 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
 
     if (hasWindowsTerminal) {
       sessionProcess = spawn('wt', ['-w', '0', 'new-tab', 'cmd', '/k', fullCmd], {
-        cwd: ROOT_DIR,
+        cwd: rootDir(),
         detached: true,
         stdio: 'ignore',
         shell: true,
       });
     } else {
       sessionProcess = spawn('cmd', ['/c', 'start', 'cmd', '/k', fullCmd], {
-        cwd: ROOT_DIR,
+        cwd: rootDir(),
         detached: true,
         stdio: 'ignore',
       });
@@ -803,7 +940,7 @@ tell application "iTerm"
     end tell
   end tell
 end tell
-EOF`, { cwd: ROOT_DIR, stdio: 'inherit' });
+EOF`, { cwd: rootDir(), stdio: 'inherit' });
       } catch (e) {
         log.error('Failed to open iTerm tab. Trying new window...');
         try {
@@ -815,18 +952,18 @@ tell application "iTerm"
     write text "${shellCmd.replace(/"/g, '\\"')}"
   end tell
 end tell
-EOF`, { cwd: ROOT_DIR, stdio: 'inherit' });
+EOF`, { cwd: rootDir(), stdio: 'inherit' });
         } catch {
           log.error('Failed to open iTerm. Trying Terminal...');
-          execSync(`osascript -e 'tell application "Terminal" to do script "${shellCmd.replace(/"/g, '\\"')}"'`, { cwd: ROOT_DIR, stdio: 'inherit' });
+          execSync(`osascript -e 'tell application "Terminal" to do script "${shellCmd.replace(/"/g, '\\"')}"'`, { cwd: rootDir(), stdio: 'inherit' });
         }
       }
     } else {
-      execSync(`osascript -e 'tell application "Terminal" to do script "${shellCmd.replace(/"/g, '\\"')}" in front window'`, { cwd: ROOT_DIR, stdio: 'inherit' });
+      execSync(`osascript -e 'tell application "Terminal" to do script "${shellCmd.replace(/"/g, '\\"')}" in front window'`, { cwd: rootDir(), stdio: 'inherit' });
     }
 
     sessionProcess = spawn('echo', ['Session started in new terminal'], {
-      cwd: ROOT_DIR,
+      cwd: rootDir(),
       detached: true,
       stdio: 'ignore',
     });
@@ -839,6 +976,7 @@ EOF`, { cwd: ROOT_DIR, stdio: 'inherit' });
     name: sessionName,
     process: sessionProcess,
     branch: branchName,
+    project: currentProject,
     worktreePath,
     startTime: new Date(),
     status: 'running',
@@ -943,7 +1081,7 @@ async function pullChangesFromBranch(branch: string): Promise<void> {
 
   const cherryPickWithRetry = async (commitRange: string): Promise<boolean> => {
     try {
-      execSync(`git cherry-pick -X theirs ${commitRange}`, { cwd: ROOT_DIR, stdio: 'inherit' });
+      execSync(`git cherry-pick -X theirs ${commitRange}`, { cwd: rootDir(), stdio: 'inherit' });
       return true;
     } catch {
       log.error('Cherry-pick failed.');
@@ -955,7 +1093,7 @@ async function pullChangesFromBranch(branch: string): Promise<void> {
 
       if (abortChoice === 'abort') {
         try {
-          execSync('git cherry-pick --abort', { cwd: ROOT_DIR, stdio: 'pipe' });
+          execSync('git cherry-pick --abort', { cwd: rootDir(), stdio: 'pipe' });
           log.info('Cherry-pick aborted.');
         } catch {
           // Already aborted
@@ -1006,10 +1144,11 @@ async function showSessionsMenu(): Promise<void> {
         const runtime = Math.round((Date.now() - session.startTime.getTime()) / 60000);
         const statusColor = session.status === 'running' ? chalk.green : chalk.dim;
         const modeIcon = session.headless ? '⚡' : '🛡️';
+        const projectLabel = chalk.bold(session.project.name);
         const taskPreview = session.task
           ? chalk.dim(` "${session.task.slice(0, 40)}${session.task.length > 40 ? '...' : ''}"`)
           : '';
-        log.print(`  ${statusColor('●')} ${modeIcon} ${chalk.cyan(session.branch)} [${runtime}m]${taskPreview}`);
+        log.print(`  ${statusColor('●')} ${modeIcon} ${projectLabel} ${chalk.cyan(session.branch)} [${runtime}m]${taskPreview}`);
       });
     }
 
@@ -1067,6 +1206,12 @@ async function showSessionsMenu(): Promise<void> {
     }
 
     if (action === 'new') {
+      const selectedProject = await selectProjectForSession();
+      if (!selectedProject) continue;
+
+      setCurrentProject(selectedProject);
+      log.info(`Working in: ${selectedProject.name}`);
+
       const startType = await selectWithEscape('How would you like to start?', [
         { name: '🚀 Quick start on main (Recommended)', value: 'main' },
         { name: '🎫 Start with GitHub issue', value: 'issue' },
@@ -1526,7 +1671,7 @@ async function main(): Promise<void> {
 
   emitKeypressEvents(process.stdin);
 
-  const isGitRepo = existsSync(join(ROOT_DIR, '.git'));
+  const isGitRepo = existsSync(join(DEFAULT_ROOT_DIR, '.git'));
   if (!isGitRepo) {
     log.error('Error: Not a git repository.');
     process.exit(1);
