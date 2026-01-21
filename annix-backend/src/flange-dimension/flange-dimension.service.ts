@@ -184,20 +184,46 @@ export class FlangeDimensionService {
     nominalBoreMm: number,
     standardId: number,
     pressureClassId: number,
+    flangeTypeId?: number,
   ): Promise<FlangeDimension | null> {
+    const whereCondition: any = {
+      nominalOutsideDiameter: { nominal_diameter_mm: nominalBoreMm },
+      standard: { id: standardId },
+      pressureClass: { id: pressureClassId },
+    };
+
+    if (flangeTypeId) {
+      whereCondition.flangeType = { id: flangeTypeId };
+    }
+
     const flange = await this.flangeRepo.findOne({
-      where: {
-        nominalOutsideDiameter: { nominal_diameter_mm: nominalBoreMm },
-        standard: { id: standardId },
-        pressureClass: { id: pressureClassId },
-      },
+      where: whereCondition,
       relations: [
         'nominalOutsideDiameter',
         'standard',
         'pressureClass',
+        'flangeType',
         'bolt',
       ],
     });
+
+    if (!flange && flangeTypeId) {
+      return this.flangeRepo.findOne({
+        where: {
+          nominalOutsideDiameter: { nominal_diameter_mm: nominalBoreMm },
+          standard: { id: standardId },
+          pressureClass: { id: pressureClassId },
+        },
+        relations: [
+          'nominalOutsideDiameter',
+          'standard',
+          'pressureClass',
+          'flangeType',
+          'bolt',
+        ],
+      });
+    }
+
     return flange;
   }
 }

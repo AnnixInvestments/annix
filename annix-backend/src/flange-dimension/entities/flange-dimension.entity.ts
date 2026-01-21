@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { NominalOutsideDiameterMm } from '../../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity';
 import { FlangeStandard } from '../../flange-standard/entities/flange-standard.entity';
 import { FlangePressureClass } from '../../flange-pressure-class/entities/flange-pressure-class.entity';
+import { FlangeType } from '../../flange-type/entities/flange-type.entity';
 import { Bolt } from '../../bolt/entities/bolt.entity';
 
 @Entity('flange_dimensions')
@@ -23,6 +24,9 @@ export class FlangeDimension {
     onDelete: 'CASCADE',
   })
   pressureClass: FlangePressureClass;
+
+  @ManyToOne(() => FlangeType, { onDelete: 'SET NULL', nullable: true })
+  flangeType: FlangeType | null;
 
   @Column({ type: 'float' })
   D: number;

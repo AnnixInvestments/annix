@@ -26,4 +26,18 @@ export class NutMass {
   })
   @Column({ type: 'float' })
   mass_kg: number;
+
+  @ApiProperty({
+    example: 'Grade 8',
+    description: 'Nut grade specification',
+  })
+  @Column({ type: 'varchar', nullable: true })
+  grade: string | null; // e.g. "Grade 8", "Grade 2H", "Grade 8M"
+
+  @ApiProperty({
+    example: 'hex',
+    description: 'Type of nut',
+  })
+  @Column({ type: 'varchar', nullable: true })
+  type: string | null; // e.g. "hex", "lock", "flange", "castle"
 }

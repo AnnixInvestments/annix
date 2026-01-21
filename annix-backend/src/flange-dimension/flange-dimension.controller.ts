@@ -22,11 +22,12 @@ export class FlangeDimensionController {
 
   @Get('lookup')
   @ApiOperation({
-    summary: 'Look up flange dimensions by NB, standard, and pressure class',
+    summary: 'Look up flange dimensions by NB, standard, pressure class, and optionally flange type',
   })
   @ApiQuery({ name: 'nominalBoreMm', type: Number, required: true })
   @ApiQuery({ name: 'standardId', type: Number, required: true })
   @ApiQuery({ name: 'pressureClassId', type: Number, required: true })
+  @ApiQuery({ name: 'flangeTypeId', type: Number, required: false })
   @ApiResponse({
     status: 200,
     description: 'Flange dimensions found or null if not found',
@@ -35,11 +36,14 @@ export class FlangeDimensionController {
     @Query('nominalBoreMm', ParseIntPipe) nominalBoreMm: number,
     @Query('standardId', ParseIntPipe) standardId: number,
     @Query('pressureClassId', ParseIntPipe) pressureClassId: number,
+    @Query('flangeTypeId') flangeTypeId?: string,
   ) {
+    const typeId = flangeTypeId ? parseInt(flangeTypeId, 10) : undefined;
     return this.flangeDimensionService.findBySpecs(
       nominalBoreMm,
       standardId,
       pressureClassId,
+      typeId,
     );
   }
 
