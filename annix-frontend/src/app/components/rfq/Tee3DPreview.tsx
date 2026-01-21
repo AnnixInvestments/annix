@@ -71,6 +71,10 @@ interface Tee3DPreviewProps {
   onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
   // Notes for display
   selectedNotes?: string[];
+  // Dynamic flange spec display
+  flangeStandardName?: string;
+  pressureClassDesignation?: string;
+  flangeTypeCode?: string;
 }
 
 // Standard Pipe OD Lookup Table (NB to OD in mm)
@@ -1401,7 +1405,9 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
             <div className="font-bold text-blue-800 mt-1 mb-0.5">RUN FLANGE</div>
             <div className="text-gray-900 font-medium">OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm</div>
             <div className="text-gray-700">Bolts: {runFlangeSpecs.boltHoles} × M{runFlangeSpecs.boltSize} × {runFlangeSpecs.boltLength}mm</div>
-            <div className="text-green-700 font-medium text-[9px]">SABS 1123 T1000/3</div>
+            <div className="text-green-700 font-medium text-[9px]">
+              {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+            </div>
           </>
         )}
         {/* Branch Flange details */}
@@ -1410,7 +1416,9 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
             <div className="font-bold text-blue-800 mt-1 mb-0.5">BRANCH FLANGE</div>
             <div className="text-gray-900 font-medium">OD: {branchFlangeSpecs.flangeOD}mm | PCD: {branchFlangeSpecs.pcd}mm</div>
             <div className="text-gray-700">Bolts: {branchFlangeSpecs.boltHoles} × M{branchFlangeSpecs.boltSize} × {branchFlangeSpecs.boltLength}mm</div>
-            <div className="text-green-700 font-medium text-[9px]">SABS 1123 T1000/3</div>
+            <div className="text-green-700 font-medium text-[9px]">
+              {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+            </div>
           </>
         )}
       </div>
@@ -1515,7 +1523,9 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
                   <div className="font-bold text-blue-800 mt-2 mb-1">RUN FLANGE</div>
                   <div className="text-gray-900 font-medium">OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm</div>
                   <div className="text-gray-700">Bolts: {runFlangeSpecs.boltHoles} × M{runFlangeSpecs.boltSize} × {runFlangeSpecs.boltLength}mm</div>
-                  <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
+                  <div className="text-green-700 font-medium">
+                    {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+                  </div>
                 </>
               )}
               {props.hasBranchFlange && (
@@ -1523,7 +1533,9 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
                   <div className="font-bold text-blue-800 mt-2 mb-1">BRANCH FLANGE</div>
                   <div className="text-gray-900 font-medium">OD: {branchFlangeSpecs.flangeOD}mm | PCD: {branchFlangeSpecs.pcd}mm</div>
                   <div className="text-gray-700">Bolts: {branchFlangeSpecs.boltHoles} × M{branchFlangeSpecs.boltSize} × {branchFlangeSpecs.boltLength}mm</div>
-                  <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
+                  <div className="text-green-700 font-medium">
+                    {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+                  </div>
                 </>
               )}
             </div>

@@ -46,6 +46,9 @@ interface Pipe3DPreviewProps {
   onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
   selectedNotes?: string[];
   flangeSpecs?: FlangeSpecData | null;
+  flangeStandardName?: string;
+  pressureClassDesignation?: string;
+  flangeTypeCode?: string;
 }
 
 // Standard flange dimensions based on SABS 1123 Table 1000/4 (PN16) - Slip-on flanges
@@ -768,7 +771,17 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                       <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
                       <div className="text-gray-700">Holes: {flangeSpecs.boltHoles} × Ø{flangeSpecs.holeID}mm</div>
                       <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize} × {adjustedBoltLength}mm</div>
-                      <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
+                      <div className="text-gray-700">Thickness: {flangeSpecs.thickness}mm</div>
+                      <div className="text-green-700 font-medium">
+                        {(() => {
+                          const standardName = props.flangeStandardName || 'SABS 1123';
+                          const designation = props.pressureClassDesignation || '';
+                          const flangeType = props.flangeTypeCode || '';
+                          const pressureMatch = designation.match(/^(\d+)/);
+                          const pressureValue = pressureMatch ? pressureMatch[1] : designation.replace(/\/\d+$/, '');
+                          return `${standardName} T${pressureValue}${flangeType}`;
+                        })()}
+                      </div>
                       {backingRingCount > 0 && (
                         <div className="text-purple-700 font-medium mt-0.5">
                           Backing Ring: {backingRingCount} × {backingRingWeight.toFixed(2)}kg

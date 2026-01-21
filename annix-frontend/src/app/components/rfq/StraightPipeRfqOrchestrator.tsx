@@ -145,6 +145,7 @@ interface MasterData {
   flangeStandards: Array<{ id: number; code: string }>;
   pressureClasses: Array<{ id: number; designation: string }>;
   nominalBores?: Array<{ id: number; nominal_diameter_mm?: number; outside_diameter_mm?: number; nominalDiameterMm?: number; outsideDiameterMm?: number }>;
+  flangeTypes?: Array<{ id: number; code: string; name: string }>;
 }
 
 /**
@@ -159,6 +160,7 @@ interface MasterData {
  * @param pipeEndConfiguration - Pipe end configuration (PE, FOE, FBE, etc.)
  * @param pressureClassDesignation - Optional pressure class for accurate flange weights
  * @param flangeStandard - Optional flange standard (e.g., 'BS 4504', 'SABS 1123')
+ * @param flangeTypeCode - Optional flange type code (e.g., '/3', '/5') for SABS 1123 / BS 4504
  */
 const calculateLocalPipeResult = (
   nominalBoreMm: number,
@@ -168,7 +170,8 @@ const calculateLocalPipeResult = (
   quantityType: string,
   pipeEndConfiguration: string,
   pressureClassDesignation?: string,
-  flangeStandard?: string
+  flangeStandard?: string,
+  flangeTypeCode?: string
 ): any => {
   const outsideDiameterMm = NB_TO_OD_LOOKUP[nominalBoreMm] || (nominalBoreMm * 1.05);
 
@@ -208,7 +211,7 @@ const calculateLocalPipeResult = (
   const totalFlangeWeldLength = numberOfFlangeWelds * circumference * 2; // x2 for inside + outside welds per flange
 
   // Get flange weight based on pressure class (includes flange + bolts + gasket)
-  const flangeWeightPerUnit = getFlangeWeight(nominalBoreMm, pressureClassDesignation, flangeStandard);
+  const flangeWeightPerUnit = getFlangeWeight(nominalBoreMm, pressureClassDesignation, flangeStandard, flangeTypeCode);
   const totalFlangeWeight = numberOfFlanges * flangeWeightPerUnit;
 
   // Total system weight
@@ -691,18 +694,20 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         setIsLoadingMasterData(true);
         const { masterDataApi } = await import('@/app/lib/api/client');
         
-        const [steelSpecs, flangeStandards, pressureClasses, nominalBores] = await Promise.all([
+        const [steelSpecs, flangeStandards, pressureClasses, nominalBores, flangeTypes] = await Promise.all([
           masterDataApi.getSteelSpecifications(),
           masterDataApi.getFlangeStandards(),
           masterDataApi.getFlangePressureClasses(),
-          masterDataApi.getNominalBores()
+          masterDataApi.getNominalBores(),
+          masterDataApi.getFlangeTypes()
         ]);
 
         setMasterData({
           steelSpecs,
           flangeStandards,
           pressureClasses,
-          nominalBores
+          nominalBores,
+          flangeTypes
         });
       } catch (error) {
         // Silently handle backend unavailable - use fallback data
@@ -1613,14 +1618,18 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
         if (result && numberOfFlanges > 0) {
           // Try to fetch dynamic flange specs from database
-          let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation, flangeStandardCode);
+          let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation, flangeStandardCode, flangeTypeCode);
           let flangeSpecData: FlangeSpecData | null = null;
 
           if (flangeStandardId && flangePressureClassId && entry.specs.nominalBoreMm) {
+            const flangeTypeId = flangeTypeCode
+              ? masterData.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode)?.id
+              : undefined;
             flangeSpecData = await fetchFlangeSpecsStatic(
               entry.specs.nominalBoreMm,
               flangeStandardId,
-              flangePressureClassId
+              flangePressureClassId,
+              flangeTypeId
             );
             if (flangeSpecData) {
               flangeWeightPerUnit = flangeSpecData.flangeMassKg;
@@ -1677,7 +1686,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             entry.specs.quantityType || 'number_of_pipes',
             entry.specs.pipeEndConfiguration || 'PE',
             pressureClassDesignation,
-            flangeStandardCode
+            flangeStandardCode,
+            flangeTypeCode
           );
           log.debug('✅ Local calculation result:', localResult);
           updateEntryCalculation(entry.id, localResult);
@@ -1703,7 +1713,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           entry.specs.quantityType || 'number_of_pipes',
           entry.specs.pipeEndConfiguration || 'PE',
           pressureClassDesignation,
-          flangeStandardCode
+          flangeStandardCode,
+          flangeTypeCode
         );
         log.debug('✅ Local calculation fallback result:', localResult);
         updateEntryCalculation(entry.id, localResult);
@@ -1732,6 +1743,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       pipeEndConfiguration: e.specs.pipeEndConfiguration,
       flangeStandardId: e.specs.flangeStandardId,
       flangePressureClassId: e.specs.flangePressureClassId,
+      flangeTypeCode: e.specs.flangeTypeCode,
       hasFlangeOverride: e.hasFlangeOverride,
       flangeOverrideConfirmed: e.flangeOverrideConfirmed
     }))),
@@ -1740,7 +1752,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     rfqData.globalSpecs?.workingTemperatureC,
     rfqData.globalSpecs?.steelSpecificationId,
     rfqData.globalSpecs?.flangeStandardId,
-    rfqData.globalSpecs?.flangePressureClassId
+    rfqData.globalSpecs?.flangePressureClassId,
+    rfqData.globalSpecs?.flangeTypeCode
   ]);
 
   // Initialize pressure classes when flange standard is set (e.g., from saved state or initial load)
@@ -1974,14 +1987,18 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
           if (result && numberOfFlanges > 0) {
             // Try to fetch dynamic flange specs from database
-            let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation, flangeStandardCode);
+            let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation, flangeStandardCode, flangeTypeCode);
             let flangeSpecData: FlangeSpecData | null = null;
 
             if (flangeStandardId && flangePressureClassId && entry.specs.nominalBoreMm) {
+              const flangeTypeId = flangeTypeCode
+                ? masterData.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode)?.id
+                : undefined;
               flangeSpecData = await fetchFlangeSpecsStatic(
                 entry.specs.nominalBoreMm,
                 flangeStandardId,
-                flangePressureClassId
+                flangePressureClassId,
+                flangeTypeId
               );
               if (flangeSpecData) {
                 flangeWeightPerUnit = flangeSpecData.flangeMassKg;
@@ -2041,7 +2058,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               entry.specs.quantityType || 'number_of_pipes',
               entry.specs.pipeEndConfiguration || 'PE',
               pressureClassDesignation,
-              flangeStandardCode
+              flangeStandardCode,
+              flangeTypeCode
             );
             log.debug('✅ Local calculation result:', localResult);
             updateEntryCalculation(entry.id, localResult);
@@ -2144,10 +2162,17 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       let flangeSpecData: FlangeSpecData | null = null;
       const nominalBoreMm = bendEntry.specs?.nominalBoreMm;
       if (flangeStandardId && flangePressureClassId && nominalBoreMm) {
+        const flangeTypeCode = useGlobal
+          ? (bendEntry.specs?.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode)
+          : bendEntry.specs?.flangeTypeCode;
+        const flangeTypeId = flangeTypeCode
+          ? masterData.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode)?.id
+          : undefined;
         flangeSpecData = await fetchFlangeSpecsStatic(
           nominalBoreMm,
           flangeStandardId,
-          flangePressureClassId
+          flangePressureClassId,
+          flangeTypeId
         );
         if (flangeSpecData) {
           log.debug(`🔧 Bend using dynamic flange specs: ${flangeSpecData.flangeMassKg}kg/flange`);
@@ -2250,13 +2275,18 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       // Fetch dynamic flange specs if available
       const effectiveFlangeStandardId = fittingEntry.specs?.flangeStandardId || rfqData.globalSpecs?.flangeStandardId;
       const effectiveFlangePressureClassId = fittingEntry.specs?.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
+      const effectiveFlangeTypeCode = fittingEntry.specs?.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
       let flangeSpecData: FlangeSpecData | null = null;
 
       if (effectiveFlangeStandardId && effectiveFlangePressureClassId && fittingEntry.specs?.nominalDiameterMm) {
+        const flangeTypeId = effectiveFlangeTypeCode
+          ? masterData.flangeTypes?.find((ft: any) => ft.code === effectiveFlangeTypeCode)?.id
+          : undefined;
         flangeSpecData = await fetchFlangeSpecsStatic(
           fittingEntry.specs.nominalDiameterMm,
           effectiveFlangeStandardId,
-          effectiveFlangePressureClassId
+          effectiveFlangePressureClassId,
+          flangeTypeId
         );
         if (flangeSpecData) {
           log.debug(`🔧 Fitting using dynamic flange specs: ${flangeSpecData.flangeMassKg}kg/flange`);

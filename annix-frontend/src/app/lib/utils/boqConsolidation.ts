@@ -20,6 +20,7 @@ export interface ConsolidationInput {
     pressureClassDesignation?: string;
     flangeStandardId?: number;
     flangePressureClassId?: number;
+    flangeTypeCode?: string;
   };
   masterData?: {
     flangeStandards?: { id: number; code: string }[];
@@ -43,7 +44,7 @@ function getFlangeSpec(
   entry: any,
   globalSpecs?: ConsolidationInput['globalSpecs'],
   masterData?: ConsolidationInput['masterData']
-): { spec: string; standard: string; pressureClass: string } {
+): { spec: string; standard: string; pressureClass: string; flangeTypeCode?: string } {
   const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
   const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
   const flangeStandard = flangeStandardId && masterData?.flangeStandards
@@ -52,8 +53,9 @@ function getFlangeSpec(
   const pressureClass = flangePressureClassId && masterData?.pressureClasses
     ? masterData.pressureClasses.find((p) => p.id === flangePressureClassId)?.designation || globalSpecs?.pressureClassDesignation || 'PN16'
     : globalSpecs?.pressureClassDesignation || 'PN16';
+  const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
   const spec = flangeStandard && pressureClass ? `${flangeStandard} ${pressureClass}` : pressureClass;
-  return { spec, standard: flangeStandard, pressureClass };
+  return { spec, standard: flangeStandard, pressureClass, flangeTypeCode };
 }
 
 function getFlangeCountFromConfig(config: string, itemType: string): { main: number; branch: number } {
@@ -114,7 +116,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
   entries.forEach((entry, index) => {
     const itemNumber = index + 1;
     const qty = entry.specs?.quantityValue || entry.calculation?.calculatedPipeCount || 1;
-    const { spec: flangeSpec, standard: flangeStandard, pressureClass } = getFlangeSpec(entry, globalSpecs, masterData);
+    const { spec: flangeSpec, standard: flangeStandard, pressureClass, flangeTypeCode } = getFlangeSpec(entry, globalSpecs, masterData);
 
     if (entry.itemType === 'bend') {
       const nb = entry.specs?.nominalBoreMm || 100;
@@ -126,7 +128,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         const flangeKey = `FLANGE_${nb}_${flangeSpec}_${flangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * qty;
-        const flangeWeight = getFlangeWeight(nb, pressureClass, flangeStandard);
+        const flangeWeight = getFlangeWeight(nb, pressureClass, flangeStandard, flangeTypeCode);
 
         if (existingFlange) {
           existingFlange.qty += flangeQty;
@@ -225,7 +227,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         const flangeKey = `FLANGE_${nb}_${flangeSpec}_${flangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * qty;
-        const flangeWeight = getFlangeWeight(nb, pressureClass, flangeStandard);
+        const flangeWeight = getFlangeWeight(nb, pressureClass, flangeStandard, flangeTypeCode);
 
         if (existingFlange) {
           existingFlange.qty += flangeQty;
@@ -288,7 +290,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         const branchFlangeKey = `FLANGE_${branchNb}_${flangeSpec}_${flangeTypeName}`;
         const existingBranchFlange = consolidatedFlanges.get(branchFlangeKey);
         const branchFlangeQty = flangeCount.branch * qty;
-        const branchFlangeWeight = getFlangeWeight(branchNb, pressureClass, flangeStandard);
+        const branchFlangeWeight = getFlangeWeight(branchNb, pressureClass, flangeStandard, flangeTypeCode);
 
         if (existingBranchFlange) {
           existingBranchFlange.qty += branchFlangeQty;
@@ -382,7 +384,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         const flangeKey = `FLANGE_${nb}_${flangeSpec}_${flangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * pipeQty;
-        const flangeWeight = getFlangeWeight(nb, pressureClass, flangeStandard);
+        const flangeWeight = getFlangeWeight(nb, pressureClass, flangeStandard, flangeTypeCode);
 
         if (existingFlange) {
           existingFlange.qty += flangeQty;

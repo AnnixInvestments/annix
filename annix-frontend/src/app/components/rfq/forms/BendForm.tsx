@@ -2160,40 +2160,52 @@ export default function BendForm({
                 }
                 previewContent={
                   <>
-                  {Bend3DPreview && (
-                    <Bend3DPreview
-                      nominalBore={entry.specs.nominalBoreMm}
-                      outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}
-                      wallThickness={entry.calculation?.wallThicknessMm || 5}
-                      bendAngle={entry.specs.bendDegrees}
-                      bendType={entry.specs.bendType || '1.5D'}
-                      tangent1={entry.specs?.tangentLengths?.[0] || 0}
-                      tangent2={entry.specs?.tangentLengths?.[1] || 0}
-                      schedule={entry.specs.scheduleNumber}
-                      materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
-                      numberOfSegments={entry.specs?.numberOfSegments}
-                      isSegmented={(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8}
-                      stubs={entry.specs?.stubs}
-                      numberOfStubs={entry.specs?.numberOfStubs || 0}
-                      flangeConfig={entry.specs?.bendEndConfiguration || 'PE'}
-                      closureLengthMm={entry.specs?.closureLengthMm || 0}
-                      addBlankFlange={entry.specs?.addBlankFlange}
-                      blankFlangePositions={entry.specs?.blankFlangePositions}
-                      savedCameraPosition={entry.specs?.savedCameraPosition}
-                      savedCameraTarget={entry.specs?.savedCameraTarget}
-                      onCameraChange={(position: [number, number, number], target: [number, number, number]) => {
-                        log.debug('BendForm onCameraChange called', JSON.stringify({ position, target, entryId: entry.id }))
-                        onUpdateEntry(entry.id, {
-                          specs: {
-                            ...entry.specs,
-                            savedCameraPosition: position,
-                            savedCameraTarget: target
-                          }
-                        })
-                      }}
-                      selectedNotes={entry.selectedNotes}
-                    />
-                  )}
+                  {Bend3DPreview && (() => {
+                    const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                    const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                    const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+                    const pressureClass = masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId);
+                    const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const flangeStandardName = flangeStandard?.code === 'SABS_1123' ? 'SABS 1123' : flangeStandard?.code === 'BS_4504' ? 'BS 4504' : flangeStandard?.code?.replace(/_/g, ' ') || '';
+                    const pressureClassDesignation = pressureClass?.designation || '';
+                    return (
+                      <Bend3DPreview
+                        nominalBore={entry.specs.nominalBoreMm}
+                        outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}
+                        wallThickness={entry.calculation?.wallThicknessMm || 5}
+                        bendAngle={entry.specs.bendDegrees}
+                        bendType={entry.specs.bendType || '1.5D'}
+                        tangent1={entry.specs?.tangentLengths?.[0] || 0}
+                        tangent2={entry.specs?.tangentLengths?.[1] || 0}
+                        schedule={entry.specs.scheduleNumber}
+                        materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                        numberOfSegments={entry.specs?.numberOfSegments}
+                        isSegmented={(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8}
+                        stubs={entry.specs?.stubs}
+                        numberOfStubs={entry.specs?.numberOfStubs || 0}
+                        flangeConfig={entry.specs?.bendEndConfiguration || 'PE'}
+                        closureLengthMm={entry.specs?.closureLengthMm || 0}
+                        addBlankFlange={entry.specs?.addBlankFlange}
+                        blankFlangePositions={entry.specs?.blankFlangePositions}
+                        savedCameraPosition={entry.specs?.savedCameraPosition}
+                        savedCameraTarget={entry.specs?.savedCameraTarget}
+                        onCameraChange={(position: [number, number, number], target: [number, number, number]) => {
+                          log.debug('BendForm onCameraChange called', JSON.stringify({ position, target, entryId: entry.id }))
+                          onUpdateEntry(entry.id, {
+                            specs: {
+                              ...entry.specs,
+                              savedCameraPosition: position,
+                              savedCameraTarget: target
+                            }
+                          })
+                        }}
+                        selectedNotes={entry.selectedNotes}
+                        flangeStandardName={flangeStandardName}
+                        pressureClassDesignation={pressureClassDesignation}
+                        flangeTypeCode={flangeTypeCode}
+                      />
+                    );
+                  })()}
 
                   {/* Smart Notes Dropdown - Below 3D Preview */}
                   <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
@@ -2292,9 +2304,10 @@ export default function BendForm({
                           const flangeStandardCode = flangeStandard?.code || '';
                           const pressureClass = masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId);
                           const pressureClassDesignation = pressureClass?.designation || '';
+                          const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
                           const flangeWeightPerUnit = dn && pressureClassDesignation
-                            ? getFlangeWeight(dn, pressureClassDesignation, flangeStandardCode)
+                            ? getFlangeWeight(dn, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
                             : (entry.calculation?.flangeWeightPerUnit || 0);
                           const dynamicTotalFlangeWeight = totalFlanges * flangeWeightPerUnit;
 

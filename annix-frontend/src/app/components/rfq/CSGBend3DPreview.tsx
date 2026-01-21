@@ -38,6 +38,9 @@ interface Props {
   onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void
   selectedNotes?: string[]
   flangeSpecs?: FlangeSpecData | null
+  flangeStandardName?: string
+  pressureClassDesignation?: string
+  flangeTypeCode?: string
 }
 
 const SCALE = 200
@@ -1115,7 +1118,9 @@ export default function CSGBend3DPreview(props: Props) {
                   <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
                   <div className="text-gray-700">Holes: {flangeSpecs.boltHoles} × Ø{flangeSpecs.holeID}mm</div>
                   <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize}</div>
-                  <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
+                  <div className="text-green-700 font-medium">
+                    {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+                  </div>
                 </>
               )}
             </>
@@ -1200,7 +1205,9 @@ export default function CSGBend3DPreview(props: Props) {
                         <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
                         <div className="text-gray-700">Holes: {flangeSpecs.boltHoles} × Ø{flangeSpecs.holeID}mm</div>
                         <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize}</div>
-                        <div className="text-green-700 font-medium">SABS 1123 T1000/3</div>
+                        <div className="text-green-700 font-medium">
+                          {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+                        </div>
                       </>
                     )}
                   </>

@@ -1227,27 +1227,39 @@ export default function StraightPipeForm({
                   </>
                 }
                 previewContent={
-                  Pipe3DPreview ? (
-                    <Pipe3DPreview
-                      length={entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M}
-                      outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
-                      wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
-                      endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
-                      materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
-                      nominalBoreMm={entry.specs.nominalBoreMm}
-                      pressureClass={globalSpecs?.pressureClassDesignation || 'PN16'}
-                      addBlankFlange={entry.specs?.addBlankFlange}
-                      blankFlangePositions={entry.specs?.blankFlangePositions}
-                      savedCameraPosition={entry.specs?.savedCameraPosition}
-                      savedCameraTarget={entry.specs?.savedCameraTarget}
-                      onCameraChange={(position: [number, number, number], target: [number, number, number]) => {
-                        onUpdateEntry(entry.id, {
-                          specs: { ...entry.specs, savedCameraPosition: position, savedCameraTarget: target }
-                        });
-                      }}
-                      selectedNotes={entry.selectedNotes}
-                    />
-                  ) : null
+                  Pipe3DPreview ? (() => {
+                    const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                    const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                    const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+                    const pressureClass = masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId);
+                    const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const flangeStandardName = flangeStandard?.code === 'SABS_1123' ? 'SABS 1123' : flangeStandard?.code === 'BS_4504' ? 'BS 4504' : flangeStandard?.code?.replace(/_/g, ' ') || '';
+                    const pressureClassDesignation = pressureClass?.designation || '';
+                    return (
+                      <Pipe3DPreview
+                        length={entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M}
+                        outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
+                        wallThickness={entry.calculation?.wallThicknessMm || entry.specs.wallThicknessMm || 5}
+                        endConfiguration={entry.specs.pipeEndConfiguration || 'PE'}
+                        materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                        nominalBoreMm={entry.specs.nominalBoreMm}
+                        pressureClass={globalSpecs?.pressureClassDesignation || 'PN16'}
+                        addBlankFlange={entry.specs?.addBlankFlange}
+                        blankFlangePositions={entry.specs?.blankFlangePositions}
+                        savedCameraPosition={entry.specs?.savedCameraPosition}
+                        savedCameraTarget={entry.specs?.savedCameraTarget}
+                        onCameraChange={(position: [number, number, number], target: [number, number, number]) => {
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, savedCameraPosition: position, savedCameraTarget: target }
+                          });
+                        }}
+                        selectedNotes={entry.selectedNotes}
+                        flangeStandardName={flangeStandardName}
+                        pressureClassDesignation={pressureClassDesignation}
+                        flangeTypeCode={flangeTypeCode}
+                      />
+                    );
+                  })() : null
                 }
                 calcResultsContent={
                   <div className="mt-4">
@@ -1294,9 +1306,10 @@ export default function StraightPipeForm({
                             const flangeStandardCode = flangeStandard?.code || '';
                             const pressureClass = masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId);
                             const pressureClassDesignation = pressureClass?.designation || '';
+                            const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
                             const flangeWeightPerUnit = nominalBore && pressureClassDesignation
-                              ? getFlangeWeight(nominalBore, pressureClassDesignation, flangeStandardCode)
+                              ? getFlangeWeight(nominalBore, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
                               : (entry.calculation?.flangeWeightPerUnit || 0);
                             const dynamicTotalFlangeWeight = totalFlanges * flangeWeightPerUnit;
 
@@ -1365,9 +1378,10 @@ export default function StraightPipeForm({
                             const flangeStandardCode = flangeStandard?.code || '';
                             const pressureClass = masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId);
                             const pressureClassDesignation = pressureClass?.designation || '';
+                            const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
                             const flangeWeightPerUnit = nominalBore && pressureClassDesignation
-                              ? getFlangeWeight(nominalBore, pressureClassDesignation, flangeStandardCode)
+                              ? getFlangeWeight(nominalBore, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
                               : (entry.calculation?.flangeWeightPerUnit || 0);
                             const totalFlangeWeight = totalFlanges * flangeWeightPerUnit;
 

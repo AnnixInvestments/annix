@@ -1551,12 +1551,13 @@ export default function FittingForm({
                         const flangeStandardCode = flangeStandard?.code || '';
                         const pressureClass = masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId);
                         const pressureClassDesignation = pressureClass?.designation || '';
+                        const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
                         const mainFlangeWeightPerUnit = nominalBore && pressureClassDesignation
-                          ? getFlangeWeight(nominalBore, pressureClassDesignation, flangeStandardCode)
+                          ? getFlangeWeight(nominalBore, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
                           : 0;
                         const branchFlangeWeightPerUnit = branchNB && pressureClassDesignation
-                          ? getFlangeWeight(branchNB, pressureClassDesignation, flangeStandardCode)
+                          ? getFlangeWeight(branchNB, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
                           : 0;
 
                         const mainFlangeCount = (flangeConfig.hasInlet ? 1 : 0) + (flangeConfig.hasOutlet ? 1 : 0);
@@ -1747,6 +1748,14 @@ export default function FittingForm({
                         s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId)
                       );
 
+                      const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                      const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                      const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+                      const pressureClass = masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId);
+                      const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                      const flangeStandardName = flangeStandard?.code === 'SABS_1123' ? 'SABS 1123' : flangeStandard?.code === 'BS_4504' ? 'BS 4504' : flangeStandard?.code?.replace(/_/g, ' ') || '';
+                      const pressureClassDesignation = pressureClass?.designation || '';
+
                       return (
                         <Tee3DPreview
                           nominalBore={nominalBore}
@@ -1775,6 +1784,9 @@ export default function FittingForm({
                             });
                           }}
                           selectedNotes={entry.selectedNotes}
+                          flangeStandardName={flangeStandardName}
+                          pressureClassDesignation={pressureClassDesignation}
+                          flangeTypeCode={flangeTypeCode}
                         />
                       );
                     })()}

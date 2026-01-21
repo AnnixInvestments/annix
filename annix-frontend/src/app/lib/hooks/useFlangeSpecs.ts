@@ -23,7 +23,8 @@ export interface UseFlangeSpecsReturn {
   lookupFlangeSpecs: (
     nominalBoreMm: number,
     flangeStandardId: number,
-    flangePressureClassId: number
+    flangePressureClassId: number,
+    flangeTypeId?: number
   ) => Promise<FlangeSpecData | null>;
 }
 
@@ -32,7 +33,8 @@ export function useFlangeSpecs(): UseFlangeSpecsReturn {
     async (
       nominalBoreMm: number,
       flangeStandardId: number,
-      flangePressureClassId: number
+      flangePressureClassId: number,
+      flangeTypeId?: number
     ): Promise<FlangeSpecData | null> => {
       if (!nominalBoreMm || !flangeStandardId || !flangePressureClassId) {
         return null;
@@ -40,13 +42,14 @@ export function useFlangeSpecs(): UseFlangeSpecsReturn {
 
       try {
         log.debug(
-          `Looking up flange specs: NB=${nominalBoreMm}mm, standard=${flangeStandardId}, class=${flangePressureClassId}`
+          `Looking up flange specs: NB=${nominalBoreMm}mm, standard=${flangeStandardId}, class=${flangePressureClassId}, type=${flangeTypeId}`
         );
 
         const result = await masterDataApi.lookupFlangeDimension(
           nominalBoreMm,
           flangeStandardId,
-          flangePressureClassId
+          flangePressureClassId,
+          flangeTypeId
         );
 
         if (!result) {
@@ -88,7 +91,8 @@ export function useFlangeSpecs(): UseFlangeSpecsReturn {
 export async function fetchFlangeSpecsStatic(
   nominalBoreMm: number,
   flangeStandardId: number,
-  flangePressureClassId: number
+  flangePressureClassId: number,
+  flangeTypeId?: number
 ): Promise<FlangeSpecData | null> {
   if (!nominalBoreMm || !flangeStandardId || !flangePressureClassId) {
     return null;
@@ -98,7 +102,8 @@ export async function fetchFlangeSpecsStatic(
     const result = await masterDataApi.lookupFlangeDimension(
       nominalBoreMm,
       flangeStandardId,
-      flangePressureClassId
+      flangePressureClassId,
+      flangeTypeId
     );
 
     if (!result) {
