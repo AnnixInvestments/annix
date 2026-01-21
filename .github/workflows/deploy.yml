@@ -52,7 +52,12 @@ jobs:
         run: cp pnpm-lock.yaml annix-backend/
 
       - name: Deploy Backend to Fly.io
-        run: flyctl deploy -c annix-backend/fly.toml
+        run: |
+          for i in 1 2 3; do
+            flyctl deploy -c annix-backend/fly.toml && break
+            echo "Deploy attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
 
   deploy-frontend:
     name: Deploy Frontend
@@ -70,7 +75,12 @@ jobs:
 
       - name: Deploy Frontend to Fly.io
         working-directory: ./annix-frontend
-        run: flyctl deploy
+        run: |
+          for i in 1 2 3; do
+            flyctl deploy && break
+            echo "Deploy attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
 
       - name: Get Frontend Logs on Failure
         if: failure()
