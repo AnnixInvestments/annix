@@ -6,6 +6,7 @@ import { RfqItem } from './entities/rfq-item.entity';
 import { StraightPipeRfq } from './entities/straight-pipe-rfq.entity';
 import { BendRfq } from './entities/bend-rfq.entity';
 import { FittingRfq } from './entities/fitting-rfq.entity';
+import { ExpansionJointRfq } from './entities/expansion-joint-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
 import { RfqSequence } from './entities/rfq-sequence.entity';
@@ -204,6 +205,16 @@ describe('RfqService', () => {
           useValue: mockFittingRfqRepo,
         },
         {
+          provide: getRepositoryToken(ExpansionJointRfq),
+          useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+            find: jest.fn(),
+            findOne: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
           provide: getRepositoryToken(RfqDocument),
           useValue: mockRfqDocumentRepo,
         },
@@ -283,6 +294,9 @@ describe('RfqService', () => {
           'items',
           'items.straightPipeDetails',
           'items.straightPipeDetails.steelSpecification',
+          'items.bendDetails',
+          'items.fittingDetails',
+          'items.expansionJointDetails',
           'drawings',
           'boqs',
         ],

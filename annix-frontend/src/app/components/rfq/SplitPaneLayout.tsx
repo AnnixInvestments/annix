@@ -8,7 +8,7 @@ interface SplitPaneLayoutProps {
   previewContent: React.ReactNode;
   calcResultsContent?: React.ReactNode;
   showSplitToggle: boolean;
-  itemType: 'straight_pipe' | 'bend' | 'fitting' | 'pipe_steel_work';
+  itemType: 'straight_pipe' | 'bend' | 'fitting' | 'pipe_steel_work' | 'expansion_joint';
 }
 
 export default function SplitPaneLayout({
@@ -165,6 +165,13 @@ export default function SplitPaneLayout({
       hoverFrom: 'hover:from-orange-600',
       hoverTo: 'hover:to-orange-700',
       divider: 'hover:bg-orange-500'
+    },
+    expansion_joint: {
+      from: 'from-purple-500',
+      to: 'to-purple-600',
+      hoverFrom: 'hover:from-purple-600',
+      hoverTo: 'hover:to-purple-700',
+      divider: 'hover:bg-purple-500'
     }
   }[itemType];
 

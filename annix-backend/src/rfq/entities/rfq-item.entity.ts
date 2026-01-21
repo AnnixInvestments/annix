@@ -13,6 +13,7 @@ import { StraightPipeRfq } from './straight-pipe-rfq.entity';
 import { BendRfq } from './bend-rfq.entity';
 import { FittingRfq } from './fitting-rfq.entity';
 import { PipeSteelWorkRfq } from './pipe-steel-work-rfq.entity';
+import { ExpansionJointRfq } from './expansion-joint-rfq.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum RfqItemType {
@@ -22,6 +23,7 @@ export enum RfqItemType {
   FLANGE = 'flange',
   CUSTOM = 'custom',
   PIPE_STEEL_WORK = 'pipe_steel_work',
+  EXPANSION_JOINT = 'expansion_joint',
 }
 
 @Entity('rfq_items')
@@ -144,6 +146,21 @@ export class RfqItem {
     nullable: true,
   })
   pipeSteelWorkDetails?: PipeSteelWorkRfq;
+
+  @ApiProperty({
+    description: 'Expansion joint details (if item type is expansion_joint)',
+    required: false,
+    type: () => ExpansionJointRfq,
+  })
+  @OneToOne(
+    () => ExpansionJointRfq,
+    (expansionJoint) => expansionJoint.rfqItem,
+    {
+      cascade: true,
+      nullable: true,
+    },
+  )
+  expansionJointDetails?: ExpansionJointRfq;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

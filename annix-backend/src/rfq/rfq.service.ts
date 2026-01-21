@@ -19,6 +19,13 @@ import {
 } from './entities/straight-pipe-rfq.entity';
 import { BendRfq } from './entities/bend-rfq.entity';
 import { FittingRfq } from './entities/fitting-rfq.entity';
+import {
+  ExpansionJointRfq,
+  ExpansionJointType,
+  BellowsJointType,
+  BellowsMaterial,
+  FabricatedLoopType,
+} from './entities/expansion-joint-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
 import { RfqSequence } from './entities/rfq-sequence.entity';
@@ -73,6 +80,8 @@ export class RfqService {
     private bendRfqRepository: Repository<BendRfq>,
     @InjectRepository(FittingRfq)
     private fittingRfqRepository: Repository<FittingRfq>,
+    @InjectRepository(ExpansionJointRfq)
+    private expansionJointRfqRepository: Repository<ExpansionJointRfq>,
     @InjectRepository(RfqDocument)
     private rfqDocumentRepository: Repository<RfqDocument>,
     @InjectRepository(RfqDraft)
@@ -637,6 +646,52 @@ export class RfqService {
         this.logger.log(
           `Created fitting item #${lineNumber}: ${item.description}`,
         );
+      } else if (item.itemType === 'expansion_joint' && item.expansionJoint) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.EXPANSION_JOINT,
+          quantity: item.expansionJoint.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const expansionJointRfq = this.expansionJointRfqRepository.create({
+          expansionJointType:
+            item.expansionJoint.expansionJointType as ExpansionJointType,
+          nominalDiameterMm: item.expansionJoint.nominalDiameterMm,
+          scheduleNumber: item.expansionJoint.scheduleNumber,
+          wallThicknessMm: item.expansionJoint.wallThicknessMm,
+          outsideDiameterMm: item.expansionJoint.outsideDiameterMm,
+          quantityValue: item.expansionJoint.quantityValue || 1,
+          bellowsJointType:
+            item.expansionJoint.bellowsJointType as BellowsJointType,
+          bellowsMaterial: item.expansionJoint.bellowsMaterial as BellowsMaterial,
+          axialMovementMm: item.expansionJoint.axialMovementMm,
+          lateralMovementMm: item.expansionJoint.lateralMovementMm,
+          angularMovementDeg: item.expansionJoint.angularMovementDeg,
+          supplierReference: item.expansionJoint.supplierReference,
+          catalogNumber: item.expansionJoint.catalogNumber,
+          unitCostFromSupplier: item.expansionJoint.unitCostFromSupplier,
+          markupPercentage: item.expansionJoint.markupPercentage || 15,
+          loopType: item.expansionJoint.loopType as FabricatedLoopType,
+          loopHeightMm: item.expansionJoint.loopHeightMm,
+          loopWidthMm: item.expansionJoint.loopWidthMm,
+          pipeLengthTotalMm: item.expansionJoint.pipeLengthTotalMm,
+          numberOfElbows: item.expansionJoint.numberOfElbows,
+          endConfiguration: item.expansionJoint.endConfiguration,
+          totalWeightKg: item.totalWeightKg,
+          calculationData: item.expansionJoint.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.expansionJointRfqRepository.save(expansionJointRfq);
+        this.logger.log(
+          `Created expansion joint item #${lineNumber}: ${item.description}`,
+        );
       }
     }
 
@@ -647,6 +702,7 @@ export class RfqService {
         'items.straightPipeDetails',
         'items.bendDetails',
         'items.fittingDetails',
+        'items.expansionJointDetails',
       ],
     });
 
@@ -831,6 +887,49 @@ export class RfqService {
         });
 
         await this.fittingRfqRepository.save(fittingRfq);
+      } else if (item.itemType === 'expansion_joint' && item.expansionJoint) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.EXPANSION_JOINT,
+          quantity: item.expansionJoint.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const expansionJointRfq = this.expansionJointRfqRepository.create({
+          expansionJointType:
+            item.expansionJoint.expansionJointType as ExpansionJointType,
+          nominalDiameterMm: item.expansionJoint.nominalDiameterMm,
+          scheduleNumber: item.expansionJoint.scheduleNumber,
+          wallThicknessMm: item.expansionJoint.wallThicknessMm,
+          outsideDiameterMm: item.expansionJoint.outsideDiameterMm,
+          quantityValue: item.expansionJoint.quantityValue || 1,
+          bellowsJointType:
+            item.expansionJoint.bellowsJointType as BellowsJointType,
+          bellowsMaterial: item.expansionJoint.bellowsMaterial as BellowsMaterial,
+          axialMovementMm: item.expansionJoint.axialMovementMm,
+          lateralMovementMm: item.expansionJoint.lateralMovementMm,
+          angularMovementDeg: item.expansionJoint.angularMovementDeg,
+          supplierReference: item.expansionJoint.supplierReference,
+          catalogNumber: item.expansionJoint.catalogNumber,
+          unitCostFromSupplier: item.expansionJoint.unitCostFromSupplier,
+          markupPercentage: item.expansionJoint.markupPercentage || 15,
+          loopType: item.expansionJoint.loopType as FabricatedLoopType,
+          loopHeightMm: item.expansionJoint.loopHeightMm,
+          loopWidthMm: item.expansionJoint.loopWidthMm,
+          pipeLengthTotalMm: item.expansionJoint.pipeLengthTotalMm,
+          numberOfElbows: item.expansionJoint.numberOfElbows,
+          endConfiguration: item.expansionJoint.endConfiguration,
+          totalWeightKg: item.totalWeightKg,
+          calculationData: item.expansionJoint.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.expansionJointRfqRepository.save(expansionJointRfq);
       }
     }
 
@@ -841,6 +940,7 @@ export class RfqService {
         'items.straightPipeDetails',
         'items.bendDetails',
         'items.fittingDetails',
+        'items.expansionJointDetails',
       ],
     });
 
@@ -880,6 +980,9 @@ export class RfqService {
         'items',
         'items.straightPipeDetails',
         'items.straightPipeDetails.steelSpecification',
+        'items.bendDetails',
+        'items.fittingDetails',
+        'items.expansionJointDetails',
         'drawings',
         'boqs',
       ],

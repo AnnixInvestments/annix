@@ -194,6 +194,115 @@ export class UnifiedBendDto {
   flangePressureClassId?: number;
 }
 
+export class UnifiedExpansionJointDto {
+  @ApiProperty({ description: 'Expansion joint type', example: 'bought_in_bellows' })
+  @IsString()
+  expansionJointType: string;
+
+  @ApiProperty({ description: 'Nominal diameter in mm', example: 200 })
+  @IsNumber()
+  nominalDiameterMm: number;
+
+  @ApiProperty({ description: 'Schedule number', required: false })
+  @IsOptional()
+  @IsString()
+  scheduleNumber?: string;
+
+  @ApiProperty({ description: 'Wall thickness in mm', required: false })
+  @IsOptional()
+  @IsNumber()
+  wallThicknessMm?: number;
+
+  @ApiProperty({ description: 'Outside diameter in mm', required: false })
+  @IsOptional()
+  @IsNumber()
+  outsideDiameterMm?: number;
+
+  @ApiProperty({ description: 'Quantity', example: 1 })
+  @IsOptional()
+  @IsNumber()
+  quantityValue?: number;
+
+  @ApiProperty({ description: 'Bellows joint type', required: false })
+  @IsOptional()
+  @IsString()
+  bellowsJointType?: string;
+
+  @ApiProperty({ description: 'Bellows material', required: false })
+  @IsOptional()
+  @IsString()
+  bellowsMaterial?: string;
+
+  @ApiProperty({ description: 'Axial movement in mm', required: false })
+  @IsOptional()
+  @IsNumber()
+  axialMovementMm?: number;
+
+  @ApiProperty({ description: 'Lateral movement in mm', required: false })
+  @IsOptional()
+  @IsNumber()
+  lateralMovementMm?: number;
+
+  @ApiProperty({ description: 'Angular movement in degrees', required: false })
+  @IsOptional()
+  @IsNumber()
+  angularMovementDeg?: number;
+
+  @ApiProperty({ description: 'Supplier reference', required: false })
+  @IsOptional()
+  @IsString()
+  supplierReference?: string;
+
+  @ApiProperty({ description: 'Catalog number', required: false })
+  @IsOptional()
+  @IsString()
+  catalogNumber?: string;
+
+  @ApiProperty({ description: 'Unit cost from supplier', required: false })
+  @IsOptional()
+  @IsNumber()
+  unitCostFromSupplier?: number;
+
+  @ApiProperty({ description: 'Markup percentage', required: false })
+  @IsOptional()
+  @IsNumber()
+  markupPercentage?: number;
+
+  @ApiProperty({ description: 'Fabricated loop type', required: false })
+  @IsOptional()
+  @IsString()
+  loopType?: string;
+
+  @ApiProperty({ description: 'Loop height in mm', required: false })
+  @IsOptional()
+  @IsNumber()
+  loopHeightMm?: number;
+
+  @ApiProperty({ description: 'Loop width in mm', required: false })
+  @IsOptional()
+  @IsNumber()
+  loopWidthMm?: number;
+
+  @ApiProperty({ description: 'Total pipe length in mm', required: false })
+  @IsOptional()
+  @IsNumber()
+  pipeLengthTotalMm?: number;
+
+  @ApiProperty({ description: 'Number of elbows', required: false })
+  @IsOptional()
+  @IsNumber()
+  numberOfElbows?: number;
+
+  @ApiProperty({ description: 'End configuration', required: false })
+  @IsOptional()
+  @IsString()
+  endConfiguration?: string;
+
+  @ApiProperty({ description: 'Calculation data', required: false })
+  @IsOptional()
+  calculationData?: Record<string, any>;
+}
+
 export class UnifiedFittingDto {
   @ApiProperty({ description: 'Nominal diameter in mm', example: 500 })
   @IsNumber()
@@ -281,7 +390,7 @@ export class UnifiedFittingDto {
 export class UnifiedRfqItemDto {
   @ApiProperty({ description: 'Item type', example: 'straight_pipe' })
   @IsString()
-  itemType: 'straight_pipe' | 'bend' | 'fitting';
+  itemType: 'straight_pipe' | 'bend' | 'fitting' | 'expansion_joint';
 
   @ApiProperty({ description: 'Item description' })
   @IsString()
@@ -326,6 +435,15 @@ export class UnifiedRfqItemDto {
   @ValidateNested()
   @Type(() => UnifiedFittingDto)
   fitting?: UnifiedFittingDto;
+
+  @ApiProperty({
+    description: 'Expansion joint specs (if itemType is expansion_joint)',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UnifiedExpansionJointDto)
+  expansionJoint?: UnifiedExpansionJointDto;
 }
 
 export class CreateUnifiedRfqDto {
