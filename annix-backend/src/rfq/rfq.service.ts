@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository, Not, In } from 'typeorm';
 import { now, fromISO } from '../lib/datetime';
 import { Rfq, RfqStatus } from './entities/rfq.entity';
 import { RfqItem, RfqItemType } from './entities/rfq-item.entity';
@@ -1314,9 +1314,6 @@ export class RfqService {
     return this.mapDraftToResponse(savedDraft);
   }
 
-  /**
-   * Get all drafts for a user (including submitted/converted ones)
-   */
   async getDrafts(userId: number): Promise<RfqDraftResponseDto[]> {
     const drafts = await this.rfqDraftRepository
       .createQueryBuilder('draft')
@@ -1325,19 +1322,88 @@ export class RfqService {
       .orderBy('draft.updated_at', 'DESC')
       .getMany();
 
-    const responses = await Promise.all(
-      drafts.map(async (draft) => {
-        const response = this.mapDraftToResponse(draft);
-        if (draft.isConverted && draft.convertedRfqId) {
-          response.supplierCounts = await this.supplierCountsForRfq(
-            draft.convertedRfqId,
-          );
-        }
-        return response;
-      }),
-    );
+    const convertedRfqIds = drafts
+      .filter((draft) => draft.isConverted && draft.convertedRfqId)
+      .map((draft) => draft.convertedRfqId as number);
 
-    return responses;
+    const supplierCountsMap =
+      convertedRfqIds.length > 0
+        ? await this.batchSupplierCountsForRfqs(convertedRfqIds)
+        : new Map<number, { pending: number; declined: number; intendToQuote: number; quoted: number }>();
+
+    return drafts.map((draft) => {
+      const response = this.mapDraftToResponse(draft);
+      if (draft.isConverted && draft.convertedRfqId) {
+        response.supplierCounts = supplierCountsMap.get(draft.convertedRfqId) || {
+          pending: 0,
+          declined: 0,
+          intendToQuote: 0,
+          quoted: 0,
+        };
+      }
+      return response;
+    });
+  }
+
+  private async batchSupplierCountsForRfqs(
+    rfqIds: number[],
+  ): Promise<Map<number, { pending: number; declined: number; intendToQuote: number; quoted: number }>> {
+    const boqs = await this.boqRepository
+      .createQueryBuilder('boq')
+      .select(['boq.id', 'boq.rfq'])
+      .innerJoin('boq.rfq', 'rfq')
+      .addSelect('rfq.id')
+      .where('rfq.id IN (:...rfqIds)', { rfqIds })
+      .getMany();
+
+    if (boqs.length === 0) {
+      return new Map();
+    }
+
+    const boqIdToRfqId = new Map(boqs.map((b) => [b.id, b.rfq?.id as number]));
+    const boqIds = boqs.map((b) => b.id);
+
+    const counts = await this.boqSupplierAccessRepository
+      .createQueryBuilder('access')
+      .select('access.boq_id', 'boqId')
+      .addSelect('access.status', 'status')
+      .addSelect('COUNT(DISTINCT access.supplier_profile_id)', 'count')
+      .where('access.boq_id IN (:...boqIds)', { boqIds })
+      .groupBy('access.boq_id')
+      .addGroupBy('access.status')
+      .getRawMany<{ boqId: number; status: string; count: string }>();
+
+    const resultMap = new Map<number, { pending: number; declined: number; intendToQuote: number; quoted: number }>();
+
+    rfqIds.forEach((rfqId) => {
+      resultMap.set(rfqId, { pending: 0, declined: 0, intendToQuote: 0, quoted: 0 });
+    });
+
+    counts.forEach((row) => {
+      const rfqId = boqIdToRfqId.get(row.boqId);
+      if (rfqId === undefined) return;
+
+      const result = resultMap.get(rfqId);
+      if (!result) return;
+
+      const count = parseInt(row.count, 10);
+      switch (row.status) {
+        case SupplierBoqStatus.PENDING:
+          result.pending += count;
+          break;
+        case SupplierBoqStatus.DECLINED:
+          result.declined += count;
+          break;
+        case SupplierBoqStatus.VIEWED:
+          result.intendToQuote += count;
+          break;
+        case SupplierBoqStatus.QUOTED:
+          result.quoted += count;
+          break;
+      }
+    });
+
+    return resultMap;
   }
 
   /**
@@ -1547,58 +1613,73 @@ export class RfqService {
       return { suppliersNotified: 0, suppliersSkipped: 0 };
     }
 
-    for (const boq of boqs) {
-      const supplierAccessRecords = await this.boqSupplierAccessRepository.find(
-        {
-          where: {
-            boqId: boq.id,
-            status: Not(SupplierBoqStatus.DECLINED),
-          },
+    const boqIds = boqs.map((boq) => boq.id);
+
+    const allSupplierAccessRecords = await this.boqSupplierAccessRepository.find(
+      {
+        where: {
+          boqId: In(boqIds),
+          status: Not(SupplierBoqStatus.DECLINED),
         },
-      );
+      },
+    );
 
-      for (const access of supplierAccessRecords) {
-        try {
-          const supplierProfile = await this.supplierProfileRepository.findOne({
-            where: { id: access.supplierProfileId },
-            relations: ['user', 'company'],
-          });
+    if (allSupplierAccessRecords.length === 0) {
+      this.logger.log(`No supplier access records found for RFQ ${rfq.rfqNumber}`);
+      return { suppliersNotified: 0, suppliersSkipped: 0 };
+    }
 
-          if (!supplierProfile?.user?.email) {
-            this.logger.warn(
-              `Supplier profile ${access.supplierProfileId} has no email - skipping`,
-            );
-            suppliersSkipped++;
-            continue;
-          }
+    const supplierProfileIds = [
+      ...new Set(allSupplierAccessRecords.map((access) => access.supplierProfileId)),
+    ];
 
-          const supplierName =
-            supplierProfile.company?.tradingName ||
-            supplierProfile.company?.legalName ||
-            `${supplierProfile.firstName} ${supplierProfile.lastName}`;
+    const supplierProfiles = await this.supplierProfileRepository.find({
+      where: { id: In(supplierProfileIds) },
+      relations: ['user', 'company'],
+    });
 
-          const success = await this.emailService.sendRfqUpdateNotification(
-            supplierProfile.user.email,
-            supplierName,
-            rfq.projectName,
-            rfq.rfqNumber,
-          );
+    const supplierProfileMap = new Map(
+      supplierProfiles.map((profile) => [profile.id, profile]),
+    );
 
-          if (success) {
-            suppliersNotified++;
-            this.logger.log(
-              `Notified supplier ${supplierProfile.user.email} of RFQ update`,
-            );
-          } else {
-            suppliersSkipped++;
-          }
-        } catch (error) {
-          this.logger.error(
-            `Failed to notify supplier ${access.supplierProfileId}:`,
-            error,
+    for (const access of allSupplierAccessRecords) {
+      try {
+        const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
+
+        if (!supplierProfile?.user?.email) {
+          this.logger.warn(
+            `Supplier profile ${access.supplierProfileId} has no email - skipping`,
           );
           suppliersSkipped++;
+          continue;
         }
+
+        const supplierName =
+          supplierProfile.company?.tradingName ||
+          supplierProfile.company?.legalName ||
+          `${supplierProfile.firstName} ${supplierProfile.lastName}`;
+
+        const success = await this.emailService.sendRfqUpdateNotification(
+          supplierProfile.user.email,
+          supplierName,
+          rfq.projectName,
+          rfq.rfqNumber,
+        );
+
+        if (success) {
+          suppliersNotified++;
+          this.logger.log(
+            `Notified supplier ${supplierProfile.user.email} of RFQ update`,
+          );
+        } else {
+          suppliersSkipped++;
+        }
+      } catch (error) {
+        this.logger.error(
+          `Failed to notify supplier ${access.supplierProfileId}:`,
+          error,
+        );
+        suppliersSkipped++;
       }
     }
 
