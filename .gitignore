@@ -56,3 +56,4 @@ FLY_DEPLOYMENT_TECHNICAL_DOCS.md
 
 # Secret patterns file - contains actual secrets for detection
 .secret-patterns
+.parallel-claude-projects.json

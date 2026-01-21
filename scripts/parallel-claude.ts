@@ -1,9 +1,10 @@
 #!/usr/bin/env npx ts-node
 
-import { select, confirm, input } from '@inquirer/prompts';
+import { select, confirm, input, checkbox } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { execSync, spawn, ChildProcess } from 'child_process';
-import { existsSync, openSync, readFileSync, writeFileSync, watchFile, unwatchFile } from 'fs';
+import { existsSync, openSync, readFileSync, writeFileSync, unlinkSync, mkdtempSync } from 'fs';
+import { tmpdir } from 'os';
 import { join } from 'path';
 import { emitKeypressEvents } from 'readline';
 
@@ -62,6 +63,8 @@ interface Session {
   project: string;
   status: 'working' | 'complete' | 'error' | 'idle';
   lastActivity: string;
+  tty: string | null;
+  isOrphaned: boolean;
 }
 
 const DEFAULT_ROOT_DIR = join(__dirname, '..');
@@ -288,29 +291,28 @@ function detectClaudeSessions(): Session[] {
 
   try {
     const platform = process.platform;
-    let output = '';
 
     if (platform === 'darwin' || platform === 'linux') {
-      output = exec('ps aux | grep -E "claude" | grep -v grep | grep -v "parallel-claude"', { silent: true });
-    } else if (platform === 'win32') {
-      output = exec('tasklist /FI "IMAGENAME eq node.exe" /FO CSV', { silent: true });
-    }
+      const output = exec('ps -eo pid,tty,command | grep -E "[c]laude" | grep -v "parallel-claude"', { silent: true });
+      const lines = output.split('\n').filter(line => line.trim());
 
-    const lines = output.split('\n').filter(line => line.includes('claude'));
+      lines.forEach((line) => {
+        const match = line.trim().match(/^(\d+)\s+(\S+)\s+(.*)$/);
+        if (match) {
+          const pid = parseInt(match[1], 10);
+          const tty = match[2];
+          const command = match[3];
 
-    lines.forEach((line) => {
-      const pidMatch = line.match(/\s+(\d+)\s+/);
-      if (pidMatch) {
-        const pid = parseInt(pidMatch[1], 10);
+          if (seenPids.has(pid)) return;
+          if (!command.includes('claude')) return;
+          seenPids.add(pid);
 
-        if (seenPids.has(pid)) return;
-        seenPids.add(pid);
+          const isOrphaned = tty === '??' || tty === '?';
 
-        let branch = 'unknown';
-        let cwd = '';
-        let project = 'unknown';
+          let branch = 'unknown';
+          let cwd = '';
+          let project = 'unknown';
 
-        if (platform === 'darwin' || platform === 'linux') {
           const lsofOutput = exec(`lsof -p ${pid} 2>/dev/null | grep cwd | head -1`, { silent: true });
           const cwdMatch = lsofOutput.match(/\s(\/\S+)$/);
           if (cwdMatch) {
@@ -324,23 +326,79 @@ function detectClaudeSessions(): Session[] {
               project = repoRoot.split('/').pop() || 'unknown';
             }
           }
-        }
 
-        sessions.push({
-          pid,
-          name: cwd ? cwd.split('/').pop() || 'unknown' : `PID ${pid}`,
-          branch,
-          project,
-          status: 'working',
-          lastActivity: 'active',
-        });
-      }
-    });
+          sessions.push({
+            pid,
+            name: cwd ? cwd.split('/').pop() || 'unknown' : `PID ${pid}`,
+            branch,
+            project,
+            status: 'working',
+            lastActivity: 'active',
+            tty: isOrphaned ? null : tty,
+            isOrphaned,
+          });
+        }
+      });
+    } else if (platform === 'win32') {
+      const output = exec('wmic process where "name like \'%node%\' or name like \'%claude%\'" get processid,commandline /format:csv', { silent: true });
+      const lines = output.split('\n').filter(line => line.includes('claude') && !line.includes('parallel-claude'));
+
+      lines.forEach((line) => {
+        const parts = line.split(',');
+        if (parts.length >= 2) {
+          const pid = parseInt(parts[parts.length - 1], 10);
+          if (isNaN(pid) || seenPids.has(pid)) return;
+          seenPids.add(pid);
+
+          const hasConsole = exec(`powershell -Command "(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).MainWindowHandle -ne 0"`, { silent: true }).trim() === 'True';
+
+          sessions.push({
+            pid,
+            name: `PID ${pid}`,
+            branch: 'unknown',
+            project: 'unknown',
+            status: 'working',
+            lastActivity: 'active',
+            tty: hasConsole ? 'console' : null,
+            isOrphaned: !hasConsole,
+          });
+        }
+      });
+    }
   } catch {
     // Session detection failed silently
   }
 
   return sessions;
+}
+
+function killExternalProcess(pid: number, force: boolean = false): boolean {
+  try {
+    const platform = process.platform;
+    if (platform === 'win32') {
+      execSync(`taskkill /PID ${pid} /F`, { stdio: 'pipe' });
+    } else {
+      process.kill(pid, force ? 'SIGKILL' : 'SIGTERM');
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function killMultipleProcesses(pids: number[], force: boolean = false): { killed: number[]; failed: number[] } {
+  const killed: number[] = [];
+  const failed: number[] = [];
+
+  pids.forEach(pid => {
+    if (killExternalProcess(pid, force)) {
+      killed.push(pid);
+    } else {
+      failed.push(pid);
+    }
+  });
+
+  return { killed, failed };
 }
 
 const terminalWidth = () => process.stdout.columns || 80;
@@ -886,14 +944,25 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
 
   const isWindows = process.platform === 'win32';
 
-  const escapedTask = task ? task.replace(/"/g, '\\"').replace(/'/g, "'\\''") : '';
+  let taskFile: string | null = null;
+  if (task) {
+    const tempDir = mkdtempSync(join(tmpdir(), 'claude-task-'));
+    taskFile = join(tempDir, 'task.txt');
+    writeFileSync(taskFile, task, 'utf-8');
+  }
+
   let claudeCmd = 'claude';
+  let usePipe = false;
   if (headless) {
-    claudeCmd = task
-      ? `claude --dangerously-skip-permissions "${escapedTask}"`
-      : 'claude --dangerously-skip-permissions';
-  } else if (task) {
-    claudeCmd = `claude "${escapedTask}"`;
+    if (taskFile) {
+      claudeCmd = `cat '${taskFile}' | claude --dangerously-skip-permissions`;
+      usePipe = true;
+    } else {
+      claudeCmd = 'claude --dangerously-skip-permissions';
+    }
+  } else if (taskFile) {
+    claudeCmd = `cat '${taskFile}' | claude`;
+    usePipe = true;
   }
 
   let sessionProcess: ChildProcess;
@@ -901,11 +970,11 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
   if (isWindows) {
     let winCmd = 'claude';
     if (headless) {
-      winCmd = task
-        ? `claude --dangerously-skip-permissions "${escapedTask.replace(/"/g, '""')}"`
+      winCmd = taskFile
+        ? `claude --dangerously-skip-permissions < "${taskFile}"`
         : 'claude --dangerously-skip-permissions';
-    } else if (task) {
-      winCmd = `claude "${escapedTask.replace(/"/g, '""')}"`;
+    } else if (taskFile) {
+      winCmd = `type "${taskFile}" | claude`;
     }
 
     const fullCmd = `cd /d "${sessionDir}" && ${winCmd}`;
@@ -929,6 +998,9 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
     const terminalApp = process.env.TERM_PROGRAM === 'iTerm.app' ? 'iTerm' : 'Terminal';
     const shellCmd = `cd "${sessionDir}" && ${claudeCmd}`;
 
+    const escapeForAppleScript = (cmd: string) => cmd.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const escapedShellCmd = escapeForAppleScript(shellCmd);
+
     if (terminalApp === 'iTerm') {
       try {
         execSync(`osascript <<EOF
@@ -936,7 +1008,7 @@ tell application "iTerm"
   tell current window
     create tab with default profile
     tell current session
-      write text "${shellCmd.replace(/"/g, '\\"')}"
+      write text "${escapedShellCmd}"
     end tell
   end tell
 end tell
@@ -949,17 +1021,17 @@ tell application "iTerm"
   activate
   create window with default profile
   tell current session of current window
-    write text "${shellCmd.replace(/"/g, '\\"')}"
+    write text "${escapedShellCmd}"
   end tell
 end tell
 EOF`, { cwd: rootDir(), stdio: 'inherit' });
         } catch {
           log.error('Failed to open iTerm. Trying Terminal...');
-          execSync(`osascript -e 'tell application "Terminal" to do script "${shellCmd.replace(/"/g, '\\"')}"'`, { cwd: rootDir(), stdio: 'inherit' });
+          execSync(`osascript -e 'tell application "Terminal" to do script "${escapedShellCmd}"'`, { cwd: rootDir(), stdio: 'inherit' });
         }
       }
     } else {
-      execSync(`osascript -e 'tell application "Terminal" to do script "${shellCmd.replace(/"/g, '\\"')}" in front window'`, { cwd: rootDir(), stdio: 'inherit' });
+      execSync(`osascript -e 'tell application "Terminal" to do script "${escapedShellCmd}" in front window'`, { cwd: rootDir(), stdio: 'inherit' });
     }
 
     sessionProcess = spawn('echo', ['Session started in new terminal'], {
@@ -1134,6 +1206,9 @@ async function showSessionsMenu(): Promise<void> {
     const detectedSessions = detectClaudeSessions();
     const managed = Array.from(managedSessions.values());
 
+    const attachedSessions = detectedSessions.filter(s => !s.isOrphaned);
+    const orphanedSessions = detectedSessions.filter(s => s.isOrphaned);
+
     log.print('\n' + chalk.bold('=== Claude Sessions ===') + '\n');
 
     log.print(chalk.bold('Managed Sessions:'));
@@ -1152,18 +1227,34 @@ async function showSessionsMenu(): Promise<void> {
       });
     }
 
-    log.print('\n' + chalk.bold('Other Claude Processes:'));
-    if (detectedSessions.length === 0) {
-      log.print(chalk.dim('  No other Claude processes detected.'));
+    log.print('\n' + chalk.bold('Active Sessions (attached to terminal):'));
+    if (attachedSessions.length === 0) {
+      log.print(chalk.dim('  No active sessions detected.'));
     } else {
-      detectedSessions.forEach(session => {
+      attachedSessions.forEach(session => {
         const projectDisplay = session.project !== 'unknown'
           ? chalk.bold(session.project)
           : chalk.dim('unknown project');
         const branchDisplay = session.branch !== 'unknown'
           ? chalk.cyan(session.branch)
           : chalk.dim('unknown branch');
-        log.print(`  ${chalk.yellow('●')} ${projectDisplay} on ${branchDisplay} (PID ${session.pid})`);
+        const ttyDisplay = session.tty ? chalk.dim(` [${session.tty}]`) : '';
+        log.print(`  ${chalk.green('●')} ${projectDisplay} on ${branchDisplay} (PID ${session.pid})${ttyDisplay}`);
+      });
+    }
+
+    log.print('\n' + chalk.bold('Orphaned Sessions (detached from terminal):'));
+    if (orphanedSessions.length === 0) {
+      log.print(chalk.dim('  No orphaned sessions detected.'));
+    } else {
+      orphanedSessions.forEach(session => {
+        const projectDisplay = session.project !== 'unknown'
+          ? chalk.bold(session.project)
+          : chalk.dim('unknown project');
+        const branchDisplay = session.branch !== 'unknown'
+          ? chalk.cyan(session.branch)
+          : chalk.dim('unknown branch');
+        log.print(`  ${chalk.red('●')} ${projectDisplay} on ${branchDisplay} (PID ${session.pid}) ${chalk.red('[orphaned]')}`);
       });
     }
 
@@ -1180,8 +1271,16 @@ async function showSessionsMenu(): Promise<void> {
       choices.push({ name: '🍒 Pull changes for testing', value: 'pull-changes' });
     }
 
+    if (orphanedSessions.length > 0) {
+      choices.push({ name: `🧹 Kill all orphaned sessions (${orphanedSessions.length})`, value: 'kill-orphaned' });
+    }
+
+    if (detectedSessions.length > 0) {
+      choices.push({ name: '🗑️  Select sessions to kill', value: 'kill-select' });
+    }
+
     if (managed.length > 0) {
-      choices.push({ name: '🛑 Terminate a session', value: 'terminate' });
+      choices.push({ name: '🛑 Terminate a managed session', value: 'terminate' });
     }
 
     choices.push({ name: chalk.dim('← Back'), value: 'back' });
@@ -1189,6 +1288,94 @@ async function showSessionsMenu(): Promise<void> {
     const action = await selectWithEscape('Session actions:', choices, 'back');
 
     if (action === 'back') return;
+
+    if (action === 'kill-orphaned') {
+      const killMethod = await selectWithEscape('How to kill orphaned sessions?', [
+        { name: '🔪 Graceful (SIGTERM) - allows cleanup', value: 'graceful' },
+        { name: '💀 Force (SIGKILL) - immediate termination', value: 'force' },
+        { name: chalk.dim('← Cancel'), value: 'cancel' },
+      ], 'cancel');
+
+      if (killMethod === 'cancel') continue;
+
+      const confirmed = await confirm({
+        message: `Kill ${orphanedSessions.length} orphaned session(s)? This cannot be undone.`,
+        default: false,
+      });
+
+      if (confirmed) {
+        const pids = orphanedSessions.map(s => s.pid);
+        const force = killMethod === 'force';
+        const result = killMultipleProcesses(pids, force);
+        if (result.killed.length > 0) {
+          log.info(`Killed ${result.killed.length} orphaned session(s).`);
+        }
+        if (result.failed.length > 0) {
+          log.warn(`Failed to kill ${result.failed.length} session(s): PIDs ${result.failed.join(', ')}`);
+          if (!force) {
+            log.info('Tip: Try "Force (SIGKILL)" if graceful termination fails.');
+          }
+        }
+      }
+      continue;
+    }
+
+    if (action === 'kill-select') {
+      const allSessions = [...attachedSessions, ...orphanedSessions];
+      const sessionChoices = allSessions.map(s => {
+        const projectDisplay = s.project !== 'unknown' ? s.project : 'unknown project';
+        const branchDisplay = s.branch !== 'unknown' ? s.branch : 'unknown branch';
+        const statusLabel = s.isOrphaned ? chalk.red('[orphaned]') : chalk.green('[active]');
+        return {
+          name: `${projectDisplay} on ${branchDisplay} (PID ${s.pid}) ${statusLabel}`,
+          value: s.pid,
+          checked: s.isOrphaned,
+        };
+      });
+
+      if (sessionChoices.length === 0) {
+        log.warn('No sessions to kill.');
+        continue;
+      }
+
+      const selectedPids = await checkbox({
+        message: 'Select sessions to kill (space to toggle, enter to confirm):',
+        choices: sessionChoices,
+      });
+
+      if (selectedPids.length === 0) {
+        log.warn('No sessions selected.');
+        continue;
+      }
+
+      const killMethod = await selectWithEscape('How to kill selected sessions?', [
+        { name: '🔪 Graceful (SIGTERM) - allows cleanup', value: 'graceful' },
+        { name: '💀 Force (SIGKILL) - immediate termination', value: 'force' },
+        { name: chalk.dim('← Cancel'), value: 'cancel' },
+      ], 'cancel');
+
+      if (killMethod === 'cancel') continue;
+
+      const confirmed = await confirm({
+        message: `Kill ${selectedPids.length} selected session(s)? This cannot be undone.`,
+        default: false,
+      });
+
+      if (confirmed) {
+        const force = killMethod === 'force';
+        const result = killMultipleProcesses(selectedPids, force);
+        if (result.killed.length > 0) {
+          log.info(`Killed ${result.killed.length} session(s).`);
+        }
+        if (result.failed.length > 0) {
+          log.warn(`Failed to kill ${result.failed.length} session(s): PIDs ${result.failed.join(', ')}`);
+          if (!force) {
+            log.info('Tip: Try "Force (SIGKILL)" if graceful termination fails.');
+          }
+        }
+      }
+      continue;
+    }
 
     if (action === 'pull-changes') {
       const branchChoices = branchesWithCommits.map(b => ({
