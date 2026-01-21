@@ -4,7 +4,6 @@ primary_region = 'jnb'
 [build]
   [build.args]
     NEXT_PUBLIC_API_URL = 'https://annix-backend.fly.dev'
-    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = 'AIzaSyB2DjAWNJBQkFg9zTyRZL3dGRlV75fh22w'
 
 [env]
   NODE_ENV = 'production'
@@ -16,7 +15,7 @@ primary_region = 'jnb'
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
 
 [checks]
@@ -30,6 +29,6 @@ primary_region = 'jnb'
     type = 'http'
 
 [[vm]]
-  memory = '512mb'
+  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1

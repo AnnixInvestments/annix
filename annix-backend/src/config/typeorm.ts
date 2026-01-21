@@ -16,6 +16,12 @@ const config: DataSourceOptions = {
   synchronize: false,
   logging: process.env.NODE_ENV !== 'production',
   ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  extra: {
+    max: 10,
+    min: 2,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+  },
 };
 
 export default registerAs('typeorm', () => config as TypeOrmModuleOptions);
