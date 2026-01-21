@@ -71,3 +71,7 @@ jobs:
       - name: Deploy Frontend to Fly.io
         working-directory: ./annix-frontend
         run: flyctl deploy
+
+      - name: Get Frontend Logs on Failure
+        if: failure()
+        run: flyctl logs -a annix-frontend --no-tail 2>&1 | tail -100 || echo "Could not fetch logs"
