@@ -219,6 +219,25 @@ function exec(cmd: string, options: { cwd?: string; silent?: boolean } = {}): st
   }
 }
 
+function appProcessStatus(): { backend: boolean; frontend: boolean } {
+  const isWindows = process.platform === 'win32';
+
+  if (isWindows) {
+    const backend = exec('netstat -ano | findstr ":4001.*LISTENING"', { silent: true }) !== '';
+    const frontend = exec('netstat -ano | findstr ":3000.*LISTENING"', { silent: true }) !== '';
+    return { backend, frontend };
+  } else {
+    const backend = exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== '';
+    const frontend = exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== '';
+    return { backend, frontend };
+  }
+}
+
+function isAppProcessRunning(): boolean {
+  const status = appProcessStatus();
+  return status.backend || status.frontend;
+}
+
 function currentBranch(): string {
   return exec('git branch --show-current');
 }
@@ -497,9 +516,7 @@ async function mergeBranch(branch: string): Promise<boolean> {
 async function pullChanges(): Promise<void> {
   const branch = currentBranch();
 
-  const appWasRunning = appProcess !== null ||
-    exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== '' ||
-    exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== '';
+  const appWasRunning = appProcess !== null || isAppProcessRunning();
 
   const headBefore = exec('git rev-parse HEAD', { silent: true });
 
@@ -545,8 +562,7 @@ async function pullChanges(): Promise<void> {
   }
 
   if (appWasRunning) {
-    const appStillRunning = exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== '' ||
-      exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== '';
+    const appStillRunning = isAppProcessRunning();
 
     if (!appStillRunning) {
       log.warn('App stopped after pull.');
@@ -640,9 +656,15 @@ function killExistingProcesses(): void {
   const isWindows = process.platform === 'win32';
 
   if (isWindows) {
-    exec('powershell -ExecutionPolicy Bypass -File kill-dev.ps1', { silent: true });
+    const killScript = join(rootDir(), 'kill-dev.ps1');
+    if (existsSync(killScript)) {
+      exec(`powershell -ExecutionPolicy Bypass -File "${killScript}"`, { silent: true });
+    }
   } else {
-    exec('bash kill-dev.sh', { silent: true });
+    const killScript = join(rootDir(), 'kill-dev.sh');
+    if (existsSync(killScript)) {
+      exec(`bash "${killScript}"`, { silent: true });
+    }
   }
 }
 
@@ -663,24 +685,40 @@ async function startApp(): Promise<void> {
   log.info('\nStarting development server in background...');
 
   const isWindows = process.platform === 'win32';
-  const script = isWindows ? 'run-dev.ps1' : './run-dev.sh';
-  const shell = isWindows ? 'powershell' : 'bash';
 
-  const logFd = openSync(APP_LOG_FILE, 'w');
+  if (isWindows) {
+    const hasWindowsTerminal = exec('where wt', { silent: true }) !== '';
+    const scriptPath = join(rootDir(), 'run-dev.ps1').replace(/\\/g, '/');
+    const psCmd = `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`;
+    const cwd = rootDir().replace(/\\/g, '/');
 
-  appProcess = spawn(shell, [script], {
-    cwd: rootDir(),
-    stdio: ['ignore', logFd, logFd],
-    detached: true,
-  });
+    try {
+      if (hasWindowsTerminal) {
+        const wtCmd = `wt -w 0 new-tab --title AnnixDev cmd /k ${psCmd}`;
+        execSync(`start "" ${wtCmd}`, { cwd, shell: true });
+      } else {
+        execSync(`start cmd /k ${psCmd}`, { cwd, shell: true });
+      }
 
-  appProcess.unref();
+      log.info('✓ App started in new terminal window.');
+    } catch (err) {
+      log.error(`Failed to start app: ${(err as Error).message}`);
+    }
+  } else {
+    const logFd = openSync(APP_LOG_FILE, 'w');
+    appProcess = spawn('bash', ['./run-dev.sh'], {
+      cwd: rootDir(),
+      stdio: ['ignore', logFd, logFd],
+      detached: true,
+    });
 
-  appProcess.on('exit', () => {
-    appProcess = null;
-  });
+    appProcess.unref();
+    appProcess.on('exit', () => {
+      appProcess = null;
+    });
 
-  log.info('✓ App started in background. Use "View logs" to see output.');
+    log.info('✓ App started in background. Use "View logs" to see output.');
+  }
 }
 
 async function stopApp(): Promise<void> {
@@ -1623,8 +1661,9 @@ async function showStatus(): Promise<void> {
     let appStatusColor = chalk.dim;
     let appStatusIcon = '○';
 
-    const backendRunning = exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== '';
-    const frontendRunning = exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== '';
+    const processStatus = appProcessStatus();
+    const backendRunning = processStatus.backend;
+    const frontendRunning = processStatus.frontend;
     const appRunning = appProcess !== null || backendRunning || frontendRunning;
 
     if (!appRunning) {
@@ -1861,7 +1900,7 @@ async function mainMenu(): Promise<void> {
         // Just loop again
         break;
       case 'quit':
-        if (appProcess) {
+        if (appProcess || isAppProcessRunning()) {
           const confirmQuit = await confirm({
             message: 'App is still running. Stop it before quitting?',
             default: true,
