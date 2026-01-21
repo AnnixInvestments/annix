@@ -65,26 +65,26 @@ const weldColor = { color: '#1a1a1a', metalness: 0.2, roughness: 0.9 }
 const flangeColor = { color: '#444444', metalness: 0.6, roughness: 0.4 }
 const blankFlangeColor = { color: '#cc3300', metalness: 0.6, roughness: 0.4 }
 
-const FLANGE_DATA: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; boltSize: number } } = {
-  15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, boltSize: 12 },
-  20: { flangeOD: 105, pcd: 75, boltHoles: 4, holeID: 14, boltSize: 12 },
-  25: { flangeOD: 115, pcd: 85, boltHoles: 4, holeID: 14, boltSize: 12 },
-  32: { flangeOD: 140, pcd: 100, boltHoles: 4, holeID: 18, boltSize: 16 },
-  40: { flangeOD: 150, pcd: 110, boltHoles: 4, holeID: 18, boltSize: 16 },
-  50: { flangeOD: 165, pcd: 125, boltHoles: 4, holeID: 18, boltSize: 16 },
-  65: { flangeOD: 185, pcd: 145, boltHoles: 4, holeID: 18, boltSize: 16 },
-  80: { flangeOD: 200, pcd: 160, boltHoles: 8, holeID: 18, boltSize: 16 },
-  100: { flangeOD: 220, pcd: 180, boltHoles: 8, holeID: 18, boltSize: 16 },
-  125: { flangeOD: 250, pcd: 210, boltHoles: 8, holeID: 18, boltSize: 16 },
-  150: { flangeOD: 285, pcd: 240, boltHoles: 8, holeID: 22, boltSize: 20 },
-  200: { flangeOD: 340, pcd: 295, boltHoles: 12, holeID: 22, boltSize: 20 },
-  250: { flangeOD: 405, pcd: 355, boltHoles: 12, holeID: 26, boltSize: 24 },
-  300: { flangeOD: 460, pcd: 410, boltHoles: 12, holeID: 26, boltSize: 24 },
-  350: { flangeOD: 520, pcd: 470, boltHoles: 16, holeID: 26, boltSize: 24 },
-  400: { flangeOD: 580, pcd: 525, boltHoles: 16, holeID: 30, boltSize: 27 },
-  450: { flangeOD: 640, pcd: 585, boltHoles: 20, holeID: 30, boltSize: 27 },
-  500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, boltSize: 24 },
-  600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, boltSize: 27 },
+const FLANGE_DATA: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; boltSize: number; boltLength: number; thickness: number } } = {
+  15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, boltSize: 12, boltLength: 55, thickness: 14 },
+  20: { flangeOD: 105, pcd: 75, boltHoles: 4, holeID: 14, boltSize: 12, boltLength: 55, thickness: 14 },
+  25: { flangeOD: 115, pcd: 85, boltHoles: 4, holeID: 14, boltSize: 12, boltLength: 55, thickness: 14 },
+  32: { flangeOD: 140, pcd: 100, boltHoles: 4, holeID: 18, boltSize: 16, boltLength: 65, thickness: 16 },
+  40: { flangeOD: 150, pcd: 110, boltHoles: 4, holeID: 18, boltSize: 16, boltLength: 65, thickness: 16 },
+  50: { flangeOD: 165, pcd: 125, boltHoles: 4, holeID: 18, boltSize: 16, boltLength: 70, thickness: 18 },
+  65: { flangeOD: 185, pcd: 145, boltHoles: 4, holeID: 18, boltSize: 16, boltLength: 70, thickness: 18 },
+  80: { flangeOD: 200, pcd: 160, boltHoles: 8, holeID: 18, boltSize: 16, boltLength: 70, thickness: 18 },
+  100: { flangeOD: 220, pcd: 180, boltHoles: 8, holeID: 18, boltSize: 16, boltLength: 70, thickness: 18 },
+  125: { flangeOD: 250, pcd: 210, boltHoles: 8, holeID: 18, boltSize: 16, boltLength: 75, thickness: 20 },
+  150: { flangeOD: 285, pcd: 240, boltHoles: 8, holeID: 22, boltSize: 20, boltLength: 80, thickness: 20 },
+  200: { flangeOD: 340, pcd: 295, boltHoles: 12, holeID: 22, boltSize: 20, boltLength: 85, thickness: 22 },
+  250: { flangeOD: 405, pcd: 355, boltHoles: 12, holeID: 26, boltSize: 24, boltLength: 95, thickness: 24 },
+  300: { flangeOD: 460, pcd: 410, boltHoles: 12, holeID: 26, boltSize: 24, boltLength: 95, thickness: 24 },
+  350: { flangeOD: 520, pcd: 470, boltHoles: 16, holeID: 26, boltSize: 24, boltLength: 100, thickness: 26 },
+  400: { flangeOD: 580, pcd: 525, boltHoles: 16, holeID: 30, boltSize: 27, boltLength: 110, thickness: 28 },
+  450: { flangeOD: 640, pcd: 585, boltHoles: 20, holeID: 30, boltSize: 27, boltLength: 110, thickness: 28 },
+  500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, boltSize: 24, boltLength: 115, thickness: 32 },
+  600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, boltSize: 27, boltLength: 120, thickness: 32 },
 }
 
 const resolveFlangeData = (nb: number, apiSpecs?: FlangeSpecData | null) => {
@@ -95,6 +95,8 @@ const resolveFlangeData = (nb: number, apiSpecs?: FlangeSpecData | null) => {
       boltHoles: apiSpecs.flangeNumHoles,
       holeID: apiSpecs.flangeBoltHoleDiameterMm,
       boltSize: apiSpecs.boltDiameterMm || 16,
+      boltLength: apiSpecs.boltLengthMm || 70,
+      thickness: apiSpecs.flangeThicknessMm || 20,
     }
   }
   return FLANGE_DATA[nb] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nb).pop() || 200]
@@ -1108,16 +1110,17 @@ export default function CSGBend3DPreview(props: Props) {
           </div>
         )}
         {props.flangeConfig && props.flangeConfig !== 'PE' && (() => {
-          const flangeSpecs = FLANGE_DATA[props.nominalBore];
+          const resolvedFlangeSpecs = resolveFlangeData(props.nominalBore, props.flangeSpecs);
           const config = (props.flangeConfig || 'PE').toUpperCase();
           return (
             <>
               <div className="font-bold text-blue-800 mt-1 mb-0.5">FLANGE ({config})</div>
-              {flangeSpecs && (
+              {resolvedFlangeSpecs && (
                 <>
-                  <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
-                  <div className="text-gray-700">Holes: {flangeSpecs.boltHoles} × Ø{flangeSpecs.holeID}mm</div>
-                  <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize}</div>
+                  <div className="text-gray-900 font-medium">OD: {resolvedFlangeSpecs.flangeOD}mm | PCD: {resolvedFlangeSpecs.pcd}mm</div>
+                  <div className="text-gray-700">Holes: {resolvedFlangeSpecs.boltHoles} × Ø{resolvedFlangeSpecs.holeID}mm</div>
+                  <div className="text-gray-700">Bolts: {resolvedFlangeSpecs.boltHoles} × M{resolvedFlangeSpecs.boltSize} × {resolvedFlangeSpecs.boltLength}mm</div>
+                  <div className="text-gray-700">Thickness: {resolvedFlangeSpecs.thickness}mm</div>
                   <div className="text-green-700 font-medium">
                     {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
                   </div>
@@ -1195,16 +1198,17 @@ export default function CSGBend3DPreview(props: Props) {
                 </div>
               )}
               {props.flangeConfig && props.flangeConfig !== 'PE' && (() => {
-                const flangeSpecs = FLANGE_DATA[props.nominalBore];
+                const resolvedFlangeSpecs = resolveFlangeData(props.nominalBore, props.flangeSpecs);
                 const config = (props.flangeConfig || 'PE').toUpperCase();
                 return (
                   <>
                     <div className="font-bold text-blue-800 mt-2 mb-1">FLANGE ({config})</div>
-                    {flangeSpecs && (
+                    {resolvedFlangeSpecs && (
                       <>
-                        <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
-                        <div className="text-gray-700">Holes: {flangeSpecs.boltHoles} × Ø{flangeSpecs.holeID}mm</div>
-                        <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize}</div>
+                        <div className="text-gray-900 font-medium">OD: {resolvedFlangeSpecs.flangeOD}mm | PCD: {resolvedFlangeSpecs.pcd}mm</div>
+                        <div className="text-gray-700">Holes: {resolvedFlangeSpecs.boltHoles} × Ø{resolvedFlangeSpecs.holeID}mm</div>
+                        <div className="text-gray-700">Bolts: {resolvedFlangeSpecs.boltHoles} × M{resolvedFlangeSpecs.boltSize} × {resolvedFlangeSpecs.boltLength}mm</div>
+                        <div className="text-gray-700">Thickness: {resolvedFlangeSpecs.thickness}mm</div>
                         <div className="text-green-700 font-medium">
                           {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
                         </div>

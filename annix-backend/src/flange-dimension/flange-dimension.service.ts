@@ -11,7 +11,30 @@ import { NominalOutsideDiameterMm } from 'src/nominal-outside-diameter-mm/entiti
 import { FlangeStandard } from 'src/flange-standard/entities/flange-standard.entity';
 import { FlangePressureClass } from 'src/flange-pressure-class/entities/flange-pressure-class.entity';
 import { Bolt } from 'src/bolt/entities/bolt.entity';
+import { BoltMass } from 'src/bolt-mass/entities/bolt-mass.entity';
 import { Repository } from 'typeorm';
+
+const ISO_METRIC_THREAD_PITCHES: Record<number, number> = {
+  12: 1.75,
+  14: 2.0,
+  16: 2.0,
+  18: 2.5,
+  20: 2.5,
+  22: 2.5,
+  24: 3.0,
+  27: 3.0,
+  30: 3.5,
+  33: 3.5,
+  36: 4.0,
+  39: 4.0,
+  42: 4.5,
+  45: 4.5,
+  48: 5.0,
+  52: 5.0,
+  56: 5.5,
+  60: 5.5,
+  64: 6.0,
+};
 
 @Injectable()
 export class FlangeDimensionService {
@@ -25,6 +48,7 @@ export class FlangeDimensionService {
     @InjectRepository(FlangePressureClass)
     private readonly pressureRepo: Repository<FlangePressureClass>,
     @InjectRepository(Bolt) private readonly boltRepo: Repository<Bolt>,
+    @InjectRepository(BoltMass) private readonly boltMassRepo: Repository<BoltMass>,
   ) {}
 
   async create(dto: CreateFlangeDimensionDto): Promise<FlangeDimension> {
@@ -185,7 +209,7 @@ export class FlangeDimensionService {
     standardId: number,
     pressureClassId: number,
     flangeTypeId?: number,
-  ): Promise<FlangeDimension | null> {
+  ): Promise<any> {
     const whereCondition: any = {
       nominalOutsideDiameter: { nominal_diameter_mm: nominalBoreMm },
       standard: { id: standardId },
@@ -196,7 +220,7 @@ export class FlangeDimensionService {
       whereCondition.flangeType = { id: flangeTypeId };
     }
 
-    const flange = await this.flangeRepo.findOne({
+    let flange = await this.flangeRepo.findOne({
       where: whereCondition,
       relations: [
         'nominalOutsideDiameter',
@@ -208,7 +232,7 @@ export class FlangeDimensionService {
     });
 
     if (!flange && flangeTypeId) {
-      return this.flangeRepo.findOne({
+      flange = await this.flangeRepo.findOne({
         where: {
           nominalOutsideDiameter: { nominal_diameter_mm: nominalBoreMm },
           standard: { id: standardId },
@@ -224,6 +248,69 @@ export class FlangeDimensionService {
       });
     }
 
-    return flange;
+    if (!flange) {
+      return null;
+    }
+
+    return this.transformFlangeWithBoltData(flange);
+  }
+
+  private async transformFlangeWithBoltData(flange: FlangeDimension): Promise<any> {
+    const result: any = {
+      id: flange.id,
+      D: flange.D,
+      b: flange.b,
+      d4: flange.d4,
+      f: flange.f,
+      num_holes: flange.num_holes,
+      d1: flange.d1,
+      pcd: flange.pcd,
+      mass_kg: flange.mass_kg,
+      nominalOutsideDiameter: flange.nominalOutsideDiameter,
+      standard: flange.standard,
+      pressureClass: flange.pressureClass,
+      flangeType: flange.flangeType,
+    };
+
+    if (flange.bolt) {
+      const diameterMm = this.extractDiameterFromDesignation(flange.bolt.designation);
+      const threadPitch = ISO_METRIC_THREAD_PITCHES[diameterMm] || 2.0;
+      const lengthMm = flange.boltLengthMm || 70;
+
+      let massKg = 0;
+      const boltMass = await this.boltMassRepo.findOne({
+        where: {
+          bolt: { id: flange.bolt.id },
+          length_mm: lengthMm,
+        },
+      });
+
+      if (boltMass) {
+        massKg = boltMass.mass_kg;
+      } else {
+        const closestMass = await this.boltMassRepo
+          .createQueryBuilder('bm')
+          .where('bm."boltId" = :boltId', { boltId: flange.bolt.id })
+          .orderBy('ABS(bm.length_mm - :length)', 'ASC')
+          .setParameter('length', lengthMm)
+          .getOne();
+        massKg = closestMass?.mass_kg || 0;
+      }
+
+      result.bolt = {
+        id: flange.bolt.id,
+        diameter_mm: diameterMm,
+        thread_pitch: threadPitch,
+        length_mm: lengthMm,
+        mass_kg: massKg,
+      };
+    }
+
+    return result;
+  }
+
+  private extractDiameterFromDesignation(designation: string): number {
+    const match = designation.match(/M(\d+)/i);
+    return match ? parseInt(match[1], 10) : 16;
   }
 }

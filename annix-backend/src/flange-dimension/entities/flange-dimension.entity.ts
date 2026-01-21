@@ -49,6 +49,9 @@ export class FlangeDimension {
   @ManyToOne(() => Bolt, { onDelete: 'SET NULL' })
   bolt?: Bolt;
 
+  @Column({ name: 'bolt_length_mm', type: 'float', nullable: true })
+  boltLengthMm?: number;
+
   @Column({ type: 'float' })
   pcd: number;
 

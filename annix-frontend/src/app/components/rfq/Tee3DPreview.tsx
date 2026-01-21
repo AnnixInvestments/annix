@@ -11,6 +11,7 @@ import {
   getGussetSection,
   Sabs719TeeType
 } from '@/app/lib/utils/sabs719TeeData';
+import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
 
 const useDebouncedProps = <T extends Record<string, any>>(props: T, delay: number = 150): T => {
   const [debouncedProps, setDebouncedProps] = useState(props);
@@ -71,6 +72,8 @@ interface Tee3DPreviewProps {
   onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
   // Notes for display
   selectedNotes?: string[];
+  // Dynamic flange specs from API
+  flangeSpecs?: FlangeSpecData | null;
   // Dynamic flange spec display
   flangeStandardName?: string;
   pressureClassDesignation?: string;
@@ -122,8 +125,19 @@ const getWallThickness = (nb: number, providedWT: number = 0): number => {
 
 // Flange lookup table based on nominal bore - SABS 1123 Table 1000/4 (PN16) Slip-on flanges
 // Bolt length calculated for: 2 x flange thickness + gasket (3mm) + nut + washer + thread engagement
-const getFlangeSpecs = (nb: number) => {
-  // Updated to match Pipe3DPreview and Bend3DPreview - SABS 1123 Table 1000/4 (PN16)
+const getFlangeSpecs = (nb: number, apiSpecs?: FlangeSpecData | null) => {
+  if (apiSpecs) {
+    return {
+      flangeOD: apiSpecs.flangeOdMm,
+      pcd: apiSpecs.flangePcdMm,
+      thickness: apiSpecs.flangeThicknessMm,
+      boltHoles: apiSpecs.flangeNumHoles,
+      holeID: apiSpecs.flangeBoltHoleDiameterMm,
+      boltSize: apiSpecs.boltDiameterMm || 16,
+      boltLength: apiSpecs.boltLengthMm || 70,
+    };
+  }
+
   const flangeData: Record<number, { flangeOD: number; pcd: number; thickness: number; boltHoles: number; holeID: number; boltSize: number; boltLength: number }> = {
     15: { flangeOD: 95, pcd: 65, thickness: 14, boltHoles: 4, holeID: 14, boltSize: 12, boltLength: 55 },
     20: { flangeOD: 105, pcd: 75, thickness: 14, boltHoles: 4, holeID: 14, boltSize: 12, boltLength: 55 },
@@ -151,7 +165,6 @@ const getFlangeSpecs = (nb: number) => {
     850: { flangeOD: 1065, pcd: 1000, thickness: 38, boltHoles: 24, holeID: 33, boltSize: 30, boltLength: 140 },
     900: { flangeOD: 1115, pcd: 1050, thickness: 40, boltHoles: 28, holeID: 33, boltSize: 30, boltLength: 145 },
   };
-  // Find closest match for non-standard sizes
   const sizes = Object.keys(flangeData).map(Number).sort((a, b) => a - b);
   let closestSize = sizes[0];
   for (const size of sizes) {
@@ -542,8 +555,8 @@ function TeeScene(props: Tee3DPreviewProps) {
   };
 
   // Flange specs
-  const runFlangeSpecs = getFlangeSpecs(nominalBore);
-  const branchFlangeSpecs = getFlangeSpecs(branchNominalBore || nominalBore);
+  const runFlangeSpecs = getFlangeSpecs(nominalBore, props.flangeSpecs);
+  const branchFlangeSpecs = getFlangeSpecs(branchNominalBore || nominalBore, props.flangeSpecs);
 
   // Gusset plate thickness (estimated based on size)
   const gussetThickness = nominalBore <= 400 ? 0.1 : 0.14;
@@ -1284,8 +1297,8 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   const teeHeight = getTeeHeight(debouncedProps.nominalBore, debouncedProps.teeType);
   const gussetSection = debouncedProps.teeType === 'gusset' ? getGussetSection(debouncedProps.nominalBore) : 0;
   // Get flange specs for display
-  const runFlangeSpecs = getFlangeSpecs(debouncedProps.nominalBore);
-  const branchFlangeSpecs = getFlangeSpecs(debouncedProps.branchNominalBore || debouncedProps.nominalBore);
+  const runFlangeSpecs = getFlangeSpecs(debouncedProps.nominalBore, debouncedProps.flangeSpecs);
+  const branchFlangeSpecs = getFlangeSpecs(debouncedProps.branchNominalBore || debouncedProps.nominalBore, debouncedProps.flangeSpecs);
   const closureLength = debouncedProps.closureLengthMm ?? 150;
   const baseRunLengthMm = debouncedProps.runLength || od * 3;
   const runLengthMm = baseRunLengthMm + (debouncedProps.hasInletFlange ? closureLength : 0) + (debouncedProps.hasOutletFlange ? closureLength : 0);
@@ -1404,7 +1417,9 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
           <>
             <div className="font-bold text-blue-800 mt-1 mb-0.5">RUN FLANGE</div>
             <div className="text-gray-900 font-medium">OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm</div>
+            <div className="text-gray-700">Holes: {runFlangeSpecs.boltHoles} × Ø{runFlangeSpecs.holeID}mm</div>
             <div className="text-gray-700">Bolts: {runFlangeSpecs.boltHoles} × M{runFlangeSpecs.boltSize} × {runFlangeSpecs.boltLength}mm</div>
+            <div className="text-gray-700">Thickness: {runFlangeSpecs.thickness}mm</div>
             <div className="text-green-700 font-medium text-[9px]">
               {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
             </div>
@@ -1415,7 +1430,9 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
           <>
             <div className="font-bold text-blue-800 mt-1 mb-0.5">BRANCH FLANGE</div>
             <div className="text-gray-900 font-medium">OD: {branchFlangeSpecs.flangeOD}mm | PCD: {branchFlangeSpecs.pcd}mm</div>
+            <div className="text-gray-700">Holes: {branchFlangeSpecs.boltHoles} × Ø{branchFlangeSpecs.holeID}mm</div>
             <div className="text-gray-700">Bolts: {branchFlangeSpecs.boltHoles} × M{branchFlangeSpecs.boltSize} × {branchFlangeSpecs.boltLength}mm</div>
+            <div className="text-gray-700">Thickness: {branchFlangeSpecs.thickness}mm</div>
             <div className="text-green-700 font-medium text-[9px]">
               {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
             </div>
@@ -1522,7 +1539,9 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
                 <>
                   <div className="font-bold text-blue-800 mt-2 mb-1">RUN FLANGE</div>
                   <div className="text-gray-900 font-medium">OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm</div>
+                  <div className="text-gray-700">Holes: {runFlangeSpecs.boltHoles} × Ø{runFlangeSpecs.holeID}mm</div>
                   <div className="text-gray-700">Bolts: {runFlangeSpecs.boltHoles} × M{runFlangeSpecs.boltSize} × {runFlangeSpecs.boltLength}mm</div>
+                  <div className="text-gray-700">Thickness: {runFlangeSpecs.thickness}mm</div>
                   <div className="text-green-700 font-medium">
                     {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
                   </div>
@@ -1532,7 +1551,9 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
                 <>
                   <div className="font-bold text-blue-800 mt-2 mb-1">BRANCH FLANGE</div>
                   <div className="text-gray-900 font-medium">OD: {branchFlangeSpecs.flangeOD}mm | PCD: {branchFlangeSpecs.pcd}mm</div>
+                  <div className="text-gray-700">Holes: {branchFlangeSpecs.boltHoles} × Ø{branchFlangeSpecs.holeID}mm</div>
                   <div className="text-gray-700">Bolts: {branchFlangeSpecs.boltHoles} × M{branchFlangeSpecs.boltSize} × {branchFlangeSpecs.boltLength}mm</div>
+                  <div className="text-gray-700">Thickness: {branchFlangeSpecs.thickness}mm</div>
                   <div className="text-green-700 font-medium">
                     {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
                   </div>

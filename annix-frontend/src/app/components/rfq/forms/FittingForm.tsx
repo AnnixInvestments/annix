@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Select } from '@/app/components/ui/Select';
+import { fetchFlangeSpecsStatic, FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
 import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
 import { getPipeEndConfigurationDetails } from '@/app/lib/utils/systemUtils';
 import { masterDataApi } from '@/app/lib/api/client';
@@ -89,6 +90,37 @@ export default function FittingForm({
   errors = {},
   isLoadingNominalBores = false,
 }: FittingFormProps) {
+  const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
+
+  const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+  const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+  const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+  const nominalBoreMm = entry.specs?.nominalBoreMm;
+  const pipeEndConfiguration = entry.specs?.pipeEndConfiguration || 'PE';
+  const hasFlanges = pipeEndConfiguration !== 'PE';
+
+  useEffect(() => {
+    const fetchSpecs = async () => {
+      if (!hasFlanges || !nominalBoreMm || !flangeStandardId || !flangePressureClassId) {
+        setFlangeSpecs(null);
+        return;
+      }
+
+      const flangeType = masterData?.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode);
+      const flangeTypeId = flangeType?.id;
+
+      const specs = await fetchFlangeSpecsStatic(
+        nominalBoreMm,
+        flangeStandardId,
+        flangePressureClassId,
+        flangeTypeId
+      );
+      setFlangeSpecs(specs);
+    };
+
+    fetchSpecs();
+  }, [hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode, masterData?.flangeTypes]);
+
   return (
     <>
               <SplitPaneLayout
@@ -1784,6 +1816,7 @@ export default function FittingForm({
                             });
                           }}
                           selectedNotes={entry.selectedNotes}
+                          flangeSpecs={flangeSpecs}
                           flangeStandardName={flangeStandardName}
                           pressureClassDesignation={pressureClassDesignation}
                           flangeTypeCode={flangeTypeCode}

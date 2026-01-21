@@ -7,6 +7,7 @@ import { NominalOutsideDiameterMm } from 'src/nominal-outside-diameter-mm/entiti
 import { FlangeStandard } from 'src/flange-standard/entities/flange-standard.entity';
 import { FlangePressureClass } from 'src/flange-pressure-class/entities/flange-pressure-class.entity';
 import { Bolt } from 'src/bolt/entities/bolt.entity';
+import { BoltMass } from 'src/bolt-mass/entities/bolt-mass.entity';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { Bolt } from 'src/bolt/entities/bolt.entity';
       FlangeStandard,
       FlangePressureClass,
       Bolt,
+      BoltMass,
     ]),
   ],
   controllers: [FlangeDimensionController],
