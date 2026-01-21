@@ -646,7 +646,18 @@ function killExistingProcesses(): void {
   }
 }
 
+function projectHasAppScripts(): boolean {
+  const isWindows = process.platform === 'win32';
+  const script = isWindows ? 'run-dev.ps1' : 'run-dev.sh';
+  return existsSync(join(rootDir(), script));
+}
+
 async function startApp(): Promise<void> {
+  if (!projectHasAppScripts()) {
+    log.warn('This project does not have app scripts (run-dev.sh).');
+    return;
+  }
+
   killExistingProcesses();
 
   log.info('\nStarting development server in background...');
@@ -1606,55 +1617,57 @@ async function showStatus(): Promise<void> {
   }
   printEmptyLine();
 
-  printSection('App');
-  let appStatusText = '';
-  let appStatusColor = chalk.dim;
-  let appStatusIcon = '○';
+  if (projectHasAppScripts()) {
+    printSection('App');
+    let appStatusText = '';
+    let appStatusColor = chalk.dim;
+    let appStatusIcon = '○';
 
-  const backendRunning = exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== '';
-  const frontendRunning = exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== '';
-  const appRunning = appProcess !== null || backendRunning || frontendRunning;
+    const backendRunning = exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== '';
+    const frontendRunning = exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== '';
+    const appRunning = appProcess !== null || backendRunning || frontendRunning;
 
-  if (!appRunning) {
-    appStatusText = 'Stopped (use [a] to start)';
-    appStatusColor = chalk.dim;
-    appStatusIcon = '○';
-  } else {
-    let state = 'Starting...';
+    if (!appRunning) {
+      appStatusText = 'Stopped (use [a] to start)';
+      appStatusColor = chalk.dim;
+      appStatusIcon = '○';
+    } else {
+      let state = 'Starting...';
 
-    if (backendRunning && frontendRunning) {
-      state = 'Ready';
-      appStatusColor = chalk.green;
-    } else if (backendRunning) {
-      state = 'Backend ready, frontend starting...';
-      appStatusColor = chalk.yellow;
-    } else if (frontendRunning) {
-      state = 'Frontend ready, backend starting...';
-      appStatusColor = chalk.yellow;
-    } else if (existsSync(APP_LOG_FILE)) {
-      try {
-        const logContent = readFileSync(APP_LOG_FILE, 'utf-8');
-        const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
-        const cleanLog = stripAnsi(logContent);
+      if (backendRunning && frontendRunning) {
+        state = 'Ready';
+        appStatusColor = chalk.green;
+      } else if (backendRunning) {
+        state = 'Backend ready, frontend starting...';
+        appStatusColor = chalk.yellow;
+      } else if (frontendRunning) {
+        state = 'Frontend ready, backend starting...';
+        appStatusColor = chalk.yellow;
+      } else if (existsSync(APP_LOG_FILE)) {
+        try {
+          const logContent = readFileSync(APP_LOG_FILE, 'utf-8');
+          const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+          const cleanLog = stripAnsi(logContent);
 
-        if (cleanLog.includes('Compiling')) {
-          state = 'Compiling...';
-          appStatusColor = chalk.yellow;
-        } else if (cleanLog.includes('error') || cleanLog.includes('Error') || cleanLog.includes('ERROR')) {
-          state = 'Error (check [l]ogs)';
-          appStatusColor = chalk.red;
+          if (cleanLog.includes('Compiling')) {
+            state = 'Compiling...';
+            appStatusColor = chalk.yellow;
+          } else if (cleanLog.includes('error') || cleanLog.includes('Error') || cleanLog.includes('ERROR')) {
+            state = 'Error (check [l]ogs)';
+            appStatusColor = chalk.red;
+          }
+        } catch {
+          state = 'Starting...';
         }
-      } catch {
-        state = 'Starting...';
       }
+
+      appStatusText = `${state} (use [x] to stop)`;
+      appStatusIcon = state === 'Ready' ? '●' : state.includes('Error') ? '✗' : '◐';
     }
 
-    appStatusText = `${state} (use [x] to stop)`;
-    appStatusIcon = state === 'Ready' ? '●' : state.includes('Error') ? '✗' : '◐';
+    const statusLine = appStatusColor(appStatusIcon) + ' ' + appStatusText;
+    printBoxLine(statusLine);
   }
-
-  const statusLine = appStatusColor(appStatusIcon) + ' ' + appStatusText;
-  printBoxLine(statusLine);
 
   printFooter();
   log.print('');
@@ -1802,16 +1815,26 @@ async function mainMenu(): Promise<void> {
 
     const padLabel = (text: string, width: number) => text + ' '.repeat(Math.max(0, width - text.length));
 
+    const hasAppScripts = projectHasAppScripts();
+
     const choices: MenuChoice[] = [
       { name: `📋 ${padLabel('Manage branches', 28)}${chalk.cyan('[b]')}`, value: 'branches', key: 'b' },
       { name: `🖥️ ${padLabel('Manage sessions' + sessionInfo, 28)}${chalk.cyan('[s]')}`, value: 'sessions', key: 's' },
       { name: `📥 ${padLabel('Pull changes', 28)}${chalk.cyan('[p]')}`, value: 'pull', key: 'p' },
-      { name: `🚀 ${padLabel('Start app', 28)}${chalk.cyan('[a]')}`, value: 'start', key: 'a' },
-      { name: `📄 ${padLabel('View app logs', 28)}${chalk.cyan('[l]')}`, value: 'logs', key: 'l' },
-      { name: `🛑 ${padLabel('Stop app', 28)}${chalk.cyan('[x]')}`, value: 'stop', key: 'x' },
+    ];
+
+    if (hasAppScripts) {
+      choices.push(
+        { name: `🚀 ${padLabel('Start app', 28)}${chalk.cyan('[a]')}`, value: 'start', key: 'a' },
+        { name: `📄 ${padLabel('View app logs', 28)}${chalk.cyan('[l]')}`, value: 'logs', key: 'l' },
+        { name: `🛑 ${padLabel('Stop app', 28)}${chalk.cyan('[x]')}`, value: 'stop', key: 'x' },
+      );
+    }
+
+    choices.push(
       { name: `🔄 ${padLabel('Refresh', 28)}${chalk.cyan('[r]')}`, value: 'refresh', key: 'r' },
       { name: chalk.dim(`❌ ${padLabel('Quit', 28)}[q]`), value: 'quit', key: 'q' },
-    ];
+    );
 
     const action = await selectWithShortcuts('What would you like to do?', choices, 5000);
 
