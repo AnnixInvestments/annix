@@ -731,9 +731,19 @@ export default function FittingForm({
                                      selectedStandard?.code?.includes('4504');
                     const hasThreeDropdowns = isSabs1123 || isBs4504;
 
-                    const isStandardFromGlobal = globalSpecs?.flangeStandardId && !entry.specs?.flangeStandardId;
-                    const isClassFromGlobal = globalSpecs?.flangePressureClassId && !entry.specs?.flangePressureClassId;
-                    const isTypeFromGlobal = globalSpecs?.flangeTypeCode && !entry.specs?.flangeTypeCode;
+                    const effectiveStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                    const effectiveClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                    const effectiveTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const isStandardFromGlobal = globalSpecs?.flangeStandardId && effectiveStandardId === globalSpecs?.flangeStandardId;
+                    const isStandardOverride = globalSpecs?.flangeStandardId && effectiveStandardId !== globalSpecs?.flangeStandardId;
+                    const isClassFromGlobal = globalSpecs?.flangePressureClassId && effectiveClassId === globalSpecs?.flangePressureClassId;
+                    const isClassOverride = globalSpecs?.flangePressureClassId && effectiveClassId !== globalSpecs?.flangePressureClassId;
+                    const isTypeFromGlobal = globalSpecs?.flangeTypeCode && effectiveTypeCode === globalSpecs?.flangeTypeCode;
+                    const isTypeOverride = globalSpecs?.flangeTypeCode && effectiveTypeCode !== globalSpecs?.flangeTypeCode;
+
+                    const globalSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400';
+                    const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
+                    const defaultSelectClass = 'w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800';
 
                     return (
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -741,7 +751,7 @@ export default function FittingForm({
                           <label className="block text-xs font-semibold text-green-900 mb-1">
                             Standard
                             {isStandardFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
-                            {entry.specs?.flangeStandardId && entry.specs?.flangeStandardId !== globalSpecs?.flangeStandardId && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
+                            {isStandardOverride && <span className="ml-1 text-red-600 font-normal">(Override)</span>}
                           </label>
                           <select
                             value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ''}
@@ -754,7 +764,7 @@ export default function FittingForm({
                                 getFilteredPressureClasses(standardId);
                               }
                             }}
-                            className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                            className={isStandardFromGlobal ? globalSelectClass : isStandardOverride ? overrideSelectClass : defaultSelectClass}
                           >
                             <option value="">Select Standard...</option>
                             {masterData.flangeStandards?.map((standard: any) => (
@@ -766,7 +776,7 @@ export default function FittingForm({
                           <label className="block text-xs font-semibold text-green-900 mb-1">
                             Pressure Class
                             {isClassFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
-                            {entry.specs?.flangePressureClassId && entry.specs?.flangePressureClassId !== globalSpecs?.flangePressureClassId && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
+                            {isClassOverride && <span className="ml-1 text-red-600 font-normal">(Override)</span>}
                           </label>
                           {hasThreeDropdowns ? (
                             <select
@@ -774,7 +784,7 @@ export default function FittingForm({
                               onChange={(e) => onUpdateEntry(entry.id, {
                                 specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                               })}
-                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
                             >
                               <option value="">Select Class...</option>
                               {(isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES).map((pc) => {
@@ -792,7 +802,7 @@ export default function FittingForm({
                               onChange={(e) => onUpdateEntry(entry.id, {
                                 specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                               })}
-                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
                             >
                               <option value="">Select Class...</option>
                               {(() => {
@@ -809,7 +819,7 @@ export default function FittingForm({
                           <label className="block text-xs font-semibold text-green-900 mb-1">
                             Flange Type
                             {isTypeFromGlobal && hasThreeDropdowns && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
-                            {entry.specs?.flangeTypeCode && entry.specs?.flangeTypeCode !== globalSpecs?.flangeTypeCode && hasThreeDropdowns && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
+                            {isTypeOverride && hasThreeDropdowns && <span className="ml-1 text-red-600 font-normal">(Override)</span>}
                           </label>
                           {hasThreeDropdowns ? (
                             <select
@@ -817,7 +827,7 @@ export default function FittingForm({
                               onChange={(e) => onUpdateEntry(entry.id, {
                                 specs: { ...entry.specs, flangeTypeCode: e.target.value || undefined }
                               })}
-                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              className={isTypeFromGlobal ? globalSelectClass : isTypeOverride ? overrideSelectClass : defaultSelectClass}
                             >
                               <option value="">Select Type...</option>
                               {(isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES).map((ft) => (

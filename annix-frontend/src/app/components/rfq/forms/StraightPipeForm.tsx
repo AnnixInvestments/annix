@@ -439,31 +439,31 @@ export default function StraightPipeForm({
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {/* Steel Specification */}
                     <div>
-                      <label htmlFor={`pipe-steel-spec-${entry.id}`} className="block text-xs font-semibold text-gray-900 mb-1">
-                        Steel Specification *
-                        {(() => {
-                          const globalSpecId = globalSpecs?.steelSpecificationId;
-                          const entrySpecId = entry.specs?.steelSpecificationId;
-                          if (globalSpecId && (!entrySpecId || entrySpecId === globalSpecId)) {
-                            return <span className="text-green-600 text-xs ml-1 font-normal">(Global)</span>;
-                          }
-                          if (entrySpecId && entrySpecId !== globalSpecId) {
-                            return <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>;
-                          }
-                          return null;
-                        })()}
-                      </label>
                       {(() => {
+                        const globalSpecId = globalSpecs?.steelSpecificationId;
+                        const effectiveSpecId = entry.specs?.steelSpecificationId || globalSpecId;
+                        const isSteelFromGlobal = globalSpecId && effectiveSpecId === globalSpecId;
+                        const isSteelOverride = globalSpecId && effectiveSpecId !== globalSpecId;
                         const selectId = `pipe-steel-spec-${entry.id}`;
                         const groupedOptions = masterData.steelSpecs
                           ? groupSteelSpecifications(masterData.steelSpecs)
                           : [];
+                        const globalSelectClass = 'w-full border-2 border-green-500 dark:border-lime-400 rounded';
+                        const overrideSelectClass = 'w-full border-2 border-red-500 dark:border-red-400 rounded';
+                        const defaultSelectClass = 'w-full';
 
                         return (
-                          <Select
-                            id={selectId}
-                            value={String(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || '')}
-                            onChange={(value) => {
+                          <>
+                            <label htmlFor={selectId} className="block text-xs font-semibold text-gray-900 mb-1">
+                              Steel Specification *
+                              {isSteelFromGlobal && <span className="text-green-600 text-xs ml-1 font-normal">(Global)</span>}
+                              {isSteelOverride && <span className="text-red-600 text-xs ml-1 font-normal">(Override)</span>}
+                            </label>
+                            <Select
+                              id={selectId}
+                              value={String(effectiveSpecId || '')}
+                              className={isSteelFromGlobal ? globalSelectClass : isSteelOverride ? overrideSelectClass : defaultSelectClass}
+                              onChange={(value) => {
                               const specId = value ? Number(value) : undefined;
                               const nominalBore = entry.specs?.nominalBoreMm;
 
@@ -526,20 +526,20 @@ export default function StraightPipeForm({
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
                             }}
-                            options={[]}
-                            groupedOptions={groupedOptions}
-                            placeholder="Select steel spec..."
-                            className="w-full"
-                            open={openSelects[selectId] || false}
-                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
-                            aria-required={true}
-                            aria-invalid={!!errors[`pipe_${index}_steel_spec`]}
-                          />
+                              options={[]}
+                              groupedOptions={groupedOptions}
+                              placeholder="Select steel spec..."
+                              open={openSelects[selectId] || false}
+                              onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
+                              aria-required={true}
+                              aria-invalid={!!errors[`pipe_${index}_steel_spec`]}
+                            />
+                            {errors[`pipe_${index}_steel_spec`] && (
+                              <p role="alert" className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_steel_spec`]}</p>
+                            )}
+                          </>
                         );
                       })()}
-                      {errors[`pipe_${index}_steel_spec`] && (
-                        <p role="alert" className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_steel_spec`]}</p>
-                      )}
                     </div>
 
                     {/* Schedule */}
@@ -814,9 +814,19 @@ export default function StraightPipeForm({
                     ];
                     const currentBlankPositions = entry.specs?.blankFlangePositions || [];
 
-                    const isStandardFromGlobal = globalSpecs?.flangeStandardId && !entry.specs?.flangeStandardId;
-                    const isClassFromGlobal = globalSpecs?.flangePressureClassId && !entry.specs?.flangePressureClassId;
-                    const isTypeFromGlobal = globalSpecs?.flangeTypeCode && !entry.specs?.flangeTypeCode;
+                    const effectiveStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                    const effectiveClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                    const effectiveTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const isStandardFromGlobal = globalSpecs?.flangeStandardId && effectiveStandardId === globalSpecs?.flangeStandardId;
+                    const isStandardOverride = globalSpecs?.flangeStandardId && effectiveStandardId !== globalSpecs?.flangeStandardId;
+                    const isClassFromGlobal = globalSpecs?.flangePressureClassId && effectiveClassId === globalSpecs?.flangePressureClassId;
+                    const isClassOverride = globalSpecs?.flangePressureClassId && effectiveClassId !== globalSpecs?.flangePressureClassId;
+                    const isTypeFromGlobal = globalSpecs?.flangeTypeCode && effectiveTypeCode === globalSpecs?.flangeTypeCode;
+                    const isTypeOverride = globalSpecs?.flangeTypeCode && effectiveTypeCode !== globalSpecs?.flangeTypeCode;
+
+                    const globalSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400';
+                    const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
+                    const defaultSelectClass = 'w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800';
 
                     return (
                       <>
@@ -826,7 +836,7 @@ export default function StraightPipeForm({
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
                               Standard
                               {isStandardFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
-                              {entry.specs?.flangeStandardId && entry.specs?.flangeStandardId !== globalSpecs?.flangeStandardId && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
+                              {isStandardOverride && <span className="ml-1 text-red-600 font-normal">(Override)</span>}
                               <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange standard determines pressure class options and flange dimensions">?</span>
                             </label>
                             <select
@@ -877,7 +887,7 @@ export default function StraightPipeForm({
                                   getFilteredPressureClasses(newFlangeStandardId);
                                 }
                               }}
-                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-900"
+                              className={isStandardFromGlobal ? globalSelectClass : isStandardOverride ? overrideSelectClass : defaultSelectClass}
                             >
                               <option value="">Select...</option>
                               {masterData.flangeStandards?.map((standard: any) => (
@@ -893,7 +903,7 @@ export default function StraightPipeForm({
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
                               {isSabs1123 ? 'Class (kPa)' : 'Class'}
                               {isClassFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
-                              {entry.specs?.flangePressureClassId && entry.specs?.flangePressureClassId !== globalSpecs?.flangePressureClassId && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
+                              {isClassOverride && <span className="ml-1 text-red-600 font-normal">(Override)</span>}
                               <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange pressure rating. Should match or exceed working pressure. Auto-selected based on working pressure.">?</span>
                             </label>
                             <select
@@ -907,7 +917,7 @@ export default function StraightPipeForm({
                                   description: newDescription
                                 });
                               }}
-                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-900"
+                              className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
                               onFocus={() => {
                                 const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                                 if (stdId && !pressureClassesByStandard[stdId]) {
@@ -957,7 +967,7 @@ export default function StraightPipeForm({
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
                               Type
                               {isTypeFromGlobal && showFlangeType && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
-                              {entry.specs?.flangeTypeCode && entry.specs?.flangeTypeCode !== globalSpecs?.flangeTypeCode && showFlangeType && <span className="ml-1 text-amber-600 font-normal">(Override)</span>}
+                              {isTypeOverride && showFlangeType && <span className="ml-1 text-red-600 font-normal">(Override)</span>}
                             </label>
                             {showFlangeType ? (
                               <select
@@ -970,7 +980,7 @@ export default function StraightPipeForm({
                                     description: newDescription
                                   });
                                 }}
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-900"
+                                className={isTypeFromGlobal ? globalSelectClass : isTypeOverride ? overrideSelectClass : defaultSelectClass}
                               >
                                 <option value="">Select...</option>
                                 {(isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES).map((ft) => (
