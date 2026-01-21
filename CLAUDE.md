@@ -47,6 +47,14 @@
 - Prefer small, targeted try/catch blocks close to the failing operation
 - When logging errors inside browser evaluation (e.g. Puppeteer), capture messages and surface them to the Node logger after evaluation
 
+### Secrets Management
+- **Never commit secrets to source control**: No API keys, tokens, or credentials in code or config files
+- **No secrets in fly.toml**: Use Fly.io mechanisms instead:
+    - Runtime secrets: `fly secrets set KEY=value -a app-name`
+    - Build-time secrets: `fly deploy --build-secret KEY=value`
+- **Use environment-based secrets**: GitHub Actions secrets or Fly.io secrets only
+- **Client-side API keys** (e.g. Google Maps): Still use Fly.io build secrets, not source control
+
 ## Git Commits
 
 ### Autonomous Operation Mode
@@ -59,7 +67,8 @@
 3. Propose a commit message
 4. **ASK**: "May I commit with this message?"
 5. Wait for explicit "yes" before running `git commit`
-6. Then ask before pushing: "May I push to remote?"
+6. **Rebase to local main**: Use `git rebase main` (never merge) so user can review locally
+7. Only push to remote when user explicitly approves
 
 ### Commit Standards
 - **Complete features only**: Each commit should represent a complete, logical feature - not intermediate iterations

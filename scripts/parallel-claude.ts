@@ -1127,9 +1127,9 @@ async function pullChangesFromBranch(branch: string): Promise<void> {
     return;
   }
 
-  const current = currentBranch();
-  if (current !== 'main') {
-    log.warn(`You are on ${current}, not main. Switch to main first to pull changes for testing.`);
+  const mainWorktreeBranch = exec('git branch --show-current', { cwd: rootDir(), silent: true });
+  if (mainWorktreeBranch !== 'main') {
+    log.warn(`Main worktree is on ${mainWorktreeBranch}, not main. Cannot pull changes.`);
     return;
   }
 
