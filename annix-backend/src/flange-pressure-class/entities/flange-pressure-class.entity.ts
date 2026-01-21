@@ -16,6 +16,9 @@ export class FlangePressureClass {
   @Column()
   designation: string; // e.g. "6/3", "10/3", "T/D"
 
+  @Column({ type: 'varchar', nullable: true })
+  pressureCategory: string | null; // "Low Pressure", "Medium Pressure", "High Pressure" - auto-filled for BS 10
+
   @ManyToOne(() => FlangeStandard, (standard) => standard.id, {
     onDelete: 'CASCADE',
   })
