@@ -9,6 +9,23 @@ import {
 export class FlangePtRatingController {
   constructor(private readonly ptRatingService: FlangePtRatingService) {}
 
+  @Get('recommendations')
+  getPtRecommendations(
+    @Query('standardId') standardId: string,
+    @Query('workingPressureBar') workingPressureBar: string,
+    @Query('temperatureCelsius') temperatureCelsius: string,
+    @Query('materialGroup') materialGroup?: string,
+    @Query('currentPressureClassId') currentPressureClassId?: string,
+  ) {
+    return this.ptRatingService.getPtRecommendations(
+      Number(standardId),
+      Number(workingPressureBar),
+      Number(temperatureCelsius),
+      materialGroup || 'Carbon Steel A105 (Group 1.1)',
+      currentPressureClassId ? Number(currentPressureClassId) : undefined,
+    );
+  }
+
   @Post()
   create(@Body() dto: CreateFlangePtRatingDto) {
     return this.ptRatingService.create(dto);

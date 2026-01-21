@@ -247,6 +247,15 @@ export interface FlangePressureClass {
   standard?: FlangeStandard;
 }
 
+export interface FlangeType {
+  id: number;
+  code: string;
+  name: string;
+  abbreviation: string;
+  description?: string;
+  standardReference?: string;
+}
+
 export interface FlangeDimensionLookup {
   id: number;
   D: number;
@@ -733,16 +742,28 @@ class ApiClient {
     return this.request<FlangePressureClass[]>(`/flange-pressure-class/standard/${standardId}`);
   }
 
+  async getFlangeTypes(): Promise<FlangeType[]> {
+    return this.request<FlangeType[]>('/flange-types');
+  }
+
+  async getFlangeTypeByCode(code: string): Promise<FlangeType | null> {
+    return this.request<FlangeType | null>(`/flange-types/code/${encodeURIComponent(code)}`);
+  }
+
   async lookupFlangeDimension(
     nominalBoreMm: number,
     standardId: number,
-    pressureClassId: number
+    pressureClassId: number,
+    flangeTypeId?: number
   ): Promise<FlangeDimensionLookup | null> {
     const params = new URLSearchParams({
       nominalBoreMm: nominalBoreMm.toString(),
       standardId: standardId.toString(),
       pressureClassId: pressureClassId.toString(),
     });
+    if (flangeTypeId) {
+      params.append('flangeTypeId', flangeTypeId.toString());
+    }
     return this.request<FlangeDimensionLookup | null>(`/flange-dimension/lookup?${params.toString()}`);
   }
 
@@ -1192,8 +1213,10 @@ export const masterDataApi = {
   getFlangeStandards: () => apiClient.getFlangeStandards(),
   getFlangePressureClasses: () => apiClient.getFlangePressureClasses(),
   getFlangePressureClassesByStandard: (standardId: number) => apiClient.getFlangePressureClassesByStandard(standardId),
-  lookupFlangeDimension: (nominalBoreMm: number, standardId: number, pressureClassId: number) =>
-    apiClient.lookupFlangeDimension(nominalBoreMm, standardId, pressureClassId),
+  getFlangeTypes: () => apiClient.getFlangeTypes(),
+  getFlangeTypeByCode: (code: string) => apiClient.getFlangeTypeByCode(code),
+  lookupFlangeDimension: (nominalBoreMm: number, standardId: number, pressureClassId: number, flangeTypeId?: number) =>
+    apiClient.lookupFlangeDimension(nominalBoreMm, standardId, pressureClassId, flangeTypeId),
   getPipeDimensions: (nominalBore?: number, steelSpecId?: number, minPressure?: number, temperature?: number) => 
     apiClient.getPipeDimensions(nominalBore, steelSpecId, minPressure, temperature),
   getNominalBores: (steelSpecId?: number) => apiClient.getNominalBores(steelSpecId),
@@ -1518,6 +1541,58 @@ export const boqApi = {
 
     const result = await response.json();
     return result.data && result.data.length > 0 ? result.data[0] : null;
+  },
+};
+
+export interface PtValidationResult {
+  isValid: boolean;
+  maxPressureAtTemp: number | null;
+  warningMessage: string | null;
+}
+
+export interface ValidPressureClassInfo {
+  id: number;
+  designation: string;
+  maxPressureAtTemp: number;
+  isAdequate: boolean;
+}
+
+export interface PtRecommendationResult {
+  validation: PtValidationResult;
+  recommendedPressureClassId: number | null;
+  validPressureClasses: ValidPressureClassInfo[];
+}
+
+export const ptRatingApi = {
+  recommendations: async (params: {
+    standardId: number;
+    workingPressureBar: number;
+    temperatureCelsius: number;
+    materialGroup?: string;
+    currentPressureClassId?: number;
+  }): Promise<PtRecommendationResult> => {
+    const queryParams = new URLSearchParams({
+      standardId: params.standardId.toString(),
+      workingPressureBar: params.workingPressureBar.toString(),
+      temperatureCelsius: params.temperatureCelsius.toString(),
+    });
+
+    if (params.materialGroup) {
+      queryParams.append('materialGroup', params.materialGroup);
+    }
+    if (params.currentPressureClassId) {
+      queryParams.append('currentPressureClassId', params.currentPressureClassId.toString());
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/flange-pt-ratings/recommendations?${queryParams.toString()}`
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch P-T recommendations');
+    }
+
+    return response.json();
   },
 };
 

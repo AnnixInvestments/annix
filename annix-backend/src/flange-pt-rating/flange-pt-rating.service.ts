@@ -7,6 +7,25 @@ import {
   BulkCreateFlangePtRatingDto,
 } from './dto/create-flange-pt-rating.dto';
 
+export interface PtValidationResult {
+  isValid: boolean;
+  maxPressureAtTemp: number | null;
+  warningMessage: string | null;
+}
+
+export interface ValidPressureClassInfo {
+  id: number;
+  designation: string;
+  maxPressureAtTemp: number;
+  isAdequate: boolean;
+}
+
+export interface PtRecommendationResult {
+  validation: PtValidationResult;
+  recommendedPressureClassId: number | null;
+  validPressureClasses: ValidPressureClassInfo[];
+}
+
 @Injectable()
 export class FlangePtRatingService {
   private readonly logger = new Logger(FlangePtRatingService.name);
@@ -220,5 +239,96 @@ export class FlangePtRatingService {
     }
 
     return null;
+  }
+
+  async getPtRecommendations(
+    standardId: number,
+    workingPressureBar: number,
+    temperatureCelsius: number,
+    materialGroup: string = 'Carbon Steel A105 (Group 1.1)',
+    currentPressureClassId?: number,
+  ): Promise<PtRecommendationResult> {
+    const ratings = await this.ptRatingRepository.find({
+      where: {
+        pressureClass: { standard: { id: standardId } },
+        materialGroup,
+      },
+      relations: ['pressureClass', 'pressureClass.standard'],
+      order: { pressureClassId: 'ASC', temperatureCelsius: 'ASC' },
+    });
+
+    const ratingsByClass = new Map<number, FlangePtRating[]>();
+    for (const rating of ratings) {
+      const classId = rating.pressureClassId;
+      if (!ratingsByClass.has(classId)) {
+        ratingsByClass.set(classId, []);
+      }
+      ratingsByClass.get(classId)!.push(rating);
+    }
+
+    const validPressureClasses: ValidPressureClassInfo[] = [];
+    let recommendedClassId: number | null = null;
+    let lowestAdequateMaxPressure = Infinity;
+
+    for (const [classId, classRatings] of ratingsByClass) {
+      const maxPressure = await this.getMaxPressureAtTemperature(
+        classId,
+        temperatureCelsius,
+        materialGroup,
+      );
+
+      if (maxPressure !== null) {
+        const designation = classRatings[0]?.pressureClass?.designation || '';
+        const isAdequate = maxPressure >= workingPressureBar;
+
+        validPressureClasses.push({
+          id: classId,
+          designation,
+          maxPressureAtTemp: maxPressure,
+          isAdequate,
+        });
+
+        if (isAdequate && maxPressure < lowestAdequateMaxPressure) {
+          lowestAdequateMaxPressure = maxPressure;
+          recommendedClassId = classId;
+        }
+      }
+    }
+
+    validPressureClasses.sort((a, b) => a.maxPressureAtTemp - b.maxPressureAtTemp);
+
+    let validation: PtValidationResult = {
+      isValid: true,
+      maxPressureAtTemp: null,
+      warningMessage: null,
+    };
+
+    if (currentPressureClassId) {
+      const currentMaxPressure = await this.getMaxPressureAtTemperature(
+        currentPressureClassId,
+        temperatureCelsius,
+        materialGroup,
+      );
+
+      validation.maxPressureAtTemp = currentMaxPressure;
+
+      if (currentMaxPressure !== null && currentMaxPressure < workingPressureBar) {
+        const currentClass = validPressureClasses.find(
+          (c) => c.id === currentPressureClassId,
+        );
+        const designation = currentClass?.designation || 'Selected';
+
+        validation.isValid = false;
+        validation.warningMessage =
+          `${designation} has max rating of ${currentMaxPressure.toFixed(1)} bar at ${temperatureCelsius}°C, ` +
+          `but working pressure is ${workingPressureBar} bar`;
+      }
+    }
+
+    return {
+      validation,
+      recommendedPressureClassId: recommendedClassId,
+      validPressureClasses,
+    };
   }
 }

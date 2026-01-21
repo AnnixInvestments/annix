@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { type MaterialLimits, materialLimits as getMaterialLimits, checkMaterialSuitability, WORKING_PRESSURE_BAR, WORKING_TEMPERATURE_CELSIUS } from '@/app/lib/config/rfq';
-import { materialValidationApi, coatingSpecificationApi, type ISO12944System, type ISO12944SystemsByDurabilityResult } from '@/app/lib/api/client';
+import { materialValidationApi, coatingSpecificationApi, type ISO12944System, type ISO12944SystemsByDurabilityResult, type ValidPressureClassInfo } from '@/app/lib/api/client';
+import { usePtRecommendations } from '@/app/lib/hooks/usePtRecommendations';
+import { isStainlessSteelSpec } from '@/app/lib/config/rfq/boltGradeRecommendations';
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
 import { log } from '@/app/lib/logger';
 import { nowISO } from '@/app/lib/datetime';
@@ -556,6 +558,20 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
 
   const hasErrors = errors && (errors.workingPressure || errors.workingTemperature || errors.steelPipesConfirmation || errors.fastenersConfirmation);
 
+  const currentSteelSpec = masterData?.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
+  const { recommendations: ptRecommendations, boltRecommendation, isLoading: ptLoading } = usePtRecommendations({
+    standardId: globalSpecs?.flangeStandardId !== 'PE' ? globalSpecs?.flangeStandardId : undefined,
+    workingPressureBar: globalSpecs?.workingPressureBar,
+    temperatureCelsius: globalSpecs?.workingTemperatureC,
+    currentPressureClassId: globalSpecs?.flangePressureClassId,
+    steelSpecName: currentSteelSpec?.steelSpecName,
+    enabled: showSteelPipes && !globalSpecs?.steelPipesSpecsConfirmed,
+  });
+
+  const pressureClassInfoMap = new Map<number, ValidPressureClassInfo>(
+    ptRecommendations?.validPressureClasses.map((c) => [c.id, c]) || []
+  );
+
   // Derive temperature category from working temperature if not manually set
   const derivedTempCategory = deriveTemperatureCategory(globalSpecs?.workingTemperatureC);
   const effectiveEcpTemperature = globalSpecs?.ecpTemperature || derivedTempCategory;
@@ -1057,13 +1073,18 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                   P/E (Plain Ended)
                 </div>
               ) : (
+              <>
               <select
                 value={globalSpecs?.flangePressureClassId || ''}
                 onChange={(e) => onUpdateGlobalSpecs({
                   ...globalSpecs,
                   flangePressureClassId: e.target.value ? Number(e.target.value) : undefined
                 })}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 ${
+                  ptRecommendations?.validation && !ptRecommendations.validation.isValid
+                    ? 'border-amber-500 bg-amber-50'
+                    : 'border-gray-300'
+                }`}
                 disabled={!globalSpecs?.flangeStandardId}
                 required
               >
@@ -1072,11 +1093,42 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                   const selectedStandard = masterData.flangeStandards?.find((s: any) => s.id === globalSpecs?.flangeStandardId);
                   const isSabsOrBs4504 = selectedStandard?.code === 'SABS 1123' || selectedStandard?.code === 'BS 4504';
                   const displayValue = isSabsOrBs4504 ? pc.designation.replace(/\/3$/, '') : pc.designation;
+                  const classInfo = pressureClassInfoMap.get(pc.id);
+                  const suffix = classInfo
+                    ? (ptRecommendations?.recommendedPressureClassId === pc.id
+                        ? ' (Recommended)'
+                        : (!classInfo.isAdequate ? ' (Inadequate for P-T)' : ''))
+                    : '';
                   return (
-                    <option key={pc.id} value={pc.id}>{displayValue}</option>
+                    <option key={pc.id} value={pc.id}>{displayValue}{suffix}</option>
                   );
                 })}
               </select>
+              {ptRecommendations?.validation && !ptRecommendations.validation.isValid && (
+                <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded text-xs">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-amber-800 font-medium">{ptRecommendations.validation.warningMessage}</p>
+                      {ptRecommendations.recommendedPressureClassId && (
+                        <button
+                          type="button"
+                          onClick={() => onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            flangePressureClassId: ptRecommendations.recommendedPressureClassId
+                          })}
+                          className="mt-1 px-2 py-0.5 bg-amber-600 text-white rounded text-xs hover:bg-amber-700"
+                        >
+                          Use Recommended Class
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              </>
               )}
             </div>
 
@@ -4652,6 +4704,45 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                         <option value="Inconel">Inconel 625/718</option>
                       </optgroup>
                     </select>
+                    {!globalSpecs?.boltGrade && boltRecommendation && globalSpecs?.workingTemperatureC !== undefined && (
+                      <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                        <div className="flex items-start gap-2">
+                          <svg className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <div className="flex-1">
+                            <p className="text-blue-800">
+                              <span className="font-medium">Recommended: {boltRecommendation.grade}</span>
+                              <span className="text-blue-600 ml-1">- {boltRecommendation.reason}</span>
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                boltGrade: boltRecommendation.grade
+                              })}
+                              className="mt-1 px-2 py-0.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                            >
+                              Apply
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {globalSpecs?.boltGrade && boltRecommendation && globalSpecs.boltGrade !== boltRecommendation.grade && globalSpecs?.workingTemperatureC !== undefined && (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
+                        <div className="flex items-start gap-2">
+                          <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <div className="flex-1">
+                            <p className="text-amber-800">
+                              Selected grade differs from recommendation ({boltRecommendation.grade}) for {globalSpecs.workingTemperatureC}°C
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <p className="mt-1 text-xs text-gray-500">
                       Grade selection affects temperature range and corrosion resistance
                     </p>
