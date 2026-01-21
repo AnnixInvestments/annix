@@ -56,6 +56,8 @@ export default function GoogleMapLocationPicker({
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualLat, setManualLat] = useState(initialLocation?.lat?.toString() || "");
   const [manualLng, setManualLng] = useState(initialLocation?.lng?.toString() || "");
+  const [latError, setLatError] = useState<string | null>(null);
+  const [lngError, setLngError] = useState<string | null>(null);
 
   // Check if API key is missing or empty
   const isApiKeyMissing = !apiKey || apiKey.trim() === "";
@@ -258,18 +260,27 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
     const lat = parseFloat(manualLat);
     const lng = parseFloat(manualLng);
 
-    if (isNaN(lat) || isNaN(lng)) {
-      showToast("Please enter valid latitude and longitude values.", 'error');
-      return;
+    let hasError = false;
+    setLatError(null);
+    setLngError(null);
+
+    if (isNaN(lat)) {
+      setLatError("Please enter a valid latitude value.");
+      hasError = true;
+    } else if (lat < -90 || lat > 90) {
+      setLatError("Latitude must be between -90 and 90.");
+      hasError = true;
     }
 
-    if (lat < -90 || lat > 90) {
-      showToast("Latitude must be between -90 and 90.", 'error');
-      return;
+    if (isNaN(lng)) {
+      setLngError("Please enter a valid longitude value.");
+      hasError = true;
+    } else if (lng < -180 || lng > 180) {
+      setLngError("Longitude must be between -180 and 180.");
+      hasError = true;
     }
 
-    if (lng < -180 || lng > 180) {
-      showToast("Longitude must be between -180 and 180.", 'error');
+    if (hasError) {
       return;
     }
 
@@ -307,11 +318,22 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
                   type="number"
                   step="0.00001"
                   value={manualLat}
-                  onChange={(e) => setManualLat(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => {
+                    setManualLat(e.target.value);
+                    setLatError(null);
+                  }}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    latError
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                   placeholder="-26.20227"
                 />
-                <p className="text-xs text-gray-500 mt-1">Range: -90 to 90</p>
+                {latError ? (
+                  <p className="text-xs text-red-600 mt-1">{latError}</p>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-1">Range: -90 to 90</p>
+                )}
               </div>
 
               <div>
@@ -322,11 +344,22 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
                   type="number"
                   step="0.00001"
                   value={manualLng}
-                  onChange={(e) => setManualLng(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => {
+                    setManualLng(e.target.value);
+                    setLngError(null);
+                  }}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    lngError
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                   placeholder="28.04363"
                 />
-                <p className="text-xs text-gray-500 mt-1">Range: -180 to 180</p>
+                {lngError ? (
+                  <p className="text-xs text-red-600 mt-1">{lngError}</p>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-1">Range: -180 to 180</p>
+                )}
               </div>
             </div>
 

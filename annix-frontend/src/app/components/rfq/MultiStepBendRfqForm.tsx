@@ -33,6 +33,7 @@ interface BendEntry {
     useGlobalFlangeSpecs?: boolean;
   };
   calculation?: any;
+  calculationError?: string | null;
 }
 
 interface BendRfqFormData {
@@ -265,6 +266,8 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
 
   const calculateBend = async (entryId: string) => {
     setLoading(true);
+    updateBendEntry(entryId, { calculationError: null });
+
     try {
       const entry = formData.bendEntries.find(e => e.id === entryId);
       if (!entry) return;
@@ -288,11 +291,14 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
 
       updateBendEntry(entryId, {
         calculation: result,
+        calculationError: null,
       });
 
     } catch (error) {
       log.debug('Bend calculation failed:', error);
-      showToast('Bend calculation failed. Please check your specifications.', 'error');
+      updateBendEntry(entryId, {
+        calculationError: 'Bend calculation failed. Please check your specifications.',
+      });
     } finally {
       setLoading(false);
     }
@@ -982,6 +988,12 @@ export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
                       {loading ? 'Calculating...' : 'Calculate'}
                     </button>
                   </div>
+
+                  {entry.calculationError && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-600">{entry.calculationError}</p>
+                    </div>
+                  )}
 
                   {entry.calculation && (
                     <div className="mt-4 p-4 bg-gray-50 rounded-lg">
