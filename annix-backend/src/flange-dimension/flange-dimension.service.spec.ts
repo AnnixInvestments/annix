@@ -6,6 +6,7 @@ import { NominalOutsideDiameterMm } from '../nominal-outside-diameter-mm/entitie
 import { FlangeStandard } from '../flange-standard/entities/flange-standard.entity';
 import { FlangePressureClass } from '../flange-pressure-class/entities/flange-pressure-class.entity';
 import { Bolt } from '../bolt/entities/bolt.entity';
+import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 describe('FlangeDimensionService', () => {
@@ -35,6 +36,11 @@ describe('FlangeDimensionService', () => {
     findOne: jest.fn(),
   };
 
+  const mockBoltMassRepo = {
+    findOne: jest.fn(),
+    createQueryBuilder: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -56,6 +62,7 @@ describe('FlangeDimensionService', () => {
           useValue: mockPressureRepo,
         },
         { provide: getRepositoryToken(Bolt), useValue: mockBoltRepo },
+        { provide: getRepositoryToken(BoltMass), useValue: mockBoltMassRepo },
       ],
     }).compile();
 
