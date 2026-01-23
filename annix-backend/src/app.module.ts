@@ -61,6 +61,9 @@ import { NixModule } from './nix/nix.module';
 import { RubberLiningModule } from './rubber-lining/rubber-lining.module';
 import { PipeSteelWorkModule } from './pipe-steel-work/pipe-steel-work.module';
 import { SecureDocumentsModule } from './secure-documents/secure-documents.module';
+import { ThermalModule } from './thermal/thermal.module';
+import { DataValidationModule } from './data-validation/data-validation.module';
+import { UnifiedApiModule } from './unified-api/unified-api.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -123,6 +126,9 @@ import typeormConfig from './config/typeorm';
     RubberLiningModule,
     PipeSteelWorkModule,
     SecureDocumentsModule,
+    ThermalModule,
+    DataValidationModule,
+    UnifiedApiModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

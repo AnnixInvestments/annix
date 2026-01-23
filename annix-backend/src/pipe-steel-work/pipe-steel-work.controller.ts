@@ -27,6 +27,13 @@ import {
   MaterialCompatibilityResponseDto,
   ExportReportDto,
   ExportReportResponseDto,
+  StandardPlateSizeDto,
+  GasketMaterialDto,
+  GasketCompatibilityCheckDto,
+  GasketCompatibilityResponseDto,
+  HeatTreatmentDto,
+  HeatTreatmentRequirementDto,
+  HeatTreatmentRequirementResponseDto,
 } from './dto/pipe-steel-work.dto';
 
 @ApiTags('Pipe Steel Work')
@@ -280,5 +287,62 @@ export class PipeSteelWorkController {
   })
   exportReport(@Body() dto: ExportReportDto): ExportReportResponseDto {
     return this.pipeSteelWorkService.exportReport(dto);
+  }
+
+  @Get('standard-plate-sizes')
+  @ApiOperation({ summary: 'Get standard plate sizes for brackets and compensation plates' })
+  @ApiQuery({ name: 'category', required: false, description: 'Filter by category (small, medium, large)' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of standard plate sizes',
+    type: [StandardPlateSizeDto],
+  })
+  standardPlateSizes(@Query('category') category?: string): StandardPlateSizeDto[] {
+    return this.pipeSteelWorkService.standardPlateSizes(category);
+  }
+
+  @Get('gasket-materials')
+  @ApiOperation({ summary: 'Get available gasket materials with specifications' })
+  @ApiQuery({ name: 'type', required: false, description: 'Filter by gasket type' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of gasket materials',
+    type: [GasketMaterialDto],
+  })
+  gasketMaterials(@Query('type') type?: string): GasketMaterialDto[] {
+    return this.pipeSteelWorkService.gasketMaterials(type);
+  }
+
+  @Post('gasket-compatibility')
+  @ApiOperation({ summary: 'Check gasket compatibility with service conditions' })
+  @ApiResponse({
+    status: 200,
+    description: 'Compatibility check result',
+    type: GasketCompatibilityResponseDto,
+  })
+  gasketCompatibility(@Body() dto: GasketCompatibilityCheckDto): GasketCompatibilityResponseDto {
+    return this.pipeSteelWorkService.gasketCompatibility(dto);
+  }
+
+  @Get('heat-treatments')
+  @ApiOperation({ summary: 'Get available heat treatment options' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of heat treatments',
+    type: [HeatTreatmentDto],
+  })
+  heatTreatments(): HeatTreatmentDto[] {
+    return this.pipeSteelWorkService.heatTreatments();
+  }
+
+  @Post('heat-treatment-requirement')
+  @ApiOperation({ summary: 'Check if heat treatment is required and get details' })
+  @ApiResponse({
+    status: 200,
+    description: 'Heat treatment requirement result',
+    type: HeatTreatmentRequirementResponseDto,
+  })
+  heatTreatmentRequirement(@Body() dto: HeatTreatmentRequirementDto): HeatTreatmentRequirementResponseDto {
+    return this.pipeSteelWorkService.heatTreatmentRequirement(dto);
   }
 }

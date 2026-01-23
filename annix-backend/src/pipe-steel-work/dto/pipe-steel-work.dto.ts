@@ -797,3 +797,222 @@ export class ExportReportResponseDto {
   @ApiProperty({ description: 'File size in bytes' })
   fileSizeBytes: number;
 }
+
+export enum PlateSizeCategory {
+  SMALL = 'small',
+  MEDIUM = 'medium',
+  LARGE = 'large',
+}
+
+export class StandardPlateSizeDto {
+  @ApiProperty({ description: 'Unique plate size ID' })
+  id: string;
+
+  @ApiProperty({ description: 'Display name' })
+  name: string;
+
+  @ApiProperty({ description: 'Length in mm' })
+  lengthMm: number;
+
+  @ApiProperty({ description: 'Width in mm' })
+  widthMm: number;
+
+  @ApiProperty({ description: 'Thickness in mm' })
+  thicknessMm: number;
+
+  @ApiProperty({ description: 'Size category', enum: PlateSizeCategory })
+  category: PlateSizeCategory;
+
+  @ApiPropertyOptional({ description: 'Weight in kg' })
+  weightKg?: number;
+
+  @ApiPropertyOptional({ description: 'Common uses' })
+  commonUses?: string;
+}
+
+export enum GasketMaterialType {
+  SPIRAL_WOUND = 'spiral_wound',
+  RING_JOINT = 'ring_joint',
+  SOFT_CUT = 'soft_cut',
+  PTFE = 'ptfe',
+  GRAPHITE = 'graphite',
+  RUBBER = 'rubber',
+  CAF = 'compressed_asbestos_free',
+}
+
+export class GasketMaterialDto {
+  @ApiProperty({ description: 'Material code' })
+  code: string;
+
+  @ApiProperty({ description: 'Display name' })
+  name: string;
+
+  @ApiProperty({ description: 'Material type', enum: GasketMaterialType })
+  type: GasketMaterialType;
+
+  @ApiProperty({ description: 'Minimum temperature rating (°C)' })
+  minTempC: number;
+
+  @ApiProperty({ description: 'Maximum temperature rating (°C)' })
+  maxTempC: number;
+
+  @ApiProperty({ description: 'Maximum pressure rating (bar)' })
+  maxPressureBar: number;
+
+  @ApiProperty({ description: 'Compatible flange faces' })
+  compatibleFlanges: string[];
+
+  @ApiProperty({ description: 'Compatible fluid services' })
+  compatibleServices: string[];
+
+  @ApiPropertyOptional({ description: 'Incompatible services (warnings)' })
+  incompatibleServices?: string[];
+
+  @ApiPropertyOptional({ description: 'Cost factor (1.0 = baseline)' })
+  costFactor?: number;
+
+  @ApiPropertyOptional({ description: 'Notes' })
+  notes?: string;
+}
+
+export class GasketCompatibilityCheckDto {
+  @ApiProperty({ description: 'Gasket material code' })
+  @IsString()
+  gasketCode: string;
+
+  @ApiProperty({ description: 'Flange material (e.g., A105, 316SS)' })
+  @IsString()
+  flangeMaterial: string;
+
+  @ApiProperty({ description: 'Service fluid' })
+  @IsString()
+  serviceFluid: string;
+
+  @ApiProperty({ description: 'Design temperature (°C)' })
+  @IsNumber()
+  designTempC: number;
+
+  @ApiProperty({ description: 'Design pressure (bar)' })
+  @IsNumber()
+  designPressureBar: number;
+
+  @ApiPropertyOptional({ description: 'Flange face type (RF, FF, RTJ)' })
+  @IsOptional()
+  @IsString()
+  flangeFace?: string;
+}
+
+export class GasketCompatibilityResponseDto {
+  @ApiProperty({ description: 'Is compatible' })
+  isCompatible: boolean;
+
+  @ApiProperty({ description: 'Compatibility score (0-100)' })
+  score: number;
+
+  @ApiProperty({ description: 'Warnings' })
+  warnings: string[];
+
+  @ApiProperty({ description: 'Recommendations' })
+  recommendations: string[];
+
+  @ApiPropertyOptional({ description: 'Alternative gasket suggestions' })
+  alternatives?: string[];
+}
+
+export enum HeatTreatmentType {
+  PWHT = 'pwht',
+  STRESS_RELIEF = 'stress_relief',
+  NORMALIZING = 'normalizing',
+  ANNEALING = 'annealing',
+  SOLUTION_ANNEALING = 'solution_annealing',
+  QUENCH_TEMPER = 'quench_temper',
+}
+
+export class HeatTreatmentDto {
+  @ApiProperty({ description: 'Treatment code' })
+  code: string;
+
+  @ApiProperty({ description: 'Display name' })
+  name: string;
+
+  @ApiProperty({ description: 'Treatment type', enum: HeatTreatmentType })
+  type: HeatTreatmentType;
+
+  @ApiProperty({ description: 'Description' })
+  description: string;
+
+  @ApiProperty({ description: 'Temperature range low (°C)' })
+  tempRangeLowC: number;
+
+  @ApiProperty({ description: 'Temperature range high (°C)' })
+  tempRangeHighC: number;
+
+  @ApiProperty({ description: 'Hold time formula (e.g., "1hr per 25mm")' })
+  holdTimeFormula: string;
+
+  @ApiProperty({ description: 'Heating rate (°C/hr max)' })
+  heatingRateMaxCPerHr: number;
+
+  @ApiProperty({ description: 'Cooling rate (°C/hr max)' })
+  coolingRateMaxCPerHr: number;
+
+  @ApiProperty({ description: 'Applicable materials' })
+  applicableMaterials: string[];
+
+  @ApiProperty({ description: 'Required by code references' })
+  codeReferences: string[];
+
+  @ApiPropertyOptional({ description: 'Base cost per kg' })
+  baseCostPerKg?: number;
+
+  @ApiPropertyOptional({ description: 'Notes' })
+  notes?: string;
+}
+
+export class HeatTreatmentRequirementDto {
+  @ApiProperty({ description: 'Material specification' })
+  @IsString()
+  material: string;
+
+  @ApiProperty({ description: 'Wall thickness (mm)' })
+  @IsNumber()
+  wallThicknessMm: number;
+
+  @ApiPropertyOptional({ description: 'Weld type' })
+  @IsOptional()
+  @IsString()
+  weldType?: string;
+
+  @ApiPropertyOptional({ description: 'P-number' })
+  @IsOptional()
+  @IsNumber()
+  pNumber?: number;
+
+  @ApiPropertyOptional({ description: 'Design code (ASME B31.3, etc.)' })
+  @IsOptional()
+  @IsString()
+  designCode?: string;
+}
+
+export class HeatTreatmentRequirementResponseDto {
+  @ApiProperty({ description: 'Is heat treatment required' })
+  isRequired: boolean;
+
+  @ApiProperty({ description: 'Required treatment type' })
+  requiredTreatment: HeatTreatmentType | null;
+
+  @ApiProperty({ description: 'Treatment details' })
+  treatment: HeatTreatmentDto | null;
+
+  @ApiProperty({ description: 'Reason for requirement or exemption' })
+  reason: string;
+
+  @ApiProperty({ description: 'Estimated cost impact (ZAR)' })
+  estimatedCostImpact: number;
+
+  @ApiProperty({ description: 'Code references' })
+  codeReferences: string[];
+
+  @ApiPropertyOptional({ description: 'Exemption conditions' })
+  exemptionConditions?: string[];
+}

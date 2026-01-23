@@ -3,10 +3,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   CompensationPlateEntry,
-  STANDARD_PLATE_SIZES,
   defaultPlateDimensions,
-  standardPlateSizeById,
+  StandardPlateSize,
 } from '@/app/lib/config/rfq/bracketsAndPlates';
+import { useStandardPlateSizes } from '@/app/lib/hooks/useStandardPlateSizes';
 import { STEEL_MATERIALS, STEEL_MATERIAL_CATEGORIES, steelMaterialById } from '@/app/lib/config/rfq/steelMaterials';
 import {
   calculateCompensationPlate,
@@ -32,9 +32,11 @@ export default function CompensationPlateForm({
   onRemoveEntry,
   onDuplicateEntry,
 }: CompensationPlateFormProps) {
+  const { plateSizes, isLoading, plateSizeById: lookupPlateSizeById } = useStandardPlateSizes();
+
   const addNewPlate = (standardSizeId?: string) => {
     const defaultMaterial = STEEL_MATERIALS[0];
-    const standardSize = standardSizeId ? standardPlateSizeById(standardSizeId) : null;
+    const standardSize = standardSizeId ? lookupPlateSizeById(standardSizeId) : null;
     const dimensions = standardSize
       ? { lengthMm: standardSize.lengthMm, widthMm: standardSize.widthMm, thicknessMm: standardSize.thicknessMm }
       : defaultPlateDimensions();
@@ -76,9 +78,12 @@ export default function CompensationPlateForm({
       </div>
 
       <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-        <h4 className="text-sm font-semibold text-purple-800 mb-3">Quick Add Standard Sizes</h4>
+        <h4 className="text-sm font-semibold text-purple-800 mb-3">
+          Quick Add Standard Sizes
+          {isLoading && <span className="ml-2 text-xs text-purple-500">(loading...)</span>}
+        </h4>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
-          {STANDARD_PLATE_SIZES.slice(0, 10).map((size) => (
+          {plateSizes.slice(0, 10).map((size) => (
             <button
               key={size.id}
               type="button"
@@ -106,6 +111,8 @@ export default function CompensationPlateForm({
               key={entry.id}
               entry={entry}
               index={index}
+              plateSizes={plateSizes}
+              plateSizeById={lookupPlateSizeById}
               onUpdate={(updates) => onUpdateEntry(entry.id, updates)}
               onRemove={() => onRemoveEntry(entry.id)}
               onDuplicate={() => onDuplicateEntry(entry)}
@@ -120,19 +127,21 @@ export default function CompensationPlateForm({
 interface PlateEntryCardProps {
   entry: CompensationPlateEntry;
   index: number;
+  plateSizes: StandardPlateSize[];
+  plateSizeById: (id: string) => StandardPlateSize | null;
   onUpdate: (updates: Partial<CompensationPlateEntry>) => void;
   onRemove: () => void;
   onDuplicate: () => void;
 }
 
-function PlateEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: PlateEntryCardProps) {
+function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onRemove, onDuplicate }: PlateEntryCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showCostOverride, setShowCostOverride] = useState(entry.costPerKgOverride !== null);
 
   const material = useMemo(() => steelMaterialById(entry.materialId), [entry.materialId]);
   const standardSize = useMemo(
-    () => (entry.standardSizeId ? standardPlateSizeById(entry.standardSizeId) : null),
-    [entry.standardSizeId]
+    () => (entry.standardSizeId ? plateSizeById(entry.standardSizeId) : null),
+    [entry.standardSizeId, plateSizeById]
   );
   const validationErrors = useMemo(() => validatePlateDimensions(entry.dimensions), [entry.dimensions]);
 
@@ -171,7 +180,7 @@ function PlateEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Plate
   };
 
   const selectStandardSize = (sizeId: string) => {
-    const size = standardPlateSizeById(sizeId);
+    const size = plateSizeById(sizeId);
     if (size) {
       onUpdate({
         isCustomSize: false,
@@ -258,21 +267,21 @@ function PlateEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Plate
               >
                 <option value="custom">Custom Size</option>
                 <optgroup label="Small (100-150mm)">
-                  {STANDARD_PLATE_SIZES.filter((s) => s.category === 'small').map((size) => (
+                  {plateSizes.filter((s) => s.category === 'small').map((size) => (
                     <option key={size.id} value={size.id}>
                       {size.name}
                     </option>
                   ))}
                 </optgroup>
                 <optgroup label="Medium (200-250mm)">
-                  {STANDARD_PLATE_SIZES.filter((s) => s.category === 'medium').map((size) => (
+                  {plateSizes.filter((s) => s.category === 'medium').map((size) => (
                     <option key={size.id} value={size.id}>
                       {size.name}
                     </option>
                   ))}
                 </optgroup>
                 <optgroup label="Large (300-500mm)">
-                  {STANDARD_PLATE_SIZES.filter((s) => s.category === 'large').map((size) => (
+                  {plateSizes.filter((s) => s.category === 'large').map((size) => (
                     <option key={size.id} value={size.id}>
                       {size.name}
                     </option>

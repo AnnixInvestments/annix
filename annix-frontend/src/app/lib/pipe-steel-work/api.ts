@@ -28,6 +28,13 @@ import type {
   ExportReportRequest,
   ExportReportResponse,
   ConfigValue,
+  StandardPlateSize,
+  GasketMaterial,
+  GasketCompatibilityRequest,
+  GasketCompatibilityResponse,
+  HeatTreatment,
+  HeatTreatmentRequirementRequest,
+  HeatTreatmentRequirementResponse,
 } from './types';
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
@@ -149,6 +156,31 @@ export const pipeSteelWorkApi = {
     fetchJson(`${API_BASE_URL}/pipe-steel-work/config/${key}`, {
       method: 'POST',
       body: JSON.stringify({ value }),
+    }),
+
+  standardPlateSizes: (category?: string): Promise<StandardPlateSize[]> => {
+    const params = category ? `?category=${category}` : '';
+    return fetchJson(`${API_BASE_URL}/pipe-steel-work/standard-plate-sizes${params}`);
+  },
+
+  gasketMaterials: (type?: string): Promise<GasketMaterial[]> => {
+    const params = type ? `?type=${type}` : '';
+    return fetchJson(`${API_BASE_URL}/pipe-steel-work/gasket-materials${params}`);
+  },
+
+  gasketCompatibility: (dto: GasketCompatibilityRequest): Promise<GasketCompatibilityResponse> =>
+    fetchJson(`${API_BASE_URL}/pipe-steel-work/gasket-compatibility`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  heatTreatments: (): Promise<HeatTreatment[]> =>
+    fetchJson(`${API_BASE_URL}/pipe-steel-work/heat-treatments`),
+
+  heatTreatmentRequirement: (dto: HeatTreatmentRequirementRequest): Promise<HeatTreatmentRequirementResponse> =>
+    fetchJson(`${API_BASE_URL}/pipe-steel-work/heat-treatment-requirement`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
     }),
 };
 

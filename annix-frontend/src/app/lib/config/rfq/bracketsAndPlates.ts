@@ -50,7 +50,7 @@ export interface StandardPlateSize {
   category: 'small' | 'medium' | 'large';
 }
 
-export const STANDARD_PLATE_SIZES: StandardPlateSize[] = [
+export const FALLBACK_STANDARD_PLATE_SIZES: StandardPlateSize[] = [
   { id: 'plate-100x100x5', name: '100 x 100 x 5mm', lengthMm: 100, widthMm: 100, thicknessMm: 5, category: 'small' },
   { id: 'plate-100x100x8', name: '100 x 100 x 8mm', lengthMm: 100, widthMm: 100, thicknessMm: 8, category: 'small' },
   { id: 'plate-100x100x10', name: '100 x 100 x 10mm', lengthMm: 100, widthMm: 100, thicknessMm: 10, category: 'small' },
@@ -72,6 +72,8 @@ export const STANDARD_PLATE_SIZES: StandardPlateSize[] = [
   { id: 'plate-500x500x25', name: '500 x 500 x 25mm', lengthMm: 500, widthMm: 500, thicknessMm: 25, category: 'large' },
   { id: 'plate-500x500x30', name: '500 x 500 x 30mm', lengthMm: 500, widthMm: 500, thicknessMm: 30, category: 'large' },
 ];
+
+export const STANDARD_PLATE_SIZES: StandardPlateSize[] = FALLBACK_STANDARD_PLATE_SIZES;
 
 export const BRACKET_TYPES = [
   { id: 'L_BRACKET', name: 'L-Bracket (Angle)', description: 'Standard L-shaped angle bracket for pipe support' },

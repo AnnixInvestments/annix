@@ -41,6 +41,16 @@ import {
   ExportReportDto,
   ExportReportResponseDto,
   ExportFormatDto,
+  StandardPlateSizeDto,
+  PlateSizeCategory,
+  GasketMaterialDto,
+  GasketMaterialType,
+  GasketCompatibilityCheckDto,
+  GasketCompatibilityResponseDto,
+  HeatTreatmentDto,
+  HeatTreatmentType,
+  HeatTreatmentRequirementDto,
+  HeatTreatmentRequirementResponseDto,
 } from './dto/pipe-steel-work.dto';
 
 @Injectable()
@@ -1583,5 +1593,461 @@ export class PipeSteelWorkService {
   </div>
 </body>
 </html>`;
+  }
+
+  private readonly standardPlateSizesData: StandardPlateSizeDto[] = [
+    { id: 'plate-100x100x5', name: '100 x 100 x 5mm', lengthMm: 100, widthMm: 100, thicknessMm: 5, category: PlateSizeCategory.SMALL, weightKg: 0.39, commonUses: 'Small brackets, light supports' },
+    { id: 'plate-100x100x8', name: '100 x 100 x 8mm', lengthMm: 100, widthMm: 100, thicknessMm: 8, category: PlateSizeCategory.SMALL, weightKg: 0.63, commonUses: 'Small brackets, light supports' },
+    { id: 'plate-100x100x10', name: '100 x 100 x 10mm', lengthMm: 100, widthMm: 100, thicknessMm: 10, category: PlateSizeCategory.SMALL, weightKg: 0.79, commonUses: 'Small brackets, medium supports' },
+    { id: 'plate-150x150x8', name: '150 x 150 x 8mm', lengthMm: 150, widthMm: 150, thicknessMm: 8, category: PlateSizeCategory.SMALL, weightKg: 1.41, commonUses: 'Medium brackets, pipe clamps' },
+    { id: 'plate-150x150x10', name: '150 x 150 x 10mm', lengthMm: 150, widthMm: 150, thicknessMm: 10, category: PlateSizeCategory.SMALL, weightKg: 1.77, commonUses: 'Medium brackets, pipe clamps' },
+    { id: 'plate-150x150x12', name: '150 x 150 x 12mm', lengthMm: 150, widthMm: 150, thicknessMm: 12, category: PlateSizeCategory.SMALL, weightKg: 2.12, commonUses: 'Medium brackets, pipe clamps' },
+    { id: 'plate-200x200x10', name: '200 x 200 x 10mm', lengthMm: 200, widthMm: 200, thicknessMm: 10, category: PlateSizeCategory.MEDIUM, weightKg: 3.14, commonUses: 'Standard base plates' },
+    { id: 'plate-200x200x12', name: '200 x 200 x 12mm', lengthMm: 200, widthMm: 200, thicknessMm: 12, category: PlateSizeCategory.MEDIUM, weightKg: 3.77, commonUses: 'Standard base plates' },
+    { id: 'plate-200x200x15', name: '200 x 200 x 15mm', lengthMm: 200, widthMm: 200, thicknessMm: 15, category: PlateSizeCategory.MEDIUM, weightKg: 4.71, commonUses: 'Heavy base plates' },
+    { id: 'plate-250x250x12', name: '250 x 250 x 12mm', lengthMm: 250, widthMm: 250, thicknessMm: 12, category: PlateSizeCategory.MEDIUM, weightKg: 5.89, commonUses: 'Large base plates' },
+    { id: 'plate-250x250x15', name: '250 x 250 x 15mm', lengthMm: 250, widthMm: 250, thicknessMm: 15, category: PlateSizeCategory.MEDIUM, weightKg: 7.36, commonUses: 'Large base plates' },
+    { id: 'plate-250x250x20', name: '250 x 250 x 20mm', lengthMm: 250, widthMm: 250, thicknessMm: 20, category: PlateSizeCategory.MEDIUM, weightKg: 9.81, commonUses: 'Heavy duty supports' },
+    { id: 'plate-300x300x15', name: '300 x 300 x 15mm', lengthMm: 300, widthMm: 300, thicknessMm: 15, category: PlateSizeCategory.LARGE, weightKg: 10.60, commonUses: 'Large supports, anchors' },
+    { id: 'plate-300x300x20', name: '300 x 300 x 20mm', lengthMm: 300, widthMm: 300, thicknessMm: 20, category: PlateSizeCategory.LARGE, weightKg: 14.13, commonUses: 'Large supports, anchors' },
+    { id: 'plate-300x300x25', name: '300 x 300 x 25mm', lengthMm: 300, widthMm: 300, thicknessMm: 25, category: PlateSizeCategory.LARGE, weightKg: 17.66, commonUses: 'Heavy anchors' },
+    { id: 'plate-400x400x20', name: '400 x 400 x 20mm', lengthMm: 400, widthMm: 400, thicknessMm: 20, category: PlateSizeCategory.LARGE, weightKg: 25.12, commonUses: 'Large equipment supports' },
+    { id: 'plate-400x400x25', name: '400 x 400 x 25mm', lengthMm: 400, widthMm: 400, thicknessMm: 25, category: PlateSizeCategory.LARGE, weightKg: 31.40, commonUses: 'Large equipment supports' },
+    { id: 'plate-500x500x20', name: '500 x 500 x 20mm', lengthMm: 500, widthMm: 500, thicknessMm: 20, category: PlateSizeCategory.LARGE, weightKg: 39.25, commonUses: 'Major equipment bases' },
+    { id: 'plate-500x500x25', name: '500 x 500 x 25mm', lengthMm: 500, widthMm: 500, thicknessMm: 25, category: PlateSizeCategory.LARGE, weightKg: 49.06, commonUses: 'Major equipment bases' },
+    { id: 'plate-500x500x30', name: '500 x 500 x 30mm', lengthMm: 500, widthMm: 500, thicknessMm: 30, category: PlateSizeCategory.LARGE, weightKg: 58.88, commonUses: 'Heavy equipment foundations' },
+  ];
+
+  standardPlateSizes(category?: string): StandardPlateSizeDto[] {
+    if (category) {
+      return this.standardPlateSizesData.filter((p) => p.category === category);
+    }
+    return this.standardPlateSizesData;
+  }
+
+  private readonly gasketMaterialsData: GasketMaterialDto[] = [
+    {
+      code: 'SW-304-GRAPH',
+      name: 'Spiral Wound 304SS/Graphite',
+      type: GasketMaterialType.SPIRAL_WOUND,
+      minTempC: -200,
+      maxTempC: 450,
+      maxPressureBar: 250,
+      compatibleFlanges: ['RF', 'RTJ'],
+      compatibleServices: ['Steam', 'Hydrocarbons', 'Chemicals', 'Water', 'Air'],
+      incompatibleServices: ['Strong acids', 'Fluorine'],
+      costFactor: 1.5,
+      notes: 'General purpose, excellent recovery. Inner ring recommended for vacuum service.',
+    },
+    {
+      code: 'SW-316-GRAPH',
+      name: 'Spiral Wound 316SS/Graphite',
+      type: GasketMaterialType.SPIRAL_WOUND,
+      minTempC: -200,
+      maxTempC: 450,
+      maxPressureBar: 250,
+      compatibleFlanges: ['RF', 'RTJ'],
+      compatibleServices: ['Steam', 'Hydrocarbons', 'Chemicals', 'Seawater', 'Acids'],
+      incompatibleServices: ['Chlorides at high temp'],
+      costFactor: 1.8,
+      notes: 'Better corrosion resistance than 304SS.',
+    },
+    {
+      code: 'SW-304-PTFE',
+      name: 'Spiral Wound 304SS/PTFE',
+      type: GasketMaterialType.SPIRAL_WOUND,
+      minTempC: -200,
+      maxTempC: 260,
+      maxPressureBar: 150,
+      compatibleFlanges: ['RF'],
+      compatibleServices: ['Acids', 'Alkalis', 'Solvents', 'Food grade', 'Pharmaceuticals'],
+      costFactor: 2.0,
+      notes: 'Excellent chemical resistance. Not suitable for high temp steam.',
+    },
+    {
+      code: 'RTJ-SOFT-IRON',
+      name: 'Ring Joint - Soft Iron',
+      type: GasketMaterialType.RING_JOINT,
+      minTempC: -29,
+      maxTempC: 450,
+      maxPressureBar: 690,
+      compatibleFlanges: ['RTJ'],
+      compatibleServices: ['High pressure steam', 'Hydrocarbons', 'Gas'],
+      incompatibleServices: ['Corrosive chemicals'],
+      costFactor: 2.5,
+      notes: 'Metal-to-metal seal. For Class 600+ and high pressure applications.',
+    },
+    {
+      code: 'RTJ-304SS',
+      name: 'Ring Joint - 304SS',
+      type: GasketMaterialType.RING_JOINT,
+      minTempC: -196,
+      maxTempC: 540,
+      maxPressureBar: 690,
+      compatibleFlanges: ['RTJ'],
+      compatibleServices: ['High pressure', 'Cryogenic', 'Corrosive services'],
+      costFactor: 3.0,
+      notes: 'Metal-to-metal seal with corrosion resistance.',
+    },
+    {
+      code: 'PTFE-SHEET',
+      name: 'PTFE Sheet (Virgin)',
+      type: GasketMaterialType.PTFE,
+      minTempC: -200,
+      maxTempC: 260,
+      maxPressureBar: 40,
+      compatibleFlanges: ['FF', 'RF'],
+      compatibleServices: ['Acids', 'Alkalis', 'Solvents', 'Food', 'Pharma'],
+      incompatibleServices: ['Molten alkali metals'],
+      costFactor: 1.2,
+      notes: 'Excellent chemical resistance. Subject to cold flow.',
+    },
+    {
+      code: 'PTFE-ENV',
+      name: 'PTFE Envelope with Filler',
+      type: GasketMaterialType.PTFE,
+      minTempC: -200,
+      maxTempC: 230,
+      maxPressureBar: 60,
+      compatibleFlanges: ['FF', 'RF'],
+      compatibleServices: ['Corrosive chemicals', 'Food', 'Pharma'],
+      costFactor: 1.4,
+      notes: 'Better compression than virgin PTFE.',
+    },
+    {
+      code: 'GRAPHITE-FLEX',
+      name: 'Flexible Graphite Sheet',
+      type: GasketMaterialType.GRAPHITE,
+      minTempC: -200,
+      maxTempC: 650,
+      maxPressureBar: 200,
+      compatibleFlanges: ['RF', 'FF'],
+      compatibleServices: ['Steam', 'Hydrocarbons', 'Chemicals', 'High temperature'],
+      incompatibleServices: ['Strong oxidizers'],
+      costFactor: 1.3,
+      notes: 'Excellent high temp performance. SS insert recommended.',
+    },
+    {
+      code: 'CAF-STANDARD',
+      name: 'Compressed Non-Asbestos Fibre',
+      type: GasketMaterialType.CAF,
+      minTempC: -40,
+      maxTempC: 200,
+      maxPressureBar: 40,
+      compatibleFlanges: ['FF', 'RF'],
+      compatibleServices: ['Water', 'Air', 'Low pressure steam', 'Oil'],
+      costFactor: 0.8,
+      notes: 'General utility gasket. Economical choice for non-critical service.',
+    },
+    {
+      code: 'RUBBER-EPDM',
+      name: 'EPDM Rubber',
+      type: GasketMaterialType.RUBBER,
+      minTempC: -40,
+      maxTempC: 120,
+      maxPressureBar: 16,
+      compatibleFlanges: ['FF'],
+      compatibleServices: ['Water', 'Steam (low temp)', 'Dilute acids', 'Alkalis'],
+      incompatibleServices: ['Oils', 'Hydrocarbons'],
+      costFactor: 0.6,
+      notes: 'Good for water systems. Not oil resistant.',
+    },
+    {
+      code: 'RUBBER-NBR',
+      name: 'Nitrile Rubber (NBR)',
+      type: GasketMaterialType.RUBBER,
+      minTempC: -30,
+      maxTempC: 100,
+      maxPressureBar: 16,
+      compatibleFlanges: ['FF'],
+      compatibleServices: ['Oils', 'Fuels', 'Hydraulic fluids'],
+      incompatibleServices: ['Ketones', 'Chlorinated solvents'],
+      costFactor: 0.7,
+      notes: 'Good oil resistance. Standard for petroleum services.',
+    },
+  ];
+
+  gasketMaterials(type?: string): GasketMaterialDto[] {
+    if (type) {
+      return this.gasketMaterialsData.filter((g) => g.type === type);
+    }
+    return this.gasketMaterialsData;
+  }
+
+  gasketCompatibility(dto: GasketCompatibilityCheckDto): GasketCompatibilityResponseDto {
+    const gasket = this.gasketMaterialsData.find((g) => g.code === dto.gasketCode);
+
+    if (!gasket) {
+      return {
+        isCompatible: false,
+        score: 0,
+        warnings: ['Unknown gasket material code'],
+        recommendations: ['Select a valid gasket material'],
+      };
+    }
+
+    const warnings: string[] = [];
+    const recommendations: string[] = [];
+    let score = 100;
+
+    if (dto.designTempC < gasket.minTempC) {
+      warnings.push(`Temperature ${dto.designTempC}°C below minimum ${gasket.minTempC}°C`);
+      score -= 40;
+    }
+    if (dto.designTempC > gasket.maxTempC) {
+      warnings.push(`Temperature ${dto.designTempC}°C exceeds maximum ${gasket.maxTempC}°C`);
+      score -= 40;
+    }
+
+    if (dto.designPressureBar > gasket.maxPressureBar) {
+      warnings.push(`Pressure ${dto.designPressureBar} bar exceeds maximum ${gasket.maxPressureBar} bar`);
+      score -= 40;
+    }
+
+    if (dto.flangeFace && !gasket.compatibleFlanges.includes(dto.flangeFace)) {
+      warnings.push(`Not recommended for ${dto.flangeFace} flange face`);
+      score -= 20;
+      recommendations.push(`Use flange face type: ${gasket.compatibleFlanges.join(' or ')}`);
+    }
+
+    const serviceFluidLower = dto.serviceFluid.toLowerCase();
+    const isIncompatible = gasket.incompatibleServices?.some(
+      (s) => serviceFluidLower.includes(s.toLowerCase())
+    );
+    if (isIncompatible) {
+      warnings.push(`Service fluid "${dto.serviceFluid}" may be incompatible`);
+      score -= 30;
+    }
+
+    const isCompatibleService = gasket.compatibleServices.some(
+      (s) => serviceFluidLower.includes(s.toLowerCase()) || s.toLowerCase().includes(serviceFluidLower)
+    );
+    if (isCompatibleService) {
+      score += 10;
+    }
+
+    score = Math.max(0, Math.min(100, score));
+
+    const alternatives: string[] = [];
+    if (score < 70) {
+      this.gasketMaterialsData
+        .filter((g) =>
+          g.code !== dto.gasketCode &&
+          g.minTempC <= dto.designTempC &&
+          g.maxTempC >= dto.designTempC &&
+          g.maxPressureBar >= dto.designPressureBar
+        )
+        .slice(0, 3)
+        .forEach((g) => alternatives.push(`${g.name} (${g.code})`));
+
+      if (alternatives.length > 0) {
+        recommendations.push('Consider alternative gasket materials');
+      }
+    }
+
+    return {
+      isCompatible: score >= 60,
+      score,
+      warnings,
+      recommendations,
+      alternatives: alternatives.length > 0 ? alternatives : undefined,
+    };
+  }
+
+  private readonly heatTreatmentsData: HeatTreatmentDto[] = [
+    {
+      code: 'PWHT-CS',
+      name: 'Post Weld Heat Treatment (Carbon Steel)',
+      type: HeatTreatmentType.PWHT,
+      description: 'Stress relief heat treatment for carbon steel welds per ASME B31.3',
+      tempRangeLowC: 595,
+      tempRangeHighC: 650,
+      holdTimeFormula: '1 hour per 25mm thickness, minimum 1 hour',
+      heatingRateMaxCPerHr: 220,
+      coolingRateMaxCPerHr: 280,
+      applicableMaterials: ['A106', 'A105', 'A234', 'A53', 'Carbon Steel'],
+      codeReferences: ['ASME B31.3 §331.1.1', 'ASME VIII Div 1 UCS-56'],
+      baseCostPerKg: 15,
+      notes: 'Required for wall thickness > 19mm in most applications',
+    },
+    {
+      code: 'PWHT-LACS',
+      name: 'PWHT (Low Alloy Chrome-Moly)',
+      type: HeatTreatmentType.PWHT,
+      description: 'Stress relief for P11/P22 chrome-moly steels',
+      tempRangeLowC: 675,
+      tempRangeHighC: 730,
+      holdTimeFormula: '1 hour per 25mm, minimum 2 hours',
+      heatingRateMaxCPerHr: 165,
+      coolingRateMaxCPerHr: 165,
+      applicableMaterials: ['P11', 'P22', 'A335', '1.25Cr-0.5Mo', '2.25Cr-1Mo'],
+      codeReferences: ['ASME B31.3 §331.1.3', 'AWS D10.8'],
+      baseCostPerKg: 25,
+      notes: 'Critical for preventing hydrogen attack and stress corrosion',
+    },
+    {
+      code: 'STRESS-RELIEF',
+      name: 'Stress Relief Anneal',
+      type: HeatTreatmentType.STRESS_RELIEF,
+      description: 'Lower temperature stress relief without metallurgical changes',
+      tempRangeLowC: 550,
+      tempRangeHighC: 595,
+      holdTimeFormula: '1 hour per 25mm, minimum 30 minutes',
+      heatingRateMaxCPerHr: 280,
+      coolingRateMaxCPerHr: 280,
+      applicableMaterials: ['Carbon Steel', 'Low Alloy Steel'],
+      codeReferences: ['ASME B31.3 §331.2'],
+      baseCostPerKg: 12,
+      notes: 'Alternative to full PWHT where permitted',
+    },
+    {
+      code: 'NORMALIZE',
+      name: 'Normalizing',
+      type: HeatTreatmentType.NORMALIZING,
+      description: 'Heat above transformation temperature, air cool',
+      tempRangeLowC: 870,
+      tempRangeHighC: 930,
+      holdTimeFormula: '1 hour per 25mm, minimum 1 hour',
+      heatingRateMaxCPerHr: 220,
+      coolingRateMaxCPerHr: 0,
+      applicableMaterials: ['Carbon Steel', 'Low Alloy Steel'],
+      codeReferences: ['ASTM A941', 'ASME SA-20'],
+      baseCostPerKg: 18,
+      notes: 'Air cooling. Refines grain structure.',
+    },
+    {
+      code: 'SOLUTION-SS',
+      name: 'Solution Annealing (Stainless)',
+      type: HeatTreatmentType.SOLUTION_ANNEALING,
+      description: 'Dissolve carbides and restore corrosion resistance',
+      tempRangeLowC: 1010,
+      tempRangeHighC: 1120,
+      holdTimeFormula: 'Based on section thickness, typically 1hr/25mm',
+      heatingRateMaxCPerHr: 0,
+      coolingRateMaxCPerHr: 0,
+      applicableMaterials: ['304', '304L', '316', '316L', 'Stainless Steel'],
+      codeReferences: ['ASTM A380', 'ASME SA-479'],
+      baseCostPerKg: 35,
+      notes: 'Rapid water quench required. Essential after welding 304H/316H.',
+    },
+    {
+      code: 'SOLUTION-DUPLEX',
+      name: 'Solution Annealing (Duplex)',
+      type: HeatTreatmentType.SOLUTION_ANNEALING,
+      description: 'Restore austenite/ferrite balance in duplex stainless',
+      tempRangeLowC: 1020,
+      tempRangeHighC: 1100,
+      holdTimeFormula: 'Minimum 5 minutes at temperature',
+      heatingRateMaxCPerHr: 0,
+      coolingRateMaxCPerHr: 0,
+      applicableMaterials: ['2205', '2507', 'Duplex', 'Super Duplex'],
+      codeReferences: ['ASTM A928', 'NORSOK M-601'],
+      baseCostPerKg: 45,
+      notes: 'Rapid water quench essential. Critical for maintaining phase balance.',
+    },
+  ];
+
+  heatTreatments(): HeatTreatmentDto[] {
+    return this.heatTreatmentsData;
+  }
+
+  private readonly pwhtThresholds: Record<string, { wallThicknessMm: number; pNumber: string }> = {
+    'Carbon Steel': { wallThicknessMm: 19, pNumber: '1' },
+    'A106': { wallThicknessMm: 19, pNumber: '1' },
+    'A105': { wallThicknessMm: 19, pNumber: '1' },
+    'A53': { wallThicknessMm: 19, pNumber: '1' },
+    'P11': { wallThicknessMm: 13, pNumber: '4' },
+    'P22': { wallThicknessMm: 13, pNumber: '5A' },
+    '1.25Cr-0.5Mo': { wallThicknessMm: 13, pNumber: '4' },
+    '2.25Cr-1Mo': { wallThicknessMm: 13, pNumber: '5A' },
+    '304': { wallThicknessMm: 0, pNumber: '8' },
+    '316': { wallThicknessMm: 0, pNumber: '8' },
+    '304L': { wallThicknessMm: 0, pNumber: '8' },
+    '316L': { wallThicknessMm: 0, pNumber: '8' },
+    '2205': { wallThicknessMm: 0, pNumber: '10H' },
+    'Duplex': { wallThicknessMm: 0, pNumber: '10H' },
+  };
+
+  heatTreatmentRequirement(dto: HeatTreatmentRequirementDto): HeatTreatmentRequirementResponseDto {
+    const materialUpper = dto.material.toUpperCase();
+    const threshold = Object.entries(this.pwhtThresholds).find(
+      ([key]) => materialUpper.includes(key.toUpperCase())
+    );
+
+    if (materialUpper.includes('304') || materialUpper.includes('316') || materialUpper.includes('STAINLESS')) {
+      const treatment = this.heatTreatmentsData.find((t) => t.code === 'SOLUTION-SS')!;
+      const isRequired = dto.wallThicknessMm > 6 && (dto.weldType === 'multipass' || dto.weldType === 'full_penetration');
+
+      return {
+        isRequired,
+        requiredTreatment: isRequired ? HeatTreatmentType.SOLUTION_ANNEALING : null,
+        treatment: isRequired ? treatment : null,
+        reason: isRequired
+          ? 'Solution annealing may be required to restore corrosion resistance after welding'
+          : 'Solution annealing typically not required for L-grade austenitic stainless with proper weld procedures',
+        estimatedCostImpact: isRequired ? Math.round(dto.wallThicknessMm * 10 * treatment.baseCostPerKg!) : 0,
+        codeReferences: ['ASME B31.3 §331.1.4', 'NACE MR0175'],
+        exemptionConditions: isRequired ? undefined : [
+          'L-grade material (304L, 316L)',
+          'Low heat input welding',
+          'Non-sensitizing service conditions',
+        ],
+      };
+    }
+
+    if (materialUpper.includes('DUPLEX') || materialUpper.includes('2205') || materialUpper.includes('2507')) {
+      const treatment = this.heatTreatmentsData.find((t) => t.code === 'SOLUTION-DUPLEX')!;
+
+      return {
+        isRequired: true,
+        requiredTreatment: HeatTreatmentType.SOLUTION_ANNEALING,
+        treatment,
+        reason: 'Solution annealing required for duplex stainless to maintain phase balance after welding',
+        estimatedCostImpact: Math.round(dto.wallThicknessMm * 10 * treatment.baseCostPerKg!),
+        codeReferences: ['ASME B31.3 §331.1.4', 'NORSOK M-601', 'API RP 938-C'],
+      };
+    }
+
+    if (materialUpper.includes('P11') || materialUpper.includes('P22') || materialUpper.includes('CR-MO') || materialUpper.includes('CHROME')) {
+      const treatment = this.heatTreatmentsData.find((t) => t.code === 'PWHT-LACS')!;
+      const thresholdMm = 13;
+      const isRequired = dto.wallThicknessMm > thresholdMm;
+
+      return {
+        isRequired,
+        requiredTreatment: isRequired ? HeatTreatmentType.PWHT : null,
+        treatment: isRequired ? treatment : null,
+        reason: isRequired
+          ? `Wall thickness ${dto.wallThicknessMm}mm exceeds ${thresholdMm}mm threshold for Cr-Mo materials`
+          : `Wall thickness ${dto.wallThicknessMm}mm below ${thresholdMm}mm threshold`,
+        estimatedCostImpact: isRequired ? Math.round(dto.wallThicknessMm * 10 * treatment.baseCostPerKg!) : 0,
+        codeReferences: ['ASME B31.3 §331.1.3', 'AWS D10.8'],
+        exemptionConditions: isRequired ? undefined : [
+          `Thickness ≤ ${thresholdMm}mm`,
+          'Preheat maintained per WPS',
+        ],
+      };
+    }
+
+    const treatment = this.heatTreatmentsData.find((t) => t.code === 'PWHT-CS')!;
+    const thresholdMm = threshold?.[1]?.wallThicknessMm || 19;
+    const isRequired = dto.wallThicknessMm > thresholdMm;
+
+    return {
+      isRequired,
+      requiredTreatment: isRequired ? HeatTreatmentType.PWHT : null,
+      treatment: isRequired ? treatment : null,
+      reason: isRequired
+        ? `Wall thickness ${dto.wallThicknessMm}mm exceeds ${thresholdMm}mm threshold for carbon steel`
+        : `Wall thickness ${dto.wallThicknessMm}mm below ${thresholdMm}mm threshold`,
+      estimatedCostImpact: isRequired ? Math.round(dto.wallThicknessMm * 10 * treatment.baseCostPerKg!) : 0,
+      codeReferences: ['ASME B31.3 §331.1.1', 'ASME VIII Div 1 UCS-56'],
+      exemptionConditions: isRequired ? undefined : [
+        `Thickness ≤ ${thresholdMm}mm`,
+        'Design temperature > -29°C',
+        'Non-lethal service (non-toxic, non-flammable)',
+        'Carbon equivalent ≤ 0.50%',
+      ],
+    };
   }
 }

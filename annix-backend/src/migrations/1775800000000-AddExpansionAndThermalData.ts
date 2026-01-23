@@ -1,0 +1,453 @@
+import { MigrationInterface, QueryRunner } from 'typeorm';
+
+export class AddExpansionAndThermalData1775800000000
+  implements MigrationInterface
+{
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await this.createBellowsExpansionJointsTable(queryRunner);
+    await this.createPipeExpansionCoefficientsTable(queryRunner);
+    await this.createExpansionLoopSizingTable(queryRunner);
+  }
+
+  private async createBellowsExpansionJointsTable(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS bellows_expansion_joints (
+        id SERIAL PRIMARY KEY,
+        manufacturer VARCHAR(100),
+        model_series VARCHAR(100),
+        joint_type VARCHAR(50) NOT NULL,
+        bellows_material VARCHAR(50) NOT NULL,
+        liner_material VARCHAR(50),
+        nominal_size_mm INTEGER NOT NULL,
+        nominal_size_inch VARCHAR(10),
+        number_of_convolutions INTEGER,
+
+        -- Movement capabilities
+        axial_compression_mm DECIMAL(8,2),
+        axial_extension_mm DECIMAL(8,2),
+        lateral_offset_mm DECIMAL(8,2),
+        angular_rotation_deg DECIMAL(6,2),
+
+        -- Pressure and temperature ratings
+        max_pressure_bar DECIMAL(10,2) NOT NULL,
+        max_vacuum_bar DECIMAL(6,2),
+        min_temperature_c INTEGER,
+        max_temperature_c INTEGER NOT NULL,
+
+        -- Physical dimensions
+        face_to_face_length_mm DECIMAL(10,2),
+        outer_diameter_mm DECIMAL(10,2),
+        effective_area_cm2 DECIMAL(10,2),
+        spring_rate_n_per_mm DECIMAL(10,2),
+
+        -- Weight and cost
+        weight_kg DECIMAL(8,2),
+        list_price_zar DECIMAL(12,2),
+        list_price_usd DECIMAL(12,2),
+
+        -- Connection details
+        end_connection_type VARCHAR(50),
+        flange_rating VARCHAR(20),
+
+        -- Performance data
+        cycle_life INTEGER,
+        max_velocity_m_s DECIMAL(6,2),
+
+        -- Flags
+        tie_rods_included BOOLEAN DEFAULT false,
+        internal_sleeve BOOLEAN DEFAULT false,
+        external_cover BOOLEAN DEFAULT false,
+        suitable_for_steam BOOLEAN DEFAULT false,
+        suitable_for_cryogenic BOOLEAN DEFAULT false,
+
+        notes TEXT,
+        datasheet_url VARCHAR(500),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_bellows_size_type
+      ON bellows_expansion_joints(nominal_size_mm, joint_type)
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_bellows_pressure_temp
+      ON bellows_expansion_joints(max_pressure_bar, max_temperature_c)
+    `);
+
+    const bellowsData = [
+      // Axial bellows - Stainless Steel 304
+      { type: 'axial', material: 'stainless_steel_304', size: 25, convolutions: 3, axialComp: 10, axialExt: 5, lateral: 0, angular: 0, pressure: 16, vacuum: 1, minTemp: -200, maxTemp: 450, f2f: 115, od: 76, area: 19.6, spring: 45, weight: 0.8, priceZar: 2500 },
+      { type: 'axial', material: 'stainless_steel_304', size: 50, convolutions: 4, axialComp: 16, axialExt: 8, lateral: 0, angular: 0, pressure: 16, vacuum: 1, minTemp: -200, maxTemp: 450, f2f: 140, od: 108, area: 28.3, spring: 65, weight: 1.5, priceZar: 3200 },
+      { type: 'axial', material: 'stainless_steel_304', size: 80, convolutions: 5, axialComp: 22, axialExt: 11, lateral: 0, angular: 0, pressure: 16, vacuum: 1, minTemp: -200, maxTemp: 450, f2f: 175, od: 142, area: 61.5, spring: 95, weight: 2.8, priceZar: 4500 },
+      { type: 'axial', material: 'stainless_steel_304', size: 100, convolutions: 5, axialComp: 26, axialExt: 13, lateral: 0, angular: 0, pressure: 16, vacuum: 1, minTemp: -200, maxTemp: 450, f2f: 195, od: 168, area: 102.1, spring: 125, weight: 4.2, priceZar: 5800 },
+      { type: 'axial', material: 'stainless_steel_304', size: 150, convolutions: 6, axialComp: 32, axialExt: 16, lateral: 0, angular: 0, pressure: 16, vacuum: 1, minTemp: -200, maxTemp: 450, f2f: 230, od: 225, area: 176.7, spring: 180, weight: 7.5, priceZar: 8500 },
+      { type: 'axial', material: 'stainless_steel_304', size: 200, convolutions: 6, axialComp: 38, axialExt: 19, lateral: 0, angular: 0, pressure: 10, vacuum: 0.8, minTemp: -200, maxTemp: 450, f2f: 265, od: 285, area: 314.2, spring: 240, weight: 12.5, priceZar: 12500 },
+      { type: 'axial', material: 'stainless_steel_304', size: 250, convolutions: 7, axialComp: 44, axialExt: 22, lateral: 0, angular: 0, pressure: 10, vacuum: 0.8, minTemp: -200, maxTemp: 450, f2f: 300, od: 340, area: 490.9, spring: 320, weight: 18.0, priceZar: 18500 },
+      { type: 'axial', material: 'stainless_steel_304', size: 300, convolutions: 8, axialComp: 50, axialExt: 25, lateral: 0, angular: 0, pressure: 10, vacuum: 0.6, minTemp: -200, maxTemp: 450, f2f: 345, od: 400, area: 706.9, spring: 420, weight: 25.0, priceZar: 25000 },
+
+      // Axial bellows - Stainless Steel 316
+      { type: 'axial', material: 'stainless_steel_316', size: 50, convolutions: 4, axialComp: 16, axialExt: 8, lateral: 0, angular: 0, pressure: 16, vacuum: 1, minTemp: -200, maxTemp: 500, f2f: 140, od: 108, area: 28.3, spring: 65, weight: 1.5, priceZar: 4200 },
+      { type: 'axial', material: 'stainless_steel_316', size: 100, convolutions: 5, axialComp: 26, axialExt: 13, lateral: 0, angular: 0, pressure: 16, vacuum: 1, minTemp: -200, maxTemp: 500, f2f: 195, od: 168, area: 102.1, spring: 125, weight: 4.2, priceZar: 7500 },
+      { type: 'axial', material: 'stainless_steel_316', size: 150, convolutions: 6, axialComp: 32, axialExt: 16, lateral: 0, angular: 0, pressure: 16, vacuum: 1, minTemp: -200, maxTemp: 500, f2f: 230, od: 225, area: 176.7, spring: 180, weight: 7.5, priceZar: 11000 },
+      { type: 'axial', material: 'stainless_steel_316', size: 200, convolutions: 6, axialComp: 38, axialExt: 19, lateral: 0, angular: 0, pressure: 10, vacuum: 0.8, minTemp: -200, maxTemp: 500, f2f: 265, od: 285, area: 314.2, spring: 240, weight: 12.5, priceZar: 16500 },
+
+      // Universal bellows - Multi-directional movement
+      { type: 'universal', material: 'stainless_steel_304', size: 50, convolutions: 6, axialComp: 25, axialExt: 12, lateral: 25, angular: 15, pressure: 10, vacuum: 0.8, minTemp: -200, maxTemp: 450, f2f: 280, od: 120, area: 28.3, spring: 35, weight: 3.5, priceZar: 8500 },
+      { type: 'universal', material: 'stainless_steel_304', size: 80, convolutions: 6, axialComp: 30, axialExt: 15, lateral: 30, angular: 15, pressure: 10, vacuum: 0.8, minTemp: -200, maxTemp: 450, f2f: 320, od: 155, area: 61.5, spring: 55, weight: 5.8, priceZar: 12500 },
+      { type: 'universal', material: 'stainless_steel_304', size: 100, convolutions: 7, axialComp: 35, axialExt: 18, lateral: 35, angular: 15, pressure: 10, vacuum: 0.6, minTemp: -200, maxTemp: 450, f2f: 360, od: 185, area: 102.1, spring: 75, weight: 8.5, priceZar: 16500 },
+      { type: 'universal', material: 'stainless_steel_304', size: 150, convolutions: 8, axialComp: 45, axialExt: 22, lateral: 45, angular: 12, pressure: 6, vacuum: 0.5, minTemp: -200, maxTemp: 450, f2f: 420, od: 250, area: 176.7, spring: 110, weight: 15.0, priceZar: 25000 },
+      { type: 'universal', material: 'stainless_steel_304', size: 200, convolutions: 8, axialComp: 55, axialExt: 28, lateral: 55, angular: 10, pressure: 6, vacuum: 0.4, minTemp: -200, maxTemp: 450, f2f: 480, od: 310, area: 314.2, spring: 150, weight: 22.0, priceZar: 35000 },
+
+      // Hinged bellows - Angular movement only
+      { type: 'hinged', material: 'stainless_steel_304', size: 80, convolutions: 4, axialComp: 0, axialExt: 0, lateral: 0, angular: 25, pressure: 25, vacuum: 1, minTemp: -200, maxTemp: 450, f2f: 200, od: 155, area: 61.5, spring: 0, weight: 8.5, priceZar: 15000 },
+      { type: 'hinged', material: 'stainless_steel_304', size: 100, convolutions: 4, axialComp: 0, axialExt: 0, lateral: 0, angular: 25, pressure: 25, vacuum: 1, minTemp: -200, maxTemp: 450, f2f: 220, od: 185, area: 102.1, spring: 0, weight: 12.0, priceZar: 18500 },
+      { type: 'hinged', material: 'stainless_steel_304', size: 150, convolutions: 5, axialComp: 0, axialExt: 0, lateral: 0, angular: 22, pressure: 20, vacuum: 0.8, minTemp: -200, maxTemp: 450, f2f: 260, od: 250, area: 176.7, spring: 0, weight: 18.0, priceZar: 28000 },
+      { type: 'hinged', material: 'stainless_steel_304', size: 200, convolutions: 5, axialComp: 0, axialExt: 0, lateral: 0, angular: 20, pressure: 16, vacuum: 0.6, minTemp: -200, maxTemp: 450, f2f: 300, od: 310, area: 314.2, spring: 0, weight: 28.0, priceZar: 42000 },
+
+      // Gimbal bellows - Multi-plane angular
+      { type: 'gimbal', material: 'stainless_steel_304', size: 100, convolutions: 4, axialComp: 0, axialExt: 0, lateral: 0, angular: 35, pressure: 25, vacuum: 1, minTemp: -200, maxTemp: 450, f2f: 280, od: 200, area: 102.1, spring: 0, weight: 18.0, priceZar: 32000 },
+      { type: 'gimbal', material: 'stainless_steel_304', size: 150, convolutions: 5, axialComp: 0, axialExt: 0, lateral: 0, angular: 30, pressure: 20, vacuum: 0.8, minTemp: -200, maxTemp: 450, f2f: 340, od: 280, area: 176.7, spring: 0, weight: 28.0, priceZar: 48000 },
+      { type: 'gimbal', material: 'stainless_steel_304', size: 200, convolutions: 5, axialComp: 0, axialExt: 0, lateral: 0, angular: 25, pressure: 16, vacuum: 0.6, minTemp: -200, maxTemp: 450, f2f: 400, od: 350, area: 314.2, spring: 0, weight: 42.0, priceZar: 68000 },
+
+      // Tied universal - Lateral only
+      { type: 'tied_universal', material: 'stainless_steel_304', size: 80, convolutions: 6, axialComp: 0, axialExt: 0, lateral: 50, angular: 0, pressure: 25, vacuum: 1, minTemp: -200, maxTemp: 450, f2f: 380, od: 165, area: 61.5, spring: 0, weight: 12.0, priceZar: 22000 },
+      { type: 'tied_universal', material: 'stainless_steel_304', size: 100, convolutions: 7, axialComp: 0, axialExt: 0, lateral: 60, angular: 0, pressure: 25, vacuum: 1, minTemp: -200, maxTemp: 450, f2f: 420, od: 200, area: 102.1, spring: 0, weight: 16.0, priceZar: 28000 },
+      { type: 'tied_universal', material: 'stainless_steel_304', size: 150, convolutions: 8, axialComp: 0, axialExt: 0, lateral: 75, angular: 0, pressure: 20, vacuum: 0.8, minTemp: -200, maxTemp: 450, f2f: 500, od: 280, area: 176.7, spring: 0, weight: 25.0, priceZar: 42000 },
+
+      // Rubber bellows - EPDM
+      { type: 'axial', material: 'rubber_epdm', size: 50, convolutions: 1, axialComp: 15, axialExt: 8, lateral: 8, angular: 10, pressure: 16, vacuum: 0.8, minTemp: -40, maxTemp: 120, f2f: 130, od: 125, area: 28.3, spring: 15, weight: 1.2, priceZar: 1800 },
+      { type: 'axial', material: 'rubber_epdm', size: 80, convolutions: 1, axialComp: 18, axialExt: 10, lateral: 10, angular: 10, pressure: 16, vacuum: 0.8, minTemp: -40, maxTemp: 120, f2f: 150, od: 165, area: 61.5, spring: 22, weight: 2.0, priceZar: 2400 },
+      { type: 'axial', material: 'rubber_epdm', size: 100, convolutions: 1, axialComp: 22, axialExt: 12, lateral: 12, angular: 10, pressure: 16, vacuum: 0.6, minTemp: -40, maxTemp: 120, f2f: 170, od: 200, area: 102.1, spring: 30, weight: 3.0, priceZar: 3200 },
+      { type: 'axial', material: 'rubber_epdm', size: 150, convolutions: 1, axialComp: 26, axialExt: 14, lateral: 14, angular: 8, pressure: 10, vacuum: 0.5, minTemp: -40, maxTemp: 120, f2f: 200, od: 280, area: 176.7, spring: 45, weight: 5.5, priceZar: 4800 },
+      { type: 'axial', material: 'rubber_epdm', size: 200, convolutions: 1, axialComp: 30, axialExt: 16, lateral: 16, angular: 8, pressure: 10, vacuum: 0.4, minTemp: -40, maxTemp: 120, f2f: 240, od: 350, area: 314.2, spring: 65, weight: 8.5, priceZar: 6800 },
+
+      // PTFE bellows - Chemical resistance
+      { type: 'axial', material: 'ptfe', size: 25, convolutions: 10, axialComp: 20, axialExt: 10, lateral: 5, angular: 5, pressure: 6, vacuum: 0.3, minTemp: -200, maxTemp: 230, f2f: 180, od: 80, area: 19.6, spring: 8, weight: 0.5, priceZar: 4500 },
+      { type: 'axial', material: 'ptfe', size: 50, convolutions: 12, axialComp: 30, axialExt: 15, lateral: 8, angular: 5, pressure: 6, vacuum: 0.3, minTemp: -200, maxTemp: 230, f2f: 220, od: 115, area: 28.3, spring: 12, weight: 0.9, priceZar: 6500 },
+      { type: 'axial', material: 'ptfe', size: 80, convolutions: 14, axialComp: 40, axialExt: 20, lateral: 10, angular: 5, pressure: 4, vacuum: 0.2, minTemp: -200, maxTemp: 230, f2f: 280, od: 155, area: 61.5, spring: 18, weight: 1.5, priceZar: 9500 },
+      { type: 'axial', material: 'ptfe', size: 100, convolutions: 16, axialComp: 50, axialExt: 25, lateral: 12, angular: 5, pressure: 4, vacuum: 0.2, minTemp: -200, maxTemp: 230, f2f: 340, od: 185, area: 102.1, spring: 25, weight: 2.2, priceZar: 12500 },
+    ];
+
+    for (const b of bellowsData) {
+      await queryRunner.query(`
+        INSERT INTO bellows_expansion_joints (
+          joint_type, bellows_material, nominal_size_mm, number_of_convolutions,
+          axial_compression_mm, axial_extension_mm, lateral_offset_mm, angular_rotation_deg,
+          max_pressure_bar, max_vacuum_bar, min_temperature_c, max_temperature_c,
+          face_to_face_length_mm, outer_diameter_mm, effective_area_cm2, spring_rate_n_per_mm,
+          weight_kg, list_price_zar, list_price_usd,
+          end_connection_type, flange_rating,
+          tie_rods_included, suitable_for_steam, suitable_for_cryogenic
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+      `, [
+        b.type,
+        b.material,
+        b.size,
+        b.convolutions,
+        b.axialComp,
+        b.axialExt,
+        b.lateral,
+        b.angular,
+        b.pressure,
+        b.vacuum,
+        b.minTemp,
+        b.maxTemp,
+        b.f2f,
+        b.od,
+        b.area,
+        b.spring,
+        b.weight,
+        b.priceZar,
+        Math.round(b.priceZar / 18),
+        'flanged',
+        b.pressure >= 16 ? 'PN16' : b.pressure >= 10 ? 'PN10' : 'PN6',
+        b.type === 'tied_universal',
+        b.material.includes('stainless') && b.maxTemp >= 400,
+        b.minTemp <= -100,
+      ]);
+    }
+  }
+
+  private async createPipeExpansionCoefficientsTable(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS pipe_expansion_coefficients (
+        id SERIAL PRIMARY KEY,
+        material_code VARCHAR(50) NOT NULL,
+        material_name VARCHAR(100) NOT NULL,
+        temperature_c INTEGER NOT NULL,
+        mean_coefficient_per_c DECIMAL(12,9) NOT NULL,
+        instantaneous_coefficient_per_c DECIMAL(12,9),
+        total_expansion_mm_per_m DECIMAL(10,4),
+        modulus_of_elasticity_gpa DECIMAL(10,2),
+        density_kg_m3 DECIMAL(10,1),
+        thermal_conductivity_w_mk DECIMAL(8,3),
+        specific_heat_j_kgk DECIMAL(10,2),
+        reference_standard VARCHAR(100),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(material_code, temperature_c)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_expansion_coeff_material_temp
+      ON pipe_expansion_coefficients(material_code, temperature_c)
+    `);
+
+    const carbonSteelData = [
+      { temp: -50, mean: 10.4, inst: 10.0, expansion: -0.78, modulus: 207, conductivity: 54 },
+      { temp: 0, mean: 10.8, inst: 10.4, expansion: -0.27, modulus: 205, conductivity: 53 },
+      { temp: 20, mean: 11.0, inst: 10.8, expansion: 0, modulus: 203, conductivity: 52 },
+      { temp: 50, mean: 11.3, inst: 11.1, expansion: 0.34, modulus: 201, conductivity: 51 },
+      { temp: 100, mean: 11.7, inst: 11.6, expansion: 0.94, modulus: 197, conductivity: 50 },
+      { temp: 150, mean: 12.1, inst: 12.0, expansion: 1.57, modulus: 193, conductivity: 48 },
+      { temp: 200, mean: 12.5, inst: 12.4, expansion: 2.25, modulus: 189, conductivity: 47 },
+      { temp: 250, mean: 12.9, inst: 12.8, expansion: 2.97, modulus: 185, conductivity: 45 },
+      { temp: 300, mean: 13.3, inst: 13.2, expansion: 3.72, modulus: 181, conductivity: 43 },
+      { temp: 350, mean: 13.6, inst: 13.5, expansion: 4.49, modulus: 176, conductivity: 41 },
+      { temp: 400, mean: 14.0, inst: 13.9, expansion: 5.32, modulus: 172, conductivity: 39 },
+      { temp: 450, mean: 14.3, inst: 14.2, expansion: 6.17, modulus: 167, conductivity: 37 },
+      { temp: 500, mean: 14.6, inst: 14.5, expansion: 7.05, modulus: 162, conductivity: 35 },
+      { temp: 550, mean: 14.9, inst: 14.8, expansion: 7.95, modulus: 156, conductivity: 33 },
+    ];
+
+    const stainless304Data = [
+      { temp: -200, mean: 14.0, inst: 12.5, expansion: -3.52, modulus: 207, conductivity: 12 },
+      { temp: -100, mean: 15.0, inst: 14.0, expansion: -1.95, modulus: 203, conductivity: 13 },
+      { temp: 0, mean: 15.8, inst: 15.5, expansion: -0.47, modulus: 198, conductivity: 14 },
+      { temp: 20, mean: 16.0, inst: 15.8, expansion: 0, modulus: 196, conductivity: 15 },
+      { temp: 100, mean: 16.5, inst: 16.3, expansion: 1.32, modulus: 190, conductivity: 16 },
+      { temp: 200, mean: 17.0, inst: 16.8, expansion: 3.06, modulus: 183, conductivity: 18 },
+      { temp: 300, mean: 17.5, inst: 17.3, expansion: 4.90, modulus: 176, conductivity: 19 },
+      { temp: 400, mean: 18.0, inst: 17.8, expansion: 6.84, modulus: 169, conductivity: 21 },
+      { temp: 500, mean: 18.4, inst: 18.2, expansion: 8.83, modulus: 161, conductivity: 22 },
+      { temp: 600, mean: 18.8, inst: 18.6, expansion: 10.90, modulus: 153, conductivity: 24 },
+      { temp: 700, mean: 19.2, inst: 19.0, expansion: 13.06, modulus: 144, conductivity: 25 },
+      { temp: 800, mean: 19.5, inst: 19.3, expansion: 15.21, modulus: 135, conductivity: 27 },
+    ];
+
+    const stainless316Data = [
+      { temp: -200, mean: 13.5, inst: 12.0, expansion: -3.40, modulus: 207, conductivity: 12 },
+      { temp: -100, mean: 14.5, inst: 13.5, expansion: -1.88, modulus: 203, conductivity: 13 },
+      { temp: 0, mean: 15.3, inst: 15.0, expansion: -0.46, modulus: 198, conductivity: 14 },
+      { temp: 20, mean: 15.5, inst: 15.3, expansion: 0, modulus: 196, conductivity: 15 },
+      { temp: 100, mean: 16.0, inst: 15.8, expansion: 1.28, modulus: 190, conductivity: 16 },
+      { temp: 200, mean: 16.5, inst: 16.3, expansion: 2.97, modulus: 183, conductivity: 18 },
+      { temp: 300, mean: 17.0, inst: 16.8, expansion: 4.76, modulus: 176, conductivity: 19 },
+      { temp: 400, mean: 17.5, inst: 17.3, expansion: 6.65, modulus: 169, conductivity: 21 },
+      { temp: 500, mean: 17.9, inst: 17.7, expansion: 8.59, modulus: 161, conductivity: 22 },
+      { temp: 600, mean: 18.3, inst: 18.1, expansion: 10.61, modulus: 153, conductivity: 24 },
+    ];
+
+    const duplexData = [
+      { temp: 0, mean: 12.5, inst: 12.2, expansion: -0.25, modulus: 200, conductivity: 15 },
+      { temp: 20, mean: 12.7, inst: 12.5, expansion: 0, modulus: 198, conductivity: 15 },
+      { temp: 100, mean: 13.2, inst: 13.0, expansion: 1.06, modulus: 192, conductivity: 17 },
+      { temp: 200, mean: 13.7, inst: 13.5, expansion: 2.47, modulus: 185, conductivity: 18 },
+      { temp: 300, mean: 14.2, inst: 14.0, expansion: 3.98, modulus: 177, conductivity: 20 },
+    ];
+
+    const inconel625Data = [
+      { temp: 20, mean: 12.8, inst: 12.6, expansion: 0, modulus: 207, conductivity: 9.8 },
+      { temp: 100, mean: 13.1, inst: 12.9, expansion: 1.05, modulus: 203, conductivity: 11 },
+      { temp: 200, mean: 13.5, inst: 13.3, expansion: 2.43, modulus: 197, conductivity: 13 },
+      { temp: 300, mean: 13.9, inst: 13.7, expansion: 3.89, modulus: 191, conductivity: 15 },
+      { temp: 400, mean: 14.3, inst: 14.1, expansion: 5.44, modulus: 184, conductivity: 17 },
+      { temp: 500, mean: 14.7, inst: 14.5, expansion: 7.06, modulus: 178, conductivity: 19 },
+      { temp: 600, mean: 15.0, inst: 14.8, expansion: 8.70, modulus: 170, conductivity: 21 },
+      { temp: 700, mean: 15.4, inst: 15.2, expansion: 10.47, modulus: 163, conductivity: 23 },
+      { temp: 800, mean: 15.7, inst: 15.5, expansion: 12.25, modulus: 155, conductivity: 25 },
+      { temp: 900, mean: 16.0, inst: 15.8, expansion: 14.08, modulus: 146, conductivity: 27 },
+    ];
+
+    const monel400Data = [
+      { temp: 20, mean: 13.9, inst: 13.7, expansion: 0, modulus: 179, conductivity: 22 },
+      { temp: 100, mean: 14.2, inst: 14.0, expansion: 1.14, modulus: 175, conductivity: 25 },
+      { temp: 200, mean: 14.6, inst: 14.4, expansion: 2.63, modulus: 169, conductivity: 29 },
+      { temp: 300, mean: 15.0, inst: 14.8, expansion: 4.20, modulus: 163, conductivity: 33 },
+      { temp: 400, mean: 15.4, inst: 15.2, expansion: 5.85, modulus: 156, conductivity: 37 },
+      { temp: 500, mean: 15.8, inst: 15.6, expansion: 7.58, modulus: 149, conductivity: 41 },
+    ];
+
+    const hastelloyC276Data = [
+      { temp: 20, mean: 11.3, inst: 11.1, expansion: 0, modulus: 205, conductivity: 10 },
+      { temp: 100, mean: 11.6, inst: 11.4, expansion: 0.93, modulus: 201, conductivity: 11 },
+      { temp: 200, mean: 12.0, inst: 11.8, expansion: 2.16, modulus: 195, conductivity: 13 },
+      { temp: 300, mean: 12.4, inst: 12.2, expansion: 3.47, modulus: 188, conductivity: 15 },
+      { temp: 400, mean: 12.8, inst: 12.6, expansion: 4.86, modulus: 181, conductivity: 17 },
+      { temp: 500, mean: 13.1, inst: 12.9, expansion: 6.28, modulus: 174, conductivity: 19 },
+      { temp: 600, mean: 13.5, inst: 13.3, expansion: 7.83, modulus: 166, conductivity: 21 },
+    ];
+
+    const copperData = [
+      { temp: 20, mean: 16.6, inst: 16.4, expansion: 0, modulus: 117, conductivity: 385 },
+      { temp: 100, mean: 17.0, inst: 16.8, expansion: 1.36, modulus: 113, conductivity: 379 },
+      { temp: 200, mean: 17.5, inst: 17.3, expansion: 3.15, modulus: 107, conductivity: 369 },
+      { temp: 300, mean: 18.0, inst: 17.8, expansion: 5.04, modulus: 100, conductivity: 357 },
+    ];
+
+    const aluminumData = [
+      { temp: 20, mean: 23.0, inst: 22.8, expansion: 0, modulus: 69, conductivity: 237 },
+      { temp: 100, mean: 23.8, inst: 23.5, expansion: 1.90, modulus: 66, conductivity: 232 },
+      { temp: 200, mean: 24.5, inst: 24.2, expansion: 4.41, modulus: 62, conductivity: 225 },
+      { temp: 300, mean: 25.2, inst: 24.9, expansion: 7.06, modulus: 56, conductivity: 218 },
+    ];
+
+    const chromeMolyP22Data = [
+      { temp: 20, mean: 12.0, inst: 11.8, expansion: 0, modulus: 207, conductivity: 38 },
+      { temp: 100, mean: 12.4, inst: 12.2, expansion: 0.99, modulus: 203, conductivity: 37 },
+      { temp: 200, mean: 12.8, inst: 12.6, expansion: 2.30, modulus: 197, conductivity: 36 },
+      { temp: 300, mean: 13.2, inst: 13.0, expansion: 3.70, modulus: 190, conductivity: 35 },
+      { temp: 400, mean: 13.6, inst: 13.4, expansion: 5.17, modulus: 183, conductivity: 33 },
+      { temp: 500, mean: 14.0, inst: 13.8, expansion: 6.72, modulus: 175, conductivity: 31 },
+      { temp: 550, mean: 14.2, inst: 14.0, expansion: 7.53, modulus: 170, conductivity: 30 },
+    ];
+
+    const materials = [
+      { code: 'carbon_steel', name: 'Carbon Steel (ASTM A106/A53)', data: carbonSteelData, density: 7850, specificHeat: 486, reference: 'ASME B31.3 Table C-1' },
+      { code: 'stainless_304', name: 'Stainless Steel 304/304L', data: stainless304Data, density: 8000, specificHeat: 500, reference: 'ASME B31.3 Table C-3' },
+      { code: 'stainless_316', name: 'Stainless Steel 316/316L', data: stainless316Data, density: 8000, specificHeat: 500, reference: 'ASME B31.3 Table C-3' },
+      { code: 'duplex_2205', name: 'Duplex Stainless Steel 2205', data: duplexData, density: 7800, specificHeat: 480, reference: 'ASME B31.3' },
+      { code: 'inconel_625', name: 'Inconel 625 (UNS N06625)', data: inconel625Data, density: 8440, specificHeat: 410, reference: 'ASME B31.3 Table C-5' },
+      { code: 'monel_400', name: 'Monel 400 (UNS N04400)', data: monel400Data, density: 8800, specificHeat: 427, reference: 'ASME B31.3 Table C-5' },
+      { code: 'hastelloy_c276', name: 'Hastelloy C-276 (UNS N10276)', data: hastelloyC276Data, density: 8890, specificHeat: 427, reference: 'ASME B31.3 Table C-5' },
+      { code: 'copper', name: 'Copper (C12200)', data: copperData, density: 8940, specificHeat: 385, reference: 'ASME B31.3 Table C-4' },
+      { code: 'aluminum_6061', name: 'Aluminum 6061-T6', data: aluminumData, density: 2700, specificHeat: 896, reference: 'ASME B31.3 Table C-4' },
+      { code: 'chrome_moly_p22', name: 'Chrome-Moly P22 (2.25Cr-1Mo)', data: chromeMolyP22Data, density: 7850, specificHeat: 473, reference: 'ASME B31.3 Table C-2' },
+    ];
+
+    for (const mat of materials) {
+      for (const d of mat.data) {
+        await queryRunner.query(`
+          INSERT INTO pipe_expansion_coefficients (
+            material_code, material_name, temperature_c,
+            mean_coefficient_per_c, instantaneous_coefficient_per_c, total_expansion_mm_per_m,
+            modulus_of_elasticity_gpa, density_kg_m3, thermal_conductivity_w_mk, specific_heat_j_kgk,
+            reference_standard
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          ON CONFLICT (material_code, temperature_c) DO UPDATE SET
+            mean_coefficient_per_c = $4,
+            total_expansion_mm_per_m = $6
+        `, [
+          mat.code,
+          mat.name,
+          d.temp,
+          d.mean / 1000000,
+          d.inst / 1000000,
+          d.expansion,
+          d.modulus,
+          mat.density,
+          d.conductivity,
+          mat.specificHeat,
+          mat.reference,
+        ]);
+      }
+    }
+  }
+
+  private async createExpansionLoopSizingTable(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS expansion_loop_sizing (
+        id SERIAL PRIMARY KEY,
+        loop_type VARCHAR(50) NOT NULL,
+        nominal_size_mm INTEGER NOT NULL,
+        pipe_schedule VARCHAR(20) NOT NULL,
+        material_code VARCHAR(50) NOT NULL,
+        expansion_mm INTEGER NOT NULL,
+        loop_height_mm INTEGER NOT NULL,
+        loop_width_mm INTEGER NOT NULL,
+        total_pipe_length_mm INTEGER NOT NULL,
+        number_of_elbows INTEGER NOT NULL,
+        elbow_radius_factor DECIMAL(4,2) DEFAULT 1.5,
+        stress_range_mpa DECIMAL(10,2),
+        allowable_stress_mpa DECIMAL(10,2),
+        stress_ratio DECIMAL(5,3),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(loop_type, nominal_size_mm, pipe_schedule, material_code, expansion_mm)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_loop_sizing_lookup
+      ON expansion_loop_sizing(loop_type, nominal_size_mm, material_code, expansion_mm)
+    `);
+
+    const loopSizingData = [
+      // Full loop (180° return) - Carbon steel, Std schedule
+      { type: 'full_loop', size: 50, schedule: 'Std', material: 'carbon_steel', expansion: 25, height: 800, width: 400, pipeLen: 2400, elbows: 4 },
+      { type: 'full_loop', size: 50, schedule: 'Std', material: 'carbon_steel', expansion: 50, height: 1100, width: 550, pipeLen: 3300, elbows: 4 },
+      { type: 'full_loop', size: 50, schedule: 'Std', material: 'carbon_steel', expansion: 75, height: 1400, width: 700, pipeLen: 4200, elbows: 4 },
+      { type: 'full_loop', size: 80, schedule: 'Std', material: 'carbon_steel', expansion: 25, height: 900, width: 450, pipeLen: 2700, elbows: 4 },
+      { type: 'full_loop', size: 80, schedule: 'Std', material: 'carbon_steel', expansion: 50, height: 1300, width: 650, pipeLen: 3900, elbows: 4 },
+      { type: 'full_loop', size: 80, schedule: 'Std', material: 'carbon_steel', expansion: 75, height: 1600, width: 800, pipeLen: 4800, elbows: 4 },
+      { type: 'full_loop', size: 100, schedule: 'Std', material: 'carbon_steel', expansion: 25, height: 1000, width: 500, pipeLen: 3000, elbows: 4 },
+      { type: 'full_loop', size: 100, schedule: 'Std', material: 'carbon_steel', expansion: 50, height: 1400, width: 700, pipeLen: 4200, elbows: 4 },
+      { type: 'full_loop', size: 100, schedule: 'Std', material: 'carbon_steel', expansion: 75, height: 1750, width: 875, pipeLen: 5250, elbows: 4 },
+      { type: 'full_loop', size: 150, schedule: 'Std', material: 'carbon_steel', expansion: 50, height: 1700, width: 850, pipeLen: 5100, elbows: 4 },
+      { type: 'full_loop', size: 150, schedule: 'Std', material: 'carbon_steel', expansion: 75, height: 2100, width: 1050, pipeLen: 6300, elbows: 4 },
+      { type: 'full_loop', size: 150, schedule: 'Std', material: 'carbon_steel', expansion: 100, height: 2400, width: 1200, pipeLen: 7200, elbows: 4 },
+      { type: 'full_loop', size: 200, schedule: 'Std', material: 'carbon_steel', expansion: 50, height: 1950, width: 975, pipeLen: 5850, elbows: 4 },
+      { type: 'full_loop', size: 200, schedule: 'Std', material: 'carbon_steel', expansion: 75, height: 2400, width: 1200, pipeLen: 7200, elbows: 4 },
+      { type: 'full_loop', size: 200, schedule: 'Std', material: 'carbon_steel', expansion: 100, height: 2750, width: 1375, pipeLen: 8250, elbows: 4 },
+
+      // Horseshoe/Lyre - Carbon steel
+      { type: 'horseshoe_lyre', size: 50, schedule: 'Std', material: 'carbon_steel', expansion: 25, height: 600, width: 0, pipeLen: 1200, elbows: 2 },
+      { type: 'horseshoe_lyre', size: 50, schedule: 'Std', material: 'carbon_steel', expansion: 50, height: 850, width: 0, pipeLen: 1700, elbows: 2 },
+      { type: 'horseshoe_lyre', size: 80, schedule: 'Std', material: 'carbon_steel', expansion: 25, height: 700, width: 0, pipeLen: 1400, elbows: 2 },
+      { type: 'horseshoe_lyre', size: 80, schedule: 'Std', material: 'carbon_steel', expansion: 50, height: 1000, width: 0, pipeLen: 2000, elbows: 2 },
+      { type: 'horseshoe_lyre', size: 100, schedule: 'Std', material: 'carbon_steel', expansion: 25, height: 800, width: 0, pipeLen: 1600, elbows: 2 },
+      { type: 'horseshoe_lyre', size: 100, schedule: 'Std', material: 'carbon_steel', expansion: 50, height: 1100, width: 0, pipeLen: 2200, elbows: 2 },
+      { type: 'horseshoe_lyre', size: 150, schedule: 'Std', material: 'carbon_steel', expansion: 50, height: 1350, width: 0, pipeLen: 2700, elbows: 2 },
+      { type: 'horseshoe_lyre', size: 200, schedule: 'Std', material: 'carbon_steel', expansion: 50, height: 1550, width: 0, pipeLen: 3100, elbows: 2 },
+
+      // Stainless steel has higher expansion coefficient, needs larger loops
+      { type: 'full_loop', size: 50, schedule: 'Std', material: 'stainless_304', expansion: 25, height: 700, width: 350, pipeLen: 2100, elbows: 4 },
+      { type: 'full_loop', size: 50, schedule: 'Std', material: 'stainless_304', expansion: 50, height: 1000, width: 500, pipeLen: 3000, elbows: 4 },
+      { type: 'full_loop', size: 80, schedule: 'Std', material: 'stainless_304', expansion: 25, height: 800, width: 400, pipeLen: 2400, elbows: 4 },
+      { type: 'full_loop', size: 80, schedule: 'Std', material: 'stainless_304', expansion: 50, height: 1150, width: 575, pipeLen: 3450, elbows: 4 },
+      { type: 'full_loop', size: 100, schedule: 'Std', material: 'stainless_304', expansion: 50, height: 1250, width: 625, pipeLen: 3750, elbows: 4 },
+      { type: 'full_loop', size: 150, schedule: 'Std', material: 'stainless_304', expansion: 50, height: 1500, width: 750, pipeLen: 4500, elbows: 4 },
+    ];
+
+    for (const loop of loopSizingData) {
+      await queryRunner.query(`
+        INSERT INTO expansion_loop_sizing (
+          loop_type, nominal_size_mm, pipe_schedule, material_code, expansion_mm,
+          loop_height_mm, loop_width_mm, total_pipe_length_mm, number_of_elbows
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (loop_type, nominal_size_mm, pipe_schedule, material_code, expansion_mm) DO UPDATE SET
+          loop_height_mm = $6,
+          loop_width_mm = $7,
+          total_pipe_length_mm = $8
+      `, [
+        loop.type,
+        loop.size,
+        loop.schedule,
+        loop.material,
+        loop.expansion,
+        loop.height,
+        loop.width,
+        loop.pipeLen,
+        loop.elbows,
+      ]);
+    }
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP TABLE IF EXISTS expansion_loop_sizing`);
+    await queryRunner.query(`DROP TABLE IF EXISTS pipe_expansion_coefficients`);
+    await queryRunner.query(`DROP TABLE IF EXISTS bellows_expansion_joints`);
+  }
+}

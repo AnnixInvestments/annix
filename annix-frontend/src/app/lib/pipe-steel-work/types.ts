@@ -320,3 +320,98 @@ export interface ConfigValue {
   category: string | null;
   unit: string | null;
 }
+
+export type PlateSizeCategory = 'small' | 'medium' | 'large';
+
+export interface StandardPlateSize {
+  id: string;
+  name: string;
+  lengthMm: number;
+  widthMm: number;
+  thicknessMm: number;
+  category: PlateSizeCategory;
+  weightKg?: number;
+  commonUses?: string;
+}
+
+export type GasketMaterialType =
+  | 'spiral_wound'
+  | 'ring_joint'
+  | 'soft_cut'
+  | 'ptfe'
+  | 'graphite'
+  | 'rubber'
+  | 'compressed_asbestos_free';
+
+export interface GasketMaterial {
+  code: string;
+  name: string;
+  type: GasketMaterialType;
+  minTempC: number;
+  maxTempC: number;
+  maxPressureBar: number;
+  compatibleFlanges: string[];
+  compatibleServices: string[];
+  incompatibleServices?: string[];
+  costFactor?: number;
+  notes?: string;
+}
+
+export interface GasketCompatibilityRequest {
+  gasketCode: string;
+  flangeMaterial: string;
+  serviceFluid: string;
+  designTempC: number;
+  designPressureBar: number;
+  flangeFace?: string;
+}
+
+export interface GasketCompatibilityResponse {
+  isCompatible: boolean;
+  score: number;
+  warnings: string[];
+  recommendations: string[];
+  alternatives?: string[];
+}
+
+export type HeatTreatmentType =
+  | 'pwht'
+  | 'stress_relief'
+  | 'normalizing'
+  | 'annealing'
+  | 'solution_annealing'
+  | 'quench_temper';
+
+export interface HeatTreatment {
+  code: string;
+  name: string;
+  type: HeatTreatmentType;
+  description: string;
+  tempRangeLowC: number;
+  tempRangeHighC: number;
+  holdTimeFormula: string;
+  heatingRateMaxCPerHr: number;
+  coolingRateMaxCPerHr: number;
+  applicableMaterials: string[];
+  codeReferences: string[];
+  baseCostPerKg?: number;
+  notes?: string;
+}
+
+export interface HeatTreatmentRequirementRequest {
+  material: string;
+  wallThicknessMm: number;
+  weldType?: string;
+  pNumber?: number;
+  designCode?: string;
+}
+
+export interface HeatTreatmentRequirementResponse {
+  isRequired: boolean;
+  requiredTreatment: HeatTreatmentType | null;
+  treatment: HeatTreatment | null;
+  reason: string;
+  estimatedCostImpact: number;
+  codeReferences: string[];
+  exemptionConditions?: string[];
+}
