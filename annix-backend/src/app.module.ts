@@ -27,6 +27,7 @@ import { BoltModule } from './bolt/bolt.module';
 import { BoltMassModule } from './bolt-mass/bolt-mass.module';
 import { FlangeDimensionModule } from './flange-dimension/flange-dimension.module';
 import { NutMassModule } from './nut-mass/nut-mass.module';
+import { WasherModule } from './washer/washer.module';
 import { NbNpsLookupModule } from './nb-nps-lookup/nb-nps-lookup.module';
 import { BendDimensionService } from './bend-dimension/bend-dimension.service';
 import { BendDimensionController } from './bend-dimension/bend-dimension.controller';
@@ -90,6 +91,7 @@ import typeormConfig from './config/typeorm';
     BoltMassModule,
     FlangeDimensionModule,
     NutMassModule,
+    WasherModule,
     NbNpsLookupModule,
     BendDimensionModule,
     WeldTypeModule,

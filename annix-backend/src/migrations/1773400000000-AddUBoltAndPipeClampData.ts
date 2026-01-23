@@ -1,0 +1,192 @@
+import { MigrationInterface, QueryRunner } from 'typeorm';
+
+export class AddUBoltAndPipeClampData1773400000000
+  implements MigrationInterface
+{
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS u_bolts (
+        id SERIAL PRIMARY KEY,
+        nps VARCHAR(10) NOT NULL,
+        nb_mm INT NOT NULL,
+        pipe_od_min_mm DECIMAL(8,2) NOT NULL,
+        pipe_od_max_mm DECIMAL(8,2) NOT NULL,
+        thread_size VARCHAR(20) NOT NULL,
+        thread_diameter_mm DECIMAL(6,2) NOT NULL,
+        inside_width_mm DECIMAL(8,2) NOT NULL,
+        leg_length_mm DECIMAL(8,2) NOT NULL,
+        thread_length_mm DECIMAL(8,2) NOT NULL,
+        rod_diameter_mm DECIMAL(6,2) NOT NULL,
+        unit_weight_kg DECIMAL(8,3) NOT NULL,
+        standard VARCHAR(50),
+        material_grade VARCHAR(20),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(nps, thread_size)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS pipe_clamps (
+        id SERIAL PRIMARY KEY,
+        clamp_type VARCHAR(50) NOT NULL,
+        clamp_description VARCHAR(100) NOT NULL,
+        nps VARCHAR(10) NOT NULL,
+        nb_mm INT NOT NULL,
+        pipe_od_min_mm DECIMAL(8,2) NOT NULL,
+        pipe_od_max_mm DECIMAL(8,2) NOT NULL,
+        bolt_size VARCHAR(20) NOT NULL,
+        bolt_count INT NOT NULL,
+        bolt_length_mm DECIMAL(8,2) NOT NULL,
+        clamp_width_mm DECIMAL(8,2),
+        clamp_thickness_mm DECIMAL(6,2),
+        unit_weight_kg DECIMAL(8,3) NOT NULL,
+        max_load_kg DECIMAL(10,2) NOT NULL,
+        standard VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(clamp_type, nps)
+      )
+    `);
+
+    const uBoltData = [
+      { nps: '1/2"', nb: 15, odMin: 21.3, odMax: 21.3, thread: 'M8', threadDia: 8, width: 32, leg: 65, threadLen: 25, rod: 8, weight: 0.08 },
+      { nps: '3/4"', nb: 20, odMin: 26.7, odMax: 26.7, thread: 'M8', threadDia: 8, width: 38, leg: 70, threadLen: 25, rod: 8, weight: 0.10 },
+      { nps: '1"', nb: 25, odMin: 33.4, odMax: 33.4, thread: 'M10', threadDia: 10, width: 45, leg: 75, threadLen: 30, rod: 10, weight: 0.14 },
+      { nps: '1-1/4"', nb: 32, odMin: 42.2, odMax: 42.2, thread: 'M10', threadDia: 10, width: 54, leg: 80, threadLen: 30, rod: 10, weight: 0.18 },
+      { nps: '1-1/2"', nb: 40, odMin: 48.3, odMax: 48.3, thread: 'M10', threadDia: 10, width: 60, leg: 85, threadLen: 30, rod: 10, weight: 0.21 },
+      { nps: '2"', nb: 50, odMin: 60.3, odMax: 60.3, thread: 'M12', threadDia: 12, width: 73, leg: 95, threadLen: 35, rod: 12, weight: 0.32 },
+      { nps: '2-1/2"', nb: 65, odMin: 73.0, odMax: 73.0, thread: 'M12', threadDia: 12, width: 86, leg: 100, threadLen: 35, rod: 12, weight: 0.40 },
+      { nps: '3"', nb: 80, odMin: 88.9, odMax: 88.9, thread: 'M12', threadDia: 12, width: 102, leg: 110, threadLen: 35, rod: 12, weight: 0.50 },
+      { nps: '4"', nb: 100, odMin: 114.3, odMax: 114.3, thread: 'M16', threadDia: 16, width: 127, leg: 125, threadLen: 40, rod: 16, weight: 0.85 },
+      { nps: '5"', nb: 125, odMin: 141.3, odMax: 141.3, thread: 'M16', threadDia: 16, width: 156, leg: 135, threadLen: 40, rod: 16, weight: 1.05 },
+      { nps: '6"', nb: 150, odMin: 168.3, odMax: 168.3, thread: 'M16', threadDia: 16, width: 184, leg: 145, threadLen: 45, rod: 16, weight: 1.30 },
+      { nps: '8"', nb: 200, odMin: 219.1, odMax: 219.1, thread: 'M20', threadDia: 20, width: 235, leg: 165, threadLen: 50, rod: 20, weight: 2.20 },
+      { nps: '10"', nb: 250, odMin: 273.0, odMax: 273.0, thread: 'M20', threadDia: 20, width: 292, leg: 185, threadLen: 55, rod: 20, weight: 3.00 },
+      { nps: '12"', nb: 300, odMin: 323.9, odMax: 323.9, thread: 'M24', threadDia: 24, width: 343, leg: 200, threadLen: 60, rod: 24, weight: 4.50 },
+      { nps: '14"', nb: 350, odMin: 355.6, odMax: 355.6, thread: 'M24', threadDia: 24, width: 375, leg: 215, threadLen: 65, rod: 24, weight: 5.20 },
+      { nps: '16"', nb: 400, odMin: 406.4, odMax: 406.4, thread: 'M27', threadDia: 27, width: 426, leg: 230, threadLen: 70, rod: 27, weight: 7.00 },
+      { nps: '18"', nb: 450, odMin: 457.0, odMax: 457.0, thread: 'M27', threadDia: 27, width: 478, leg: 245, threadLen: 75, rod: 27, weight: 8.50 },
+      { nps: '20"', nb: 500, odMin: 508.0, odMax: 508.0, thread: 'M30', threadDia: 30, width: 530, leg: 260, threadLen: 80, rod: 30, weight: 10.50 },
+      { nps: '24"', nb: 600, odMin: 610.0, odMax: 610.0, thread: 'M30', threadDia: 30, width: 635, leg: 290, threadLen: 85, rod: 30, weight: 14.00 },
+    ];
+
+    for (const ub of uBoltData) {
+      await queryRunner.query(`
+        INSERT INTO u_bolts (nps, nb_mm, pipe_od_min_mm, pipe_od_max_mm, thread_size, thread_diameter_mm, inside_width_mm, leg_length_mm, thread_length_mm, rod_diameter_mm, unit_weight_kg, standard, material_grade)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ON CONFLICT (nps, thread_size) DO UPDATE SET
+          pipe_od_min_mm = EXCLUDED.pipe_od_min_mm,
+          pipe_od_max_mm = EXCLUDED.pipe_od_max_mm,
+          inside_width_mm = EXCLUDED.inside_width_mm,
+          leg_length_mm = EXCLUDED.leg_length_mm,
+          thread_length_mm = EXCLUDED.thread_length_mm,
+          rod_diameter_mm = EXCLUDED.rod_diameter_mm,
+          unit_weight_kg = EXCLUDED.unit_weight_kg
+      `, [ub.nps, ub.nb, ub.odMin, ub.odMax, ub.thread, ub.threadDia, ub.width, ub.leg, ub.threadLen, ub.rod, ub.weight, 'DIN 3570', '4.6']);
+    }
+
+    const threeBoltClampData = [
+      { nps: '1/2"', nb: 15, odMin: 21.3, odMax: 21.3, bolt: 'M8', boltLen: 40, width: 25, thick: 3, weight: 0.15, load: 400 },
+      { nps: '3/4"', nb: 20, odMin: 26.7, odMax: 26.7, bolt: 'M8', boltLen: 45, width: 25, thick: 3, weight: 0.18, load: 450 },
+      { nps: '1"', nb: 25, odMin: 33.4, odMax: 33.4, bolt: 'M10', boltLen: 50, width: 30, thick: 4, weight: 0.25, load: 550 },
+      { nps: '1-1/4"', nb: 32, odMin: 42.2, odMax: 42.2, bolt: 'M10', boltLen: 55, width: 30, thick: 4, weight: 0.32, load: 650 },
+      { nps: '1-1/2"', nb: 40, odMin: 48.3, odMax: 48.3, bolt: 'M10', boltLen: 60, width: 32, thick: 5, weight: 0.40, load: 750 },
+      { nps: '2"', nb: 50, odMin: 60.3, odMax: 60.3, bolt: 'M12', boltLen: 70, width: 38, thick: 5, weight: 0.55, load: 950 },
+      { nps: '2-1/2"', nb: 65, odMin: 73.0, odMax: 73.0, bolt: 'M12', boltLen: 80, width: 40, thick: 6, weight: 0.72, load: 1100 },
+      { nps: '3"', nb: 80, odMin: 88.9, odMax: 88.9, bolt: 'M12', boltLen: 90, width: 45, thick: 6, weight: 0.90, load: 1300 },
+      { nps: '4"', nb: 100, odMin: 114.3, odMax: 114.3, bolt: 'M16', boltLen: 110, width: 50, thick: 8, weight: 1.40, load: 1800 },
+      { nps: '5"', nb: 125, odMin: 141.3, odMax: 141.3, bolt: 'M16', boltLen: 125, width: 55, thick: 8, weight: 1.80, load: 2200 },
+      { nps: '6"', nb: 150, odMin: 168.3, odMax: 168.3, bolt: 'M16', boltLen: 140, width: 60, thick: 10, weight: 2.30, load: 2600 },
+      { nps: '8"', nb: 200, odMin: 219.1, odMax: 219.1, bolt: 'M20', boltLen: 175, width: 70, thick: 10, weight: 3.50, load: 3500 },
+      { nps: '10"', nb: 250, odMin: 273.0, odMax: 273.0, bolt: 'M20', boltLen: 210, width: 80, thick: 12, weight: 5.00, load: 4500 },
+      { nps: '12"', nb: 300, odMin: 323.9, odMax: 323.9, bolt: 'M24', boltLen: 250, width: 90, thick: 12, weight: 7.00, load: 5500 },
+      { nps: '14"', nb: 350, odMin: 355.6, odMax: 355.6, bolt: 'M24', boltLen: 275, width: 100, thick: 14, weight: 9.00, load: 6500 },
+      { nps: '16"', nb: 400, odMin: 406.4, odMax: 406.4, bolt: 'M27', boltLen: 310, width: 110, thick: 14, weight: 11.50, load: 7500 },
+      { nps: '18"', nb: 450, odMin: 457.0, odMax: 457.0, bolt: 'M27', boltLen: 350, width: 120, thick: 16, weight: 14.00, load: 8500 },
+      { nps: '20"', nb: 500, odMin: 508.0, odMax: 508.0, bolt: 'M30', boltLen: 390, width: 130, thick: 16, weight: 17.00, load: 9500 },
+      { nps: '24"', nb: 600, odMin: 610.0, odMax: 610.0, bolt: 'M30', boltLen: 470, width: 150, thick: 18, weight: 24.00, load: 12000 },
+    ];
+
+    for (const clamp of threeBoltClampData) {
+      await queryRunner.query(`
+        INSERT INTO pipe_clamps (clamp_type, clamp_description, nps, nb_mm, pipe_od_min_mm, pipe_od_max_mm, bolt_size, bolt_count, bolt_length_mm, clamp_width_mm, clamp_thickness_mm, unit_weight_kg, max_load_kg, standard)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT (clamp_type, nps) DO UPDATE SET
+          pipe_od_min_mm = EXCLUDED.pipe_od_min_mm,
+          pipe_od_max_mm = EXCLUDED.pipe_od_max_mm,
+          bolt_size = EXCLUDED.bolt_size,
+          bolt_length_mm = EXCLUDED.bolt_length_mm,
+          clamp_width_mm = EXCLUDED.clamp_width_mm,
+          clamp_thickness_mm = EXCLUDED.clamp_thickness_mm,
+          unit_weight_kg = EXCLUDED.unit_weight_kg,
+          max_load_kg = EXCLUDED.max_load_kg
+      `, ['THREE_BOLT', 'Three-Bolt Pipe Clamp', clamp.nps, clamp.nb, clamp.odMin, clamp.odMax, clamp.bolt, 3, clamp.boltLen, clamp.width, clamp.thick, clamp.weight, clamp.load, 'MSS-SP-58']);
+    }
+
+    const twoBoltClampData = [
+      { nps: '1/2"', nb: 15, odMin: 21.3, odMax: 21.3, bolt: 'M8', boltLen: 50, width: 25, thick: 4, weight: 0.12, load: 350 },
+      { nps: '3/4"', nb: 20, odMin: 26.7, odMax: 26.7, bolt: 'M8', boltLen: 55, width: 25, thick: 4, weight: 0.15, load: 400 },
+      { nps: '1"', nb: 25, odMin: 33.4, odMax: 33.4, bolt: 'M10', boltLen: 60, width: 30, thick: 5, weight: 0.22, load: 500 },
+      { nps: '1-1/4"', nb: 32, odMin: 42.2, odMax: 42.2, bolt: 'M10', boltLen: 65, width: 32, thick: 5, weight: 0.28, load: 600 },
+      { nps: '1-1/2"', nb: 40, odMin: 48.3, odMax: 48.3, bolt: 'M10', boltLen: 70, width: 35, thick: 6, weight: 0.35, load: 700 },
+      { nps: '2"', nb: 50, odMin: 60.3, odMax: 60.3, bolt: 'M12', boltLen: 85, width: 40, thick: 6, weight: 0.48, load: 850 },
+      { nps: '2-1/2"', nb: 65, odMin: 73.0, odMax: 73.0, bolt: 'M12', boltLen: 95, width: 45, thick: 8, weight: 0.62, load: 1000 },
+      { nps: '3"', nb: 80, odMin: 88.9, odMax: 88.9, bolt: 'M12', boltLen: 110, width: 50, thick: 8, weight: 0.78, load: 1200 },
+      { nps: '4"', nb: 100, odMin: 114.3, odMax: 114.3, bolt: 'M16', boltLen: 140, width: 55, thick: 10, weight: 1.20, load: 1600 },
+      { nps: '5"', nb: 125, odMin: 141.3, odMax: 141.3, bolt: 'M16', boltLen: 165, width: 60, thick: 10, weight: 1.55, load: 2000 },
+      { nps: '6"', nb: 150, odMin: 168.3, odMax: 168.3, bolt: 'M16', boltLen: 190, width: 70, thick: 12, weight: 2.00, load: 2400 },
+      { nps: '8"', nb: 200, odMin: 219.1, odMax: 219.1, bolt: 'M20', boltLen: 245, width: 80, thick: 12, weight: 3.00, load: 3200 },
+    ];
+
+    for (const clamp of twoBoltClampData) {
+      await queryRunner.query(`
+        INSERT INTO pipe_clamps (clamp_type, clamp_description, nps, nb_mm, pipe_od_min_mm, pipe_od_max_mm, bolt_size, bolt_count, bolt_length_mm, clamp_width_mm, clamp_thickness_mm, unit_weight_kg, max_load_kg, standard)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT (clamp_type, nps) DO UPDATE SET
+          pipe_od_min_mm = EXCLUDED.pipe_od_min_mm,
+          pipe_od_max_mm = EXCLUDED.pipe_od_max_mm,
+          bolt_size = EXCLUDED.bolt_size,
+          bolt_length_mm = EXCLUDED.bolt_length_mm,
+          clamp_width_mm = EXCLUDED.clamp_width_mm,
+          clamp_thickness_mm = EXCLUDED.clamp_thickness_mm,
+          unit_weight_kg = EXCLUDED.unit_weight_kg,
+          max_load_kg = EXCLUDED.max_load_kg
+      `, ['TWO_BOLT', 'Two-Bolt Pipe Clamp', clamp.nps, clamp.nb, clamp.odMin, clamp.odMax, clamp.bolt, 2, clamp.boltLen, clamp.width, clamp.thick, clamp.weight, clamp.load, 'MSS-SP-58']);
+    }
+
+    const heavyDutyClampData = [
+      { nps: '2"', nb: 50, odMin: 60.3, odMax: 60.3, bolt: 'M16', boltLen: 90, width: 50, thick: 8, weight: 0.85, load: 1500 },
+      { nps: '3"', nb: 80, odMin: 88.9, odMax: 88.9, bolt: 'M16', boltLen: 110, width: 55, thick: 10, weight: 1.25, load: 2000 },
+      { nps: '4"', nb: 100, odMin: 114.3, odMax: 114.3, bolt: 'M20', boltLen: 135, width: 60, thick: 12, weight: 2.00, load: 2800 },
+      { nps: '6"', nb: 150, odMin: 168.3, odMax: 168.3, bolt: 'M20', boltLen: 185, width: 75, thick: 14, weight: 3.50, load: 4000 },
+      { nps: '8"', nb: 200, odMin: 219.1, odMax: 219.1, bolt: 'M24', boltLen: 235, width: 90, thick: 16, weight: 5.50, load: 5500 },
+      { nps: '10"', nb: 250, odMin: 273.0, odMax: 273.0, bolt: 'M24', boltLen: 290, width: 100, thick: 18, weight: 8.00, load: 7000 },
+      { nps: '12"', nb: 300, odMin: 323.9, odMax: 323.9, bolt: 'M27', boltLen: 340, width: 110, thick: 20, weight: 11.00, load: 8500 },
+      { nps: '14"', nb: 350, odMin: 355.6, odMax: 355.6, bolt: 'M27', boltLen: 375, width: 120, thick: 22, weight: 14.00, load: 10000 },
+      { nps: '16"', nb: 400, odMin: 406.4, odMax: 406.4, bolt: 'M30', boltLen: 425, width: 130, thick: 22, weight: 18.00, load: 12000 },
+      { nps: '18"', nb: 450, odMin: 457.0, odMax: 457.0, bolt: 'M30', boltLen: 480, width: 140, thick: 25, weight: 23.00, load: 14000 },
+      { nps: '20"', nb: 500, odMin: 508.0, odMax: 508.0, bolt: 'M33', boltLen: 530, width: 150, thick: 25, weight: 28.00, load: 16000 },
+      { nps: '24"', nb: 600, odMin: 610.0, odMax: 610.0, bolt: 'M33', boltLen: 635, width: 170, thick: 28, weight: 40.00, load: 20000 },
+    ];
+
+    for (const clamp of heavyDutyClampData) {
+      await queryRunner.query(`
+        INSERT INTO pipe_clamps (clamp_type, clamp_description, nps, nb_mm, pipe_od_min_mm, pipe_od_max_mm, bolt_size, bolt_count, bolt_length_mm, clamp_width_mm, clamp_thickness_mm, unit_weight_kg, max_load_kg, standard)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT (clamp_type, nps) DO UPDATE SET
+          pipe_od_min_mm = EXCLUDED.pipe_od_min_mm,
+          pipe_od_max_mm = EXCLUDED.pipe_od_max_mm,
+          bolt_size = EXCLUDED.bolt_size,
+          bolt_length_mm = EXCLUDED.bolt_length_mm,
+          clamp_width_mm = EXCLUDED.clamp_width_mm,
+          clamp_thickness_mm = EXCLUDED.clamp_thickness_mm,
+          unit_weight_kg = EXCLUDED.unit_weight_kg,
+          max_load_kg = EXCLUDED.max_load_kg
+      `, ['HEAVY_DUTY', 'Heavy-Duty Pipe Clamp', clamp.nps, clamp.nb, clamp.odMin, clamp.odMax, clamp.bolt, 4, clamp.boltLen, clamp.width, clamp.thick, clamp.weight, clamp.load, 'MSS-SP-58']);
+    }
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP TABLE IF EXISTS pipe_clamps`);
+    await queryRunner.query(`DROP TABLE IF EXISTS u_bolts`);
+  }
+}

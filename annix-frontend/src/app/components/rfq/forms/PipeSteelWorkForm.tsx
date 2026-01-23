@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Select } from '@/app/components/ui/Select';
 import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
 import { SmartNotesDropdown } from '@/app/components/rfq/SmartNotesDropdown';
-import { STEEL_DENSITY_KG_M3 } from '@/app/lib/config/rfq';
+import { usePipeSteelWorkCalculations } from '@/app/lib/pipe-steel-work/usePipeSteelWorkCalculations';
 
 export interface PipeSteelWorkFormProps {
   entry: any;
@@ -29,31 +29,7 @@ const WORK_TYPES = [
   { value: 'shoe_support', label: 'Shoe Support' },
 ];
 
-const BRACKET_TYPES = [
-  { value: 'clevis_hanger', label: 'Clevis Hanger', description: 'For suspended pipelines' },
-  { value: 'three_bolt_clamp', label: 'Three-Bolt Clamp', description: 'Heavy-duty support' },
-  { value: 'welded_bracket', label: 'Welded Bracket', description: 'Fixed support' },
-  { value: 'pipe_saddle', label: 'Pipe Saddle', description: 'Base-mounted support' },
-  { value: 'u_bolt', label: 'U-Bolt Clamp', description: 'Simple, economical' },
-  { value: 'roller_support', label: 'Roller Support', description: 'Thermal expansion' },
-  { value: 'slide_plate', label: 'Slide Plate', description: 'Low-friction support' },
-];
-
-const SUPPORT_SPACING_TABLE: Record<number, { water: number; vapor: number; rod: number }> = {
-  50: { water: 3.4, vapor: 4.3, rod: 10 },
-  80: { water: 3.7, vapor: 4.6, rod: 10 },
-  100: { water: 4.3, vapor: 5.2, rod: 12 },
-  150: { water: 4.9, vapor: 5.8, rod: 16 },
-  200: { water: 5.2, vapor: 6.4, rod: 16 },
-  250: { water: 5.8, vapor: 7.0, rod: 20 },
-  300: { water: 6.4, vapor: 7.6, rod: 20 },
-  350: { water: 6.7, vapor: 7.9, rod: 24 },
-  400: { water: 7.0, vapor: 8.2, rod: 24 },
-  500: { water: 7.6, vapor: 8.8, rod: 30 },
-  600: { water: 7.9, vapor: 9.1, rod: 30 },
-};
-
-const NB_OPTIONS = [50, 80, 100, 150, 200, 250, 300, 350, 400, 450, 500, 600, 750, 900];
+const NB_OPTIONS = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 750, 900];
 
 export default function PipeSteelWorkForm({
   entry,
@@ -70,8 +46,6 @@ export default function PipeSteelWorkForm({
   generateItemDescription,
   requiredProducts = [],
 }: PipeSteelWorkFormProps) {
-  const [calculationResults, setCalculationResults] = useState<any>(null);
-
   const workType = entry.specs?.workType || 'pipe_support';
   const nominalDiameterMm = entry.specs?.nominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
   const bracketType = entry.specs?.bracketType || 'clevis_hanger';
@@ -79,96 +53,36 @@ export default function PipeSteelWorkForm({
   const branchDiameterMm = entry.specs?.branchDiameterMm || null;
   const quantity = entry.specs?.quantity || 1;
 
-  const closestNb = (nb: number): number => {
-    const sizes = Object.keys(SUPPORT_SPACING_TABLE).map(Number);
-    return sizes.reduce((prev, curr) =>
-      Math.abs(curr - nb) < Math.abs(prev - nb) ? curr : prev
-    );
-  };
-
-  const supportSpacing = nominalDiameterMm
-    ? SUPPORT_SPACING_TABLE[closestNb(nominalDiameterMm)]
-    : null;
+  const {
+    supportSpacing,
+    bracketTypes,
+    bracketDimensions,
+    calculationResults,
+    isLoading,
+    error,
+  } = usePipeSteelWorkCalculations({
+    workType,
+    nominalDiameterMm,
+    bracketType,
+    pipelineLengthM,
+    branchDiameterMm,
+    quantity,
+  });
 
   useEffect(() => {
-    if (workType === 'pipe_support' && nominalDiameterMm && pipelineLengthM && supportSpacing) {
-      const spacing = supportSpacing.water;
-      const numberOfSupports = Math.ceil(pipelineLengthM / spacing) + 1;
-      const weightPerUnit = 0.5 + (nominalDiameterMm / 100) * 1.5;
-      const totalWeight = weightPerUnit * numberOfSupports;
-      const unitCost = getBracketCost(bracketType);
-      const totalCost = unitCost * numberOfSupports;
-
-      const results = {
-        supportSpacingM: spacing,
-        numberOfSupports,
-        weightPerUnitKg: Math.round(weightPerUnit * 100) / 100,
-        totalWeightKg: Math.round(totalWeight * 100) / 100,
-        unitCost,
-        totalCost,
-        rodSizeMm: supportSpacing.rod,
-      };
-
-      setCalculationResults(results);
-
+    if (calculationResults) {
       onUpdateEntry(entry.id, {
-        calculation: results,
+        calculation: calculationResults,
         specs: {
           ...entry.specs,
-          supportSpacingM: spacing,
-          numberOfSupports,
+          supportSpacingM: calculationResults.supportSpacingM,
+          numberOfSupports: calculationResults.numberOfSupports,
         },
       });
     }
+  }, [calculationResults]);
 
-    if (workType === 'reinforcement_pad' && nominalDiameterMm && branchDiameterMm) {
-      const padData = calculateReinforcementPad(nominalDiameterMm, branchDiameterMm);
-      setCalculationResults(padData);
-      onUpdateEntry(entry.id, {
-        calculation: padData,
-      });
-    }
-  }, [workType, nominalDiameterMm, pipelineLengthM, bracketType, branchDiameterMm, quantity]);
-
-  const getBracketCost = (type: string): number => {
-    const costs: Record<string, number> = {
-      clevis_hanger: 150,
-      three_bolt_clamp: 250,
-      welded_bracket: 180,
-      pipe_saddle: 280,
-      u_bolt: 80,
-      roller_support: 450,
-      slide_plate: 350,
-    };
-    return costs[type] || 200;
-  };
-
-  const calculateReinforcementPad = (headerNb: number, branchNb: number) => {
-    const nbToOd: Record<number, number> = {
-      50: 60.3, 80: 88.9, 100: 114.3, 150: 168.3, 200: 219.1,
-      250: 273.1, 300: 323.9, 350: 355.6, 400: 406.4, 500: 508.0, 600: 610.0,
-    };
-    const headerOd = nbToOd[headerNb] || headerNb * 1.05;
-    const branchOd = nbToOd[branchNb] || branchNb * 1.05;
-
-    const padOd = branchOd + 100;
-    const padThickness = Math.max(6, Math.round(headerOd / 50));
-    const padArea = (Math.PI / 4) * (padOd * padOd - branchOd * branchOd);
-    const padVolume = (padArea * padThickness) / 1e9;
-    const padWeight = padVolume * STEEL_DENSITY_KG_M3;
-    const unitCost = Math.round(padWeight * 25 * 2.5);
-
-    return {
-      padOuterDiameterMm: Math.round(padOd),
-      padThicknessMm: padThickness,
-      padWeightKg: Math.round(padWeight * 100) / 100,
-      unitCost,
-      totalCost: unitCost * quantity,
-      totalWeightKg: Math.round(padWeight * quantity * 100) / 100,
-      reinforcementRequired: true,
-      notes: `Reinforcement pad per ASME B31.3. OD: ${Math.round(padOd)}mm, Thickness: ${padThickness}mm`,
-    };
-  };
+  const selectedBracketType = bracketTypes.find((bt) => bt.typeCode === bracketType);
 
   return (
     <>
@@ -256,10 +170,12 @@ export default function PipeSteelWorkForm({
                           specs: { ...entry.specs, bracketType: value },
                         });
                       }}
-                      options={BRACKET_TYPES.map((bt) => ({
-                        value: bt.value,
-                        label: bt.label,
-                      }))}
+                      options={bracketTypes
+                        .filter((bt) => bt.isSuitable)
+                        .map((bt) => ({
+                          value: bt.typeCode,
+                          label: bt.displayName,
+                        }))}
                       open={openSelects[`bracket-type-${entry.id}`] || false}
                       onOpenChange={(open) => open ? openSelect(`bracket-type-${entry.id}`) : closeSelect(`bracket-type-${entry.id}`)}
                       placeholder="Select bracket type"
@@ -387,20 +303,60 @@ export default function PipeSteelWorkForm({
             {supportSpacing && workType === 'pipe_support' && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 dark:bg-blue-900/20 dark:border-blue-700">
                 <h5 className="text-sm font-bold text-blue-900 mb-2 dark:text-blue-100">
-                  Support Spacing (MSS-SP-58)
+                  Support Spacing ({supportSpacing.standard})
                 </h5>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="text-blue-800 dark:text-blue-200">Water Filled:</div>
-                  <div className="font-semibold text-blue-900 dark:text-blue-100">{supportSpacing.water}m</div>
+                  <div className="font-semibold text-blue-900 dark:text-blue-100">{supportSpacing.waterFilledSpacingM}m</div>
                   <div className="text-blue-800 dark:text-blue-200">Vapor/Gas:</div>
-                  <div className="font-semibold text-blue-900 dark:text-blue-100">{supportSpacing.vapor}m</div>
+                  <div className="font-semibold text-blue-900 dark:text-blue-100">{supportSpacing.vaporGasSpacingM}m</div>
                   <div className="text-blue-800 dark:text-blue-200">Rod Size:</div>
-                  <div className="font-semibold text-blue-900 dark:text-blue-100">{supportSpacing.rod}mm</div>
+                  <div className="font-semibold text-blue-900 dark:text-blue-100">{supportSpacing.rodSizeMm}mm</div>
                 </div>
               </div>
             )}
 
-            {calculationResults && (
+            {selectedBracketType && workType === 'pipe_support' && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 dark:bg-purple-900/20 dark:border-purple-700">
+                <h5 className="text-sm font-bold text-purple-900 mb-2 dark:text-purple-100">
+                  {selectedBracketType.displayName}
+                </h5>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {selectedBracketType.description && (
+                    <>
+                      <div className="text-purple-800 dark:text-purple-200">Description:</div>
+                      <div className="font-semibold text-purple-900 dark:text-purple-100">{selectedBracketType.description}</div>
+                    </>
+                  )}
+                  <div className="text-purple-800 dark:text-purple-200">Allows Expansion:</div>
+                  <div className="font-semibold text-purple-900 dark:text-purple-100">{selectedBracketType.allowsExpansion ? 'Yes' : 'No'}</div>
+                  <div className="text-purple-800 dark:text-purple-200">Anchor Type:</div>
+                  <div className="font-semibold text-purple-900 dark:text-purple-100">{selectedBracketType.isAnchorType ? 'Yes' : 'No'}</div>
+                  {bracketDimensions && (
+                    <>
+                      <div className="text-purple-800 dark:text-purple-200">Unit Weight:</div>
+                      <div className="font-semibold text-purple-900 dark:text-purple-100">{bracketDimensions.unitWeightKg} kg</div>
+                      <div className="text-purple-800 dark:text-purple-200">Max Load:</div>
+                      <div className="font-semibold text-purple-900 dark:text-purple-100">{bracketDimensions.maxLoadKg} kg</div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {isLoading && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 dark:bg-gray-800 dark:border-gray-700">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Calculating...</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 dark:bg-red-900/20 dark:border-red-700">
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
+
+            {calculationResults && !isLoading && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 dark:bg-green-900/20 dark:border-green-700">
                 <h5 className="text-sm font-bold text-green-900 mb-2 dark:text-green-100">
                   Calculation Results
@@ -412,16 +368,22 @@ export default function PipeSteelWorkForm({
                       <div className="font-semibold text-green-900 dark:text-green-100">{calculationResults.numberOfSupports}</div>
                     </>
                   )}
-                  {calculationResults.padOuterDiameterMm && (
+                  {calculationResults.reinforcementPad && (
                     <>
                       <div className="text-green-800 dark:text-green-200">Pad OD:</div>
-                      <div className="font-semibold text-green-900 dark:text-green-100">{calculationResults.padOuterDiameterMm}mm</div>
+                      <div className="font-semibold text-green-900 dark:text-green-100">{calculationResults.reinforcementPad.padOuterDiameterMm}mm</div>
                       <div className="text-green-800 dark:text-green-200">Pad Thickness:</div>
-                      <div className="font-semibold text-green-900 dark:text-green-100">{calculationResults.padThicknessMm}mm</div>
+                      <div className="font-semibold text-green-900 dark:text-green-100">{calculationResults.reinforcementPad.padThicknessMm}mm</div>
+                      <div className="text-green-800 dark:text-green-200">Required:</div>
+                      <div className="font-semibold text-green-900 dark:text-green-100">
+                        {calculationResults.reinforcementPad.reinforcementRequired ? 'Yes' : 'No'}
+                      </div>
                     </>
                   )}
                   <div className="text-green-800 dark:text-green-200">Weight per Unit:</div>
-                  <div className="font-semibold text-green-900 dark:text-green-100">{calculationResults.weightPerUnitKg || calculationResults.padWeightKg} kg</div>
+                  <div className="font-semibold text-green-900 dark:text-green-100">
+                    {calculationResults.weightPerUnitKg || calculationResults.reinforcementPad?.padWeightKg} kg
+                  </div>
                   <div className="text-green-800 dark:text-green-200">Total Weight:</div>
                   <div className="font-semibold text-green-900 dark:text-green-100">{calculationResults.totalWeightKg} kg</div>
                   <div className="text-green-800 dark:text-green-200">Unit Cost:</div>

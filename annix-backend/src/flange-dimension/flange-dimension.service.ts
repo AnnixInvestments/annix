@@ -274,7 +274,7 @@ export class FlangeDimensionService {
 
     if (flange.bolt) {
       const diameterMm = this.extractDiameterFromDesignation(flange.bolt.designation);
-      const threadPitch = ISO_METRIC_THREAD_PITCHES[diameterMm] || 2.0;
+      const threadPitch = flange.bolt.threadPitchMm || ISO_METRIC_THREAD_PITCHES[diameterMm] || 2.0;
       const lengthMm = flange.boltLengthMm || 70;
 
       let massKg = 0;

@@ -22,6 +22,9 @@ export class Bolt {
   @Column({ name: 'thread_type', type: 'varchar', nullable: true })
   threadType: string | null; // e.g. "coarse", "fine"
 
+  @Column({ name: 'thread_pitch_mm', type: 'float', nullable: true })
+  threadPitchMm: number | null;
+
   @OneToMany(() => BoltMass, (mass) => mass.bolt)
   boltMasses: BoltMass[];
 
