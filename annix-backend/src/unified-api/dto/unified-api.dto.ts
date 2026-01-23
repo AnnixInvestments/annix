@@ -10,65 +10,6 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class CompleteFlangeSpecificationDto {
-  @ApiProperty({ description: 'Flange dimension ID' })
-  id: number;
-
-  @ApiProperty({ description: 'Flange standard code' })
-  standardCode: string;
-
-  @ApiProperty({ description: 'Flange standard name' })
-  standardName: string;
-
-  @ApiProperty({ description: 'Pressure class designation' })
-  pressureClass: string;
-
-  @ApiProperty({ description: 'Flange type (WN, SO, SW, etc.)' })
-  flangeType: string | null;
-
-  @ApiProperty({ description: 'Nominal bore in mm' })
-  nominalBoreMm: number;
-
-  @ApiProperty({ description: 'NPS designation' })
-  nps: string | null;
-
-  @ApiProperty({ description: 'Flange outer diameter (D) in mm' })
-  outerDiameterMm: number;
-
-  @ApiProperty({ description: 'Flange thickness (b) in mm' })
-  thicknessMm: number;
-
-  @ApiProperty({ description: 'Bore diameter (d4) in mm' })
-  boreDiameterMm: number;
-
-  @ApiProperty({ description: 'Raised face diameter (f) in mm' })
-  raisedFaceDiameterMm: number | null;
-
-  @ApiProperty({ description: 'Hub diameter (d1) in mm' })
-  hubDiameterMm: number | null;
-
-  @ApiProperty({ description: 'Pitch circle diameter (PCD) in mm' })
-  pcdMm: number;
-
-  @ApiProperty({ description: 'Number of bolt holes' })
-  numHoles: number;
-
-  @ApiProperty({ description: 'Bolt hole diameter in mm' })
-  holeDiameterMm: number | null;
-
-  @ApiProperty({ description: 'Flange mass in kg' })
-  massKg: number | null;
-
-  @ApiPropertyOptional({ description: 'Bolting information' })
-  bolting?: FlangeBoltingInfoDto;
-
-  @ApiPropertyOptional({ description: 'P-T ratings at various temperatures' })
-  ptRatings?: PtRatingInfoDto[];
-
-  @ApiPropertyOptional({ description: 'Gasket information' })
-  gasket?: GasketInfoDto;
-}
-
 export class FlangeBoltingInfoDto {
   @ApiProperty({ description: 'Bolt designation (e.g., M16)' })
   boltDesignation: string;
@@ -127,6 +68,65 @@ export class GasketInfoDto {
 
   @ApiProperty({ description: 'Outer diameter in mm' })
   outerDiameterMm: number | null;
+}
+
+export class CompleteFlangeSpecificationDto {
+  @ApiProperty({ description: 'Flange dimension ID' })
+  id: number;
+
+  @ApiProperty({ description: 'Flange standard code' })
+  standardCode: string;
+
+  @ApiProperty({ description: 'Flange standard name' })
+  standardName: string;
+
+  @ApiProperty({ description: 'Pressure class designation' })
+  pressureClass: string;
+
+  @ApiProperty({ description: 'Flange type (WN, SO, SW, etc.)' })
+  flangeType: string | null;
+
+  @ApiProperty({ description: 'Nominal bore in mm' })
+  nominalBoreMm: number;
+
+  @ApiProperty({ description: 'NPS designation' })
+  nps: string | null;
+
+  @ApiProperty({ description: 'Flange outer diameter (D) in mm' })
+  outerDiameterMm: number;
+
+  @ApiProperty({ description: 'Flange thickness (b) in mm' })
+  thicknessMm: number;
+
+  @ApiProperty({ description: 'Bore diameter (d4) in mm' })
+  boreDiameterMm: number;
+
+  @ApiProperty({ description: 'Raised face diameter (f) in mm' })
+  raisedFaceDiameterMm: number | null;
+
+  @ApiProperty({ description: 'Hub diameter (d1) in mm' })
+  hubDiameterMm: number | null;
+
+  @ApiProperty({ description: 'Pitch circle diameter (PCD) in mm' })
+  pcdMm: number;
+
+  @ApiProperty({ description: 'Number of bolt holes' })
+  numHoles: number;
+
+  @ApiProperty({ description: 'Bolt hole diameter in mm' })
+  holeDiameterMm: number | null;
+
+  @ApiProperty({ description: 'Flange mass in kg' })
+  massKg: number | null;
+
+  @ApiPropertyOptional({ description: 'Bolting information' })
+  bolting?: FlangeBoltingInfoDto;
+
+  @ApiPropertyOptional({ description: 'P-T ratings at various temperatures' })
+  ptRatings?: PtRatingInfoDto[];
+
+  @ApiPropertyOptional({ description: 'Gasket information' })
+  gasket?: GasketInfoDto;
 }
 
 export class MaterialSearchQueryDto {
