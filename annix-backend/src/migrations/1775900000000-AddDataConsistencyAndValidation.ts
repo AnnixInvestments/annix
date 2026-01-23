@@ -283,10 +283,10 @@ export class AddDataConsistencyAndValidation1775900000000
         code: 'FD_OD_CONSISTENCY',
         name: 'Flange OD Consistency Check',
         description: 'Verifies that flange OD (D) is greater than nominal OD',
-        sql: `SELECT fd.id, fd."D" as flange_od, nod.od_mm as pipe_od
+        sql: `SELECT fd.id, fd."D" as flange_od, nod.outside_diameter_mm as pipe_od
               FROM flange_dimensions fd
-              JOIN nominal_outside_diameter_mms nod ON fd."nominalOutsideDiameterId" = nod.id
-              WHERE fd."D" <= nod.od_mm`,
+              JOIN nominal_outside_diameters nod ON fd."nominalOutsideDiameterId" = nod.id
+              WHERE fd."D" <= nod.outside_diameter_mm`,
         severity: 'error',
         category: 'dimensional',
       },
@@ -404,10 +404,10 @@ export class AddDataConsistencyAndValidation1775900000000
       SELECT
         fd.id,
         fs.code as standard,
-        fpc.class_name as pressure_class,
+        fpc.designation as pressure_class,
         ft.code as flange_type,
-        nod.nb_mm,
-        nod.od_mm as pipe_od,
+        nod.nominal_diameter_mm,
+        nod.outside_diameter_mm as pipe_od,
         fd."D" as flange_od,
         fd."d1" as bore,
         fd.pcd,
@@ -416,7 +416,7 @@ export class AddDataConsistencyAndValidation1775900000000
         fd.b as thickness,
         fd.f as raised_face,
         fd.mass_kg,
-        CASE WHEN fd."D" > nod.od_mm THEN 'PASS' ELSE 'FAIL: OD too small' END as od_check,
+        CASE WHEN fd."D" > nod.outside_diameter_mm THEN 'PASS' ELSE 'FAIL: OD too small' END as od_check,
         CASE WHEN fd."d1" < fd."D" THEN 'PASS' ELSE 'FAIL: Bore >= OD' END as bore_check,
         CASE WHEN fd.pcd > fd."d1" AND fd.pcd < fd."D" THEN 'PASS' ELSE 'FAIL: PCD out of range' END as pcd_check,
         CASE WHEN (3.14159 * fd.pcd / fd.num_holes) > (fd.d4 * 1.5) THEN 'PASS' ELSE 'WARN: Tight hole spacing' END as spacing_check,
@@ -428,13 +428,13 @@ export class AddDataConsistencyAndValidation1775900000000
       JOIN flange_standards fs ON fd."standardId" = fs.id
       JOIN flange_pressure_classes fpc ON fd."pressureClassId" = fpc.id
       LEFT JOIN flange_types ft ON fd."flangeTypeId" = ft.id
-      JOIN nominal_outside_diameter_mms nod ON fd."nominalOutsideDiameterId" = nod.id
+      JOIN nominal_outside_diameters nod ON fd."nominalOutsideDiameterId" = nod.id
     `);
 
     await queryRunner.query(`
       CREATE OR REPLACE VIEW v_pt_rating_coverage AS
       SELECT
-        fpc.class_name as pressure_class,
+        fpc.designation as pressure_class,
         fpr.material_group,
         COUNT(DISTINCT fpr.temperature_celsius) as temp_points,
         MIN(fpr.temperature_celsius) as min_temp_c,
@@ -445,19 +445,19 @@ export class AddDataConsistencyAndValidation1775900000000
         COUNT(CASE WHEN fpr.data_quality_score >= 80 THEN 1 END) as verified_count
       FROM flange_pt_ratings fpr
       JOIN flange_pressure_classes fpc ON fpr.pressure_class_id = fpc.id
-      GROUP BY fpc.class_name, fpr.material_group, fpr.source_standard
-      ORDER BY fpc.class_name, fpr.material_group
+      GROUP BY fpc.designation, fpr.material_group, fpr.source_standard
+      ORDER BY fpc.designation, fpr.material_group
     `);
 
     await queryRunner.query(`
       CREATE OR REPLACE VIEW v_flange_data_completeness AS
       SELECT
         fs.code as standard,
-        fpc.class_name as pressure_class,
+        fpc.designation as pressure_class,
         ft.code as flange_type,
-        COUNT(DISTINCT nod.nb_mm) as sizes_covered,
-        MIN(nod.nb_mm) as min_size_mm,
-        MAX(nod.nb_mm) as max_size_mm,
+        COUNT(DISTINCT nod.nominal_diameter_mm) as sizes_covered,
+        MIN(nod.nominal_diameter_mm) as min_size_mm,
+        MAX(nod.nominal_diameter_mm) as max_size_mm,
         COUNT(*) as total_records,
         COUNT(fd.source_standard) as documented_records,
         COUNT(fd.verified_date) as verified_records,
@@ -467,9 +467,9 @@ export class AddDataConsistencyAndValidation1775900000000
       JOIN flange_standards fs ON fd."standardId" = fs.id
       JOIN flange_pressure_classes fpc ON fd."pressureClassId" = fpc.id
       LEFT JOIN flange_types ft ON fd."flangeTypeId" = ft.id
-      JOIN nominal_outside_diameter_mms nod ON fd."nominalOutsideDiameterId" = nod.id
-      GROUP BY fs.code, fpc.class_name, ft.code
-      ORDER BY fs.code, fpc.class_name, ft.code
+      JOIN nominal_outside_diameters nod ON fd."nominalOutsideDiameterId" = nod.id
+      GROUP BY fs.code, fpc.designation, ft.code
+      ORDER BY fs.code, fpc.designation, ft.code
     `);
 
     await queryRunner.query(`
@@ -481,13 +481,13 @@ export class AddDataConsistencyAndValidation1775900000000
         fs.is_active,
         COUNT(DISTINCT fd.id) as flange_dimensions,
         COUNT(DISTINCT fpc.id) as pressure_classes,
-        COUNT(DISTINCT nod.nb_mm) as sizes,
+        COUNT(DISTINCT nod.nominal_diameter_mm) as sizes,
         COUNT(DISTINCT ft.id) as flange_types,
         (SELECT COUNT(*) FROM flange_pt_ratings WHERE source_standard LIKE fs.code || '%') as pt_ratings
       FROM flange_standards fs
       LEFT JOIN flange_dimensions fd ON fd."standardId" = fs.id
       LEFT JOIN flange_pressure_classes fpc ON fd."pressureClassId" = fpc.id
-      LEFT JOIN nominal_outside_diameter_mms nod ON fd."nominalOutsideDiameterId" = nod.id
+      LEFT JOIN nominal_outside_diameters nod ON fd."nominalOutsideDiameterId" = nod.id
       LEFT JOIN flange_types ft ON fd."flangeTypeId" = ft.id
       GROUP BY fs.id, fs.code, fs.full_name, fs.current_edition, fs.is_active
       ORDER BY fs.code
@@ -578,7 +578,7 @@ export class AddDataConsistencyAndValidation1775900000000
       FROM flange_pt_ratings fpr
       JOIN flange_pressure_classes fpc ON fpr.pressure_class_id = fpc.id
       WHERE pcv.material_group = fpr.material_group
-        AND pcv.pressure_class = fpc.class_name
+        AND pcv.pressure_class = fpc.designation
         AND pcv.temperature_c = fpr.temperature_celsius
         AND pcv.standard_code = 'ASME B16.5'
     `);
@@ -590,7 +590,7 @@ export class AddDataConsistencyAndValidation1775900000000
       SELECT
         'flange_dimension' as entity_type,
         fs.code as category,
-        fpc.class_name as subcategory,
+        fpc.designation as subcategory,
         CASE fs.code
           WHEN 'ASME B16.5' THEN 25
           WHEN 'ASME B16.47' THEN 8
@@ -599,8 +599,8 @@ export class AddDataConsistencyAndValidation1775900000000
           WHEN 'SABS 1123' THEN 12
           ELSE 15
         END as total_expected,
-        COUNT(DISTINCT nod.nb_mm) as total_present,
-        ROUND(COUNT(DISTINCT nod.nb_mm)::numeric /
+        COUNT(DISTINCT nod.nominal_diameter_mm) as total_present,
+        ROUND(COUNT(DISTINCT nod.nominal_diameter_mm)::numeric /
               CASE fs.code
                 WHEN 'ASME B16.5' THEN 25
                 WHEN 'ASME B16.47' THEN 8
@@ -612,8 +612,8 @@ export class AddDataConsistencyAndValidation1775900000000
       FROM flange_dimensions fd
       JOIN flange_standards fs ON fd."standardId" = fs.id
       JOIN flange_pressure_classes fpc ON fd."pressureClassId" = fpc.id
-      JOIN nominal_outside_diameter_mms nod ON fd."nominalOutsideDiameterId" = nod.id
-      GROUP BY fs.code, fpc.class_name
+      JOIN nominal_outside_diameters nod ON fd."nominalOutsideDiameterId" = nod.id
+      GROUP BY fs.code, fpc.designation
       ON CONFLICT (report_date, entity_type, category, subcategory)
       DO UPDATE SET
         total_present = EXCLUDED.total_present,

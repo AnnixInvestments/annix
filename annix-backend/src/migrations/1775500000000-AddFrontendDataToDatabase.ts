@@ -150,6 +150,27 @@ export class AddFrontendDataToDatabase1775500000000 implements MigrationInterfac
   private async createMaterialLimitsTable(queryRunner: QueryRunner): Promise<void> {
     console.warn('Creating material_limits table...');
 
+    const tableExists = await queryRunner.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'material_limits'
+      )
+    `);
+
+    if (tableExists[0]?.exists) {
+      const columnExists = await queryRunner.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_name = 'material_limits' AND column_name = 'specification_pattern'
+        )
+      `);
+
+      if (!columnExists[0]?.exists) {
+        console.warn('Dropping malformed material_limits table from previous run...');
+        await queryRunner.query(`DROP TABLE material_limits CASCADE`);
+      }
+    }
+
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS material_limits (
         id SERIAL PRIMARY KEY,

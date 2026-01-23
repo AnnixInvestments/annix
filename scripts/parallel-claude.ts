@@ -6,7 +6,6 @@ import { execSync, spawn, ChildProcess } from 'child_process';
 import { existsSync, openSync, readFileSync, writeFileSync, unlinkSync, mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { emitKeypressEvents } from 'readline';
 
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
@@ -694,8 +693,8 @@ async function startApp(): Promise<void> {
 
     try {
       if (hasWindowsTerminal) {
-        const wtCmd = `wt -w 0 new-tab --title AnnixDev cmd /k ${psCmd}`;
-        execSync(`start "" ${wtCmd}`, { cwd, shell: true });
+        const wtCmd = `wt -w ${WINDOW_NAME} new-tab --title AnnixDev cmd /k ${psCmd}`;
+        execSync(wtCmd, { cwd, shell: true });
       } else {
         execSync(`start cmd /k ${psCmd}`, { cwd, shell: true });
       }
@@ -789,13 +788,20 @@ async function showAppLogs(): Promise<void> {
     const handler = () => {
       clearInterval(intervalId);
       process.stdin.removeListener('data', handler);
-      process.stdin.setRawMode(false);
+      if (process.stdin.isTTY && process.stdin.setRawMode) {
+        process.stdin.setRawMode(false);
+      }
       resolve();
     };
 
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.once('data', handler);
+    if (process.stdin.isTTY && process.stdin.setRawMode) {
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+      process.stdin.once('data', handler);
+    } else {
+      clearInterval(intervalId);
+      resolve();
+    }
   });
 
   console.clear();
@@ -1026,11 +1032,13 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
       winCmd = `type "${taskFile}" | claude`;
     }
 
-    const fullCmd = `cd /d "${sessionDir}" && ${winCmd}`;
     const hasWindowsTerminal = exec('where wt', { silent: true }) !== '';
 
     if (hasWindowsTerminal) {
-      sessionProcess = spawn('wt', ['-w', '0', 'new-tab', 'cmd', '/k', fullCmd], {
+      const claudePath = exec('where claude.cmd', { silent: true }).split('\n')[0].trim();
+      const fullWinCmd = winCmd.replace(/^claude/, `"${claudePath}"`);
+      const wtCmd = `wt -w ${WINDOW_NAME} new-tab --title "Claude ${sessionCounter}" -d "${sessionDir}" ${fullWinCmd}`;
+      sessionProcess = spawn(wtCmd, [], {
         cwd: rootDir(),
         detached: true,
         stdio: 'ignore',
@@ -1721,128 +1729,25 @@ interface MenuChoice {
 async function selectWithEscape<T extends string>(
   message: string,
   choices: Array<{ name: string; value: T }>,
-  cancelValue: T = 'cancel' as T
+  _cancelValue: T = 'cancel' as T
 ): Promise<T> {
-  return new Promise((resolve) => {
-    const controller = new AbortController();
-    let resolved = false;
-
-    const cleanup = () => {
-      process.stdin.removeListener('keypress', keypressListener);
-    };
-
-    const keypressListener = (_ch: string, key: { name: string; escape?: boolean }) => {
-      if (key && (key.name === 'escape' || key.escape || key.name === 'q')) {
-        if (!resolved) {
-          resolved = true;
-          controller.abort();
-          cleanup();
-          resolve(cancelValue);
-        }
-      }
-    };
-
-    process.stdin.on('keypress', keypressListener);
-
-    select({ message, choices }, { signal: controller.signal })
-      .then((result) => {
-        if (!resolved) {
-          resolved = true;
-          cleanup();
-          resolve(result as T);
-        }
-      })
-      .catch(() => {
-        cleanup();
-        if (!resolved) {
-          resolved = true;
-          resolve(cancelValue);
-        }
-      });
-  });
+  const result = await select({ message, choices });
+  return result as T;
 }
 
 async function selectWithShortcuts(
   message: string,
   choices: MenuChoice[],
-  autoRefreshMs?: number
+  _autoRefreshMs?: number
 ): Promise<string> {
-  const shortcuts: Record<string, string> = {};
-  choices.forEach(c => {
-    shortcuts[c.key.toLowerCase()] = c.value;
+  const result = await select({
+    message,
+    choices: choices.map(c => ({
+      name: c.name,
+      value: c.value,
+    })),
   });
-
-  return new Promise((resolve) => {
-    const controller = new AbortController();
-    let refreshInterval: NodeJS.Timeout | null = null;
-    let resolved = false;
-
-    if (autoRefreshMs && autoRefreshMs > 0) {
-      refreshInterval = setInterval(() => {
-        if (!resolved) {
-          resolved = true;
-          controller.abort();
-          cleanup();
-          resolve('refresh');
-        }
-      }, autoRefreshMs);
-    }
-
-    const cleanup = () => {
-      if (refreshInterval) clearInterval(refreshInterval);
-      process.stdin.removeListener('keypress', keypressListener);
-    };
-
-    const pauseAutoRefresh = () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = null;
-      }
-    };
-
-    const keypressListener = (_ch: string, key: { name: string; ctrl: boolean; escape?: boolean }) => {
-      if (key && key.name === 'up' || key && key.name === 'down') {
-        pauseAutoRefresh();
-      }
-      if (key && (key.name === 'escape' || key.escape)) {
-        if (!resolved) {
-          resolved = true;
-          controller.abort();
-          cleanup();
-          resolve('back');
-        }
-        return;
-      }
-      if (key && !key.ctrl && key.name && shortcuts[key.name]) {
-        if (!resolved) {
-          resolved = true;
-          controller.abort();
-          cleanup();
-          resolve(shortcuts[key.name]);
-        }
-      }
-    };
-
-    process.stdin.on('keypress', keypressListener);
-
-    select({
-      message,
-      choices: choices.map(c => ({
-        name: c.name,
-        value: c.value,
-      })),
-    }, { signal: controller.signal })
-      .then((result) => {
-        if (!resolved) {
-          resolved = true;
-          cleanup();
-          resolve(result);
-        }
-      })
-      .catch(() => {
-        cleanup();
-      });
-  });
+  return result;
 }
 
 async function mainMenu(): Promise<void> {
@@ -1915,10 +1820,45 @@ async function mainMenu(): Promise<void> {
   }
 }
 
-async function main(): Promise<void> {
-  log.info('\n  Parallel Claude\n');
+const WINDOW_NAME = 'ParallelClaude';
 
-  emitKeypressEvents(process.stdin);
+function ensureNamedWindow(): boolean {
+  if (process.platform !== 'win32') return true;
+
+  if (process.env.PARALLEL_CLAUDE_WINDOW === '1') {
+    return true;
+  }
+
+  const hasWindowsTerminal = exec('where wt', { silent: true }) !== '';
+  if (!hasWindowsTerminal) return true;
+
+  log.info('Launching in named window...');
+
+  const tempBat = join(tmpdir(), 'parallel-claude-launch.bat');
+  const batContent = `@echo off
+cd /d "${rootDir()}"
+set PARALLEL_CLAUDE_WINDOW=1
+pnpm parallel-claude
+`;
+  writeFileSync(tempBat, batContent);
+
+  const cmd = `wt --window ${WINDOW_NAME} new-tab --title "Parallel Claude" cmd /k "${tempBat}"`;
+
+  try {
+    spawn(cmd, [], { cwd: rootDir(), shell: true, stdio: 'ignore', detached: true }).unref();
+    return false;
+  } catch {
+    log.error('Failed to launch named window');
+    return true;
+  }
+}
+
+async function main(): Promise<void> {
+  if (!ensureNamedWindow()) {
+    process.exit(0);
+  }
+
+  log.info('\n  Parallel Claude\n');
 
   const isGitRepo = existsSync(join(DEFAULT_ROOT_DIR, '.git'));
   if (!isGitRepo) {
