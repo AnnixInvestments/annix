@@ -60,6 +60,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000
   }
 
   private async populateSabs719TestPressureData(queryRunner: QueryRunner): Promise<void> {
+    const existing = await queryRunner.query(`SELECT COUNT(*) as count FROM sabs_719_test_pressures`);
+    if (parseInt(existing[0]?.count) > 0) {
+      console.warn('SABS 719 test pressure data already exists, skipping...');
+      return;
+    }
     console.warn('Populating SABS 719 test pressure data...');
 
     const gradeBData = [
@@ -102,33 +107,38 @@ export class AddPhase2EnhancedTechnicalData1776500000000
       { nb: 1000, od: 1016, wallPressures: [[4.0, 1710], [4.5, 1930], [5.0, 2140], [6.0, 2570], [8.0, 3430], [10.0, 4280], [12.0, 5140], [14.0, 5990]] },
     ];
 
-    let count = 0;
+    const values: string[] = [];
     for (const row of gradeBData) {
       for (const [wall, pressure] of row.wallPressures) {
-        await queryRunner.query(`
-          INSERT INTO sabs_719_test_pressures (grade, nominal_bore_mm, outside_diameter_mm, wall_thickness_mm, test_pressure_kpa, yield_stress_mpa)
-          VALUES ('B', ${row.nb}, ${row.od}, ${wall}, ${pressure}, 241)
-          ON CONFLICT DO NOTHING
-        `);
-        count++;
+        values.push(`('B', ${row.nb}, ${row.od}, ${wall}, ${pressure}, 241)`);
       }
     }
-
     for (const row of gradeCData) {
       for (const [wall, pressure] of row.wallPressures) {
-        await queryRunner.query(`
-          INSERT INTO sabs_719_test_pressures (grade, nominal_bore_mm, outside_diameter_mm, wall_thickness_mm, test_pressure_kpa, yield_stress_mpa)
-          VALUES ('C', ${row.nb}, ${row.od}, ${wall}, ${pressure}, 290)
-          ON CONFLICT DO NOTHING
-        `);
-        count++;
+        values.push(`('C', ${row.nb}, ${row.od}, ${wall}, ${pressure}, 290)`);
       }
     }
 
-    console.warn(`Added ${count} SABS 719 test pressure entries`);
+    await queryRunner.query(`
+      INSERT INTO sabs_719_test_pressures (grade, nominal_bore_mm, outside_diameter_mm, wall_thickness_mm, test_pressure_kpa, yield_stress_mpa)
+      VALUES ${values.join(',\n')}
+      ON CONFLICT DO NOTHING
+    `);
+
+    console.warn(`Added ${values.length} SABS 719 test pressure entries`);
   }
 
   private async populateSabs719PipeMassData(queryRunner: QueryRunner): Promise<void> {
+    const tableExists = await queryRunner.query(`
+      SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sabs_719_pipe_mass')
+    `);
+    if (tableExists[0]?.exists) {
+      const existing = await queryRunner.query(`SELECT COUNT(*) as count FROM sabs_719_pipe_mass`);
+      if (parseInt(existing[0]?.count) > 0) {
+        console.warn('SABS 719 pipe mass data already exists, skipping...');
+        return;
+      }
+    }
     console.warn('Populating SABS 719 pipe mass data...');
 
     const columnExists = await queryRunner.query(`
@@ -156,13 +166,6 @@ export class AddPhase2EnhancedTechnicalData1776500000000
       { nb: 1200, od: 1219, wallMass: [[4.5, 82.0], [6.0, 110], [8.0, 145], [10.0, 182], [12.0, 219], [14.0, 253], [16.0, 287], [20.0, 555], [22.0, 484]] },
     ];
 
-    const tableExists = await queryRunner.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'sabs_719_pipe_mass'
-      )
-    `);
-
     if (!tableExists[0]?.exists) {
       await queryRunner.query(`
         CREATE TABLE sabs_719_pipe_mass (
@@ -176,22 +179,28 @@ export class AddPhase2EnhancedTechnicalData1776500000000
       `);
     }
 
-    let count = 0;
+    const values: string[] = [];
     for (const row of massData) {
       for (const [wall, mass] of row.wallMass) {
-        await queryRunner.query(`
-          INSERT INTO sabs_719_pipe_mass (nominal_bore_mm, outside_diameter_mm, wall_thickness_mm, mass_kg_per_m)
-          VALUES (${row.nb}, ${row.od}, ${wall}, ${mass})
-          ON CONFLICT DO NOTHING
-        `);
-        count++;
+        values.push(`(${row.nb}, ${row.od}, ${wall}, ${mass})`);
       }
     }
 
-    console.warn(`Added ${count} SABS 719 pipe mass entries`);
+    await queryRunner.query(`
+      INSERT INTO sabs_719_pipe_mass (nominal_bore_mm, outside_diameter_mm, wall_thickness_mm, mass_kg_per_m)
+      VALUES ${values.join(',\n')}
+      ON CONFLICT DO NOTHING
+    `);
+
+    console.warn(`Added ${values.length} SABS 719 pipe mass entries`);
   }
 
   private async populateStainlessSteelGrades(queryRunner: QueryRunner): Promise<void> {
+    const existing = await queryRunner.query(`SELECT COUNT(*) as count FROM stainless_steel_grades`);
+    if (parseInt(existing[0]?.count) > 0) {
+      console.warn('Stainless steel grades already exist, skipping...');
+      return;
+    }
     console.warn('Populating stainless steel grades...');
 
     const grades = [
@@ -223,7 +232,7 @@ export class AddPhase2EnhancedTechnicalData1776500000000
       { gradeNumber: '3CR12', unsNumber: 'S41003', enNumber: '1.4003', enDesignation: 'X2CrNi 12', family: 'Ferritic/Martensitic', carbonMaxPct: 0.03, chromiumMin: 10.5, chromiumMax: 12.5, nickelMin: 0.3, nickelMax: 1.0, nitrogenMax: null, otherElements: 'SA proprietary grade' },
     ];
 
-    let count = 0;
+    const values: string[] = [];
     for (const g of grades) {
       const enDesig = g.enDesignation ? `'${g.enDesignation}'` : 'NULL';
       const enNum = g.enNumber ? `'${g.enNumber}'` : 'NULL';
@@ -235,17 +244,17 @@ export class AddPhase2EnhancedTechnicalData1776500000000
       const niMax = g.nickelMax ?? 'NULL';
       const nMax = g.nitrogenMax ?? 'NULL';
 
-      await queryRunner.query(`
-        INSERT INTO stainless_steel_grades
-          (grade_number, uns_number, en_number, en_designation, family, carbon_max_pct, chromium_min_pct, chromium_max_pct, nickel_min_pct, nickel_max_pct, molybdenum_min_pct, molybdenum_max_pct, nitrogen_max_pct, other_elements)
-        VALUES
-          ('${g.gradeNumber}', ${uns}, ${enNum}, ${enDesig}, '${g.family}', ${g.carbonMaxPct}, ${g.chromiumMin}, ${g.chromiumMax}, ${niMin}, ${niMax}, ${moMin}, ${moMax}, ${nMax}, ${other})
-        ON CONFLICT (grade_number) DO NOTHING
-      `);
-      count++;
+      values.push(`('${g.gradeNumber}', ${uns}, ${enNum}, ${enDesig}, '${g.family}', ${g.carbonMaxPct}, ${g.chromiumMin}, ${g.chromiumMax}, ${niMin}, ${niMax}, ${moMin}, ${moMax}, ${nMax}, ${other})`);
     }
 
-    console.warn(`Added ${count} stainless steel grade entries`);
+    await queryRunner.query(`
+      INSERT INTO stainless_steel_grades
+        (grade_number, uns_number, en_number, en_designation, family, carbon_max_pct, chromium_min_pct, chromium_max_pct, nickel_min_pct, nickel_max_pct, molybdenum_min_pct, molybdenum_max_pct, nitrogen_max_pct, other_elements)
+      VALUES ${values.join(',\n')}
+      ON CONFLICT (grade_number) DO NOTHING
+    `);
+
+    console.warn(`Added ${values.length} stainless steel grade entries`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

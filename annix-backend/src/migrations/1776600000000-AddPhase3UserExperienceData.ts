@@ -73,6 +73,11 @@ export class AddPhase3UserExperienceData1776600000000
   }
 
   private async populateHdpeChemicalResistanceData(queryRunner: QueryRunner): Promise<void> {
+    const existing = await queryRunner.query(`SELECT COUNT(*) as count FROM hdpe_chemical_resistance`);
+    if (parseInt(existing[0]?.count) > 0) {
+      console.warn('HDPE chemical resistance data already exists, skipping...');
+      return;
+    }
     console.warn('Populating HDPE chemical resistance data...');
 
     const chemicalData = [
@@ -187,24 +192,31 @@ export class AddPhase3UserExperienceData1776600000000
       { substance: 'Zinc sulphate', concentration: 'saturated', temps: { 20: '+', 60: '+' } },
     ];
 
+    const values: string[] = [];
     for (const chemical of chemicalData) {
       for (const [temp, rating] of Object.entries(chemical.temps)) {
         const concentration = chemical.concentration
           ? `'${chemical.concentration.replace(/'/g, "''")}'`
           : 'NULL';
-
-        await queryRunner.query(`
-          INSERT INTO hdpe_chemical_resistance (substance, concentration, temperature_c, hdpe_rating)
-          VALUES ('${chemical.substance}', ${concentration}, ${temp}, '${rating}')
-          ON CONFLICT (substance, concentration, temperature_c) DO NOTHING
-        `);
+        values.push(`('${chemical.substance}', ${concentration}, ${temp}, '${rating}')`);
       }
     }
 
-    console.warn('HDPE chemical resistance data populated.');
+    await queryRunner.query(`
+      INSERT INTO hdpe_chemical_resistance (substance, concentration, temperature_c, hdpe_rating)
+      VALUES ${values.join(',\n')}
+      ON CONFLICT (substance, concentration, temperature_c) DO NOTHING
+    `);
+
+    console.warn(`Added ${values.length} HDPE chemical resistance entries.`);
   }
 
   private async populateFlowCoefficientsData(queryRunner: QueryRunner): Promise<void> {
+    const existing = await queryRunner.query(`SELECT COUNT(*) as count FROM flow_coefficients`);
+    if (parseInt(existing[0]?.count) > 0) {
+      console.warn('Flow coefficients data already exists, skipping...');
+      return;
+    }
     console.warn('Populating flow coefficients data...');
 
     const flowData = [
@@ -234,18 +246,25 @@ export class AddPhase3UserExperienceData1776600000000
       { material: 'Rubber lined', condition: 'New', hazenWilliamsC: 145, manningN: 0.01, absoluteRoughnessMm: 0.025 },
     ];
 
-    for (const flow of flowData) {
-      await queryRunner.query(`
-        INSERT INTO flow_coefficients (material, condition, hazen_williams_c, manning_n, absolute_roughness_mm)
-        VALUES ('${flow.material}', '${flow.condition}', ${flow.hazenWilliamsC}, ${flow.manningN}, ${flow.absoluteRoughnessMm})
-        ON CONFLICT (material, condition) DO NOTHING
-      `);
-    }
+    const values = flowData.map(flow =>
+      `('${flow.material}', '${flow.condition}', ${flow.hazenWilliamsC}, ${flow.manningN}, ${flow.absoluteRoughnessMm})`
+    );
 
-    console.warn('Flow coefficients data populated.');
+    await queryRunner.query(`
+      INSERT INTO flow_coefficients (material, condition, hazen_williams_c, manning_n, absolute_roughness_mm)
+      VALUES ${values.join(',\n')}
+      ON CONFLICT (material, condition) DO NOTHING
+    `);
+
+    console.warn(`Added ${values.length} flow coefficients entries.`);
   }
 
   private async populateRubberChemicalCompatibilityData(queryRunner: QueryRunner): Promise<void> {
+    const existing = await queryRunner.query(`SELECT COUNT(*) as count FROM rubber_chemical_compatibility`);
+    if (parseInt(existing[0]?.count) > 0) {
+      console.warn('Rubber chemical compatibility data already exists, skipping...');
+      return;
+    }
     console.warn('Populating rubber chemical compatibility data (ISO/TR 7620)...');
 
     const rubberTypeIds: { [key: string]: number | null } = {
@@ -317,6 +336,7 @@ export class AddPhase3UserExperienceData1776600000000
       { chemical: 'Urea', concentration: 'solution', temp: 60, ratings: { 'NR/SBR': 'A', 'Butyl': 'A', 'EPDM': 'A', 'NBR': 'A', 'CSM': 'A' } },
     ];
 
+    const values: string[] = [];
     for (const compat of compatibilityData) {
       for (const [rubberType, rating] of Object.entries(compat.ratings)) {
         const rubberTypeId = rubberTypeIds[rubberType];
@@ -324,17 +344,20 @@ export class AddPhase3UserExperienceData1776600000000
           const concentration = compat.concentration
             ? `'${compat.concentration.replace(/'/g, "''")}'`
             : 'NULL';
-
-          await queryRunner.query(`
-            INSERT INTO rubber_chemical_compatibility (rubber_type_id, chemical, concentration, temperature_c, rating, iso_tr_7620_ref)
-            VALUES (${rubberTypeId}, '${compat.chemical}', ${concentration}, ${compat.temp}, '${rating}', 'ISO/TR 7620')
-            ON CONFLICT (rubber_type_id, chemical, concentration, temperature_c) DO NOTHING
-          `);
+          values.push(`(${rubberTypeId}, '${compat.chemical}', ${concentration}, ${compat.temp}, '${rating}', 'ISO/TR 7620')`);
         }
       }
     }
 
-    console.warn('Rubber chemical compatibility data populated.');
+    if (values.length > 0) {
+      await queryRunner.query(`
+        INSERT INTO rubber_chemical_compatibility (rubber_type_id, chemical, concentration, temperature_c, rating, iso_tr_7620_ref)
+        VALUES ${values.join(',\n')}
+        ON CONFLICT (rubber_type_id, chemical, concentration, temperature_c) DO NOTHING
+      `);
+    }
+
+    console.warn(`Added ${values.length} rubber chemical compatibility entries.`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
