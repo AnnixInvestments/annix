@@ -49,11 +49,11 @@ export class PdfExtractorService {
     const dataBuffer = fs.readFileSync(filePath);
     const parser = new PDFParse({ data: dataBuffer });
     await parser.load();
-    const pdfResult = await parser.getText();
-    const pdfText = pdfResult.text || '';
+    const textResult = await parser.getText();
+    const pdfText = textResult?.text || '';
     const pdfInfo = await parser.getInfo();
 
-    this.logger.log(`PDF has ${pdfInfo.numPages || pdfResult.total || 'unknown'} pages, extracted ${pdfText.length} characters`);
+    this.logger.log(`PDF has ${pdfInfo.numPages || textResult?.total || 'unknown'} pages, extracted ${pdfText.length} characters`);
 
     const lines = pdfText.split('\n').filter((line: string) => line.trim().length > 0);
     this.logger.log(`PDF has ${lines.length} non-empty lines`);

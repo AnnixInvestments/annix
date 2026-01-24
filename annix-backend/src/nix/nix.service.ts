@@ -242,8 +242,8 @@ export class NixService {
         const dataBuffer = fs.readFileSync(documentPath);
         const parser = new PDFParse({ data: dataBuffer });
         await parser.load();
-        const pdfResult = await parser.getText();
-        const pdfText = pdfResult.text || '';
+        const textResult = await parser.getText();
+        const pdfText = textResult?.text || '';
         const pdfInfo = await parser.getInfo();
 
         const aiResult = await this.aiExtractor.extractWithAi(
@@ -258,7 +258,7 @@ export class NixService {
 
         return {
           extractedData: {
-            totalLines: pdfInfo.numPages || pdfResult.total || 0,
+            totalLines: pdfInfo.numPages || textResult?.total || 0,
             itemCount: aiResult.items.length,
             clarificationsNeeded,
             metadata: aiResult.metadata,
