@@ -27,6 +27,7 @@ import { BendForm, FittingForm, StraightPipeForm, PipeSteelWorkForm, ExpansionJo
 
 export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onAddPipeSteelWorkEntry, onAddExpansionJointEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses, hideDrawings = false, onReady }: any) {
   const autoFocusedEntriesRef = useRef<Set<string>>(new Set());
+  const fetchedSchedulesRef = useRef<Set<string>>(new Set());
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
   const [drawingsHidden, setDrawingsHidden] = useState(hideDrawings);
@@ -765,8 +766,12 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
         const nominalBore = entry.specs?.nominalBoreMm;
         if (!nominalBore) continue;
 
-        // Only fetch if we don't already have schedules for this entry
+        // Use ref to track fetches - prevents infinite loop from stale closure
+        if (fetchedSchedulesRef.current.has(entry.id)) continue;
         if (availableSchedulesMap[entry.id]?.length > 0) continue;
+
+        // Mark as fetching before the async call to prevent duplicate fetches
+        fetchedSchedulesRef.current.add(entry.id);
 
         const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
         await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
@@ -774,7 +779,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
     };
 
     prefetchSchedules();
-  }, [masterData.nominalBores?.length]);
+  }, [masterData.nominalBores?.length, entries, availableSchedulesMap, globalSpecs?.steelSpecificationId, fetchAvailableSchedules]);
 
   return (
     <div>

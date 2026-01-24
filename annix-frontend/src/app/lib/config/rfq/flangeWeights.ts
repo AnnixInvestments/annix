@@ -709,7 +709,9 @@ export const SABS_1123_FLANGE_TYPES: Sabs1123FlangeType[] = [
   { code: '/3', name: 'Slip-On', description: 'SO - Slip-On Plate flange, most common type' },
   { code: '/4', name: 'Threaded', description: 'THD - Screwed/Threaded flange for low pressure services' },
   { code: '/5', name: 'Slip-On Boss', description: 'SOB - Slip-On Boss flange' },
-  { code: '/8', name: 'Blind', description: 'BL - Blind/Blank flange to close pipe ends' },
+  { code: '/6', name: 'Blank (Full Face)', description: 'BL-FF - Full Face Blank flange (solid)' },
+  { code: '/7', name: 'Spectacle Blank', description: 'SB - Blank for Spectacle Blind assemblies' },
+  { code: '/8', name: 'Blind', description: 'BL - Blind/Blank flange (raised face) to close pipe ends' },
 ];
 
 export const SABS_1123_PRESSURE_CLASSES = [
@@ -726,7 +728,9 @@ export const BS_4504_FLANGE_TYPES: Sabs1123FlangeType[] = [
   { code: '/3', name: 'Slip-On', description: 'SO - Slip-On Plate flange, most common type' },
   { code: '/4', name: 'Threaded', description: 'THD - Screwed/Threaded flange for low pressure services' },
   { code: '/5', name: 'Slip-On Boss', description: 'SOB - Slip-On Boss flange' },
-  { code: '/8', name: 'Blind', description: 'BL - Blind/Blank flange to close pipe ends' },
+  { code: '/6', name: 'Blank (Full Face)', description: 'BL-FF - Full Face Blank flange (solid)' },
+  { code: '/7', name: 'Spectacle Blank', description: 'SB - Blank for Spectacle Blind assemblies' },
+  { code: '/8', name: 'Blind', description: 'BL - Blind/Blank flange (raised face) to close pipe ends' },
 ];
 
 export const BS_4504_PRESSURE_CLASSES = [
@@ -738,6 +742,37 @@ export const BS_4504_PRESSURE_CLASSES = [
   { value: 64, label: 'PN64' },
   { value: 100, label: 'PN100' },
   { value: 160, label: 'PN160' },
+];
+
+export interface FlangeTypeInfo {
+  code: string;
+  name: string;
+  description: string;
+}
+
+export const ASME_B16_5_FLANGE_TYPES: FlangeTypeInfo[] = [
+  { code: 'WN', name: 'Weld Neck', description: 'WN - Weld Neck flange for high pressure and temperature applications' },
+  { code: 'SO', name: 'Slip-On', description: 'SO - Slip-On flange, welded inside and outside' },
+  { code: 'SW', name: 'Socket Weld', description: 'SW - Socket Weld flange for small bore high pressure' },
+  { code: 'THD', name: 'Threaded', description: 'THD - Threaded/Screwed flange for low pressure services' },
+  { code: 'BL', name: 'Blind', description: 'BL - Blind flange to close pipe ends' },
+  { code: 'LJ', name: 'Lap Joint', description: 'LJ - Lap Joint flange with stub end for easy alignment' },
+  { code: 'LWN', name: 'Long Weld Neck', description: 'LWN - Long Weld Neck flange for nozzle connections' },
+];
+
+export const BS_10_FLANGE_TYPES: FlangeTypeInfo[] = [
+  { code: 'WN', name: 'Weld Neck', description: 'WN - Weld Neck flange' },
+  { code: 'SO', name: 'Slip-On', description: 'SO - Slip-On Plate flange' },
+  { code: 'BL', name: 'Blank', description: 'BL - Blank/Blind flange' },
+  { code: 'THD', name: 'Screwed', description: 'THD - Screwed/Threaded flange' },
+];
+
+export const ASME_B16_47_SERIES_A_FLANGE_TYPES: FlangeTypeInfo[] = [
+  { code: 'WN', name: 'Weld Neck', description: 'WN - Weld Neck flange (Series A - MSS SP-44)' },
+];
+
+export const ASME_B16_47_SERIES_B_FLANGE_TYPES: FlangeTypeInfo[] = [
+  { code: 'WN', name: 'Weld Neck', description: 'WN - Weld Neck flange (Series B - API 605)' },
 ];
 
 export const BS_4504_WELD_NECK_WEIGHT: Record<string, Record<number, number>> = {

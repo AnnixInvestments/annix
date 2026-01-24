@@ -370,6 +370,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
   const handleStopUsingNix = () => {
     updateRfqField('useNix', false);
+    updateRfqField('nixPopupShown', false);
   };
 
   const handleItemsPageReady = useCallback(() => {
@@ -1272,11 +1273,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
         const standardCode = standard?.code || String(standardId);
 
-        // Try P/T rating API for temperature-based selection (only for ASME standards with P/T data)
-        // SABS 1123, BS 4504, and other PN standards don't have P/T rating data in the database
-        const hasGTPData = standardCode.includes('ASME') || standardCode.includes('ANSI');
-
-        if (temperatureCelsius !== undefined && hasGTPData) {
+        // Try P/T rating API for temperature-based selection - works for all standards with P-T data
+        // The API will return null if no P-T data exists for this standard, triggering fallback
+        if (temperatureCelsius !== undefined) {
           try {
             const ptMaterialGroup = materialGroup || 'Carbon Steel A105 (Group 1.1)';
             const response = await fetch(
@@ -1301,7 +1300,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               }
             }
           } catch (ptError) {
-            // Silently fall back to ambient calculation if P/T API fails
+            // Silently fall back to pressure-based calculation if P/T API fails
+            log.debug(`P/T rating API failed for ${standardCode}, using pressure-based calculation`);
           }
         }
 

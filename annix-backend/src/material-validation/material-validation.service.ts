@@ -38,28 +38,23 @@ export class MaterialValidationService {
   }
 
   async findBySpecName(steelSpecName: string): Promise<MaterialLimit | null> {
-    // Try exact match first
-    const limit = await this.materialLimitRepository.findOne({
-      where: { steel_spec_name: steelSpecName },
+    const allLimits = await this.materialLimitRepository.find({
       relations: ['steelSpecification'],
     });
 
-    if (limit) return limit;
+    const specNameLower = steelSpecName.toLowerCase();
 
-    // Try partial match (e.g., "ASTM A106 Grade B" matches "ASTM A106")
-    const allLimits = await this.materialLimitRepository.find();
-    const partialMatch = allLimits.find((l) =>
-      steelSpecName.toLowerCase().includes(l.steel_spec_name.toLowerCase()),
-    );
+    // Try pattern matching - specification_pattern is used as a regex-like pattern
+    const patternMatch = allLimits.find((l) => {
+      const pattern = l.specification_pattern.toLowerCase();
+      return (
+        specNameLower.includes(pattern) ||
+        pattern.includes(specNameLower) ||
+        new RegExp(pattern.replace(/%/g, '.*'), 'i').test(steelSpecName)
+      );
+    });
 
-    if (partialMatch) return partialMatch;
-
-    // Try reverse partial match (e.g., spec name contains limit name)
-    const reverseMatch = allLimits.find((l) =>
-      l.steel_spec_name.toLowerCase().includes(steelSpecName.toLowerCase()),
-    );
-
-    return reverseMatch || null;
+    return patternMatch || null;
   }
 
   async findBySpecId(
@@ -92,16 +87,16 @@ export class MaterialValidationService {
 
     // Check temperature limits
     if (temperatureC !== undefined) {
-      if (temperatureC < limits.min_temperature_celsius) {
+      if (temperatureC < limits.min_temp_c) {
         isSuitable = false;
         warnings.push(
-          `Temperature ${temperatureC}°C is below minimum ${limits.min_temperature_celsius}°C for ${steelSpecName}`,
+          `Temperature ${temperatureC}°C is below minimum ${limits.min_temp_c}°C for ${steelSpecName}`,
         );
       }
-      if (temperatureC > limits.max_temperature_celsius) {
+      if (temperatureC > limits.max_temp_c) {
         isSuitable = false;
         warnings.push(
-          `Temperature ${temperatureC}°C exceeds maximum ${limits.max_temperature_celsius}°C for ${steelSpecName}`,
+          `Temperature ${temperatureC}°C exceeds maximum ${limits.max_temp_c}°C for ${steelSpecName}`,
         );
       }
     }
@@ -130,8 +125,8 @@ export class MaterialValidationService {
       warnings,
       recommendation,
       limits: {
-        minTempC: limits.min_temperature_celsius,
-        maxTempC: limits.max_temperature_celsius,
+        minTempC: limits.min_temp_c,
+        maxTempC: limits.max_temp_c,
         maxPressureBar: Number(limits.max_pressure_bar),
         materialType: limits.material_type,
         notes: limits.notes,
@@ -150,10 +145,7 @@ export class MaterialValidationService {
       let isOk = true;
 
       if (temperatureC !== undefined) {
-        if (
-          temperatureC < limits.min_temperature_celsius ||
-          temperatureC > limits.max_temperature_celsius
-        ) {
+        if (temperatureC < limits.min_temp_c || temperatureC > limits.max_temp_c) {
           isOk = false;
         }
       }
@@ -166,7 +158,7 @@ export class MaterialValidationService {
       }
 
       if (isOk) {
-        suitable.push(limits.steel_spec_name);
+        suitable.push(limits.specification_pattern);
       }
     }
 

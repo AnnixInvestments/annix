@@ -8,7 +8,7 @@ import { isStainlessSteelSpec } from '@/app/lib/config/rfq/boltGradeRecommendati
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
 import { log } from '@/app/lib/logger';
 import { nowISO } from '@/app/lib/datetime';
-import { SABS_1123_FLANGE_TYPES } from '@/app/lib/config/rfq/flangeWeights';
+import { SABS_1123_FLANGE_TYPES, BS_4504_FLANGE_TYPES, ASME_B16_5_FLANGE_TYPES, BS_10_FLANGE_TYPES, ASME_B16_47_SERIES_A_FLANGE_TYPES, ASME_B16_47_SERIES_B_FLANGE_TYPES } from '@/app/lib/config/rfq/flangeWeights';
 
 interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
@@ -534,10 +534,19 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
     limits?: MaterialLimits;
   }>({ show: false, specName: '', specId: undefined, warnings: [] });
 
+  // Confirmation warning popup state (shows when specs have issues but user tries to confirm)
+  const [confirmationWarning, setConfirmationWarning] = useState<{
+    show: boolean;
+    warnings: string[];
+  }>({ show: false, warnings: [] });
+
   // ISO 12944-5 paint system state
   const [iso12944Systems, setIso12944Systems] = useState<ISO12944SystemsByDurabilityResult | null>(null);
   const [iso12944Loading, setIso12944Loading] = useState(false);
   const [selectedIso12944SystemCode, setSelectedIso12944SystemCode] = useState<string | null>(null);
+
+  // Track the auto-selected pressure class ID for override detection
+  const [autoPressureClassId, setAutoPressureClassId] = useState<number | null>(null);
 
   // Steel Specification custom dropdown state
   const [steelSpecDropdownOpen, setSteelSpecDropdownOpen] = useState(false);
@@ -571,6 +580,59 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
   const pressureClassInfoMap = new Map<number, ValidPressureClassInfo>(
     ptRecommendations?.validPressureClasses.map((c) => [c.id, c]) || []
   );
+
+  // Track when auto-selected pressure class changes (set when recommendation is first received)
+  useEffect(() => {
+    if (ptRecommendations?.recommendedPressureClassId && autoPressureClassId === null) {
+      setAutoPressureClassId(ptRecommendations.recommendedPressureClassId);
+    }
+  }, [ptRecommendations?.recommendedPressureClassId, autoPressureClassId]);
+
+  // Reset auto pressure class when flange standard changes
+  useEffect(() => {
+    setAutoPressureClassId(null);
+  }, [globalSpecs?.flangeStandardId]);
+
+  // Helper to extract numeric value from pressure class designation for comparison
+  const extractPressureNumeric = (designation: string | undefined): number => {
+    if (!designation) return 0;
+    const match = designation.match(/^(\d+)/);
+    return match ? parseInt(match[1], 10) : 0;
+  };
+
+  // Determine pressure class override status
+  const pressureClassOverrideStatus = (() => {
+    const currentId = globalSpecs?.flangePressureClassId;
+    const autoId = autoPressureClassId;
+
+    if (!currentId || !autoId || currentId === autoId) {
+      return { isOverride: false, isHigher: false, isLower: false };
+    }
+
+    const currentClass = availablePressureClasses?.find((pc: any) => pc.id === currentId);
+    const autoClass = availablePressureClasses?.find((pc: any) => pc.id === autoId);
+
+    if (!currentClass || !autoClass) {
+      return { isOverride: true, isHigher: false, isLower: false };
+    }
+
+    const currentNumeric = extractPressureNumeric(currentClass.designation);
+    const autoNumeric = extractPressureNumeric(autoClass.designation);
+
+    return {
+      isOverride: true,
+      isHigher: currentNumeric > autoNumeric,
+      isLower: currentNumeric < autoNumeric
+    };
+  })();
+
+  // Check if current pressure class is unsuitable for P-T rating
+  const isPressureClassUnsuitable = (() => {
+    const currentId = globalSpecs?.flangePressureClassId;
+    if (!currentId) return false;
+    const classInfo = pressureClassInfoMap.get(currentId);
+    return classInfo ? !classInfo.isAdequate : false;
+  })();
 
   // Derive temperature category from working temperature if not manually set
   const derivedTempCategory = deriveTemperatureCategory(globalSpecs?.workingTemperatureC);
@@ -1066,7 +1128,21 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
             <div>
               <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Pressure Class <span className="text-red-500">*</span>
-                {globalSpecs?.workingPressureBar && globalSpecs?.flangeStandardId !== 'PE' && <span className="ml-1 text-xs text-blue-600 font-normal">(auto)</span>}
+                {globalSpecs?.workingPressureBar && globalSpecs?.flangeStandardId !== 'PE' && (
+                  pressureClassOverrideStatus.isOverride ? (
+                    <span className={`ml-1 text-xs font-normal ${
+                      pressureClassOverrideStatus.isLower || isPressureClassUnsuitable
+                        ? 'text-red-600'
+                        : pressureClassOverrideStatus.isHigher
+                          ? 'text-orange-500'
+                          : 'text-blue-600'
+                    }`}>
+                      (Override)
+                    </span>
+                  ) : (
+                    <span className="ml-1 text-xs text-blue-600 font-normal">(auto)</span>
+                  )
+                )}
               </label>
               {globalSpecs?.flangeStandardId === 'PE' ? (
                 <div className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-700">
@@ -1081,30 +1157,80 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                   flangePressureClassId: e.target.value ? Number(e.target.value) : undefined
                 })}
                 className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 ${
-                  ptRecommendations?.validation && !ptRecommendations.validation.isValid
-                    ? 'border-amber-500 bg-amber-50'
-                    : 'border-gray-300'
+                  isPressureClassUnsuitable
+                    ? 'border-red-500 bg-red-50'
+                    : ptRecommendations?.validation && !ptRecommendations.validation.isValid
+                      ? 'border-amber-500 bg-amber-50'
+                      : 'border-gray-300'
                 }`}
                 disabled={!globalSpecs?.flangeStandardId}
                 required
               >
                 <option value="">Select class...</option>
-                {availablePressureClasses.map((pc: any) => {
-                  const selectedStandard = masterData.flangeStandards?.find((s: any) => s.id === globalSpecs?.flangeStandardId);
-                  const isSabsOrBs4504 = selectedStandard?.code === 'SABS 1123' || selectedStandard?.code === 'BS 4504';
-                  const displayValue = isSabsOrBs4504 ? pc.designation.replace(/\/3$/, '') : pc.designation;
-                  const classInfo = pressureClassInfoMap.get(pc.id);
-                  const suffix = classInfo
-                    ? (ptRecommendations?.recommendedPressureClassId === pc.id
-                        ? ' (Recommended)'
-                        : (!classInfo.isAdequate ? ' (Inadequate for P-T)' : ''))
-                    : '';
-                  return (
-                    <option key={pc.id} value={pc.id}>{displayValue}{suffix}</option>
-                  );
-                })}
+                {(() => {
+                  // Deduplicate pressure classes by their display value (after stripping /digit suffix)
+                  // Sort numerically to ensure proper ordering (6, 10, 16, 25... not 10, 100, 16...)
+                  const seen = new Set<string>();
+                  const extractNumeric = (designation: string) => {
+                    const match = designation?.match(/^(\d+)/);
+                    return match ? parseInt(match[1], 10) : 0;
+                  };
+                  return [...availablePressureClasses]
+                    .sort((a: any, b: any) => {
+                      const numA = extractNumeric(a.designation);
+                      const numB = extractNumeric(b.designation);
+                      if (numA !== numB) return numA - numB;
+                      return (a.designation || '').localeCompare(b.designation || '');
+                    })
+                    .map((pc: any) => {
+                      const displayValue = pc.designation.replace(/\/\d+$/, '');
+                      return { ...pc, displayValue };
+                    })
+                    .filter((pc: any) => {
+                      if (seen.has(pc.displayValue)) return false;
+                      seen.add(pc.displayValue);
+                      return true;
+                    })
+                    .map((pc: any) => {
+                      const classInfo = pressureClassInfoMap.get(pc.id);
+                      const suffix = classInfo
+                        ? (ptRecommendations?.recommendedPressureClassId === pc.id
+                            ? ' (Recommended)'
+                            : (!classInfo.isAdequate ? ' (Inadequate for P-T)' : ''))
+                        : '';
+                      return (
+                        <option key={pc.id} value={pc.id}>{pc.displayValue}{suffix}</option>
+                      );
+                    });
+                })()}
               </select>
-              {ptRecommendations?.validation && !ptRecommendations.validation.isValid && (
+              {isPressureClassUnsuitable && (
+                <div className="mt-1.5 p-2 bg-red-50 border border-red-300 rounded text-xs">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-red-800 font-medium">
+                        The selected pressure class is unsuitable for the operating conditions (P-T rating inadequate).
+                      </p>
+                      {autoPressureClassId && (
+                        <button
+                          type="button"
+                          onClick={() => onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            flangePressureClassId: autoPressureClassId
+                          })}
+                          className="mt-1 px-2 py-0.5 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                        >
+                          Revert to Recommended Class
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {!isPressureClassUnsuitable && ptRecommendations?.validation && !ptRecommendations.validation.isValid && (
                 <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded text-xs">
                   <div className="flex items-start gap-2">
                     <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -1132,11 +1258,22 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
               )}
             </div>
 
-            {/* Flange Type - Show for SABS 1123 and BS 4504 */}
+            {/* Flange Type - Show for standards that have flange type variants */}
             {(() => {
               const selectedStandard = masterData.flangeStandards?.find((s: any) => s.id === globalSpecs?.flangeStandardId);
-              const showFlangeType = selectedStandard?.code === 'SABS 1123' || selectedStandard?.code === 'BS 4504';
-              return showFlangeType ? (
+              const standardCode = selectedStandard?.code || '';
+
+              const flangeTypesForStandard = (() => {
+                if (standardCode === 'SABS 1123') return SABS_1123_FLANGE_TYPES;
+                if (standardCode === 'BS 4504') return BS_4504_FLANGE_TYPES;
+                if (standardCode.includes('ASME B16.5') || standardCode.includes('ANSI B16.5')) return ASME_B16_5_FLANGE_TYPES;
+                if (standardCode.includes('ASME B16.47') && (standardCode.includes('Series A') || standardCode.endsWith('A'))) return ASME_B16_47_SERIES_A_FLANGE_TYPES;
+                if (standardCode.includes('ASME B16.47') && (standardCode.includes('Series B') || standardCode.endsWith('B'))) return ASME_B16_47_SERIES_B_FLANGE_TYPES;
+                if (standardCode === 'BS 10') return BS_10_FLANGE_TYPES;
+                return null;
+              })();
+
+              return flangeTypesForStandard ? (
                 <div>
                   <label className="block text-xs font-semibold text-gray-900 mb-1">
                     Flange Type *
@@ -1151,7 +1288,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                     required
                   >
                     <option value="">Select type...</option>
-                    {SABS_1123_FLANGE_TYPES.map((ft) => (
+                    {flangeTypesForStandard.map((ft) => (
                       <option key={ft.code} value={ft.code}>{ft.code} - {ft.name}</option>
                     ))}
                   </select>
@@ -1171,10 +1308,38 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
           <div className="mt-4 flex justify-end" data-field="steelPipesConfirmation">
             <button
               type="button"
-              onClick={() => onUpdateGlobalSpecs({
-                ...globalSpecs,
-                steelPipesSpecsConfirmed: true
-              })}
+              onClick={() => {
+                const warnings: string[] = [];
+
+                // Check material suitability
+                if (globalSpecs?.steelSpecificationId) {
+                  const currentSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs.steelSpecificationId);
+                  if (currentSpec) {
+                    const suitability = checkMaterialSuitability(currentSpec.steelSpecName, globalSpecs?.workingTemperatureC, globalSpecs?.workingPressureBar);
+                    if (!suitability.isSuitable) {
+                      warnings.push(`Steel Specification "${currentSpec.steelSpecName}" is not recommended for ${globalSpecs.workingTemperatureC}°C / ${globalSpecs.workingPressureBar} bar operating conditions.`);
+                    }
+                  }
+                }
+
+                // Check P-T rating validation for pressure class
+                if (isPressureClassUnsuitable) {
+                  warnings.push('Pressure Class: The selected pressure class is unsuitable for the operating conditions (P-T rating inadequate).');
+                } else if (ptRecommendations?.validation && !ptRecommendations.validation.isValid) {
+                  warnings.push(`Pressure Class: ${ptRecommendations.validation.warningMessage}`);
+                }
+
+                // If there are warnings, show the confirmation popup
+                if (warnings.length > 0) {
+                  setConfirmationWarning({ show: true, warnings });
+                } else {
+                  // No warnings, confirm directly
+                  onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    steelPipesSpecsConfirmed: true
+                  });
+                }
+              }}
               disabled={!globalSpecs?.workingPressureBar || !globalSpecs?.workingTemperatureC}
               className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -4951,6 +5116,65 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                     setMaterialWarning({ show: false, specName: '', specId: undefined, warnings: [] });
                   }}
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm"
+                >
+                  Proceed Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Confirmation Warning Popup - Shows when user tries to confirm with non-recommended specs */}
+        {confirmationWarning.show && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 overflow-hidden">
+              {/* Header */}
+              <div className="bg-amber-500 px-6 py-4">
+                <div className="flex items-center">
+                  <svg className="w-6 h-6 text-white mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <h3 className="text-lg font-bold text-white">Nix has some concerns</h3>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 py-4">
+                <p className="text-gray-800 font-medium mb-3">
+                  The following specifications are not recommended for your operating conditions:
+                </p>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                  <ul className="list-disc list-inside text-amber-800 text-sm space-y-2">
+                    {confirmationWarning.warnings.map((warning, idx) => (
+                      <li key={idx}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <p className="text-gray-600 text-sm">
+                  Do you want to proceed with these specifications anyway, or go back and make corrections?
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
+                <button
+                  onClick={() => setConfirmationWarning({ show: false, warnings: [] })}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
+                >
+                  Go Back and Correct
+                </button>
+                <button
+                  onClick={() => {
+                    // User chose to proceed despite warnings
+                    onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      steelPipesSpecsConfirmed: true
+                    });
+                    setConfirmationWarning({ show: false, warnings: [] });
+                  }}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium text-sm"
                 >
                   Proceed Anyway
                 </button>

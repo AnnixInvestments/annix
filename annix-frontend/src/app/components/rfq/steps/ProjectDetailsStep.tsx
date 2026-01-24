@@ -53,6 +53,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
   const [documentsConfirmed, setDocumentsConfirmed] = useState(false);
   const [tenderDocumentsConfirmed, setTenderDocumentsConfirmed] = useState(false);
   const [showNoDocumentsPopup, setShowNoDocumentsPopup] = useState(false);
+  const [showNoTenderDocumentsPopup, setShowNoTenderDocumentsPopup] = useState(false);
 
   // SA Mines state
   const [mines, setMines] = useState<SaMine[]>([]);
@@ -978,6 +979,9 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
                     if (nixProjectTypes.includes(selectedType) && onShowNixPopup && !rfqData.nixPopupShown) {
                       log.debug('🤖 Triggering Nix popup from onChange');
                       onShowNixPopup();
+                    } else if (!nixProjectTypes.includes(selectedType) && useNix && onStopUsingNix) {
+                      log.debug('🤖 Disabling Nix - switched to non-Nix project type');
+                      onStopUsingNix();
                     }
                   }}
                   className="sr-only"
@@ -1455,8 +1459,8 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
             />
           )}
 
-          {/* Environmental Intelligence Loading/Status - Hidden when using Nix */}
-          {!useNix && isLoadingEnvironmental && (
+          {/* Environmental Intelligence Loading/Status - Only show when Surface Protection is selected */}
+          {!useNix && rfqData.requiredProducts?.includes('surface_protection') && isLoadingEnvironmental && (
             <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 mt-4">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
               <span className="text-sm text-blue-700">
@@ -1466,7 +1470,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
           )}
 
 
-          {!useNix && !isLoadingEnvironmental && environmentalErrors.length > 0 && (
+          {!useNix && rfqData.requiredProducts?.includes('surface_protection') && !isLoadingEnvironmental && environmentalErrors.length > 0 && (
             <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mt-4">
               <div className="flex items-center gap-2 mb-1">
                 <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1488,8 +1492,8 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
           )}
         </div>
 
-        {/* Environmental Intelligence Section - Hidden when using Nix */}
-        {!useNix && (
+        {/* Environmental Intelligence Section - Only show when Surface Protection is selected */}
+        {!useNix && rfqData.requiredProducts?.includes('surface_protection') && (
         <div className="mt-4 pt-4 border-t border-gray-300">
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
             <div className="flex items-center gap-2 mb-2">
@@ -2035,7 +2039,13 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
                   <div className="mt-3 pt-2 border-t border-purple-200">
                     <button
                       type="button"
-                      onClick={() => setTenderDocumentsConfirmed(true)}
+                      onClick={() => {
+                        if (!pendingTenderDocuments || pendingTenderDocuments.length === 0) {
+                          setShowNoTenderDocumentsPopup(true);
+                        } else {
+                          setTenderDocumentsConfirmed(true);
+                        }
+                      }}
                       className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold flex items-center gap-2 transition-colors text-sm"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2115,6 +2125,49 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
               <button
                 type="button"
                 onClick={() => setShowNoDocumentsPopup(false)}
+                className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors"
+              >
+                Upload Documents
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No Tender Documents Confirmation Popup */}
+      {showNoTenderDocumentsPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-amber-100 rounded-full">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">No Tender Documents Uploaded</h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              You haven't uploaded any tender specification documents. These documents help suppliers understand the full tender requirements and specifications.
+            </p>
+            <p className="text-gray-700 font-medium mb-4">
+              Would you like to proceed without uploading tender documents?
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  log.debug('📄 User confirmed: Skip tender documents');
+                  setShowNoTenderDocumentsPopup(false);
+                  setTenderDocumentsConfirmed(true);
+                  onUpdate('skipTenderDocuments', true);
+                }}
+                className="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
+              >
+                Proceed Without Documents
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNoTenderDocumentsPopup(false)}
                 className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors"
               >
                 Upload Documents
