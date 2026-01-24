@@ -634,6 +634,14 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
     return classInfo ? !classInfo.isAdequate : false;
   })();
 
+  // Check if P-T data is missing for the selected pressure class
+  const isPressureClassMissingPTData = (() => {
+    const currentId = globalSpecs?.flangePressureClassId;
+    if (!currentId || !ptRecommendations) return false;
+    const classInfo = pressureClassInfoMap.get(currentId);
+    return !classInfo && ptRecommendations.validPressureClasses.length > 0;
+  })();
+
   // Derive temperature category from working temperature if not manually set
   const derivedTempCategory = deriveTemperatureCategory(globalSpecs?.workingTemperatureC);
   const effectiveEcpTemperature = globalSpecs?.ecpTemperature || derivedTempCategory;
@@ -1159,9 +1167,11 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                 className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 ${
                   isPressureClassUnsuitable
                     ? 'border-red-500 bg-red-50'
-                    : ptRecommendations?.validation && !ptRecommendations.validation.isValid
+                    : isPressureClassMissingPTData
                       ? 'border-amber-500 bg-amber-50'
-                      : 'border-gray-300'
+                      : ptRecommendations?.validation && !ptRecommendations.validation.isValid
+                        ? 'border-amber-500 bg-amber-50'
+                        : 'border-gray-300'
                 }`}
                 disabled={!globalSpecs?.flangeStandardId}
                 required
@@ -1193,11 +1203,12 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                     })
                     .map((pc: any) => {
                       const classInfo = pressureClassInfoMap.get(pc.id);
+                      const hasPtData = ptRecommendations && ptRecommendations.validPressureClasses.length > 0;
                       const suffix = classInfo
                         ? (ptRecommendations?.recommendedPressureClassId === pc.id
                             ? ' (Recommended)'
                             : (!classInfo.isAdequate ? ' (Inadequate for P-T)' : ''))
-                        : '';
+                        : (hasPtData ? ' (No P-T data)' : '');
                       return (
                         <option key={pc.id} value={pc.id}>{pc.displayValue}{suffix}</option>
                       );
@@ -1230,7 +1241,33 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                   </div>
                 </div>
               )}
-              {!isPressureClassUnsuitable && ptRecommendations?.validation && !ptRecommendations.validation.isValid && (
+              {!isPressureClassUnsuitable && isPressureClassMissingPTData && (
+                <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded text-xs">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-amber-800 font-medium">
+                        No P-T rating data available for this pressure class. Cannot verify suitability for operating conditions.
+                      </p>
+                      {autoPressureClassId && (
+                        <button
+                          type="button"
+                          onClick={() => onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            flangePressureClassId: autoPressureClassId
+                          })}
+                          className="mt-1 px-2 py-0.5 bg-amber-600 text-white rounded text-xs hover:bg-amber-700"
+                        >
+                          Use Recommended Class
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {!isPressureClassUnsuitable && !isPressureClassMissingPTData && ptRecommendations?.validation && !ptRecommendations.validation.isValid && (
                 <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded text-xs">
                   <div className="flex items-start gap-2">
                     <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
