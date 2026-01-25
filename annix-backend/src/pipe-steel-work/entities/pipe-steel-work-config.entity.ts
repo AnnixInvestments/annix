@@ -15,7 +15,10 @@ export class PipeSteelWorkConfigEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ description: 'Configuration key', example: 'STEEL_DENSITY_KG_M3' })
+  @ApiProperty({
+    description: 'Configuration key',
+    example: 'STEEL_DENSITY_KG_M3',
+  })
   @Column({ name: 'config_key', type: 'varchar', length: 100 })
   configKey: string;
 
@@ -24,7 +27,12 @@ export class PipeSteelWorkConfigEntity {
   configValue: string;
 
   @ApiProperty({ description: 'Value type', example: 'number' })
-  @Column({ name: 'value_type', type: 'varchar', length: 20, default: 'string' })
+  @Column({
+    name: 'value_type',
+    type: 'varchar',
+    length: 20,
+    default: 'string',
+  })
   valueType: 'string' | 'number' | 'boolean' | 'json';
 
   @ApiProperty({ description: 'Description' })

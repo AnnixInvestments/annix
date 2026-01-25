@@ -18,7 +18,10 @@ export class PipeClampEntity {
   @Column({ name: 'clamp_type', type: 'varchar', length: 50 })
   clampType: string;
 
-  @ApiProperty({ description: 'Clamp type description', example: 'Three-Bolt Pipe Clamp' })
+  @ApiProperty({
+    description: 'Clamp type description',
+    example: 'Three-Bolt Pipe Clamp',
+  })
   @Column({ name: 'clamp_description', type: 'varchar', length: 100 })
   clampDescription: string;
 
@@ -51,11 +54,23 @@ export class PipeClampEntity {
   boltLengthMm: number;
 
   @ApiProperty({ description: 'Clamp width (mm)', example: 50 })
-  @Column({ name: 'clamp_width_mm', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  @Column({
+    name: 'clamp_width_mm',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+  })
   clampWidthMm: number | null;
 
   @ApiProperty({ description: 'Clamp thickness (mm)', example: 6 })
-  @Column({ name: 'clamp_thickness_mm', type: 'decimal', precision: 6, scale: 2, nullable: true })
+  @Column({
+    name: 'clamp_thickness_mm',
+    type: 'decimal',
+    precision: 6,
+    scale: 2,
+    nullable: true,
+  })
   clampThicknessMm: number | null;
 
   @ApiProperty({ description: 'Unit weight (kg)', example: 1.2 })

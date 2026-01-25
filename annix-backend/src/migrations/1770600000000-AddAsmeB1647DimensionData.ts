@@ -1,31 +1,41 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddAsmeB1647DimensionData1770600000000
-  implements MigrationInterface
-{
+export class AddAsmeB1647DimensionData1770600000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const b1647aResult = await queryRunner.query(`SELECT id FROM flange_standards WHERE code = 'ASME B16.47A'`);
+    const b1647aResult = await queryRunner.query(
+      `SELECT id FROM flange_standards WHERE code = 'ASME B16.47A'`,
+    );
     let b1647aId: number;
     if (b1647aResult.length === 0) {
-      const insertResult = await queryRunner.query(`INSERT INTO flange_standards (code) VALUES ('ASME B16.47A') RETURNING id`);
+      const insertResult = await queryRunner.query(
+        `INSERT INTO flange_standards (code) VALUES ('ASME B16.47A') RETURNING id`,
+      );
       b1647aId = insertResult[0].id;
     } else {
       b1647aId = b1647aResult[0].id;
     }
 
-    const wnTypeResult = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '/2'`);
+    const wnTypeResult = await queryRunner.query(
+      `SELECT id FROM flange_types WHERE code = '/2'`,
+    );
     const wnTypeId = wnTypeResult[0]?.id || null;
 
-    const blTypeResult = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '/8'`);
+    const blTypeResult = await queryRunner.query(
+      `SELECT id FROM flange_types WHERE code = '/8'`,
+    );
     const blTypeId = blTypeResult[0]?.id || null;
 
     const pressureClasses = ['150', '300', '600', '900'];
     const pressureClassIds: Record<string, number> = {};
 
     for (const pc of pressureClasses) {
-      const existing = await queryRunner.query(`SELECT id FROM flange_pressure_classes WHERE designation = '${pc}' AND "standardId" = ${b1647aId}`);
+      const existing = await queryRunner.query(
+        `SELECT id FROM flange_pressure_classes WHERE designation = '${pc}' AND "standardId" = ${b1647aId}`,
+      );
       if (existing.length === 0) {
-        const result = await queryRunner.query(`INSERT INTO flange_pressure_classes (designation, "standardId") VALUES ('${pc}', ${b1647aId}) RETURNING id`);
+        const result = await queryRunner.query(
+          `INSERT INTO flange_pressure_classes (designation, "standardId") VALUES ('${pc}', ${b1647aId}) RETURNING id`,
+        );
         pressureClassIds[pc] = result[0].id;
       } else {
         pressureClassIds[pc] = existing[0].id;
@@ -33,32 +43,77 @@ export class AddAsmeB1647DimensionData1770600000000
     }
 
     const npsToNbMap: Record<number, number> = {
-      26: 650, 28: 700, 30: 750, 32: 800, 34: 850, 36: 900,
-      38: 950, 40: 1000, 42: 1050, 44: 1100, 46: 1150, 48: 1200,
-      50: 1250, 52: 1300, 54: 1350, 56: 1400, 58: 1450, 60: 1500
+      26: 650,
+      28: 700,
+      30: 750,
+      32: 800,
+      34: 850,
+      36: 900,
+      38: 950,
+      40: 1000,
+      42: 1050,
+      44: 1100,
+      46: 1150,
+      48: 1200,
+      50: 1250,
+      52: 1300,
+      54: 1350,
+      56: 1400,
+      58: 1450,
+      60: 1500,
     };
 
     const nbIdMap: Record<number, number> = {};
     for (const [nps, nb] of Object.entries(npsToNbMap)) {
-      const result = await queryRunner.query(`SELECT id FROM nominal_outside_diameters WHERE nominal_diameter_mm = ${nb} LIMIT 1`);
+      const result = await queryRunner.query(
+        `SELECT id FROM nominal_outside_diameters WHERE nominal_diameter_mm = ${nb} LIMIT 1`,
+      );
       if (result.length > 0) {
         nbIdMap[Number(nps)] = result[0].id;
       } else {
-        const insertResult = await queryRunner.query(`INSERT INTO nominal_outside_diameters (nominal_diameter_mm, outside_diameter_mm) VALUES (${nb}, ${nb}) RETURNING id`);
+        const insertResult = await queryRunner.query(
+          `INSERT INTO nominal_outside_diameters (nominal_diameter_mm, outside_diameter_mm) VALUES (${nb}, ${nb}) RETURNING id`,
+        );
         nbIdMap[Number(nps)] = insertResult[0].id;
       }
     }
 
     const boltIds: Record<string, number> = {};
-    const boltSizes = ['M30', 'M33', 'M36', 'M39', 'M42', 'M45', 'M48', 'M52', 'M56', 'M64', 'M72', 'M80'];
+    const boltSizes = [
+      'M30',
+      'M33',
+      'M36',
+      'M39',
+      'M42',
+      'M45',
+      'M48',
+      'M52',
+      'M56',
+      'M64',
+      'M72',
+      'M80',
+    ];
     for (const size of boltSizes) {
-      const result = await queryRunner.query(`SELECT id FROM bolts WHERE designation = '${size}'`);
+      const result = await queryRunner.query(
+        `SELECT id FROM bolts WHERE designation = '${size}'`,
+      );
       if (result.length > 0) {
         boltIds[size] = result[0].id;
       }
     }
 
-    const class150WnData: [number, number, number, number, number, number, number, string, number, number][] = [
+    const class150WnData: [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      string,
+      number,
+      number,
+    ][] = [
       [26, 870, 68, 676, 2, 24, 35, 'M30', 806, 136],
       [28, 925, 72, 727, 2, 28, 35, 'M30', 864, 156],
       [30, 985, 75, 781, 2, 28, 35, 'M30', 914, 181],
@@ -79,7 +134,18 @@ export class AddAsmeB1647DimensionData1770600000000
       [60, 1855, 132, 1559, 2, 52, 48, 'M42', 1759, 928],
     ];
 
-    const class150BlData: [number, number, number, number, number, number, number, string, number, number][] = [
+    const class150BlData: [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      string,
+      number,
+      number,
+    ][] = [
       [26, 870, 68, 0, 2, 24, 35, 'M30', 806, 318],
       [28, 925, 72, 0, 2, 28, 35, 'M30', 864, 378],
       [30, 985, 75, 0, 2, 28, 35, 'M30', 914, 445],
@@ -100,7 +166,18 @@ export class AddAsmeB1647DimensionData1770600000000
       [60, 1855, 132, 0, 2, 52, 48, 'M42', 1759, 2791],
     ];
 
-    const class600WnData: [number, number, number, number, number, number, number, string, number, number][] = [
+    const class600WnData: [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      string,
+      number,
+      number,
+    ][] = [
       [26, 1015, 114, 748, 2, 28, 51, 'M45', 914, 426],
       [28, 1075, 118, 803, 2, 28, 54, 'M48', 965, 481],
       [30, 1130, 121, 862, 2, 28, 54, 'M48', 1022, 549],
@@ -121,7 +198,18 @@ export class AddAsmeB1647DimensionData1770600000000
       [60, 1995, 240, 1610, 2, 28, 92, 'M64', 1822, 2268],
     ];
 
-    const class600BlData: [number, number, number, number, number, number, number, string, number, number][] = [
+    const class600BlData: [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      string,
+      number,
+      number,
+    ][] = [
       [26, 1015, 114, 0, 2, 28, 51, 'M45', 914, 798],
       [28, 1075, 118, 0, 2, 28, 54, 'M48', 965, 935],
       [30, 1130, 121, 0, 2, 28, 54, 'M48', 1022, 1099],
@@ -143,13 +231,25 @@ export class AddAsmeB1647DimensionData1770600000000
     ];
 
     const insertFlangeDimension = async (
-      nps: number, D: number, b: number, d4: number, f: number, numHoles: number, d1: number, boltSize: string, pcd: number, massKg: number,
-      pressureClassId: number, flangeTypeId: number | null
+      nps: number,
+      D: number,
+      b: number,
+      d4: number,
+      f: number,
+      numHoles: number,
+      d1: number,
+      boltSize: string,
+      pcd: number,
+      massKg: number,
+      pressureClassId: number,
+      flangeTypeId: number | null,
     ) => {
       const nbId = nbIdMap[nps];
       const boltId = boltIds[boltSize] || null;
       if (nbId) {
-        const existing = await queryRunner.query(`SELECT id FROM flange_dimensions WHERE "nominalOutsideDiameterId" = ${nbId} AND "standardId" = ${b1647aId} AND "pressureClassId" = ${pressureClassId} AND "flangeTypeId" ${flangeTypeId ? `= ${flangeTypeId}` : 'IS NULL'}`);
+        const existing = await queryRunner.query(
+          `SELECT id FROM flange_dimensions WHERE "nominalOutsideDiameterId" = ${nbId} AND "standardId" = ${b1647aId} AND "pressureClassId" = ${pressureClassId} AND "flangeTypeId" ${flangeTypeId ? `= ${flangeTypeId}` : 'IS NULL'}`,
+        );
         if (existing.length === 0) {
           await queryRunner.query(`
             INSERT INTO flange_dimensions ("nominalOutsideDiameterId", "standardId", "pressureClassId", "flangeTypeId", "D", "b", "d4", "f", "num_holes", "d1", "boltId", "pcd", "mass_kg")
@@ -160,28 +260,86 @@ export class AddAsmeB1647DimensionData1770600000000
     };
 
     for (const row of class150WnData) {
-      await insertFlangeDimension(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], pressureClassIds['150'], wnTypeId);
+      await insertFlangeDimension(
+        row[0],
+        row[1],
+        row[2],
+        row[3],
+        row[4],
+        row[5],
+        row[6],
+        row[7],
+        row[8],
+        row[9],
+        pressureClassIds['150'],
+        wnTypeId,
+      );
     }
 
     for (const row of class150BlData) {
-      await insertFlangeDimension(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], pressureClassIds['150'], blTypeId);
+      await insertFlangeDimension(
+        row[0],
+        row[1],
+        row[2],
+        row[3],
+        row[4],
+        row[5],
+        row[6],
+        row[7],
+        row[8],
+        row[9],
+        pressureClassIds['150'],
+        blTypeId,
+      );
     }
 
     for (const row of class600WnData) {
-      await insertFlangeDimension(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], pressureClassIds['600'], wnTypeId);
+      await insertFlangeDimension(
+        row[0],
+        row[1],
+        row[2],
+        row[3],
+        row[4],
+        row[5],
+        row[6],
+        row[7],
+        row[8],
+        row[9],
+        pressureClassIds['600'],
+        wnTypeId,
+      );
     }
 
     for (const row of class600BlData) {
-      await insertFlangeDimension(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], pressureClassIds['600'], blTypeId);
+      await insertFlangeDimension(
+        row[0],
+        row[1],
+        row[2],
+        row[3],
+        row[4],
+        row[5],
+        row[6],
+        row[7],
+        row[8],
+        row[9],
+        pressureClassIds['600'],
+        blTypeId,
+      );
     }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const standardResult = await queryRunner.query(`SELECT id FROM flange_standards WHERE code = 'ASME B16.47A'`);
+    const standardResult = await queryRunner.query(
+      `SELECT id FROM flange_standards WHERE code = 'ASME B16.47A'`,
+    );
     if (standardResult.length > 0) {
       const standardId = standardResult[0].id;
-      await queryRunner.query(`DELETE FROM flange_dimensions WHERE "standardId" = ${standardId}`);
-      await queryRunner.query(`DELETE FROM flange_pressure_classes WHERE "standardId" = ${standardId}`);
+      await queryRunner.query(
+        `DELETE FROM flange_dimensions WHERE "standardId" = ${standardId}`,
+      );
+      await queryRunner.query(
+        `DELETE FROM flange_pressure_classes WHERE "standardId" = ${standardId}`,
+      );
     }
   }
 }

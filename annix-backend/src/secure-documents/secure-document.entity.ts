@@ -67,7 +67,8 @@ export class SecureDocument {
   folder: string | null;
 
   @ApiProperty({
-    description: 'S3 path to original attachment file (for non-processed uploads)',
+    description:
+      'S3 path to original attachment file (for non-processed uploads)',
     example: 'secure-documents/attachments/abc123.xlsx',
   })
   @Column({ name: 'attachment_path', nullable: true, type: 'varchar' })

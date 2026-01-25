@@ -28,13 +28,19 @@ export class ExpansionRequirementDto {
   @Max(10000)
   lengthM: number;
 
-  @ApiProperty({ description: 'Installation/ambient temperature in Celsius', example: 20 })
+  @ApiProperty({
+    description: 'Installation/ambient temperature in Celsius',
+    example: 20,
+  })
   @IsNumber()
   @Min(-200)
   @Max(1000)
   fromTempC: number;
 
-  @ApiProperty({ description: 'Operating temperature in Celsius', example: 200 })
+  @ApiProperty({
+    description: 'Operating temperature in Celsius',
+    example: 200,
+  })
   @IsNumber()
   @Min(-200)
   @Max(1000)
@@ -68,7 +74,9 @@ export class ExpansionRequirementResponseDto {
   @ApiProperty({ description: 'Temperature change in Celsius' })
   temperatureChangeC: number;
 
-  @ApiProperty({ description: 'Whether this is expansion (true) or contraction (false)' })
+  @ApiProperty({
+    description: 'Whether this is expansion (true) or contraction (false)',
+  })
   isExpansion: boolean;
 
   @ApiProperty({ description: 'Material name' })
@@ -80,7 +88,9 @@ export class ExpansionRequirementResponseDto {
   @ApiProperty({ description: 'Number of expansion joints recommended' })
   recommendedNumberOfJoints: number;
 
-  @ApiPropertyOptional({ description: 'Recommended loop height if using expansion loop' })
+  @ApiPropertyOptional({
+    description: 'Recommended loop height if using expansion loop',
+  })
   recommendedLoopHeightMm?: number;
 
   @ApiPropertyOptional({ description: 'Recommended loop type' })
@@ -191,7 +201,10 @@ export class LoopSizingDto {
   @IsNumber()
   nominalSizeMm: number;
 
-  @ApiProperty({ description: 'Required expansion to absorb in mm', example: 50 })
+  @ApiProperty({
+    description: 'Required expansion to absorb in mm',
+    example: 50,
+  })
   @IsNumber()
   @Min(1)
   expansionMm: number;
@@ -230,7 +243,9 @@ export class LoopSizingResponseDto {
   @ApiProperty({ description: 'Elbow radius factor (typically 1.5D)' })
   elbowRadiusFactor: number;
 
-  @ApiProperty({ description: 'Whether this is an interpolated/calculated value' })
+  @ApiProperty({
+    description: 'Whether this is an interpolated/calculated value',
+  })
   isCalculated: boolean;
 
   @ApiProperty({ description: 'Design notes' })

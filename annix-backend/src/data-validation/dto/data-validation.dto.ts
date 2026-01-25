@@ -22,12 +22,18 @@ export class RunValidationDto {
   @IsString({ each: true })
   ruleCodes?: string[];
 
-  @ApiPropertyOptional({ enum: ValidationCategory, description: 'Filter by category' })
+  @ApiPropertyOptional({
+    enum: ValidationCategory,
+    description: 'Filter by category',
+  })
   @IsOptional()
   @IsEnum(ValidationCategory)
   category?: ValidationCategory;
 
-  @ApiPropertyOptional({ enum: ValidationSeverity, description: 'Minimum severity' })
+  @ApiPropertyOptional({
+    enum: ValidationSeverity,
+    description: 'Minimum severity',
+  })
   @IsOptional()
   @IsEnum(ValidationSeverity)
   minSeverity?: ValidationSeverity;

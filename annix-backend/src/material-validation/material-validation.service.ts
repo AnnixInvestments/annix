@@ -145,7 +145,10 @@ export class MaterialValidationService {
       let isOk = true;
 
       if (temperatureC !== undefined) {
-        if (temperatureC < limits.min_temp_c || temperatureC > limits.max_temp_c) {
+        if (
+          temperatureC < limits.min_temp_c ||
+          temperatureC > limits.max_temp_c
+        ) {
           isOk = false;
         }
       }

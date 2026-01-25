@@ -89,7 +89,10 @@ export class CreateNixExtractionRegionsTable1770000000000 implements MigrationIn
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropIndex('nix_extraction_regions', 'IDX_nix_extraction_regions_category_field');
+    await queryRunner.dropIndex(
+      'nix_extraction_regions',
+      'IDX_nix_extraction_regions_category_field',
+    );
     await queryRunner.dropTable('nix_extraction_regions');
   }
 }

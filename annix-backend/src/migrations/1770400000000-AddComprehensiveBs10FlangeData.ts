@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddComprehensiveBs10FlangeData1770400000000
-  implements MigrationInterface
-{
+export class AddComprehensiveBs10FlangeData1770400000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const pressureCategoryColumnExists = await queryRunner.query(`
       SELECT column_name FROM information_schema.columns
@@ -15,16 +13,22 @@ export class AddComprehensiveBs10FlangeData1770400000000
       `);
     }
 
-    const existingStandard = await queryRunner.query(`SELECT id FROM flange_standards WHERE code = 'BS 10'`);
+    const existingStandard = await queryRunner.query(
+      `SELECT id FROM flange_standards WHERE code = 'BS 10'`,
+    );
     let standardId: number;
     if (existingStandard.length === 0) {
-      const insertResult = await queryRunner.query(`INSERT INTO flange_standards (code) VALUES ('BS 10') RETURNING id`);
+      const insertResult = await queryRunner.query(
+        `INSERT INTO flange_standards (code) VALUES ('BS 10') RETURNING id`,
+      );
       standardId = insertResult[0].id;
     } else {
       standardId = existingStandard[0].id;
     }
 
-    const flangeTypeResult = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '/3'`);
+    const flangeTypeResult = await queryRunner.query(
+      `SELECT id FROM flange_types WHERE code = '/3'`,
+    );
     const flangeTypeId = flangeTypeResult[0]?.id || null;
 
     const tableDesignations = [
@@ -38,20 +42,31 @@ export class AddComprehensiveBs10FlangeData1770400000000
 
     const pressureClassIds: Record<string, number> = {};
     for (const table of tableDesignations) {
-      const existing = await queryRunner.query(`SELECT id FROM flange_pressure_classes WHERE designation = '${table.designation}' AND "standardId" = ${standardId}`);
+      const existing = await queryRunner.query(
+        `SELECT id FROM flange_pressure_classes WHERE designation = '${table.designation}' AND "standardId" = ${standardId}`,
+      );
       if (existing.length === 0) {
-        const result = await queryRunner.query(`INSERT INTO flange_pressure_classes (designation, "standardId", "pressureCategory") VALUES ('${table.designation}', ${standardId}, '${table.pressureCategory}') RETURNING id`);
+        const result = await queryRunner.query(
+          `INSERT INTO flange_pressure_classes (designation, "standardId", "pressureCategory") VALUES ('${table.designation}', ${standardId}, '${table.pressureCategory}') RETURNING id`,
+        );
         pressureClassIds[table.designation] = result[0].id;
       } else {
         pressureClassIds[table.designation] = existing[0].id;
-        await queryRunner.query(`UPDATE flange_pressure_classes SET "pressureCategory" = '${table.pressureCategory}' WHERE id = ${existing[0].id}`);
+        await queryRunner.query(
+          `UPDATE flange_pressure_classes SET "pressureCategory" = '${table.pressureCategory}' WHERE id = ${existing[0].id}`,
+        );
       }
     }
 
-    const nbSizes = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600];
+    const nbSizes = [
+      15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400,
+      450, 500, 600,
+    ];
     const nbIdMap: Record<number, number> = {};
     for (const nb of nbSizes) {
-      const result = await queryRunner.query(`SELECT id FROM nominal_outside_diameters WHERE nominal_diameter_mm = ${nb} LIMIT 1`);
+      const result = await queryRunner.query(
+        `SELECT id FROM nominal_outside_diameters WHERE nominal_diameter_mm = ${nb} LIMIT 1`,
+      );
       if (result.length > 0) {
         nbIdMap[nb] = result[0].id;
       }
@@ -60,13 +75,26 @@ export class AddComprehensiveBs10FlangeData1770400000000
     const boltIds: Record<string, number> = {};
     const boltSizes = ['M12', 'M16', 'M20', 'M24', 'M27', 'M30', 'M33', 'M36'];
     for (const size of boltSizes) {
-      const result = await queryRunner.query(`SELECT id FROM bolts WHERE designation = '${size}'`);
+      const result = await queryRunner.query(
+        `SELECT id FROM bolts WHERE designation = '${size}'`,
+      );
       if (result.length > 0) {
         boltIds[size] = result[0].id;
       }
     }
 
-    const tableDData: [number, number, number, number, number, number, number, string, number, number][] = [
+    const tableDData: [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      string,
+      number,
+      number,
+    ][] = [
       [15, 95, 14, 22, 2, 4, 14, 'M12', 67, 0.8],
       [20, 102, 14, 28, 2, 4, 14, 'M12', 73, 0.9],
       [25, 114, 14, 34, 2, 4, 14, 'M12', 83, 1.1],
@@ -88,7 +116,18 @@ export class AddComprehensiveBs10FlangeData1770400000000
       [600, 826, 40, 610, 3, 20, 30, 'M27', 756, 72.0],
     ];
 
-    const tableEData: [number, number, number, number, number, number, number, string, number, number][] = [
+    const tableEData: [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      string,
+      number,
+      number,
+    ][] = [
       [15, 95, 16, 22, 2, 4, 14, 'M12', 67, 0.9],
       [20, 102, 16, 28, 2, 4, 14, 'M12', 73, 1.0],
       [25, 114, 16, 34, 2, 4, 14, 'M12', 83, 1.2],
@@ -110,7 +149,18 @@ export class AddComprehensiveBs10FlangeData1770400000000
       [600, 826, 48, 610, 3, 20, 33, 'M30', 756, 90.0],
     ];
 
-    const tableFData: [number, number, number, number, number, number, number, string, number, number][] = [
+    const tableFData: [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      string,
+      number,
+      number,
+    ][] = [
       [15, 95, 18, 22, 2, 4, 14, 'M12', 67, 1.0],
       [20, 102, 18, 28, 2, 4, 14, 'M12', 73, 1.1],
       [25, 114, 20, 34, 2, 4, 18, 'M16', 83, 1.4],
@@ -132,7 +182,18 @@ export class AddComprehensiveBs10FlangeData1770400000000
       [600, 876, 58, 610, 3, 20, 36, 'M33', 800, 115.0],
     ];
 
-    const tableHData: [number, number, number, number, number, number, number, string, number, number][] = [
+    const tableHData: [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      string,
+      number,
+      number,
+    ][] = [
       [15, 114, 20, 22, 2, 4, 18, 'M16', 83, 1.5],
       [20, 121, 20, 28, 2, 4, 18, 'M16', 89, 1.7],
       [25, 133, 22, 34, 2, 4, 18, 'M16', 99, 2.0],
@@ -154,7 +215,18 @@ export class AddComprehensiveBs10FlangeData1770400000000
       [600, 914, 70, 610, 3, 24, 39, 'M36', 832, 165.0],
     ];
 
-    const tableJData: [number, number, number, number, number, number, number, string, number, number][] = [
+    const tableJData: [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      string,
+      number,
+      number,
+    ][] = [
       [15, 121, 22, 22, 2, 4, 18, 'M16', 89, 1.8],
       [20, 133, 24, 28, 2, 4, 18, 'M16', 99, 2.2],
       [25, 146, 26, 34, 2, 4, 22, 'M20', 108, 2.7],
@@ -176,7 +248,18 @@ export class AddComprehensiveBs10FlangeData1770400000000
       [600, 1010, 95, 610, 3, 24, 45, 'M36', 908, 260.0],
     ];
 
-    const tableKData: [number, number, number, number, number, number, number, string, number, number][] = [
+    const tableKData: [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      string,
+      number,
+      number,
+    ][] = [
       [15, 133, 26, 22, 2, 4, 22, 'M20', 99, 2.4],
       [20, 146, 28, 28, 2, 4, 22, 'M20', 108, 3.0],
       [25, 159, 30, 34, 2, 4, 22, 'M20', 117, 3.6],
@@ -198,7 +281,21 @@ export class AddComprehensiveBs10FlangeData1770400000000
       [600, 1110, 120, 610, 3, 28, 52, 'M36', 995, 380.0],
     ];
 
-    const allTableData: [string, [number, number, number, number, number, number, number, string, number, number][]][] = [
+    const allTableData: [
+      string,
+      [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        string,
+        number,
+        number,
+      ][],
+    ][] = [
       ['T/D', tableDData],
       ['T/E', tableEData],
       ['T/F', tableFData],
@@ -216,7 +313,9 @@ export class AddComprehensiveBs10FlangeData1770400000000
         const boltId = boltIds[boltSize] || null;
 
         if (nbId && pressureClassId) {
-          const existingDim = await queryRunner.query(`SELECT id FROM flange_dimensions WHERE "nominalOutsideDiameterId" = ${nbId} AND "standardId" = ${standardId} AND "pressureClassId" = ${pressureClassId}`);
+          const existingDim = await queryRunner.query(
+            `SELECT id FROM flange_dimensions WHERE "nominalOutsideDiameterId" = ${nbId} AND "standardId" = ${standardId} AND "pressureClassId" = ${pressureClassId}`,
+          );
           if (existingDim.length === 0) {
             await queryRunner.query(`
               INSERT INTO flange_dimensions ("nominalOutsideDiameterId", "standardId", "pressureClassId", "flangeTypeId", "D", "b", "d4", "f", "num_holes", "d1", "boltId", "pcd", "mass_kg")
@@ -229,12 +328,20 @@ export class AddComprehensiveBs10FlangeData1770400000000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const standardResult = await queryRunner.query(`SELECT id FROM flange_standards WHERE code = 'BS 10'`);
+    const standardResult = await queryRunner.query(
+      `SELECT id FROM flange_standards WHERE code = 'BS 10'`,
+    );
     if (standardResult.length > 0) {
       const standardId = standardResult[0].id;
-      await queryRunner.query(`DELETE FROM flange_dimensions WHERE "standardId" = ${standardId}`);
-      await queryRunner.query(`DELETE FROM flange_pressure_classes WHERE "standardId" = ${standardId}`);
-      await queryRunner.query(`DELETE FROM flange_standards WHERE id = ${standardId}`);
+      await queryRunner.query(
+        `DELETE FROM flange_dimensions WHERE "standardId" = ${standardId}`,
+      );
+      await queryRunner.query(
+        `DELETE FROM flange_pressure_classes WHERE "standardId" = ${standardId}`,
+      );
+      await queryRunner.query(
+        `DELETE FROM flange_standards WHERE id = ${standardId}`,
+      );
     }
   }
 }

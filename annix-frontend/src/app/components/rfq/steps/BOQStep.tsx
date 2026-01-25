@@ -3,7 +3,8 @@
 import React from 'react';
 import * as XLSX from 'xlsx';
 import { RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
-import { flangeWeight as getFlangeWeight, bnwSetInfo as getBnwSetInfo, gasketWeight as getGasketWeight, blankFlangeSurfaceArea, DEFAULT_PIPE_LENGTH_M } from '@/app/lib/config/rfq';
+import { flangeWeightSync as getFlangeWeight, bnwSetInfoSync as getBnwSetInfo, gasketWeightSync as getGasketWeight, blankFlangeSurfaceAreaSync as blankFlangeSurfaceArea } from '@/app/lib/hooks/useFlangeWeights';
+import { DEFAULT_PIPE_LENGTH_M } from '@/app/lib/config/rfq';
 import { boltSetCountPerBend, boltSetCountPerPipe, boltSetCountPerFitting } from '@/app/lib/config/rfq/pipeEndOptions';
 import { nowISO, formatDateLongZA, fromJSDate } from '@/app/lib/datetime';
 

@@ -32,21 +32,57 @@ export class ForgedFittingDimension {
   @Column({ name: 'nominal_bore_mm', type: 'decimal', precision: 10, scale: 2 })
   nominalBoreMm: number;
 
-  @Column({ name: 'dimension_a_mm', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({
+    name: 'dimension_a_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   dimensionAMm: number | null;
 
-  @Column({ name: 'dimension_b_mm', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({
+    name: 'dimension_b_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   dimensionBMm: number | null;
 
-  @Column({ name: 'dimension_c_mm', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({
+    name: 'dimension_c_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   dimensionCMm: number | null;
 
-  @Column({ name: 'dimension_d_mm', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({
+    name: 'dimension_d_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   dimensionDMm: number | null;
 
-  @Column({ name: 'dimension_e_mm', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({
+    name: 'dimension_e_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   dimensionEMm: number | null;
 
-  @Column({ name: 'mass_kg', type: 'decimal', precision: 10, scale: 3, nullable: true })
+  @Column({
+    name: 'mass_kg',
+    type: 'decimal',
+    precision: 10,
+    scale: 3,
+    nullable: true,
+  })
   massKg: number | null;
 }

@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, Between } from 'typeorm';
 import * as fs from 'fs';
@@ -318,12 +324,16 @@ export class AdminRfqService {
       });
 
       if (!draft) {
-        throw new NotFoundException(`RFQ Draft with ID ${dto.draftId} not found`);
+        throw new NotFoundException(
+          `RFQ Draft with ID ${dto.draftId} not found`,
+        );
       }
 
       const userId = draft.createdBy?.id;
       if (!userId) {
-        throw new NotFoundException(`RFQ Draft ${dto.draftId} has no associated user`);
+        throw new NotFoundException(
+          `RFQ Draft ${dto.draftId} has no associated user`,
+        );
       }
 
       return this.rfqService.saveDraft(dto, userId);

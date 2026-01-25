@@ -33,9 +33,21 @@ export class SpectacleBlind {
   @Column({ type: 'decimal', precision: 8, scale: 3, name: 'overall_length' })
   overallLength: number; // Total length of spectacle blind
 
-  @Column({ type: 'decimal', precision: 6, scale: 3, name: 'handle_length', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 6,
+    scale: 3,
+    name: 'handle_length',
+    nullable: true,
+  })
   handleLength: number | null; // Handle/lifting lug length
 
-  @Column({ type: 'decimal', precision: 8, scale: 2, name: 'weight_kg', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+    name: 'weight_kg',
+    nullable: true,
+  })
   weightKg: number | null; // Weight in kilograms
 }

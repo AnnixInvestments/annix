@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddFlangeTypesAndImprovedBoltLengths1769300000000
-  implements MigrationInterface
-{
+export class AddFlangeTypesAndImprovedBoltLengths1769300000000 implements MigrationInterface {
   name = 'AddFlangeTypesAndImprovedBoltLengths1769300000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -357,7 +355,9 @@ export class AddFlangeTypesAndImprovedBoltLengths1769300000000
         ('24', '600', 37.5, 37.5, 2.75, 0.125, 2.75, 2.75, 75.5, 4.5, 225.0)
     `);
 
-    console.warn('Flange types and improved bolt lengths migration completed successfully');
+    console.warn(
+      'Flange types and improved bolt lengths migration completed successfully',
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

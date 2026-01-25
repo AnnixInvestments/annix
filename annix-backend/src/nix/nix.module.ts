@@ -43,6 +43,10 @@ import { StorageModule } from '../storage/storage.module';
     AiExtractionService,
     RegistrationDocumentVerifierService,
   ],
-  exports: [NixService, AiExtractionService, RegistrationDocumentVerifierService],
+  exports: [
+    NixService,
+    AiExtractionService,
+    RegistrationDocumentVerifierService,
+  ],
 })
 export class NixModule {}

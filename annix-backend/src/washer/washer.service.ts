@@ -46,10 +46,15 @@ export class WasherService {
       query.andWhere('washer.type = :type', { type: filters.type });
     }
     if (filters?.material) {
-      query.andWhere('washer.material ILIKE :material', { material: `%${filters.material}%` });
+      query.andWhere('washer.material ILIKE :material', {
+        material: `%${filters.material}%`,
+      });
     }
 
-    return query.orderBy('bolt.designation', 'ASC').addOrderBy('washer.type', 'ASC').getMany();
+    return query
+      .orderBy('bolt.designation', 'ASC')
+      .addOrderBy('washer.type', 'ASC')
+      .getMany();
   }
 
   async findOne(id: number): Promise<Washer> {
@@ -61,7 +66,10 @@ export class WasherService {
     return washer;
   }
 
-  async findByBoltDesignation(designation: string, type?: string): Promise<Washer[]> {
+  async findByBoltDesignation(
+    designation: string,
+    type?: string,
+  ): Promise<Washer[]> {
     const query = this.washerRepo
       .createQueryBuilder('washer')
       .leftJoinAndSelect('washer.bolt', 'bolt')
@@ -88,7 +96,8 @@ export class WasherService {
     if (dto.massKg !== undefined) washer.massKg = dto.massKg;
     if (dto.odMm !== undefined) washer.odMm = dto.odMm || null;
     if (dto.idMm !== undefined) washer.idMm = dto.idMm || null;
-    if (dto.thicknessMm !== undefined) washer.thicknessMm = dto.thicknessMm || null;
+    if (dto.thicknessMm !== undefined)
+      washer.thicknessMm = dto.thicknessMm || null;
 
     return this.washerRepo.save(washer);
   }

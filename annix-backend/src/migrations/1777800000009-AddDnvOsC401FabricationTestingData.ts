@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddDnvOsC401FabricationTestingData1777800000009
-  implements MigrationInterface
-{
+export class AddDnvOsC401FabricationTestingData1777800000009 implements MigrationInterface {
   name = 'AddDnvOsC401FabricationTestingData1777800000009';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -351,7 +349,9 @@ export class AddDnvOsC401FabricationTestingData1777800000009
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE IF EXISTS dnv_ctod_requirements`);
     await queryRunner.query(`DROP TABLE IF EXISTS dnv_ut_calibration_blocks`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_tightness_test_parameters`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS dnv_tightness_test_parameters`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS dnv_bolt_requirements`);
     await queryRunner.query(`DROP TABLE IF EXISTS dnv_hydrogen_limits`);
     await queryRunner.query(`DROP TABLE IF EXISTS dnv_surface_preparation`);
@@ -359,8 +359,12 @@ export class AddDnvOsC401FabricationTestingData1777800000009
     await queryRunner.query(`DROP TABLE IF EXISTS dnv_pwht_requirements`);
     await queryRunner.query(`DROP TABLE IF EXISTS dnv_ndt_acceptance_criteria`);
     await queryRunner.query(`DROP TABLE IF EXISTS dnv_ndt_extent`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_diameter_qualification_range`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_thickness_qualification_range`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS dnv_diameter_qualification_range`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS dnv_thickness_qualification_range`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS dnv_fabrication_tolerances`);
   }
 }

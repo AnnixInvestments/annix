@@ -7,7 +7,10 @@ import {
 } from './ai-provider.interface';
 import { GeminiProvider } from './gemini.provider';
 import { ClaudeProvider } from './claude.provider';
-import { ExtractedItem, SpecificationCellData } from '../services/excel-extractor.service';
+import {
+  ExtractedItem,
+  SpecificationCellData,
+} from '../services/excel-extractor.service';
 
 export type AiProviderType = 'gemini' | 'claude' | 'auto';
 
@@ -62,7 +65,9 @@ export class AiExtractionService {
       };
     }
 
-    this.logger.log(`Using AI provider: ${provider.name} for document: ${documentName}`);
+    this.logger.log(
+      `Using AI provider: ${provider.name} for document: ${documentName}`,
+    );
 
     const request: AiExtractionRequest = {
       text: this.truncateText(text, 100000),
@@ -75,7 +80,9 @@ export class AiExtractionService {
     const response = await provider.extractItems(request);
 
     const items = this.convertToExtractedItems(response.items);
-    const specificationCells = this.convertToSpecificationCells(response.specifications);
+    const specificationCells = this.convertToSpecificationCells(
+      response.specifications,
+    );
 
     return {
       items,
@@ -90,19 +97,23 @@ export class AiExtractionService {
     };
   }
 
-  private async selectProvider(preference: AiProviderType): Promise<AiProvider | null> {
+  private async selectProvider(
+    preference: AiProviderType,
+  ): Promise<AiProvider | null> {
     if (preference !== 'auto') {
       const provider = this.providers.get(preference);
-      if (provider && await provider.isAvailable()) {
+      if (provider && (await provider.isAvailable())) {
         return provider;
       }
-      this.logger.warn(`Preferred provider ${preference} not available, falling back to auto`);
+      this.logger.warn(
+        `Preferred provider ${preference} not available, falling back to auto`,
+      );
     }
 
     const priorityOrder = ['gemini', 'claude'];
     for (const name of priorityOrder) {
       const provider = this.providers.get(name);
-      if (provider && await provider.isAvailable()) {
+      if (provider && (await provider.isAvailable())) {
         return provider;
       }
     }
@@ -113,7 +124,9 @@ export class AiExtractionService {
   private truncateText(text: string, maxChars: number): string {
     if (text.length <= maxChars) return text;
 
-    this.logger.warn(`Truncating text from ${text.length} to ${maxChars} characters`);
+    this.logger.warn(
+      `Truncating text from ${text.length} to ${maxChars} characters`,
+    );
     return text.substring(0, maxChars) + '\n\n[TEXT TRUNCATED]';
   }
 
@@ -136,7 +149,8 @@ export class AiExtractionService {
       quantity: item.quantity || 1,
       unit: item.unit || 'ea',
       confidence: item.confidence || 0.8,
-      needsClarification: item.confidence < 0.7 || !item.diameter || !item.material,
+      needsClarification:
+        item.confidence < 0.7 || !item.diameter || !item.material,
       clarificationReason: this.getClarificationReason(item),
       rawData: { source: 'ai', rawText: item.rawText },
     }));
@@ -148,10 +162,14 @@ export class AiExtractionService {
     if (!item.material) missing.push('material');
     if (item.confidence < 0.7) missing.push('low confidence');
 
-    return missing.length > 0 ? `Missing or uncertain: ${missing.join(', ')}` : null;
+    return missing.length > 0
+      ? `Missing or uncertain: ${missing.join(', ')}`
+      : null;
   }
 
-  private convertToSpecificationCells(specs?: Record<string, any>): SpecificationCellData[] {
+  private convertToSpecificationCells(
+    specs?: Record<string, any>,
+  ): SpecificationCellData[] {
     if (!specs || Object.keys(specs).length === 0) {
       return [];
     }
@@ -166,18 +184,20 @@ export class AiExtractionService {
 
     if (parts.length === 0) return [];
 
-    return [{
-      cellRef: 'AI-SPEC',
-      rowNumber: 0,
-      rawText: parts.join(' | '),
-      parsedData: {
-        materialGrade: specs.materialGrade || null,
-        wallThickness: specs.wallThickness || null,
-        lining: specs.lining || null,
-        externalCoating: specs.externalCoating || null,
-        standard: specs.standard || null,
-        schedule: specs.schedule || null,
+    return [
+      {
+        cellRef: 'AI-SPEC',
+        rowNumber: 0,
+        rawText: parts.join(' | '),
+        parsedData: {
+          materialGrade: specs.materialGrade || null,
+          wallThickness: specs.wallThickness || null,
+          lining: specs.lining || null,
+          externalCoating: specs.externalCoating || null,
+          standard: specs.standard || null,
+          schedule: specs.schedule || null,
+        },
       },
-    }];
+    ];
   }
 }

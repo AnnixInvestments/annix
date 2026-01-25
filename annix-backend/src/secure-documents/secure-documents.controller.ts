@@ -16,7 +16,10 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Request } from 'express';
-import { SecureDocumentsService, LocalDocument } from './secure-documents.service';
+import {
+  SecureDocumentsService,
+  LocalDocument,
+} from './secure-documents.service';
 import { CreateSecureDocumentDto } from './dto/create-secure-document.dto';
 import { UpdateSecureDocumentDto } from './dto/update-secure-document.dto';
 import { SecureDocument } from './secure-document.entity';
@@ -75,7 +78,9 @@ export class SecureDocumentsController {
   }
 
   @Get(':idOrSlug')
-  @ApiOperation({ summary: 'Get a secure document with decrypted content by ID or slug' })
+  @ApiOperation({
+    summary: 'Get a secure document with decrypted content by ID or slug',
+  })
   @ApiResponse({
     status: 200,
     description: 'Document with content',
@@ -84,7 +89,10 @@ export class SecureDocumentsController {
   async findOne(
     @Param('idOrSlug') idOrSlug: string,
   ): Promise<SecureDocument & { content: string }> {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        idOrSlug,
+      );
     if (isUuid) {
       return this.service.findOneWithContent(idOrSlug);
     }
@@ -131,7 +139,9 @@ export class SecureDocumentsController {
   }
 
   @Get(':idOrSlug/attachment-url')
-  @ApiOperation({ summary: 'Get presigned download URL for document attachment' })
+  @ApiOperation({
+    summary: 'Get presigned download URL for document attachment',
+  })
   @ApiResponse({
     status: 200,
     description: 'Presigned URL for attachment download',
@@ -151,7 +161,10 @@ export class SecureDocumentsController {
   }
 
   private async resolveId(idOrSlug: string): Promise<string> {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        idOrSlug,
+      );
     if (isUuid) {
       return idOrSlug;
     }

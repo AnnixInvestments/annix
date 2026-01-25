@@ -4,10 +4,12 @@ export class AddBs4504HighPressureData1774300000000 implements MigrationInterfac
   name = 'AddBs4504HighPressureData1774300000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding BS4504/EN 1092-1 high pressure flange data (PN40, PN63, PN100)...');
+    console.warn(
+      'Adding BS4504/EN 1092-1 high pressure flange data (PN40, PN63, PN100)...',
+    );
 
     const bs4504Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'BS 4504'`
+      `SELECT id FROM flange_standards WHERE code = 'BS 4504'`,
     );
     if (bs4504Result.length === 0) {
       console.warn('BS 4504 standard not found, skipping...');
@@ -24,7 +26,10 @@ export class AddBs4504HighPressureData1774300000000 implements MigrationInterfac
       return result[0]?.id;
     };
 
-    const getOrCreatePressureClassId = async (pnValue: number, typeCode: string) => {
+    const getOrCreatePressureClassId = async (
+      pnValue: number,
+      typeCode: string,
+    ) => {
       const designation = `${pnValue}${typeCode}`;
       let result = await queryRunner.query(`
         SELECT id FROM flange_pressure_classes
@@ -45,7 +50,7 @@ export class AddBs4504HighPressureData1774300000000 implements MigrationInterfac
 
     const getTypeId = async (code: string) => {
       const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`
+        `SELECT id FROM flange_types WHERE code = '${code}'`,
       );
       return result[0]?.id;
     };
@@ -53,7 +58,7 @@ export class AddBs4504HighPressureData1774300000000 implements MigrationInterfac
     const getBoltId = async (designation: string) => {
       if (!designation) return null;
       const result = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = '${designation}'`
+        `SELECT id FROM bolts WHERE designation = '${designation}'`,
       );
       return result[0]?.id;
     };
@@ -85,11 +90,14 @@ export class AddBs4504HighPressureData1774300000000 implements MigrationInterfac
       d1: number,
       bolt: string,
       pcd: number,
-      mass: number
+      mass: number,
     ) => {
       const nominalId = await getNominalId(nb);
       const typeId = typeIds[typeCode as keyof typeof typeIds];
-      const pressureClassId = await getOrCreatePressureClassId(pnValue, typeCode);
+      const pressureClassId = await getOrCreatePressureClassId(
+        pnValue,
+        typeCode,
+      );
       const boltId = bolt ? await getBoltId(bolt) : null;
       const d4 = typeCode === '/8' ? 0 : d4Values[nb] || 0;
       const f = 4;
@@ -217,7 +225,9 @@ export class AddBs4504HighPressureData1774300000000 implements MigrationInterfac
     await insertFlange(300, '/2', 160, 685, 160, 12, 62, 'M56', 590, 340.0);
     await insertFlange(300, '/8', 160, 685, 138, 12, 62, 'M56', 590, 395.0);
 
-    console.warn('BS4504/EN 1092-1 high pressure flange data addition complete.');
+    console.warn(
+      'BS4504/EN 1092-1 high pressure flange data addition complete.',
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

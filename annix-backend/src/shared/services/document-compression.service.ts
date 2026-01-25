@@ -59,10 +59,14 @@ export class DocumentCompressionService {
         (metadata.width && metadata.width > this.maxImageWidth) ||
         (metadata.height && metadata.height > this.maxImageHeight)
       ) {
-        processedImage = processedImage.resize(this.maxImageWidth, this.maxImageHeight, {
-          fit: 'inside',
-          withoutEnlargement: true,
-        });
+        processedImage = processedImage.resize(
+          this.maxImageWidth,
+          this.maxImageHeight,
+          {
+            fit: 'inside',
+            withoutEnlargement: true,
+          },
+        );
       }
 
       let compressedBuffer: Buffer;
@@ -97,7 +101,8 @@ export class DocumentCompressionService {
         }
       }
 
-      const compressionRatio = originalSize > 0 ? compressedBuffer.length / originalSize : 1;
+      const compressionRatio =
+        originalSize > 0 ? compressedBuffer.length / originalSize : 1;
 
       this.logger.log(
         `Image compressed: ${originalSize} -> ${compressedBuffer.length} bytes (${(compressionRatio * 100).toFixed(1)}%)`,
@@ -128,7 +133,10 @@ export class DocumentCompressionService {
     compressedMimeType: string,
   ): Promise<string> {
     const ext = this.mimeToExtension(compressedMimeType);
-    const baseName = path.basename(originalFilePath, path.extname(originalFilePath));
+    const baseName = path.basename(
+      originalFilePath,
+      path.extname(originalFilePath),
+    );
     const dirName = path.dirname(originalFilePath);
     const compressedPath = path.join(dirName, `${baseName}_compressed${ext}`);
 

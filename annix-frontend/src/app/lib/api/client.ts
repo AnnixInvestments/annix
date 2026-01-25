@@ -412,6 +412,42 @@ export interface WeldThicknessResult {
   notes?: string;
 }
 
+// Flange Type Weight Types
+export interface FlangeTypeWeightResult {
+  found: boolean;
+  weightKg: number | null;
+  nominalBoreMm: number;
+  pressureClass: string;
+  flangeTypeCode: string;
+  flangeStandardCode: string | null;
+  notes?: string;
+}
+
+export interface BnwSetInfoResult {
+  found: boolean;
+  boltSize: string;
+  weightPerHoleKg: number;
+  numHoles: number;
+  totalWeightKg: number;
+  pressureClass: string;
+  nominalBoreMm: number;
+  notes?: string;
+}
+
+export interface RetainingRingWeightResult {
+  found: boolean;
+  weightKg: number;
+  nominalBoreMm: number;
+  notes?: string;
+}
+
+export interface NbOdLookupResult {
+  found: boolean;
+  nominalBoreMm: number;
+  outsideDiameterMm: number;
+  notes?: string;
+}
+
 export interface PipeWallThicknessResult {
   found: boolean;
   wallThicknessMm: number | null;
@@ -1179,6 +1215,55 @@ class ApiClient {
     if (temperature !== undefined) params.append('temperature', temperature.toString());
     return this.request(`/weld-thickness/pipe-wall?${params.toString()}`);
   }
+
+  // ==================== Flange Type Weight Methods ====================
+
+  async flangeTypeWeight(
+    nominalBoreMm: number,
+    pressureClass: string,
+    flangeStandardCode: string | null,
+    flangeTypeCode: string
+  ): Promise<FlangeTypeWeightResult> {
+    const params = new URLSearchParams({
+      nominalBoreMm: nominalBoreMm.toString(),
+      pressureClass,
+      flangeTypeCode,
+    });
+    if (flangeStandardCode) {
+      params.append('flangeStandardCode', flangeStandardCode);
+    }
+    return this.request(`/flange-type-weight/lookup?${params.toString()}`);
+  }
+
+  async blankFlangeWeight(
+    nominalBoreMm: number,
+    pressureClass: string
+  ): Promise<FlangeTypeWeightResult> {
+    const params = new URLSearchParams({
+      nominalBoreMm: nominalBoreMm.toString(),
+      pressureClass,
+    });
+    return this.request(`/flange-type-weight/blank?${params.toString()}`);
+  }
+
+  async bnwSetInfo(
+    nominalBoreMm: number,
+    pressureClass: string
+  ): Promise<BnwSetInfoResult> {
+    const params = new URLSearchParams({
+      nominalBoreMm: nominalBoreMm.toString(),
+      pressureClass,
+    });
+    return this.request(`/bnw-set-weight/lookup?${params.toString()}`);
+  }
+
+  async retainingRingWeight(nominalBoreMm: number): Promise<RetainingRingWeightResult> {
+    return this.request(`/retaining-ring-weight/${nominalBoreMm}`);
+  }
+
+  async nbToOd(nominalBoreMm: number): Promise<NbOdLookupResult> {
+    return this.request(`/nb-od-lookup/${nominalBoreMm}`);
+  }
 }
 
 // Create and export the API client instance
@@ -1280,6 +1365,19 @@ export const weldThicknessApi = {
     apiClient.getAllWeldThicknessesForDn(dn, temperature),
   getPipeWallThickness: (dn: number, schedule: string, temperature?: number) =>
     apiClient.getPipeWallThickness(dn, schedule, temperature),
+};
+
+export const flangeWeightApi = {
+  flangeTypeWeight: (nominalBoreMm: number, pressureClass: string, flangeStandardCode: string | null, flangeTypeCode: string) =>
+    apiClient.flangeTypeWeight(nominalBoreMm, pressureClass, flangeStandardCode, flangeTypeCode),
+  blankFlangeWeight: (nominalBoreMm: number, pressureClass: string) =>
+    apiClient.blankFlangeWeight(nominalBoreMm, pressureClass),
+  bnwSetInfo: (nominalBoreMm: number, pressureClass: string) =>
+    apiClient.bnwSetInfo(nominalBoreMm, pressureClass),
+  retainingRingWeight: (nominalBoreMm: number) =>
+    apiClient.retainingRingWeight(nominalBoreMm),
+  nbToOd: (nominalBoreMm: number) =>
+    apiClient.nbToOd(nominalBoreMm),
 };
 
 // ISO 12944-5 Coating Specification Types

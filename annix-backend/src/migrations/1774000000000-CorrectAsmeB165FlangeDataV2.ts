@@ -7,7 +7,7 @@ export class CorrectAsmeB165FlangeDataV21774000000000 implements MigrationInterf
     console.warn('Correcting ASME B16.5 flange dimension data...');
 
     const asmeResult = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'ASME B16.5'`
+      `SELECT id FROM flange_standards WHERE code = 'ASME B16.5'`,
     );
     if (asmeResult.length === 0) {
       console.warn('ASME B16.5 standard not found, skipping...');
@@ -34,7 +34,7 @@ export class CorrectAsmeB165FlangeDataV21774000000000 implements MigrationInterf
 
     const getTypeId = async (code: string) => {
       const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`
+        `SELECT id FROM flange_types WHERE code = '${code}'`,
       );
       return result[0]?.id;
     };
@@ -42,7 +42,7 @@ export class CorrectAsmeB165FlangeDataV21774000000000 implements MigrationInterf
     const getBoltId = async (designation: string) => {
       if (!designation) return null;
       const result = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = '${designation}'`
+        `SELECT id FROM bolts WHERE designation = '${designation}'`,
       );
       return result[0]?.id;
     };
@@ -64,12 +64,14 @@ export class CorrectAsmeB165FlangeDataV21774000000000 implements MigrationInterf
       d1: number,
       bolt: string,
       pcd: number,
-      mass: number
+      mass: number,
     ) => {
       const nominalId = await getNominalId(nb);
       const typeId = typeIds[typeCode as keyof typeof typeIds];
       const pressureClassDesignation = `${classNum}${typeCode}`;
-      const pressureClassId = await getPressureClassId(pressureClassDesignation);
+      const pressureClassId = await getPressureClassId(
+        pressureClassDesignation,
+      );
       const boltId = bolt ? await getBoltId(bolt) : null;
 
       if (!nominalId || !typeId || !pressureClassId) {
@@ -203,6 +205,8 @@ export class CorrectAsmeB165FlangeDataV21774000000000 implements MigrationInterf
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('ASME B16.5 correction rollback not implemented - data would need manual restoration');
+    console.warn(
+      'ASME B16.5 correction rollback not implemented - data would need manual restoration',
+    );
   }
 }

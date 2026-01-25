@@ -59,20 +59,7 @@ import {
   weldCountPerPipe as getWeldCountPerPipe,
   flangesPerPipe as getFlangesPerPipe,
   physicalFlangeCount as getPhysicalFlangeCount,
-  BLANK_FLANGE_WEIGHT,
-  blankFlangeWeight as getBlankFlangeWeight,
-  blankFlangeSurfaceArea as getBlankFlangeSurfaceArea,
-  NB_TO_OD_LOOKUP,
-  FLANGE_WEIGHT_BY_PRESSURE_CLASS,
-  NB_TO_FLANGE_WEIGHT_LOOKUP,
-  BOLT_HOLES_BY_NB_AND_PRESSURE,
-  BNW_SET_WEIGHT_PER_HOLE,
-  boltHolesPerFlange as getBoltHolesPerFlange,
-  bnwSetInfo as getBnwSetInfo,
-  GASKET_WEIGHTS,
-  gasketWeight as getGasketWeight,
   normalizePressureClass,
-  flangeWeight as getFlangeWeight,
   MATERIAL_LIMITS,
   type MaterialLimits,
   materialLimits as getMaterialLimits,
@@ -80,6 +67,21 @@ import {
   STEEL_DENSITY_KG_M3,
   DEFAULT_PIPE_LENGTH_M,
 } from '@/app/lib/config/rfq';
+import {
+  NB_TO_OD_LOOKUP,
+  BLANK_FLANGE_WEIGHT,
+  FLANGE_WEIGHT_BY_PRESSURE_CLASS,
+  NB_TO_FLANGE_WEIGHT_LOOKUP,
+  BOLT_HOLES_BY_NB_AND_PRESSURE,
+  BNW_SET_WEIGHT_PER_HOLE,
+  GASKET_WEIGHTS,
+  blankFlangeWeightSync as getBlankFlangeWeight,
+  blankFlangeSurfaceAreaSync as getBlankFlangeSurfaceArea,
+  boltHolesPerFlangeSync as getBoltHolesPerFlange,
+  bnwSetInfoSync as getBnwSetInfo,
+  gasketWeightSync as getGasketWeight,
+  flangeWeightSync as getFlangeWeight,
+} from '@/app/lib/hooks/useFlangeWeights';
 import { generateUniqueId, nowISO } from '@/app/lib/datetime';
 import { fetchFlangeSpecsStatic, FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
 import ProjectDetailsStep, { PendingDocument } from './steps/ProjectDetailsStep';

@@ -1,11 +1,11 @@
 import {
-  flangeWeight as getFlangeWeight,
-  bnwSetInfo as getBnwSetInfo,
-  gasketWeight as getGasketWeight,
-  blankFlangeSurfaceArea,
-  sansBlankFlangeWeight,
-  blankFlangeWeight,
-} from '@/app/lib/config/rfq';
+  flangeWeightSync as getFlangeWeight,
+  bnwSetInfoSync as getBnwSetInfo,
+  gasketWeightSync as getGasketWeight,
+  blankFlangeSurfaceAreaSync as blankFlangeSurfaceArea,
+  sansBlankFlangeWeightSync as sansBlankFlangeWeight,
+  blankFlangeWeightSync as blankFlangeWeight,
+} from '@/app/lib/hooks/useFlangeWeights';
 import {
   boltSetCountPerBend,
   boltSetCountPerPipe,

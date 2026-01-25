@@ -10,7 +10,13 @@ import { PipeClampEntity } from './entities/pipe-clamp.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Bolt, BoltMass, NutMass, UBoltEntity, PipeClampEntity]),
+    TypeOrmModule.forFeature([
+      Bolt,
+      BoltMass,
+      NutMass,
+      UBoltEntity,
+      PipeClampEntity,
+    ]),
   ],
   controllers: [BoltController],
   providers: [BoltService],

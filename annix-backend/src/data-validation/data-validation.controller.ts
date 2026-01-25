@@ -25,7 +25,9 @@ export class DataValidationController {
   @Post('run')
   @ApiOperation({ summary: 'Run data validation' })
   @ApiResponse({ status: 200, type: ValidationResultDto })
-  async runValidation(@Body() dto: RunValidationDto): Promise<ValidationResultDto> {
+  async runValidation(
+    @Body() dto: RunValidationDto,
+  ): Promise<ValidationResultDto> {
     return this.validationService.runValidation(dto);
   }
 
@@ -38,7 +40,10 @@ export class DataValidationController {
     @Query('standardCode') standardCode?: string,
     @Query('materialGroup') materialGroup?: string,
   ): Promise<PtCurveVerificationDto[]> {
-    return this.validationService.ptCurveVerification(standardCode, materialGroup);
+    return this.validationService.ptCurveVerification(
+      standardCode,
+      materialGroup,
+    );
   }
 
   @Get('coverage-report')
@@ -51,7 +56,9 @@ export class DataValidationController {
   @Get('specification-normalizations')
   @ApiOperation({ summary: 'Get steel specification normalizations' })
   @ApiResponse({ status: 200, type: [SpecificationNormalizationDto] })
-  async specificationNormalizations(): Promise<SpecificationNormalizationDto[]> {
+  async specificationNormalizations(): Promise<
+    SpecificationNormalizationDto[]
+  > {
     return this.validationService.specificationNormalizations();
   }
 

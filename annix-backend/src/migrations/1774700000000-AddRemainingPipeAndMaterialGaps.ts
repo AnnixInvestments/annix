@@ -12,15 +12,51 @@ export class AddRemainingPipeAndMaterialGaps1774700000000 implements MigrationIn
     console.warn('Adding XXS pipe schedule data for sizes > 300mm...');
 
     const xxsPipeData = [
-      { nps: '14', nbMm: 350, odInch: 14.0, odMm: 355.6, wallInch: 0.750, wallMm: 19.05 },
-      { nps: '16', nbMm: 400, odInch: 16.0, odMm: 406.4, wallInch: 0.844, wallMm: 21.44 },
-      { nps: '18', nbMm: 450, odInch: 18.0, odMm: 457.2, wallInch: 0.938, wallMm: 23.83 },
-      { nps: '20', nbMm: 500, odInch: 20.0, odMm: 508.0, wallInch: 1.031, wallMm: 26.19 },
-      { nps: '24', nbMm: 600, odInch: 24.0, odMm: 609.6, wallInch: 1.219, wallMm: 30.96 },
+      {
+        nps: '14',
+        nbMm: 350,
+        odInch: 14.0,
+        odMm: 355.6,
+        wallInch: 0.75,
+        wallMm: 19.05,
+      },
+      {
+        nps: '16',
+        nbMm: 400,
+        odInch: 16.0,
+        odMm: 406.4,
+        wallInch: 0.844,
+        wallMm: 21.44,
+      },
+      {
+        nps: '18',
+        nbMm: 450,
+        odInch: 18.0,
+        odMm: 457.2,
+        wallInch: 0.938,
+        wallMm: 23.83,
+      },
+      {
+        nps: '20',
+        nbMm: 500,
+        odInch: 20.0,
+        odMm: 508.0,
+        wallInch: 1.031,
+        wallMm: 26.19,
+      },
+      {
+        nps: '24',
+        nbMm: 600,
+        odInch: 24.0,
+        odMm: 609.6,
+        wallInch: 1.219,
+        wallMm: 30.96,
+      },
     ];
 
     for (const pipe of xxsPipeData) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO pipe_schedules (nps, nb_mm, schedule, wall_thickness_inch, wall_thickness_mm, outside_diameter_inch, outside_diameter_mm, standard_code)
         VALUES ($1, $2, 'XXS', $3, $4, $5, $6, 'ASME B36.10')
         ON CONFLICT (nps, schedule) DO UPDATE SET
@@ -28,18 +64,30 @@ export class AddRemainingPipeAndMaterialGaps1774700000000 implements MigrationIn
           wall_thickness_mm = EXCLUDED.wall_thickness_mm,
           outside_diameter_inch = EXCLUDED.outside_diameter_inch,
           outside_diameter_mm = EXCLUDED.outside_diameter_mm
-      `, [pipe.nps, pipe.nbMm, pipe.wallInch, pipe.wallMm, pipe.odInch, pipe.odMm]);
+      `,
+        [
+          pipe.nps,
+          pipe.nbMm,
+          pipe.wallInch,
+          pipe.wallMm,
+          pipe.odInch,
+          pipe.odMm,
+        ],
+      );
     }
 
     // Also add to pipe_schedule_walls table
     for (const pipe of xxsPipeData) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO pipe_schedule_walls (nps, schedule, wall_thickness_inch, wall_thickness_mm)
         VALUES ($1, 'XXS', $2, $3)
         ON CONFLICT (nps, schedule) DO UPDATE SET
           wall_thickness_inch = EXCLUDED.wall_thickness_inch,
           wall_thickness_mm = EXCLUDED.wall_thickness_mm
-      `, [pipe.nps, pipe.wallInch, pipe.wallMm]);
+      `,
+        [pipe.nps, pipe.wallInch, pipe.wallMm],
+      );
     }
 
     console.warn('XXS pipe schedule data added.');
@@ -115,21 +163,27 @@ export class AddRemainingPipeAndMaterialGaps1774700000000 implements MigrationIn
     ];
 
     for (const grade of a268Grades) {
-      const result = await queryRunner.query(`
+      const result = await queryRunner.query(
+        `
         INSERT INTO pipe_steel_grades (code, name, category, equivalent_grade)
         VALUES ($1, $2, $3, NULL)
         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category
         RETURNING id
-      `, [grade.code, grade.name, grade.category]);
+      `,
+        [grade.code, grade.name, grade.category],
+      );
 
       const gradeId = result[0]?.id;
       if (gradeId) {
         for (const stress of grade.stressData) {
-          await queryRunner.query(`
+          await queryRunner.query(
+            `
             INSERT INTO pipe_allowable_stresses (grade_id, temperature_f, allowable_stress_ksi)
             VALUES ($1, $2, $3)
             ON CONFLICT (grade_id, temperature_f) DO UPDATE SET allowable_stress_ksi = EXCLUDED.allowable_stress_ksi
-          `, [gradeId, stress.tempF, stress.ksi]);
+          `,
+            [gradeId, stress.tempF, stress.ksi],
+          );
         }
       }
     }
@@ -256,21 +310,27 @@ export class AddRemainingPipeAndMaterialGaps1774700000000 implements MigrationIn
     ];
 
     for (const grade of weldedCarbonGrades) {
-      const result = await queryRunner.query(`
+      const result = await queryRunner.query(
+        `
         INSERT INTO pipe_steel_grades (code, name, category, equivalent_grade)
         VALUES ($1, $2, $3, NULL)
         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category
         RETURNING id
-      `, [grade.code, grade.name, grade.category]);
+      `,
+        [grade.code, grade.name, grade.category],
+      );
 
       const gradeId = result[0]?.id;
       if (gradeId) {
         for (const stress of grade.stressData) {
-          await queryRunner.query(`
+          await queryRunner.query(
+            `
             INSERT INTO pipe_allowable_stresses (grade_id, temperature_f, allowable_stress_ksi)
             VALUES ($1, $2, $3)
             ON CONFLICT (grade_id, temperature_f) DO UPDATE SET allowable_stress_ksi = EXCLUDED.allowable_stress_ksi
-          `, [gradeId, stress.tempF, stress.ksi]);
+          `,
+            [gradeId, stress.tempF, stress.ksi],
+          );
         }
       }
     }
@@ -420,21 +480,27 @@ export class AddRemainingPipeAndMaterialGaps1774700000000 implements MigrationIn
     ];
 
     for (const grade of a691Grades) {
-      const result = await queryRunner.query(`
+      const result = await queryRunner.query(
+        `
         INSERT INTO pipe_steel_grades (code, name, category, equivalent_grade)
         VALUES ($1, $2, $3, NULL)
         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category
         RETURNING id
-      `, [grade.code, grade.name, grade.category]);
+      `,
+        [grade.code, grade.name, grade.category],
+      );
 
       const gradeId = result[0]?.id;
       if (gradeId) {
         for (const stress of grade.stressData) {
-          await queryRunner.query(`
+          await queryRunner.query(
+            `
             INSERT INTO pipe_allowable_stresses (grade_id, temperature_f, allowable_stress_ksi)
             VALUES ($1, $2, $3)
             ON CONFLICT (grade_id, temperature_f) DO UPDATE SET allowable_stress_ksi = EXCLUDED.allowable_stress_ksi
-          `, [gradeId, stress.tempF, stress.ksi]);
+          `,
+            [gradeId, stress.tempF, stress.ksi],
+          );
         }
       }
     }
@@ -466,18 +532,24 @@ export class AddRemainingPipeAndMaterialGaps1774700000000 implements MigrationIn
     ];
 
     for (const grade of extendedTempData) {
-      const result = await queryRunner.query(`
+      const result = await queryRunner.query(
+        `
         SELECT id FROM pipe_steel_grades WHERE code = $1
-      `, [grade.code]);
+      `,
+        [grade.code],
+      );
 
       if (result.length > 0) {
         const gradeId = result[0].id;
         for (const temp of grade.extraTemps) {
-          await queryRunner.query(`
+          await queryRunner.query(
+            `
             INSERT INTO pipe_allowable_stresses (grade_id, temperature_f, allowable_stress_ksi)
             VALUES ($1, $2, $3)
             ON CONFLICT (grade_id, temperature_f) DO UPDATE SET allowable_stress_ksi = EXCLUDED.allowable_stress_ksi
-          `, [gradeId, temp.tempF, temp.ksi]);
+          `,
+            [gradeId, temp.tempF, temp.ksi],
+          );
         }
       }
     }
@@ -560,21 +632,27 @@ export class AddRemainingPipeAndMaterialGaps1774700000000 implements MigrationIn
     ];
 
     for (const grade of a358Grades) {
-      const result = await queryRunner.query(`
+      const result = await queryRunner.query(
+        `
         INSERT INTO pipe_steel_grades (code, name, category, equivalent_grade)
         VALUES ($1, $2, $3, NULL)
         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category
         RETURNING id
-      `, [grade.code, grade.name, grade.category]);
+      `,
+        [grade.code, grade.name, grade.category],
+      );
 
       const gradeId = result[0]?.id;
       if (gradeId) {
         for (const stress of grade.stressData) {
-          await queryRunner.query(`
+          await queryRunner.query(
+            `
             INSERT INTO pipe_allowable_stresses (grade_id, temperature_f, allowable_stress_ksi)
             VALUES ($1, $2, $3)
             ON CONFLICT (grade_id, temperature_f) DO UPDATE SET allowable_stress_ksi = EXCLUDED.allowable_stress_ksi
-          `, [gradeId, stress.tempF, stress.ksi]);
+          `,
+            [gradeId, stress.tempF, stress.ksi],
+          );
         }
       }
     }
@@ -587,16 +665,65 @@ export class AddRemainingPipeAndMaterialGaps1774700000000 implements MigrationIn
     console.warn('Adding physical properties for new materials...');
 
     const newMaterialProps = [
-      { code: 'SS409', name: 'Type 409 Ferritic Stainless', density: 7750, expansion: 11.7, conductivity: 24.9, heat: 460, modulus: 200 },
-      { code: 'SS410', name: 'Type 410 Martensitic Stainless', density: 7750, expansion: 9.9, conductivity: 24.9, heat: 460, modulus: 200 },
-      { code: 'SS430', name: 'Type 430 Ferritic Stainless', density: 7750, expansion: 10.4, conductivity: 26.1, heat: 460, modulus: 200 },
-      { code: 'A671_WELDED', name: 'ASTM A671 Welded Carbon Steel', density: 7850, expansion: 11.7, conductivity: 51.9, heat: 486, modulus: 200 },
-      { code: 'A672_WELDED', name: 'ASTM A672 Welded Carbon Steel', density: 7850, expansion: 11.7, conductivity: 51.9, heat: 486, modulus: 200 },
-      { code: 'A691_WELDED', name: 'ASTM A691 Welded Cr-Mo Alloy', density: 7750, expansion: 12.1, conductivity: 42.3, heat: 473, modulus: 207 },
+      {
+        code: 'SS409',
+        name: 'Type 409 Ferritic Stainless',
+        density: 7750,
+        expansion: 11.7,
+        conductivity: 24.9,
+        heat: 460,
+        modulus: 200,
+      },
+      {
+        code: 'SS410',
+        name: 'Type 410 Martensitic Stainless',
+        density: 7750,
+        expansion: 9.9,
+        conductivity: 24.9,
+        heat: 460,
+        modulus: 200,
+      },
+      {
+        code: 'SS430',
+        name: 'Type 430 Ferritic Stainless',
+        density: 7750,
+        expansion: 10.4,
+        conductivity: 26.1,
+        heat: 460,
+        modulus: 200,
+      },
+      {
+        code: 'A671_WELDED',
+        name: 'ASTM A671 Welded Carbon Steel',
+        density: 7850,
+        expansion: 11.7,
+        conductivity: 51.9,
+        heat: 486,
+        modulus: 200,
+      },
+      {
+        code: 'A672_WELDED',
+        name: 'ASTM A672 Welded Carbon Steel',
+        density: 7850,
+        expansion: 11.7,
+        conductivity: 51.9,
+        heat: 486,
+        modulus: 200,
+      },
+      {
+        code: 'A691_WELDED',
+        name: 'ASTM A691 Welded Cr-Mo Alloy',
+        density: 7750,
+        expansion: 12.1,
+        conductivity: 42.3,
+        heat: 473,
+        modulus: 207,
+      },
     ];
 
     for (const props of newMaterialProps) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO material_physical_properties (material_code, material_name, density_kg_m3, thermal_expansion_coeff, thermal_conductivity_w_mk, specific_heat_j_kgk, elastic_modulus_gpa)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (material_code) DO UPDATE SET
@@ -606,7 +733,17 @@ export class AddRemainingPipeAndMaterialGaps1774700000000 implements MigrationIn
           thermal_conductivity_w_mk = EXCLUDED.thermal_conductivity_w_mk,
           specific_heat_j_kgk = EXCLUDED.specific_heat_j_kgk,
           elastic_modulus_gpa = EXCLUDED.elastic_modulus_gpa
-      `, [props.code, props.name, props.density, props.expansion, props.conductivity, props.heat, props.modulus]);
+      `,
+        [
+          props.code,
+          props.name,
+          props.density,
+          props.expansion,
+          props.conductivity,
+          props.heat,
+          props.modulus,
+        ],
+      );
     }
 
     console.warn('Physical properties for new materials added.');
@@ -617,27 +754,58 @@ export class AddRemainingPipeAndMaterialGaps1774700000000 implements MigrationIn
     console.warn('Rollback: Removing added pipe and material data...');
 
     const gradesToRemove = [
-      'ASTM_A268_TP409', 'ASTM_A268_TP410', 'ASTM_A268_TP430',
-      'ASTM_A671_CC60', 'ASTM_A671_CC65', 'ASTM_A671_CC70',
-      'ASTM_A672_C60', 'ASTM_A672_C65', 'ASTM_A672_C70',
-      'ASTM_A691_1CR', 'ASTM_A691_1_25CR', 'ASTM_A691_2_25CR',
-      'ASTM_A691_5CR', 'ASTM_A691_9CR', 'ASTM_A691_91',
-      'ASTM_A358_TP321', 'ASTM_A358_TP347', 'ASTM_A358_S31803',
+      'ASTM_A268_TP409',
+      'ASTM_A268_TP410',
+      'ASTM_A268_TP430',
+      'ASTM_A671_CC60',
+      'ASTM_A671_CC65',
+      'ASTM_A671_CC70',
+      'ASTM_A672_C60',
+      'ASTM_A672_C65',
+      'ASTM_A672_C70',
+      'ASTM_A691_1CR',
+      'ASTM_A691_1_25CR',
+      'ASTM_A691_2_25CR',
+      'ASTM_A691_5CR',
+      'ASTM_A691_9CR',
+      'ASTM_A691_91',
+      'ASTM_A358_TP321',
+      'ASTM_A358_TP347',
+      'ASTM_A358_S31803',
     ];
 
     for (const code of gradesToRemove) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         DELETE FROM pipe_allowable_stresses WHERE grade_id IN (SELECT id FROM pipe_steel_grades WHERE code = $1)
-      `, [code]);
-      await queryRunner.query(`DELETE FROM pipe_steel_grades WHERE code = $1`, [code]);
+      `,
+        [code],
+      );
+      await queryRunner.query(`DELETE FROM pipe_steel_grades WHERE code = $1`, [
+        code,
+      ]);
     }
 
-    await queryRunner.query(`DELETE FROM pipe_schedules WHERE schedule = 'XXS' AND nps IN ('14', '16', '18', '20', '24')`);
-    await queryRunner.query(`DELETE FROM pipe_schedule_walls WHERE schedule = 'XXS' AND nps IN ('14', '16', '18', '20', '24')`);
+    await queryRunner.query(
+      `DELETE FROM pipe_schedules WHERE schedule = 'XXS' AND nps IN ('14', '16', '18', '20', '24')`,
+    );
+    await queryRunner.query(
+      `DELETE FROM pipe_schedule_walls WHERE schedule = 'XXS' AND nps IN ('14', '16', '18', '20', '24')`,
+    );
 
-    const materialCodesToRemove = ['SS409', 'SS410', 'SS430', 'A671_WELDED', 'A672_WELDED', 'A691_WELDED'];
+    const materialCodesToRemove = [
+      'SS409',
+      'SS410',
+      'SS430',
+      'A671_WELDED',
+      'A672_WELDED',
+      'A691_WELDED',
+    ];
     for (const code of materialCodesToRemove) {
-      await queryRunner.query(`DELETE FROM material_physical_properties WHERE material_code = $1`, [code]);
+      await queryRunner.query(
+        `DELETE FROM material_physical_properties WHERE material_code = $1`,
+        [code],
+      );
     }
 
     console.warn('Rollback complete.');

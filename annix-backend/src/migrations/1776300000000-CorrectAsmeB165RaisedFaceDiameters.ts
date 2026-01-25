@@ -1,17 +1,15 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CorrectAsmeB165RaisedFaceDiameters1776300000000
-  implements MigrationInterface
-{
+export class CorrectAsmeB165RaisedFaceDiameters1776300000000 implements MigrationInterface {
   name = 'CorrectAsmeB165RaisedFaceDiameters1776300000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.warn(
-      'Correcting ASME B16.5 raised face diameter (d4) values per MPS Technical Manual...'
+      'Correcting ASME B16.5 raised face diameter (d4) values per MPS Technical Manual...',
     );
 
     const asmeB165Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'ASME B16.5'`
+      `SELECT id FROM flange_standards WHERE code = 'ASME B16.5'`,
     );
     if (asmeB165Result.length === 0) {
       console.warn('ASME B16.5 standard not found, skipping...');
@@ -24,15 +22,15 @@ export class CorrectAsmeB165RaisedFaceDiameters1776300000000
     // Raised face diameter is the same across all pressure classes for a given pipe size
     // Note: /8 (Blind) flanges keep d4=0 as they don't have a raised face opening
     const correctD4Values: Record<number, number> = {
-      15: 35,   // 1/2" NPS: G = 1.38" = 35mm
-      20: 43,   // 3/4" NPS: G = 1.69" = 43mm
-      25: 51,   // 1" NPS: G = 2.00" = 51mm
-      32: 64,   // 1-1/4" NPS: G = 2.50" = 64mm
-      40: 73,   // 1-1/2" NPS: G = 2.88" = 73mm
-      50: 92,   // 2" NPS: G = 3.62" = 92mm
-      65: 105,  // 2-1/2" NPS: G = 4.12" = 105mm
-      80: 127,  // 3" NPS: G = 5.00" = 127mm
-      90: 140,  // 3-1/2" NPS: G = 5.50" = 140mm
+      15: 35, // 1/2" NPS: G = 1.38" = 35mm
+      20: 43, // 3/4" NPS: G = 1.69" = 43mm
+      25: 51, // 1" NPS: G = 2.00" = 51mm
+      32: 64, // 1-1/4" NPS: G = 2.50" = 64mm
+      40: 73, // 1-1/2" NPS: G = 2.88" = 73mm
+      50: 92, // 2" NPS: G = 3.62" = 92mm
+      65: 105, // 2-1/2" NPS: G = 4.12" = 105mm
+      80: 127, // 3" NPS: G = 5.00" = 127mm
+      90: 140, // 3-1/2" NPS: G = 5.50" = 140mm
       100: 157, // 4" NPS: G = 6.19" = 157mm
       125: 186, // 5" NPS: G = 7.31" = 186mm
       150: 216, // 6" NPS: G = 8.50" = 216mm
@@ -48,7 +46,7 @@ export class CorrectAsmeB165RaisedFaceDiameters1776300000000
 
     const getTypeId = async (code: string) => {
       const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`
+        `SELECT id FROM flange_types WHERE code = '${code}'`,
       );
       return result[0]?.id;
     };
@@ -84,23 +82,25 @@ export class CorrectAsmeB165RaisedFaceDiameters1776300000000
 
       const rowCount = result[1] || 0;
       if (rowCount > 0) {
-        console.warn(`Updated ${rowCount} records for ${nb}NB to d4=${correctD4}`);
+        console.warn(
+          `Updated ${rowCount} records for ${nb}NB to d4=${correctD4}`,
+        );
         updatedCount += rowCount;
       }
     }
 
     console.warn(
-      `ASME B16.5 raised face diameter corrections complete. Updated ${updatedCount} total records.`
+      `ASME B16.5 raised face diameter corrections complete. Updated ${updatedCount} total records.`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     console.warn(
-      'Reverting ASME B16.5 raised face diameters to previous (incorrect) pipe OD values'
+      'Reverting ASME B16.5 raised face diameters to previous (incorrect) pipe OD values',
     );
 
     const asmeB165Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'ASME B16.5'`
+      `SELECT id FROM flange_standards WHERE code = 'ASME B16.5'`,
     );
     if (asmeB165Result.length === 0) return;
     const asmeB165Id = asmeB165Result[0].id;
@@ -131,7 +131,7 @@ export class CorrectAsmeB165RaisedFaceDiameters1776300000000
 
     const getTypeId = async (code: string) => {
       const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`
+        `SELECT id FROM flange_types WHERE code = '${code}'`,
       );
       return result[0]?.id;
     };

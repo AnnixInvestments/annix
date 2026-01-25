@@ -87,11 +87,15 @@ export class AddGasketDimensionData1773100000000 implements MigrationInterface {
 
     for (const gasket of asmeB165Gaskets) {
       for (const gt of gasketTypes) {
-        const area = Math.PI * (Math.pow(gasket.od / 2, 2) - Math.pow(gasket.id / 2, 2)) / 1000000;
+        const area =
+          (Math.PI *
+            (Math.pow(gasket.od / 2, 2) - Math.pow(gasket.id / 2, 2))) /
+          1000000;
         const volume = area * (gasket.t / 1000);
         const weightKg = volume * gt.density * 1000;
 
-        await queryRunner.query(`
+        await queryRunner.query(
+          `
           INSERT INTO gasket_weights (
             gasket_type, nominal_bore_mm, weight_kg,
             inner_diameter_mm, outer_diameter_mm, thickness_mm,
@@ -99,17 +103,19 @@ export class AddGasketDimensionData1773100000000 implements MigrationInterface {
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           ON CONFLICT DO NOTHING
-        `, [
-          gt.type,
-          gasket.nb,
-          Math.round(weightKg * 1000) / 1000,
-          gasket.id,
-          gasket.od,
-          gasket.t,
-          'ASME B16.5',
-          gasket.class,
-          gt.material,
-        ]);
+        `,
+          [
+            gt.type,
+            gasket.nb,
+            Math.round(weightKg * 1000) / 1000,
+            gasket.id,
+            gasket.od,
+            gasket.t,
+            'ASME B16.5',
+            gasket.class,
+            gt.material,
+          ],
+        );
       }
     }
 
@@ -137,11 +143,15 @@ export class AddGasketDimensionData1773100000000 implements MigrationInterface {
 
     for (const gasket of bs4504Gaskets) {
       for (const gt of gasketTypes) {
-        const area = Math.PI * (Math.pow(gasket.od / 2, 2) - Math.pow(gasket.id / 2, 2)) / 1000000;
+        const area =
+          (Math.PI *
+            (Math.pow(gasket.od / 2, 2) - Math.pow(gasket.id / 2, 2))) /
+          1000000;
         const volume = area * (gasket.t / 1000);
         const weightKg = volume * gt.density * 1000;
 
-        await queryRunner.query(`
+        await queryRunner.query(
+          `
           INSERT INTO gasket_weights (
             gasket_type, nominal_bore_mm, weight_kg,
             inner_diameter_mm, outer_diameter_mm, thickness_mm,
@@ -149,17 +159,19 @@ export class AddGasketDimensionData1773100000000 implements MigrationInterface {
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           ON CONFLICT DO NOTHING
-        `, [
-          gt.type,
-          gasket.nb,
-          Math.round(weightKg * 1000) / 1000,
-          gasket.id,
-          gasket.od,
-          gasket.t,
-          'BS 4504',
-          gasket.class,
-          gt.material,
-        ]);
+        `,
+          [
+            gt.type,
+            gasket.nb,
+            Math.round(weightKg * 1000) / 1000,
+            gasket.id,
+            gasket.od,
+            gasket.t,
+            'BS 4504',
+            gasket.class,
+            gt.material,
+          ],
+        );
       }
     }
 

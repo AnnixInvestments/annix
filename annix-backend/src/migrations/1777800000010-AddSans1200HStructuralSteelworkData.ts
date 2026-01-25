@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddSans1200HStructuralSteelworkData1777800000010
-  implements MigrationInterface
-{
+export class AddSans1200HStructuralSteelworkData1777800000010 implements MigrationInterface {
   name = 'AddSans1200HStructuralSteelworkData1777800000010';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -376,18 +374,36 @@ export class AddSans1200HStructuralSteelworkData1777800000010
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_referenced_standards`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS sans1200h_referenced_standards`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_welding_standards`);
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_assembly_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_grouting_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_gantry_rail_tolerances`);
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_erection_tolerances`);
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_fabrication_tolerances`);
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_rivet_defect_limits`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS sans1200h_assembly_requirements`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS sans1200h_grouting_requirements`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS sans1200h_gantry_rail_tolerances`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS sans1200h_erection_tolerances`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS sans1200h_fabrication_tolerances`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS sans1200h_rivet_defect_limits`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_cutting_methods`);
     await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_hole_clearances`);
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_bolt_tension_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_bolt_specifications`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS sans1200h_bolt_tension_requirements`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS sans1200h_bolt_specifications`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_steel_grades`);
   }
 }

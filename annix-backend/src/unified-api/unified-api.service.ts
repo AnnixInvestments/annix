@@ -39,23 +39,23 @@ const GALVANIC_COMPATIBILITY: Record<string, Record<string, boolean>> = {
   'Carbon Steel': {
     'Carbon Steel': true,
     'Stainless Steel': false,
-    'Duplex': false,
-    'Copper': false,
-    'Aluminum': false,
+    Duplex: false,
+    Copper: false,
+    Aluminum: false,
   },
   'Stainless Steel': {
     'Carbon Steel': false,
     'Stainless Steel': true,
-    'Duplex': true,
-    'Copper': true,
-    'Aluminum': false,
+    Duplex: true,
+    Copper: true,
+    Aluminum: false,
   },
-  'Duplex': {
+  Duplex: {
     'Carbon Steel': false,
     'Stainless Steel': true,
-    'Duplex': true,
-    'Copper': true,
-    'Aluminum': false,
+    Duplex: true,
+    Copper: true,
+    Aluminum: false,
   },
 };
 
@@ -181,7 +181,8 @@ export class UnifiedApiService {
       LIMIT 1
     `;
 
-    const nps = flange.nps || this.nominalBoreToNps(flange.nominal_bore_mm as number);
+    const nps =
+      flange.nps || this.nominalBoreToNps(flange.nominal_bore_mm as number);
     const boltingResults = await this.dataSource.query(boltingQuery, [
       flange.standard_code,
       flange.pressure_class,
@@ -277,7 +278,9 @@ export class UnifiedApiService {
     }));
   }
 
-  private async gasketInfo(nominalBoreMm: number): Promise<GasketInfoDto | null> {
+  private async gasketInfo(
+    nominalBoreMm: number,
+  ): Promise<GasketInfoDto | null> {
     const query = `
       SELECT gasket_type, weight_kg, inner_diameter_mm, outer_diameter_mm
       FROM gasket_weights
@@ -429,7 +432,9 @@ export class UnifiedApiService {
         unsNumber: r.uns_number as string,
         astmEquivalent: r.astm_equivalent as string,
         category: r.material_category as string,
-        densityKgM3: r.density_kg_m3 ? parseFloat(r.density_kg_m3 as string) : undefined,
+        densityKgM3: r.density_kg_m3
+          ? parseFloat(r.density_kg_m3 as string)
+          : undefined,
         minTempC: r.min_temp_c ? parseFloat(r.min_temp_c as string) : undefined,
         maxTempC: r.max_temp_c ? parseFloat(r.max_temp_c as string) : undefined,
         yieldStrengthMPa: r.yield_strength_mpa
@@ -481,7 +486,9 @@ export class UnifiedApiService {
         unsNumber: r.uns_number as string,
         astmEquivalent: r.astm_equivalent as string,
         category: r.material_category as string,
-        densityKgM3: r.density_kg_m3 ? parseFloat(r.density_kg_m3 as string) : undefined,
+        densityKgM3: r.density_kg_m3
+          ? parseFloat(r.density_kg_m3 as string)
+          : undefined,
         minTempC: r.min_temp_c ? parseFloat(r.min_temp_c as string) : undefined,
         maxTempC: r.max_temp_c ? parseFloat(r.max_temp_c as string) : undefined,
         matchScore,
@@ -524,9 +531,15 @@ export class UnifiedApiService {
     const issues: CompatibilityIssueDto[] = [];
     let score = 100;
 
-    const flangeComponents = dto.components.filter((c) => c.componentType === 'flange');
-    const pipeComponents = dto.components.filter((c) => c.componentType === 'pipe');
-    const boltComponents = dto.components.filter((c) => c.componentType === 'bolt');
+    const flangeComponents = dto.components.filter(
+      (c) => c.componentType === 'flange',
+    );
+    const pipeComponents = dto.components.filter(
+      (c) => c.componentType === 'pipe',
+    );
+    const boltComponents = dto.components.filter(
+      (c) => c.componentType === 'bolt',
+    );
 
     for (const flange of flangeComponents) {
       if (flange.pressureClassId) {
@@ -575,7 +588,10 @@ export class UnifiedApiService {
     for (const bolt of boltComponents) {
       if (bolt.threadPitchMm && bolt.boltDiameterMm) {
         const expectedPitch = ISO_METRIC_THREAD_PITCHES[bolt.boltDiameterMm];
-        if (expectedPitch && Math.abs(bolt.threadPitchMm - expectedPitch) > 0.1) {
+        if (
+          expectedPitch &&
+          Math.abs(bolt.threadPitchMm - expectedPitch) > 0.1
+        ) {
           issues.push({
             severity: 'warning',
             code: 'NON_STANDARD_THREAD_PITCH',
@@ -600,7 +616,8 @@ export class UnifiedApiService {
           code: 'MIXED_FLANGE_STANDARDS',
           message: 'Assembly contains flanges from different standards',
           affectedComponents: ['flange'],
-          recommendation: 'Use flanges from the same standard for proper mating',
+          recommendation:
+            'Use flanges from the same standard for proper mating',
         });
         score -= 25;
       }
@@ -614,7 +631,9 @@ export class UnifiedApiService {
       const uniqueBores = [...new Set(nominalBores)];
       if (uniqueBores.length > 1) {
         const isReducer = dto.components.some(
-          (c) => c.componentType === 'fitting' && c.material?.toLowerCase().includes('reducer'),
+          (c) =>
+            c.componentType === 'fitting' &&
+            c.material?.toLowerCase().includes('reducer'),
         );
 
         if (!isReducer) {
@@ -625,7 +644,8 @@ export class UnifiedApiService {
             affectedComponents: dto.components
               .filter((c) => c.nominalBoreMm)
               .map((c) => c.componentType),
-            recommendation: 'Verify bore size compatibility or include appropriate reducers',
+            recommendation:
+              'Verify bore size compatibility or include appropriate reducers',
           });
           score -= 10;
         }
@@ -669,7 +689,9 @@ export class UnifiedApiService {
           severity: 'warning',
           code: 'LOW_TEMP_IMPACT_TESTING',
           message: `Materials may require impact testing for service at ${dto.designTemperatureC}°C`,
-          affectedComponents: nonImpactTestedMaterials.map((c) => c.componentType),
+          affectedComponents: nonImpactTestedMaterials.map(
+            (c) => c.componentType,
+          ),
           recommendation:
             'Verify impact testing requirements per ASME B31.3 or use low-temperature rated materials',
         });
@@ -683,7 +705,10 @@ export class UnifiedApiService {
       isValid: !issues.some((i) => i.severity === 'error'),
       score,
       issues,
-      maxPressureAtTempBar: await this.maxPressureAtTemp(flangeComponents, dto.designTemperatureC),
+      maxPressureAtTempBar: await this.maxPressureAtTemp(
+        flangeComponents,
+        dto.designTemperatureC,
+      ),
       temperatureRangeC: this.temperatureRange(dto.components),
       materialCompatibility: this.buildCompatibilityMatrix(uniqueCategories),
     };
@@ -729,7 +754,8 @@ export class UnifiedApiService {
         const currPressure = parseFloat(current.max_pressure_bar);
 
         const ratio = (designTempC - prevTemp) / (temp - prevTemp);
-        maxPressureAtTemp = prevPressure + ratio * (currPressure - prevPressure);
+        maxPressureAtTemp =
+          prevPressure + ratio * (currPressure - prevPressure);
         break;
       }
     }
@@ -743,7 +769,8 @@ export class UnifiedApiService {
       return {
         isValid: false,
         message: `Design pressure ${designPressureBar} bar exceeds max rating ${maxPressureAtTemp.toFixed(1)} bar at ${designTempC}°C`,
-        recommendation: 'Select a higher pressure class or reduce design pressure',
+        recommendation:
+          'Select a higher pressure class or reduce design pressure',
       };
     }
 
@@ -844,7 +871,11 @@ export class UnifiedApiService {
       } else if (m.includes('duplex')) {
         minTemp = Math.min(minTemp, -50);
         maxTemp = Math.max(maxTemp, 300);
-      } else if (m.includes('a105') || m.includes('a106') || m.includes('carbon')) {
+      } else if (
+        m.includes('a105') ||
+        m.includes('a106') ||
+        m.includes('carbon')
+      ) {
         minTemp = Math.max(minTemp, -29);
         maxTemp = Math.min(maxTemp, 400);
       }

@@ -41,7 +41,9 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
     );
 
     if (b165Result.length === 0) {
-      console.warn('⚠️ ASME B16.5 standard not found after insert, skipping...');
+      console.warn(
+        '⚠️ ASME B16.5 standard not found after insert, skipping...',
+      );
       return;
     }
 
@@ -502,7 +504,9 @@ export class AddASMEFlangeStandardsAndPTRatings1766001600000 implements Migratio
     }
     console.warn('  ✓ Added P-T ratings for ASME B16.47 Series A & B');
 
-    console.warn('✅ ASME flange standards and P-T ratings added successfully!');
+    console.warn(
+      '✅ ASME flange standards and P-T ratings added successfully!',
+    );
   }
 
   private async insertPTRatings(

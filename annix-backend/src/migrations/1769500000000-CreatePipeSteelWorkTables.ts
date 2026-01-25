@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreatePipeSteelWorkTables1769500000000
-  implements MigrationInterface
-{
+export class CreatePipeSteelWorkTables1769500000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TYPE pipe_steel_work_type AS ENUM (
@@ -108,7 +106,9 @@ export class CreatePipeSteelWorkTables1769500000000
     await this.seedBracketTypeData(queryRunner);
   }
 
-  private async seedSupportSpacingData(queryRunner: QueryRunner): Promise<void> {
+  private async seedSupportSpacingData(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
     const spacingData = [
       { nb: 15, nps: '1/2"', water: 2.1, vapor: 2.7, rod: 10 },
       { nb: 20, nps: '3/4"', water: 2.4, vapor: 3.0, rod: 10 },

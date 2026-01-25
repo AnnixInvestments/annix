@@ -12,17 +12,10 @@ import {
   weldCountPerBend as getWeldCountPerBend,
   hasLooseFlange,
   getScheduleListForSpec,
-  NB_TO_OD_LOOKUP,
-  flangeWeight as getFlangeWeight,
-  blankFlangeWeight as getBlankFlangeWeight,
-  sansBlankFlangeWeight,
   tackWeldWeight as getTackWeldWeight,
   closureWeight as getClosureWeight,
   closureLengthLimits,
-  retainingRingWeight,
-  SABS_1123_FLANGE_TYPES,
   SABS_1123_PRESSURE_CLASSES,
-  BS_4504_FLANGE_TYPES,
   BS_4504_PRESSURE_CLASSES,
   recommendedFlangeTypeCode,
   recommendedPressureClassId,
@@ -33,6 +26,15 @@ import {
   MIN_BEND_DEGREES,
   MAX_BEND_DEGREES,
 } from '@/app/lib/config/rfq';
+import {
+  NB_TO_OD_LOOKUP,
+  flangeWeightSync as getFlangeWeight,
+  blankFlangeWeightSync as getBlankFlangeWeight,
+  sansBlankFlangeWeightSync as sansBlankFlangeWeight,
+  retainingRingWeightSync as retainingRingWeight,
+  SABS_1123_FLANGE_TYPES,
+  BS_4504_FLANGE_TYPES,
+} from '@/app/lib/hooks/useFlangeWeights';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 import { WorkingConditionsSection } from '@/app/components/rfq/WorkingConditionsSection';
 import { MaterialSuitabilityWarning } from '@/app/components/rfq/MaterialSuitabilityWarning';

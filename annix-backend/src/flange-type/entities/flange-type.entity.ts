@@ -18,6 +18,11 @@ export class FlangeType {
   @Column({ type: 'varchar', length: 255, nullable: true })
   description: string | null;
 
-  @Column({ type: 'varchar', length: 100, nullable: true, name: 'standard_reference' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'standard_reference',
+  })
   standardReference: string | null; // e.g., "ASME B16.5"
 }

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 
-export class CreateRfqSequencesTable1769400000000
-  implements MigrationInterface
-{
+export class CreateRfqSequencesTable1769400000000 implements MigrationInterface {
   name = 'CreateRfqSequencesTable1769400000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

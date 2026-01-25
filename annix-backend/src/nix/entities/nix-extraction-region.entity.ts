@@ -30,10 +30,20 @@ export class NixExtractionRegion {
   @Column({ name: 'region_coordinates', type: 'jsonb' })
   regionCoordinates: RegionCoordinates;
 
-  @Column({ name: 'extraction_pattern', type: 'varchar', length: 500, nullable: true })
+  @Column({
+    name: 'extraction_pattern',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
   extractionPattern: string | null;
 
-  @Column({ name: 'sample_value', type: 'varchar', length: 500, nullable: true })
+  @Column({
+    name: 'sample_value',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
   sampleValue: string | null;
 
   @Column({ name: 'confidence_threshold', type: 'float', default: 0.7 })

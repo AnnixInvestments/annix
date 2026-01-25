@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateRubberLiningTables1737052800000
-  implements MigrationInterface
-{
+export class CreateRubberLiningTables1737052800000 implements MigrationInterface {
   name = 'CreateRubberLiningTables1737052800000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -89,10 +87,18 @@ export class CreateRubberLiningTables1737052800000
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX "IDX_rubber_specs_type" ON "rubber_specifications" ("rubber_type_id")`);
-    await queryRunner.query(`CREATE INDEX "IDX_rubber_specs_grade" ON "rubber_specifications" ("grade")`);
-    await queryRunner.query(`CREATE INDEX "IDX_rubber_app_ratings_type" ON "rubber_application_ratings" ("rubber_type_id")`);
-    await queryRunner.query(`CREATE INDEX "IDX_rubber_app_ratings_category" ON "rubber_application_ratings" ("chemical_category")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_rubber_specs_type" ON "rubber_specifications" ("rubber_type_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_rubber_specs_grade" ON "rubber_specifications" ("grade")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_rubber_app_ratings_type" ON "rubber_application_ratings" ("rubber_type_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_rubber_app_ratings_category" ON "rubber_application_ratings" ("chemical_category")`,
+    );
 
     await queryRunner.query(`
       INSERT INTO "rubber_types" ("type_number", "type_name", "polymer_codes", "polymer_names", "description", "temp_min_celsius", "temp_max_celsius", "ozone_resistance", "oil_resistance", "chemical_resistance_notes", "not_suitable_for", "typical_applications") VALUES
@@ -243,13 +249,23 @@ export class CreateRubberLiningTables1737052800000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_app_ratings_category"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_app_ratings_type"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_rubber_app_ratings_category"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_rubber_app_ratings_type"`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_specs_grade"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_specs_type"`);
-    await queryRunner.query(`DROP TABLE IF EXISTS "rubber_adhesion_requirements"`);
-    await queryRunner.query(`DROP TABLE IF EXISTS "rubber_thickness_recommendations"`);
-    await queryRunner.query(`DROP TABLE IF EXISTS "rubber_application_ratings"`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "rubber_adhesion_requirements"`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "rubber_thickness_recommendations"`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "rubber_application_ratings"`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "rubber_specifications"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "rubber_types"`);
   }

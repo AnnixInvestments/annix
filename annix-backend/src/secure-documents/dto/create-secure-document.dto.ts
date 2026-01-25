@@ -22,7 +22,11 @@ export class CreateSecureDocumentDto {
   @IsOptional()
   folder?: string;
 
-  @ApiProperty({ example: 'excel', required: false, enum: ['markdown', 'pdf', 'excel', 'word', 'other'] })
+  @ApiProperty({
+    example: 'excel',
+    required: false,
+    enum: ['markdown', 'pdf', 'excel', 'word', 'other'],
+  })
   @IsString()
   @IsOptional()
   fileType?: string;
@@ -32,7 +36,10 @@ export class CreateSecureDocumentDto {
   @IsOptional()
   originalFilename?: string;
 
-  @ApiProperty({ example: 'secure-documents/attachments/abc123.xlsx', required: false })
+  @ApiProperty({
+    example: 'secure-documents/attachments/abc123.xlsx',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   attachmentPath?: string;

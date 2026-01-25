@@ -23,7 +23,10 @@ export class SpectacleBlindService {
     });
   }
 
-  findByNpsAndClass(nps: string, pressureClass: string): Promise<SpectacleBlind | null> {
+  findByNpsAndClass(
+    nps: string,
+    pressureClass: string,
+  ): Promise<SpectacleBlind | null> {
     return this.spectacleBlindRepository.findOne({
       where: { nps, pressureClass },
     });

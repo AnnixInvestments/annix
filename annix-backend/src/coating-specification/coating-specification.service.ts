@@ -242,9 +242,7 @@ export class CoatingSpecificationService {
   /**
    * Get all paint systems for a category (ISO 12944-5:2018)
    */
-  async systemsByCategory(
-    category: string,
-  ): Promise<CoatingSpecification[]> {
+  async systemsByCategory(category: string): Promise<CoatingSpecification[]> {
     const environment = await this.environmentRepository.findOne({
       where: {
         standard: { code: 'ISO 12944' },

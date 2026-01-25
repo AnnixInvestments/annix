@@ -4,7 +4,9 @@ export class AddStructuralSteelAndWeldFillerData1774600000000 implements Migrati
   name = 'AddStructuralSteelAndWeldFillerData1774600000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding additional structural steel grades and weld filler metal data...');
+    console.warn(
+      'Adding additional structural steel grades and weld filler metal data...',
+    );
 
     const additionalStructuralGrades = [
       {
@@ -13,7 +15,14 @@ export class AddStructuralSteelAndWeldFillerData1774600000000 implements Migrati
         standard: 'ASTM',
         yieldMpa: 450,
         tensileMpa: 550,
-        types: ['angle_equal', 'angle_unequal', 'channel', 'beam_wf', 'beam_i', 'plate'],
+        types: [
+          'angle_equal',
+          'angle_unequal',
+          'channel',
+          'beam_wf',
+          'beam_i',
+          'plate',
+        ],
         desc: 'High-strength low-alloy structural steel - Grade 65',
       },
       {
@@ -22,7 +31,17 @@ export class AddStructuralSteelAndWeldFillerData1774600000000 implements Migrati
         standard: 'SABS',
         yieldMpa: 300,
         tensileMpa: 400,
-        types: ['angle_equal', 'angle_unequal', 'channel', 'beam_wf', 'beam_i', 'plate', 'bar_flat', 'bar_round', 'bar_square'],
+        types: [
+          'angle_equal',
+          'angle_unequal',
+          'channel',
+          'beam_wf',
+          'beam_i',
+          'plate',
+          'bar_flat',
+          'bar_round',
+          'bar_square',
+        ],
         desc: 'South African standard structural steel',
       },
       {
@@ -31,13 +50,24 @@ export class AddStructuralSteelAndWeldFillerData1774600000000 implements Migrati
         standard: 'SABS',
         yieldMpa: 350,
         tensileMpa: 450,
-        types: ['angle_equal', 'angle_unequal', 'channel', 'beam_wf', 'beam_i', 'plate', 'bar_flat', 'bar_round', 'bar_square'],
+        types: [
+          'angle_equal',
+          'angle_unequal',
+          'channel',
+          'beam_wf',
+          'beam_i',
+          'plate',
+          'bar_flat',
+          'bar_round',
+          'bar_square',
+        ],
         desc: 'South African high-strength structural steel',
       },
     ];
 
     for (const grade of additionalStructuralGrades) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO structural_steel_grades (code, name, standard, yield_strength_mpa, tensile_strength_mpa, compatible_types, description)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (code) DO UPDATE SET
@@ -47,7 +77,17 @@ export class AddStructuralSteelAndWeldFillerData1774600000000 implements Migrati
           tensile_strength_mpa = EXCLUDED.tensile_strength_mpa,
           compatible_types = EXCLUDED.compatible_types,
           description = EXCLUDED.description
-      `, [grade.code, grade.name, grade.standard, grade.yieldMpa, grade.tensileMpa, JSON.stringify(grade.types), grade.desc]);
+      `,
+        [
+          grade.code,
+          grade.name,
+          grade.standard,
+          grade.yieldMpa,
+          grade.tensileMpa,
+          JSON.stringify(grade.types),
+          grade.desc,
+        ],
+      );
     }
 
     console.warn('Additional structural steel grades added.');
@@ -419,7 +459,9 @@ export class AddStructuralSteelAndWeldFillerData1774600000000 implements Migrati
     }
 
     for (const filler of weldFillers) {
-      const shieldingGasValue = filler.shieldingGas ? `'${filler.shieldingGas}'` : 'NULL';
+      const shieldingGasValue = filler.shieldingGas
+        ? `'${filler.shieldingGas}'`
+        : 'NULL';
       await queryRunner.query(`
         INSERT INTO weld_filler_metals (code, name, process, "awsClass", "minTensileKsi", "baseMaterials", "shieldingGas", notes)
         VALUES ('${filler.code}', '${filler.name}', '${filler.process}', '${filler.awsClass}', ${filler.minTensileKsi}, '${filler.baseMaterials}', ${shieldingGasValue}, '${filler.notes}')
@@ -453,31 +495,200 @@ export class AddStructuralSteelAndWeldFillerData1774600000000 implements Migrati
     `);
 
     const materialProperties = [
-      { code: 'CARBON_STEEL', name: 'Carbon Steel (General)', density: 7850, expansion: 11.7, conductivity: 51.9, heat: 486, modulus: 200 },
-      { code: 'A106_GRB', name: 'ASTM A106 Grade B', density: 7850, expansion: 11.7, conductivity: 51.9, heat: 486, modulus: 200 },
-      { code: 'A333_GR6', name: 'ASTM A333 Grade 6', density: 7850, expansion: 11.7, conductivity: 51.9, heat: 486, modulus: 200 },
-      { code: 'A335_P11', name: 'ASTM A335 P11 (1.25Cr-0.5Mo)', density: 7750, expansion: 12.1, conductivity: 42.3, heat: 473, modulus: 207 },
-      { code: 'A335_P22', name: 'ASTM A335 P22 (2.25Cr-1Mo)', density: 7750, expansion: 12.4, conductivity: 38.1, heat: 473, modulus: 207 },
-      { code: 'A335_P91', name: 'ASTM A335 P91 (9Cr-1Mo-V)', density: 7770, expansion: 10.8, conductivity: 26.0, heat: 460, modulus: 218 },
-      { code: 'SS304', name: 'Type 304 Stainless Steel', density: 8000, expansion: 17.3, conductivity: 16.2, heat: 500, modulus: 193 },
-      { code: 'SS304L', name: 'Type 304L Stainless Steel', density: 8000, expansion: 17.3, conductivity: 16.2, heat: 500, modulus: 193 },
-      { code: 'SS316', name: 'Type 316 Stainless Steel', density: 8000, expansion: 16.0, conductivity: 16.3, heat: 500, modulus: 193 },
-      { code: 'SS316L', name: 'Type 316L Stainless Steel', density: 8000, expansion: 16.0, conductivity: 16.3, heat: 500, modulus: 193 },
-      { code: 'SS321', name: 'Type 321 Stainless Steel', density: 8000, expansion: 16.6, conductivity: 16.1, heat: 500, modulus: 193 },
-      { code: 'SS347', name: 'Type 347 Stainless Steel', density: 8000, expansion: 16.6, conductivity: 16.1, heat: 500, modulus: 193 },
-      { code: 'DUPLEX_2205', name: 'Duplex 2205 (S31803/S32205)', density: 7800, expansion: 13.0, conductivity: 15.0, heat: 480, modulus: 200 },
-      { code: 'SUPER_DUPLEX_2507', name: 'Super Duplex 2507 (S32750)', density: 7800, expansion: 13.0, conductivity: 14.0, heat: 480, modulus: 200 },
-      { code: 'INCONEL_625', name: 'Inconel 625 (N06625)', density: 8440, expansion: 12.8, conductivity: 9.8, heat: 410, modulus: 208 },
-      { code: 'INCOLOY_800H', name: 'Incoloy 800H (N08810)', density: 7940, expansion: 14.4, conductivity: 11.5, heat: 460, modulus: 196 },
-      { code: 'MONEL_400', name: 'Monel 400 (N04400)', density: 8800, expansion: 13.9, conductivity: 21.8, heat: 427, modulus: 179 },
-      { code: 'INCONEL_600', name: 'Inconel 600 (N06600)', density: 8470, expansion: 13.3, conductivity: 14.9, heat: 444, modulus: 214 },
-      { code: 'HASTELLOY_C276', name: 'Hastelloy C-276 (N10276)', density: 8890, expansion: 11.2, conductivity: 10.2, heat: 427, modulus: 205 },
-      { code: 'A36_STRUCTURAL', name: 'ASTM A36 Structural Steel', density: 7850, expansion: 11.7, conductivity: 51.9, heat: 486, modulus: 200 },
-      { code: 'A572_50', name: 'ASTM A572 Grade 50', density: 7850, expansion: 11.7, conductivity: 51.9, heat: 486, modulus: 200 },
+      {
+        code: 'CARBON_STEEL',
+        name: 'Carbon Steel (General)',
+        density: 7850,
+        expansion: 11.7,
+        conductivity: 51.9,
+        heat: 486,
+        modulus: 200,
+      },
+      {
+        code: 'A106_GRB',
+        name: 'ASTM A106 Grade B',
+        density: 7850,
+        expansion: 11.7,
+        conductivity: 51.9,
+        heat: 486,
+        modulus: 200,
+      },
+      {
+        code: 'A333_GR6',
+        name: 'ASTM A333 Grade 6',
+        density: 7850,
+        expansion: 11.7,
+        conductivity: 51.9,
+        heat: 486,
+        modulus: 200,
+      },
+      {
+        code: 'A335_P11',
+        name: 'ASTM A335 P11 (1.25Cr-0.5Mo)',
+        density: 7750,
+        expansion: 12.1,
+        conductivity: 42.3,
+        heat: 473,
+        modulus: 207,
+      },
+      {
+        code: 'A335_P22',
+        name: 'ASTM A335 P22 (2.25Cr-1Mo)',
+        density: 7750,
+        expansion: 12.4,
+        conductivity: 38.1,
+        heat: 473,
+        modulus: 207,
+      },
+      {
+        code: 'A335_P91',
+        name: 'ASTM A335 P91 (9Cr-1Mo-V)',
+        density: 7770,
+        expansion: 10.8,
+        conductivity: 26.0,
+        heat: 460,
+        modulus: 218,
+      },
+      {
+        code: 'SS304',
+        name: 'Type 304 Stainless Steel',
+        density: 8000,
+        expansion: 17.3,
+        conductivity: 16.2,
+        heat: 500,
+        modulus: 193,
+      },
+      {
+        code: 'SS304L',
+        name: 'Type 304L Stainless Steel',
+        density: 8000,
+        expansion: 17.3,
+        conductivity: 16.2,
+        heat: 500,
+        modulus: 193,
+      },
+      {
+        code: 'SS316',
+        name: 'Type 316 Stainless Steel',
+        density: 8000,
+        expansion: 16.0,
+        conductivity: 16.3,
+        heat: 500,
+        modulus: 193,
+      },
+      {
+        code: 'SS316L',
+        name: 'Type 316L Stainless Steel',
+        density: 8000,
+        expansion: 16.0,
+        conductivity: 16.3,
+        heat: 500,
+        modulus: 193,
+      },
+      {
+        code: 'SS321',
+        name: 'Type 321 Stainless Steel',
+        density: 8000,
+        expansion: 16.6,
+        conductivity: 16.1,
+        heat: 500,
+        modulus: 193,
+      },
+      {
+        code: 'SS347',
+        name: 'Type 347 Stainless Steel',
+        density: 8000,
+        expansion: 16.6,
+        conductivity: 16.1,
+        heat: 500,
+        modulus: 193,
+      },
+      {
+        code: 'DUPLEX_2205',
+        name: 'Duplex 2205 (S31803/S32205)',
+        density: 7800,
+        expansion: 13.0,
+        conductivity: 15.0,
+        heat: 480,
+        modulus: 200,
+      },
+      {
+        code: 'SUPER_DUPLEX_2507',
+        name: 'Super Duplex 2507 (S32750)',
+        density: 7800,
+        expansion: 13.0,
+        conductivity: 14.0,
+        heat: 480,
+        modulus: 200,
+      },
+      {
+        code: 'INCONEL_625',
+        name: 'Inconel 625 (N06625)',
+        density: 8440,
+        expansion: 12.8,
+        conductivity: 9.8,
+        heat: 410,
+        modulus: 208,
+      },
+      {
+        code: 'INCOLOY_800H',
+        name: 'Incoloy 800H (N08810)',
+        density: 7940,
+        expansion: 14.4,
+        conductivity: 11.5,
+        heat: 460,
+        modulus: 196,
+      },
+      {
+        code: 'MONEL_400',
+        name: 'Monel 400 (N04400)',
+        density: 8800,
+        expansion: 13.9,
+        conductivity: 21.8,
+        heat: 427,
+        modulus: 179,
+      },
+      {
+        code: 'INCONEL_600',
+        name: 'Inconel 600 (N06600)',
+        density: 8470,
+        expansion: 13.3,
+        conductivity: 14.9,
+        heat: 444,
+        modulus: 214,
+      },
+      {
+        code: 'HASTELLOY_C276',
+        name: 'Hastelloy C-276 (N10276)',
+        density: 8890,
+        expansion: 11.2,
+        conductivity: 10.2,
+        heat: 427,
+        modulus: 205,
+      },
+      {
+        code: 'A36_STRUCTURAL',
+        name: 'ASTM A36 Structural Steel',
+        density: 7850,
+        expansion: 11.7,
+        conductivity: 51.9,
+        heat: 486,
+        modulus: 200,
+      },
+      {
+        code: 'A572_50',
+        name: 'ASTM A572 Grade 50',
+        density: 7850,
+        expansion: 11.7,
+        conductivity: 51.9,
+        heat: 486,
+        modulus: 200,
+      },
     ];
 
     for (const props of materialProperties) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO material_physical_properties (material_code, material_name, density_kg_m3, thermal_expansion_coeff, thermal_conductivity_w_mk, specific_heat_j_kgk, elastic_modulus_gpa)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (material_code) DO UPDATE SET
@@ -487,7 +698,17 @@ export class AddStructuralSteelAndWeldFillerData1774600000000 implements Migrati
           thermal_conductivity_w_mk = EXCLUDED.thermal_conductivity_w_mk,
           specific_heat_j_kgk = EXCLUDED.specific_heat_j_kgk,
           elastic_modulus_gpa = EXCLUDED.elastic_modulus_gpa
-      `, [props.code, props.name, props.density, props.expansion, props.conductivity, props.heat, props.modulus]);
+      `,
+        [
+          props.code,
+          props.name,
+          props.density,
+          props.expansion,
+          props.conductivity,
+          props.heat,
+          props.modulus,
+        ],
+      );
     }
 
     console.warn('Material physical properties added.');
@@ -495,10 +716,16 @@ export class AddStructuralSteelAndWeldFillerData1774600000000 implements Migrati
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Dropping weld_filler_metals and material_physical_properties tables...');
+    console.warn(
+      'Dropping weld_filler_metals and material_physical_properties tables...',
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS weld_filler_metals`);
-    await queryRunner.query(`DROP TABLE IF EXISTS material_physical_properties`);
-    await queryRunner.query(`DELETE FROM structural_steel_grades WHERE code IN ('A572-65', 'SABS1431-300WA', 'SABS1431-350WA')`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS material_physical_properties`,
+    );
+    await queryRunner.query(
+      `DELETE FROM structural_steel_grades WHERE code IN ('A572-65', 'SABS1431-300WA', 'SABS1431-350WA')`,
+    );
     console.warn('Rollback complete');
   }
 }

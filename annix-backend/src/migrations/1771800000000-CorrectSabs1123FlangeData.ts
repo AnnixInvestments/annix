@@ -1,15 +1,13 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CorrectSabs1123FlangeData1771800000000
-  implements MigrationInterface
-{
+export class CorrectSabs1123FlangeData1771800000000 implements MigrationInterface {
   name = 'CorrectSabs1123FlangeData1771800000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.warn('Correcting SABS 1123 flange dimension data...');
 
     const sabs1123Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'SABS 1123'`
+      `SELECT id FROM flange_standards WHERE code = 'SABS 1123'`,
     );
     if (sabs1123Result.length === 0) {
       console.warn('SABS 1123 standard not found, skipping...');
@@ -36,7 +34,7 @@ export class CorrectSabs1123FlangeData1771800000000
 
     const getTypeId = async (code: string) => {
       const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`
+        `SELECT id FROM flange_types WHERE code = '${code}'`,
       );
       return result[0]?.id;
     };
@@ -44,7 +42,7 @@ export class CorrectSabs1123FlangeData1771800000000
     const getBoltId = async (designation: string) => {
       if (!designation) return null;
       const result = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = '${designation}'`
+        `SELECT id FROM bolts WHERE designation = '${designation}'`,
       );
       return result[0]?.id;
     };
@@ -66,16 +64,20 @@ export class CorrectSabs1123FlangeData1771800000000
       d1: number,
       bolt: string,
       pcd: number,
-      mass: number
+      mass: number,
     ) => {
       const nominalId = await getNominalId(nb);
       const typeId = typeIds[typeCode as keyof typeof typeIds];
       const pressureClassDesignation = `${pressureClass}${typeCode}`;
-      const pressureClassId = await getPressureClassId(pressureClassDesignation);
+      const pressureClassId = await getPressureClassId(
+        pressureClassDesignation,
+      );
       const boltId = bolt ? await getBoltId(bolt) : null;
 
       if (!nominalId || !typeId || !pressureClassId) {
-        console.warn(`Skipping ${nb}NB ${pressureClass}${typeCode} - missing IDs`);
+        console.warn(
+          `Skipping ${nb}NB ${pressureClass}${typeCode} - missing IDs`,
+        );
         return;
       }
 
@@ -268,6 +270,8 @@ export class CorrectSabs1123FlangeData1771800000000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Reverting SABS 1123 corrections is not supported - data was incorrect before');
+    console.warn(
+      'Reverting SABS 1123 corrections is not supported - data was incorrect before',
+    );
   }
 }

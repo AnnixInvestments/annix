@@ -36,9 +36,7 @@ export class FixWeightPerUnitKgValues1769900000000 implements MigrationInterface
              OR bli.total_weight_kg IS DISTINCT FROM ri.total_weight_kg)
     `);
 
-    console.log(
-      'Updated boq_line_items weights to match corrected rfq_items',
-    );
+    console.log('Updated boq_line_items weights to match corrected rfq_items');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

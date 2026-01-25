@@ -27,7 +27,10 @@ export class WasherController {
 
   @Get()
   @ApiOperation({ summary: 'Get all washers with optional filtering' })
-  @ApiResponse({ status: 200, description: 'List of washers retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of washers retrieved successfully',
+  })
   findAll(
     @Query('boltId') boltId?: string,
     @Query('type') type?: string,

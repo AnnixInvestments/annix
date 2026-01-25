@@ -27,6 +27,11 @@ export class ForgedFittingPtRating {
   @Column({ name: 'pressure_mpa', type: 'decimal', precision: 10, scale: 2 })
   pressureMpa: number;
 
-  @Column({ name: 'material_group', type: 'varchar', length: 50, default: 'Carbon Steel' })
+  @Column({
+    name: 'material_group',
+    type: 'varchar',
+    length: 50,
+    default: 'Carbon Steel',
+  })
   materialGroup: string;
 }

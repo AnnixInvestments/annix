@@ -58,12 +58,12 @@ export class ThermalService {
   private readonly fallbackCoefficients: Record<ThermalMaterial, number> = {
     [ThermalMaterial.CARBON_STEEL]: 0.0000117,
     [ThermalMaterial.STAINLESS_304]: 0.0000165,
-    [ThermalMaterial.STAINLESS_316]: 0.0000160,
+    [ThermalMaterial.STAINLESS_316]: 0.000016,
     [ThermalMaterial.DUPLEX_2205]: 0.0000132,
     [ThermalMaterial.INCONEL_625]: 0.0000135,
     [ThermalMaterial.MONEL_400]: 0.0000148,
     [ThermalMaterial.HASTELLOY_C276]: 0.0000124,
-    [ThermalMaterial.COPPER]: 0.0000170,
+    [ThermalMaterial.COPPER]: 0.000017,
     [ThermalMaterial.ALUMINUM_6061]: 0.0000238,
     [ThermalMaterial.CHROME_MOLY_P22]: 0.0000132,
   };
@@ -96,10 +96,13 @@ export class ThermalService {
       toTempC,
     );
 
-    const expansionMm = coefficient * lengthM * 1000 * Math.abs(temperatureChange);
-    const expansionPerMeterMm = coefficient * 1000 * Math.abs(temperatureChange);
+    const expansionMm =
+      coefficient * lengthM * 1000 * Math.abs(temperatureChange);
+    const expansionPerMeterMm =
+      coefficient * 1000 * Math.abs(temperatureChange);
 
-    const recommendedJointCapacityMm = Math.ceil((expansionMm * 1.25) / 25) * 25;
+    const recommendedJointCapacityMm =
+      Math.ceil((expansionMm * 1.25) / 25) * 25;
     const maxSingleJointMovement = 50;
     const recommendedNumberOfJoints =
       expansionMm > maxSingleJointMovement
@@ -213,7 +216,9 @@ export class ThermalService {
         minTemperatureC: b.min_temperature_c,
         faceToFaceLengthMm: parseFloat(b.face_to_face_length_mm),
         weightKg: parseFloat(b.weight_kg),
-        listPriceZar: b.list_price_zar ? parseFloat(b.list_price_zar) : undefined,
+        listPriceZar: b.list_price_zar
+          ? parseFloat(b.list_price_zar)
+          : undefined,
         suitabilityScore,
         notes: this.bellowsNotes(b, dto),
       };
@@ -227,8 +232,13 @@ export class ThermalService {
   }
 
   async loopSizing(dto: LoopSizingDto): Promise<LoopSizingResponseDto> {
-    const { nominalSizeMm, expansionMm, material, schedule, preferredLoopType } =
-      dto;
+    const {
+      nominalSizeMm,
+      expansionMm,
+      material,
+      schedule,
+      preferredLoopType,
+    } = dto;
 
     let exactQuery = `
       SELECT *
@@ -294,8 +304,16 @@ export class ThermalService {
 
     const [lowerResults, higherResults]: [LoopSizing[], LoopSizing[]] =
       await Promise.all([
-        this.dataSource.query(lowerQuery, [nominalSizeMm, material, expansionMm]),
-        this.dataSource.query(higherQuery, [nominalSizeMm, material, expansionMm]),
+        this.dataSource.query(lowerQuery, [
+          nominalSizeMm,
+          material,
+          expansionMm,
+        ]),
+        this.dataSource.query(higherQuery, [
+          nominalSizeMm,
+          material,
+          expansionMm,
+        ]),
       ]);
 
     const nearestLower = lowerResults[0];
@@ -439,7 +457,7 @@ export class ThermalService {
     }
 
     if (!lower) {
-      return parseFloat(higher!.mean_coefficient_per_c);
+      return parseFloat(higher.mean_coefficient_per_c);
     }
 
     if (!higher) {
@@ -485,7 +503,8 @@ export class ThermalService {
           ? 172
           : 165;
 
-    const height = 3 * Math.sqrt((expansionMm * od * 0.03) / allowableStressMpa);
+    const height =
+      3 * Math.sqrt((expansionMm * od * 0.03) / allowableStressMpa);
     const heightMm = height * 1000;
 
     return Math.ceil(heightMm / 50) * 50;
@@ -500,7 +519,8 @@ export class ThermalService {
     const totalAxial =
       parseFloat(bellows.axial_compression_mm) +
       parseFloat(bellows.axial_extension_mm);
-    const axialMargin = (totalAxial - dto.axialMovementMm) / dto.axialMovementMm;
+    const axialMargin =
+      (totalAxial - dto.axialMovementMm) / dto.axialMovementMm;
     if (axialMargin > 0.5) score -= 10;
     if (axialMargin > 1.0) score -= 10;
     if (axialMargin < 0.2) score -= 20;
@@ -522,13 +542,17 @@ export class ThermalService {
     return Math.max(0, Math.min(100, score));
   }
 
-  private bellowsNotes(bellows: BellowsJoint, dto: BellowsSelectionDto): string {
+  private bellowsNotes(
+    bellows: BellowsJoint,
+    dto: BellowsSelectionDto,
+  ): string {
     const notes: string[] = [];
 
     const totalAxial =
       parseFloat(bellows.axial_compression_mm) +
       parseFloat(bellows.axial_extension_mm);
-    const axialMargin = ((totalAxial - dto.axialMovementMm) / dto.axialMovementMm) * 100;
+    const axialMargin =
+      ((totalAxial - dto.axialMovementMm) / dto.axialMovementMm) * 100;
     notes.push(`Axial capacity margin: ${axialMargin.toFixed(0)}%`);
 
     const pressureMargin =

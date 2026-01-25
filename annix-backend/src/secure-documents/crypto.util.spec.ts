@@ -31,7 +31,8 @@ describe('Crypto Utilities', () => {
     });
 
     it('should handle unicode characters', () => {
-      const plaintext = 'Unicode test: \u00e9\u00e8\u00ea \u4e2d\u6587 \ud83d\udd12';
+      const plaintext =
+        'Unicode test: \u00e9\u00e8\u00ea \u4e2d\u6587 \ud83d\udd12';
       const encrypted = encrypt(plaintext, validKey);
       const decrypted = decrypt(encrypted, validKey);
 

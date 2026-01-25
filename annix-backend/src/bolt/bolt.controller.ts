@@ -71,7 +71,11 @@ export class BoltController {
 
   @Get('u-bolts')
   @ApiOperation({ summary: 'Get U-bolts with optional filtering by pipe size' })
-  @ApiQuery({ name: 'nbMm', required: false, description: 'Filter by nominal bore (mm)' })
+  @ApiQuery({
+    name: 'nbMm',
+    required: false,
+    description: 'Filter by nominal bore (mm)',
+  })
   @ApiResponse({ status: 200, description: 'List of U-bolts' })
   uBolts(@Query('nbMm') nbMm?: number) {
     return this.boltService.uBolts(nbMm ? Number(nbMm) : undefined);
@@ -79,7 +83,11 @@ export class BoltController {
 
   @Get('u-bolts/:nbMm')
   @ApiOperation({ summary: 'Get U-bolt for specific pipe size' })
-  @ApiQuery({ name: 'threadSize', required: false, description: 'Filter by thread size' })
+  @ApiQuery({
+    name: 'threadSize',
+    required: false,
+    description: 'Filter by thread size',
+  })
   @ApiResponse({ status: 200, description: 'U-bolt details' })
   uBolt(@Param('nbMm') nbMm: number, @Query('threadSize') threadSize?: string) {
     return this.boltService.uBolt(Number(nbMm), threadSize);
@@ -87,14 +95,25 @@ export class BoltController {
 
   @Get('pipe-clamps')
   @ApiOperation({ summary: 'Get pipe clamps with optional filtering' })
-  @ApiQuery({ name: 'clampType', required: false, description: 'Filter by clamp type code' })
-  @ApiQuery({ name: 'nbMm', required: false, description: 'Filter by nominal bore (mm)' })
+  @ApiQuery({
+    name: 'clampType',
+    required: false,
+    description: 'Filter by clamp type code',
+  })
+  @ApiQuery({
+    name: 'nbMm',
+    required: false,
+    description: 'Filter by nominal bore (mm)',
+  })
   @ApiResponse({ status: 200, description: 'List of pipe clamps' })
   pipeClamps(
     @Query('clampType') clampType?: string,
     @Query('nbMm') nbMm?: number,
   ) {
-    return this.boltService.pipeClamps(clampType, nbMm ? Number(nbMm) : undefined);
+    return this.boltService.pipeClamps(
+      clampType,
+      nbMm ? Number(nbMm) : undefined,
+    );
   }
 
   @Get('pipe-clamps/types')
@@ -107,7 +126,10 @@ export class BoltController {
   @Get('pipe-clamps/:clampType/:nbMm')
   @ApiOperation({ summary: 'Get specific pipe clamp by type and size' })
   @ApiResponse({ status: 200, description: 'Pipe clamp details' })
-  pipeClamp(@Param('clampType') clampType: string, @Param('nbMm') nbMm: number) {
+  pipeClamp(
+    @Param('clampType') clampType: string,
+    @Param('nbMm') nbMm: number,
+  ) {
     return this.boltService.pipeClamp(clampType, Number(nbMm));
   }
 }

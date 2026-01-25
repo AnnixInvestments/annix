@@ -36,11 +36,21 @@ export class ReinforcementPadStandardEntity {
   minPadWidthMm: number;
 
   @ApiProperty({ description: 'Minimum pad thickness (mm)', example: 9.5 })
-  @Column({ name: 'min_pad_thickness_mm', type: 'decimal', precision: 8, scale: 2 })
+  @Column({
+    name: 'min_pad_thickness_mm',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+  })
   minPadThicknessMm: number;
 
   @ApiProperty({ description: 'Typical weight (kg)', example: 1.9 })
-  @Column({ name: 'typical_weight_kg', type: 'decimal', precision: 8, scale: 3 })
+  @Column({
+    name: 'typical_weight_kg',
+    type: 'decimal',
+    precision: 8,
+    scale: 3,
+  })
   typicalWeightKg: number;
 
   @ApiProperty({ description: 'Notes', required: false })

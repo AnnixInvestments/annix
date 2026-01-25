@@ -35,7 +35,12 @@ export class UBoltEntity {
   threadSize: string;
 
   @ApiProperty({ description: 'Thread diameter (mm)', example: 12 })
-  @Column({ name: 'thread_diameter_mm', type: 'decimal', precision: 6, scale: 2 })
+  @Column({
+    name: 'thread_diameter_mm',
+    type: 'decimal',
+    precision: 6,
+    scale: 2,
+  })
   threadDiameterMm: number;
 
   @ApiProperty({ description: 'Inside width at crown (mm)', example: 127 })
@@ -58,12 +63,20 @@ export class UBoltEntity {
   @Column({ name: 'unit_weight_kg', type: 'decimal', precision: 8, scale: 3 })
   unitWeightKg: number;
 
-  @ApiProperty({ description: 'Standard (e.g., DIN 3570)', example: 'DIN 3570' })
+  @ApiProperty({
+    description: 'Standard (e.g., DIN 3570)',
+    example: 'DIN 3570',
+  })
   @Column({ type: 'varchar', length: 50, nullable: true })
   standard: string | null;
 
   @ApiProperty({ description: 'Material grade', example: '4.6' })
-  @Column({ name: 'material_grade', type: 'varchar', length: 20, nullable: true })
+  @Column({
+    name: 'material_grade',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   materialGrade: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

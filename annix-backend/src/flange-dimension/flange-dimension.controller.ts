@@ -22,7 +22,8 @@ export class FlangeDimensionController {
 
   @Get('lookup')
   @ApiOperation({
-    summary: 'Look up flange dimensions by NB, standard, pressure class, and optionally flange type',
+    summary:
+      'Look up flange dimensions by NB, standard, pressure class, and optionally flange type',
   })
   @ApiQuery({ name: 'nominalBoreMm', type: Number, required: true })
   @ApiQuery({ name: 'standardId', type: Number, required: true })

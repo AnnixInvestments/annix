@@ -215,7 +215,8 @@ export class FittingCalculationResultDto {
   wallThicknessMm: number;
 
   @ApiProperty({
-    description: 'Total length of gusset welds in linear meters (for gussetted tees)',
+    description:
+      'Total length of gusset welds in linear meters (for gussetted tees)',
     example: 0.45,
     required: false,
   })

@@ -55,7 +55,11 @@ export class NixController {
 
   @Post('process')
   @ApiOperation({ summary: 'Process a document for extraction' })
-  @ApiResponse({ status: 201, description: 'Document processing started', type: ProcessDocumentResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Document processing started',
+    type: ProcessDocumentResponseDto,
+  })
   async processDocument(
     @Body() dto: ProcessDocumentDto,
   ): Promise<ProcessDocumentResponseDto> {
@@ -77,7 +81,10 @@ export class NixController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Document uploaded and processing started' })
+  @ApiResponse({
+    status: 201,
+    description: 'Document uploaded and processing started',
+  })
   async uploadDocument(
     @UploadedFile() file: Express.Multer.File,
     @Body('userId') userId?: string,
@@ -101,7 +108,11 @@ export class NixController {
 
   @Get('extraction/:id')
   @ApiOperation({ summary: 'Get extraction details by ID' })
-  @ApiResponse({ status: 200, description: 'Extraction details', type: NixExtraction })
+  @ApiResponse({
+    status: 200,
+    description: 'Extraction details',
+    type: NixExtraction,
+  })
   async extraction(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<NixExtraction | null> {
@@ -110,7 +121,11 @@ export class NixController {
 
   @Get('extraction/:id/clarifications')
   @ApiOperation({ summary: 'Get pending clarifications for an extraction' })
-  @ApiResponse({ status: 200, description: 'Pending clarifications', type: [NixClarification] })
+  @ApiResponse({
+    status: 200,
+    description: 'Pending clarifications',
+    type: [NixClarification],
+  })
   async pendingClarifications(
     @Param('id', ParseIntPipe) extractionId: number,
   ): Promise<NixClarification[]> {
@@ -119,7 +134,11 @@ export class NixController {
 
   @Post('clarification')
   @ApiOperation({ summary: 'Submit a clarification response' })
-  @ApiResponse({ status: 201, description: 'Clarification submitted', type: SubmitClarificationResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Clarification submitted',
+    type: SubmitClarificationResponseDto,
+  })
   async submitClarification(
     @Body() dto: SubmitClarificationDto,
   ): Promise<SubmitClarificationResponseDto> {
@@ -128,7 +147,11 @@ export class NixController {
 
   @Get('user/:userId/extractions')
   @ApiOperation({ summary: 'Get extractions for a user' })
-  @ApiResponse({ status: 200, description: 'User extractions', type: [NixExtraction] })
+  @ApiResponse({
+    status: 200,
+    description: 'User extractions',
+    type: [NixExtraction],
+  })
   async userExtractions(
     @Param('userId', ParseIntPipe) userId: number,
   ): Promise<NixExtraction[]> {
@@ -139,7 +162,8 @@ export class NixController {
   @ApiOperation({ summary: 'Seed an admin learning rule' })
   @ApiResponse({ status: 201, description: 'Rule created', type: NixLearning })
   async seedAdminRule(
-    @Body() body: {
+    @Body()
+    body: {
       category: string;
       patternKey: string;
       learnedValue: string;
@@ -156,7 +180,11 @@ export class NixController {
 
   @Get('admin/learning-rules')
   @ApiOperation({ summary: 'Get all admin-seeded learning rules' })
-  @ApiResponse({ status: 200, description: 'Admin learning rules', type: [NixLearning] })
+  @ApiResponse({
+    status: 200,
+    description: 'Admin learning rules',
+    type: [NixLearning],
+  })
   async adminLearningRules(): Promise<NixLearning[]> {
     return this.nixService.adminLearningRules();
   }
@@ -165,7 +193,8 @@ export class NixController {
   @ApiOperation({ summary: 'Submit a user correction for learning' })
   @ApiResponse({ status: 201, description: 'Correction recorded for learning' })
   async submitCorrection(
-    @Body() body: {
+    @Body()
+    body: {
       extractionId?: number;
       itemDescription: string;
       fieldName: string;
@@ -180,19 +209,28 @@ export class NixController {
   @Post('verify-registration-document')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Verify a registration document against expected company data' })
+  @ApiOperation({
+    summary: 'Verify a registration document against expected company data',
+  })
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
         file: { type: 'string', format: 'binary' },
         documentType: { type: 'string', enum: ['vat', 'registration', 'bee'] },
-        expectedData: { type: 'string', description: 'JSON stringified ExpectedCompanyData' },
+        expectedData: {
+          type: 'string',
+          description: 'JSON stringified ExpectedCompanyData',
+        },
       },
       required: ['file', 'documentType', 'expectedData'],
     },
   })
-  @ApiResponse({ status: 201, description: 'Document verification result', type: VerifyRegistrationDocumentResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Document verification result',
+    type: VerifyRegistrationDocumentResponseDto,
+  })
   async verifyRegistrationDocument(
     @UploadedFile() file: Express.Multer.File,
     @Body('documentType') documentType: string,
@@ -203,7 +241,9 @@ export class NixController {
     }
 
     if (!['vat', 'registration', 'bee'].includes(documentType)) {
-      throw new BadRequestException('Invalid document type. Must be one of: vat, registration, bee');
+      throw new BadRequestException(
+        'Invalid document type. Must be one of: vat, registration, bee',
+      );
     }
 
     let expectedData: ExpectedCompanyData;
@@ -234,13 +274,23 @@ export class NixController {
       type: 'object',
       properties: {
         files: { type: 'array', items: { type: 'string', format: 'binary' } },
-        documentTypes: { type: 'string', description: 'JSON array of document types matching files order' },
-        expectedData: { type: 'string', description: 'JSON stringified ExpectedCompanyData' },
+        documentTypes: {
+          type: 'string',
+          description: 'JSON array of document types matching files order',
+        },
+        expectedData: {
+          type: 'string',
+          description: 'JSON stringified ExpectedCompanyData',
+        },
       },
       required: ['files', 'documentTypes', 'expectedData'],
     },
   })
-  @ApiResponse({ status: 201, description: 'Batch verification result', type: VerifyRegistrationBatchResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Batch verification result',
+    type: VerifyRegistrationBatchResponseDto,
+  })
   async verifyRegistrationBatch(
     @UploadedFiles() files: Express.Multer.File[],
     @Body('documentTypes') documentTypesJson: string,
@@ -258,7 +308,9 @@ export class NixController {
     }
 
     if (documentTypes.length !== files.length) {
-      throw new BadRequestException('Number of document types must match number of files');
+      throw new BadRequestException(
+        'Number of document types must match number of files',
+      );
     }
 
     let expectedData: ExpectedCompanyData;
@@ -273,29 +325,38 @@ export class NixController {
       documentType: documentTypes[index],
     }));
 
-    const results = await this.registrationVerifier.verifyBatch(fileDocuments, expectedData);
+    const results = await this.registrationVerifier.verifyBatch(
+      fileDocuments,
+      expectedData,
+    );
 
-    const resultsWithReports = results.map(result => ({
+    const resultsWithReports = results.map((result) => ({
       ...result,
       mismatchReport: this.registrationVerifier.generateMismatchReport(result),
     }));
 
     const combinedAutoCorrections = resultsWithReports
-      .flatMap(r => r.autoCorrections)
-      .reduce((acc, correction) => {
-        const existing = acc.find(c => c.field === correction.field);
-        if (!existing) {
-          acc.push(correction);
-        }
-        return acc;
-      }, [] as Array<{ field: string; value: string | number }>);
+      .flatMap((r) => r.autoCorrections)
+      .reduce(
+        (acc, correction) => {
+          const existing = acc.find((c) => c.field === correction.field);
+          if (!existing) {
+            acc.push(correction);
+          }
+          return acc;
+        },
+        [] as Array<{ field: string; value: string | number }>,
+      );
 
     return {
       results: resultsWithReports,
-      allSuccess: resultsWithReports.every(r => r.success),
-      allFieldsMatch: resultsWithReports.every(r => r.allFieldsMatch),
+      allSuccess: resultsWithReports.every((r) => r.success),
+      allFieldsMatch: resultsWithReports.every((r) => r.allFieldsMatch),
       combinedAutoCorrections,
-      totalProcessingTimeMs: resultsWithReports.reduce((sum, r) => sum + r.processingTimeMs, 0),
+      totalProcessingTimeMs: resultsWithReports.reduce(
+        (sum, r) => sum + r.processingTimeMs,
+        0,
+      ),
     };
   }
 
@@ -305,27 +366,45 @@ export class NixController {
   @ApiBearerAuth()
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload and process a document, saving extracted content to Secure Documents' })
+  @ApiOperation({
+    summary:
+      'Upload and process a document, saving extracted content to Secure Documents',
+  })
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
         file: { type: 'string', format: 'binary' },
-        title: { type: 'string', description: 'Optional title for the document' },
+        title: {
+          type: 'string',
+          description: 'Optional title for the document',
+        },
         description: { type: 'string', description: 'Optional description' },
-        processWithNix: { type: 'string', description: 'Whether to process with Nix (default: true)' },
+        processWithNix: {
+          type: 'string',
+          description: 'Whether to process with Nix (default: true)',
+        },
       },
       required: ['file'],
     },
   })
-  @ApiResponse({ status: 201, description: 'Document processed and saved to Secure Documents' })
+  @ApiResponse({
+    status: 201,
+    description: 'Document processed and saved to Secure Documents',
+  })
   async uploadAndSaveDocument(
     @UploadedFile() file: Express.Multer.File,
     @Body('title') title?: string,
     @Body('description') description?: string,
     @Body('userId') userId?: string,
     @Body('processWithNix') processWithNix?: string,
-  ): Promise<{ success: boolean; documentId?: string; documentSlug?: string; message?: string; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    documentId?: string;
+    documentSlug?: string;
+    message?: string;
+    error?: string;
+  }> {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
@@ -354,9 +433,20 @@ export class NixController {
   @UseGuards(AdminAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List all Nix-processed documents in Secure Documents' })
+  @ApiOperation({
+    summary: 'List all Nix-processed documents in Secure Documents',
+  })
   @ApiResponse({ status: 200, description: 'List of Nix folder documents' })
-  async listNixDocuments(): Promise<{ documents: Array<{ id: string; slug: string; title: string; description: string | null; createdAt: string; updatedAt: string }> }> {
+  async listNixDocuments(): Promise<{
+    documents: Array<{
+      id: string;
+      slug: string;
+      title: string;
+      description: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+  }> {
     return this.nixService.listNixSecureDocuments();
   }
 }

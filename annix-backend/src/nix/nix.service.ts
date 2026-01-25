@@ -25,7 +25,12 @@ import {
   SubmitClarificationDto,
   SubmitClarificationResponseDto,
 } from './dto/submit-clarification.dto';
-import { ExcelExtractorService, ExtractedItem, SpecificationCellData, ExtractionResult } from './services/excel-extractor.service';
+import {
+  ExcelExtractorService,
+  ExtractedItem,
+  SpecificationCellData,
+  ExtractionResult,
+} from './services/excel-extractor.service';
 import { PdfExtractorService } from './services/pdf-extractor.service';
 import { WordExtractorService } from './services/word-extractor.service';
 import { AiExtractionService } from './ai-providers/ai-extraction.service';
@@ -55,14 +60,21 @@ export class NixService {
     private readonly s3StorageService: S3StorageService,
   ) {}
 
-  async processDocument(dto: ProcessDocumentDto): Promise<ProcessDocumentResponseDto> {
+  async processDocument(
+    dto: ProcessDocumentDto,
+  ): Promise<ProcessDocumentResponseDto> {
     const startTime = Date.now();
-    this.logger.log(`Processing document: ${dto.documentPath} (${dto.documentName})`);
+    this.logger.log(
+      `Processing document: ${dto.documentPath} (${dto.documentName})`,
+    );
 
-    const documentType = this.detectDocumentType(dto.documentName || dto.documentPath);
+    const documentType = this.detectDocumentType(
+      dto.documentName || dto.documentPath,
+    );
 
     const extraction = this.extractionRepo.create({
-      documentName: dto.documentName || dto.documentPath.split('/').pop() || 'unknown',
+      documentName:
+        dto.documentName || dto.documentPath.split('/').pop() || 'unknown',
       documentPath: dto.documentPath,
       documentType,
       status: ExtractionStatus.PROCESSING,
@@ -79,27 +91,41 @@ export class NixService {
 
       switch (documentType) {
         case DocumentType.PDF:
-          ({ extractedData, extractedItems, specificationCells } = await this.extractFromPdf(dto.documentPath, dto.documentName));
+          ({ extractedData, extractedItems, specificationCells } =
+            await this.extractFromPdf(dto.documentPath, dto.documentName));
           break;
         case DocumentType.EXCEL:
-          ({ extractedData, extractedItems, specificationCells } = await this.extractFromExcel(dto.documentPath));
+          ({ extractedData, extractedItems, specificationCells } =
+            await this.extractFromExcel(dto.documentPath));
           break;
         default:
           throw new Error(`Unsupported document type: ${documentType}`);
       }
 
-      const relevantItems = await this.filterByRelevance(extractedItems, dto.productTypes);
-      const specClarifications = await this.generateSpecificationClarifications(extraction, specificationCells, documentType);
-      const itemClarifications = await this.generateClarifications(extraction, relevantItems, documentType);
+      const relevantItems = await this.filterByRelevance(
+        extractedItems,
+        dto.productTypes,
+      );
+      const specClarifications = await this.generateSpecificationClarifications(
+        extraction,
+        specificationCells,
+        documentType,
+      );
+      const itemClarifications = await this.generateClarifications(
+        extraction,
+        relevantItems,
+        documentType,
+      );
       const clarifications = [...specClarifications, ...itemClarifications];
 
       extraction.extractedData = extractedData;
       extraction.extractedItems = relevantItems;
       extraction.relevanceScore = this.calculateOverallRelevance(relevantItems);
       extraction.processingTimeMs = Date.now() - startTime;
-      extraction.status = clarifications.length > 0
-        ? ExtractionStatus.NEEDS_CLARIFICATION
-        : ExtractionStatus.COMPLETED;
+      extraction.status =
+        clarifications.length > 0
+          ? ExtractionStatus.NEEDS_CLARIFICATION
+          : ExtractionStatus.COMPLETED;
 
       await this.extractionRepo.save(extraction);
 
@@ -107,7 +133,7 @@ export class NixService {
         extractionId: extraction.id,
         status: extraction.status,
         items: relevantItems,
-        pendingClarifications: clarifications.map(c => ({
+        pendingClarifications: clarifications.map((c) => ({
           id: c.id,
           question: c.question,
           context: c.context || {},
@@ -115,11 +141,14 @@ export class NixService {
       };
     } catch (error) {
       extraction.status = ExtractionStatus.FAILED;
-      extraction.errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      extraction.errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       extraction.processingTimeMs = Date.now() - startTime;
       await this.extractionRepo.save(extraction);
 
-      this.logger.error(`Document processing failed: ${extraction.errorMessage}`);
+      this.logger.error(
+        `Document processing failed: ${extraction.errorMessage}`,
+      );
 
       return {
         extractionId: extraction.id,
@@ -129,7 +158,9 @@ export class NixService {
     }
   }
 
-  async submitClarification(dto: SubmitClarificationDto): Promise<SubmitClarificationResponseDto> {
+  async submitClarification(
+    dto: SubmitClarificationDto,
+  ): Promise<SubmitClarificationResponseDto> {
     const clarification = await this.clarificationRepo.findOne({
       where: { id: dto.clarificationId },
       relations: ['extraction'],
@@ -166,11 +197,13 @@ export class NixService {
 
     return {
       success: true,
-      updatedExtraction: clarification.extraction ? {
-        extractionId: clarification.extraction.id,
-        status: clarification.extraction.status,
-        items: clarification.extraction.extractedItems,
-      } : undefined,
+      updatedExtraction: clarification.extraction
+        ? {
+            extractionId: clarification.extraction.id,
+            status: clarification.extraction.status,
+            items: clarification.extraction.extractedItems,
+          }
+        : undefined,
       remainingClarifications: remainingCount,
     };
   }
@@ -182,7 +215,9 @@ export class NixService {
     });
   }
 
-  async pendingClarifications(extractionId: number): Promise<NixClarification[]> {
+  async pendingClarifications(
+    extractionId: number,
+  ): Promise<NixClarification[]> {
     return this.clarificationRepo.find({
       where: {
         extractionId,
@@ -226,11 +261,17 @@ export class NixService {
   private async extractFromPdf(
     documentPath: string,
     documentName?: string,
-  ): Promise<{ extractedData: Record<string, any>; extractedItems: Array<any>; specificationCells: SpecificationCellData[] }> {
+  ): Promise<{
+    extractedData: Record<string, any>;
+    extractedItems: Array<any>;
+    specificationCells: SpecificationCellData[];
+  }> {
     this.logger.log(`PDF extraction starting for: ${documentPath}`);
 
     const availableProviders = await this.aiExtractor.getAvailableProviders();
-    this.logger.log(`Available AI providers: ${availableProviders.join(', ') || 'none'}`);
+    this.logger.log(
+      `Available AI providers: ${availableProviders.join(', ') || 'none'}`,
+    );
 
     if (availableProviders.length > 0) {
       try {
@@ -251,10 +292,16 @@ export class NixService {
           documentName || documentPath.split('/').pop(),
         );
 
-        this.logger.log(`AI extracted ${aiResult.items.length} items using ${aiResult.providerUsed}`);
-        this.logger.log(`Tokens used: ${aiResult.tokensUsed}, Processing time: ${aiResult.processingTimeMs}ms`);
+        this.logger.log(
+          `AI extracted ${aiResult.items.length} items using ${aiResult.providerUsed}`,
+        );
+        this.logger.log(
+          `Tokens used: ${aiResult.tokensUsed}, Processing time: ${aiResult.processingTimeMs}ms`,
+        );
 
-        const clarificationsNeeded = aiResult.items.filter(i => i.needsClarification).length;
+        const clarificationsNeeded = aiResult.items.filter(
+          (i) => i.needsClarification,
+        ).length;
 
         return {
           extractedData: {
@@ -274,16 +321,26 @@ export class NixService {
           specificationCells: aiResult.specificationCells,
         };
       } catch (error) {
-        this.logger.warn(`AI extraction failed, falling back to pattern matching: ${error.message}`);
+        this.logger.warn(
+          `AI extraction failed, falling back to pattern matching: ${error.message}`,
+        );
       }
     }
 
-    this.logger.log('Using pattern-based extraction (no AI available or AI failed)');
+    this.logger.log(
+      'Using pattern-based extraction (no AI available or AI failed)',
+    );
     const result = await this.pdfExtractor.extractFromPdf(documentPath);
 
-    this.logger.log(`Extracted ${result.items.length} items from PDF (pattern-based)`);
-    this.logger.log(`Items needing clarification: ${result.clarificationsNeeded}`);
-    this.logger.log(`Found ${result.specificationCells.length} specification headers`);
+    this.logger.log(
+      `Extracted ${result.items.length} items from PDF (pattern-based)`,
+    );
+    this.logger.log(
+      `Items needing clarification: ${result.clarificationsNeeded}`,
+    );
+    this.logger.log(
+      `Found ${result.specificationCells.length} specification headers`,
+    );
 
     return {
       extractedData: {
@@ -302,16 +359,24 @@ export class NixService {
     };
   }
 
-  private async extractFromExcel(
-    documentPath: string,
-  ): Promise<{ extractedData: Record<string, any>; extractedItems: Array<any>; specificationCells: SpecificationCellData[] }> {
+  private async extractFromExcel(documentPath: string): Promise<{
+    extractedData: Record<string, any>;
+    extractedItems: Array<any>;
+    specificationCells: SpecificationCellData[];
+  }> {
     this.logger.log(`Excel extraction starting for: ${documentPath}`);
 
     const result = await this.excelExtractor.extractFromExcel(documentPath);
 
-    this.logger.log(`Extracted ${result.items.length} items from sheet "${result.sheetName}"`);
-    this.logger.log(`Items needing clarification: ${result.clarificationsNeeded}`);
-    this.logger.log(`Found ${result.specificationCells.length} specification headers`);
+    this.logger.log(
+      `Extracted ${result.items.length} items from sheet "${result.sheetName}"`,
+    );
+    this.logger.log(
+      `Items needing clarification: ${result.clarificationsNeeded}`,
+    );
+    this.logger.log(
+      `Found ${result.specificationCells.length} specification headers`,
+    );
 
     return {
       extractedData: {
@@ -338,7 +403,7 @@ export class NixService {
       },
     });
 
-    return items.map(item => ({
+    return items.map((item) => ({
       ...item,
       confidence: this.calculateItemConfidence(item, learningRules),
     }));
@@ -347,8 +412,10 @@ export class NixService {
   private calculateItemConfidence(item: any, rules: NixLearning[]): number {
     let confidence = 0.5;
 
-    rules.forEach(rule => {
-      if (item.description?.toLowerCase().includes(rule.patternKey.toLowerCase())) {
+    rules.forEach((rule) => {
+      if (
+        item.description?.toLowerCase().includes(rule.patternKey.toLowerCase())
+      ) {
         confidence = Math.min(1, confidence + 0.1 * rule.confidence);
       }
     });
@@ -359,7 +426,10 @@ export class NixService {
   private calculateOverallRelevance(items: Array<any>): number {
     if (items.length === 0) return 0;
 
-    const totalConfidence = items.reduce((sum, item) => sum + (item.confidence || 0.5), 0);
+    const totalConfidence = items.reduce(
+      (sum, item) => sum + (item.confidence || 0.5),
+      0,
+    );
     return totalConfidence / items.length;
   }
 
@@ -370,11 +440,13 @@ export class NixService {
   ): Promise<NixClarification[]> {
     const clarifications: NixClarification[] = [];
     const isPdf = documentType === DocumentType.PDF;
-    const itemRef = (num: number) => isPdf ? `Item ${num}` : `Row ${num}`;
+    const itemRef = (num: number) => (isPdf ? `Item ${num}` : `Row ${num}`);
 
     const itemsNeedingClarification = items.filter((item: ExtractedItem) => {
       if (!item.needsClarification && item.material && item.diameter) {
-        this.logger.debug(`${itemRef(item.rowNumber)}: Skipping clarification - has material (${item.material}) and diameter (${item.diameter}mm)`);
+        this.logger.debug(
+          `${itemRef(item.rowNumber)}: Skipping clarification - has material (${item.material}) and diameter (${item.diameter}mm)`,
+        );
         return false;
       }
       return item.needsClarification;
@@ -396,7 +468,9 @@ export class NixService {
         question = `${itemRef(extractedItem.rowNumber)}: ${extractedItem.clarificationReason}\n\nDescription: "${extractedItem.description}"\n\nPlease provide the missing information or correct any errors.`;
         clarificationType = ClarificationType.MISSING_INFO;
       } else {
-        this.logger.debug(`${itemRef(extractedItem.rowNumber)}: Skipping - no actual missing info`);
+        this.logger.debug(
+          `${itemRef(extractedItem.rowNumber)}: Skipping - no actual missing info`,
+        );
         continue;
       }
 
@@ -447,14 +521,17 @@ export class NixService {
 
       if (missingFields.length > 0) {
         const extractedInfo: string[] = [];
-        if (parsed.materialGrade) extractedInfo.push(`Material Grade: ${parsed.materialGrade}`);
-        if (parsed.wallThickness) extractedInfo.push(`Wall Thickness: ${parsed.wallThickness}`);
+        if (parsed.materialGrade)
+          extractedInfo.push(`Material Grade: ${parsed.materialGrade}`);
+        if (parsed.wallThickness)
+          extractedInfo.push(`Wall Thickness: ${parsed.wallThickness}`);
         if (parsed.lining) extractedInfo.push(`Lining: ${parsed.lining}`);
-        if (parsed.externalCoating) extractedInfo.push(`External Coating: ${parsed.externalCoating}`);
+        if (parsed.externalCoating)
+          extractedInfo.push(`External Coating: ${parsed.externalCoating}`);
         if (parsed.standard) extractedInfo.push(`Standard: ${parsed.standard}`);
         if (parsed.schedule) extractedInfo.push(`Schedule: ${parsed.schedule}`);
 
-        const question = `📋 SPECIFICATION HEADER (${specCell.cellRef}):\n\n"${specCell.rawText.substring(0, 200)}${specCell.rawText.length > 200 ? '...' : ''}"\n\n${extractedInfo.length > 0 ? `I extracted:\n${extractedInfo.map(i => `• ${i}`).join('\n')}\n\n` : ''}I could not determine the following from this specification:\n${missingFields.map(f => `• ${f}`).join('\n')}\n\nPlease provide the missing specification details.`;
+        const question = `📋 SPECIFICATION HEADER (${specCell.cellRef}):\n\n"${specCell.rawText.substring(0, 200)}${specCell.rawText.length > 200 ? '...' : ''}"\n\n${extractedInfo.length > 0 ? `I extracted:\n${extractedInfo.map((i) => `• ${i}`).join('\n')}\n\n` : ''}I could not determine the following from this specification:\n${missingFields.map((f) => `• ${f}`).join('\n')}\n\nPlease provide the missing specification details.`;
 
         const clarification = this.clarificationRepo.create({
           extractionId: extraction.id,
@@ -478,17 +555,26 @@ export class NixService {
         });
 
         clarifications.push(await this.clarificationRepo.save(clarification));
-        this.logger.log(`Generated specification clarification for ${specCell.cellRef} - missing: ${missingFields.join(', ')}`);
+        this.logger.log(
+          `Generated specification clarification for ${specCell.cellRef} - missing: ${missingFields.join(', ')}`,
+        );
       } else {
-        this.logger.log(`Specification at ${specCell.cellRef} fully parsed - no clarification needed`);
+        this.logger.log(
+          `Specification at ${specCell.cellRef} fully parsed - no clarification needed`,
+        );
       }
     }
 
     return clarifications;
   }
 
-  private async learnFromClarification(clarification: NixClarification): Promise<void> {
-    if (!clarification.responseText || !clarification.context?.itemDescription) {
+  private async learnFromClarification(
+    clarification: NixClarification,
+  ): Promise<void> {
+    if (
+      !clarification.responseText ||
+      !clarification.context?.itemDescription
+    ) {
       return;
     }
 
@@ -572,7 +658,10 @@ export class NixService {
         existingRule.confidence = Math.min(1, existingRule.confidence + 0.05);
       } else {
         existingRule.learnedValue = String(correction.correctedValue);
-        existingRule.originalValue = correction.originalValue != null ? String(correction.originalValue) : undefined;
+        existingRule.originalValue =
+          correction.originalValue != null
+            ? String(correction.originalValue)
+            : undefined;
         existingRule.confirmationCount = 1;
         existingRule.confidence = 0.6;
       }
@@ -584,7 +673,10 @@ export class NixService {
         source: LearningSource.USER_CORRECTION,
         patternKey,
         category: correction.fieldName,
-        originalValue: correction.originalValue != null ? String(correction.originalValue) : undefined,
+        originalValue:
+          correction.originalValue != null
+            ? String(correction.originalValue)
+            : undefined,
         learnedValue: String(correction.correctedValue),
         confidence: 0.6,
         confirmationCount: 1,
@@ -602,7 +694,13 @@ export class NixService {
     userId: number,
     customTitle?: string,
     customDescription?: string,
-  ): Promise<{ success: boolean; documentId?: string; documentSlug?: string; message?: string; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    documentId?: string;
+    documentSlug?: string;
+    message?: string;
+    error?: string;
+  }> {
     const startTime = Date.now();
     const fileName = file.originalname;
     const filePath = file.path;
@@ -620,11 +718,17 @@ export class NixService {
         metadata = result.metadata || {};
       } else if (documentType === DocumentType.EXCEL) {
         const result = await this.excelExtractor.extractFromExcel(filePath);
-        extractedContent = this.formatExcelExtractionAsMarkdown(fileName, result);
+        extractedContent = this.formatExcelExtractionAsMarkdown(
+          fileName,
+          result,
+        );
         metadata = result.metadata || {};
       } else if (documentType === DocumentType.WORD) {
         const result = await this.wordExtractor.extractFromWord(filePath);
-        extractedContent = this.formatWordExtractionAsMarkdown(fileName, result);
+        extractedContent = this.formatWordExtractionAsMarkdown(
+          fileName,
+          result,
+        );
         metadata = result.metadata || {};
       } else {
         const content = fs.readFileSync(filePath, 'utf-8');
@@ -632,7 +736,9 @@ export class NixService {
       }
 
       const title = customTitle || fileName.replace(/\.[^.]+$/, '');
-      const description = customDescription || this.generateDescription(metadata, extractedContent);
+      const description =
+        customDescription ||
+        this.generateDescription(metadata, extractedContent);
 
       const document = await this.secureDocumentsService.create(
         {
@@ -645,7 +751,9 @@ export class NixService {
       );
 
       const processingTimeMs = Date.now() - startTime;
-      this.logger.log(`Document saved to Secure Documents: ${document.id} (${processingTimeMs}ms)`);
+      this.logger.log(
+        `Document saved to Secure Documents: ${document.id} (${processingTimeMs}ms)`,
+      );
 
       this.cleanupUploadedFile(filePath);
 
@@ -656,21 +764,33 @@ export class NixService {
         message: `Document processed and saved successfully in ${processingTimeMs}ms`,
       };
     } catch (error) {
-      this.logger.error(`Failed to process document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.logger.error(
+        `Failed to process document: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
       this.cleanupUploadedFile(filePath);
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
   }
 
-  async listNixSecureDocuments(): Promise<{ documents: Array<{ id: string; slug: string; title: string; description: string | null; createdAt: string; updatedAt: string }> }> {
+  async listNixSecureDocuments(): Promise<{
+    documents: Array<{
+      id: string;
+      slug: string;
+      title: string;
+      description: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+  }> {
     const allDocuments = await this.secureDocumentsService.findAll();
     const nixDocuments = allDocuments
-      .filter(doc => doc.folder === 'Nix')
-      .map(doc => ({
+      .filter((doc) => doc.folder === 'Nix')
+      .map((doc) => ({
         id: doc.id,
         slug: doc.slug,
         title: doc.title,
@@ -687,7 +807,13 @@ export class NixService {
     userId: number,
     customTitle?: string,
     customDescription?: string,
-  ): Promise<{ success: boolean; documentId?: string; documentSlug?: string; message?: string; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    documentId?: string;
+    documentSlug?: string;
+    message?: string;
+    error?: string;
+  }> {
     const startTime = Date.now();
     const fileName = file.originalname;
     const filePath = file.path;
@@ -701,7 +827,10 @@ export class NixService {
         buffer: fileBuffer,
       };
 
-      const storageResult = await this.s3StorageService.upload(multerFile, 'secure-documents/attachments');
+      const storageResult = await this.s3StorageService.upload(
+        multerFile,
+        'secure-documents/attachments',
+      );
 
       const title = customTitle || fileName.replace(/\.[^.]+$/, '');
       const description = customDescription || `Uploaded file: ${fileName}`;
@@ -746,7 +875,9 @@ export class NixService {
       );
 
       const processingTimeMs = Date.now() - startTime;
-      this.logger.log(`Raw document uploaded: ${document.id} (${processingTimeMs}ms)`);
+      this.logger.log(
+        `Raw document uploaded: ${document.id} (${processingTimeMs}ms)`,
+      );
 
       this.cleanupUploadedFile(filePath);
 
@@ -757,12 +888,15 @@ export class NixService {
         message: `File uploaded successfully in ${processingTimeMs}ms`,
       };
     } catch (error) {
-      this.logger.error(`Failed to upload raw document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.logger.error(
+        `Failed to upload raw document: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
       this.cleanupUploadedFile(filePath);
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
   }
@@ -773,7 +907,10 @@ export class NixService {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  private formatPdfExtractionAsMarkdown(fileName: string, result: ExtractionResult): string {
+  private formatPdfExtractionAsMarkdown(
+    fileName: string,
+    result: ExtractionResult,
+  ): string {
     const lines: string[] = [
       `# ${fileName.replace(/\.[^.]+$/, '')}`,
       '',
@@ -784,11 +921,15 @@ export class NixService {
     if (result.metadata) {
       lines.push('## Document Metadata', '');
       const meta = result.metadata;
-      if (meta.projectName) lines.push(`- **Project Name:** ${meta.projectName}`);
-      if (meta.projectReference) lines.push(`- **Project Reference:** ${meta.projectReference}`);
-      if (meta.projectLocation) lines.push(`- **Location:** ${meta.projectLocation}`);
+      if (meta.projectName)
+        lines.push(`- **Project Name:** ${meta.projectName}`);
+      if (meta.projectReference)
+        lines.push(`- **Project Reference:** ${meta.projectReference}`);
+      if (meta.projectLocation)
+        lines.push(`- **Location:** ${meta.projectLocation}`);
       if (meta.standard) lines.push(`- **Standard:** ${meta.standard}`);
-      if (meta.materialGrade) lines.push(`- **Material Grade:** ${meta.materialGrade}`);
+      if (meta.materialGrade)
+        lines.push(`- **Material Grade:** ${meta.materialGrade}`);
       if (meta.coating) lines.push(`- **Coating:** ${meta.coating}`);
       if (meta.lining) lines.push(`- **Lining:** ${meta.lining}`);
       lines.push('');
@@ -802,24 +943,31 @@ export class NixService {
       result.items.forEach((item, index) => {
         const description = item.description || '-';
         const type = item.itemType || '-';
-        const size = item.diameter ? `${item.diameter}${item.diameterUnit === 'mm' ? 'mm' : '"'}` : '-';
+        const size = item.diameter
+          ? `${item.diameter}${item.diameterUnit === 'mm' ? 'mm' : '"'}`
+          : '-';
         const material = item.materialGrade || item.material || '-';
         const qty = item.quantity || '-';
-        lines.push(`| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`);
+        lines.push(
+          `| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`,
+        );
       });
       lines.push('');
     }
 
     if (result.specificationCells && result.specificationCells.length > 0) {
       lines.push('## Specification Data', '');
-      result.specificationCells.forEach(spec => {
+      result.specificationCells.forEach((spec) => {
         lines.push(`### ${spec.rawText || 'Specification'}`);
         if (spec.parsedData) {
           const parsed = spec.parsedData;
-          if (parsed.materialGrade) lines.push(`- **Material Grade:** ${parsed.materialGrade}`);
-          if (parsed.wallThickness) lines.push(`- **Wall Thickness:** ${parsed.wallThickness}`);
+          if (parsed.materialGrade)
+            lines.push(`- **Material Grade:** ${parsed.materialGrade}`);
+          if (parsed.wallThickness)
+            lines.push(`- **Wall Thickness:** ${parsed.wallThickness}`);
           if (parsed.lining) lines.push(`- **Lining:** ${parsed.lining}`);
-          if (parsed.externalCoating) lines.push(`- **Coating:** ${parsed.externalCoating}`);
+          if (parsed.externalCoating)
+            lines.push(`- **Coating:** ${parsed.externalCoating}`);
           if (parsed.standard) lines.push(`- **Standard:** ${parsed.standard}`);
           if (parsed.schedule) lines.push(`- **Schedule:** ${parsed.schedule}`);
         }
@@ -835,7 +983,10 @@ export class NixService {
     return lines.join('\n');
   }
 
-  private formatExcelExtractionAsMarkdown(fileName: string, result: ExtractionResult): string {
+  private formatExcelExtractionAsMarkdown(
+    fileName: string,
+    result: ExtractionResult,
+  ): string {
     const lines: string[] = [
       `# ${fileName.replace(/\.[^.]+$/, '')}`,
       '',
@@ -848,11 +999,15 @@ export class NixService {
     if (result.metadata) {
       lines.push('## Document Metadata', '');
       const meta = result.metadata;
-      if (meta.projectName) lines.push(`- **Project Name:** ${meta.projectName}`);
-      if (meta.projectReference) lines.push(`- **Project Reference:** ${meta.projectReference}`);
-      if (meta.projectLocation) lines.push(`- **Location:** ${meta.projectLocation}`);
+      if (meta.projectName)
+        lines.push(`- **Project Name:** ${meta.projectName}`);
+      if (meta.projectReference)
+        lines.push(`- **Project Reference:** ${meta.projectReference}`);
+      if (meta.projectLocation)
+        lines.push(`- **Location:** ${meta.projectLocation}`);
       if (meta.standard) lines.push(`- **Standard:** ${meta.standard}`);
-      if (meta.materialGrade) lines.push(`- **Material Grade:** ${meta.materialGrade}`);
+      if (meta.materialGrade)
+        lines.push(`- **Material Grade:** ${meta.materialGrade}`);
       lines.push('');
     }
 
@@ -864,10 +1019,14 @@ export class NixService {
       result.items.forEach((item, index) => {
         const description = item.description || '-';
         const type = item.itemType || '-';
-        const size = item.diameter ? `${item.diameter}${item.diameterUnit === 'mm' ? 'mm' : '"'}` : '-';
+        const size = item.diameter
+          ? `${item.diameter}${item.diameterUnit === 'mm' ? 'mm' : '"'}`
+          : '-';
         const material = item.materialGrade || item.material || '-';
         const qty = item.quantity || '-';
-        lines.push(`| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`);
+        lines.push(
+          `| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`,
+        );
       });
       lines.push('');
     }
@@ -880,7 +1039,10 @@ export class NixService {
     return lines.join('\n');
   }
 
-  private formatWordExtractionAsMarkdown(fileName: string, result: ExtractionResult & { rawText?: string }): string {
+  private formatWordExtractionAsMarkdown(
+    fileName: string,
+    result: ExtractionResult & { rawText?: string },
+  ): string {
     const lines: string[] = [
       `# ${fileName.replace(/\.[^.]+$/, '')}`,
       '',
@@ -891,11 +1053,15 @@ export class NixService {
     if (result.metadata) {
       lines.push('## Document Metadata', '');
       const meta = result.metadata;
-      if (meta.projectName) lines.push(`- **Project Name:** ${meta.projectName}`);
-      if (meta.projectReference) lines.push(`- **Project Reference:** ${meta.projectReference}`);
-      if (meta.projectLocation) lines.push(`- **Location:** ${meta.projectLocation}`);
+      if (meta.projectName)
+        lines.push(`- **Project Name:** ${meta.projectName}`);
+      if (meta.projectReference)
+        lines.push(`- **Project Reference:** ${meta.projectReference}`);
+      if (meta.projectLocation)
+        lines.push(`- **Location:** ${meta.projectLocation}`);
       if (meta.standard) lines.push(`- **Standard:** ${meta.standard}`);
-      if (meta.materialGrade) lines.push(`- **Material Grade:** ${meta.materialGrade}`);
+      if (meta.materialGrade)
+        lines.push(`- **Material Grade:** ${meta.materialGrade}`);
       lines.push('');
     }
 
@@ -907,10 +1073,14 @@ export class NixService {
       result.items.forEach((item, index) => {
         const description = item.description || '-';
         const type = item.itemType || '-';
-        const size = item.diameter ? `${item.diameter}${item.diameterUnit === 'mm' ? 'mm' : '"'}` : '-';
+        const size = item.diameter
+          ? `${item.diameter}${item.diameterUnit === 'mm' ? 'mm' : '"'}`
+          : '-';
         const material = item.materialGrade || item.material || '-';
         const qty = item.quantity || '-';
-        lines.push(`| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`);
+        lines.push(
+          `| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`,
+        );
       });
       lines.push('');
     }
@@ -946,7 +1116,10 @@ export class NixService {
     return lines.join('\n');
   }
 
-  private generateDescription(metadata: Record<string, unknown>, content: string): string {
+  private generateDescription(
+    metadata: Record<string, unknown>,
+    content: string,
+  ): string {
     const parts: string[] = [];
 
     if (metadata.projectName) {
@@ -957,7 +1130,12 @@ export class NixService {
     }
 
     if (parts.length === 0) {
-      const firstLine = content.split('\n').find(line => line.trim() && !line.startsWith('#') && !line.startsWith('>'));
+      const firstLine = content
+        .split('\n')
+        .find(
+          (line) =>
+            line.trim() && !line.startsWith('#') && !line.startsWith('>'),
+        );
       if (firstLine) {
         parts.push(firstLine.trim().substring(0, 100));
       }
@@ -973,7 +1151,9 @@ export class NixService {
         this.logger.log(`Cleaned up temporary file: ${filePath}`);
       }
     } catch (error) {
-      this.logger.warn(`Failed to cleanup file ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.logger.warn(
+        `Failed to cleanup file ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 }

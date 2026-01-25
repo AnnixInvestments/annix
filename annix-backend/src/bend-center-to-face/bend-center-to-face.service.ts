@@ -195,8 +195,15 @@ export class BendCenterToFaceService {
     }
 
     // Calculate weights
-    const pipeOdMm = pipeDimension.nominalOutsideDiameter?.nominal_diameter_mm || nominalBoreMm;
-    const bendWeight = this.calculateBendWeight(bendData, pipeDimension, bendStyle, pipeOdMm);
+    const pipeOdMm =
+      pipeDimension.nominalOutsideDiameter?.nominal_diameter_mm ||
+      nominalBoreMm;
+    const bendWeight = this.calculateBendWeight(
+      bendData,
+      pipeDimension,
+      bendStyle,
+      pipeOdMm,
+    );
     const tangentWeight = this.calculateTangentWeight(
       tangentLengths,
       pipeDimension,
@@ -268,7 +275,9 @@ export class BendCenterToFaceService {
     const angleRad = Number(bendData.radians);
 
     const effectiveRadius =
-      bendStyle === 'pulled' ? centerLineRadius + pipeOdMm / 2 : centerLineRadius;
+      bendStyle === 'pulled'
+        ? centerLineRadius + pipeOdMm / 2
+        : centerLineRadius;
     const arcLength = effectiveRadius * angleRad;
 
     const weightKg = (arcLength / 1000) * (pipeDimension.mass_kgm || 0);

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddAsmeB1647AClass300And900Data1770800000000
-  implements MigrationInterface
-{
+export class AddAsmeB1647AClass300And900Data1770800000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const b1647aResult = await queryRunner.query(
       `SELECT id FROM flange_standards WHERE code = 'ASME B16.47A'`,

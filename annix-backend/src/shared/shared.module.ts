@@ -7,9 +7,7 @@ import { SupplierDocument } from '../supplier/entities/supplier-document.entity'
 
 @Global()
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([CustomerDocument, SupplierDocument]),
-  ],
+  imports: [TypeOrmModule.forFeature([CustomerDocument, SupplierDocument])],
   providers: [DocumentCompressionService, DocumentExpiryService],
   exports: [DocumentCompressionService, DocumentExpiryService],
 })

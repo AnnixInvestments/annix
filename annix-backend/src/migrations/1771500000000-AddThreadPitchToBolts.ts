@@ -44,7 +44,7 @@ export class AddThreadPitchToBolts1771500000000 implements MigrationInterface {
         const pitch = ISO_COARSE_PITCHES[diameter];
         if (pitch) {
           await queryRunner.query(
-            `UPDATE bolts SET thread_pitch_mm = ${pitch} WHERE id = ${bolt.id}`
+            `UPDATE bolts SET thread_pitch_mm = ${pitch} WHERE id = ${bolt.id}`,
           );
         }
       }
@@ -54,6 +54,8 @@ export class AddThreadPitchToBolts1771500000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE bolts DROP COLUMN IF EXISTS thread_pitch_mm`);
+    await queryRunner.query(
+      `ALTER TABLE bolts DROP COLUMN IF EXISTS thread_pitch_mm`,
+    );
   }
 }

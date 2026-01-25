@@ -61,7 +61,10 @@ describe('BoltService', () => {
         BoltService,
         { provide: getRepositoryToken(Bolt), useValue: mockRepo },
         { provide: getRepositoryToken(UBoltEntity), useValue: mockUBoltRepo },
-        { provide: getRepositoryToken(PipeClampEntity), useValue: mockPipeClampRepo },
+        {
+          provide: getRepositoryToken(PipeClampEntity),
+          useValue: mockPipeClampRepo,
+        },
       ],
     }).compile();
 

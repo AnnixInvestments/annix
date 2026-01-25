@@ -12,16 +12,36 @@ export class Sabs719BendDimension {
   @Column({ name: 'nominal_bore_mm', type: 'int' })
   nominalBoreMm: number;
 
-  @Column({ name: 'outside_diameter_mm', type: 'decimal', precision: 8, scale: 2 })
+  @Column({
+    name: 'outside_diameter_mm',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+  })
   outsideDiameterMm: number;
 
-  @Column({ name: 'center_to_face_a_mm', type: 'decimal', precision: 8, scale: 2 })
+  @Column({
+    name: 'center_to_face_a_mm',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+  })
   centerToFaceAMm: number;
 
-  @Column({ name: 'center_to_face_b_mm', type: 'decimal', precision: 8, scale: 2 })
+  @Column({
+    name: 'center_to_face_b_mm',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+  })
   centerToFaceBMm: number;
 
-  @Column({ name: 'center_to_face_c_mm', type: 'decimal', precision: 8, scale: 2 })
+  @Column({
+    name: 'center_to_face_c_mm',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+  })
   centerToFaceCMm: number;
 
   @Column({ name: 'radius_mm', type: 'decimal', precision: 8, scale: 2 })

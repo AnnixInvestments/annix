@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  Unique,
+} from 'typeorm';
 import { ForgedFittingDimension } from './forged-fitting-dimension.entity';
 import { ForgedFittingPtRating } from './forged-fitting-pt-rating.entity';
 
@@ -14,7 +20,12 @@ export class ForgedFittingSeries {
   @Column({ name: 'connection_type', type: 'varchar', length: 20 })
   connectionType: string;
 
-  @Column({ name: 'standard_code', type: 'varchar', length: 50, default: 'ASME B16.11' })
+  @Column({
+    name: 'standard_code',
+    type: 'varchar',
+    length: 50,
+    default: 'ASME B16.11',
+  })
   standardCode: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

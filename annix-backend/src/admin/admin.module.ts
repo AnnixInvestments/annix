@@ -53,8 +53,17 @@ import { AuditLog } from '../audit/entities/audit-log.entity';
     }),
     AuditModule,
   ],
-  providers: [AdminAuthService, AdminAuthGuard, AdminDashboardService, AdminRfqService],
-  controllers: [AdminAuthController, AdminDashboardController, AdminRfqController],
+  providers: [
+    AdminAuthService,
+    AdminAuthGuard,
+    AdminDashboardService,
+    AdminRfqService,
+  ],
+  controllers: [
+    AdminAuthController,
+    AdminDashboardController,
+    AdminRfqController,
+  ],
   exports: [AdminAuthService, AdminAuthGuard, JwtModule],
 })
 export class AdminModule {}

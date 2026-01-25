@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddDataConsistencyAndValidation1775900000000
-  implements MigrationInterface
-{
+export class AddDataConsistencyAndValidation1775900000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await this.addSourceDocumentationFields(queryRunner);
     await this.addNamingNormalization(queryRunner);
@@ -81,7 +79,9 @@ export class AddDataConsistencyAndValidation1775900000000
     `);
   }
 
-  private async addNamingNormalization(queryRunner: QueryRunner): Promise<void> {
+  private async addNamingNormalization(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE steel_specifications
       ADD COLUMN IF NOT EXISTS normalized_name VARCHAR(100),
@@ -106,34 +106,122 @@ export class AddDataConsistencyAndValidation1775900000000
     `);
 
     const normalizations = [
-      { pattern: '%A106%B%', normalized: 'ASTM_A106_B', category: 'carbon_steel', uns: 'K03006' },
-      { pattern: '%A106%C%', normalized: 'ASTM_A106_C', category: 'carbon_steel', uns: 'K03501' },
-      { pattern: '%A53%B%', normalized: 'ASTM_A53_B', category: 'carbon_steel', uns: 'K03005' },
-      { pattern: '%A333%6%', normalized: 'ASTM_A333_6', category: 'carbon_steel_low_temp', uns: 'K03006' },
-      { pattern: '%A335%P11%', normalized: 'ASTM_A335_P11', category: 'chrome_moly', uns: 'K11597' },
-      { pattern: '%A335%P22%', normalized: 'ASTM_A335_P22', category: 'chrome_moly', uns: 'K21590' },
-      { pattern: '%A335%P91%', normalized: 'ASTM_A335_P91', category: 'chrome_moly', uns: 'K91560' },
-      { pattern: '%A312%304%', normalized: 'ASTM_A312_TP304', category: 'austenitic_ss', uns: 'S30400' },
-      { pattern: '%A312%316%', normalized: 'ASTM_A312_TP316', category: 'austenitic_ss', uns: 'S31600' },
-      { pattern: '%A312%321%', normalized: 'ASTM_A312_TP321', category: 'austenitic_ss', uns: 'S32100' },
-      { pattern: '%A790%S31803%', normalized: 'ASTM_A790_S31803', category: 'duplex_ss', uns: 'S31803' },
-      { pattern: '%A790%S32205%', normalized: 'ASTM_A790_S32205', category: 'duplex_ss', uns: 'S32205' },
-      { pattern: '%API%5L%B%', normalized: 'API_5L_B', category: 'line_pipe', uns: 'K03006' },
-      { pattern: '%API%5L%X42%', normalized: 'API_5L_X42', category: 'line_pipe', uns: 'K03510' },
-      { pattern: '%API%5L%X52%', normalized: 'API_5L_X52', category: 'line_pipe', uns: 'K03510' },
-      { pattern: '%API%5L%X60%', normalized: 'API_5L_X60', category: 'line_pipe', uns: null },
-      { pattern: '%API%5L%X65%', normalized: 'API_5L_X65', category: 'line_pipe', uns: null },
+      {
+        pattern: '%A106%B%',
+        normalized: 'ASTM_A106_B',
+        category: 'carbon_steel',
+        uns: 'K03006',
+      },
+      {
+        pattern: '%A106%C%',
+        normalized: 'ASTM_A106_C',
+        category: 'carbon_steel',
+        uns: 'K03501',
+      },
+      {
+        pattern: '%A53%B%',
+        normalized: 'ASTM_A53_B',
+        category: 'carbon_steel',
+        uns: 'K03005',
+      },
+      {
+        pattern: '%A333%6%',
+        normalized: 'ASTM_A333_6',
+        category: 'carbon_steel_low_temp',
+        uns: 'K03006',
+      },
+      {
+        pattern: '%A335%P11%',
+        normalized: 'ASTM_A335_P11',
+        category: 'chrome_moly',
+        uns: 'K11597',
+      },
+      {
+        pattern: '%A335%P22%',
+        normalized: 'ASTM_A335_P22',
+        category: 'chrome_moly',
+        uns: 'K21590',
+      },
+      {
+        pattern: '%A335%P91%',
+        normalized: 'ASTM_A335_P91',
+        category: 'chrome_moly',
+        uns: 'K91560',
+      },
+      {
+        pattern: '%A312%304%',
+        normalized: 'ASTM_A312_TP304',
+        category: 'austenitic_ss',
+        uns: 'S30400',
+      },
+      {
+        pattern: '%A312%316%',
+        normalized: 'ASTM_A312_TP316',
+        category: 'austenitic_ss',
+        uns: 'S31600',
+      },
+      {
+        pattern: '%A312%321%',
+        normalized: 'ASTM_A312_TP321',
+        category: 'austenitic_ss',
+        uns: 'S32100',
+      },
+      {
+        pattern: '%A790%S31803%',
+        normalized: 'ASTM_A790_S31803',
+        category: 'duplex_ss',
+        uns: 'S31803',
+      },
+      {
+        pattern: '%A790%S32205%',
+        normalized: 'ASTM_A790_S32205',
+        category: 'duplex_ss',
+        uns: 'S32205',
+      },
+      {
+        pattern: '%API%5L%B%',
+        normalized: 'API_5L_B',
+        category: 'line_pipe',
+        uns: 'K03006',
+      },
+      {
+        pattern: '%API%5L%X42%',
+        normalized: 'API_5L_X42',
+        category: 'line_pipe',
+        uns: 'K03510',
+      },
+      {
+        pattern: '%API%5L%X52%',
+        normalized: 'API_5L_X52',
+        category: 'line_pipe',
+        uns: 'K03510',
+      },
+      {
+        pattern: '%API%5L%X60%',
+        normalized: 'API_5L_X60',
+        category: 'line_pipe',
+        uns: null,
+      },
+      {
+        pattern: '%API%5L%X65%',
+        normalized: 'API_5L_X65',
+        category: 'line_pipe',
+        uns: null,
+      },
     ];
 
     for (const norm of normalizations) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         UPDATE steel_specifications
         SET normalized_name = $1,
             material_category = $2,
             uns_number = $3
         WHERE steel_spec_name ILIKE $4
           AND normalized_name IS NULL
-      `, [norm.normalized, norm.category, norm.uns, norm.pattern]);
+      `,
+        [norm.normalized, norm.category, norm.uns, norm.pattern],
+      );
     }
 
     await queryRunner.query(`
@@ -208,7 +296,9 @@ export class AddDataConsistencyAndValidation1775900000000
     `);
   }
 
-  private async createValidationTables(queryRunner: QueryRunner): Promise<void> {
+  private async createValidationTables(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS flange_data_validation_rules (
         id SERIAL PRIMARY KEY,
@@ -371,7 +461,8 @@ export class AddDataConsistencyAndValidation1775900000000
       {
         code: 'FB_BOLT_SIZE_MATCH',
         name: 'Bolting Size Match',
-        description: 'Verifies bolt size matches flange dimension specification',
+        description:
+          'Verifies bolt size matches flange dimension specification',
         sql: `SELECT fd.id, fd.d4 as hole_dia, b.size_designation
               FROM flange_dimensions fd
               JOIN bolts b ON fd."boltId" = b.id
@@ -388,13 +479,23 @@ export class AddDataConsistencyAndValidation1775900000000
     ];
 
     for (const rule of validationRules) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO flange_data_validation_rules (rule_code, rule_name, rule_description, rule_sql, severity, category)
         VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (rule_code) DO UPDATE SET
           rule_name = $2,
           rule_sql = $4
-      `, [rule.code, rule.name, rule.description, rule.sql, rule.severity, rule.category]);
+      `,
+        [
+          rule.code,
+          rule.name,
+          rule.description,
+          rule.sql,
+          rule.severity,
+          rule.category,
+        ],
+      );
     }
   }
 
@@ -499,57 +600,331 @@ export class AddDataConsistencyAndValidation1775900000000
   ): Promise<void> {
     const asmeB165References = [
       // Class 150 - Material Group 1.1 (Carbon Steel)
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: -29, pressure: 19.6, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: 38, pressure: 19.6, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: 93, pressure: 17.7, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: 149, pressure: 15.8, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: 204, pressure: 13.8, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: 260, pressure: 12.1, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: 316, pressure: 9.7, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: 343, pressure: 7.6, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: 371, pressure: 5.9, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: 399, pressure: 4.1, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: 427, pressure: 2.8, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '150', temp: 454, pressure: 1.9, source: 'Table 2-1.1' },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: -29,
+        pressure: 19.6,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: 38,
+        pressure: 19.6,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: 93,
+        pressure: 17.7,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: 149,
+        pressure: 15.8,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: 204,
+        pressure: 13.8,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: 260,
+        pressure: 12.1,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: 316,
+        pressure: 9.7,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: 343,
+        pressure: 7.6,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: 371,
+        pressure: 5.9,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: 399,
+        pressure: 4.1,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: 427,
+        pressure: 2.8,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '150',
+        temp: 454,
+        pressure: 1.9,
+        source: 'Table 2-1.1',
+      },
 
       // Class 300 - Material Group 1.1
-      { standard: 'ASME B16.5', material: '1.1', class: '300', temp: -29, pressure: 51.1, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '300', temp: 38, pressure: 51.1, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '300', temp: 93, pressure: 48.6, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '300', temp: 149, pressure: 45.7, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '300', temp: 204, pressure: 42.6, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '300', temp: 260, pressure: 39.4, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '300', temp: 316, pressure: 34.3, source: 'Table 2-1.1' },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '300',
+        temp: -29,
+        pressure: 51.1,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '300',
+        temp: 38,
+        pressure: 51.1,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '300',
+        temp: 93,
+        pressure: 48.6,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '300',
+        temp: 149,
+        pressure: 45.7,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '300',
+        temp: 204,
+        pressure: 42.6,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '300',
+        temp: 260,
+        pressure: 39.4,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '300',
+        temp: 316,
+        pressure: 34.3,
+        source: 'Table 2-1.1',
+      },
 
       // Class 600 - Material Group 1.1
-      { standard: 'ASME B16.5', material: '1.1', class: '600', temp: -29, pressure: 102.1, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '600', temp: 38, pressure: 102.1, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '600', temp: 149, pressure: 91.4, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '600', temp: 260, pressure: 78.8, source: 'Table 2-1.1' },
-      { standard: 'ASME B16.5', material: '1.1', class: '600', temp: 316, pressure: 68.7, source: 'Table 2-1.1' },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '600',
+        temp: -29,
+        pressure: 102.1,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '600',
+        temp: 38,
+        pressure: 102.1,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '600',
+        temp: 149,
+        pressure: 91.4,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '600',
+        temp: 260,
+        pressure: 78.8,
+        source: 'Table 2-1.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '1.1',
+        class: '600',
+        temp: 316,
+        pressure: 68.7,
+        source: 'Table 2-1.1',
+      },
 
       // Class 150 - Material Group 2.1 (304 Stainless)
-      { standard: 'ASME B16.5', material: '2.1', class: '150', temp: -29, pressure: 19.6, source: 'Table 2-2.1' },
-      { standard: 'ASME B16.5', material: '2.1', class: '150', temp: 38, pressure: 18.5, source: 'Table 2-2.1' },
-      { standard: 'ASME B16.5', material: '2.1', class: '150', temp: 93, pressure: 16.5, source: 'Table 2-2.1' },
-      { standard: 'ASME B16.5', material: '2.1', class: '150', temp: 149, pressure: 15.3, source: 'Table 2-2.1' },
-      { standard: 'ASME B16.5', material: '2.1', class: '150', temp: 204, pressure: 14.3, source: 'Table 2-2.1' },
-      { standard: 'ASME B16.5', material: '2.1', class: '150', temp: 260, pressure: 13.6, source: 'Table 2-2.1' },
-      { standard: 'ASME B16.5', material: '2.1', class: '150', temp: 316, pressure: 13.1, source: 'Table 2-2.1' },
-      { standard: 'ASME B16.5', material: '2.1', class: '150', temp: 371, pressure: 12.7, source: 'Table 2-2.1' },
-      { standard: 'ASME B16.5', material: '2.1', class: '150', temp: 427, pressure: 12.4, source: 'Table 2-2.1' },
+      {
+        standard: 'ASME B16.5',
+        material: '2.1',
+        class: '150',
+        temp: -29,
+        pressure: 19.6,
+        source: 'Table 2-2.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.1',
+        class: '150',
+        temp: 38,
+        pressure: 18.5,
+        source: 'Table 2-2.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.1',
+        class: '150',
+        temp: 93,
+        pressure: 16.5,
+        source: 'Table 2-2.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.1',
+        class: '150',
+        temp: 149,
+        pressure: 15.3,
+        source: 'Table 2-2.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.1',
+        class: '150',
+        temp: 204,
+        pressure: 14.3,
+        source: 'Table 2-2.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.1',
+        class: '150',
+        temp: 260,
+        pressure: 13.6,
+        source: 'Table 2-2.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.1',
+        class: '150',
+        temp: 316,
+        pressure: 13.1,
+        source: 'Table 2-2.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.1',
+        class: '150',
+        temp: 371,
+        pressure: 12.7,
+        source: 'Table 2-2.1',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.1',
+        class: '150',
+        temp: 427,
+        pressure: 12.4,
+        source: 'Table 2-2.1',
+      },
 
       // Class 150 - Material Group 2.2 (316 Stainless)
-      { standard: 'ASME B16.5', material: '2.2', class: '150', temp: -29, pressure: 19.6, source: 'Table 2-2.2' },
-      { standard: 'ASME B16.5', material: '2.2', class: '150', temp: 38, pressure: 18.9, source: 'Table 2-2.2' },
-      { standard: 'ASME B16.5', material: '2.2', class: '150', temp: 149, pressure: 15.8, source: 'Table 2-2.2' },
-      { standard: 'ASME B16.5', material: '2.2', class: '150', temp: 260, pressure: 14.1, source: 'Table 2-2.2' },
-      { standard: 'ASME B16.5', material: '2.2', class: '150', temp: 371, pressure: 13.2, source: 'Table 2-2.2' },
-      { standard: 'ASME B16.5', material: '2.2', class: '150', temp: 427, pressure: 12.9, source: 'Table 2-2.2' },
+      {
+        standard: 'ASME B16.5',
+        material: '2.2',
+        class: '150',
+        temp: -29,
+        pressure: 19.6,
+        source: 'Table 2-2.2',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.2',
+        class: '150',
+        temp: 38,
+        pressure: 18.9,
+        source: 'Table 2-2.2',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.2',
+        class: '150',
+        temp: 149,
+        pressure: 15.8,
+        source: 'Table 2-2.2',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.2',
+        class: '150',
+        temp: 260,
+        pressure: 14.1,
+        source: 'Table 2-2.2',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.2',
+        class: '150',
+        temp: 371,
+        pressure: 13.2,
+        source: 'Table 2-2.2',
+      },
+      {
+        standard: 'ASME B16.5',
+        material: '2.2',
+        class: '150',
+        temp: 427,
+        pressure: 12.9,
+        source: 'Table 2-2.2',
+      },
     ];
 
     for (const ref of asmeB165References) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO pt_curve_verification (
           standard_code, material_group, pressure_class, temperature_c,
           expected_pressure_bar, source_reference, verification_status
@@ -557,7 +932,16 @@ export class AddDataConsistencyAndValidation1775900000000
         VALUES ($1, $2, $3, $4, $5, $6, 'reference')
         ON CONFLICT (standard_code, material_group, pressure_class, temperature_c)
         DO UPDATE SET expected_pressure_bar = $5, source_reference = $6
-      `, [ref.standard, ref.material, ref.class, ref.temp, ref.pressure, ref.source]);
+      `,
+        [
+          ref.standard,
+          ref.material,
+          ref.class,
+          ref.temp,
+          ref.pressure,
+          ref.source,
+        ],
+      );
     }
 
     await queryRunner.query(`
@@ -584,7 +968,9 @@ export class AddDataConsistencyAndValidation1775900000000
     `);
   }
 
-  private async generateCoverageReport(queryRunner: QueryRunner): Promise<void> {
+  private async generateCoverageReport(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
     await queryRunner.query(`
       INSERT INTO data_coverage_report (entity_type, category, subcategory, total_expected, total_present, coverage_percent)
       SELECT
@@ -642,12 +1028,18 @@ export class AddDataConsistencyAndValidation1775900000000
     await queryRunner.query(`DROP VIEW IF EXISTS v_standard_coverage_summary`);
     await queryRunner.query(`DROP VIEW IF EXISTS v_flange_data_completeness`);
     await queryRunner.query(`DROP VIEW IF EXISTS v_pt_rating_coverage`);
-    await queryRunner.query(`DROP VIEW IF EXISTS v_flange_dimension_validation`);
+    await queryRunner.query(
+      `DROP VIEW IF EXISTS v_flange_dimension_validation`,
+    );
 
     await queryRunner.query(`DROP TABLE IF EXISTS data_coverage_report`);
     await queryRunner.query(`DROP TABLE IF EXISTS pt_curve_verification`);
-    await queryRunner.query(`DROP TABLE IF EXISTS flange_data_validation_results`);
-    await queryRunner.query(`DROP TABLE IF EXISTS flange_data_validation_rules`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS flange_data_validation_results`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS flange_data_validation_rules`,
+    );
 
     await queryRunner.query(`
       ALTER TABLE flange_standards

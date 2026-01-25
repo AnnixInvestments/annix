@@ -26,9 +26,7 @@ interface ValidationRule {
 
 @Injectable()
 export class DataValidationService {
-  constructor(
-    private readonly dataSource: DataSource,
-  ) {}
+  constructor(private readonly dataSource: DataSource) {}
 
   async rules(): Promise<ValidationRuleDto[]> {
     const rules = await this.dataSource.query(`
@@ -88,17 +86,35 @@ export class DataValidationService {
 
         issues.push(issue);
 
-        await this.dataSource.query(`
+        await this.dataSource.query(
+          `
           INSERT INTO flange_data_validation_results
           (validation_run_id, rule_code, entity_type, entity_id, issue_description, expected_value, actual_value, severity)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        `, [runId, issue.ruleCode, issue.entityType, issue.entityId, issue.issueDescription, issue.expectedValue, issue.actualValue, issue.severity]);
+        `,
+          [
+            runId,
+            issue.ruleCode,
+            issue.entityType,
+            issue.entityId,
+            issue.issueDescription,
+            issue.expectedValue,
+            issue.actualValue,
+            issue.severity,
+          ],
+        );
       }
     }
 
-    const errorCount = issues.filter((i) => i.severity === ValidationSeverity.ERROR).length;
-    const warningCount = issues.filter((i) => i.severity === ValidationSeverity.WARNING).length;
-    const infoCount = issues.filter((i) => i.severity === ValidationSeverity.INFO).length;
+    const errorCount = issues.filter(
+      (i) => i.severity === ValidationSeverity.ERROR,
+    ).length;
+    const warningCount = issues.filter(
+      (i) => i.severity === ValidationSeverity.WARNING,
+    ).length;
+    const infoCount = issues.filter(
+      (i) => i.severity === ValidationSeverity.INFO,
+    ).length;
 
     return {
       runId,
@@ -147,8 +163,12 @@ export class DataValidationService {
       pressureClass: r.pressure_class as string,
       temperatureC: parseFloat(r.temperature_c as string),
       expectedPressureBar: parseFloat(r.expected_pressure_bar as string),
-      actualPressureBar: r.actual_pressure_bar ? parseFloat(r.actual_pressure_bar as string) : undefined,
-      variancePercent: r.variance_percent ? parseFloat(r.variance_percent as string) : undefined,
+      actualPressureBar: r.actual_pressure_bar
+        ? parseFloat(r.actual_pressure_bar as string)
+        : undefined,
+      variancePercent: r.variance_percent
+        ? parseFloat(r.variance_percent as string)
+        : undefined,
       verificationStatus: r.verification_status as string,
       sourceReference: r.source_reference as string,
     }));
@@ -183,29 +203,38 @@ export class DataValidationService {
       WHERE report_date = CURRENT_DATE
     `);
 
-    const categoryReports: CoverageReportDto[] = byCategory.map((r: Record<string, unknown>) => ({
-      entityType: r.entity_type as string,
-      category: r.category as string,
-      subcategory: r.subcategory as string,
-      totalExpected: parseInt(r.total_expected as string, 10),
-      totalPresent: parseInt(r.total_present as string, 10),
-      coveragePercent: parseFloat(r.coverage_percent as string),
-      missingItems: r.missing_items as string[],
-    }));
+    const categoryReports: CoverageReportDto[] = byCategory.map(
+      (r: Record<string, unknown>) => ({
+        entityType: r.entity_type as string,
+        category: r.category as string,
+        subcategory: r.subcategory as string,
+        totalExpected: parseInt(r.total_expected as string, 10),
+        totalPresent: parseInt(r.total_present as string, 10),
+        coveragePercent: parseFloat(r.coverage_percent as string),
+        missingItems: r.missing_items as string[],
+      }),
+    );
 
     return {
       reportDate: new Date(),
-      overallCoveragePercent: parseFloat(overallCoverage[0]?.avg_coverage || '0'),
+      overallCoveragePercent: parseFloat(
+        overallCoverage[0]?.avg_coverage || '0',
+      ),
       byCategory: categoryReports,
       totalStandards: parseInt(summary[0]?.total_standards || '0', 10),
-      totalFlangeDimensions: parseInt(summary[0]?.total_flange_dimensions || '0', 10),
+      totalFlangeDimensions: parseInt(
+        summary[0]?.total_flange_dimensions || '0',
+        10,
+      ),
       totalPtRatings: parseInt(summary[0]?.total_pt_ratings || '0', 10),
       verifiedRecords: parseInt(summary[0]?.verified_records || '0', 10),
       documentedRecords: parseInt(summary[0]?.documented_records || '0', 10),
     };
   }
 
-  async specificationNormalizations(): Promise<SpecificationNormalizationDto[]> {
+  async specificationNormalizations(): Promise<
+    SpecificationNormalizationDto[]
+  > {
     const specs = await this.dataSource.query(`
       SELECT
         id, steel_spec_name as original_name, normalized_name, display_name,
@@ -254,25 +283,46 @@ export class DataValidationService {
     `);
   }
 
-  private buildIssueDescription(ruleCode: string, result: Record<string, unknown>): string {
-    const descriptions: Record<string, (r: Record<string, unknown>) => string> = {
-      FD_OD_CONSISTENCY: (r) => `Flange OD (${r.flange_od}mm) is not greater than pipe OD (${r.pipe_od}mm)`,
-      FD_ID_VS_OD: (r) => `Flange bore (${r.bore}mm) is >= flange OD (${r.od}mm)`,
-      FD_PCD_POSITION: (r) => `PCD (${r.pcd}mm) is outside valid range (bore: ${r.bore}mm, OD: ${r.od}mm)`,
-      FD_BOLT_HOLE_FIT: (r) => `Bolt holes may not fit within flange annulus (hole: ${r.hole_dia}mm, PCD: ${r.pcd}mm)`,
-      FD_HOLE_SPACING: (r) => `Bolt hole spacing (${(r.hole_spacing as number)?.toFixed(1)}mm) may be too tight for hole diameter (${r.hole_dia}mm)`,
-      FD_MASS_REASONABLE: (r) => `Flange mass (${r.mass_kg}kg) differs significantly from estimate (${(r.est_mass as number)?.toFixed(1)}kg)`,
-      PT_MONOTONIC_DECREASE: (r) => `Pressure rating increases from ${r.max_pressure_bar} bar at ${r.temperature_celsius}°C to ${r.next_pressure} bar at ${r.next_temp}°C`,
-      PT_POSITIVE_VALUES: (r) => `Non-positive pressure rating (${r.max_pressure_bar} bar) at ${r.temperature_celsius}°C`,
-      FB_BOLT_SIZE_MATCH: (r) => `Bolt size (${r.size_designation}) may not fit hole diameter (${r.hole_dia}mm)`,
-    };
+  private buildIssueDescription(
+    ruleCode: string,
+    result: Record<string, unknown>,
+  ): string {
+    const descriptions: Record<string, (r: Record<string, unknown>) => string> =
+      {
+        FD_OD_CONSISTENCY: (r) =>
+          `Flange OD (${r.flange_od}mm) is not greater than pipe OD (${r.pipe_od}mm)`,
+        FD_ID_VS_OD: (r) =>
+          `Flange bore (${r.bore}mm) is >= flange OD (${r.od}mm)`,
+        FD_PCD_POSITION: (r) =>
+          `PCD (${r.pcd}mm) is outside valid range (bore: ${r.bore}mm, OD: ${r.od}mm)`,
+        FD_BOLT_HOLE_FIT: (r) =>
+          `Bolt holes may not fit within flange annulus (hole: ${r.hole_dia}mm, PCD: ${r.pcd}mm)`,
+        FD_HOLE_SPACING: (r) =>
+          `Bolt hole spacing (${(r.hole_spacing as number)?.toFixed(1)}mm) may be too tight for hole diameter (${r.hole_dia}mm)`,
+        FD_MASS_REASONABLE: (r) =>
+          `Flange mass (${r.mass_kg}kg) differs significantly from estimate (${(r.est_mass as number)?.toFixed(1)}kg)`,
+        PT_MONOTONIC_DECREASE: (r) =>
+          `Pressure rating increases from ${r.max_pressure_bar} bar at ${r.temperature_celsius}°C to ${r.next_pressure} bar at ${r.next_temp}°C`,
+        PT_POSITIVE_VALUES: (r) =>
+          `Non-positive pressure rating (${r.max_pressure_bar} bar) at ${r.temperature_celsius}°C`,
+        FB_BOLT_SIZE_MATCH: (r) =>
+          `Bolt size (${r.size_designation}) may not fit hole diameter (${r.hole_dia}mm)`,
+      };
 
     const descFn = descriptions[ruleCode];
-    return descFn ? descFn(result) : `Validation issue for record ID ${result.id}`;
+    return descFn
+      ? descFn(result)
+      : `Validation issue for record ID ${result.id}`;
   }
 
-  private expectedValue(ruleCode: string, result: Record<string, unknown>): string | undefined {
-    const expected: Record<string, (r: Record<string, unknown>) => string | undefined> = {
+  private expectedValue(
+    ruleCode: string,
+    result: Record<string, unknown>,
+  ): string | undefined {
+    const expected: Record<
+      string,
+      (r: Record<string, unknown>) => string | undefined
+    > = {
       FD_OD_CONSISTENCY: (r) => `> ${r.pipe_od}mm`,
       FD_ID_VS_OD: (r) => `< ${r.od}mm`,
       FD_PCD_POSITION: (r) => `Between ${r.bore}mm and ${r.od}mm`,
@@ -285,8 +335,14 @@ export class DataValidationService {
     return fn ? fn(result) : undefined;
   }
 
-  private actualValue(ruleCode: string, result: Record<string, unknown>): string | undefined {
-    const actual: Record<string, (r: Record<string, unknown>) => string | undefined> = {
+  private actualValue(
+    ruleCode: string,
+    result: Record<string, unknown>,
+  ): string | undefined {
+    const actual: Record<
+      string,
+      (r: Record<string, unknown>) => string | undefined
+    > = {
       FD_OD_CONSISTENCY: (r) => `${r.flange_od}mm`,
       FD_ID_VS_OD: (r) => `${r.bore}mm`,
       FD_PCD_POSITION: (r) => `${r.pcd}mm`,

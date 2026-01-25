@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddDnvOsC101StructuralSteelData1777800000008
-  implements MigrationInterface
-{
+export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationInterface {
   name = 'AddDnvOsC101StructuralSteelData1777800000008';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

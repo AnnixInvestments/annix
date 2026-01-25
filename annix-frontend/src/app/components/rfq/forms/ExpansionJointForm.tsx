@@ -13,8 +13,8 @@ import {
   elbowsForLoopType,
   flangeConfigForEndOption,
   STEEL_DENSITY_KG_M3,
-  NB_TO_OD_LOOKUP,
 } from '@/app/lib/config/rfq';
+import { NB_TO_OD_LOOKUP } from '@/app/lib/hooks/useFlangeWeights';
 
 export interface ExpansionJointFormProps {
   entry: any;

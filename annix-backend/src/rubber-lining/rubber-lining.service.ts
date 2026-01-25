@@ -124,7 +124,9 @@ export class RubberLiningService {
     return ratings.map(this.mapApplicationRatingToDto);
   }
 
-  async thicknessRecommendations(): Promise<RubberThicknessRecommendationDto[]> {
+  async thicknessRecommendations(): Promise<
+    RubberThicknessRecommendationDto[]
+  > {
     const recs = await this.thicknessRepository.find({
       order: { nominalThicknessMm: 'ASC' },
     });
@@ -279,7 +281,10 @@ export class RubberLiningService {
       });
     }
 
-    if (request.abrasionLevel === 'high' || request.abrasionLevel === 'very_high') {
+    if (
+      request.abrasionLevel === 'high' ||
+      request.abrasionLevel === 'very_high'
+    ) {
       recommendedSpecs = recommendedSpecs.filter(
         (s) => s.hardnessClassIrhd >= 60,
       );

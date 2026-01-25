@@ -20,7 +20,10 @@ import {
   ApiParam,
   ApiBody,
 } from '@nestjs/swagger';
-import { Response as ExpressResponse, Request as ExpressRequest } from 'express';
+import {
+  Response as ExpressResponse,
+  Request as ExpressRequest,
+} from 'express';
 import { AdminRfqService } from './admin-rfq.service';
 import { AdminAuthGuard } from './guards/admin-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -43,9 +46,7 @@ import { Rfq } from '../rfq/entities/rfq.entity';
 @Roles('admin', 'employee')
 @ApiBearerAuth()
 export class AdminRfqController {
-  constructor(
-    private readonly rfqService: AdminRfqService,
-  ) {}
+  constructor(private readonly rfqService: AdminRfqService) {}
 
   @Get()
   @ApiOperation({ summary: 'Get all RFQs (paginated, filterable) - VIEW ONLY' })
@@ -141,7 +142,8 @@ export class AdminRfqController {
   @Put(':id/unified')
   @ApiOperation({
     summary: 'Update RFQ as admin',
-    description: 'Update a customer RFQ with new items and data. Admin-only endpoint that bypasses customer authentication.',
+    description:
+      'Update a customer RFQ with new items and data. Admin-only endpoint that bypasses customer authentication.',
   })
   @ApiParam({ name: 'id', description: 'RFQ ID', type: Number })
   @ApiBody({ type: CreateUnifiedRfqDto })
@@ -160,7 +162,8 @@ export class AdminRfqController {
   @Post('drafts')
   @ApiOperation({
     summary: 'Save RFQ draft as admin',
-    description: 'Save or update a customer RFQ draft. Admin-only endpoint that bypasses customer authentication.',
+    description:
+      'Save or update a customer RFQ draft. Admin-only endpoint that bypasses customer authentication.',
   })
   @ApiBody({ type: SaveRfqDraftDto })
   @ApiResponse({
@@ -169,9 +172,7 @@ export class AdminRfqController {
     type: RfqDraftResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Draft not found' })
-  async saveDraft(
-    @Body() dto: SaveRfqDraftDto,
-  ): Promise<RfqDraftResponseDto> {
+  async saveDraft(@Body() dto: SaveRfqDraftDto): Promise<RfqDraftResponseDto> {
     return this.rfqService.saveDraft(dto);
   }
 }

@@ -91,7 +91,9 @@ Return ONLY a JSON object with these fields (use null for missing values):
 
 @Injectable()
 export class RegistrationDocumentVerifierService {
-  private readonly logger = new Logger(RegistrationDocumentVerifierService.name);
+  private readonly logger = new Logger(
+    RegistrationDocumentVerifierService.name,
+  );
 
   private readonly VAT_NUMBER_PATTERN = /\b4\d{9}\b/g;
   private readonly REGISTRATION_NUMBER_PATTERN = /\b\d{4}\/\d{6}\/\d{2}\b/g;
@@ -122,17 +124,29 @@ export class RegistrationDocumentVerifierService {
 
     try {
       const extractedData = await this.extractDocumentData(file, documentType);
-      const fieldResults = this.compareFields(documentType, extractedData, expectedData);
-      const autoCorrections = this.determineAutoCorrections(fieldResults, extractedData);
-      const allFieldsMatch = fieldResults.every(f => f.match);
-      const overallConfidence = this.calculateOverallConfidence(extractedData, fieldResults);
+      const fieldResults = this.compareFields(
+        documentType,
+        extractedData,
+        expectedData,
+      );
+      const autoCorrections = this.determineAutoCorrections(
+        fieldResults,
+        extractedData,
+      );
+      const allFieldsMatch = fieldResults.every((f) => f.match);
+      const overallConfidence = this.calculateOverallConfidence(
+        extractedData,
+        fieldResults,
+      );
 
       const warnings: string[] = [];
       if (extractedData.confidence < 0.5) {
         warnings.push('Low OCR confidence - document may be difficult to read');
       }
       if (!allFieldsMatch && overallConfidence > 0.7) {
-        warnings.push('Some fields differ from provided data - extracted values may be more accurate');
+        warnings.push(
+          'Some fields differ from provided data - extracted values may be more accurate',
+        );
       }
 
       return {
@@ -165,7 +179,10 @@ export class RegistrationDocumentVerifierService {
   }
 
   async verifyBatch(
-    files: Array<{ file: Express.Multer.File; documentType: RegistrationDocumentType }>,
+    files: Array<{
+      file: Express.Multer.File;
+      documentType: RegistrationDocumentType;
+    }>,
     expectedData: ExpectedCompanyData,
   ): Promise<RegistrationVerificationResult[]> {
     const results = await Promise.all(
@@ -216,14 +233,18 @@ export class RegistrationDocumentVerifierService {
           };
         }
       } catch (error) {
-        this.logger.warn(`AI extraction failed, falling back to pattern matching: ${error.message}`);
+        this.logger.warn(
+          `AI extraction failed, falling back to pattern matching: ${error.message}`,
+        );
       }
     }
 
     return this.extractWithPatterns(rawText, documentType, ocrConfidence);
   }
 
-  private async extractFromPdf(buffer: Buffer): Promise<{ text: string; confidence: number }> {
+  private async extractFromPdf(
+    buffer: Buffer,
+  ): Promise<{ text: string; confidence: number }> {
     try {
       const data = await pdfParse(buffer);
       const text = data.text || '';
@@ -235,7 +256,9 @@ export class RegistrationDocumentVerifierService {
     }
   }
 
-  private async extractFromImage(buffer: Buffer): Promise<{ text: string; confidence: number }> {
+  private async extractFromImage(
+    buffer: Buffer,
+  ): Promise<{ text: string; confidence: number }> {
     let worker;
     try {
       worker = await createWorker('eng');
@@ -300,7 +323,9 @@ export class RegistrationDocumentVerifierService {
     const availableProviders = await this.aiExtractor.getAvailableProviders();
     if (availableProviders.length === 0) return null;
 
-    const provider = availableProviders.includes('gemini') ? 'gemini' : 'claude';
+    const provider = availableProviders.includes('gemini')
+      ? 'gemini'
+      : 'claude';
 
     try {
       if (provider === 'gemini') {
@@ -417,7 +442,9 @@ export class RegistrationDocumentVerifierService {
         fieldsExtracted.push('companyName');
       }
 
-      const expiryMatch = rawText.match(/(?:expir|valid.*until|valid.*to)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
+      const expiryMatch = rawText.match(
+        /(?:expir|valid.*until|valid.*to)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
+      );
       if (expiryMatch?.[1]) {
         result.beeExpiryDate = expiryMatch[1];
         fieldsExtracted.push('beeExpiryDate');
@@ -459,7 +486,10 @@ export class RegistrationDocumentVerifierService {
     for (const pattern of companyPatterns) {
       const match = normalizedText.match(pattern);
       if (match?.[1] && match.index !== undefined) {
-        const fullMatch = normalizedText.substring(match.index, match.index + match[0].length);
+        const fullMatch = normalizedText.substring(
+          match.index,
+          match.index + match[0].length,
+        );
         return fullMatch.toUpperCase().replace(/\s+/g, ' ').trim();
       }
     }
@@ -491,7 +521,7 @@ export class RegistrationDocumentVerifierService {
 
     const postalMatches = text.match(/\b(\d{4})\b/g);
     if (postalMatches?.length) {
-      const filtered = postalMatches.filter(code => {
+      const filtered = postalMatches.filter((code) => {
         const num = parseInt(code);
         return num < 1900 || num > 2099;
       });
@@ -507,14 +537,20 @@ export class RegistrationDocumentVerifierService {
     for (const pattern of addressPatterns) {
       const match = text.match(pattern);
       if (match?.[1]) {
-        const lines = match[1].trim().split('\n').map(l => l.trim()).filter(l => l);
+        const lines = match[1]
+          .trim()
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l);
         if (lines.length) {
           result.streetAddress = lines[0].toUpperCase();
           if (lines.length > 1) {
             let cityLine = lines[lines.length - 2] || lines[lines.length - 1];
             cityLine = cityLine.toUpperCase();
-            if (result.postalCode) cityLine = cityLine.replace(result.postalCode, '').trim();
-            if (result.provinceState) cityLine = cityLine.replace(result.provinceState, '').trim();
+            if (result.postalCode)
+              cityLine = cityLine.replace(result.postalCode, '').trim();
+            if (result.provinceState)
+              cityLine = cityLine.replace(result.provinceState, '').trim();
             cityLine = cityLine.replace(/,/g, '').trim();
             if (cityLine) result.city = cityLine;
           }
@@ -535,43 +571,116 @@ export class RegistrationDocumentVerifierService {
 
     if (documentType === 'vat') {
       if (expected.vatNumber) {
-        results.push(this.compareField('vatNumber', expected.vatNumber, extracted.vatNumber, 'exact'));
+        results.push(
+          this.compareField(
+            'vatNumber',
+            expected.vatNumber,
+            extracted.vatNumber,
+            'exact',
+          ),
+        );
       }
       if (expected.registrationNumber) {
-        results.push(this.compareField('registrationNumber', expected.registrationNumber, extracted.registrationNumber, 'exact'));
+        results.push(
+          this.compareField(
+            'registrationNumber',
+            expected.registrationNumber,
+            extracted.registrationNumber,
+            'exact',
+          ),
+        );
       }
       if (expected.companyName) {
-        results.push(this.compareField('companyName', expected.companyName, extracted.companyName, 'fuzzy'));
+        results.push(
+          this.compareField(
+            'companyName',
+            expected.companyName,
+            extracted.companyName,
+            'fuzzy',
+          ),
+        );
       }
     }
 
     if (documentType === 'registration') {
       if (expected.registrationNumber) {
-        results.push(this.compareField('registrationNumber', expected.registrationNumber, extracted.registrationNumber, 'exact'));
+        results.push(
+          this.compareField(
+            'registrationNumber',
+            expected.registrationNumber,
+            extracted.registrationNumber,
+            'exact',
+          ),
+        );
       }
       if (expected.companyName) {
-        results.push(this.compareField('companyName', expected.companyName, extracted.companyName, 'fuzzy'));
+        results.push(
+          this.compareField(
+            'companyName',
+            expected.companyName,
+            extracted.companyName,
+            'fuzzy',
+          ),
+        );
       }
       if (expected.streetAddress) {
-        results.push(this.compareField('streetAddress', expected.streetAddress, extracted.streetAddress, 'fuzzy', 70));
+        results.push(
+          this.compareField(
+            'streetAddress',
+            expected.streetAddress,
+            extracted.streetAddress,
+            'fuzzy',
+            70,
+          ),
+        );
       }
       if (expected.city) {
-        results.push(this.compareField('city', expected.city, extracted.city, 'fuzzy', 80));
+        results.push(
+          this.compareField('city', expected.city, extracted.city, 'fuzzy', 80),
+        );
       }
       if (expected.provinceState) {
-        results.push(this.compareField('provinceState', expected.provinceState, extracted.provinceState, 'exact'));
+        results.push(
+          this.compareField(
+            'provinceState',
+            expected.provinceState,
+            extracted.provinceState,
+            'exact',
+          ),
+        );
       }
       if (expected.postalCode) {
-        results.push(this.compareField('postalCode', expected.postalCode, extracted.postalCode, 'exact'));
+        results.push(
+          this.compareField(
+            'postalCode',
+            expected.postalCode,
+            extracted.postalCode,
+            'exact',
+          ),
+        );
       }
     }
 
     if (documentType === 'bee') {
       if (expected.beeLevel !== undefined) {
-        results.push(this.compareField('beeLevel', expected.beeLevel, extracted.beeLevel, 'exact'));
+        results.push(
+          this.compareField(
+            'beeLevel',
+            expected.beeLevel,
+            extracted.beeLevel,
+            'exact',
+          ),
+        );
       }
       if (expected.companyName) {
-        results.push(this.compareField('companyName', expected.companyName, extracted.companyName, 'fuzzy'));
+        results.push(
+          this.compareField(
+            'companyName',
+            expected.companyName,
+            extracted.companyName,
+            'fuzzy',
+          ),
+        );
       }
     }
 
@@ -618,7 +727,10 @@ export class RegistrationDocumentVerifierService {
       };
     }
 
-    const similarity = this.calculateSimilarity(String(expected), String(extracted));
+    const similarity = this.calculateSimilarity(
+      String(expected),
+      String(extracted),
+    );
     const match = similarity >= threshold;
 
     return {
@@ -667,10 +779,16 @@ export class RegistrationDocumentVerifierService {
     ];
 
     for (const suffix of suffixes) {
-      normalized = normalized.replace(new RegExp(`\\s*${suffix}\\s*$`, 'i'), '');
+      normalized = normalized.replace(
+        new RegExp(`\\s*${suffix}\\s*$`, 'i'),
+        '',
+      );
     }
 
-    return normalized.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '').replace(/\s+/g, ' ').trim();
+    return normalized
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   private levenshteinDistance(str1: string, str2: string): number {
@@ -709,7 +827,10 @@ export class RegistrationDocumentVerifierService {
 
     for (const result of fieldResults) {
       if (result.autoCorrectValue !== undefined) {
-        corrections.push({ field: result.field, value: result.autoCorrectValue });
+        corrections.push({
+          field: result.field,
+          value: result.autoCorrectValue,
+        });
         addedFields.add(result.field);
       }
     }
@@ -745,30 +866,47 @@ export class RegistrationDocumentVerifierService {
   ): number {
     if (fieldResults.length === 0) return extracted.confidence;
 
-    const matchedCount = fieldResults.filter(r => r.match).length;
+    const matchedCount = fieldResults.filter((r) => r.match).length;
     const matchRatio = matchedCount / fieldResults.length;
 
-    const avgSimilarity = fieldResults
-      .filter(r => r.similarity !== undefined)
-      .reduce((sum, r) => sum + (r.similarity || 0), 0) / (fieldResults.filter(r => r.similarity !== undefined).length || 1);
+    const avgSimilarity =
+      fieldResults
+        .filter((r) => r.similarity !== undefined)
+        .reduce((sum, r) => sum + (r.similarity || 0), 0) /
+      (fieldResults.filter((r) => r.similarity !== undefined).length || 1);
 
-    return Math.round((extracted.confidence * 0.3 + matchRatio * 0.5 + (avgSimilarity / 100) * 0.2) * 100) / 100;
+    return (
+      Math.round(
+        (extracted.confidence * 0.3 +
+          matchRatio * 0.5 +
+          (avgSimilarity / 100) * 0.2) *
+          100,
+      ) / 100
+    );
   }
 
   generateMismatchReport(result: RegistrationVerificationResult): string {
-    const mismatches = result.fieldResults.filter(r => !r.match);
+    const mismatches = result.fieldResults.filter((r) => !r.match);
 
     if (mismatches.length === 0) {
       return 'All fields verified successfully.';
     }
 
-    const lines = ['Document verification found the following discrepancies:', ''];
+    const lines = [
+      'Document verification found the following discrepancies:',
+      '',
+    ];
 
     for (const mismatch of mismatches) {
-      const similarity = mismatch.similarity !== undefined ? ` (${mismatch.similarity}% similar)` : '';
+      const similarity =
+        mismatch.similarity !== undefined
+          ? ` (${mismatch.similarity}% similar)`
+          : '';
       lines.push(`• ${mismatch.field}:`);
       lines.push(`  - You entered: ${mismatch.expected}`);
-      lines.push(`  - Document shows: ${mismatch.extracted || 'Not found'}${similarity}`);
+      lines.push(
+        `  - Document shows: ${mismatch.extracted || 'Not found'}${similarity}`,
+      );
       lines.push('');
     }
 

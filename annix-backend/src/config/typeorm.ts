@@ -15,7 +15,8 @@ const config: DataSourceOptions = {
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   synchronize: false,
   logging: process.env.NODE_ENV !== 'production',
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  ssl:
+    process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
   extra: {
     max: 10,
     min: 2,

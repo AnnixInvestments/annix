@@ -5,15 +5,17 @@ import dynamic from 'next/dynamic';
 import { log } from '@/app/lib/logger';
 import {
   flangesPerPipe as getFlangesPerPipe,
-  blankFlangeWeight as getBlankFlangeWeight,
-  blankFlangeSurfaceArea as getBlankFlangeSurfaceArea,
-  NB_TO_OD_LOOKUP,
-  bnwSetInfo as getBnwSetInfo,
-  gasketWeight as getGasketWeight,
   boltSetCountPerBend as getBoltSetCountPerBend,
   boltSetCountPerPipe as getBoltSetCountPerPipe,
   boltSetCountPerFitting as getBoltSetCountPerFitting,
 } from '@/app/lib/config/rfq';
+import {
+  NB_TO_OD_LOOKUP,
+  blankFlangeWeightSync as getBlankFlangeWeight,
+  blankFlangeSurfaceAreaSync as getBlankFlangeSurfaceArea,
+  bnwSetInfoSync as getBnwSetInfo,
+  gasketWeightSync as getGasketWeight,
+} from '@/app/lib/hooks/useFlangeWeights';
 import {
   calculateTotalSurfaceArea,
   calculateInsideDiameter,

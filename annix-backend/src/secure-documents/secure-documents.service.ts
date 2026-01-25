@@ -74,9 +74,14 @@ export class SecureDocumentsService {
     }
 
     const awsAccessKey = this.configService.get<string>('AWS_ACCESS_KEY_ID');
-    const awsSecretKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
+    const awsSecretKey = this.configService.get<string>(
+      'AWS_SECRET_ACCESS_KEY',
+    );
     this.useLocalStorage = !awsAccessKey || !awsSecretKey;
-    this.localStoragePath = path.join(process.cwd(), 'secure-documents-storage');
+    this.localStoragePath = path.join(
+      process.cwd(),
+      'secure-documents-storage',
+    );
 
     if (this.useLocalStorage) {
       this.s3Client = null;
@@ -92,7 +97,9 @@ export class SecureDocumentsService {
           secretAccessKey: awsSecretKey || '',
         },
       });
-      this.logger.log(`SecureDocumentsService using S3 storage (bucket: ${this.bucket})`);
+      this.logger.log(
+        `SecureDocumentsService using S3 storage (bucket: ${this.bucket})`,
+      );
     }
 
     if (!this.encryptionKey) {
@@ -126,7 +133,9 @@ export class SecureDocumentsService {
       relations: ['createdBy'],
     });
     if (!document) {
-      throw new NotFoundException(`Secure document with slug "${slug}" not found`);
+      throw new NotFoundException(
+        `Secure document with slug "${slug}" not found`,
+      );
     }
     return document;
   }
@@ -187,7 +196,9 @@ export class SecureDocumentsService {
     });
 
     const saved = await this.documentRepo.save(document);
-    this.logger.log(`Created secure document: ${saved.id} (${slug}) by user ${userId}`);
+    this.logger.log(
+      `Created secure document: ${saved.id} (${slug}) by user ${userId}`,
+    );
     return saved;
   }
 
@@ -329,7 +340,9 @@ export class SecureDocumentsService {
   async listLocalMarkdownFiles(): Promise<LocalDocument[]> {
     const readmes: LocalDocument[] = [];
     await this.scanForMarkdownFiles(this.projectRoot, readmes, 0);
-    return readmes.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+    return readmes.sort(
+      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
+    );
   }
 
   private async scanForMarkdownFiles(
@@ -346,7 +359,11 @@ export class SecureDocumentsService {
         const fullPath = path.join(dir, entry.name);
 
         if (entry.isDirectory()) {
-          if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'dist') {
+          if (
+            entry.name === 'node_modules' ||
+            entry.name === '.git' ||
+            entry.name === 'dist'
+          ) {
             continue;
           }
           await this.scanForMarkdownFiles(fullPath, results, depth + 1);
@@ -356,9 +373,10 @@ export class SecureDocumentsService {
           const fileName = path.basename(relativePath, '.md');
           const dirName = path.dirname(relativePath);
 
-          const title = dirName === '.'
-            ? fileName.replace(/[-_]/g, ' ')
-            : `${dirName.replace(/\//g, ' / ')} / ${fileName.replace(/[-_]/g, ' ')}`;
+          const title =
+            dirName === '.'
+              ? fileName.replace(/[-_]/g, ' ')
+              : `${dirName.replace(/\//g, ' / ')} / ${fileName.replace(/[-_]/g, ' ')}`;
 
           const slug = `local:${slugify(relativePath.replace(/\//g, '-').replace(/\.md$/i, ''))}`;
 
@@ -377,7 +395,9 @@ export class SecureDocumentsService {
     }
   }
 
-  async readLocalReadme(filePath: string): Promise<{ content: string; document: LocalDocument }> {
+  async readLocalReadme(
+    filePath: string,
+  ): Promise<{ content: string; document: LocalDocument }> {
     const fullPath = path.join(this.projectRoot, filePath);
 
     if (!fullPath.startsWith(this.projectRoot)) {
@@ -393,9 +413,10 @@ export class SecureDocumentsService {
     const relativePath = path.relative(this.projectRoot, fullPath);
     const dirName = path.dirname(relativePath);
 
-    const title = dirName === '.'
-      ? 'Project README'
-      : `${dirName.replace(/\//g, ' / ')} README`;
+    const title =
+      dirName === '.'
+        ? 'Project README'
+        : `${dirName.replace(/\//g, ' / ')} README`;
 
     const slug = `local:${slugify(relativePath.replace(/\//g, '-').replace(/\.md$/i, ''))}`;
 
@@ -411,14 +432,19 @@ export class SecureDocumentsService {
     return { content, document };
   }
 
-  async attachmentDownloadUrl(id: string): Promise<{ url: string; filename: string }> {
+  async attachmentDownloadUrl(
+    id: string,
+  ): Promise<{ url: string; filename: string }> {
     const document = await this.findOne(id);
 
     if (!document.attachmentPath) {
       throw new NotFoundException(`Document #${id} has no attachment`);
     }
 
-    const url = await this.s3StorageService.getPresignedUrl(document.attachmentPath, 3600);
+    const url = await this.s3StorageService.getPresignedUrl(
+      document.attachmentPath,
+      3600,
+    );
 
     return {
       url,

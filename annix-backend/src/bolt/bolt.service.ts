@@ -15,8 +15,10 @@ import { PipeClampEntity } from './entities/pipe-clamp.entity';
 export class BoltService {
   constructor(
     @InjectRepository(Bolt) private readonly boltRepo: Repository<Bolt>,
-    @InjectRepository(UBoltEntity) private readonly uBoltRepo: Repository<UBoltEntity>,
-    @InjectRepository(PipeClampEntity) private readonly pipeClampRepo: Repository<PipeClampEntity>,
+    @InjectRepository(UBoltEntity)
+    private readonly uBoltRepo: Repository<UBoltEntity>,
+    @InjectRepository(PipeClampEntity)
+    private readonly pipeClampRepo: Repository<PipeClampEntity>,
   ) {}
 
   async create(createBoltDto: CreateBoltDto): Promise<Bolt> {
@@ -44,13 +46,19 @@ export class BoltService {
       query.andWhere('bolt.grade = :grade', { grade: filters.grade });
     }
     if (filters?.material) {
-      query.andWhere('bolt.material ILIKE :material', { material: `%${filters.material}%` });
+      query.andWhere('bolt.material ILIKE :material', {
+        material: `%${filters.material}%`,
+      });
     }
     if (filters?.headStyle) {
-      query.andWhere('bolt.head_style = :headStyle', { headStyle: filters.headStyle });
+      query.andWhere('bolt.head_style = :headStyle', {
+        headStyle: filters.headStyle,
+      });
     }
     if (filters?.size) {
-      query.andWhere('bolt.designation LIKE :size', { size: `${filters.size}%` });
+      query.andWhere('bolt.designation LIKE :size', {
+        size: `${filters.size}%`,
+      });
     }
 
     return query.orderBy('bolt.designation', 'ASC').getMany();
@@ -104,7 +112,10 @@ export class BoltService {
     return query.getOne();
   }
 
-  async pipeClamps(clampType?: string, nbMm?: number): Promise<PipeClampEntity[]> {
+  async pipeClamps(
+    clampType?: string,
+    nbMm?: number,
+  ): Promise<PipeClampEntity[]> {
     const query = this.pipeClampRepo.createQueryBuilder('pc');
 
     if (clampType) {
@@ -114,16 +125,24 @@ export class BoltService {
       query.andWhere('pc.nb_mm = :nbMm', { nbMm });
     }
 
-    return query.orderBy('pc.clamp_type', 'ASC').addOrderBy('pc.nb_mm', 'ASC').getMany();
+    return query
+      .orderBy('pc.clamp_type', 'ASC')
+      .addOrderBy('pc.nb_mm', 'ASC')
+      .getMany();
   }
 
-  async pipeClamp(clampType: string, nbMm: number): Promise<PipeClampEntity | null> {
+  async pipeClamp(
+    clampType: string,
+    nbMm: number,
+  ): Promise<PipeClampEntity | null> {
     return this.pipeClampRepo.findOne({
       where: { clampType, nbMm },
     });
   }
 
-  async pipeClampTypes(): Promise<{ clampType: string; clampDescription: string }[]> {
+  async pipeClampTypes(): Promise<
+    { clampType: string; clampDescription: string }[]
+  > {
     const results = await this.pipeClampRepo
       .createQueryBuilder('pc')
       .select('pc.clamp_type', 'clampType')

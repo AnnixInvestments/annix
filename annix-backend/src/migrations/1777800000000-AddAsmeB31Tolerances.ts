@@ -66,15 +66,58 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
     `);
 
     const ovalityData = [
-      ['5D', 5.0, 'internal_only', 10.0, 'ASME B31.3', 'Internal pressure service only'],
-      ['3D', 3.0, 'internal_only', 21.0, 'ASME B31.3', 'Internal pressure service only'],
-      ['5D', 5.0, 'internal_external', 12.0, 'ASME B31.3', 'Internal and external pressure service'],
-      ['3D', 3.0, 'internal_external', 22.0, 'ASME B31.3', 'Internal and external pressure service'],
-      ['1.5D', 1.5, 'internal_external', 37.0, 'ASME B31.3', 'Internal and external pressure service'],
+      [
+        '5D',
+        5.0,
+        'internal_only',
+        10.0,
+        'ASME B31.3',
+        'Internal pressure service only',
+      ],
+      [
+        '3D',
+        3.0,
+        'internal_only',
+        21.0,
+        'ASME B31.3',
+        'Internal pressure service only',
+      ],
+      [
+        '5D',
+        5.0,
+        'internal_external',
+        12.0,
+        'ASME B31.3',
+        'Internal and external pressure service',
+      ],
+      [
+        '3D',
+        3.0,
+        'internal_external',
+        22.0,
+        'ASME B31.3',
+        'Internal and external pressure service',
+      ],
+      [
+        '1.5D',
+        1.5,
+        'internal_external',
+        37.0,
+        'ASME B31.3',
+        'Internal and external pressure service',
+      ],
     ];
 
-    for (const [radiusType, radiusFactor, service, ovality, standard, notes] of ovalityData) {
-      await queryRunner.query(`
+    for (const [
+      radiusType,
+      radiusFactor,
+      service,
+      ovality,
+      standard,
+      notes,
+    ] of ovalityData) {
+      await queryRunner.query(
+        `
         INSERT INTO bend_ovality_tolerances (bend_radius_type, bend_radius_factor, pressure_service, max_ovality_percent, standard, notes)
         VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (bend_radius_type, pressure_service) DO UPDATE SET
@@ -82,7 +125,9 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
           max_ovality_percent = $4,
           standard = $5,
           notes = $6
-      `, [radiusType, radiusFactor, service, ovality, standard, notes]);
+      `,
+        [radiusType, radiusFactor, service, ovality, standard, notes],
+      );
     }
 
     const wallThinningData = [
@@ -91,15 +136,24 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
       ['1.5D', 1.5, 12.5, 'ASME B16.49', 'Induction bends per B16.49'],
     ];
 
-    for (const [radiusType, radiusFactor, thinning, standard, notes] of wallThinningData) {
-      await queryRunner.query(`
+    for (const [
+      radiusType,
+      radiusFactor,
+      thinning,
+      standard,
+      notes,
+    ] of wallThinningData) {
+      await queryRunner.query(
+        `
         INSERT INTO bend_wall_thinning_tolerances (bend_radius_type, bend_radius_factor, max_thinning_percent, standard, notes)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (bend_radius_type, standard) DO UPDATE SET
           bend_radius_factor = $2,
           max_thinning_percent = $3,
           notes = $5
-      `, [radiusType, radiusFactor, thinning, standard, notes]);
+      `,
+        [radiusType, radiusFactor, thinning, standard, notes],
+      );
     }
 
     const flangeAlignmentData = [
@@ -111,10 +165,13 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
     ];
 
     for (const [minNps, maxNps, gapMm, gapInch, notes] of flangeAlignmentData) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO flange_alignment_tolerances (min_nps, max_nps, allowable_gap_mm, allowable_gap_inch, standard, notes)
         VALUES ($1, $2, $3, $4, 'ASME B31.3', $5)
-      `, [minNps, maxNps, gapMm, gapInch, notes]);
+      `,
+        [minNps, maxNps, gapMm, gapInch, notes],
+      );
     }
 
     const standardPipeSizes = [
@@ -147,28 +204,54 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
     ];
 
     for (const [nps, npsDecimal, isTypical, alternative] of standardPipeSizes) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO standard_pipe_sizes (nps, nps_decimal, is_typical, alternative_size)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (nps) DO UPDATE SET
           nps_decimal = $2,
           is_typical = $3,
           alternative_size = $4
-      `, [nps, npsDecimal, isTypical, alternative]);
+      `,
+        [nps, npsDecimal, isTypical, alternative],
+      );
     }
 
     const reducerRules = [
-      ['max_single_reduction', 1, null, 'A reducer should not reduce by more than one pipe size in a single step'],
-      ['fabricated_max_angle', null, 60.0, 'For greater reduction, use fabricated reducer with maximum 60° included angle'],
-      ['eccentric_horizontal', null, null, 'Eccentric reducers in horizontal runs: flat side up to prevent air pockets'],
-      ['eccentric_suction', null, null, 'Eccentric reducers in suction lines: flat side up (horizontal) or at centerline (vertical)'],
+      [
+        'max_single_reduction',
+        1,
+        null,
+        'A reducer should not reduce by more than one pipe size in a single step',
+      ],
+      [
+        'fabricated_max_angle',
+        null,
+        60.0,
+        'For greater reduction, use fabricated reducer with maximum 60° included angle',
+      ],
+      [
+        'eccentric_horizontal',
+        null,
+        null,
+        'Eccentric reducers in horizontal runs: flat side up to prevent air pockets',
+      ],
+      [
+        'eccentric_suction',
+        null,
+        null,
+        'Eccentric reducers in suction lines: flat side up (horizontal) or at centerline (vertical)',
+      ],
     ];
 
     for (const [ruleType, maxSteps, maxAngle, description] of reducerRules) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO reducer_rules (rule_type, max_reduction_steps, max_included_angle_degrees, description)
         VALUES ($1, $2, $3, $4)
-      `, [ruleType, maxSteps, maxAngle, description]);
+      `,
+        [ruleType, maxSteps, maxAngle, description],
+      );
     }
 
     console.warn('ASME B31.1/B31.3 tolerances added successfully');
@@ -178,7 +261,9 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS reducer_rules`);
     await queryRunner.query(`DROP TABLE IF EXISTS standard_pipe_sizes`);
     await queryRunner.query(`DROP TABLE IF EXISTS flange_alignment_tolerances`);
-    await queryRunner.query(`DROP TABLE IF EXISTS bend_wall_thinning_tolerances`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS bend_wall_thinning_tolerances`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS bend_ovality_tolerances`);
   }
 }

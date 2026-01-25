@@ -4,7 +4,9 @@ export class FixFlangeType6And7Definitions1777400000000 implements MigrationInte
   name = 'FixFlangeType6And7Definitions1777400000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Fixing flange type /6 and /7 definitions and adding dimension data...');
+    console.warn(
+      'Fixing flange type /6 and /7 definitions and adding dimension data...',
+    );
 
     await queryRunner.query(`
       UPDATE flange_types
@@ -25,25 +27,33 @@ export class FixFlangeType6And7Definitions1777400000000 implements MigrationInte
     console.warn('Updated /6 to Blank (Full Face) and /7 to Spectacle Blank');
 
     const sabs1123Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'SABS 1123'`
+      `SELECT id FROM flange_standards WHERE code = 'SABS 1123'`,
     );
     const bs4504Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'BS 4504'`
+      `SELECT id FROM flange_standards WHERE code = 'BS 4504'`,
     );
 
     const sabs1123Id = sabs1123Result[0]?.id;
     const bs4504Id = bs4504Result[0]?.id;
 
-    const type6Result = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '/6'`);
-    const type7Result = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '/7'`);
-    const type8Result = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '/8'`);
+    const type6Result = await queryRunner.query(
+      `SELECT id FROM flange_types WHERE code = '/6'`,
+    );
+    const type7Result = await queryRunner.query(
+      `SELECT id FROM flange_types WHERE code = '/7'`,
+    );
+    const type8Result = await queryRunner.query(
+      `SELECT id FROM flange_types WHERE code = '/8'`,
+    );
 
     const type6Id = type6Result[0]?.id;
     const type7Id = type7Result[0]?.id;
     const type8Id = type8Result[0]?.id;
 
     if (!type6Id || !type7Id || !type8Id) {
-      console.warn('Flange types /6, /7, or /8 not found, skipping dimension data...');
+      console.warn(
+        'Flange types /6, /7, or /8 not found, skipping dimension data...',
+      );
       return;
     }
 
@@ -59,7 +69,7 @@ export class FixFlangeType6And7Definitions1777400000000 implements MigrationInte
     const getBoltId = async (designation: string) => {
       if (!designation) return null;
       const result = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = '${designation}'`
+        `SELECT id FROM bolts WHERE designation = '${designation}'`,
       );
       return result[0]?.id;
     };
@@ -122,7 +132,21 @@ export class FixFlangeType6And7Definitions1777400000000 implements MigrationInte
 
       console.warn('Adding SABS 1123 /7 (Spectacle Blank) dimension data...');
 
-      const spectacleBlankData: Array<[number, number, number, number, number, number, string, number, number, number, number]> = [
+      const spectacleBlankData: Array<
+        [
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          string,
+          number,
+          number,
+          number,
+          number,
+        ]
+      > = [
         [15, 1000, 95, 10, 4, 14, 'M12', 65, 0.9, 140, 15],
         [20, 1000, 105, 10, 4, 14, 'M12', 75, 1.2, 155, 18],
         [25, 1000, 115, 12, 4, 14, 'M12', 85, 1.5, 170, 20],
@@ -169,12 +193,24 @@ export class FixFlangeType6And7Definitions1777400000000 implements MigrationInte
         [300, 2500, 515, 48, 16, 33, 'M30', 450, 110.0, 715, 138],
       ];
 
-      for (const [nb, pressure, D, b, holes, d1, bolt, pcd, mass, centerDist, webWidth] of spectacleBlankData) {
+      for (const [
+        nb,
+        pressure,
+        D,
+        b,
+        holes,
+        d1,
+        bolt,
+        pcd,
+        mass,
+        centerDist,
+        webWidth,
+      ] of spectacleBlankData) {
         const nominalId = await getNominalId(nb);
         if (!nominalId) continue;
 
         const type7Designation = `${pressure}/7`;
-        let type7ClassResult = await queryRunner.query(`
+        const type7ClassResult = await queryRunner.query(`
           SELECT id FROM flange_pressure_classes
           WHERE designation = '${type7Designation}' AND "standardId" = ${sabs1123Id}
         `);
@@ -231,7 +267,7 @@ export class FixFlangeType6And7Definitions1777400000000 implements MigrationInte
         const baseDesignation = blind.pressureDesignation.replace(/\/\d+$/, '');
         const type6Designation = `${baseDesignation}/6`;
 
-        let type6ClassResult = await queryRunner.query(`
+        const type6ClassResult = await queryRunner.query(`
           SELECT id FROM flange_pressure_classes
           WHERE designation = '${type6Designation}' AND "standardId" = ${bs4504Id}
         `);
@@ -273,7 +309,9 @@ export class FixFlangeType6And7Definitions1777400000000 implements MigrationInte
 
       console.warn('Adding BS 4504 /7 (Spectacle Blank) dimension data...');
 
-      const bs4504SpectacleData: Array<[number, string, number, number, number, number, string, number, number]> = [
+      const bs4504SpectacleData: Array<
+        [number, string, number, number, number, number, string, number, number]
+      > = [
         [15, 'PN16', 95, 14, 4, 14, 'M12', 65, 1.0],
         [20, 'PN16', 105, 14, 4, 14, 'M12', 75, 1.4],
         [25, 'PN16', 115, 14, 4, 14, 'M12', 85, 1.7],
@@ -320,12 +358,22 @@ export class FixFlangeType6And7Definitions1777400000000 implements MigrationInte
         [300, 'PN40', 515, 46, 16, 30, 'M27', 450, 105.0],
       ];
 
-      for (const [nb, pnClass, D, b, holes, d1, bolt, pcd, mass] of bs4504SpectacleData) {
+      for (const [
+        nb,
+        pnClass,
+        D,
+        b,
+        holes,
+        d1,
+        bolt,
+        pcd,
+        mass,
+      ] of bs4504SpectacleData) {
         const nominalId = await getNominalId(nb);
         if (!nominalId) continue;
 
         const type7Designation = `${pnClass}/7`;
-        let type7ClassResult = await queryRunner.query(`
+        const type7ClassResult = await queryRunner.query(`
           SELECT id FROM flange_pressure_classes
           WHERE designation = '${type7Designation}' AND "standardId" = ${bs4504Id}
         `);
@@ -366,7 +414,9 @@ export class FixFlangeType6And7Definitions1777400000000 implements MigrationInte
       }
     }
 
-    console.warn('Flange type /6 and /7 definitions and dimension data completed.');
+    console.warn(
+      'Flange type /6 and /7 definitions and dimension data completed.',
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -386,8 +436,12 @@ export class FixFlangeType6And7Definitions1777400000000 implements MigrationInte
       WHERE code = '/7'
     `);
 
-    const type6Result = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '/6'`);
-    const type7Result = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '/7'`);
+    const type6Result = await queryRunner.query(
+      `SELECT id FROM flange_types WHERE code = '/6'`,
+    );
+    const type7Result = await queryRunner.query(
+      `SELECT id FROM flange_types WHERE code = '/7'`,
+    );
 
     if (type6Result.length > 0) {
       await queryRunner.query(`

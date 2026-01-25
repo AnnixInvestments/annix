@@ -46,7 +46,9 @@ export class RemoteAccessController {
     private readonly configService: ConfigService,
   ) {}
 
-  private async extractCustomerIdFromToken(authHeader: string | undefined): Promise<number> {
+  private async extractCustomerIdFromToken(
+    authHeader: string | undefined,
+  ): Promise<number> {
     if (!authHeader) {
       throw new UnauthorizedException('Authentication required');
     }
@@ -74,7 +76,9 @@ export class RemoteAccessController {
   @UseGuards(AdminAuthGuard, RolesGuard)
   @Roles('admin', 'employee')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Request access to a customer document (Admin only)' })
+  @ApiOperation({
+    summary: 'Request access to a customer document (Admin only)',
+  })
   @ApiResponse({
     status: 201,
     description: 'Access request created',
@@ -108,7 +112,11 @@ export class RemoteAccessController {
     @Query('documentId', ParseIntPipe) documentId: number,
   ): Promise<AccessStatusResponseDto> {
     const adminId = req['user'].id;
-    return this.remoteAccessService.checkAccessStatus(adminId, documentType, documentId);
+    return this.remoteAccessService.checkAccessStatus(
+      adminId,
+      documentType,
+      documentId,
+    );
   }
 
   @Get('request/:id')
@@ -131,7 +139,9 @@ export class RemoteAccessController {
 
   @Get('pending')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get pending access requests for document owner (Customer only)' })
+  @ApiOperation({
+    summary: 'Get pending access requests for document owner (Customer only)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Pending requests returned',

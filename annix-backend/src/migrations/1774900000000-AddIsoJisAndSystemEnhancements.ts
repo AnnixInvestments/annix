@@ -1,13 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddIsoJisAndSystemEnhancements1774900000000
-  implements MigrationInterface
-{
+export class AddIsoJisAndSystemEnhancements1774900000000 implements MigrationInterface {
   name = 'AddIsoJisAndSystemEnhancements1774900000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.warn(
-      'Adding ISO/JIS pipe standards and system enhancements (Pass 4)...'
+      'Adding ISO/JIS pipe standards and system enhancements (Pass 4)...',
     );
 
     // ============================================================
@@ -84,7 +82,7 @@ export class AddIsoJisAndSystemEnhancements1774900000000
             inside_diameter_mm = EXCLUDED.inside_diameter_mm,
             mass_per_meter_kg = EXCLUDED.mass_per_meter_kg
         `,
-          ['ISO 1127', dim.od, wt, id.toFixed(2), mass.toFixed(3)]
+          ['ISO 1127', dim.od, wt, id.toFixed(2), mass.toFixed(3)],
         );
       }
     }
@@ -156,7 +154,7 @@ export class AddIsoJisAndSystemEnhancements1774900000000
             inside_diameter_mm = EXCLUDED.inside_diameter_mm,
             mass_per_meter_kg = EXCLUDED.mass_per_meter_kg
         `,
-          ['ISO 4200', dim.od, wt, id.toFixed(2), mass.toFixed(3)]
+          ['ISO 4200', dim.od, wt, id.toFixed(2), mass.toFixed(3)],
         );
       }
     }
@@ -213,7 +211,7 @@ export class AddIsoJisAndSystemEnhancements1774900000000
             outside_diameter_mm = EXCLUDED.outside_diameter_mm,
             mass_per_meter_kg = EXCLUDED.mass_per_meter_kg
         `,
-          ['JIS G3454', pipe.dn, pipe.od, sch, wt, mass.toFixed(3)]
+          ['JIS G3454', pipe.dn, pipe.od, sch, wt, mass.toFixed(3)],
         );
       }
     }
@@ -298,7 +296,7 @@ export class AddIsoJisAndSystemEnhancements1774900000000
             outside_diameter_mm = EXCLUDED.outside_diameter_mm,
             mass_per_meter_kg = EXCLUDED.mass_per_meter_kg
         `,
-          ['JIS G3456', pipe.dn, pipe.od, sch, wt, mass.toFixed(3)]
+          ['JIS G3456', pipe.dn, pipe.od, sch, wt, mass.toFixed(3)],
         );
       }
     }
@@ -345,7 +343,7 @@ export class AddIsoJisAndSystemEnhancements1774900000000
         SET asme_equivalent = $2
         WHERE code = $1
       `,
-        [alias.astm, alias.asme]
+        [alias.astm, alias.asme],
       );
     }
 
@@ -399,7 +397,7 @@ export class AddIsoJisAndSystemEnhancements1774900000000
         SET heat_treatment = $2
         WHERE code = $1
       `,
-        [ht.code, ht.treatment]
+        [ht.code, ht.treatment],
       );
     }
 
@@ -443,7 +441,7 @@ export class AddIsoJisAndSystemEnhancements1774900000000
           SET impact_test_required = true, min_impact_temp_c = $2
           WHERE code = $1
         `,
-          [req.code, req.impactTemp]
+          [req.code, req.impactTemp],
         );
       }
       if (req.pmi) {
@@ -453,7 +451,7 @@ export class AddIsoJisAndSystemEnhancements1774900000000
           SET pmi_required = true
           WHERE code = $1
         `,
-          [req.code]
+          [req.code],
         );
       }
     }
@@ -587,7 +585,7 @@ export class AddIsoJisAndSystemEnhancements1774900000000
           recommended_ca_mm = EXCLUDED.recommended_ca_mm,
           max_ca_mm = EXCLUDED.max_ca_mm
       `,
-        [ca.service, ca.fluid, ca.material, ca.ca, ca.max]
+        [ca.service, ca.fluid, ca.material, ca.ca, ca.max],
       );
     }
 
@@ -614,7 +612,11 @@ export class AddIsoJisAndSystemEnhancements1774900000000
       { canonical: 'XS', alias: 'XH', standard: 'ASME B36.10' },
       { canonical: 'XS', alias: 'Extra Heavy', standard: 'ASME B36.10' },
       { canonical: 'XS', alias: '80S', standard: 'ASME B36.19' },
-      { canonical: 'XXS', alias: 'Double Extra Strong', standard: 'ASME B36.10' },
+      {
+        canonical: 'XXS',
+        alias: 'Double Extra Strong',
+        standard: 'ASME B36.10',
+      },
       { canonical: 'XXS', alias: 'XXH', standard: 'ASME B36.10' },
       { canonical: '5S', alias: 'Sch 5S', standard: 'ASME B36.19' },
       { canonical: '10S', alias: 'Sch 10S', standard: 'ASME B36.19' },
@@ -631,7 +633,7 @@ export class AddIsoJisAndSystemEnhancements1774900000000
         ON CONFLICT (alias, standard) DO UPDATE SET
           canonical_name = EXCLUDED.canonical_name
       `,
-        [alias.canonical, alias.alias, alias.standard]
+        [alias.canonical, alias.alias, alias.standard],
       );
     }
 
@@ -639,29 +641,31 @@ export class AddIsoJisAndSystemEnhancements1774900000000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS schedule_designation_aliases`);
     await queryRunner.query(
-      `DROP TABLE IF EXISTS corrosion_allowance_recommendations`
+      `DROP TABLE IF EXISTS schedule_designation_aliases`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS corrosion_allowance_recommendations`,
     );
     await queryRunner.query(`DROP TABLE IF EXISTS jis_pipe_dimensions`);
     await queryRunner.query(`DROP TABLE IF EXISTS iso_pipe_dimensions`);
     await queryRunner.query(
-      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS asme_equivalent`
+      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS asme_equivalent`,
     );
     await queryRunner.query(
-      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS heat_treatment`
+      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS heat_treatment`,
     );
     await queryRunner.query(
-      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS requires_mtr`
+      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS requires_mtr`,
     );
     await queryRunner.query(
-      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS pmi_required`
+      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS pmi_required`,
     );
     await queryRunner.query(
-      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS impact_test_required`
+      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS impact_test_required`,
     );
     await queryRunner.query(
-      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS min_impact_temp_c`
+      `ALTER TABLE pipe_steel_grades DROP COLUMN IF EXISTS min_impact_temp_c`,
     );
   }
 }

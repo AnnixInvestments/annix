@@ -3,7 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { createWorker } from 'tesseract.js';
 import { pdfToPng } from 'pdf-to-png-converter';
-import { NixExtractionRegion, RegionCoordinates } from '../entities/nix-extraction-region.entity';
+import {
+  NixExtractionRegion,
+  RegionCoordinates,
+} from '../entities/nix-extraction-region.entity';
 import {
   SaveExtractionRegionDto,
   PdfPagesResponseDto,
@@ -19,11 +22,17 @@ export class DocumentAnnotationService {
     private readonly regionRepository: Repository<NixExtractionRegion>,
   ) {}
 
-  async convertPdfToImages(buffer: Buffer, scale: number = 2.0): Promise<PdfPagesResponseDto> {
+  async convertPdfToImages(
+    buffer: Buffer,
+    scale: number = 2.0,
+  ): Promise<PdfPagesResponseDto> {
     try {
       this.logger.log('Converting PDF to images for annotation view');
 
-      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      const arrayBuffer = buffer.buffer.slice(
+        buffer.byteOffset,
+        buffer.byteOffset + buffer.byteLength,
+      );
       const pngPages = await pdfToPng(arrayBuffer, {
         disableFontFace: true,
         useSystemFonts: true,
@@ -60,7 +69,10 @@ export class DocumentAnnotationService {
     try {
       this.logger.log(`Extracting text from region for field: ${fieldName}`);
 
-      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      const arrayBuffer = buffer.buffer.slice(
+        buffer.byteOffset,
+        buffer.byteOffset + buffer.byteLength,
+      );
       const pngPages = await pdfToPng(arrayBuffer, {
         disableFontFace: true,
         useSystemFonts: true,
@@ -90,11 +102,15 @@ export class DocumentAnnotationService {
       const text = data.text?.trim() || '';
       const confidence = data.confidence / 100;
 
-      this.logger.log(`Extracted from region: "${text}" (confidence: ${confidence})`);
+      this.logger.log(
+        `Extracted from region: "${text}" (confidence: ${confidence})`,
+      );
       return { text, confidence };
     } catch (error) {
       if (worker) {
-        try { await worker.terminate(); } catch { }
+        try {
+          await worker.terminate();
+        } catch {}
       }
       this.logger.error(`Region extraction failed: ${error.message}`);
       return { text: '', confidence: 0 };
@@ -105,7 +121,9 @@ export class DocumentAnnotationService {
     dto: SaveExtractionRegionDto,
     userId?: number,
   ): Promise<NixExtractionRegion> {
-    this.logger.log(`Saving extraction region for ${dto.documentCategory}:${dto.fieldName}`);
+    this.logger.log(
+      `Saving extraction region for ${dto.documentCategory}:${dto.fieldName}`,
+    );
 
     const existingRegion = await this.regionRepository.findOne({
       where: {
@@ -134,7 +152,9 @@ export class DocumentAnnotationService {
     return this.regionRepository.save(region);
   }
 
-  async findRegionsForDocument(documentCategory: string): Promise<NixExtractionRegion[]> {
+  async findRegionsForDocument(
+    documentCategory: string,
+  ): Promise<NixExtractionRegion[]> {
     return this.regionRepository.find({
       where: {
         documentCategory,
@@ -154,11 +174,15 @@ export class DocumentAnnotationService {
     const results = new Map<string, { text: string; confidence: number }>();
 
     if (regions.length === 0) {
-      this.logger.log(`No learned regions found for document category: ${documentCategory}`);
+      this.logger.log(
+        `No learned regions found for document category: ${documentCategory}`,
+      );
       return results;
     }
 
-    this.logger.log(`Found ${regions.length} learned regions for ${documentCategory}`);
+    this.logger.log(
+      `Found ${regions.length} learned regions for ${documentCategory}`,
+    );
 
     for (const region of regions) {
       const extracted = await this.extractFromRegion(
@@ -167,7 +191,10 @@ export class DocumentAnnotationService {
         region.fieldName,
       );
 
-      if (extracted.text && extracted.confidence >= region.confidenceThreshold) {
+      if (
+        extracted.text &&
+        extracted.confidence >= region.confidenceThreshold
+      ) {
         results.set(region.fieldName, extracted);
         region.useCount += 1;
         region.successCount += 1;

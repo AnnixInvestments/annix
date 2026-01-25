@@ -1,3 +1,27 @@
+/**
+ * @deprecated This file is deprecated. Import from '@/app/lib/hooks/useFlangeWeights' instead.
+ *
+ * For sync functions, use the *Sync variants:
+ * - flangeWeightSync
+ * - blankFlangeWeightSync
+ * - sansBlankFlangeWeightSync
+ * - bnwSetInfoSync
+ * - retainingRingWeightSync
+ * - gasketWeightSync
+ * - blankFlangeSurfaceAreaSync
+ * - boltHolesPerFlangeSync
+ *
+ * Constants are also re-exported from the hook:
+ * - NB_TO_OD_LOOKUP
+ * - BLANK_FLANGE_WEIGHT
+ * - FLANGE_WEIGHT_BY_PRESSURE_CLASS
+ * - NB_TO_FLANGE_WEIGHT_LOOKUP
+ * - BOLT_HOLES_BY_NB_AND_PRESSURE
+ * - BNW_SET_WEIGHT_PER_HOLE
+ * - GASKET_WEIGHTS
+ * - SABS_1123_FLANGE_TYPES, BS_4504_FLANGE_TYPES, etc.
+ */
+
 import {
   STEEL_DENSITY_KG_M3,
   STEEL_DENSITY_KG_MM3,
@@ -8,6 +32,7 @@ import {
   TackWeldConfig,
 } from './constants';
 
+/** @deprecated Use BLANK_FLANGE_WEIGHT from '@/app/lib/hooks/useFlangeWeights' */
 export const BLANK_FLANGE_WEIGHT: Record<string, Record<number, number>> = {
   'PN6': { 15: 0.44, 20: 0.59, 25: 0.72, 32: 1.16, 40: 1.35, 50: 1.9, 65: 2.5, 80: 3.8, 100: 4.8, 125: 6.0, 150: 7.5, 200: 11.5, 250: 17.0, 300: 24.0, 350: 33.0, 400: 43.0, 450: 54.0, 500: 60.0, 600: 85.0, 700: 115.0, 750: 130.0, 800: 150.0, 900: 190.0, 1000: 240.0, 1200: 350.0 },
   'PN10': { 15: 0.67, 20: 0.94, 25: 1.1, 32: 1.8, 40: 2.1, 50: 2.7, 65: 3.5, 80: 4.5, 100: 5.8, 125: 7.5, 150: 10.0, 200: 16.5, 250: 25.0, 300: 36.0, 350: 48.0, 400: 62.0, 450: 78.0, 500: 95.0, 600: 135.0, 700: 180.0, 750: 205.0, 800: 235.0, 900: 300.0, 1000: 380.0, 1200: 560.0 },
@@ -19,6 +44,7 @@ export const BLANK_FLANGE_WEIGHT: Record<string, Record<number, number>> = {
   'Class 600': { 15: 1.5, 20: 2.2, 25: 2.8, 32: 4.0, 40: 5.5, 50: 7.5, 65: 11.0, 80: 15.0, 100: 22.0, 125: 32.0, 150: 45.0, 200: 78.0, 250: 130.0, 300: 195.0, 350: 280.0, 400: 385.0, 450: 510.0, 500: 660.0, 600: 1000.0 }
 };
 
+/** @deprecated Use blankFlangeWeightSync from '@/app/lib/hooks/useFlangeWeights' */
 export const blankFlangeWeight = (nbMm: number, pressureClass: string): number => {
   const pcNormalized = pressureClass?.toUpperCase().replace(/\s+/g, '') || 'PN16';
   const pcLookup = pcNormalized.includes('PN40') || pcNormalized.includes('CLASS300') ? 'PN40' :
@@ -35,6 +61,7 @@ const FLANGE_OD: Record<number, number> = {
   1600: 1915, 1800: 2115, 2000: 2325, 2200: 2550, 2400: 2760, 2500: 2880
 };
 
+/** @deprecated Use blankFlangeSurfaceAreaSync from '@/app/lib/hooks/useFlangeWeights' */
 export const blankFlangeSurfaceArea = (nbMm: number): { external: number; internal: number } => {
   const flangeOdMm = FLANGE_OD[nbMm] || nbMm * 1.7;
   const flangeThicknessMm = Math.max(20, nbMm * 0.08);
@@ -43,6 +70,7 @@ export const blankFlangeSurfaceArea = (nbMm: number): { external: number; intern
   return { external: singleFaceAreaM2 + edgeAreaM2, internal: singleFaceAreaM2 };
 };
 
+/** @deprecated Use NB_TO_OD_LOOKUP from '@/app/lib/hooks/useFlangeWeights' */
 export const NB_TO_OD_LOOKUP: Record<number, number> = {
   15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9,
   100: 114.3, 125: 139.7, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
@@ -52,6 +80,7 @@ export const NB_TO_OD_LOOKUP: Record<number, number> = {
   2200: 2235.2, 2400: 2438.4, 2500: 2540.0
 };
 
+/** @deprecated Use FLANGE_WEIGHT_BY_PRESSURE_CLASS from '@/app/lib/hooks/useFlangeWeights' */
 export const FLANGE_WEIGHT_BY_PRESSURE_CLASS: Record<string, Record<number, number>> = {
   'PN6': {
     15: 0.40, 20: 0.59, 25: 0.72, 32: 1.16, 40: 1.35, 50: 1.48, 65: 1.86, 80: 2.95,
@@ -109,6 +138,7 @@ export const FLANGE_WEIGHT_BY_PRESSURE_CLASS: Record<string, Record<number, numb
   },
 };
 
+/** @deprecated Use NB_TO_FLANGE_WEIGHT_LOOKUP from '@/app/lib/hooks/useFlangeWeights' */
 export const NB_TO_FLANGE_WEIGHT_LOOKUP = FLANGE_WEIGHT_BY_PRESSURE_CLASS['PN16'];
 
 export const SANS_1123_PLATE_FLANGE_WEIGHT: Record<string, Record<number, number>> = {
@@ -290,6 +320,7 @@ export const SANS_1123_BLIND_FLANGE_WEIGHT: Record<string, Record<number, number
   }
 };
 
+/** @deprecated Use BOLT_HOLES_BY_NB_AND_PRESSURE from '@/app/lib/hooks/useFlangeWeights' */
 export const BOLT_HOLES_BY_NB_AND_PRESSURE: Record<string, Record<number, number>> = {
   'PN6': { 15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 4, 80: 8, 100: 8, 125: 8, 150: 8, 200: 12, 250: 12, 300: 12, 350: 16, 400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 800: 24, 900: 28, 1000: 28, 1200: 32 },
   'PN10': { 15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 4, 65: 4, 80: 8, 100: 8, 125: 8, 150: 8, 200: 8, 250: 12, 300: 12, 350: 16, 400: 16, 450: 20, 500: 20, 600: 20, 700: 24, 800: 24, 900: 28, 1000: 28, 1200: 32 },
@@ -302,6 +333,7 @@ export const BOLT_HOLES_BY_NB_AND_PRESSURE: Record<string, Record<number, number
   'Class 600': { 15: 4, 20: 4, 25: 4, 32: 4, 40: 4, 50: 8, 65: 8, 80: 8, 100: 8, 125: 8, 150: 12, 200: 16, 250: 16, 300: 20, 350: 20, 400: 20, 450: 20, 500: 24, 600: 24, 700: 28 }
 };
 
+/** @deprecated Use BNW_SET_WEIGHT_PER_HOLE from '@/app/lib/hooks/useFlangeWeights' */
 export const BNW_SET_WEIGHT_PER_HOLE: Record<string, Record<number, { boltSize: string; weight: number }>> = {
   'PN6': {
     15: { boltSize: 'M12x50', weight: 0.056 }, 20: { boltSize: 'M12x50', weight: 0.056 }, 25: { boltSize: 'M12x50', weight: 0.056 }, 32: { boltSize: 'M16x55', weight: 0.113 }, 40: { boltSize: 'M16x55', weight: 0.113 }, 50: { boltSize: 'M16x60', weight: 0.123 }, 65: { boltSize: 'M16x60', weight: 0.123 }, 80: { boltSize: 'M16x65', weight: 0.131 }, 100: { boltSize: 'M16x65', weight: 0.131 }, 125: { boltSize: 'M16x70', weight: 0.138 }, 150: { boltSize: 'M20x80', weight: 0.256 }, 200: { boltSize: 'M20x85', weight: 0.268 }, 250: { boltSize: 'M24x95', weight: 0.436 }, 300: { boltSize: 'M24x110', weight: 0.487 }, 350: { boltSize: 'M24x110', weight: 0.487 }, 400: { boltSize: 'M24x120', weight: 0.522 }, 450: { boltSize: 'M24x130', weight: 0.554 }, 500: { boltSize: 'M30x140', weight: 0.984 }, 600: { boltSize: 'M30x160', weight: 1.092 }, 700: { boltSize: 'M30x170', weight: 1.146 }, 800: { boltSize: 'M36x200', weight: 1.961 }, 900: { boltSize: 'M36x210', weight: 2.027 }, 1000: { boltSize: 'M36x220', weight: 2.105 }, 1200: { boltSize: 'M42x250', weight: 2.55 }
@@ -332,6 +364,7 @@ export const BNW_SET_WEIGHT_PER_HOLE: Record<string, Record<number, { boltSize: 
   }
 };
 
+/** @deprecated Use GASKET_WEIGHTS from '@/app/lib/hooks/useFlangeWeights' */
 export const GASKET_WEIGHTS: Record<number, { spiralWound: number; rtj: number; ptfe: number; graphite: number; caf: number; rubber: number }> = {
   15: { spiralWound: 0.025, rtj: 0.045, ptfe: 0.003, graphite: 0.002, caf: 0.004, rubber: 0.003 },
   20: { spiralWound: 0.030, rtj: 0.055, ptfe: 0.004, graphite: 0.003, caf: 0.005, rubber: 0.004 },
@@ -428,6 +461,7 @@ export const normalizePressureClass = (designation: string, flangeStandard?: str
   return designation;
 };
 
+/** @deprecated Use boltHolesPerFlangeSync from '@/app/lib/hooks/useFlangeWeights' */
 export const boltHolesPerFlange = (nbMm: number, pressureClass: string): number => {
   const normalized = normalizePressureClass(pressureClass);
   const classData = BOLT_HOLES_BY_NB_AND_PRESSURE[normalized];
@@ -435,6 +469,7 @@ export const boltHolesPerFlange = (nbMm: number, pressureClass: string): number 
   return classData[nbMm] || 8;
 };
 
+/** @deprecated Use bnwSetInfoSync from '@/app/lib/hooks/useFlangeWeights' */
 export const bnwSetInfo = (nbMm: number, pressureClass: string): { boltSize: string; weightPerHole: number; holesPerFlange: number } => {
   const normalized = normalizePressureClass(pressureClass);
   const classData = BNW_SET_WEIGHT_PER_HOLE[normalized];
@@ -451,6 +486,7 @@ export const bnwSetInfo = (nbMm: number, pressureClass: string): { boltSize: str
   };
 };
 
+/** @deprecated Use gasketWeightSync from '@/app/lib/hooks/useFlangeWeights' */
 export const gasketWeight = (gasketType: string, nbMm: number): number => {
   const sizes = Object.keys(GASKET_WEIGHTS).map(Number).sort((a, b) => a - b);
   let closestSize = sizes[0];
@@ -479,6 +515,7 @@ export const gasketWeight = (gasketType: string, nbMm: number): number => {
   return weights.spiralWound;
 };
 
+/** @deprecated Use flangeWeightSync from '@/app/lib/hooks/useFlangeWeights' */
 export const flangeWeight = (
   nominalBoreMm: number,
   pressureClassDesignation?: string,
@@ -682,6 +719,7 @@ export const flangeWeight = (
   return nominalBoreMm < 100 ? 5 : nominalBoreMm < 200 ? 12 : nominalBoreMm < 400 ? 40 : nominalBoreMm < 600 ? 80 : 150;
 };
 
+/** @deprecated Use sansBlankFlangeWeightSync from '@/app/lib/hooks/useFlangeWeights' */
 export const sansBlankFlangeWeight = (nbMm: number, tableDesignation: string): number => {
   const tableMatch = tableDesignation.match(/^(\d+)/);
   if (!tableMatch) return blankFlangeWeight(nbMm, 'PN16');
@@ -703,6 +741,7 @@ export interface Sabs1123FlangeType {
   description: string;
 }
 
+/** @deprecated Use SABS_1123_FLANGE_TYPES from '@/app/lib/hooks/useFlangeWeights' */
 export const SABS_1123_FLANGE_TYPES: Sabs1123FlangeType[] = [
   { code: '/1', name: 'Backing Ring', description: 'BR - Backing Ring flange for rotating flange assemblies' },
   { code: '/2', name: 'Weld Neck', description: 'WN - Weld Neck flange for high pressure applications' },
@@ -722,6 +761,7 @@ export const SABS_1123_PRESSURE_CLASSES = [
   { value: 4000, label: '4000 kPa' },
 ];
 
+/** @deprecated Use BS_4504_FLANGE_TYPES from '@/app/lib/hooks/useFlangeWeights' */
 export const BS_4504_FLANGE_TYPES: Sabs1123FlangeType[] = [
   { code: '/1', name: 'Backing Ring', description: 'BR - Backing Ring flange for rotating flange assemblies' },
   { code: '/2', name: 'Weld Neck', description: 'WN - Weld Neck flange for high pressure applications' },
@@ -750,6 +790,7 @@ export interface FlangeTypeInfo {
   description: string;
 }
 
+/** @deprecated Use ASME_B16_5_FLANGE_TYPES from '@/app/lib/hooks/useFlangeWeights' */
 export const ASME_B16_5_FLANGE_TYPES: FlangeTypeInfo[] = [
   { code: 'WN', name: 'Weld Neck', description: 'WN - Weld Neck flange for high pressure and temperature applications' },
   { code: 'SO', name: 'Slip-On', description: 'SO - Slip-On flange, welded inside and outside' },
@@ -760,6 +801,7 @@ export const ASME_B16_5_FLANGE_TYPES: FlangeTypeInfo[] = [
   { code: 'LWN', name: 'Long Weld Neck', description: 'LWN - Long Weld Neck flange for nozzle connections' },
 ];
 
+/** @deprecated Use BS_10_FLANGE_TYPES from '@/app/lib/hooks/useFlangeWeights' */
 export const BS_10_FLANGE_TYPES: FlangeTypeInfo[] = [
   { code: 'WN', name: 'Weld Neck', description: 'WN - Weld Neck flange' },
   { code: 'SO', name: 'Slip-On', description: 'SO - Slip-On Plate flange' },
@@ -767,10 +809,12 @@ export const BS_10_FLANGE_TYPES: FlangeTypeInfo[] = [
   { code: 'THD', name: 'Screwed', description: 'THD - Screwed/Threaded flange' },
 ];
 
+/** @deprecated Use ASME_B16_47_SERIES_A_FLANGE_TYPES from '@/app/lib/hooks/useFlangeWeights' */
 export const ASME_B16_47_SERIES_A_FLANGE_TYPES: FlangeTypeInfo[] = [
   { code: 'WN', name: 'Weld Neck', description: 'WN - Weld Neck flange (Series A - MSS SP-44)' },
 ];
 
+/** @deprecated Use ASME_B16_47_SERIES_B_FLANGE_TYPES from '@/app/lib/hooks/useFlangeWeights' */
 export const ASME_B16_47_SERIES_B_FLANGE_TYPES: FlangeTypeInfo[] = [
   { code: 'WN', name: 'Weld Neck', description: 'WN - Weld Neck flange (Series B - API 605)' },
 ];
@@ -1112,6 +1156,7 @@ const RETAINING_RING_WEIGHT_LOOKUP: Record<number, number> = {
   850: 25.6, 900: 28.8, 950: 32.2, 1000: 35.8, 1050: 39.6, 1200: 52.0
 };
 
+/** @deprecated Use retainingRingWeightSync from '@/app/lib/hooks/useFlangeWeights' */
 export const retainingRingWeight = (nbMm: number, pipeOdMm?: number): number => {
   const lookupWeight = RETAINING_RING_WEIGHT_LOOKUP[nbMm];
   if (lookupWeight) {

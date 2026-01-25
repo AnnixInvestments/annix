@@ -12,10 +12,20 @@ export class Sabs719TestPressure {
   @Column({ name: 'nominal_bore_mm', type: 'int' })
   nominalBoreMm: number;
 
-  @Column({ name: 'outside_diameter_mm', type: 'decimal', precision: 10, scale: 2 })
+  @Column({
+    name: 'outside_diameter_mm',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+  })
   outsideDiameterMm: number;
 
-  @Column({ name: 'wall_thickness_mm', type: 'decimal', precision: 8, scale: 2 })
+  @Column({
+    name: 'wall_thickness_mm',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+  })
   wallThicknessMm: number;
 
   @Column({ name: 'test_pressure_kpa', type: 'int' })

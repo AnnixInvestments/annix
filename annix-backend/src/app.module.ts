@@ -65,6 +65,10 @@ import { ThermalModule } from './thermal/thermal.module';
 import { DataValidationModule } from './data-validation/data-validation.module';
 import { UnifiedApiModule } from './unified-api/unified-api.module';
 import { RemoteAccessModule } from './remote-access/remote-access.module';
+import { FlangeTypeWeightModule } from './flange-type-weight/flange-type-weight.module';
+import { BnwSetWeightModule } from './bnw-set-weight/bnw-set-weight.module';
+import { RetainingRingWeightModule } from './retaining-ring-weight/retaining-ring-weight.module';
+import { NbOdLookupModule } from './nb-od-lookup/nb-od-lookup.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -131,6 +135,10 @@ import typeormConfig from './config/typeorm';
     DataValidationModule,
     UnifiedApiModule,
     RemoteAccessModule,
+    FlangeTypeWeightModule,
+    BnwSetWeightModule,
+    RetainingRingWeightModule,
+    NbOdLookupModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

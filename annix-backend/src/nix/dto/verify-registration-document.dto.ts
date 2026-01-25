@@ -1,34 +1,59 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNumber, IsOptional, IsIn, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsIn,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ExpectedCompanyDataDto {
-  @ApiPropertyOptional({ description: 'Expected VAT number', example: '4123456789' })
+  @ApiPropertyOptional({
+    description: 'Expected VAT number',
+    example: '4123456789',
+  })
   @IsString()
   @IsOptional()
   vatNumber?: string;
 
-  @ApiPropertyOptional({ description: 'Expected company registration number', example: '2020/123456/07' })
+  @ApiPropertyOptional({
+    description: 'Expected company registration number',
+    example: '2020/123456/07',
+  })
   @IsString()
   @IsOptional()
   registrationNumber?: string;
 
-  @ApiPropertyOptional({ description: 'Expected company legal name', example: 'ACME INDUSTRIES (PTY) LTD' })
+  @ApiPropertyOptional({
+    description: 'Expected company legal name',
+    example: 'ACME INDUSTRIES (PTY) LTD',
+  })
   @IsString()
   @IsOptional()
   companyName?: string;
 
-  @ApiPropertyOptional({ description: 'Expected street address', example: '123 MAIN STREET' })
+  @ApiPropertyOptional({
+    description: 'Expected street address',
+    example: '123 MAIN STREET',
+  })
   @IsString()
   @IsOptional()
   streetAddress?: string;
 
-  @ApiPropertyOptional({ description: 'Expected city', example: 'JOHANNESBURG' })
+  @ApiPropertyOptional({
+    description: 'Expected city',
+    example: 'JOHANNESBURG',
+  })
   @IsString()
   @IsOptional()
   city?: string;
 
-  @ApiPropertyOptional({ description: 'Expected province/state', example: 'GAUTENG' })
+  @ApiPropertyOptional({
+    description: 'Expected province/state',
+    example: 'GAUTENG',
+  })
   @IsString()
   @IsOptional()
   provinceState?: string;
@@ -45,32 +70,47 @@ export class ExpectedCompanyDataDto {
 }
 
 export class VerifyRegistrationDocumentDto {
-  @ApiProperty({ description: 'Document type', enum: ['vat', 'registration', 'bee'] })
+  @ApiProperty({
+    description: 'Document type',
+    enum: ['vat', 'registration', 'bee'],
+  })
   @IsString()
   @IsIn(['vat', 'registration', 'bee'])
   documentType: 'vat' | 'registration' | 'bee';
 
-  @ApiProperty({ description: 'Expected company data to verify against', type: ExpectedCompanyDataDto })
+  @ApiProperty({
+    description: 'Expected company data to verify against',
+    type: ExpectedCompanyDataDto,
+  })
   @ValidateNested()
   @Type(() => ExpectedCompanyDataDto)
   expectedData: ExpectedCompanyDataDto;
 }
 
 export class BatchDocumentDto {
-  @ApiProperty({ description: 'Document type', enum: ['vat', 'registration', 'bee'] })
+  @ApiProperty({
+    description: 'Document type',
+    enum: ['vat', 'registration', 'bee'],
+  })
   @IsString()
   @IsIn(['vat', 'registration', 'bee'])
   documentType: 'vat' | 'registration' | 'bee';
 }
 
 export class VerifyRegistrationBatchDto {
-  @ApiProperty({ description: 'Array of document types corresponding to uploaded files', type: [BatchDocumentDto] })
+  @ApiProperty({
+    description: 'Array of document types corresponding to uploaded files',
+    type: [BatchDocumentDto],
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BatchDocumentDto)
   documents: BatchDocumentDto[];
 
-  @ApiProperty({ description: 'Expected company data to verify against', type: ExpectedCompanyDataDto })
+  @ApiProperty({
+    description: 'Expected company data to verify against',
+    type: ExpectedCompanyDataDto,
+  })
   @ValidateNested()
   @Type(() => ExpectedCompanyDataDto)
   expectedData: ExpectedCompanyDataDto;
@@ -89,7 +129,9 @@ export class FieldVerificationResultDto {
   @ApiProperty({ description: 'Whether the values match' })
   match: boolean;
 
-  @ApiPropertyOptional({ description: 'Similarity percentage for fuzzy matches' })
+  @ApiPropertyOptional({
+    description: 'Similarity percentage for fuzzy matches',
+  })
   similarity?: number;
 
   @ApiPropertyOptional({ description: 'Suggested auto-correct value' })
@@ -130,7 +172,10 @@ export class ExtractedRegistrationDataDto {
   @ApiProperty({ description: 'OCR confidence score (0-1)' })
   confidence: number;
 
-  @ApiProperty({ description: 'List of fields successfully extracted', type: [String] })
+  @ApiProperty({
+    description: 'List of fields successfully extracted',
+    type: [String],
+  })
   fieldsExtracted: string[];
 }
 
@@ -146,13 +191,22 @@ export class VerifyRegistrationDocumentResponseDto {
   @ApiProperty({ description: 'Whether verification was successful' })
   success: boolean;
 
-  @ApiProperty({ description: 'Document type that was verified', enum: ['vat', 'registration', 'bee'] })
+  @ApiProperty({
+    description: 'Document type that was verified',
+    enum: ['vat', 'registration', 'bee'],
+  })
   documentType: 'vat' | 'registration' | 'bee';
 
-  @ApiProperty({ description: 'Data extracted from the document', type: ExtractedRegistrationDataDto })
+  @ApiProperty({
+    description: 'Data extracted from the document',
+    type: ExtractedRegistrationDataDto,
+  })
   extractedData: ExtractedRegistrationDataDto;
 
-  @ApiProperty({ description: 'Field-by-field verification results', type: [FieldVerificationResultDto] })
+  @ApiProperty({
+    description: 'Field-by-field verification results',
+    type: [FieldVerificationResultDto],
+  })
   fieldResults: FieldVerificationResultDto[];
 
   @ApiProperty({ description: 'Overall confidence score (0-1)' })
@@ -161,13 +215,19 @@ export class VerifyRegistrationDocumentResponseDto {
   @ApiProperty({ description: 'Whether all expected fields matched' })
   allFieldsMatch: boolean;
 
-  @ApiProperty({ description: 'Suggested auto-corrections', type: [AutoCorrectionDto] })
+  @ApiProperty({
+    description: 'Suggested auto-corrections',
+    type: [AutoCorrectionDto],
+  })
   autoCorrections: AutoCorrectionDto[];
 
   @ApiProperty({ description: 'Warning messages', type: [String] })
   warnings: string[];
 
-  @ApiProperty({ description: 'OCR method used', enum: ['pdf-parse', 'tesseract', 'ai', 'none'] })
+  @ApiProperty({
+    description: 'OCR method used',
+    enum: ['pdf-parse', 'tesseract', 'ai', 'none'],
+  })
   ocrMethod: 'pdf-parse' | 'tesseract' | 'ai' | 'none';
 
   @ApiProperty({ description: 'Processing time in milliseconds' })
@@ -178,7 +238,10 @@ export class VerifyRegistrationDocumentResponseDto {
 }
 
 export class VerifyRegistrationBatchResponseDto {
-  @ApiProperty({ description: 'Results for each document', type: [VerifyRegistrationDocumentResponseDto] })
+  @ApiProperty({
+    description: 'Results for each document',
+    type: [VerifyRegistrationDocumentResponseDto],
+  })
   results: VerifyRegistrationDocumentResponseDto[];
 
   @ApiProperty({ description: 'Whether all documents verified successfully' })
@@ -187,7 +250,10 @@ export class VerifyRegistrationBatchResponseDto {
   @ApiProperty({ description: 'Whether all fields across all documents match' })
   allFieldsMatch: boolean;
 
-  @ApiProperty({ description: 'Combined auto-corrections from all documents', type: [AutoCorrectionDto] })
+  @ApiProperty({
+    description: 'Combined auto-corrections from all documents',
+    type: [AutoCorrectionDto],
+  })
   combinedAutoCorrections: AutoCorrectionDto[];
 
   @ApiProperty({ description: 'Total processing time in milliseconds' })

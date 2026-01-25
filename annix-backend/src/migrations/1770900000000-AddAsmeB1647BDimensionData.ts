@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddAsmeB1647BDimensionData1770900000000
-  implements MigrationInterface
-{
+export class AddAsmeB1647BDimensionData1770900000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     let b1647bId: number;
     const b1647bResult = await queryRunner.query(

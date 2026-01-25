@@ -1,17 +1,15 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CorrectSabs1123T4000FlangeDimensions1776100000000
-  implements MigrationInterface
-{
+export class CorrectSabs1123T4000FlangeDimensions1776100000000 implements MigrationInterface {
   name = 'CorrectSabs1123T4000FlangeDimensions1776100000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.warn(
-      'Correcting SABS 1123 T4000 flange dimensions for 350, 400, 450, 600NB per MPS Technical Manual...'
+      'Correcting SABS 1123 T4000 flange dimensions for 350, 400, 450, 600NB per MPS Technical Manual...',
     );
 
     const sabs1123Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'SABS 1123'`
+      `SELECT id FROM flange_standards WHERE code = 'SABS 1123'`,
     );
     if (sabs1123Result.length === 0) {
       console.warn('SABS 1123 standard not found, skipping...');
@@ -38,7 +36,7 @@ export class CorrectSabs1123T4000FlangeDimensions1776100000000
 
     const getTypeId = async (code: string) => {
       const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`
+        `SELECT id FROM flange_types WHERE code = '${code}'`,
       );
       return result[0]?.id;
     };
@@ -46,7 +44,7 @@ export class CorrectSabs1123T4000FlangeDimensions1776100000000
     const getBoltId = async (designation: string) => {
       if (!designation) return null;
       const result = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = '${designation}'`
+        `SELECT id FROM bolts WHERE designation = '${designation}'`,
       );
       return result[0]?.id;
     };
@@ -62,17 +60,19 @@ export class CorrectSabs1123T4000FlangeDimensions1776100000000
       d1: number,
       bolt: string,
       pcd: number,
-      mass: number
+      mass: number,
     ) => {
       const nominalId = await getNominalId(nb);
       const typeId = await getTypeId(typeCode);
       const pressureClassDesignation = `4000${typeCode}`;
-      const pressureClassId = await getPressureClassId(pressureClassDesignation);
+      const pressureClassId = await getPressureClassId(
+        pressureClassDesignation,
+      );
       const boltId = bolt ? await getBoltId(bolt) : null;
 
       if (!nominalId || !typeId || !pressureClassId) {
         console.warn(
-          `Skipping ${nb}NB 4000${typeCode} - missing IDs (nominal: ${nominalId}, type: ${typeId}, pressure: ${pressureClassId})`
+          `Skipping ${nb}NB 4000${typeCode} - missing IDs (nominal: ${nominalId}, type: ${typeId}, pressure: ${pressureClassId})`,
         );
         return;
       }
@@ -141,17 +141,17 @@ export class CorrectSabs1123T4000FlangeDimensions1776100000000
     await updateFlange(600, '/8', 890, 110, 0, 5, 20, 48, 'M45', 795, 350.0);
 
     console.warn(
-      'SABS 1123 T4000 flange dimension corrections complete per MPS Technical Manual'
+      'SABS 1123 T4000 flange dimension corrections complete per MPS Technical Manual',
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     console.warn(
-      'Reverting SABS 1123 T4000 corrections - restoring previous (incorrect) values'
+      'Reverting SABS 1123 T4000 corrections - restoring previous (incorrect) values',
     );
 
     const sabs1123Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'SABS 1123'`
+      `SELECT id FROM flange_standards WHERE code = 'SABS 1123'`,
     );
     if (sabs1123Result.length === 0) return;
     const sabs1123Id = sabs1123Result[0].id;
@@ -175,7 +175,7 @@ export class CorrectSabs1123T4000FlangeDimensions1776100000000
 
     const getTypeId = async (code: string) => {
       const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`
+        `SELECT id FROM flange_types WHERE code = '${code}'`,
       );
       return result[0]?.id;
     };
@@ -183,7 +183,7 @@ export class CorrectSabs1123T4000FlangeDimensions1776100000000
     const getBoltId = async (designation: string) => {
       if (!designation) return null;
       const result = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = '${designation}'`
+        `SELECT id FROM bolts WHERE designation = '${designation}'`,
       );
       return result[0]?.id;
     };
@@ -199,12 +199,14 @@ export class CorrectSabs1123T4000FlangeDimensions1776100000000
       d1: number,
       bolt: string,
       pcd: number,
-      mass: number
+      mass: number,
     ) => {
       const nominalId = await getNominalId(nb);
       const typeId = await getTypeId(typeCode);
       const pressureClassDesignation = `4000${typeCode}`;
-      const pressureClassId = await getPressureClassId(pressureClassDesignation);
+      const pressureClassId = await getPressureClassId(
+        pressureClassDesignation,
+      );
       const boltId = bolt ? await getBoltId(bolt) : null;
 
       if (!nominalId || !typeId || !pressureClassId) return;

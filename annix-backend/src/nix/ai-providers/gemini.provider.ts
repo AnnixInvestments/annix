@@ -24,7 +24,9 @@ export class GeminiProvider implements AiProvider {
     return !!this.apiKey;
   }
 
-  async extractItems(request: AiExtractionRequest): Promise<AiExtractionResponse> {
+  async extractItems(
+    request: AiExtractionRequest,
+  ): Promise<AiExtractionResponse> {
     const startTime = Date.now();
 
     if (!this.apiKey) {
@@ -61,7 +63,9 @@ export class GeminiProvider implements AiProvider {
 
       if (!response.ok) {
         const errorText = await response.text();
-        this.logger.error(`Gemini API error: ${response.status} - ${errorText}`);
+        this.logger.error(
+          `Gemini API error: ${response.status} - ${errorText}`,
+        );
         throw new Error(`Gemini API error: ${response.status}`);
       }
 
@@ -77,7 +81,9 @@ export class GeminiProvider implements AiProvider {
       parsed.processingTimeMs = Date.now() - startTime;
       parsed.tokensUsed = data.usageMetadata?.totalTokenCount;
 
-      this.logger.log(`Gemini extracted ${parsed.items.length} items in ${parsed.processingTimeMs}ms`);
+      this.logger.log(
+        `Gemini extracted ${parsed.items.length} items in ${parsed.processingTimeMs}ms`,
+      );
 
       return parsed;
     } catch (error) {
@@ -121,7 +127,9 @@ export class GeminiProvider implements AiProvider {
           materialGrade: item.materialGrade || null,
           diameter: item.diameter ? Number(item.diameter) : null,
           diameterUnit: item.diameterUnit || 'mm',
-          secondaryDiameter: item.secondaryDiameter ? Number(item.secondaryDiameter) : null,
+          secondaryDiameter: item.secondaryDiameter
+            ? Number(item.secondaryDiameter)
+            : null,
           length: item.length ? Number(item.length) : null,
           wallThickness: item.wallThickness ? Number(item.wallThickness) : null,
           schedule: item.schedule || null,
@@ -142,9 +150,18 @@ export class GeminiProvider implements AiProvider {
     }
   }
 
-  private normalizeItemType(type: string): AiExtractionResponse['items'][0]['itemType'] {
+  private normalizeItemType(
+    type: string,
+  ): AiExtractionResponse['items'][0]['itemType'] {
     const normalized = (type || '').toLowerCase();
-    const validTypes = ['pipe', 'bend', 'reducer', 'tee', 'flange', 'expansion_joint'];
+    const validTypes = [
+      'pipe',
+      'bend',
+      'reducer',
+      'tee',
+      'flange',
+      'expansion_joint',
+    ];
     if (validTypes.includes(normalized)) {
       return normalized as any;
     }
@@ -153,7 +170,9 @@ export class GeminiProvider implements AiProvider {
     return 'unknown';
   }
 
-  private normalizeFlangeConfig(config: string): AiExtractionResponse['items'][0]['flangeConfig'] {
+  private normalizeFlangeConfig(
+    config: string,
+  ): AiExtractionResponse['items'][0]['flangeConfig'] {
     const normalized = (config || '').toLowerCase().replace(/\s+/g, '_');
     const validConfigs = ['none', 'one_end', 'both_ends', 'puddle', 'blind'];
     if (validConfigs.includes(normalized)) {

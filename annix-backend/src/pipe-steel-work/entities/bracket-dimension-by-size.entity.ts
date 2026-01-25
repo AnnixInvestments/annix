@@ -34,15 +34,33 @@ export class BracketDimensionBySizeEntity {
   nbMm: number;
 
   @ApiProperty({ description: 'Dimension A (mm)', example: 108 })
-  @Column({ name: 'dimension_a_mm', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  @Column({
+    name: 'dimension_a_mm',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+  })
   dimensionAMm: number | null;
 
   @ApiProperty({ description: 'Dimension B (mm)', example: 156 })
-  @Column({ name: 'dimension_b_mm', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  @Column({
+    name: 'dimension_b_mm',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+  })
   dimensionBMm: number | null;
 
   @ApiProperty({ description: 'Rod diameter (mm)', example: 12 })
-  @Column({ name: 'rod_diameter_mm', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  @Column({
+    name: 'rod_diameter_mm',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+  })
   rodDiameterMm: number | null;
 
   @ApiProperty({ description: 'Unit weight (kg)', example: 0.82 })

@@ -92,19 +92,33 @@ export class RubberThicknessRecommendation {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'nominal_thickness_mm', type: 'decimal', precision: 4, scale: 1 })
+  @Column({
+    name: 'nominal_thickness_mm',
+    type: 'decimal',
+    precision: 4,
+    scale: 1,
+  })
   nominalThicknessMm: number;
 
   @Column({ name: 'min_plies', type: 'int' })
   minPlies: number;
 
-  @Column({ name: 'max_ply_thickness_mm', type: 'decimal', precision: 3, scale: 1 })
+  @Column({
+    name: 'max_ply_thickness_mm',
+    type: 'decimal',
+    precision: 3,
+    scale: 1,
+  })
   maxPlyThicknessMm: number;
 
   @Column({ name: 'application_notes', type: 'text', nullable: true })
   applicationNotes: string | null;
 
-  @Column({ name: 'suitable_for_complex_shapes', type: 'boolean', default: true })
+  @Column({
+    name: 'suitable_for_complex_shapes',
+    type: 'boolean',
+    default: true,
+  })
   suitableForComplexShapes: boolean;
 }
 

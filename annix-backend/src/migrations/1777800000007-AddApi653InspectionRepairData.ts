@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddApi653InspectionRepairData1777800000007
-  implements MigrationInterface
-{
+export class AddApi653InspectionRepairData1777800000007 implements MigrationInterface {
   name = 'AddApi653InspectionRepairData1777800000007';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -324,12 +322,22 @@ export class AddApi653InspectionRepairData1777800000007
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE IF EXISTS api653_nde_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS api653_dimensional_tolerances`);
-    await queryRunner.query(`DROP TABLE IF EXISTS api653_weld_reinforcement_limits`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS api653_dimensional_tolerances`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS api653_weld_reinforcement_limits`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS api653_hot_tap_limits`);
-    await queryRunner.query(`DROP TABLE IF EXISTS api653_weld_spacing_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS api653_annular_plate_thickness`);
-    await queryRunner.query(`DROP TABLE IF EXISTS api653_bottom_thickness_limits`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS api653_weld_spacing_requirements`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS api653_annular_plate_thickness`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS api653_bottom_thickness_limits`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS api653_material_stresses`);
     await queryRunner.query(`DROP TABLE IF EXISTS api653_joint_efficiencies`);
     await queryRunner.query(`DROP TABLE IF EXISTS api653_inspection_intervals`);

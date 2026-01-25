@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddWeldingProcessesData1777800000005
-  implements MigrationInterface
-{
+export class AddWeldingProcessesData1777800000005 implements MigrationInterface {
   name = 'AddWeldingProcessesData1777800000005';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -60,7 +60,10 @@ export class RemoteAccessService {
       throw new NotFoundException('Admin user not found');
     }
 
-    const documentOwner = await this.findDocumentOwner(dto.documentType, dto.documentId);
+    const documentOwner = await this.findDocumentOwner(
+      dto.documentType,
+      dto.documentId,
+    );
     if (!documentOwner) {
       throw new NotFoundException('Document owner not found');
     }
@@ -75,7 +78,9 @@ export class RemoteAccessService {
     });
 
     if (existingRequest) {
-      throw new BadRequestException('A pending access request already exists for this document');
+      throw new BadRequestException(
+        'A pending access request already exists for this document',
+      );
     }
 
     const existingApproval = await this.accessRequestRepo.findOne({
@@ -173,7 +178,9 @@ export class RemoteAccessService {
     };
   }
 
-  async requestStatus(requestId: number): Promise<RemoteAccessRequestResponseDto> {
+  async requestStatus(
+    requestId: number,
+  ): Promise<RemoteAccessRequestResponseDto> {
     const request = await this.accessRequestRepo.findOne({
       where: { id: requestId },
       relations: ['requestedBy', 'documentOwner'],
@@ -186,7 +193,9 @@ export class RemoteAccessService {
     return this.mapToResponse(request);
   }
 
-  async pendingRequestsForOwner(ownerId: number): Promise<PendingAccessRequestsResponseDto> {
+  async pendingRequestsForOwner(
+    ownerId: number,
+  ): Promise<PendingAccessRequestsResponseDto> {
     const requests = await this.accessRequestRepo.find({
       where: {
         documentOwner: { id: ownerId },
@@ -222,7 +231,9 @@ export class RemoteAccessService {
     }
 
     if (request.status !== RemoteAccessStatus.PENDING) {
-      throw new BadRequestException('This request has already been responded to');
+      throw new BadRequestException(
+        'This request has already been responded to',
+      );
     }
 
     if (request.expiresAt < now().toJSDate()) {
@@ -233,7 +244,9 @@ export class RemoteAccessService {
 
     if (dto.approved) {
       request.status = RemoteAccessStatus.APPROVED;
-      request.expiresAt = now().plus({ hours: this.accessExpiryHours }).toJSDate();
+      request.expiresAt = now()
+        .plus({ hours: this.accessExpiryHours })
+        .toJSDate();
     } else {
       request.status = RemoteAccessStatus.DENIED;
       request.denialReason = dto.denialReason || null;
@@ -278,8 +291,11 @@ export class RemoteAccessService {
     return null;
   }
 
-  private async sendAccessRequestEmail(request: RemoteAccessRequest): Promise<void> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+  private async sendAccessRequestEmail(
+    request: RemoteAccessRequest,
+  ): Promise<void> {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const portalLink = `${frontendUrl}/customer/portal/remote-access`;
 
     const adminName =
@@ -287,7 +303,10 @@ export class RemoteAccessService {
         ? `${request.requestedBy.firstName} ${request.requestedBy.lastName}`
         : request.requestedBy.username || request.requestedBy.email;
 
-    const documentName = await this.documentName(request.documentType, request.documentId);
+    const documentName = await this.documentName(
+      request.documentType,
+      request.documentId,
+    );
 
     const html = `
       <!DOCTYPE html>
@@ -350,13 +369,17 @@ export class RemoteAccessService {
     documentId: number,
   ): Promise<string> {
     if (documentType === RemoteAccessDocumentType.RFQ) {
-      const draft = await this.rfqDraftRepo.findOne({ where: { id: documentId } });
+      const draft = await this.rfqDraftRepo.findOne({
+        where: { id: documentId },
+      });
       return draft?.projectName || draft?.draftNumber || `RFQ #${documentId}`;
     }
     return `${documentType} #${documentId}`;
   }
 
-  private mapToResponse(request: RemoteAccessRequest): RemoteAccessRequestResponseDto {
+  private mapToResponse(
+    request: RemoteAccessRequest,
+  ): RemoteAccessRequestResponseDto {
     return {
       id: request.id,
       requestType: request.requestType,

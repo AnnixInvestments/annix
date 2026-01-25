@@ -195,7 +195,10 @@ export class UnifiedBendDto {
 }
 
 export class UnifiedExpansionJointDto {
-  @ApiProperty({ description: 'Expansion joint type', example: 'bought_in_bellows' })
+  @ApiProperty({
+    description: 'Expansion joint type',
+    example: 'bought_in_bellows',
+  })
   @IsString()
   expansionJointType: string;
 

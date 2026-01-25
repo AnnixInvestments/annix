@@ -2,7 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import { RegionCoordinates } from '../entities/nix-extraction-region.entity';
 
 export class SaveExtractionRegionDto {
-  @ApiProperty({ description: 'Document category (e.g., "vat", "registration", "bee")' })
+  @ApiProperty({
+    description: 'Document category (e.g., "vat", "registration", "bee")',
+  })
   documentCategory: string;
 
   @ApiProperty({ description: 'Field name (e.g., "vatNumber", "companyName")' })
@@ -11,10 +13,16 @@ export class SaveExtractionRegionDto {
   @ApiProperty({ description: 'Region coordinates on the document' })
   regionCoordinates: RegionCoordinates;
 
-  @ApiProperty({ description: 'Regex pattern for extracting the value', required: false })
+  @ApiProperty({
+    description: 'Regex pattern for extracting the value',
+    required: false,
+  })
   extractionPattern?: string;
 
-  @ApiProperty({ description: 'Sample value extracted from this region', required: false })
+  @ApiProperty({
+    description: 'Sample value extracted from this region',
+    required: false,
+  })
   sampleValue?: string;
 }
 
@@ -81,9 +89,15 @@ export class ManualFieldEntryDto {
   @ApiProperty({ description: 'Value entered by user' })
   value: string;
 
-  @ApiProperty({ description: 'Region where the value was found (optional)', required: false })
+  @ApiProperty({
+    description: 'Region where the value was found (optional)',
+    required: false,
+  })
   regionCoordinates?: RegionCoordinates;
 
-  @ApiProperty({ description: 'Document category for learning', required: false })
+  @ApiProperty({
+    description: 'Document category for learning',
+    required: false,
+  })
   documentCategory?: string;
 }

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddAsmeB313ProcessPipingData1777800000002
-  implements MigrationInterface
-{
+export class AddAsmeB313ProcessPipingData1777800000002 implements MigrationInterface {
   name = 'AddAsmeB313ProcessPipingData1777800000002';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -148,7 +146,13 @@ export class AddAsmeB313ProcessPipingData1777800000002
       ],
     ];
 
-    for (const [miterType, maxAngle, serviceType, calcMethod, notes] of miterBendData) {
+    for (const [
+      miterType,
+      maxAngle,
+      serviceType,
+      calcMethod,
+      notes,
+    ] of miterBendData) {
       await queryRunner.query(
         `
         INSERT INTO miter_bend_limits (miter_type, max_angle_degrees, service_type, calculation_method, notes)
@@ -158,7 +162,7 @@ export class AddAsmeB313ProcessPipingData1777800000002
           calculation_method = $4,
           notes = $5
       `,
-        [miterType, maxAngle, serviceType, calcMethod, notes]
+        [miterType, maxAngle, serviceType, calcMethod, notes],
       );
     }
 
@@ -175,7 +179,11 @@ export class AddAsmeB313ProcessPipingData1777800000002
       ],
     ];
 
-    for (const [serviceType, maxFlattening, description] of bendFlatteningData) {
+    for (const [
+      serviceType,
+      maxFlattening,
+      description,
+    ] of bendFlatteningData) {
       await queryRunner.query(
         `
         INSERT INTO bend_flattening_limits (service_type, max_flattening_percent, description)
@@ -184,14 +192,19 @@ export class AddAsmeB313ProcessPipingData1777800000002
           max_flattening_percent = $2,
           description = $3
       `,
-        [serviceType, maxFlattening, description]
+        [serviceType, maxFlattening, description],
       );
     }
 
     const qualityFactorData = [
       ['seamless', 1.0, false, 'Seamless pipe (ASTM A106, A312, etc.)'],
       ['erw_no_rt', 0.85, false, 'Electric resistance welded without RT'],
-      ['erw_with_rt', 1.0, true, 'Electric resistance welded with RT examination'],
+      [
+        'erw_with_rt',
+        1.0,
+        true,
+        'Electric resistance welded with RT examination',
+      ],
       ['efw_no_rt', 0.85, false, 'Electric fusion welded without RT'],
       ['efw_with_rt', 1.0, true, 'Electric fusion welded with RT examination'],
       ['saw_no_rt', 0.85, false, 'Submerged arc welded without RT'],
@@ -201,7 +214,12 @@ export class AddAsmeB313ProcessPipingData1777800000002
       ['spiral_welded_with_rt', 1.0, true, 'Spiral welded with RT examination'],
     ];
 
-    for (const [pipeType, factor, requiresRt, description] of qualityFactorData) {
+    for (const [
+      pipeType,
+      factor,
+      requiresRt,
+      description,
+    ] of qualityFactorData) {
       await queryRunner.query(
         `
         INSERT INTO pipe_quality_factors (pipe_type, quality_factor_e, requires_rt, description)
@@ -210,18 +228,12 @@ export class AddAsmeB313ProcessPipingData1777800000002
           requires_rt = $3,
           description = $4
       `,
-        [pipeType, factor, requiresRt, description]
+        [pipeType, factor, requiresRt, description],
       );
     }
 
     const sifData = [
-      [
-        'straight_pipe',
-        '1.0',
-        '1.0',
-        '1.0',
-        'Baseline reference component',
-      ],
+      ['straight_pipe', '1.0', '1.0', '1.0', 'Baseline reference component'],
       [
         'welding_elbow',
         '0.9/h^(2/3)',
@@ -257,13 +269,7 @@ export class AddAsmeB313ProcessPipingData1777800000002
         null,
         'h = t/r for branch connection',
       ],
-      [
-        'welding_neck_flange',
-        '1.0',
-        '1.0',
-        '1.0',
-        'Same as straight pipe',
-      ],
+      ['welding_neck_flange', '1.0', '1.0', '1.0', 'Same as straight pipe'],
       [
         'slip_on_flange',
         '1.2',
@@ -281,7 +287,13 @@ export class AddAsmeB313ProcessPipingData1777800000002
       ['lap_joint_flange', '1.6', '1.6', '1.0', 'Highest SIF of flange types'],
     ];
 
-    for (const [componentType, inPlane, outPlane, flexibility, notes] of sifData) {
+    for (const [
+      componentType,
+      inPlane,
+      outPlane,
+      flexibility,
+      notes,
+    ] of sifData) {
       await queryRunner.query(
         `
         INSERT INTO stress_intensification_factors (component_type, in_plane_sif_formula, out_plane_sif_formula, flexibility_factor_formula, notes)
@@ -292,7 +304,7 @@ export class AddAsmeB313ProcessPipingData1777800000002
           flexibility_factor_formula = $4,
           notes = $5
       `,
-        [componentType, inPlane, outPlane, flexibility, notes]
+        [componentType, inPlane, outPlane, flexibility, notes],
       );
     }
 
@@ -335,38 +347,43 @@ export class AddAsmeB313ProcessPipingData1777800000002
       ],
     ];
 
-    for (const [ruleType, formula, description, section] of branchReinforcementData) {
+    for (const [
+      ruleType,
+      formula,
+      description,
+      section,
+    ] of branchReinforcementData) {
       await queryRunner.query(
         `
         INSERT INTO branch_reinforcement_rules (rule_type, formula, description, section_reference)
         VALUES ($1, $2, $3, $4)
       `,
-        [ruleType, formula, description, section]
+        [ruleType, formula, description, section],
       );
     }
 
     const ndeData = [
       ['category_d', 'visual', 100, 'Benign fluid service - visual only'],
+      ['normal_fluid', 'visual', 100, 'All welds require visual examination'],
+      ['normal_fluid', 'random_rt', 5, 'Random RT per Table 341.3.2'],
       [
-        'normal_fluid',
-        'visual',
+        'category_m',
+        'radiographic',
         100,
-        'All welds require visual examination',
+        'Toxic fluid service - 100% RT or UT',
       ],
-      [
-        'normal_fluid',
-        'random_rt',
-        5,
-        'Random RT per Table 341.3.2',
-      ],
-      ['category_m', 'radiographic', 100, 'Toxic fluid service - 100% RT or UT'],
       [
         'severe_cyclic',
         'radiographic',
         100,
         'Severe cyclic conditions - 100% RT or UT',
       ],
-      ['high_pressure', 'radiographic', 100, 'High pressure piping - 100% RT or UT'],
+      [
+        'high_pressure',
+        'radiographic',
+        100,
+        'High pressure piping - 100% RT or UT',
+      ],
       [
         'category_m',
         'liquid_penetrant',
@@ -390,7 +407,7 @@ export class AddAsmeB313ProcessPipingData1777800000002
           extent_percent = $3,
           description = $4
       `,
-        [category, method, extent, description]
+        [category, method, extent, description],
       );
     }
 
@@ -421,7 +438,12 @@ export class AddAsmeB313ProcessPipingData1777800000002
       ],
     ];
 
-    for (const [jointType, application, minSize, requirements] of weldJointData) {
+    for (const [
+      jointType,
+      application,
+      minSize,
+      requirements,
+    ] of weldJointData) {
       await queryRunner.query(
         `
         INSERT INTO b313_weld_requirements (joint_type, application, min_weld_size_formula, special_requirements)
@@ -431,7 +453,7 @@ export class AddAsmeB313ProcessPipingData1777800000002
           min_weld_size_formula = $3,
           special_requirements = $4
       `,
-        [jointType, application, minSize, requirements]
+        [jointType, application, minSize, requirements],
       );
     }
 
@@ -473,7 +495,13 @@ export class AddAsmeB313ProcessPipingData1777800000002
       ],
     ];
 
-    for (const [flangeType, weldType, location, formula, notes] of flangeWeldData) {
+    for (const [
+      flangeType,
+      weldType,
+      location,
+      formula,
+      notes,
+    ] of flangeWeldData) {
       await queryRunner.query(
         `
         INSERT INTO flange_weld_types (flange_type, weld_type, weld_location, min_size_formula, notes)
@@ -483,7 +511,7 @@ export class AddAsmeB313ProcessPipingData1777800000002
           min_size_formula = $4,
           notes = $5
       `,
-        [flangeType, weldType, location, formula, notes]
+        [flangeType, weldType, location, formula, notes],
       );
     }
 
@@ -496,7 +524,7 @@ export class AddAsmeB313ProcessPipingData1777800000002
     await queryRunner.query(`DROP TABLE IF EXISTS nde_requirements`);
     await queryRunner.query(`DROP TABLE IF EXISTS branch_reinforcement_rules`);
     await queryRunner.query(
-      `DROP TABLE IF EXISTS stress_intensification_factors`
+      `DROP TABLE IF EXISTS stress_intensification_factors`,
     );
     await queryRunner.query(`DROP TABLE IF EXISTS pipe_quality_factors`);
     await queryRunner.query(`DROP TABLE IF EXISTS bend_flattening_limits`);

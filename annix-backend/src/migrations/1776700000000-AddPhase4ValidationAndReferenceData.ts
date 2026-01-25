@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPhase4ValidationAndReferenceData1776700000000
-  implements MigrationInterface
-{
+export class AddPhase4ValidationAndReferenceData1776700000000 implements MigrationInterface {
   name = 'AddPhase4ValidationAndReferenceData1776700000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -17,7 +15,9 @@ export class AddPhase4ValidationAndReferenceData1776700000000
     console.warn('Phase 4 migration complete.');
   }
 
-  private async createBendSegmentRulesTable(queryRunner: QueryRunner): Promise<void> {
+  private async createBendSegmentRulesTable(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
     console.warn('Creating bend segment rules table...');
 
     await queryRunner.query(`
@@ -35,7 +35,9 @@ export class AddPhase4ValidationAndReferenceData1776700000000
     `);
   }
 
-  private async createDuckfootElbowDimensionsTable(queryRunner: QueryRunner): Promise<void> {
+  private async createDuckfootElbowDimensionsTable(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
     console.warn('Creating duckfoot elbow dimensions table...');
 
     await queryRunner.query(`
@@ -52,21 +54,95 @@ export class AddPhase4ValidationAndReferenceData1776700000000
     `);
   }
 
-  private async populateBendSegmentRules(queryRunner: QueryRunner): Promise<void> {
+  private async populateBendSegmentRules(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
     console.warn('Populating bend segment rules from MPS manual...');
 
     const rules = [
-      { type: 'short', minAngle: 0, maxAngle: 22.5, minSeg: 2, maxSeg: 2, col: 'C', desc: 'Up to and including 22.5°' },
-      { type: 'short', minAngle: 22.5, maxAngle: 45, minSeg: 2, maxSeg: 3, col: 'B', desc: 'Over 22.5° up to and including 45°' },
-      { type: 'short', minAngle: 45, maxAngle: 90, minSeg: 3, maxSeg: 4, col: 'A', desc: 'Over 45° up to and including 90°' },
+      {
+        type: 'short',
+        minAngle: 0,
+        maxAngle: 22.5,
+        minSeg: 2,
+        maxSeg: 2,
+        col: 'C',
+        desc: 'Up to and including 22.5°',
+      },
+      {
+        type: 'short',
+        minAngle: 22.5,
+        maxAngle: 45,
+        minSeg: 2,
+        maxSeg: 3,
+        col: 'B',
+        desc: 'Over 22.5° up to and including 45°',
+      },
+      {
+        type: 'short',
+        minAngle: 45,
+        maxAngle: 90,
+        minSeg: 3,
+        maxSeg: 4,
+        col: 'A',
+        desc: 'Over 45° up to and including 90°',
+      },
 
-      { type: 'medium', minAngle: 0, maxAngle: 22.5, minSeg: 2, maxSeg: 3, col: 'C', desc: 'Up to and including 22.5°' },
-      { type: 'medium', minAngle: 22.5, maxAngle: 45, minSeg: 3, maxSeg: 4, col: 'B', desc: 'Over 22.5° up to and including 45°' },
-      { type: 'medium', minAngle: 45, maxAngle: 90, minSeg: 4, maxSeg: 5, col: 'A', desc: 'Over 45° up to and including 90°' },
+      {
+        type: 'medium',
+        minAngle: 0,
+        maxAngle: 22.5,
+        minSeg: 2,
+        maxSeg: 3,
+        col: 'C',
+        desc: 'Up to and including 22.5°',
+      },
+      {
+        type: 'medium',
+        minAngle: 22.5,
+        maxAngle: 45,
+        minSeg: 3,
+        maxSeg: 4,
+        col: 'B',
+        desc: 'Over 22.5° up to and including 45°',
+      },
+      {
+        type: 'medium',
+        minAngle: 45,
+        maxAngle: 90,
+        minSeg: 4,
+        maxSeg: 5,
+        col: 'A',
+        desc: 'Over 45° up to and including 90°',
+      },
 
-      { type: 'long', minAngle: 0, maxAngle: 22.5, minSeg: 2, maxSeg: 3, col: 'C', desc: 'Up to and including 22.5°' },
-      { type: 'long', minAngle: 22.5, maxAngle: 45, minSeg: 3, maxSeg: 5, col: 'B', desc: 'Over 22.5° up to and including 45°' },
-      { type: 'long', minAngle: 45, maxAngle: 90, minSeg: 5, maxSeg: 7, col: 'A', desc: 'Over 45° up to and including 90°' },
+      {
+        type: 'long',
+        minAngle: 0,
+        maxAngle: 22.5,
+        minSeg: 2,
+        maxSeg: 3,
+        col: 'C',
+        desc: 'Up to and including 22.5°',
+      },
+      {
+        type: 'long',
+        minAngle: 22.5,
+        maxAngle: 45,
+        minSeg: 3,
+        maxSeg: 5,
+        col: 'B',
+        desc: 'Over 22.5° up to and including 45°',
+      },
+      {
+        type: 'long',
+        minAngle: 45,
+        maxAngle: 90,
+        minSeg: 5,
+        maxSeg: 7,
+        col: 'A',
+        desc: 'Over 45° up to and including 90°',
+      },
     ];
 
     for (const rule of rules) {
@@ -80,8 +156,12 @@ export class AddPhase4ValidationAndReferenceData1776700000000
     console.warn('Bend segment rules populated.');
   }
 
-  private async populateDuckfootElbowDimensions(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Populating duckfoot elbow dimensions from MPS manual page 30...');
+  private async populateDuckfootElbowDimensions(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
+    console.warn(
+      'Populating duckfoot elbow dimensions from MPS manual page 30...',
+    );
 
     const duckfootData = [
       { nb: 200, od: 219.1, x: 355.0, y: 230.0, t2: 10.0, t1: 6.0 },
@@ -112,8 +192,12 @@ export class AddPhase4ValidationAndReferenceData1776700000000
     console.warn('Duckfoot elbow dimensions populated.');
   }
 
-  private async correctSabs719BendData(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Correcting SABS 719 bend center-to-face data based on MPS manual cross-reference...');
+  private async correctSabs719BendData(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
+    console.warn(
+      'Correcting SABS 719 bend center-to-face data based on MPS manual cross-reference...',
+    );
 
     const tableExists = await queryRunner.query(`
       SELECT EXISTS (
@@ -230,7 +314,9 @@ export class AddPhase4ValidationAndReferenceData1776700000000
       `);
     }
 
-    console.warn('SABS 719 bend data corrected and extended with missing sizes (550, 650, 850 NB).');
+    console.warn(
+      'SABS 719 bend data corrected and extended with missing sizes (550, 650, 850 NB).',
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

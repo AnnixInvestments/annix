@@ -194,7 +194,9 @@ export class CreateNixTables1737045600000 implements MigrationInterface {
       CREATE INDEX "idx_nix_clarifications_status" ON "nix_clarifications"("status")
     `);
 
-    console.log('Created Nix AI tables: nix_extractions, nix_learning, nix_user_preferences, nix_clarifications');
+    console.log(
+      'Created Nix AI tables: nix_extractions, nix_learning, nix_user_preferences, nix_clarifications',
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -204,8 +206,12 @@ export class CreateNixTables1737045600000 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS "nix_extractions"`);
 
     await queryRunner.query(`DROP TYPE IF EXISTS "nix_response_type_enum"`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "nix_clarification_type_enum"`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "nix_clarification_status_enum"`);
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "nix_clarification_type_enum"`,
+    );
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "nix_clarification_status_enum"`,
+    );
     await queryRunner.query(`DROP TYPE IF EXISTS "nix_learning_source_enum"`);
     await queryRunner.query(`DROP TYPE IF EXISTS "nix_learning_type_enum"`);
     await queryRunner.query(`DROP TYPE IF EXISTS "nix_document_type_enum"`);

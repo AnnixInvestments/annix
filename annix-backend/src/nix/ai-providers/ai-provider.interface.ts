@@ -10,7 +10,14 @@ export interface AiExtractionRequest {
 export interface AiExtractedItem {
   itemNumber?: string;
   description: string;
-  itemType: 'pipe' | 'bend' | 'reducer' | 'tee' | 'flange' | 'expansion_joint' | 'unknown';
+  itemType:
+    | 'pipe'
+    | 'bend'
+    | 'reducer'
+    | 'tee'
+    | 'flange'
+    | 'expansion_joint'
+    | 'unknown';
   material?: string;
   materialGrade?: string;
   diameter?: number;

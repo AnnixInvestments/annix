@@ -1,17 +1,19 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPtCurvesAndWpsModule1775100000000
-  implements MigrationInterface
-{
+export class AddPtCurvesAndWpsModule1775100000000 implements MigrationInterface {
   name = 'AddPtCurvesAndWpsModule1775100000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding P-T derating curves and WPS module (Pass 6 - Final)...');
+    console.warn(
+      'Adding P-T derating curves and WPS module (Pass 6 - Final)...',
+    );
 
     // ============================================================
     // PART 1: Pressure-Temperature Derating Curves
     // ============================================================
-    console.warn('Adding pressure-temperature derating curves data structure...');
+    console.warn(
+      'Adding pressure-temperature derating curves data structure...',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS pt_derating_curves (
@@ -198,7 +200,7 @@ export class AddPtCurvesAndWpsModule1775100000000
           reference_standard = EXCLUDED.reference_standard
         RETURNING id
       `,
-        [curve.mat, curve.pc, curve.type, curve.desc, curve.ref]
+        [curve.mat, curve.pc, curve.type, curve.desc, curve.ref],
       );
 
       const curveId = result[0]?.id;
@@ -214,7 +216,7 @@ export class AddPtCurvesAndWpsModule1775100000000
               pressure_rating_percent = EXCLUDED.pressure_rating_percent,
               allowable_stress_ksi = EXCLUDED.allowable_stress_ksi
           `,
-            [curveId, pt.tempC, tempF.toFixed(2), pt.pct, pt.ksi]
+            [curveId, pt.tempC, tempF.toFixed(2), pt.pct, pt.ksi],
           );
         }
       }
@@ -237,14 +239,62 @@ export class AddPtCurvesAndWpsModule1775100000000
     `);
 
     const weldingProcesses = [
-      { code: 'SMAW', name: 'Shielded Metal Arc Welding', aws: 'SMAW', desc: 'Manual process using consumable electrode with flux coating', apps: 'Field welding, repairs, all positions' },
-      { code: 'GTAW', name: 'Gas Tungsten Arc Welding', aws: 'GTAW', desc: 'Uses non-consumable tungsten electrode with inert gas shield', apps: 'Root passes, thin materials, critical welds, stainless/nickel alloys' },
-      { code: 'GMAW', name: 'Gas Metal Arc Welding', aws: 'GMAW', desc: 'Semi-automatic process with continuous wire feed', apps: 'Production welding, fill passes, carbon steel' },
-      { code: 'FCAW', name: 'Flux Cored Arc Welding', aws: 'FCAW', desc: 'Uses tubular wire with flux core', apps: 'Field welding, high deposition, structural steel' },
-      { code: 'SAW', name: 'Submerged Arc Welding', aws: 'SAW', desc: 'Arc submerged under granular flux blanket', apps: 'Heavy section, longitudinal seams, pressure vessel' },
-      { code: 'PAW', name: 'Plasma Arc Welding', aws: 'PAW', desc: 'Constricted arc with plasma gas', apps: 'Precision welding, keyhole technique, thin materials' },
-      { code: 'ESW', name: 'Electroslag Welding', aws: 'ESW', desc: 'Molten slag pool welding for thick sections', apps: 'Heavy sections >25mm, vertical welds' },
-      { code: 'EGW', name: 'Electrogas Welding', aws: 'EGW', desc: 'Similar to ESW with gas shielding', apps: 'Vertical seams, shipbuilding' },
+      {
+        code: 'SMAW',
+        name: 'Shielded Metal Arc Welding',
+        aws: 'SMAW',
+        desc: 'Manual process using consumable electrode with flux coating',
+        apps: 'Field welding, repairs, all positions',
+      },
+      {
+        code: 'GTAW',
+        name: 'Gas Tungsten Arc Welding',
+        aws: 'GTAW',
+        desc: 'Uses non-consumable tungsten electrode with inert gas shield',
+        apps: 'Root passes, thin materials, critical welds, stainless/nickel alloys',
+      },
+      {
+        code: 'GMAW',
+        name: 'Gas Metal Arc Welding',
+        aws: 'GMAW',
+        desc: 'Semi-automatic process with continuous wire feed',
+        apps: 'Production welding, fill passes, carbon steel',
+      },
+      {
+        code: 'FCAW',
+        name: 'Flux Cored Arc Welding',
+        aws: 'FCAW',
+        desc: 'Uses tubular wire with flux core',
+        apps: 'Field welding, high deposition, structural steel',
+      },
+      {
+        code: 'SAW',
+        name: 'Submerged Arc Welding',
+        aws: 'SAW',
+        desc: 'Arc submerged under granular flux blanket',
+        apps: 'Heavy section, longitudinal seams, pressure vessel',
+      },
+      {
+        code: 'PAW',
+        name: 'Plasma Arc Welding',
+        aws: 'PAW',
+        desc: 'Constricted arc with plasma gas',
+        apps: 'Precision welding, keyhole technique, thin materials',
+      },
+      {
+        code: 'ESW',
+        name: 'Electroslag Welding',
+        aws: 'ESW',
+        desc: 'Molten slag pool welding for thick sections',
+        apps: 'Heavy sections >25mm, vertical welds',
+      },
+      {
+        code: 'EGW',
+        name: 'Electrogas Welding',
+        aws: 'EGW',
+        desc: 'Similar to ESW with gas shielding',
+        apps: 'Vertical seams, shipbuilding',
+      },
     ];
 
     for (const p of weldingProcesses) {
@@ -258,7 +308,7 @@ export class AddPtCurvesAndWpsModule1775100000000
           description = EXCLUDED.description,
           typical_applications = EXCLUDED.typical_applications
       `,
-        [p.code, p.name, p.aws, p.desc, p.apps]
+        [p.code, p.name, p.aws, p.desc, p.apps],
       );
     }
 
@@ -274,12 +324,48 @@ export class AddPtCurvesAndWpsModule1775100000000
     `);
 
     const jointTypes = [
-      { code: 'BW', name: 'Butt Weld', desc: 'Full penetration groove weld between aligned components', angle: '60-75°', root: '0-3mm' },
-      { code: 'SW', name: 'Socket Weld', desc: 'Pipe inserted into socket fitting', angle: 'N/A', root: '1.5mm gap' },
-      { code: 'FW', name: 'Fillet Weld', desc: 'Triangular cross-section weld at corner joint', angle: 'N/A', root: '0' },
-      { code: 'CJP', name: 'Complete Joint Penetration', desc: 'Full thickness weld penetration', angle: '60-75°', root: '0-3mm' },
-      { code: 'PJP', name: 'Partial Joint Penetration', desc: 'Less than full thickness penetration', angle: '45-60°', root: '0' },
-      { code: 'BJ', name: 'Branch Joint', desc: 'Set-on or set-in branch connection', angle: 'Varies', root: '0-3mm' },
+      {
+        code: 'BW',
+        name: 'Butt Weld',
+        desc: 'Full penetration groove weld between aligned components',
+        angle: '60-75°',
+        root: '0-3mm',
+      },
+      {
+        code: 'SW',
+        name: 'Socket Weld',
+        desc: 'Pipe inserted into socket fitting',
+        angle: 'N/A',
+        root: '1.5mm gap',
+      },
+      {
+        code: 'FW',
+        name: 'Fillet Weld',
+        desc: 'Triangular cross-section weld at corner joint',
+        angle: 'N/A',
+        root: '0',
+      },
+      {
+        code: 'CJP',
+        name: 'Complete Joint Penetration',
+        desc: 'Full thickness weld penetration',
+        angle: '60-75°',
+        root: '0-3mm',
+      },
+      {
+        code: 'PJP',
+        name: 'Partial Joint Penetration',
+        desc: 'Less than full thickness penetration',
+        angle: '45-60°',
+        root: '0',
+      },
+      {
+        code: 'BJ',
+        name: 'Branch Joint',
+        desc: 'Set-on or set-in branch connection',
+        angle: 'Varies',
+        root: '0-3mm',
+      },
     ];
 
     for (const j of jointTypes) {
@@ -293,7 +379,7 @@ export class AddPtCurvesAndWpsModule1775100000000
           typical_groove_angle = EXCLUDED.typical_groove_angle,
           root_opening_range = EXCLUDED.root_opening_range
       `,
-        [j.code, j.name, j.desc, j.angle, j.root]
+        [j.code, j.name, j.desc, j.angle, j.root],
       );
     }
 
@@ -309,17 +395,83 @@ export class AddPtCurvesAndWpsModule1775100000000
     `);
 
     const weldPositions = [
-      { code: '1G', name: 'Flat - Groove', asme: '1G', aws: '1G', desc: 'Pipe horizontal, rotated, weld on top' },
-      { code: '1F', name: 'Flat - Fillet', asme: '1F', aws: '1F', desc: 'Horizontal surface, weld deposited flat' },
-      { code: '2G', name: 'Horizontal - Groove', asme: '2G', aws: '2G', desc: 'Pipe vertical, weld horizontal' },
-      { code: '2F', name: 'Horizontal - Fillet', asme: '2F', aws: '2F', desc: 'Horizontal fillet on vertical surface' },
-      { code: '3G', name: 'Vertical - Groove', asme: '3G', aws: '3G', desc: 'Vertical plate, weld vertical' },
-      { code: '3F', name: 'Vertical - Fillet', asme: '3F', aws: '3F', desc: 'Vertical fillet weld' },
-      { code: '4G', name: 'Overhead - Groove', asme: '4G', aws: '4G', desc: 'Horizontal plate, weld underneath' },
-      { code: '4F', name: 'Overhead - Fillet', asme: '4F', aws: '4F', desc: 'Overhead fillet weld' },
-      { code: '5G', name: 'Pipe Fixed Horizontal', asme: '5G', aws: '5G', desc: 'Pipe horizontal, fixed, weld all around' },
-      { code: '6G', name: 'Pipe Fixed 45°', asme: '6G', aws: '6G', desc: 'Pipe inclined 45°, fixed, weld all around' },
-      { code: '6GR', name: 'Pipe Fixed 45° Restricted', asme: '6GR', aws: '6GR', desc: '6G with restriction ring' },
+      {
+        code: '1G',
+        name: 'Flat - Groove',
+        asme: '1G',
+        aws: '1G',
+        desc: 'Pipe horizontal, rotated, weld on top',
+      },
+      {
+        code: '1F',
+        name: 'Flat - Fillet',
+        asme: '1F',
+        aws: '1F',
+        desc: 'Horizontal surface, weld deposited flat',
+      },
+      {
+        code: '2G',
+        name: 'Horizontal - Groove',
+        asme: '2G',
+        aws: '2G',
+        desc: 'Pipe vertical, weld horizontal',
+      },
+      {
+        code: '2F',
+        name: 'Horizontal - Fillet',
+        asme: '2F',
+        aws: '2F',
+        desc: 'Horizontal fillet on vertical surface',
+      },
+      {
+        code: '3G',
+        name: 'Vertical - Groove',
+        asme: '3G',
+        aws: '3G',
+        desc: 'Vertical plate, weld vertical',
+      },
+      {
+        code: '3F',
+        name: 'Vertical - Fillet',
+        asme: '3F',
+        aws: '3F',
+        desc: 'Vertical fillet weld',
+      },
+      {
+        code: '4G',
+        name: 'Overhead - Groove',
+        asme: '4G',
+        aws: '4G',
+        desc: 'Horizontal plate, weld underneath',
+      },
+      {
+        code: '4F',
+        name: 'Overhead - Fillet',
+        asme: '4F',
+        aws: '4F',
+        desc: 'Overhead fillet weld',
+      },
+      {
+        code: '5G',
+        name: 'Pipe Fixed Horizontal',
+        asme: '5G',
+        aws: '5G',
+        desc: 'Pipe horizontal, fixed, weld all around',
+      },
+      {
+        code: '6G',
+        name: 'Pipe Fixed 45°',
+        asme: '6G',
+        aws: '6G',
+        desc: 'Pipe inclined 45°, fixed, weld all around',
+      },
+      {
+        code: '6GR',
+        name: 'Pipe Fixed 45° Restricted',
+        asme: '6GR',
+        aws: '6GR',
+        desc: '6G with restriction ring',
+      },
     ];
 
     for (const p of weldPositions) {
@@ -333,7 +485,7 @@ export class AddPtCurvesAndWpsModule1775100000000
           aws_designation = EXCLUDED.aws_designation,
           description = EXCLUDED.description
       `,
-        [p.code, p.name, p.asme, p.aws, p.desc]
+        [p.code, p.name, p.asme, p.aws, p.desc],
       );
     }
 
@@ -470,28 +622,182 @@ export class AddPtCurvesAndWpsModule1775100000000
     `);
 
     const pNumbers = [
-      { p: '1', g: '1', desc: 'Carbon steel', specs: 'A106 Gr B, A53 Gr B, A516 Gr 70', comp: 'C-Mn', forms: 'Pipe, plate, forgings' },
-      { p: '1', g: '2', desc: 'Carbon steel (higher strength)', specs: 'A516 Gr 70, A537 Cl 1', comp: 'C-Mn-Si', forms: 'Plate, forgings' },
-      { p: '3', g: '1', desc: 'Alloy steel (0.5% Cr max)', specs: 'A335 P1, A234 WP1', comp: '0.5Mo', forms: 'Pipe, fittings' },
-      { p: '3', g: '2', desc: 'Alloy steel (0.5% Cr max)', specs: 'A335 P2', comp: '0.5Cr-0.5Mo', forms: 'Pipe' },
-      { p: '4', g: '1', desc: 'Alloy steel (0.75-2% Cr)', specs: 'A335 P11, P12', comp: '1-1.25Cr-0.5Mo', forms: 'Pipe, fittings, plate' },
-      { p: '4', g: '2', desc: 'Alloy steel (0.75-2% Cr)', specs: 'A335 P11', comp: '1.25Cr-0.5Mo-Si', forms: 'Pipe' },
-      { p: '5A', g: '1', desc: 'Alloy steel (2.25-3% Cr)', specs: 'A335 P22, A387 Gr 22', comp: '2.25Cr-1Mo', forms: 'Pipe, plate' },
-      { p: '5B', g: '1', desc: 'Alloy steel (5-9% Cr)', specs: 'A335 P5, P5b', comp: '5Cr-0.5Mo', forms: 'Pipe' },
-      { p: '5B', g: '2', desc: 'Alloy steel (5-9% Cr)', specs: 'A335 P9', comp: '9Cr-1Mo', forms: 'Pipe' },
-      { p: '5C', g: '1', desc: 'Alloy steel (creep enhanced)', specs: 'A335 P91', comp: '9Cr-1Mo-V', forms: 'Pipe, plate, forgings' },
-      { p: '5C', g: '2', desc: 'Alloy steel (creep enhanced)', specs: 'A335 P92', comp: '9Cr-2W', forms: 'Pipe' },
-      { p: '6', g: '1', desc: 'Martensitic stainless', specs: 'A268 TP410', comp: '13Cr', forms: 'Pipe, plate' },
-      { p: '6', g: '2', desc: 'Martensitic stainless', specs: 'A268 TP410S', comp: '13Cr low C', forms: 'Pipe' },
-      { p: '7', g: '1', desc: 'Ferritic stainless', specs: 'A268 TP430', comp: '17Cr', forms: 'Pipe, plate' },
-      { p: '8', g: '1', desc: 'Austenitic stainless', specs: 'A312 TP304, TP304L', comp: '18Cr-8Ni', forms: 'Pipe, plate, fittings' },
-      { p: '8', g: '2', desc: 'Austenitic stainless (316)', specs: 'A312 TP316, TP316L', comp: '16Cr-12Ni-2Mo', forms: 'Pipe, plate, fittings' },
-      { p: '8', g: '3', desc: 'Austenitic stainless (high Cr)', specs: 'A312 TP309, TP310', comp: '23-25Cr-12-20Ni', forms: 'Pipe' },
-      { p: '8', g: '4', desc: 'Austenitic stainless (stabilized)', specs: 'A312 TP321, TP347', comp: '18Cr-10Ni-Ti/Nb', forms: 'Pipe, plate' },
-      { p: '10H', g: '1', desc: 'Duplex stainless', specs: 'A790 S31803, S32205', comp: '22Cr-5Ni-3Mo-N', forms: 'Pipe, plate' },
-      { p: '10H', g: '2', desc: 'Super duplex stainless', specs: 'A790 S32750, S32760', comp: '25Cr-7Ni-4Mo-N', forms: 'Pipe' },
-      { p: '41', g: null, desc: 'Nickel and nickel base alloys', specs: 'B165 (400), B168 (600)', comp: 'Ni, Ni-Cu, Ni-Cr', forms: 'Pipe, plate' },
-      { p: '43', g: null, desc: 'Nickel-chromium-iron alloys', specs: 'B444 (625), B619 (C-276)', comp: 'Ni-Cr-Mo', forms: 'Pipe, plate' },
+      {
+        p: '1',
+        g: '1',
+        desc: 'Carbon steel',
+        specs: 'A106 Gr B, A53 Gr B, A516 Gr 70',
+        comp: 'C-Mn',
+        forms: 'Pipe, plate, forgings',
+      },
+      {
+        p: '1',
+        g: '2',
+        desc: 'Carbon steel (higher strength)',
+        specs: 'A516 Gr 70, A537 Cl 1',
+        comp: 'C-Mn-Si',
+        forms: 'Plate, forgings',
+      },
+      {
+        p: '3',
+        g: '1',
+        desc: 'Alloy steel (0.5% Cr max)',
+        specs: 'A335 P1, A234 WP1',
+        comp: '0.5Mo',
+        forms: 'Pipe, fittings',
+      },
+      {
+        p: '3',
+        g: '2',
+        desc: 'Alloy steel (0.5% Cr max)',
+        specs: 'A335 P2',
+        comp: '0.5Cr-0.5Mo',
+        forms: 'Pipe',
+      },
+      {
+        p: '4',
+        g: '1',
+        desc: 'Alloy steel (0.75-2% Cr)',
+        specs: 'A335 P11, P12',
+        comp: '1-1.25Cr-0.5Mo',
+        forms: 'Pipe, fittings, plate',
+      },
+      {
+        p: '4',
+        g: '2',
+        desc: 'Alloy steel (0.75-2% Cr)',
+        specs: 'A335 P11',
+        comp: '1.25Cr-0.5Mo-Si',
+        forms: 'Pipe',
+      },
+      {
+        p: '5A',
+        g: '1',
+        desc: 'Alloy steel (2.25-3% Cr)',
+        specs: 'A335 P22, A387 Gr 22',
+        comp: '2.25Cr-1Mo',
+        forms: 'Pipe, plate',
+      },
+      {
+        p: '5B',
+        g: '1',
+        desc: 'Alloy steel (5-9% Cr)',
+        specs: 'A335 P5, P5b',
+        comp: '5Cr-0.5Mo',
+        forms: 'Pipe',
+      },
+      {
+        p: '5B',
+        g: '2',
+        desc: 'Alloy steel (5-9% Cr)',
+        specs: 'A335 P9',
+        comp: '9Cr-1Mo',
+        forms: 'Pipe',
+      },
+      {
+        p: '5C',
+        g: '1',
+        desc: 'Alloy steel (creep enhanced)',
+        specs: 'A335 P91',
+        comp: '9Cr-1Mo-V',
+        forms: 'Pipe, plate, forgings',
+      },
+      {
+        p: '5C',
+        g: '2',
+        desc: 'Alloy steel (creep enhanced)',
+        specs: 'A335 P92',
+        comp: '9Cr-2W',
+        forms: 'Pipe',
+      },
+      {
+        p: '6',
+        g: '1',
+        desc: 'Martensitic stainless',
+        specs: 'A268 TP410',
+        comp: '13Cr',
+        forms: 'Pipe, plate',
+      },
+      {
+        p: '6',
+        g: '2',
+        desc: 'Martensitic stainless',
+        specs: 'A268 TP410S',
+        comp: '13Cr low C',
+        forms: 'Pipe',
+      },
+      {
+        p: '7',
+        g: '1',
+        desc: 'Ferritic stainless',
+        specs: 'A268 TP430',
+        comp: '17Cr',
+        forms: 'Pipe, plate',
+      },
+      {
+        p: '8',
+        g: '1',
+        desc: 'Austenitic stainless',
+        specs: 'A312 TP304, TP304L',
+        comp: '18Cr-8Ni',
+        forms: 'Pipe, plate, fittings',
+      },
+      {
+        p: '8',
+        g: '2',
+        desc: 'Austenitic stainless (316)',
+        specs: 'A312 TP316, TP316L',
+        comp: '16Cr-12Ni-2Mo',
+        forms: 'Pipe, plate, fittings',
+      },
+      {
+        p: '8',
+        g: '3',
+        desc: 'Austenitic stainless (high Cr)',
+        specs: 'A312 TP309, TP310',
+        comp: '23-25Cr-12-20Ni',
+        forms: 'Pipe',
+      },
+      {
+        p: '8',
+        g: '4',
+        desc: 'Austenitic stainless (stabilized)',
+        specs: 'A312 TP321, TP347',
+        comp: '18Cr-10Ni-Ti/Nb',
+        forms: 'Pipe, plate',
+      },
+      {
+        p: '10H',
+        g: '1',
+        desc: 'Duplex stainless',
+        specs: 'A790 S31803, S32205',
+        comp: '22Cr-5Ni-3Mo-N',
+        forms: 'Pipe, plate',
+      },
+      {
+        p: '10H',
+        g: '2',
+        desc: 'Super duplex stainless',
+        specs: 'A790 S32750, S32760',
+        comp: '25Cr-7Ni-4Mo-N',
+        forms: 'Pipe',
+      },
+      {
+        p: '41',
+        g: null,
+        desc: 'Nickel and nickel base alloys',
+        specs: 'B165 (400), B168 (600)',
+        comp: 'Ni, Ni-Cu, Ni-Cr',
+        forms: 'Pipe, plate',
+      },
+      {
+        p: '43',
+        g: null,
+        desc: 'Nickel-chromium-iron alloys',
+        specs: 'B444 (625), B619 (C-276)',
+        comp: 'Ni-Cr-Mo',
+        forms: 'Pipe, plate',
+      },
     ];
 
     for (const p of pNumbers) {
@@ -505,7 +811,7 @@ export class AddPtCurvesAndWpsModule1775100000000
           nominal_composition = EXCLUDED.nominal_composition,
           product_forms = EXCLUDED.product_forms
       `,
-        [p.p, p.g, p.desc, p.specs, p.comp, p.forms]
+        [p.p, p.g, p.desc, p.specs, p.comp, p.forms],
       );
     }
 
@@ -514,9 +820,13 @@ export class AddPtCurvesAndWpsModule1775100000000
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE IF EXISTS welder_qualifications`);
-    await queryRunner.query(`DROP TABLE IF EXISTS procedure_qualification_records`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS procedure_qualification_records`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS wps_weld_passes`);
-    await queryRunner.query(`DROP TABLE IF EXISTS weld_procedure_specifications`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS weld_procedure_specifications`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS asme_p_numbers`);
     await queryRunner.query(`DROP TABLE IF EXISTS weld_positions`);
     await queryRunner.query(`DROP TABLE IF EXISTS weld_joint_types`);

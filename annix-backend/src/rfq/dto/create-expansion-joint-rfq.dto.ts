@@ -1,10 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsString,
-  IsOptional,
-  IsNumber,
-  IsEnum,
-} from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsEnum } from 'class-validator';
 import {
   ExpansionJointType,
   BellowsJointType,

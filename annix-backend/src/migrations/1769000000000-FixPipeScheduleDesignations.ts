@@ -79,7 +79,9 @@ export class FixPipeScheduleDesignations1769000000000 implements MigrationInterf
       WHERE schedule_designation = 'Sch140'
     `);
 
-    console.warn('✅ Schedule designations fixed: STD (40), XS (80), XXS (160)');
+    console.warn(
+      '✅ Schedule designations fixed: STD (40), XS (80), XXS (160)',
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

@@ -392,7 +392,9 @@ export class BoqDistributionService {
 
     for (const access of accessRecords) {
       try {
-        const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
+        const supplierProfile = supplierProfileMap.get(
+          access.supplierProfileId,
+        );
 
         if (!supplierProfile?.user?.email) {
           this.logger.warn(
@@ -847,7 +849,9 @@ export class BoqDistributionService {
 
     for (const access of accessRecords) {
       try {
-        const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
+        const supplierProfile = supplierProfileMap.get(
+          access.supplierProfileId,
+        );
 
         if (!supplierProfile?.user?.email) continue;
 
@@ -910,15 +914,12 @@ export class BoqDistributionService {
       select: ['boqId', 'sectionType'],
     });
 
-    const sectionsByBoqId = allBoqSections.reduce(
-      (acc, section) => {
-        const sections = acc.get(section.boqId) || [];
-        sections.push(section.sectionType);
-        acc.set(section.boqId, sections);
-        return acc;
-      },
-      new Map<number, string[]>(),
-    );
+    const sectionsByBoqId = allBoqSections.reduce((acc, section) => {
+      const sections = acc.get(section.boqId) || [];
+      sections.push(section.sectionType);
+      acc.set(section.boqId, sections);
+      return acc;
+    }, new Map<number, string[]>());
 
     const accessesToUpdate: BoqSupplierAccess[] = [];
     const accessesToRemove: BoqSupplierAccess[] = [];
@@ -952,6 +953,9 @@ export class BoqDistributionService {
       `Updated allowed sections for supplier ${supplierProfileId}: ${accessesToUpdate.length} updated, ${accessesToRemove.length} removed`,
     );
 
-    return { updated: accessesToUpdate.length, removed: accessesToRemove.length };
+    return {
+      updated: accessesToUpdate.length,
+      removed: accessesToRemove.length,
+    };
   }
 }

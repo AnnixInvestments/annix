@@ -307,7 +307,9 @@ export class AssemblyValidationResultDto {
   @ApiProperty({ type: [CompatibilityIssueDto] })
   issues: CompatibilityIssueDto[];
 
-  @ApiPropertyOptional({ description: 'Maximum allowable pressure at design temp' })
+  @ApiPropertyOptional({
+    description: 'Maximum allowable pressure at design temp',
+  })
   maxPressureAtTempBar?: number;
 
   @ApiPropertyOptional({ description: 'Temperature range supported' })

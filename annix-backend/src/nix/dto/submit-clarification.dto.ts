@@ -29,7 +29,9 @@ export class SubmitClarificationDto {
     sectionName?: string;
   };
 
-  @ApiPropertyOptional({ description: 'Allow this response to be used for learning' })
+  @ApiPropertyOptional({
+    description: 'Allow this response to be used for learning',
+  })
   @IsOptional()
   allowLearning?: boolean;
 }

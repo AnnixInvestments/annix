@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
-import { ExtractedItem, SpecificationCellData, ExtractionResult } from './excel-extractor.service';
+import {
+  ExtractedItem,
+  SpecificationCellData,
+  ExtractionResult,
+} from './excel-extractor.service';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PDFParse } = require('pdf-parse');
@@ -10,14 +14,38 @@ export class PdfExtractorService {
   private readonly logger = new Logger(PdfExtractorService.name);
 
   private readonly materialPatterns = [
-    { pattern: /\bS\.?S\.?\b|\bstainless\s*steel\b/i, material: 'Stainless Steel', grade: '316' },
-    { pattern: /\bM\.?S\.?\b|\bmild\s*steel\b/i, material: 'Mild Steel', grade: null },
-    { pattern: /\bAPI\s*5L[-\s]?[A-Z]?\b/i, material: 'Carbon Steel', grade: 'API 5L' },
+    {
+      pattern: /\bS\.?S\.?\b|\bstainless\s*steel\b/i,
+      material: 'Stainless Steel',
+      grade: '316',
+    },
+    {
+      pattern: /\bM\.?S\.?\b|\bmild\s*steel\b/i,
+      material: 'Mild Steel',
+      grade: null,
+    },
+    {
+      pattern: /\bAPI\s*5L[-\s]?[A-Z]?\b/i,
+      material: 'Carbon Steel',
+      grade: 'API 5L',
+    },
     { pattern: /\bSABS\s*719\b/i, material: 'Carbon Steel', grade: 'SABS 719' },
     { pattern: /\bcarbon\s*steel\b/i, material: 'Carbon Steel', grade: null },
-    { pattern: /\bASTM\s*A312\b/i, material: 'Stainless Steel', grade: 'ASTM A312' },
-    { pattern: /\bASTM\s*A234\s*WPB\b/i, material: 'Carbon Steel', grade: 'A234 WPB' },
-    { pattern: /\bASTM\s*A106\b/i, material: 'Carbon Steel', grade: 'ASTM A106' },
+    {
+      pattern: /\bASTM\s*A312\b/i,
+      material: 'Stainless Steel',
+      grade: 'ASTM A312',
+    },
+    {
+      pattern: /\bASTM\s*A234\s*WPB\b/i,
+      material: 'Carbon Steel',
+      grade: 'A234 WPB',
+    },
+    {
+      pattern: /\bASTM\s*A106\b/i,
+      material: 'Carbon Steel',
+      grade: 'ASTM A106',
+    },
     { pattern: /\bASTM\s*A105\b/i, material: 'Carbon Steel', grade: 'A105' },
     { pattern: /\bERW\b/i, material: 'Carbon Steel', grade: 'ERW' },
   ];
@@ -26,7 +54,10 @@ export class PdfExtractorService {
     { pattern: /\belbow\b/i, type: 'bend' as const },
     { pattern: /\bs[-\s]?bend\b/i, type: 'bend' as const },
     { pattern: /\bbend\b|\bdeg\b|\bdegree\b/i, type: 'bend' as const },
-    { pattern: /\breducer\b|\breducing\b(?!\s*tee)/i, type: 'reducer' as const },
+    {
+      pattern: /\breducer\b|\breducing\b(?!\s*tee)/i,
+      type: 'reducer' as const,
+    },
     { pattern: /\btee\b/i, type: 'tee' as const },
     { pattern: /\bflange\b(?!.*gasket)/i, type: 'flange' as const },
     { pattern: /\bexpansion\s*joint\b/i, type: 'expansion_joint' as const },
@@ -36,10 +67,20 @@ export class PdfExtractorService {
   ];
 
   private readonly flangePatterns = [
-    { pattern: /\bboth\s*ends?\s*flange[d]?\b|\bfully\s*flange[d]?\b|\bflange[d]?\s*both\s*ends?\b/i, config: 'both_ends' as const },
-    { pattern: /\bone\s*end\s*flange[d]?\b|\bflange[d]?\s*one\s*end\b/i, config: 'one_end' as const },
+    {
+      pattern:
+        /\bboth\s*ends?\s*flange[d]?\b|\bfully\s*flange[d]?\b|\bflange[d]?\s*both\s*ends?\b/i,
+      config: 'both_ends' as const,
+    },
+    {
+      pattern: /\bone\s*end\s*flange[d]?\b|\bflange[d]?\s*one\s*end\b/i,
+      config: 'one_end' as const,
+    },
     { pattern: /\bno\s*flange[s]?\b/i, config: 'none' as const },
-    { pattern: /\bpuddle\s*flange\b|\bpaddle\s*flange\b/i, config: 'puddle' as const },
+    {
+      pattern: /\bpuddle\s*flange\b|\bpaddle\s*flange\b/i,
+      config: 'puddle' as const,
+    },
     { pattern: /\bblind\s*flange\b/i, config: 'blind' as const },
   ];
 
@@ -53,13 +94,19 @@ export class PdfExtractorService {
     const pdfText = textResult?.text || '';
     const pdfInfo = await parser.getInfo();
 
-    this.logger.log(`PDF has ${pdfInfo.numPages || textResult?.total || 'unknown'} pages, extracted ${pdfText.length} characters`);
+    this.logger.log(
+      `PDF has ${pdfInfo.numPages || textResult?.total || 'unknown'} pages, extracted ${pdfText.length} characters`,
+    );
 
-    const lines = pdfText.split('\n').filter((line: string) => line.trim().length > 0);
+    const lines = pdfText
+      .split('\n')
+      .filter((line: string) => line.trim().length > 0);
     this.logger.log(`PDF has ${lines.length} non-empty lines`);
 
     const specificationCells = this.extractSpecificationData(lines);
-    this.logger.log(`Found ${specificationCells.length} specification header(s)`);
+    this.logger.log(
+      `Found ${specificationCells.length} specification header(s)`,
+    );
 
     const specDefaults = this.consolidateSpecificationData(specificationCells);
 
@@ -68,7 +115,9 @@ export class PdfExtractorService {
 
     const metadata = this.extractMetadata(lines);
 
-    const clarificationsNeeded = items.filter(i => i.needsClarification).length;
+    const clarificationsNeeded = items.filter(
+      (i) => i.needsClarification,
+    ).length;
 
     return {
       sheetName: 'PDF Document',
@@ -118,15 +167,26 @@ export class PdfExtractorService {
       const lineText = line.trim();
       if (lineText.length < 15) return;
 
-      const isSpecHeader = specHeaderPatterns.some(pattern => pattern.test(lineText));
-      const specDataMatches = specDataPatterns.filter(pattern => pattern.test(lineText)).length;
+      const isSpecHeader = specHeaderPatterns.some((pattern) =>
+        pattern.test(lineText),
+      );
+      const specDataMatches = specDataPatterns.filter((pattern) =>
+        pattern.test(lineText),
+      ).length;
       const hasSpecData = specDataMatches >= 2;
 
       if ((isSpecHeader || hasSpecData) && lineText.length > 10) {
-        this.logger.log(`Found specification data at line ${index + 1} (matches: ${specDataMatches}): ${lineText.substring(0, 150)}...`);
+        this.logger.log(
+          `Found specification data at line ${index + 1} (matches: ${specDataMatches}): ${lineText.substring(0, 150)}...`,
+        );
 
         const parsed = this.parseSpecificationText(lineText);
-        const hasMeaningfulData = parsed.materialGrade || parsed.wallThickness || parsed.lining || parsed.externalCoating || parsed.standard;
+        const hasMeaningfulData =
+          parsed.materialGrade ||
+          parsed.wallThickness ||
+          parsed.lining ||
+          parsed.externalCoating ||
+          parsed.standard;
 
         if (hasMeaningfulData) {
           specCells.push({
@@ -142,7 +202,9 @@ export class PdfExtractorService {
     return specCells;
   }
 
-  private parseSpecificationText(text: string): SpecificationCellData['parsedData'] {
+  private parseSpecificationText(
+    text: string,
+  ): SpecificationCellData['parsedData'] {
     const result: SpecificationCellData['parsedData'] = {
       materialGrade: null,
       wallThickness: null,
@@ -262,9 +324,17 @@ export class PdfExtractorService {
       if (parsed.materialGrade && !result.materialGrade) {
         result.materialGrade = parsed.materialGrade;
         const rawText = specCell.rawText.toLowerCase();
-        if (rawText.includes('stainless') || rawText.includes('s.s') || rawText.includes('ss ')) {
+        if (
+          rawText.includes('stainless') ||
+          rawText.includes('s.s') ||
+          rawText.includes('ss ')
+        ) {
           result.material = 'Stainless Steel';
-        } else if (rawText.includes('carbon') || rawText.includes('mild') || rawText.includes('m.s')) {
+        } else if (
+          rawText.includes('carbon') ||
+          rawText.includes('mild') ||
+          rawText.includes('m.s')
+        ) {
           result.material = 'Carbon Steel';
         } else if (rawText.includes('api') || rawText.includes('erw')) {
           result.material = 'Carbon Steel';
@@ -273,22 +343,30 @@ export class PdfExtractorService {
 
       if (parsed.wallThickness && !result.wallThickness) {
         result.wallThickness = parsed.wallThickness;
-        const thicknessNum = parseFloat(parsed.wallThickness.replace(/[^\d.]/g, ''));
+        const thicknessNum = parseFloat(
+          parsed.wallThickness.replace(/[^\d.]/g, ''),
+        );
         if (!isNaN(thicknessNum)) {
           result.wallThicknessNum = thicknessNum;
         }
       }
 
       if (parsed.lining && !result.lining) result.lining = parsed.lining;
-      if (parsed.externalCoating && !result.externalCoating) result.externalCoating = parsed.externalCoating;
-      if (parsed.standard && !result.standard) result.standard = parsed.standard;
-      if (parsed.schedule && !result.schedule) result.schedule = parsed.schedule;
+      if (parsed.externalCoating && !result.externalCoating)
+        result.externalCoating = parsed.externalCoating;
+      if (parsed.standard && !result.standard)
+        result.standard = parsed.standard;
+      if (parsed.schedule && !result.schedule)
+        result.schedule = parsed.schedule;
     }
 
     return result;
   }
 
-  private extractItems(lines: string[], specDefaults: ReturnType<typeof this.consolidateSpecificationData>): ExtractedItem[] {
+  private extractItems(
+    lines: string[],
+    specDefaults: ReturnType<typeof this.consolidateSpecificationData>,
+  ): ExtractedItem[] {
     const items: ExtractedItem[] = [];
     let itemNumber = 0;
 
@@ -309,12 +387,18 @@ export class PdfExtractorService {
       }
 
       if (this.isItemLine(lineText)) {
-        const item = this.extractItemFromLine(index + 1, lineText, currentContext);
+        const item = this.extractItemFromLine(
+          index + 1,
+          lineText,
+          currentContext,
+        );
         if (item) {
           itemNumber++;
           item.itemNumber = `PDF-${itemNumber}`;
           items.push(item);
-          this.logger.debug(`Extracted item from line ${index + 1}: ${item.itemType} ${item.diameter}mm`);
+          this.logger.debug(
+            `Extracted item from line ${index + 1}: ${item.itemType} ${item.diameter}mm`,
+          );
         }
       }
     });
@@ -324,10 +408,16 @@ export class PdfExtractorService {
 
   private isItemLine(text: string): boolean {
     const hasDiameter = /\b\d+\s*(NB|mm|DN|dia)/i.test(text);
-    const hasItemType = this.itemTypePatterns.some(p => p.pattern.test(text));
-    const hasQuantity = /\b\d+\s*(pcs?|ea|nos?|units?|off|lengths?|m|metres?|meters?)\b/i.test(text);
+    const hasItemType = this.itemTypePatterns.some((p) => p.pattern.test(text));
+    const hasQuantity =
+      /\b\d+\s*(pcs?|ea|nos?|units?|off|lengths?|m|metres?|meters?)\b/i.test(
+        text,
+      );
 
-    const isHeader = /^(item|description|qty|quantity|unit|total|bill|section|page)/i.test(text.trim());
+    const isHeader =
+      /^(item|description|qty|quantity|unit|total|bill|section|page)/i.test(
+        text.trim(),
+      );
     const isCarriedForward = /^(Carried|Brought)\s+(Forward|Back)/i.test(text);
 
     return (hasDiameter || hasItemType) && !isHeader && !isCarriedForward;
@@ -336,7 +426,11 @@ export class PdfExtractorService {
   private extractItemFromLine(
     lineNumber: number,
     text: string,
-    context: { material: string | null; materialGrade: string | null; wallThickness: number | null }
+    context: {
+      material: string | null;
+      materialGrade: string | null;
+      wallThickness: number | null;
+    },
   ): ExtractedItem | null {
     const itemType = this.detectItemType(text);
     const diameter = this.extractDiameter(text);
@@ -372,7 +466,9 @@ export class PdfExtractorService {
       unit: quantity.unit,
       confidence: needsClarification ? 0.6 : 0.85,
       needsClarification,
-      clarificationReason: needsClarification ? 'Missing diameter or material information' : null,
+      clarificationReason: needsClarification
+        ? 'Missing diameter or material information'
+        : null,
       rawData: { originalLine: text },
     };
   }
@@ -441,7 +537,10 @@ export class PdfExtractorService {
     return { value: 1, unit: 'ea' };
   }
 
-  private extractMaterial(text: string): { material: string | null; grade: string | null } {
+  private extractMaterial(text: string): {
+    material: string | null;
+    grade: string | null;
+  } {
     for (const { pattern, material, grade } of this.materialPatterns) {
       if (pattern.test(text)) {
         return { material, grade };
@@ -499,7 +598,10 @@ export class PdfExtractorService {
     return null;
   }
 
-  private extractContextFromLine(text: string): { material: string | null; materialGrade: string | null } {
+  private extractContextFromLine(text: string): {
+    material: string | null;
+    materialGrade: string | null;
+  } {
     for (const { pattern, material, grade } of this.materialPatterns) {
       if (pattern.test(text)) {
         return { material, materialGrade: grade };
@@ -520,7 +622,9 @@ export class PdfExtractorService {
     const headerLines = lines.slice(0, 30);
 
     for (const line of headerLines) {
-      const refMatch = line.match(/(?:ref(?:erence)?|tender|contract|project)\s*(?:no|number)?[:\s]+([A-Z0-9\-\/]+)/i);
+      const refMatch = line.match(
+        /(?:ref(?:erence)?|tender|contract|project)\s*(?:no|number)?[:\s]+([A-Z0-9\-\/]+)/i,
+      );
       if (refMatch && !projectReference) {
         projectReference = refMatch[1].trim();
       }

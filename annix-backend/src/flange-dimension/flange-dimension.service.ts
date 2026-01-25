@@ -48,7 +48,8 @@ export class FlangeDimensionService {
     @InjectRepository(FlangePressureClass)
     private readonly pressureRepo: Repository<FlangePressureClass>,
     @InjectRepository(Bolt) private readonly boltRepo: Repository<Bolt>,
-    @InjectRepository(BoltMass) private readonly boltMassRepo: Repository<BoltMass>,
+    @InjectRepository(BoltMass)
+    private readonly boltMassRepo: Repository<BoltMass>,
   ) {}
 
   async create(dto: CreateFlangeDimensionDto): Promise<FlangeDimension> {
@@ -255,7 +256,9 @@ export class FlangeDimensionService {
     return this.transformFlangeWithBoltData(flange);
   }
 
-  private async transformFlangeWithBoltData(flange: FlangeDimension): Promise<any> {
+  private async transformFlangeWithBoltData(
+    flange: FlangeDimension,
+  ): Promise<any> {
     const result: any = {
       id: flange.id,
       D: flange.D,
@@ -273,8 +276,13 @@ export class FlangeDimensionService {
     };
 
     if (flange.bolt) {
-      const diameterMm = this.extractDiameterFromDesignation(flange.bolt.designation);
-      const threadPitch = flange.bolt.threadPitchMm || ISO_METRIC_THREAD_PITCHES[diameterMm] || 2.0;
+      const diameterMm = this.extractDiameterFromDesignation(
+        flange.bolt.designation,
+      );
+      const threadPitch =
+        flange.bolt.threadPitchMm ||
+        ISO_METRIC_THREAD_PITCHES[diameterMm] ||
+        2.0;
       const lengthMm = flange.boltLengthMm || 70;
 
       let massKg = 0;

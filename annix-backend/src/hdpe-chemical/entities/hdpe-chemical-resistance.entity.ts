@@ -21,10 +21,22 @@ export class HdpeChemicalResistance {
   @Column({ name: 'pp_rating', type: 'varchar', length: 5, nullable: true })
   ppRating: string | null;
 
-  @Column({ name: 'fcr_factor', type: 'decimal', precision: 4, scale: 2, nullable: true })
+  @Column({
+    name: 'fcr_factor',
+    type: 'decimal',
+    precision: 4,
+    scale: 2,
+    nullable: true,
+  })
   fcrFactor: number | null;
 
-  @Column({ name: 'fcrt_factor', type: 'decimal', precision: 4, scale: 2, nullable: true })
+  @Column({
+    name: 'fcrt_factor',
+    type: 'decimal',
+    precision: 4,
+    scale: 2,
+    nullable: true,
+  })
   fcrtFactor: number | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

@@ -10,7 +10,11 @@ export class CreateWasherDto {
   @IsString()
   type: string;
 
-  @ApiProperty({ example: 'Carbon Steel', description: 'Material', required: false })
+  @ApiProperty({
+    example: 'Carbon Steel',
+    description: 'Material',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   material?: string;
@@ -19,17 +23,29 @@ export class CreateWasherDto {
   @IsNumber()
   massKg: number;
 
-  @ApiProperty({ example: 20.0, description: 'Outside diameter in mm', required: false })
+  @ApiProperty({
+    example: 20.0,
+    description: 'Outside diameter in mm',
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   odMm?: number;
 
-  @ApiProperty({ example: 10.5, description: 'Inside diameter in mm', required: false })
+  @ApiProperty({
+    example: 10.5,
+    description: 'Inside diameter in mm',
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   idMm?: number;
 
-  @ApiProperty({ example: 2.5, description: 'Thickness in mm', required: false })
+  @ApiProperty({
+    example: 2.5,
+    description: 'Thickness in mm',
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   thicknessMm?: number;

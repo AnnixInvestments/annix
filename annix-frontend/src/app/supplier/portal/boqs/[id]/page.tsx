@@ -15,7 +15,12 @@ import {
 import { useToast } from '@/app/components/Toast';
 import { formatDateTimeZA, nowISO } from '@/app/lib/datetime';
 import { currencyByCode, DEFAULT_CURRENCY, vatRateForCurrency } from '@/app/lib/currencies';
-import { NB_TO_OD_LOOKUP, flangeWeight, blankFlangeWeight, sansBlankFlangeWeight } from '@/app/lib/config/rfq/flangeWeights';
+import {
+  NB_TO_OD_LOOKUP,
+  flangeWeightSync as flangeWeight,
+  blankFlangeWeightSync as blankFlangeWeight,
+  sansBlankFlangeWeightSync as sansBlankFlangeWeight,
+} from '@/app/lib/hooks/useFlangeWeights';
 import { weldCountPerPipe, weldCountPerBend, weldCountPerFitting } from '@/app/lib/config/rfq/pipeEndOptions';
 
 interface PricingInputs {

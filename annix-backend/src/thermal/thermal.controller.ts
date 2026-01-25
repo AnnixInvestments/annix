@@ -8,7 +8,13 @@ import {
   ParseFloatPipe,
   ParseEnumPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { ThermalService } from './thermal.service';
 import {
   ExpansionRequirementDto,
@@ -32,7 +38,11 @@ export class ThermalController {
     description:
       'Calculate the thermal expansion or contraction for a given pipe length, temperature range, and material. Returns expansion in mm, recommended joint capacity, and advisory notes.',
   })
-  @ApiParam({ name: 'length', description: 'Pipe length in meters', example: 100 })
+  @ApiParam({
+    name: 'length',
+    description: 'Pipe length in meters',
+    example: 100,
+  })
   @ApiParam({
     name: 'fromTemp',
     description: 'Installation/ambient temperature in Celsius',
@@ -67,7 +77,8 @@ export class ThermalController {
     @Param('length', ParseFloatPipe) length: number,
     @Param('fromTemp', ParseFloatPipe) fromTemp: number,
     @Param('toTemp', ParseFloatPipe) toTemp: number,
-    @Param('material', new ParseEnumPipe(ThermalMaterial)) material: ThermalMaterial,
+    @Param('material', new ParseEnumPipe(ThermalMaterial))
+    material: ThermalMaterial,
     @Query('nominalSizeMm') nominalSizeMm?: string,
     @Query('schedule') schedule?: string,
   ): Promise<ExpansionRequirementResponseDto> {
@@ -86,7 +97,8 @@ export class ThermalController {
   @Post('expansion-requirement')
   @ApiOperation({
     summary: 'Calculate thermal expansion requirement (POST)',
-    description: 'Alternative POST endpoint for expansion calculation with full request body',
+    description:
+      'Alternative POST endpoint for expansion calculation with full request body',
   })
   @ApiResponse({
     status: 200,
@@ -148,7 +160,8 @@ export class ThermalController {
     type: [ExpansionCoefficientDto],
   })
   async coefficients(
-    @Param('material', new ParseEnumPipe(ThermalMaterial)) material: ThermalMaterial,
+    @Param('material', new ParseEnumPipe(ThermalMaterial))
+    material: ThermalMaterial,
   ): Promise<ExpansionCoefficientDto[]> {
     return this.thermalService.coefficientsForMaterial(material);
   }
@@ -156,7 +169,8 @@ export class ThermalController {
   @Get('materials')
   @ApiOperation({
     summary: 'List available materials',
-    description: 'Get a list of all materials with thermal expansion data available.',
+    description:
+      'Get a list of all materials with thermal expansion data available.',
   })
   @ApiResponse({
     status: 200,

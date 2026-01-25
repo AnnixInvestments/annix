@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum PipeSteelWorkTypeDto {
@@ -45,7 +53,10 @@ export class CalculateReinforcementPadDto {
   @Min(20)
   headerOdMm: number;
 
-  @ApiProperty({ description: 'Header pipe wall thickness in mm', example: 9.53 })
+  @ApiProperty({
+    description: 'Header pipe wall thickness in mm',
+    example: 9.53,
+  })
   @IsNumber()
   @Min(1)
   headerWallMm: number;
@@ -55,7 +66,10 @@ export class CalculateReinforcementPadDto {
   @Min(20)
   branchOdMm: number;
 
-  @ApiProperty({ description: 'Branch pipe wall thickness in mm', example: 7.11 })
+  @ApiProperty({
+    description: 'Branch pipe wall thickness in mm',
+    example: 7.11,
+  })
   @IsNumber()
   @Min(1)
   branchWallMm: number;
@@ -93,10 +107,14 @@ export class SupportSpacingResponseDto {
   @ApiProperty({ description: 'Nominal diameter in mm' })
   nominalDiameterMm: number;
 
-  @ApiProperty({ description: 'Recommended support spacing for water-filled pipe (m)' })
+  @ApiProperty({
+    description: 'Recommended support spacing for water-filled pipe (m)',
+  })
   waterFilledSpacingM: number;
 
-  @ApiProperty({ description: 'Recommended support spacing for vapor/gas pipe (m)' })
+  @ApiProperty({
+    description: 'Recommended support spacing for vapor/gas pipe (m)',
+  })
   vaporGasSpacingM: number;
 
   @ApiProperty({ description: 'Recommended rod size in mm' })
@@ -181,7 +199,9 @@ export class PipeSteelWorkCalculationDto {
   @IsNumber()
   workingPressureBar?: number;
 
-  @ApiPropertyOptional({ description: 'Branch diameter for reinforcement pad (mm)' })
+  @ApiPropertyOptional({
+    description: 'Branch diameter for reinforcement pad (mm)',
+  })
   @IsOptional()
   @IsNumber()
   branchDiameterMm?: number;
@@ -239,7 +259,10 @@ export class CalculateThermalExpansionDto {
   @Min(0.1)
   pipeLengthM: number;
 
-  @ApiProperty({ description: 'Installation/ambient temperature (°C)', example: 20 })
+  @ApiProperty({
+    description: 'Installation/ambient temperature (°C)',
+    example: 20,
+  })
   @IsNumber()
   installationTempC: number;
 
@@ -284,7 +307,9 @@ export class ThermalExpansionResponseDto {
   @ApiProperty({ description: 'Expansion per meter (mm/m)' })
   expansionPerMeterMm: number;
 
-  @ApiProperty({ description: 'Is expansion (positive) or contraction (negative)' })
+  @ApiProperty({
+    description: 'Is expansion (positive) or contraction (negative)',
+  })
   isExpansion: boolean;
 
   @ApiProperty({ description: 'Recommended expansion joint capacity (mm)' })
@@ -317,18 +342,27 @@ export class ValidateBracketCompatibilityDto {
   @IsString()
   schedule?: string;
 
-  @ApiPropertyOptional({ description: 'Whether pipe is water-filled', default: true })
+  @ApiPropertyOptional({
+    description: 'Whether pipe is water-filled',
+    default: true,
+  })
   @IsOptional()
   isWaterFilled?: boolean;
 
-  @ApiPropertyOptional({ description: 'Expected thermal expansion (mm)', example: 50 })
+  @ApiPropertyOptional({
+    description: 'Expected thermal expansion (mm)',
+    example: 50,
+  })
   @IsOptional()
   @IsNumber()
   expectedExpansionMm?: number;
 }
 
 export class ValidationIssue {
-  @ApiProperty({ description: 'Issue severity', enum: ['error', 'warning', 'info'] })
+  @ApiProperty({
+    description: 'Issue severity',
+    enum: ['error', 'warning', 'info'],
+  })
   severity: 'error' | 'warning' | 'info';
 
   @ApiProperty({ description: 'Issue code' })
@@ -409,7 +443,10 @@ export class BatchCalculationItemDto {
 }
 
 export class BatchCalculationDto {
-  @ApiProperty({ description: 'Array of calculations to perform', type: [BatchCalculationItemDto] })
+  @ApiProperty({
+    description: 'Array of calculations to perform',
+    type: [BatchCalculationItemDto],
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BatchCalculationItemDto)
@@ -440,7 +477,10 @@ export class BatchCalculationResponseDto {
   @ApiProperty({ description: 'Failed calculations' })
   failureCount: number;
 
-  @ApiProperty({ description: 'Individual results', type: [BatchCalculationResultDto] })
+  @ApiProperty({
+    description: 'Individual results',
+    type: [BatchCalculationResultDto],
+  })
   results: BatchCalculationResultDto[];
 
   @ApiProperty({ description: 'Summary totals' })
@@ -470,7 +510,10 @@ export class CalculateSupportSpacingMultiStandardDto {
   @IsString()
   scheduleNumber?: string;
 
-  @ApiPropertyOptional({ description: 'Whether pipe is water-filled', example: true })
+  @ApiPropertyOptional({
+    description: 'Whether pipe is water-filled',
+    example: true,
+  })
   @IsOptional()
   isWaterFilled?: boolean;
 
@@ -509,7 +552,10 @@ export class MultiStandardSpacingResponseDto {
   @ApiProperty({ description: 'Nominal diameter (mm)' })
   nominalDiameterMm: number;
 
-  @ApiProperty({ description: 'Comparison by standard', type: [StandardComparisonDto] })
+  @ApiProperty({
+    description: 'Comparison by standard',
+    type: [StandardComparisonDto],
+  })
   comparisons: StandardComparisonDto[];
 
   @ApiProperty({ description: 'Most conservative recommendation' })
@@ -517,22 +563,35 @@ export class MultiStandardSpacingResponseDto {
 }
 
 export class CalculateReinforcementPadWithDeratingDto extends CalculateReinforcementPadDto {
-  @ApiPropertyOptional({ description: 'Operating temperature (°C)', example: 200 })
+  @ApiPropertyOptional({
+    description: 'Operating temperature (°C)',
+    example: 200,
+  })
   @IsOptional()
   @IsNumber()
   operatingTempC?: number;
 
-  @ApiPropertyOptional({ description: 'Material P-number per ASME', example: 1 })
+  @ApiPropertyOptional({
+    description: 'Material P-number per ASME',
+    example: 1,
+  })
   @IsOptional()
   @IsNumber()
   materialPNumber?: number;
 
-  @ApiPropertyOptional({ description: 'Joint type', enum: ['fillet', 'full_penetration'], default: 'full_penetration' })
+  @ApiPropertyOptional({
+    description: 'Joint type',
+    enum: ['fillet', 'full_penetration'],
+    default: 'full_penetration',
+  })
   @IsOptional()
   @IsString()
   jointType?: 'fillet' | 'full_penetration';
 
-  @ApiPropertyOptional({ description: 'Include thermal stress analysis', default: false })
+  @ApiPropertyOptional({
+    description: 'Include thermal stress analysis',
+    default: false,
+  })
   @IsOptional()
   includeStressAnalysis?: boolean;
 }
@@ -563,7 +622,10 @@ export class CalculateVibrationAnalysisDto {
   @Min(15)
   nominalDiameterMm: number;
 
-  @ApiProperty({ description: 'Span length between supports (m)', example: 5.0 })
+  @ApiProperty({
+    description: 'Span length between supports (m)',
+    example: 5.0,
+  })
   @IsNumber()
   @Min(0.1)
   spanLengthM: number;
@@ -573,7 +635,10 @@ export class CalculateVibrationAnalysisDto {
   @IsString()
   scheduleNumber?: string;
 
-  @ApiPropertyOptional({ description: 'Whether pipe is water-filled', default: true })
+  @ApiPropertyOptional({
+    description: 'Whether pipe is water-filled',
+    default: true,
+  })
   @IsOptional()
   isWaterFilled?: boolean;
 
@@ -582,12 +647,19 @@ export class CalculateVibrationAnalysisDto {
   @IsNumber()
   insulationThicknessMm?: number;
 
-  @ApiPropertyOptional({ description: 'Equipment excitation frequency (Hz)', example: 50 })
+  @ApiPropertyOptional({
+    description: 'Equipment excitation frequency (Hz)',
+    example: 50,
+  })
   @IsOptional()
   @IsNumber()
   excitationFrequencyHz?: number;
 
-  @ApiPropertyOptional({ description: 'Support configuration', enum: ['simply_supported', 'fixed_fixed', 'cantilever'], default: 'simply_supported' })
+  @ApiPropertyOptional({
+    description: 'Support configuration',
+    enum: ['simply_supported', 'fixed_fixed', 'cantilever'],
+    default: 'simply_supported',
+  })
   @IsOptional()
   @IsString()
   supportConfig?: 'simply_supported' | 'fixed_fixed' | 'cantilever';
@@ -642,7 +714,10 @@ export class CalculateStressAnalysisDto {
   @IsNumber()
   rodLengthMm?: number;
 
-  @ApiPropertyOptional({ description: 'Operating temperature (°C)', default: 20 })
+  @ApiPropertyOptional({
+    description: 'Operating temperature (°C)',
+    default: 20,
+  })
   @IsOptional()
   @IsNumber()
   operatingTempC?: number;
@@ -652,7 +727,10 @@ export class CalculateStressAnalysisDto {
   @IsNumber()
   dynamicLoadFactor?: number;
 
-  @ApiPropertyOptional({ description: 'Material yield strength (MPa)', default: 250 })
+  @ApiPropertyOptional({
+    description: 'Material yield strength (MPa)',
+    default: 250,
+  })
   @IsOptional()
   @IsNumber()
   yieldStrengthMpa?: number;
@@ -699,20 +777,32 @@ export class MaterialCompatibilityCheckDto {
   @IsEnum(PipeMaterialDto)
   pipeMaterial: PipeMaterialDto;
 
-  @ApiProperty({ description: 'Bracket material category', enum: MaterialCategoryDto })
+  @ApiProperty({
+    description: 'Bracket material category',
+    enum: MaterialCategoryDto,
+  })
   @IsEnum(MaterialCategoryDto)
   bracketMaterial: MaterialCategoryDto;
 
-  @ApiPropertyOptional({ description: 'Operating temperature (°C)', default: 20 })
+  @ApiPropertyOptional({
+    description: 'Operating temperature (°C)',
+    default: 20,
+  })
   @IsOptional()
   @IsNumber()
   operatingTempC?: number;
 
-  @ApiPropertyOptional({ description: 'Is corrosive environment', default: false })
+  @ApiPropertyOptional({
+    description: 'Is corrosive environment',
+    default: false,
+  })
   @IsOptional()
   isCorrosiveEnvironment?: boolean;
 
-  @ApiPropertyOptional({ description: 'Is outdoor installation', default: false })
+  @ApiPropertyOptional({
+    description: 'Is outdoor installation',
+    default: false,
+  })
   @IsOptional()
   isOutdoor?: boolean;
 }
@@ -754,7 +844,10 @@ export class ExportReportDto {
   @IsEnum(ExportFormatDto)
   format: ExportFormatDto;
 
-  @ApiProperty({ description: 'Calculation data to export', type: [BatchCalculationResultDto] })
+  @ApiProperty({
+    description: 'Calculation data to export',
+    type: [BatchCalculationResultDto],
+  })
   calculations: BatchCalculationResultDto[];
 
   @ApiPropertyOptional({ description: 'Project name' })

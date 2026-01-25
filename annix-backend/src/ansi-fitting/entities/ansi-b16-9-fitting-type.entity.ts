@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  Unique,
+} from 'typeorm';
 import { AnsiB169FittingDimension } from './ansi-b16-9-fitting-dimension.entity';
 
 @Entity('ansi_b16_9_fitting_types')

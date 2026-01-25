@@ -8,7 +8,7 @@ import { isStainlessSteelSpec } from '@/app/lib/config/rfq/boltGradeRecommendati
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
 import { log } from '@/app/lib/logger';
 import { nowISO } from '@/app/lib/datetime';
-import { SABS_1123_FLANGE_TYPES, BS_4504_FLANGE_TYPES, ASME_B16_5_FLANGE_TYPES, BS_10_FLANGE_TYPES, ASME_B16_47_SERIES_A_FLANGE_TYPES, ASME_B16_47_SERIES_B_FLANGE_TYPES } from '@/app/lib/config/rfq/flangeWeights';
+import { SABS_1123_FLANGE_TYPES, BS_4504_FLANGE_TYPES, ASME_B16_5_FLANGE_TYPES, BS_10_FLANGE_TYPES, ASME_B16_47_SERIES_A_FLANGE_TYPES, ASME_B16_47_SERIES_B_FLANGE_TYPES } from '@/app/lib/hooks/useFlangeWeights';
 
 interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";

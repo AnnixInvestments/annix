@@ -69,7 +69,9 @@ export class RubberLiningController {
   }
 
   @Get('thickness-recommendations')
-  async thicknessRecommendations(): Promise<RubberThicknessRecommendationDto[]> {
+  async thicknessRecommendations(): Promise<
+    RubberThicknessRecommendationDto[]
+  > {
     return this.rubberLiningService.thicknessRecommendations();
   }
 
@@ -128,7 +130,10 @@ export class RubberLiningController {
   @Get('hardness-classes')
   async hardnessClasses(): Promise<{ value: number; label: string }[]> {
     return [
-      { value: 40, label: '40 IRHD - Soft (High flexibility, impact absorption)' },
+      {
+        value: 40,
+        label: '40 IRHD - Soft (High flexibility, impact absorption)',
+      },
       { value: 50, label: '50 IRHD - Medium-Soft (General purpose)' },
       { value: 60, label: '60 IRHD - Medium-Hard (Abrasion resistant)' },
       { value: 70, label: '70 IRHD - Hard (High abrasion, lower flexibility)' },
@@ -136,17 +141,29 @@ export class RubberLiningController {
   }
 
   @Get('grades')
-  async grades(): Promise<{ value: string; label: string; tensileMin: number }[]> {
+  async grades(): Promise<
+    { value: string; label: string; tensileMin: number }[]
+  > {
     return [
-      { value: 'A', label: 'Grade A - High Strength (≥18 MPa)', tensileMin: 18 },
-      { value: 'B', label: 'Grade B - Standard Strength (≥14 MPa)', tensileMin: 14 },
+      {
+        value: 'A',
+        label: 'Grade A - High Strength (≥18 MPa)',
+        tensileMin: 18,
+      },
+      {
+        value: 'B',
+        label: 'Grade B - Standard Strength (≥14 MPa)',
+        tensileMin: 14,
+      },
       { value: 'C', label: 'Grade C - Economy (≥7 MPa)', tensileMin: 7 },
       { value: 'D', label: 'Grade D - Ebonite (Hard rubber)', tensileMin: 0 },
     ];
   }
 
   @Get('special-properties')
-  async specialProperties(): Promise<{ value: number; label: string; code: string }[]> {
+  async specialProperties(): Promise<
+    { value: number; label: string; code: string }[]
+  > {
     return [
       { value: 1, label: 'Heat Resistance', code: 'I' },
       { value: 2, label: 'Ozone Resistance', code: 'II' },
@@ -159,17 +176,21 @@ export class RubberLiningController {
   }
 
   @Get('vulcanization-methods')
-  async vulcanizationMethods(): Promise<{ value: string; label: string; description: string }[]> {
+  async vulcanizationMethods(): Promise<
+    { value: string; label: string; description: string }[]
+  > {
     return [
       {
         value: 'autoclave',
         label: 'Autoclave Vulcanization',
-        description: 'Carried out under pressure in an autoclave. Preferred method when pipe/vessel size permits.',
+        description:
+          'Carried out under pressure in an autoclave. Preferred method when pipe/vessel size permits.',
       },
       {
         value: 'open',
         label: 'Open Vulcanization',
-        description: 'Covering with canvas and injecting steam or hot gas. Hardness tolerance +5/-10 IRHD.',
+        description:
+          'Covering with canvas and injecting steam or hot gas. Hardness tolerance +5/-10 IRHD.',
       },
       {
         value: 'hot_water',
@@ -179,7 +200,8 @@ export class RubberLiningController {
       {
         value: 'chemical',
         label: 'Chemical Vulcanization',
-        description: 'Self-vulcanizing at room temperature. Wider hardness tolerance ±10 IRHD.',
+        description:
+          'Self-vulcanizing at room temperature. Wider hardness tolerance ±10 IRHD.',
       },
     ];
   }

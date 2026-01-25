@@ -7,7 +7,7 @@ export class CorrectBs4504FlangeData1773600000000 implements MigrationInterface 
     console.warn('Correcting BS4504 / EN 1092-1 flange dimension data...');
 
     const bs4504Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'BS 4504'`
+      `SELECT id FROM flange_standards WHERE code = 'BS 4504'`,
     );
     if (bs4504Result.length === 0) {
       console.warn('BS 4504 standard not found, skipping...');
@@ -34,7 +34,7 @@ export class CorrectBs4504FlangeData1773600000000 implements MigrationInterface 
 
     const getTypeId = async (code: string) => {
       const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`
+        `SELECT id FROM flange_types WHERE code = '${code}'`,
       );
       return result[0]?.id;
     };
@@ -42,7 +42,7 @@ export class CorrectBs4504FlangeData1773600000000 implements MigrationInterface 
     const getBoltId = async (designation: string) => {
       if (!designation) return null;
       const result = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = '${designation}'`
+        `SELECT id FROM bolts WHERE designation = '${designation}'`,
       );
       return result[0]?.id;
     };
@@ -64,12 +64,14 @@ export class CorrectBs4504FlangeData1773600000000 implements MigrationInterface 
       d1: number,
       bolt: string,
       pcd: number,
-      mass: number
+      mass: number,
     ) => {
       const nominalId = await getNominalId(nb);
       const typeId = typeIds[typeCode as keyof typeof typeIds];
       const pressureClassDesignation = `${pnValue}${typeCode}`;
-      const pressureClassId = await getPressureClassId(pressureClassDesignation);
+      const pressureClassId = await getPressureClassId(
+        pressureClassDesignation,
+      );
       const boltId = bolt ? await getBoltId(bolt) : null;
 
       if (!nominalId || !typeId || !pressureClassId) {
@@ -223,6 +225,8 @@ export class CorrectBs4504FlangeData1773600000000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('BS4504 correction rollback not implemented - data would need manual restoration');
+    console.warn(
+      'BS4504 correction rollback not implemented - data would need manual restoration',
+    );
   }
 }

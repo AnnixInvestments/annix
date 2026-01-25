@@ -660,16 +660,17 @@ export class RfqService {
         const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const expansionJointRfq = this.expansionJointRfqRepository.create({
-          expansionJointType:
-            item.expansionJoint.expansionJointType as ExpansionJointType,
+          expansionJointType: item.expansionJoint
+            .expansionJointType as ExpansionJointType,
           nominalDiameterMm: item.expansionJoint.nominalDiameterMm,
           scheduleNumber: item.expansionJoint.scheduleNumber,
           wallThicknessMm: item.expansionJoint.wallThicknessMm,
           outsideDiameterMm: item.expansionJoint.outsideDiameterMm,
           quantityValue: item.expansionJoint.quantityValue || 1,
-          bellowsJointType:
-            item.expansionJoint.bellowsJointType as BellowsJointType,
-          bellowsMaterial: item.expansionJoint.bellowsMaterial as BellowsMaterial,
+          bellowsJointType: item.expansionJoint
+            .bellowsJointType as BellowsJointType,
+          bellowsMaterial: item.expansionJoint
+            .bellowsMaterial as BellowsMaterial,
           axialMovementMm: item.expansionJoint.axialMovementMm,
           lateralMovementMm: item.expansionJoint.lateralMovementMm,
           angularMovementDeg: item.expansionJoint.angularMovementDeg,
@@ -901,16 +902,17 @@ export class RfqService {
         const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const expansionJointRfq = this.expansionJointRfqRepository.create({
-          expansionJointType:
-            item.expansionJoint.expansionJointType as ExpansionJointType,
+          expansionJointType: item.expansionJoint
+            .expansionJointType as ExpansionJointType,
           nominalDiameterMm: item.expansionJoint.nominalDiameterMm,
           scheduleNumber: item.expansionJoint.scheduleNumber,
           wallThicknessMm: item.expansionJoint.wallThicknessMm,
           outsideDiameterMm: item.expansionJoint.outsideDiameterMm,
           quantityValue: item.expansionJoint.quantityValue || 1,
-          bellowsJointType:
-            item.expansionJoint.bellowsJointType as BellowsJointType,
-          bellowsMaterial: item.expansionJoint.bellowsMaterial as BellowsMaterial,
+          bellowsJointType: item.expansionJoint
+            .bellowsJointType as BellowsJointType,
+          bellowsMaterial: item.expansionJoint
+            .bellowsMaterial as BellowsMaterial,
           axialMovementMm: item.expansionJoint.axialMovementMm,
           lateralMovementMm: item.expansionJoint.lateralMovementMm,
           angularMovementDeg: item.expansionJoint.angularMovementDeg,
@@ -1329,12 +1331,22 @@ export class RfqService {
     const supplierCountsMap =
       convertedRfqIds.length > 0
         ? await this.batchSupplierCountsForRfqs(convertedRfqIds)
-        : new Map<number, { pending: number; declined: number; intendToQuote: number; quoted: number }>();
+        : new Map<
+            number,
+            {
+              pending: number;
+              declined: number;
+              intendToQuote: number;
+              quoted: number;
+            }
+          >();
 
     return drafts.map((draft) => {
       const response = this.mapDraftToResponse(draft);
       if (draft.isConverted && draft.convertedRfqId) {
-        response.supplierCounts = supplierCountsMap.get(draft.convertedRfqId) || {
+        response.supplierCounts = supplierCountsMap.get(
+          draft.convertedRfqId,
+        ) || {
           pending: 0,
           declined: 0,
           intendToQuote: 0,
@@ -1345,9 +1357,17 @@ export class RfqService {
     });
   }
 
-  private async batchSupplierCountsForRfqs(
-    rfqIds: number[],
-  ): Promise<Map<number, { pending: number; declined: number; intendToQuote: number; quoted: number }>> {
+  private async batchSupplierCountsForRfqs(rfqIds: number[]): Promise<
+    Map<
+      number,
+      {
+        pending: number;
+        declined: number;
+        intendToQuote: number;
+        quoted: number;
+      }
+    >
+  > {
     const boqs = await this.boqRepository
       .createQueryBuilder('boq')
       .select(['boq.id', 'boq.rfq'])
@@ -1373,10 +1393,23 @@ export class RfqService {
       .addGroupBy('access.status')
       .getRawMany<{ boqId: number; status: string; count: string }>();
 
-    const resultMap = new Map<number, { pending: number; declined: number; intendToQuote: number; quoted: number }>();
+    const resultMap = new Map<
+      number,
+      {
+        pending: number;
+        declined: number;
+        intendToQuote: number;
+        quoted: number;
+      }
+    >();
 
     rfqIds.forEach((rfqId) => {
-      resultMap.set(rfqId, { pending: 0, declined: 0, intendToQuote: 0, quoted: 0 });
+      resultMap.set(rfqId, {
+        pending: 0,
+        declined: 0,
+        intendToQuote: 0,
+        quoted: 0,
+      });
     });
 
     counts.forEach((row) => {
@@ -1615,22 +1648,25 @@ export class RfqService {
 
     const boqIds = boqs.map((boq) => boq.id);
 
-    const allSupplierAccessRecords = await this.boqSupplierAccessRepository.find(
-      {
+    const allSupplierAccessRecords =
+      await this.boqSupplierAccessRepository.find({
         where: {
           boqId: In(boqIds),
           status: Not(SupplierBoqStatus.DECLINED),
         },
-      },
-    );
+      });
 
     if (allSupplierAccessRecords.length === 0) {
-      this.logger.log(`No supplier access records found for RFQ ${rfq.rfqNumber}`);
+      this.logger.log(
+        `No supplier access records found for RFQ ${rfq.rfqNumber}`,
+      );
       return { suppliersNotified: 0, suppliersSkipped: 0 };
     }
 
     const supplierProfileIds = [
-      ...new Set(allSupplierAccessRecords.map((access) => access.supplierProfileId)),
+      ...new Set(
+        allSupplierAccessRecords.map((access) => access.supplierProfileId),
+      ),
     ];
 
     const supplierProfiles = await this.supplierProfileRepository.find({
@@ -1644,7 +1680,9 @@ export class RfqService {
 
     for (const access of allSupplierAccessRecords) {
       try {
-        const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
+        const supplierProfile = supplierProfileMap.get(
+          access.supplierProfileId,
+        );
 
         if (!supplierProfile?.user?.email) {
           this.logger.warn(

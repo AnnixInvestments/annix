@@ -24,7 +24,9 @@ export class ClaudeProvider implements AiProvider {
     return !!this.apiKey;
   }
 
-  async extractItems(request: AiExtractionRequest): Promise<AiExtractionResponse> {
+  async extractItems(
+    request: AiExtractionRequest,
+  ): Promise<AiExtractionResponse> {
     const startTime = Date.now();
 
     if (!this.apiKey) {
@@ -57,7 +59,9 @@ export class ClaudeProvider implements AiProvider {
 
       if (!response.ok) {
         const errorText = await response.text();
-        this.logger.error(`Claude API error: ${response.status} - ${errorText}`);
+        this.logger.error(
+          `Claude API error: ${response.status} - ${errorText}`,
+        );
         throw new Error(`Claude API error: ${response.status}`);
       }
 
@@ -71,9 +75,12 @@ export class ClaudeProvider implements AiProvider {
 
       const parsed = this.parseResponse(content);
       parsed.processingTimeMs = Date.now() - startTime;
-      parsed.tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
+      parsed.tokensUsed =
+        (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
 
-      this.logger.log(`Claude extracted ${parsed.items.length} items in ${parsed.processingTimeMs}ms`);
+      this.logger.log(
+        `Claude extracted ${parsed.items.length} items in ${parsed.processingTimeMs}ms`,
+      );
 
       return parsed;
     } catch (error) {
@@ -117,7 +124,9 @@ export class ClaudeProvider implements AiProvider {
           materialGrade: item.materialGrade || null,
           diameter: item.diameter ? Number(item.diameter) : null,
           diameterUnit: item.diameterUnit || 'mm',
-          secondaryDiameter: item.secondaryDiameter ? Number(item.secondaryDiameter) : null,
+          secondaryDiameter: item.secondaryDiameter
+            ? Number(item.secondaryDiameter)
+            : null,
           length: item.length ? Number(item.length) : null,
           wallThickness: item.wallThickness ? Number(item.wallThickness) : null,
           schedule: item.schedule || null,
@@ -138,9 +147,18 @@ export class ClaudeProvider implements AiProvider {
     }
   }
 
-  private normalizeItemType(type: string): AiExtractionResponse['items'][0]['itemType'] {
+  private normalizeItemType(
+    type: string,
+  ): AiExtractionResponse['items'][0]['itemType'] {
     const normalized = (type || '').toLowerCase();
-    const validTypes = ['pipe', 'bend', 'reducer', 'tee', 'flange', 'expansion_joint'];
+    const validTypes = [
+      'pipe',
+      'bend',
+      'reducer',
+      'tee',
+      'flange',
+      'expansion_joint',
+    ];
     if (validTypes.includes(normalized)) {
       return normalized as any;
     }
@@ -149,7 +167,9 @@ export class ClaudeProvider implements AiProvider {
     return 'unknown';
   }
 
-  private normalizeFlangeConfig(config: string): AiExtractionResponse['items'][0]['flangeConfig'] {
+  private normalizeFlangeConfig(
+    config: string,
+  ): AiExtractionResponse['items'][0]['flangeConfig'] {
     const normalized = (config || '').toLowerCase().replace(/\s+/g, '_');
     const validConfigs = ['none', 'one_end', 'both_ends', 'puddle', 'blind'];
     if (validConfigs.includes(normalized)) {

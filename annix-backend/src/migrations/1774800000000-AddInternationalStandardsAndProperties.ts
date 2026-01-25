@@ -4,81 +4,470 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
   name = 'AddInternationalStandardsAndProperties1774800000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding international pipe standards, mechanical properties, and cost data...');
+    console.warn(
+      'Adding international pipe standards, mechanical properties, and cost data...',
+    );
 
     // ============================================================
     // 1. Large Bore Pipe Schedules (>24") - Additional schedules
     // ============================================================
-    console.warn('Adding large bore pipe schedules (26"-48") with higher schedules...');
+    console.warn(
+      'Adding large bore pipe schedules (26"-48") with higher schedules...',
+    );
 
     const largeBoreSchedules = [
       // NPS 26" (660.4mm OD)
-      { nps: '26', nbMm: 650, odInch: 26.0, odMm: 660.4, schedule: '30', wallInch: 0.625, wallMm: 15.88 },
-      { nps: '26', nbMm: 650, odInch: 26.0, odMm: 660.4, schedule: '40', wallInch: 0.750, wallMm: 19.05 },
-      { nps: '26', nbMm: 650, odInch: 26.0, odMm: 660.4, schedule: '60', wallInch: 0.875, wallMm: 22.23 },
-      { nps: '26', nbMm: 650, odInch: 26.0, odMm: 660.4, schedule: '80', wallInch: 1.000, wallMm: 25.40 },
-      { nps: '26', nbMm: 650, odInch: 26.0, odMm: 660.4, schedule: '100', wallInch: 1.125, wallMm: 28.58 },
-      { nps: '26', nbMm: 650, odInch: 26.0, odMm: 660.4, schedule: '120', wallInch: 1.250, wallMm: 31.75 },
-      { nps: '26', nbMm: 650, odInch: 26.0, odMm: 660.4, schedule: '140', wallInch: 1.375, wallMm: 34.93 },
-      { nps: '26', nbMm: 650, odInch: 26.0, odMm: 660.4, schedule: '160', wallInch: 1.500, wallMm: 38.10 },
+      {
+        nps: '26',
+        nbMm: 650,
+        odInch: 26.0,
+        odMm: 660.4,
+        schedule: '30',
+        wallInch: 0.625,
+        wallMm: 15.88,
+      },
+      {
+        nps: '26',
+        nbMm: 650,
+        odInch: 26.0,
+        odMm: 660.4,
+        schedule: '40',
+        wallInch: 0.75,
+        wallMm: 19.05,
+      },
+      {
+        nps: '26',
+        nbMm: 650,
+        odInch: 26.0,
+        odMm: 660.4,
+        schedule: '60',
+        wallInch: 0.875,
+        wallMm: 22.23,
+      },
+      {
+        nps: '26',
+        nbMm: 650,
+        odInch: 26.0,
+        odMm: 660.4,
+        schedule: '80',
+        wallInch: 1.0,
+        wallMm: 25.4,
+      },
+      {
+        nps: '26',
+        nbMm: 650,
+        odInch: 26.0,
+        odMm: 660.4,
+        schedule: '100',
+        wallInch: 1.125,
+        wallMm: 28.58,
+      },
+      {
+        nps: '26',
+        nbMm: 650,
+        odInch: 26.0,
+        odMm: 660.4,
+        schedule: '120',
+        wallInch: 1.25,
+        wallMm: 31.75,
+      },
+      {
+        nps: '26',
+        nbMm: 650,
+        odInch: 26.0,
+        odMm: 660.4,
+        schedule: '140',
+        wallInch: 1.375,
+        wallMm: 34.93,
+      },
+      {
+        nps: '26',
+        nbMm: 650,
+        odInch: 26.0,
+        odMm: 660.4,
+        schedule: '160',
+        wallInch: 1.5,
+        wallMm: 38.1,
+      },
 
       // NPS 28" (711.2mm OD)
-      { nps: '28', nbMm: 700, odInch: 28.0, odMm: 711.2, schedule: '40', wallInch: 0.750, wallMm: 19.05 },
-      { nps: '28', nbMm: 700, odInch: 28.0, odMm: 711.2, schedule: '60', wallInch: 0.938, wallMm: 23.83 },
-      { nps: '28', nbMm: 700, odInch: 28.0, odMm: 711.2, schedule: '80', wallInch: 1.094, wallMm: 27.79 },
-      { nps: '28', nbMm: 700, odInch: 28.0, odMm: 711.2, schedule: '100', wallInch: 1.250, wallMm: 31.75 },
-      { nps: '28', nbMm: 700, odInch: 28.0, odMm: 711.2, schedule: '120', wallInch: 1.406, wallMm: 35.71 },
-      { nps: '28', nbMm: 700, odInch: 28.0, odMm: 711.2, schedule: '140', wallInch: 1.562, wallMm: 39.67 },
-      { nps: '28', nbMm: 700, odInch: 28.0, odMm: 711.2, schedule: '160', wallInch: 1.688, wallMm: 42.88 },
+      {
+        nps: '28',
+        nbMm: 700,
+        odInch: 28.0,
+        odMm: 711.2,
+        schedule: '40',
+        wallInch: 0.75,
+        wallMm: 19.05,
+      },
+      {
+        nps: '28',
+        nbMm: 700,
+        odInch: 28.0,
+        odMm: 711.2,
+        schedule: '60',
+        wallInch: 0.938,
+        wallMm: 23.83,
+      },
+      {
+        nps: '28',
+        nbMm: 700,
+        odInch: 28.0,
+        odMm: 711.2,
+        schedule: '80',
+        wallInch: 1.094,
+        wallMm: 27.79,
+      },
+      {
+        nps: '28',
+        nbMm: 700,
+        odInch: 28.0,
+        odMm: 711.2,
+        schedule: '100',
+        wallInch: 1.25,
+        wallMm: 31.75,
+      },
+      {
+        nps: '28',
+        nbMm: 700,
+        odInch: 28.0,
+        odMm: 711.2,
+        schedule: '120',
+        wallInch: 1.406,
+        wallMm: 35.71,
+      },
+      {
+        nps: '28',
+        nbMm: 700,
+        odInch: 28.0,
+        odMm: 711.2,
+        schedule: '140',
+        wallInch: 1.562,
+        wallMm: 39.67,
+      },
+      {
+        nps: '28',
+        nbMm: 700,
+        odInch: 28.0,
+        odMm: 711.2,
+        schedule: '160',
+        wallInch: 1.688,
+        wallMm: 42.88,
+      },
 
       // NPS 30" (762mm OD)
-      { nps: '30', nbMm: 750, odInch: 30.0, odMm: 762.0, schedule: '40', wallInch: 0.750, wallMm: 19.05 },
-      { nps: '30', nbMm: 750, odInch: 30.0, odMm: 762.0, schedule: '60', wallInch: 1.000, wallMm: 25.40 },
-      { nps: '30', nbMm: 750, odInch: 30.0, odMm: 762.0, schedule: '80', wallInch: 1.188, wallMm: 30.18 },
-      { nps: '30', nbMm: 750, odInch: 30.0, odMm: 762.0, schedule: '100', wallInch: 1.375, wallMm: 34.93 },
-      { nps: '30', nbMm: 750, odInch: 30.0, odMm: 762.0, schedule: '120', wallInch: 1.562, wallMm: 39.67 },
-      { nps: '30', nbMm: 750, odInch: 30.0, odMm: 762.0, schedule: '140', wallInch: 1.750, wallMm: 44.45 },
-      { nps: '30', nbMm: 750, odInch: 30.0, odMm: 762.0, schedule: '160', wallInch: 1.875, wallMm: 47.63 },
+      {
+        nps: '30',
+        nbMm: 750,
+        odInch: 30.0,
+        odMm: 762.0,
+        schedule: '40',
+        wallInch: 0.75,
+        wallMm: 19.05,
+      },
+      {
+        nps: '30',
+        nbMm: 750,
+        odInch: 30.0,
+        odMm: 762.0,
+        schedule: '60',
+        wallInch: 1.0,
+        wallMm: 25.4,
+      },
+      {
+        nps: '30',
+        nbMm: 750,
+        odInch: 30.0,
+        odMm: 762.0,
+        schedule: '80',
+        wallInch: 1.188,
+        wallMm: 30.18,
+      },
+      {
+        nps: '30',
+        nbMm: 750,
+        odInch: 30.0,
+        odMm: 762.0,
+        schedule: '100',
+        wallInch: 1.375,
+        wallMm: 34.93,
+      },
+      {
+        nps: '30',
+        nbMm: 750,
+        odInch: 30.0,
+        odMm: 762.0,
+        schedule: '120',
+        wallInch: 1.562,
+        wallMm: 39.67,
+      },
+      {
+        nps: '30',
+        nbMm: 750,
+        odInch: 30.0,
+        odMm: 762.0,
+        schedule: '140',
+        wallInch: 1.75,
+        wallMm: 44.45,
+      },
+      {
+        nps: '30',
+        nbMm: 750,
+        odInch: 30.0,
+        odMm: 762.0,
+        schedule: '160',
+        wallInch: 1.875,
+        wallMm: 47.63,
+      },
 
       // NPS 32" (812.8mm OD)
-      { nps: '32', nbMm: 800, odInch: 32.0, odMm: 812.8, schedule: '60', wallInch: 1.062, wallMm: 26.97 },
-      { nps: '32', nbMm: 800, odInch: 32.0, odMm: 812.8, schedule: '80', wallInch: 1.250, wallMm: 31.75 },
-      { nps: '32', nbMm: 800, odInch: 32.0, odMm: 812.8, schedule: '100', wallInch: 1.438, wallMm: 36.53 },
-      { nps: '32', nbMm: 800, odInch: 32.0, odMm: 812.8, schedule: '120', wallInch: 1.625, wallMm: 41.28 },
-      { nps: '32', nbMm: 800, odInch: 32.0, odMm: 812.8, schedule: '140', wallInch: 1.812, wallMm: 46.02 },
-      { nps: '32', nbMm: 800, odInch: 32.0, odMm: 812.8, schedule: '160', wallInch: 2.000, wallMm: 50.80 },
+      {
+        nps: '32',
+        nbMm: 800,
+        odInch: 32.0,
+        odMm: 812.8,
+        schedule: '60',
+        wallInch: 1.062,
+        wallMm: 26.97,
+      },
+      {
+        nps: '32',
+        nbMm: 800,
+        odInch: 32.0,
+        odMm: 812.8,
+        schedule: '80',
+        wallInch: 1.25,
+        wallMm: 31.75,
+      },
+      {
+        nps: '32',
+        nbMm: 800,
+        odInch: 32.0,
+        odMm: 812.8,
+        schedule: '100',
+        wallInch: 1.438,
+        wallMm: 36.53,
+      },
+      {
+        nps: '32',
+        nbMm: 800,
+        odInch: 32.0,
+        odMm: 812.8,
+        schedule: '120',
+        wallInch: 1.625,
+        wallMm: 41.28,
+      },
+      {
+        nps: '32',
+        nbMm: 800,
+        odInch: 32.0,
+        odMm: 812.8,
+        schedule: '140',
+        wallInch: 1.812,
+        wallMm: 46.02,
+      },
+      {
+        nps: '32',
+        nbMm: 800,
+        odInch: 32.0,
+        odMm: 812.8,
+        schedule: '160',
+        wallInch: 2.0,
+        wallMm: 50.8,
+      },
 
       // NPS 34" (863.6mm OD)
-      { nps: '34', nbMm: 850, odInch: 34.0, odMm: 863.6, schedule: '60', wallInch: 1.125, wallMm: 28.58 },
-      { nps: '34', nbMm: 850, odInch: 34.0, odMm: 863.6, schedule: '80', wallInch: 1.312, wallMm: 33.32 },
-      { nps: '34', nbMm: 850, odInch: 34.0, odMm: 863.6, schedule: '100', wallInch: 1.500, wallMm: 38.10 },
-      { nps: '34', nbMm: 850, odInch: 34.0, odMm: 863.6, schedule: '120', wallInch: 1.688, wallMm: 42.88 },
-      { nps: '34', nbMm: 850, odInch: 34.0, odMm: 863.6, schedule: '140', wallInch: 1.875, wallMm: 47.63 },
-      { nps: '34', nbMm: 850, odInch: 34.0, odMm: 863.6, schedule: '160', wallInch: 2.062, wallMm: 52.37 },
+      {
+        nps: '34',
+        nbMm: 850,
+        odInch: 34.0,
+        odMm: 863.6,
+        schedule: '60',
+        wallInch: 1.125,
+        wallMm: 28.58,
+      },
+      {
+        nps: '34',
+        nbMm: 850,
+        odInch: 34.0,
+        odMm: 863.6,
+        schedule: '80',
+        wallInch: 1.312,
+        wallMm: 33.32,
+      },
+      {
+        nps: '34',
+        nbMm: 850,
+        odInch: 34.0,
+        odMm: 863.6,
+        schedule: '100',
+        wallInch: 1.5,
+        wallMm: 38.1,
+      },
+      {
+        nps: '34',
+        nbMm: 850,
+        odInch: 34.0,
+        odMm: 863.6,
+        schedule: '120',
+        wallInch: 1.688,
+        wallMm: 42.88,
+      },
+      {
+        nps: '34',
+        nbMm: 850,
+        odInch: 34.0,
+        odMm: 863.6,
+        schedule: '140',
+        wallInch: 1.875,
+        wallMm: 47.63,
+      },
+      {
+        nps: '34',
+        nbMm: 850,
+        odInch: 34.0,
+        odMm: 863.6,
+        schedule: '160',
+        wallInch: 2.062,
+        wallMm: 52.37,
+      },
 
       // NPS 36" (914.4mm OD)
-      { nps: '36', nbMm: 900, odInch: 36.0, odMm: 914.4, schedule: '60', wallInch: 1.188, wallMm: 30.18 },
-      { nps: '36', nbMm: 900, odInch: 36.0, odMm: 914.4, schedule: '80', wallInch: 1.375, wallMm: 34.93 },
-      { nps: '36', nbMm: 900, odInch: 36.0, odMm: 914.4, schedule: '100', wallInch: 1.562, wallMm: 39.67 },
-      { nps: '36', nbMm: 900, odInch: 36.0, odMm: 914.4, schedule: '120', wallInch: 1.750, wallMm: 44.45 },
-      { nps: '36', nbMm: 900, odInch: 36.0, odMm: 914.4, schedule: '140', wallInch: 1.938, wallMm: 49.23 },
-      { nps: '36', nbMm: 900, odInch: 36.0, odMm: 914.4, schedule: '160', wallInch: 2.125, wallMm: 53.98 },
+      {
+        nps: '36',
+        nbMm: 900,
+        odInch: 36.0,
+        odMm: 914.4,
+        schedule: '60',
+        wallInch: 1.188,
+        wallMm: 30.18,
+      },
+      {
+        nps: '36',
+        nbMm: 900,
+        odInch: 36.0,
+        odMm: 914.4,
+        schedule: '80',
+        wallInch: 1.375,
+        wallMm: 34.93,
+      },
+      {
+        nps: '36',
+        nbMm: 900,
+        odInch: 36.0,
+        odMm: 914.4,
+        schedule: '100',
+        wallInch: 1.562,
+        wallMm: 39.67,
+      },
+      {
+        nps: '36',
+        nbMm: 900,
+        odInch: 36.0,
+        odMm: 914.4,
+        schedule: '120',
+        wallInch: 1.75,
+        wallMm: 44.45,
+      },
+      {
+        nps: '36',
+        nbMm: 900,
+        odInch: 36.0,
+        odMm: 914.4,
+        schedule: '140',
+        wallInch: 1.938,
+        wallMm: 49.23,
+      },
+      {
+        nps: '36',
+        nbMm: 900,
+        odInch: 36.0,
+        odMm: 914.4,
+        schedule: '160',
+        wallInch: 2.125,
+        wallMm: 53.98,
+      },
 
       // NPS 42" (1066.8mm OD)
-      { nps: '42', nbMm: 1050, odInch: 42.0, odMm: 1066.8, schedule: '60', wallInch: 1.375, wallMm: 34.93 },
-      { nps: '42', nbMm: 1050, odInch: 42.0, odMm: 1066.8, schedule: '80', wallInch: 1.562, wallMm: 39.67 },
-      { nps: '42', nbMm: 1050, odInch: 42.0, odMm: 1066.8, schedule: '100', wallInch: 1.750, wallMm: 44.45 },
-      { nps: '42', nbMm: 1050, odInch: 42.0, odMm: 1066.8, schedule: '120', wallInch: 2.000, wallMm: 50.80 },
+      {
+        nps: '42',
+        nbMm: 1050,
+        odInch: 42.0,
+        odMm: 1066.8,
+        schedule: '60',
+        wallInch: 1.375,
+        wallMm: 34.93,
+      },
+      {
+        nps: '42',
+        nbMm: 1050,
+        odInch: 42.0,
+        odMm: 1066.8,
+        schedule: '80',
+        wallInch: 1.562,
+        wallMm: 39.67,
+      },
+      {
+        nps: '42',
+        nbMm: 1050,
+        odInch: 42.0,
+        odMm: 1066.8,
+        schedule: '100',
+        wallInch: 1.75,
+        wallMm: 44.45,
+      },
+      {
+        nps: '42',
+        nbMm: 1050,
+        odInch: 42.0,
+        odMm: 1066.8,
+        schedule: '120',
+        wallInch: 2.0,
+        wallMm: 50.8,
+      },
 
       // NPS 48" (1219.2mm OD)
-      { nps: '48', nbMm: 1200, odInch: 48.0, odMm: 1219.2, schedule: '60', wallInch: 1.562, wallMm: 39.67 },
-      { nps: '48', nbMm: 1200, odInch: 48.0, odMm: 1219.2, schedule: '80', wallInch: 1.750, wallMm: 44.45 },
-      { nps: '48', nbMm: 1200, odInch: 48.0, odMm: 1219.2, schedule: '100', wallInch: 2.000, wallMm: 50.80 },
-      { nps: '48', nbMm: 1200, odInch: 48.0, odMm: 1219.2, schedule: '120', wallInch: 2.250, wallMm: 57.15 },
+      {
+        nps: '48',
+        nbMm: 1200,
+        odInch: 48.0,
+        odMm: 1219.2,
+        schedule: '60',
+        wallInch: 1.562,
+        wallMm: 39.67,
+      },
+      {
+        nps: '48',
+        nbMm: 1200,
+        odInch: 48.0,
+        odMm: 1219.2,
+        schedule: '80',
+        wallInch: 1.75,
+        wallMm: 44.45,
+      },
+      {
+        nps: '48',
+        nbMm: 1200,
+        odInch: 48.0,
+        odMm: 1219.2,
+        schedule: '100',
+        wallInch: 2.0,
+        wallMm: 50.8,
+      },
+      {
+        nps: '48',
+        nbMm: 1200,
+        odInch: 48.0,
+        odMm: 1219.2,
+        schedule: '120',
+        wallInch: 2.25,
+        wallMm: 57.15,
+      },
     ];
 
     for (const pipe of largeBoreSchedules) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO pipe_schedules (nps, nb_mm, schedule, wall_thickness_inch, wall_thickness_mm, outside_diameter_inch, outside_diameter_mm, standard_code)
         VALUES ($1, $2, $3, $4, $5, $6, $7, 'ASME B36.10')
         ON CONFLICT (nps, schedule) DO UPDATE SET
@@ -86,15 +475,28 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
           wall_thickness_mm = EXCLUDED.wall_thickness_mm,
           outside_diameter_inch = EXCLUDED.outside_diameter_inch,
           outside_diameter_mm = EXCLUDED.outside_diameter_mm
-      `, [pipe.nps, pipe.nbMm, pipe.schedule, pipe.wallInch, pipe.wallMm, pipe.odInch, pipe.odMm]);
+      `,
+        [
+          pipe.nps,
+          pipe.nbMm,
+          pipe.schedule,
+          pipe.wallInch,
+          pipe.wallMm,
+          pipe.odInch,
+          pipe.odMm,
+        ],
+      );
 
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO pipe_schedule_walls (nps, schedule, wall_thickness_inch, wall_thickness_mm)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (nps, schedule) DO UPDATE SET
           wall_thickness_inch = EXCLUDED.wall_thickness_inch,
           wall_thickness_mm = EXCLUDED.wall_thickness_mm
-      `, [pipe.nps, pipe.schedule, pipe.wallInch, pipe.wallMm]);
+      `,
+        [pipe.nps, pipe.schedule, pipe.wallInch, pipe.wallMm],
+      );
     }
 
     console.warn('Large bore pipe schedules added.');
@@ -110,8 +512,12 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'EN 10216-2 P235GH (Seamless, Elevated Temp)',
         category: 'EN_SEAMLESS',
         stressData: [
-          { tempF: 68, ksi: 16.5 }, { tempF: 212, ksi: 14.5 }, { tempF: 392, ksi: 13.1 },
-          { tempF: 572, ksi: 12.0 }, { tempF: 752, ksi: 10.2 }, { tempF: 842, ksi: 8.0 },
+          { tempF: 68, ksi: 16.5 },
+          { tempF: 212, ksi: 14.5 },
+          { tempF: 392, ksi: 13.1 },
+          { tempF: 572, ksi: 12.0 },
+          { tempF: 752, ksi: 10.2 },
+          { tempF: 842, ksi: 8.0 },
         ],
       },
       {
@@ -119,8 +525,12 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'EN 10216-2 P265GH (Seamless, Elevated Temp)',
         category: 'EN_SEAMLESS',
         stressData: [
-          { tempF: 68, ksi: 18.5 }, { tempF: 212, ksi: 16.4 }, { tempF: 392, ksi: 14.8 },
-          { tempF: 572, ksi: 13.5 }, { tempF: 752, ksi: 11.5 }, { tempF: 842, ksi: 9.0 },
+          { tempF: 68, ksi: 18.5 },
+          { tempF: 212, ksi: 16.4 },
+          { tempF: 392, ksi: 14.8 },
+          { tempF: 572, ksi: 13.5 },
+          { tempF: 752, ksi: 11.5 },
+          { tempF: 842, ksi: 9.0 },
         ],
       },
       {
@@ -128,8 +538,12 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'EN 10216-2 P355GH (Seamless, Elevated Temp)',
         category: 'EN_SEAMLESS',
         stressData: [
-          { tempF: 68, ksi: 24.7 }, { tempF: 212, ksi: 22.0 }, { tempF: 392, ksi: 19.9 },
-          { tempF: 572, ksi: 18.1 }, { tempF: 752, ksi: 15.4 }, { tempF: 842, ksi: 12.1 },
+          { tempF: 68, ksi: 24.7 },
+          { tempF: 212, ksi: 22.0 },
+          { tempF: 392, ksi: 19.9 },
+          { tempF: 572, ksi: 18.1 },
+          { tempF: 752, ksi: 15.4 },
+          { tempF: 842, ksi: 12.1 },
         ],
       },
       {
@@ -137,8 +551,12 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'EN 10216-2 16Mo3 (Seamless, 0.3Mo)',
         category: 'EN_SEAMLESS_ALLOY',
         stressData: [
-          { tempF: 68, ksi: 18.9 }, { tempF: 212, ksi: 17.7 }, { tempF: 392, ksi: 16.4 },
-          { tempF: 572, ksi: 15.2 }, { tempF: 752, ksi: 14.0 }, { tempF: 932, ksi: 11.6 },
+          { tempF: 68, ksi: 18.9 },
+          { tempF: 212, ksi: 17.7 },
+          { tempF: 392, ksi: 16.4 },
+          { tempF: 572, ksi: 15.2 },
+          { tempF: 752, ksi: 14.0 },
+          { tempF: 932, ksi: 11.6 },
           { tempF: 1022, ksi: 8.7 },
         ],
       },
@@ -147,9 +565,14 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'EN 10216-2 13CrMo4-5 (Seamless, 1Cr-0.5Mo)',
         category: 'EN_SEAMLESS_ALLOY',
         stressData: [
-          { tempF: 68, ksi: 18.9 }, { tempF: 212, ksi: 17.7 }, { tempF: 392, ksi: 16.4 },
-          { tempF: 572, ksi: 15.4 }, { tempF: 752, ksi: 14.5 }, { tempF: 932, ksi: 12.3 },
-          { tempF: 1022, ksi: 9.4 }, { tempF: 1112, ksi: 6.5 },
+          { tempF: 68, ksi: 18.9 },
+          { tempF: 212, ksi: 17.7 },
+          { tempF: 392, ksi: 16.4 },
+          { tempF: 572, ksi: 15.4 },
+          { tempF: 752, ksi: 14.5 },
+          { tempF: 932, ksi: 12.3 },
+          { tempF: 1022, ksi: 9.4 },
+          { tempF: 1112, ksi: 6.5 },
         ],
       },
       {
@@ -157,9 +580,14 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'EN 10216-2 10CrMo9-10 (Seamless, 2.25Cr-1Mo)',
         category: 'EN_SEAMLESS_ALLOY',
         stressData: [
-          { tempF: 68, ksi: 18.9 }, { tempF: 212, ksi: 17.7 }, { tempF: 392, ksi: 16.4 },
-          { tempF: 572, ksi: 15.4 }, { tempF: 752, ksi: 14.5 }, { tempF: 932, ksi: 12.6 },
-          { tempF: 1022, ksi: 10.2 }, { tempF: 1112, ksi: 7.3 },
+          { tempF: 68, ksi: 18.9 },
+          { tempF: 212, ksi: 17.7 },
+          { tempF: 392, ksi: 16.4 },
+          { tempF: 572, ksi: 15.4 },
+          { tempF: 752, ksi: 14.5 },
+          { tempF: 932, ksi: 12.6 },
+          { tempF: 1022, ksi: 10.2 },
+          { tempF: 1112, ksi: 7.3 },
         ],
       },
       {
@@ -167,8 +595,11 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'EN 10217-2 P235GH (Welded, Elevated Temp)',
         category: 'EN_WELDED',
         stressData: [
-          { tempF: 68, ksi: 14.5 }, { tempF: 212, ksi: 12.7 }, { tempF: 392, ksi: 11.5 },
-          { tempF: 572, ksi: 10.5 }, { tempF: 752, ksi: 8.9 },
+          { tempF: 68, ksi: 14.5 },
+          { tempF: 212, ksi: 12.7 },
+          { tempF: 392, ksi: 11.5 },
+          { tempF: 572, ksi: 10.5 },
+          { tempF: 752, ksi: 8.9 },
         ],
       },
       {
@@ -176,8 +607,11 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'EN 10217-2 P265GH (Welded, Elevated Temp)',
         category: 'EN_WELDED',
         stressData: [
-          { tempF: 68, ksi: 16.2 }, { tempF: 212, ksi: 14.4 }, { tempF: 392, ksi: 13.0 },
-          { tempF: 572, ksi: 11.8 }, { tempF: 752, ksi: 10.1 },
+          { tempF: 68, ksi: 16.2 },
+          { tempF: 212, ksi: 14.4 },
+          { tempF: 392, ksi: 13.0 },
+          { tempF: 572, ksi: 11.8 },
+          { tempF: 752, ksi: 10.1 },
         ],
       },
       {
@@ -185,8 +619,12 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'EN 10216-5 X2CrNi19-11 (304L Equivalent)',
         category: 'EN_STAINLESS',
         stressData: [
-          { tempF: 68, ksi: 14.2 }, { tempF: 212, ksi: 12.3 }, { tempF: 392, ksi: 10.9 },
-          { tempF: 572, ksi: 10.0 }, { tempF: 752, ksi: 9.3 }, { tempF: 932, ksi: 8.8 },
+          { tempF: 68, ksi: 14.2 },
+          { tempF: 212, ksi: 12.3 },
+          { tempF: 392, ksi: 10.9 },
+          { tempF: 572, ksi: 10.0 },
+          { tempF: 752, ksi: 9.3 },
+          { tempF: 932, ksi: 8.8 },
           { tempF: 1112, ksi: 8.3 },
         ],
       },
@@ -195,29 +633,39 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'EN 10216-5 X2CrNiMo17-12-2 (316L Equivalent)',
         category: 'EN_STAINLESS',
         stressData: [
-          { tempF: 68, ksi: 14.2 }, { tempF: 212, ksi: 12.6 }, { tempF: 392, ksi: 11.3 },
-          { tempF: 572, ksi: 10.4 }, { tempF: 752, ksi: 9.7 }, { tempF: 932, ksi: 9.2 },
+          { tempF: 68, ksi: 14.2 },
+          { tempF: 212, ksi: 12.6 },
+          { tempF: 392, ksi: 11.3 },
+          { tempF: 572, ksi: 10.4 },
+          { tempF: 752, ksi: 9.7 },
+          { tempF: 932, ksi: 9.2 },
           { tempF: 1112, ksi: 8.7 },
         ],
       },
     ];
 
     for (const grade of enGrades) {
-      const result = await queryRunner.query(`
+      const result = await queryRunner.query(
+        `
         INSERT INTO pipe_steel_grades (code, name, category, equivalent_grade)
         VALUES ($1, $2, $3, NULL)
         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category
         RETURNING id
-      `, [grade.code, grade.name, grade.category]);
+      `,
+        [grade.code, grade.name, grade.category],
+      );
 
       const gradeId = result[0]?.id;
       if (gradeId) {
         for (const stress of grade.stressData) {
-          await queryRunner.query(`
+          await queryRunner.query(
+            `
             INSERT INTO pipe_allowable_stresses (grade_id, temperature_f, allowable_stress_ksi)
             VALUES ($1, $2, $3)
             ON CONFLICT (grade_id, temperature_f) DO UPDATE SET allowable_stress_ksi = EXCLUDED.allowable_stress_ksi
-          `, [gradeId, stress.tempF, stress.ksi]);
+          `,
+            [gradeId, stress.tempF, stress.ksi],
+          );
         }
       }
     }
@@ -235,8 +683,11 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'DIN 2448 St35.8 (Seamless, General Purpose)',
         category: 'DIN_SEAMLESS',
         stressData: [
-          { tempF: 68, ksi: 15.2 }, { tempF: 212, ksi: 14.5 }, { tempF: 392, ksi: 13.1 },
-          { tempF: 572, ksi: 11.6 }, { tempF: 752, ksi: 8.7 },
+          { tempF: 68, ksi: 15.2 },
+          { tempF: 212, ksi: 14.5 },
+          { tempF: 392, ksi: 13.1 },
+          { tempF: 572, ksi: 11.6 },
+          { tempF: 752, ksi: 8.7 },
         ],
       },
       {
@@ -244,8 +695,12 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'DIN 2448 St45.8 (Seamless, Elevated Temp)',
         category: 'DIN_SEAMLESS',
         stressData: [
-          { tempF: 68, ksi: 18.9 }, { tempF: 212, ksi: 17.4 }, { tempF: 392, ksi: 15.9 },
-          { tempF: 572, ksi: 14.5 }, { tempF: 752, ksi: 11.6 }, { tempF: 842, ksi: 8.7 },
+          { tempF: 68, ksi: 18.9 },
+          { tempF: 212, ksi: 17.4 },
+          { tempF: 392, ksi: 15.9 },
+          { tempF: 572, ksi: 14.5 },
+          { tempF: 752, ksi: 11.6 },
+          { tempF: 842, ksi: 8.7 },
         ],
       },
       {
@@ -253,8 +708,12 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'DIN 2448 15Mo3 (Seamless, 0.3Mo Alloy)',
         category: 'DIN_SEAMLESS_ALLOY',
         stressData: [
-          { tempF: 68, ksi: 17.4 }, { tempF: 212, ksi: 16.7 }, { tempF: 392, ksi: 15.9 },
-          { tempF: 572, ksi: 14.5 }, { tempF: 752, ksi: 13.1 }, { tempF: 932, ksi: 10.9 },
+          { tempF: 68, ksi: 17.4 },
+          { tempF: 212, ksi: 16.7 },
+          { tempF: 392, ksi: 15.9 },
+          { tempF: 572, ksi: 14.5 },
+          { tempF: 752, ksi: 13.1 },
+          { tempF: 932, ksi: 10.9 },
           { tempF: 1022, ksi: 8.0 },
         ],
       },
@@ -263,7 +722,9 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'DIN 2458 St37.0 (Welded, General Purpose)',
         category: 'DIN_WELDED',
         stressData: [
-          { tempF: 68, ksi: 13.1 }, { tempF: 212, ksi: 12.3 }, { tempF: 392, ksi: 11.6 },
+          { tempF: 68, ksi: 13.1 },
+          { tempF: 212, ksi: 12.3 },
+          { tempF: 392, ksi: 11.6 },
           { tempF: 572, ksi: 10.2 },
         ],
       },
@@ -272,28 +733,36 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'DIN 2458 St52.0 (Welded, Higher Strength)',
         category: 'DIN_WELDED',
         stressData: [
-          { tempF: 68, ksi: 18.1 }, { tempF: 212, ksi: 17.0 }, { tempF: 392, ksi: 15.9 },
+          { tempF: 68, ksi: 18.1 },
+          { tempF: 212, ksi: 17.0 },
+          { tempF: 392, ksi: 15.9 },
           { tempF: 572, ksi: 14.2 },
         ],
       },
     ];
 
     for (const grade of dinGrades) {
-      const result = await queryRunner.query(`
+      const result = await queryRunner.query(
+        `
         INSERT INTO pipe_steel_grades (code, name, category, equivalent_grade)
         VALUES ($1, $2, $3, NULL)
         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category
         RETURNING id
-      `, [grade.code, grade.name, grade.category]);
+      `,
+        [grade.code, grade.name, grade.category],
+      );
 
       const gradeId = result[0]?.id;
       if (gradeId) {
         for (const stress of grade.stressData) {
-          await queryRunner.query(`
+          await queryRunner.query(
+            `
             INSERT INTO pipe_allowable_stresses (grade_id, temperature_f, allowable_stress_ksi)
             VALUES ($1, $2, $3)
             ON CONFLICT (grade_id, temperature_f) DO UPDATE SET allowable_stress_ksi = EXCLUDED.allowable_stress_ksi
-          `, [gradeId, stress.tempF, stress.ksi]);
+          `,
+            [gradeId, stress.tempF, stress.ksi],
+          );
         }
       }
     }
@@ -311,7 +780,9 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'BS 1387 Light Grade (Screwed/Socketed)',
         category: 'BS_TUBE',
         stressData: [
-          { tempF: 68, ksi: 12.3 }, { tempF: 212, ksi: 11.6 }, { tempF: 392, ksi: 10.9 },
+          { tempF: 68, ksi: 12.3 },
+          { tempF: 212, ksi: 11.6 },
+          { tempF: 392, ksi: 10.9 },
           { tempF: 500, ksi: 10.2 },
         ],
       },
@@ -320,7 +791,9 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'BS 1387 Medium Grade (Screwed/Socketed)',
         category: 'BS_TUBE',
         stressData: [
-          { tempF: 68, ksi: 13.8 }, { tempF: 212, ksi: 13.1 }, { tempF: 392, ksi: 12.3 },
+          { tempF: 68, ksi: 13.8 },
+          { tempF: 212, ksi: 13.1 },
+          { tempF: 392, ksi: 12.3 },
           { tempF: 500, ksi: 11.6 },
         ],
       },
@@ -329,28 +802,36 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'BS 1387 Heavy Grade (Screwed/Socketed)',
         category: 'BS_TUBE',
         stressData: [
-          { tempF: 68, ksi: 15.2 }, { tempF: 212, ksi: 14.5 }, { tempF: 392, ksi: 13.8 },
+          { tempF: 68, ksi: 15.2 },
+          { tempF: 212, ksi: 14.5 },
+          { tempF: 392, ksi: 13.8 },
           { tempF: 500, ksi: 13.1 },
         ],
       },
     ];
 
     for (const grade of bsGrades) {
-      const result = await queryRunner.query(`
+      const result = await queryRunner.query(
+        `
         INSERT INTO pipe_steel_grades (code, name, category, equivalent_grade)
         VALUES ($1, $2, $3, NULL)
         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category
         RETURNING id
-      `, [grade.code, grade.name, grade.category]);
+      `,
+        [grade.code, grade.name, grade.category],
+      );
 
       const gradeId = result[0]?.id;
       if (gradeId) {
         for (const stress of grade.stressData) {
-          await queryRunner.query(`
+          await queryRunner.query(
+            `
             INSERT INTO pipe_allowable_stresses (grade_id, temperature_f, allowable_stress_ksi)
             VALUES ($1, $2, $3)
             ON CONFLICT (grade_id, temperature_f) DO UPDATE SET allowable_stress_ksi = EXCLUDED.allowable_stress_ksi
-          `, [gradeId, stress.tempF, stress.ksi]);
+          `,
+            [gradeId, stress.tempF, stress.ksi],
+          );
         }
       }
     }
@@ -360,7 +841,9 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
     // ============================================================
     // 5. Mechanical Properties Table Enhancement
     // ============================================================
-    console.warn('Adding mechanical properties (hardness, elongation, impact)...');
+    console.warn(
+      'Adding mechanical properties (hardness, elongation, impact)...',
+    );
 
     await queryRunner.query(`
       ALTER TABLE material_physical_properties
@@ -373,32 +856,209 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
     `);
 
     const mechanicalProperties = [
-      { code: 'CARBON_STEEL', hardnessB: 131, hardnessRb: 71, elongation: 30, reduction: 50, impact: 27, impactTemp: -29 },
-      { code: 'A106_GRB', hardnessB: 143, hardnessRb: 77, elongation: 30, reduction: 50, impact: 27, impactTemp: -29 },
-      { code: 'A333_GR6', hardnessB: 143, hardnessRb: 77, elongation: 30, reduction: 50, impact: 18, impactTemp: -46 },
-      { code: 'A335_P11', hardnessB: 163, hardnessRb: 85, elongation: 30, reduction: 50, impact: 27, impactTemp: 21 },
-      { code: 'A335_P22', hardnessB: 163, hardnessRb: 85, elongation: 30, reduction: 50, impact: 27, impactTemp: 21 },
-      { code: 'A335_P91', hardnessB: 248, hardnessRb: 99, elongation: 20, reduction: 45, impact: 27, impactTemp: 21 },
-      { code: 'SS304', hardnessB: 201, hardnessRb: 92, elongation: 40, reduction: 60, impact: 100, impactTemp: -196 },
-      { code: 'SS304L', hardnessB: 187, hardnessRb: 88, elongation: 40, reduction: 60, impact: 100, impactTemp: -196 },
-      { code: 'SS316', hardnessB: 217, hardnessRb: 95, elongation: 40, reduction: 60, impact: 100, impactTemp: -196 },
-      { code: 'SS316L', hardnessB: 187, hardnessRb: 88, elongation: 40, reduction: 60, impact: 100, impactTemp: -196 },
-      { code: 'SS321', hardnessB: 217, hardnessRb: 95, elongation: 40, reduction: 55, impact: 100, impactTemp: -196 },
-      { code: 'SS347', hardnessB: 217, hardnessRb: 95, elongation: 40, reduction: 55, impact: 100, impactTemp: -196 },
-      { code: 'DUPLEX_2205', hardnessB: 293, hardnessRb: 100, elongation: 25, reduction: 45, impact: 45, impactTemp: -46 },
-      { code: 'SUPER_DUPLEX_2507', hardnessB: 310, hardnessRb: 100, elongation: 25, reduction: 45, impact: 45, impactTemp: -46 },
-      { code: 'INCONEL_625', hardnessB: 240, hardnessRb: 99, elongation: 30, reduction: 50, impact: 80, impactTemp: -196 },
-      { code: 'MONEL_400', hardnessB: 140, hardnessRb: 75, elongation: 35, reduction: 60, impact: 120, impactTemp: -196 },
-      { code: 'HASTELLOY_C276', hardnessB: 210, hardnessRb: 93, elongation: 40, reduction: 50, impact: 100, impactTemp: -196 },
-      { code: 'SS409', hardnessB: 179, hardnessRb: 86, elongation: 25, reduction: 45, impact: 27, impactTemp: 21 },
-      { code: 'SS410', hardnessB: 217, hardnessRb: 95, elongation: 20, reduction: 45, impact: 27, impactTemp: 21 },
-      { code: 'SS430', hardnessB: 183, hardnessRb: 88, elongation: 22, reduction: 50, impact: 27, impactTemp: 21 },
-      { code: 'A36_STRUCTURAL', hardnessB: 119, hardnessRb: 67, elongation: 23, reduction: 50, impact: 27, impactTemp: 21 },
-      { code: 'A572_50', hardnessB: 143, hardnessRb: 77, elongation: 21, reduction: 50, impact: 27, impactTemp: 21 },
+      {
+        code: 'CARBON_STEEL',
+        hardnessB: 131,
+        hardnessRb: 71,
+        elongation: 30,
+        reduction: 50,
+        impact: 27,
+        impactTemp: -29,
+      },
+      {
+        code: 'A106_GRB',
+        hardnessB: 143,
+        hardnessRb: 77,
+        elongation: 30,
+        reduction: 50,
+        impact: 27,
+        impactTemp: -29,
+      },
+      {
+        code: 'A333_GR6',
+        hardnessB: 143,
+        hardnessRb: 77,
+        elongation: 30,
+        reduction: 50,
+        impact: 18,
+        impactTemp: -46,
+      },
+      {
+        code: 'A335_P11',
+        hardnessB: 163,
+        hardnessRb: 85,
+        elongation: 30,
+        reduction: 50,
+        impact: 27,
+        impactTemp: 21,
+      },
+      {
+        code: 'A335_P22',
+        hardnessB: 163,
+        hardnessRb: 85,
+        elongation: 30,
+        reduction: 50,
+        impact: 27,
+        impactTemp: 21,
+      },
+      {
+        code: 'A335_P91',
+        hardnessB: 248,
+        hardnessRb: 99,
+        elongation: 20,
+        reduction: 45,
+        impact: 27,
+        impactTemp: 21,
+      },
+      {
+        code: 'SS304',
+        hardnessB: 201,
+        hardnessRb: 92,
+        elongation: 40,
+        reduction: 60,
+        impact: 100,
+        impactTemp: -196,
+      },
+      {
+        code: 'SS304L',
+        hardnessB: 187,
+        hardnessRb: 88,
+        elongation: 40,
+        reduction: 60,
+        impact: 100,
+        impactTemp: -196,
+      },
+      {
+        code: 'SS316',
+        hardnessB: 217,
+        hardnessRb: 95,
+        elongation: 40,
+        reduction: 60,
+        impact: 100,
+        impactTemp: -196,
+      },
+      {
+        code: 'SS316L',
+        hardnessB: 187,
+        hardnessRb: 88,
+        elongation: 40,
+        reduction: 60,
+        impact: 100,
+        impactTemp: -196,
+      },
+      {
+        code: 'SS321',
+        hardnessB: 217,
+        hardnessRb: 95,
+        elongation: 40,
+        reduction: 55,
+        impact: 100,
+        impactTemp: -196,
+      },
+      {
+        code: 'SS347',
+        hardnessB: 217,
+        hardnessRb: 95,
+        elongation: 40,
+        reduction: 55,
+        impact: 100,
+        impactTemp: -196,
+      },
+      {
+        code: 'DUPLEX_2205',
+        hardnessB: 293,
+        hardnessRb: 100,
+        elongation: 25,
+        reduction: 45,
+        impact: 45,
+        impactTemp: -46,
+      },
+      {
+        code: 'SUPER_DUPLEX_2507',
+        hardnessB: 310,
+        hardnessRb: 100,
+        elongation: 25,
+        reduction: 45,
+        impact: 45,
+        impactTemp: -46,
+      },
+      {
+        code: 'INCONEL_625',
+        hardnessB: 240,
+        hardnessRb: 99,
+        elongation: 30,
+        reduction: 50,
+        impact: 80,
+        impactTemp: -196,
+      },
+      {
+        code: 'MONEL_400',
+        hardnessB: 140,
+        hardnessRb: 75,
+        elongation: 35,
+        reduction: 60,
+        impact: 120,
+        impactTemp: -196,
+      },
+      {
+        code: 'HASTELLOY_C276',
+        hardnessB: 210,
+        hardnessRb: 93,
+        elongation: 40,
+        reduction: 50,
+        impact: 100,
+        impactTemp: -196,
+      },
+      {
+        code: 'SS409',
+        hardnessB: 179,
+        hardnessRb: 86,
+        elongation: 25,
+        reduction: 45,
+        impact: 27,
+        impactTemp: 21,
+      },
+      {
+        code: 'SS410',
+        hardnessB: 217,
+        hardnessRb: 95,
+        elongation: 20,
+        reduction: 45,
+        impact: 27,
+        impactTemp: 21,
+      },
+      {
+        code: 'SS430',
+        hardnessB: 183,
+        hardnessRb: 88,
+        elongation: 22,
+        reduction: 50,
+        impact: 27,
+        impactTemp: 21,
+      },
+      {
+        code: 'A36_STRUCTURAL',
+        hardnessB: 119,
+        hardnessRb: 67,
+        elongation: 23,
+        reduction: 50,
+        impact: 27,
+        impactTemp: 21,
+      },
+      {
+        code: 'A572_50',
+        hardnessB: 143,
+        hardnessRb: 77,
+        elongation: 21,
+        reduction: 50,
+        impact: 27,
+        impactTemp: 21,
+      },
     ];
 
     for (const props of mechanicalProperties) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         UPDATE material_physical_properties SET
           hardness_brinell = $2,
           hardness_rockwell_b = $3,
@@ -407,7 +1067,17 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
           impact_charpy_joules = $6,
           impact_temp_c = $7
         WHERE material_code = $1
-      `, [props.code, props.hardnessB, props.hardnessRb, props.elongation, props.reduction, props.impact, props.impactTemp]);
+      `,
+        [
+          props.code,
+          props.hardnessB,
+          props.hardnessRb,
+          props.elongation,
+          props.reduction,
+          props.impact,
+          props.impactTemp,
+        ],
+      );
     }
 
     console.warn('Mechanical properties added.');
@@ -434,37 +1104,200 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
     `);
 
     const costData = [
-      { code: 'CARBON_STEEL', category: 'Carbon Steel', usd: 0.80, zar: 15.00, multiplier: 1.0 },
-      { code: 'A106_GRB', category: 'Carbon Steel', usd: 0.85, zar: 16.00, multiplier: 1.06 },
-      { code: 'A333_GR6', category: 'Low Temp Carbon', usd: 1.20, zar: 22.50, multiplier: 1.5 },
-      { code: 'A335_P11', category: 'Chrome-Moly', usd: 2.50, zar: 47.00, multiplier: 3.1 },
-      { code: 'A335_P22', category: 'Chrome-Moly', usd: 3.00, zar: 56.00, multiplier: 3.8 },
-      { code: 'A335_P91', category: 'Chrome-Moly', usd: 5.50, zar: 103.00, multiplier: 6.9 },
-      { code: 'SS304', category: 'Stainless 300 Series', usd: 3.50, zar: 66.00, multiplier: 4.4 },
-      { code: 'SS304L', category: 'Stainless 300 Series', usd: 3.60, zar: 68.00, multiplier: 4.5 },
-      { code: 'SS316', category: 'Stainless 300 Series', usd: 4.50, zar: 84.00, multiplier: 5.6 },
-      { code: 'SS316L', category: 'Stainless 300 Series', usd: 4.60, zar: 86.00, multiplier: 5.8 },
-      { code: 'SS321', category: 'Stainless 300 Series', usd: 5.00, zar: 94.00, multiplier: 6.3 },
-      { code: 'SS347', category: 'Stainless 300 Series', usd: 5.50, zar: 103.00, multiplier: 6.9 },
-      { code: 'DUPLEX_2205', category: 'Duplex Stainless', usd: 7.50, zar: 141.00, multiplier: 9.4 },
-      { code: 'SUPER_DUPLEX_2507', category: 'Super Duplex', usd: 12.00, zar: 225.00, multiplier: 15.0 },
-      { code: 'INCONEL_625', category: 'Nickel Alloy', usd: 35.00, zar: 656.00, multiplier: 43.8 },
-      { code: 'INCONEL_600', category: 'Nickel Alloy', usd: 28.00, zar: 525.00, multiplier: 35.0 },
-      { code: 'MONEL_400', category: 'Nickel Alloy', usd: 22.00, zar: 413.00, multiplier: 27.5 },
-      { code: 'HASTELLOY_C276', category: 'Nickel Alloy', usd: 45.00, zar: 844.00, multiplier: 56.3 },
-      { code: 'INCOLOY_800H', category: 'Nickel Alloy', usd: 18.00, zar: 338.00, multiplier: 22.5 },
-      { code: 'INCOLOY_825', category: 'Nickel Alloy', usd: 20.00, zar: 375.00, multiplier: 25.0 },
-      { code: 'SS409', category: 'Ferritic Stainless', usd: 2.20, zar: 41.00, multiplier: 2.8 },
-      { code: 'SS410', category: 'Martensitic Stainless', usd: 2.50, zar: 47.00, multiplier: 3.1 },
-      { code: 'SS430', category: 'Ferritic Stainless', usd: 2.40, zar: 45.00, multiplier: 3.0 },
-      { code: 'A36_STRUCTURAL', category: 'Structural Steel', usd: 0.75, zar: 14.00, multiplier: 0.94 },
-      { code: 'API_5L_X52', category: 'Pipeline Steel', usd: 1.10, zar: 21.00, multiplier: 1.4 },
-      { code: 'API_5L_X65', category: 'Pipeline Steel', usd: 1.30, zar: 24.00, multiplier: 1.6 },
-      { code: 'API_5L_X70', category: 'Pipeline Steel', usd: 1.40, zar: 26.00, multiplier: 1.8 },
+      {
+        code: 'CARBON_STEEL',
+        category: 'Carbon Steel',
+        usd: 0.8,
+        zar: 15.0,
+        multiplier: 1.0,
+      },
+      {
+        code: 'A106_GRB',
+        category: 'Carbon Steel',
+        usd: 0.85,
+        zar: 16.0,
+        multiplier: 1.06,
+      },
+      {
+        code: 'A333_GR6',
+        category: 'Low Temp Carbon',
+        usd: 1.2,
+        zar: 22.5,
+        multiplier: 1.5,
+      },
+      {
+        code: 'A335_P11',
+        category: 'Chrome-Moly',
+        usd: 2.5,
+        zar: 47.0,
+        multiplier: 3.1,
+      },
+      {
+        code: 'A335_P22',
+        category: 'Chrome-Moly',
+        usd: 3.0,
+        zar: 56.0,
+        multiplier: 3.8,
+      },
+      {
+        code: 'A335_P91',
+        category: 'Chrome-Moly',
+        usd: 5.5,
+        zar: 103.0,
+        multiplier: 6.9,
+      },
+      {
+        code: 'SS304',
+        category: 'Stainless 300 Series',
+        usd: 3.5,
+        zar: 66.0,
+        multiplier: 4.4,
+      },
+      {
+        code: 'SS304L',
+        category: 'Stainless 300 Series',
+        usd: 3.6,
+        zar: 68.0,
+        multiplier: 4.5,
+      },
+      {
+        code: 'SS316',
+        category: 'Stainless 300 Series',
+        usd: 4.5,
+        zar: 84.0,
+        multiplier: 5.6,
+      },
+      {
+        code: 'SS316L',
+        category: 'Stainless 300 Series',
+        usd: 4.6,
+        zar: 86.0,
+        multiplier: 5.8,
+      },
+      {
+        code: 'SS321',
+        category: 'Stainless 300 Series',
+        usd: 5.0,
+        zar: 94.0,
+        multiplier: 6.3,
+      },
+      {
+        code: 'SS347',
+        category: 'Stainless 300 Series',
+        usd: 5.5,
+        zar: 103.0,
+        multiplier: 6.9,
+      },
+      {
+        code: 'DUPLEX_2205',
+        category: 'Duplex Stainless',
+        usd: 7.5,
+        zar: 141.0,
+        multiplier: 9.4,
+      },
+      {
+        code: 'SUPER_DUPLEX_2507',
+        category: 'Super Duplex',
+        usd: 12.0,
+        zar: 225.0,
+        multiplier: 15.0,
+      },
+      {
+        code: 'INCONEL_625',
+        category: 'Nickel Alloy',
+        usd: 35.0,
+        zar: 656.0,
+        multiplier: 43.8,
+      },
+      {
+        code: 'INCONEL_600',
+        category: 'Nickel Alloy',
+        usd: 28.0,
+        zar: 525.0,
+        multiplier: 35.0,
+      },
+      {
+        code: 'MONEL_400',
+        category: 'Nickel Alloy',
+        usd: 22.0,
+        zar: 413.0,
+        multiplier: 27.5,
+      },
+      {
+        code: 'HASTELLOY_C276',
+        category: 'Nickel Alloy',
+        usd: 45.0,
+        zar: 844.0,
+        multiplier: 56.3,
+      },
+      {
+        code: 'INCOLOY_800H',
+        category: 'Nickel Alloy',
+        usd: 18.0,
+        zar: 338.0,
+        multiplier: 22.5,
+      },
+      {
+        code: 'INCOLOY_825',
+        category: 'Nickel Alloy',
+        usd: 20.0,
+        zar: 375.0,
+        multiplier: 25.0,
+      },
+      {
+        code: 'SS409',
+        category: 'Ferritic Stainless',
+        usd: 2.2,
+        zar: 41.0,
+        multiplier: 2.8,
+      },
+      {
+        code: 'SS410',
+        category: 'Martensitic Stainless',
+        usd: 2.5,
+        zar: 47.0,
+        multiplier: 3.1,
+      },
+      {
+        code: 'SS430',
+        category: 'Ferritic Stainless',
+        usd: 2.4,
+        zar: 45.0,
+        multiplier: 3.0,
+      },
+      {
+        code: 'A36_STRUCTURAL',
+        category: 'Structural Steel',
+        usd: 0.75,
+        zar: 14.0,
+        multiplier: 0.94,
+      },
+      {
+        code: 'API_5L_X52',
+        category: 'Pipeline Steel',
+        usd: 1.1,
+        zar: 21.0,
+        multiplier: 1.4,
+      },
+      {
+        code: 'API_5L_X65',
+        category: 'Pipeline Steel',
+        usd: 1.3,
+        zar: 24.0,
+        multiplier: 1.6,
+      },
+      {
+        code: 'API_5L_X70',
+        category: 'Pipeline Steel',
+        usd: 1.4,
+        zar: 26.0,
+        multiplier: 1.8,
+      },
     ];
 
     for (const cost of costData) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO material_costs (material_code, material_category, cost_per_kg_usd, cost_per_kg_zar, cost_multiplier)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (material_code, effective_date) DO UPDATE SET
@@ -472,7 +1305,9 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
           cost_per_kg_usd = EXCLUDED.cost_per_kg_usd,
           cost_per_kg_zar = EXCLUDED.cost_per_kg_zar,
           cost_multiplier = EXCLUDED.cost_multiplier
-      `, [cost.code, cost.category, cost.usd, cost.zar, cost.multiplier]);
+      `,
+        [cost.code, cost.category, cost.usd, cost.zar, cost.multiplier],
+      );
     }
 
     console.warn('Material cost data added.');
@@ -538,13 +1373,16 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
     ];
 
     for (const p of sabs719Pressures) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO sabs719_pressure_ratings (nb_mm, wall_thickness_mm, test_pressure_bar, max_working_pressure_bar)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (nb_mm, wall_thickness_mm) DO UPDATE SET
           test_pressure_bar = EXCLUDED.test_pressure_bar,
           max_working_pressure_bar = EXCLUDED.max_working_pressure_bar
-      `, [p.nb, p.wall, p.test, p.working]);
+      `,
+        [p.nb, p.wall, p.test, p.working],
+      );
     }
 
     console.warn('SABS 719 pressure ratings added.');
@@ -560,7 +1398,9 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'SABS 657 CDS (Cold Drawn Seamless)',
         category: 'SABS_MECHANICAL',
         stressData: [
-          { tempF: 68, ksi: 20.3 }, { tempF: 212, ksi: 18.9 }, { tempF: 392, ksi: 17.4 },
+          { tempF: 68, ksi: 20.3 },
+          { tempF: 212, ksi: 18.9 },
+          { tempF: 392, ksi: 17.4 },
         ],
       },
       {
@@ -568,7 +1408,9 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'SABS 657 HFS (Hot Finished Seamless)',
         category: 'SABS_MECHANICAL',
         stressData: [
-          { tempF: 68, ksi: 17.4 }, { tempF: 212, ksi: 16.0 }, { tempF: 392, ksi: 14.5 },
+          { tempF: 68, ksi: 17.4 },
+          { tempF: 212, ksi: 16.0 },
+          { tempF: 392, ksi: 14.5 },
         ],
       },
       {
@@ -576,27 +1418,35 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
         name: 'SABS 657 ERW (Electric Resistance Welded)',
         category: 'SABS_MECHANICAL',
         stressData: [
-          { tempF: 68, ksi: 15.2 }, { tempF: 212, ksi: 14.5 }, { tempF: 392, ksi: 13.1 },
+          { tempF: 68, ksi: 15.2 },
+          { tempF: 212, ksi: 14.5 },
+          { tempF: 392, ksi: 13.1 },
         ],
       },
     ];
 
     for (const grade of sabs657Grades) {
-      const result = await queryRunner.query(`
+      const result = await queryRunner.query(
+        `
         INSERT INTO pipe_steel_grades (code, name, category, equivalent_grade)
         VALUES ($1, $2, $3, NULL)
         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category
         RETURNING id
-      `, [grade.code, grade.name, grade.category]);
+      `,
+        [grade.code, grade.name, grade.category],
+      );
 
       const gradeId = result[0]?.id;
       if (gradeId) {
         for (const stress of grade.stressData) {
-          await queryRunner.query(`
+          await queryRunner.query(
+            `
             INSERT INTO pipe_allowable_stresses (grade_id, temperature_f, allowable_stress_ksi)
             VALUES ($1, $2, $3)
             ON CONFLICT (grade_id, temperature_f) DO UPDATE SET allowable_stress_ksi = EXCLUDED.allowable_stress_ksi
-          `, [gradeId, stress.tempF, stress.ksi]);
+          `,
+            [gradeId, stress.tempF, stress.ksi],
+          );
         }
       }
     }
@@ -607,7 +1457,9 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Rollback: Removing international standards and properties...');
+    console.warn(
+      'Rollback: Removing international standards and properties...',
+    );
 
     await queryRunner.query(`DROP TABLE IF EXISTS material_costs`);
     await queryRunner.query(`DROP TABLE IF EXISTS sabs719_pressure_ratings`);
@@ -623,17 +1475,37 @@ export class AddInternationalStandardsAndProperties1774800000000 implements Migr
     `);
 
     const gradesToRemove = [
-      'EN10216_P235GH', 'EN10216_P265GH', 'EN10216_P355GH', 'EN10216_16Mo3',
-      'EN10216_13CrMo4_5', 'EN10216_10CrMo9_10', 'EN10217_P235GH', 'EN10217_P265GH',
-      'EN10216_X2CrNi19_11', 'EN10216_X2CrNiMo17_12_2',
-      'DIN2448_St35_8', 'DIN2448_St45_8', 'DIN2448_15Mo3', 'DIN2458_St37_0', 'DIN2458_St52_0',
-      'BS1387_LIGHT', 'BS1387_MEDIUM', 'BS1387_HEAVY',
-      'SABS657_CDS', 'SABS657_HFS', 'SABS657_ERW',
+      'EN10216_P235GH',
+      'EN10216_P265GH',
+      'EN10216_P355GH',
+      'EN10216_16Mo3',
+      'EN10216_13CrMo4_5',
+      'EN10216_10CrMo9_10',
+      'EN10217_P235GH',
+      'EN10217_P265GH',
+      'EN10216_X2CrNi19_11',
+      'EN10216_X2CrNiMo17_12_2',
+      'DIN2448_St35_8',
+      'DIN2448_St45_8',
+      'DIN2448_15Mo3',
+      'DIN2458_St37_0',
+      'DIN2458_St52_0',
+      'BS1387_LIGHT',
+      'BS1387_MEDIUM',
+      'BS1387_HEAVY',
+      'SABS657_CDS',
+      'SABS657_HFS',
+      'SABS657_ERW',
     ];
 
     for (const code of gradesToRemove) {
-      await queryRunner.query(`DELETE FROM pipe_allowable_stresses WHERE grade_id IN (SELECT id FROM pipe_steel_grades WHERE code = $1)`, [code]);
-      await queryRunner.query(`DELETE FROM pipe_steel_grades WHERE code = $1`, [code]);
+      await queryRunner.query(
+        `DELETE FROM pipe_allowable_stresses WHERE grade_id IN (SELECT id FROM pipe_steel_grades WHERE code = $1)`,
+        [code],
+      );
+      await queryRunner.query(`DELETE FROM pipe_steel_grades WHERE code = $1`, [
+        code,
+      ]);
     }
 
     console.warn('Rollback complete.');

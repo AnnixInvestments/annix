@@ -52,7 +52,10 @@ export class NixClarification {
   @Column({ name: 'user_id', nullable: true })
   userId?: number;
 
-  @ApiProperty({ description: 'Type of clarification needed', enum: ClarificationType })
+  @ApiProperty({
+    description: 'Type of clarification needed',
+    enum: ClarificationType,
+  })
   @Column({
     name: 'clarification_type',
     type: 'enum',
@@ -60,7 +63,10 @@ export class NixClarification {
   })
   clarificationType: ClarificationType;
 
-  @ApiProperty({ description: 'Status of clarification', enum: ClarificationStatus })
+  @ApiProperty({
+    description: 'Status of clarification',
+    enum: ClarificationStatus,
+  })
   @Column({
     name: 'status',
     type: 'enum',
@@ -129,7 +135,9 @@ export class NixClarification {
     sectionName?: string;
   };
 
-  @ApiProperty({ description: 'Whether this clarification was used for learning' })
+  @ApiProperty({
+    description: 'Whether this clarification was used for learning',
+  })
   @Column({ name: 'used_for_learning', default: false })
   usedForLearning: boolean;
 

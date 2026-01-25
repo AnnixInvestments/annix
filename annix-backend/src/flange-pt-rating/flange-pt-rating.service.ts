@@ -295,9 +295,11 @@ export class FlangePtRatingService {
       }
     }
 
-    validPressureClasses.sort((a, b) => a.maxPressureAtTemp - b.maxPressureAtTemp);
+    validPressureClasses.sort(
+      (a, b) => a.maxPressureAtTemp - b.maxPressureAtTemp,
+    );
 
-    let validation: PtValidationResult = {
+    const validation: PtValidationResult = {
       isValid: true,
       maxPressureAtTemp: null,
       warningMessage: null,
@@ -312,7 +314,10 @@ export class FlangePtRatingService {
 
       validation.maxPressureAtTemp = currentMaxPressure;
 
-      if (currentMaxPressure !== null && currentMaxPressure < workingPressureBar) {
+      if (
+        currentMaxPressure !== null &&
+        currentMaxPressure < workingPressureBar
+      ) {
         const currentClass = validPressureClasses.find(
           (c) => c.id === currentPressureClassId,
         );

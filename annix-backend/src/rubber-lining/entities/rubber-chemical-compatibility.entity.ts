@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Unique,
+} from 'typeorm';
 import { RubberType } from './rubber-type.entity';
 
 @Entity('rubber_chemical_compatibility')
@@ -26,7 +33,12 @@ export class RubberChemicalCompatibility {
   @Column({ type: 'varchar', length: 2 })
   rating: string;
 
-  @Column({ name: 'iso_tr_7620_ref', type: 'varchar', length: 50, nullable: true })
+  @Column({
+    name: 'iso_tr_7620_ref',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   isoTr7620Ref: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

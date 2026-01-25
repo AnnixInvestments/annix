@@ -81,7 +81,13 @@ export class NixExtraction {
   }>;
 
   @ApiProperty({ description: 'Relevance score for tender processing' })
-  @Column({ name: 'relevance_score', type: 'decimal', precision: 5, scale: 2, nullable: true })
+  @Column({
+    name: 'relevance_score',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+  })
   relevanceScore?: number;
 
   @ApiProperty({ description: 'Number of pages in document' })

@@ -13,26 +13,28 @@ import {
   weldCountPerFitting as getWeldCountPerFitting,
   fittingFlangeConfig as getFittingFlangeConfig,
   hasLooseFlange,
-  retainingRingWeight,
-  flangeWeight as getFlangeWeight,
-  blankFlangeWeight as getBlankFlangeWeight,
-  sansBlankFlangeWeight,
   tackWeldWeight as getTackWeldWeight,
   closureWeight as getClosureWeight,
-  SABS_1123_FLANGE_TYPES,
   SABS_1123_PRESSURE_CLASSES,
-  BS_4504_FLANGE_TYPES,
   BS_4504_PRESSURE_CLASSES,
   recommendedFlangeTypeCode,
   recommendedPressureClassId,
   WORKING_PRESSURE_BAR,
   WORKING_TEMPERATURE_CELSIUS,
-  NB_TO_OD_LOOKUP,
   SABS62_FITTING_SIZES,
   SABS719_FITTING_SIZES,
   ALL_FITTING_SIZES,
   FITTING_CLASS_WALL_THICKNESS,
 } from '@/app/lib/config/rfq';
+import {
+  NB_TO_OD_LOOKUP,
+  retainingRingWeightSync as retainingRingWeight,
+  flangeWeightSync as getFlangeWeight,
+  blankFlangeWeightSync as getBlankFlangeWeight,
+  sansBlankFlangeWeightSync as sansBlankFlangeWeight,
+  SABS_1123_FLANGE_TYPES,
+  BS_4504_FLANGE_TYPES,
+} from '@/app/lib/hooks/useFlangeWeights';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 import { WorkingConditionsSection } from '@/app/components/rfq/WorkingConditionsSection';

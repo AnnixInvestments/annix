@@ -2,7 +2,6 @@
 
 import React from 'react';
 import {
-  NB_TO_OD_LOOKUP,
   weldCountPerBend as getWeldCountPerBend,
   weldCountPerFitting as getWeldCountPerFitting,
   weldCountPerPipe as getWeldCountPerPipe,
@@ -10,8 +9,11 @@ import {
   boltSetCountPerBend as getBoltSetCountPerBend,
   boltSetCountPerPipe as getBoltSetCountPerPipe,
   boltSetCountPerFitting as getBoltSetCountPerFitting,
-  bnwSetInfo as getBnwSetInfo,
 } from '@/app/lib/config/rfq';
+import {
+  NB_TO_OD_LOOKUP,
+  bnwSetInfoSync as getBnwSetInfo,
+} from '@/app/lib/hooks/useFlangeWeights';
 
 export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevStep, errors, loading }: any) {
   // Use unified items array that includes both straight pipes and bends

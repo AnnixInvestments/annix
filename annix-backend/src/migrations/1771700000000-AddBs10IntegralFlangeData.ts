@@ -7,7 +7,7 @@ export class AddBs10IntegralFlangeData1771700000000 implements MigrationInterfac
     console.warn('Adding BS 10 integral (weld neck) flange data...');
 
     const bs10Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'BS 10'`
+      `SELECT id FROM flange_standards WHERE code = 'BS 10'`,
     );
     if (bs10Result.length === 0) {
       console.warn('BS 10 standard not found, skipping...');
@@ -16,7 +16,7 @@ export class AddBs10IntegralFlangeData1771700000000 implements MigrationInterfac
     const standardId = bs10Result[0].id;
 
     const weldNeckResult = await queryRunner.query(
-      `SELECT id FROM flange_types WHERE code = '/2'`
+      `SELECT id FROM flange_types WHERE code = '/2'`,
     );
     if (weldNeckResult.length === 0) {
       console.warn('Weld neck flange type /2 not found, skipping...');
@@ -28,18 +28,21 @@ export class AddBs10IntegralFlangeData1771700000000 implements MigrationInterfac
     const tables = ['T/D', 'T/E', 'T/F', 'T/H', 'T/J', 'T/K'];
     for (const table of tables) {
       const result = await queryRunner.query(
-        `SELECT id FROM flange_pressure_classes WHERE designation = '${table}' AND "standardId" = ${standardId}`
+        `SELECT id FROM flange_pressure_classes WHERE designation = '${table}' AND "standardId" = ${standardId}`,
       );
       if (result.length > 0) {
         pressureClassIds[table] = result[0].id;
       }
     }
 
-    const nbSizes = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600];
+    const nbSizes = [
+      15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400,
+      450, 500, 600,
+    ];
     const nbIdMap: Record<number, number> = {};
     for (const nb of nbSizes) {
       const result = await queryRunner.query(
-        `SELECT id FROM nominal_outside_diameters WHERE nominal_diameter_mm = ${nb} LIMIT 1`
+        `SELECT id FROM nominal_outside_diameters WHERE nominal_diameter_mm = ${nb} LIMIT 1`,
       );
       if (result.length > 0) {
         nbIdMap[nb] = result[0].id;
@@ -50,14 +53,27 @@ export class AddBs10IntegralFlangeData1771700000000 implements MigrationInterfac
     const boltSizes = ['M12', 'M16', 'M20', 'M24', 'M27', 'M30', 'M33', 'M36'];
     for (const size of boltSizes) {
       const result = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = '${size}' AND head_style = 'hex' LIMIT 1`
+        `SELECT id FROM bolts WHERE designation = '${size}' AND head_style = 'hex' LIMIT 1`,
       );
       if (result.length > 0) {
         boltIds[size] = result[0].id;
       }
     }
 
-    const tableDWN: Array<[number, number, number, number, number, number, number, string, number, number]> = [
+    const tableDWN: Array<
+      [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        string,
+        number,
+        number,
+      ]
+    > = [
       [15, 95, 18, 22, 2, 4, 14, 'M12', 67, 1.1],
       [20, 102, 18, 28, 2, 4, 14, 'M12', 73, 1.2],
       [25, 114, 18, 34, 2, 4, 14, 'M12', 83, 1.5],
@@ -79,7 +95,20 @@ export class AddBs10IntegralFlangeData1771700000000 implements MigrationInterfac
       [600, 826, 44, 610, 3, 20, 30, 'M27', 756, 94.0],
     ];
 
-    const tableEWN: Array<[number, number, number, number, number, number, number, string, number, number]> = [
+    const tableEWN: Array<
+      [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        string,
+        number,
+        number,
+      ]
+    > = [
       [15, 95, 20, 22, 2, 4, 14, 'M12', 67, 1.2],
       [20, 102, 20, 28, 2, 4, 14, 'M12', 73, 1.4],
       [25, 114, 20, 34, 2, 4, 14, 'M12', 83, 1.6],
@@ -101,7 +130,20 @@ export class AddBs10IntegralFlangeData1771700000000 implements MigrationInterfac
       [600, 826, 52, 610, 3, 20, 33, 'M30', 756, 117.0],
     ];
 
-    const tableFWN: Array<[number, number, number, number, number, number, number, string, number, number]> = [
+    const tableFWN: Array<
+      [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        string,
+        number,
+        number,
+      ]
+    > = [
       [15, 95, 22, 22, 2, 4, 14, 'M12', 67, 1.4],
       [20, 102, 22, 28, 2, 4, 14, 'M12', 73, 1.5],
       [25, 114, 24, 34, 2, 4, 18, 'M16', 83, 1.9],
@@ -123,7 +165,20 @@ export class AddBs10IntegralFlangeData1771700000000 implements MigrationInterfac
       [600, 876, 62, 610, 3, 20, 36, 'M33', 800, 153.4],
     ];
 
-    const tableHWN: Array<[number, number, number, number, number, number, number, string, number, number]> = [
+    const tableHWN: Array<
+      [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        string,
+        number,
+        number,
+      ]
+    > = [
       [15, 114, 24, 22, 2, 4, 18, 'M16', 83, 2.0],
       [20, 121, 24, 28, 2, 4, 18, 'M16', 89, 2.3],
       [25, 133, 26, 34, 2, 4, 18, 'M16', 99, 2.7],
@@ -145,7 +200,20 @@ export class AddBs10IntegralFlangeData1771700000000 implements MigrationInterfac
       [600, 914, 74, 610, 3, 24, 39, 'M36', 832, 220.0],
     ];
 
-    const tableJWN: Array<[number, number, number, number, number, number, number, string, number, number]> = [
+    const tableJWN: Array<
+      [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        string,
+        number,
+        number,
+      ]
+    > = [
       [15, 121, 26, 22, 2, 4, 18, 'M16', 89, 2.4],
       [20, 133, 28, 28, 2, 4, 18, 'M16', 99, 3.0],
       [25, 146, 30, 34, 2, 4, 22, 'M20', 108, 3.6],
@@ -167,7 +235,20 @@ export class AddBs10IntegralFlangeData1771700000000 implements MigrationInterfac
       [600, 1010, 100, 610, 3, 24, 45, 'M36', 908, 347.0],
     ];
 
-    const tableKWN: Array<[number, number, number, number, number, number, number, string, number, number]> = [
+    const tableKWN: Array<
+      [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        string,
+        number,
+        number,
+      ]
+    > = [
       [15, 133, 30, 22, 2, 4, 22, 'M20', 99, 3.2],
       [20, 146, 32, 28, 2, 4, 22, 'M20', 108, 4.0],
       [25, 159, 34, 34, 2, 4, 22, 'M20', 117, 4.8],
@@ -184,7 +265,23 @@ export class AddBs10IntegralFlangeData1771700000000 implements MigrationInterfac
       [300, 641, 78, 325, 3, 20, 36, 'M33', 565, 117.0],
     ];
 
-    const allData: Array<{ table: string; data: Array<[number, number, number, number, number, number, number, string, number, number]> }> = [
+    const allData: Array<{
+      table: string;
+      data: Array<
+        [
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          string,
+          number,
+          number,
+        ]
+      >;
+    }> = [
       { table: 'T/D', data: tableDWN },
       { table: 'T/E', data: tableEWN },
       { table: 'T/F', data: tableFWN },
@@ -237,13 +334,13 @@ export class AddBs10IntegralFlangeData1771700000000 implements MigrationInterfac
     console.warn('Removing BS 10 weld neck flange data...');
 
     const bs10Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'BS 10'`
+      `SELECT id FROM flange_standards WHERE code = 'BS 10'`,
     );
     if (bs10Result.length === 0) return;
     const standardId = bs10Result[0].id;
 
     const weldNeckResult = await queryRunner.query(
-      `SELECT id FROM flange_types WHERE code = '/2'`
+      `SELECT id FROM flange_types WHERE code = '/2'`,
     );
     if (weldNeckResult.length === 0) return;
     const flangeTypeId = weldNeckResult[0].id;

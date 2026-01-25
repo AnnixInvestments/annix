@@ -65,15 +65,28 @@ export class NixLearning {
   context?: Record<string, any>;
 
   @ApiProperty({ description: 'Confidence score from 0 to 1' })
-  @Column({ name: 'confidence', type: 'decimal', precision: 5, scale: 4, default: 0.5 })
+  @Column({
+    name: 'confidence',
+    type: 'decimal',
+    precision: 5,
+    scale: 4,
+    default: 0.5,
+  })
   confidence: number;
 
-  @ApiProperty({ description: 'Number of times this pattern has been confirmed' })
+  @ApiProperty({
+    description: 'Number of times this pattern has been confirmed',
+  })
   @Column({ name: 'confirmation_count', default: 1 })
   confirmationCount: number;
 
   @ApiProperty({ description: 'Product/service types this applies to' })
-  @Column({ name: 'applicable_products', type: 'text', array: true, nullable: true })
+  @Column({
+    name: 'applicable_products',
+    type: 'text',
+    array: true,
+    nullable: true,
+  })
   applicableProducts?: string[];
 
   @ApiProperty({ description: 'Whether this rule is active' })

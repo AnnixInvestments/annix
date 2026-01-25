@@ -295,9 +295,13 @@ export class FittingService {
     // For gusset tees: dimensionBMm is the center-to-face height
     let branchPipeWeight = 0;
     const isTeeType = [
-      'SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE',
-      'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE',
-      'SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE',
+      'SHORT_TEE',
+      'GUSSET_TEE',
+      'EQUAL_TEE',
+      'UNEQUAL_SHORT_TEE',
+      'UNEQUAL_GUSSET_TEE',
+      'SHORT_REDUCING_TEE',
+      'GUSSET_REDUCING_TEE',
     ].includes(dto.fittingType);
     const isGussetType = dto.fittingType.includes('GUSSET');
     const isLateralType = ['LATERAL', 'Y_PIECE'].includes(dto.fittingType);
@@ -305,8 +309,8 @@ export class FittingService {
     if (isTeeType && fittingDimensions) {
       // Use dimensionBMm for gusset tees, dimensionAMm for short tees
       const branchHeightMm = isGussetType
-        ? (fittingDimensions.dimensionBMm || fittingDimensions.dimensionAMm || 0)
-        : (fittingDimensions.dimensionAMm || 0);
+        ? fittingDimensions.dimensionBMm || fittingDimensions.dimensionAMm || 0
+        : fittingDimensions.dimensionAMm || 0;
       branchPipeWeight = pipeWeightPerMeter * (branchHeightMm / 1000);
     } else if (isLateralType && fittingDimensions) {
       // For laterals, use dimensionAMm as the branch height
@@ -314,7 +318,8 @@ export class FittingService {
       branchPipeWeight = pipeWeightPerMeter * (branchHeightMm / 1000);
     }
 
-    const totalPipeWeight = (runPipeWeight + branchPipeWeight) * dto.quantityValue;
+    const totalPipeWeight =
+      (runPipeWeight + branchPipeWeight) * dto.quantityValue;
 
     // Calculate gusset weight for gusset tees
     // Gussets are triangular reinforcement plates welded between run and branch pipes
@@ -330,8 +335,13 @@ export class FittingService {
       gussetSectionMm = fittingDimensions.dimensionCMm || 0;
 
       // Fallback: if C is not available, calculate from B - A
-      if (!gussetSectionMm && fittingDimensions.dimensionBMm && fittingDimensions.dimensionAMm) {
-        gussetSectionMm = fittingDimensions.dimensionBMm - fittingDimensions.dimensionAMm;
+      if (
+        !gussetSectionMm &&
+        fittingDimensions.dimensionBMm &&
+        fittingDimensions.dimensionAMm
+      ) {
+        gussetSectionMm =
+          fittingDimensions.dimensionBMm - fittingDimensions.dimensionAMm;
       }
 
       if (gussetSectionMm > 0) {
@@ -355,10 +365,11 @@ export class FittingService {
         // Gusset weld runs along 3 edges of each triangular gusset
         // At 45°: hypotenuse = leg × √2, plus two legs
         const hypotenuseMm = gussetLegMm * Math.sqrt(2);
-        const singleGussetWeldLengthMm = hypotenuseMm + (2 * gussetLegMm);
+        const singleGussetWeldLengthMm = hypotenuseMm + 2 * gussetLegMm;
 
         // 2 gussets per tee, convert to meters
-        gussetWeldLength = (2 * singleGussetWeldLengthMm / 1000) * dto.quantityValue;
+        gussetWeldLength =
+          ((2 * singleGussetWeldLengthMm) / 1000) * dto.quantityValue;
       }
     }
 
@@ -577,14 +588,19 @@ export class FittingService {
         }
 
         // Run pipe: user-specified lengths A and B
-        const runPipeLength = (dto.pipeLengthAMm || 0) + (dto.pipeLengthBMm || 0);
+        const runPipeLength =
+          (dto.pipeLengthAMm || 0) + (dto.pipeLengthBMm || 0);
 
         // Branch pipe: for tees and laterals, add the branch height from fitting dimensions
         let branchPipeLength = 0;
         const isTeeType = [
-          'SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE',
-          'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE',
-          'SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE',
+          'SHORT_TEE',
+          'GUSSET_TEE',
+          'EQUAL_TEE',
+          'UNEQUAL_SHORT_TEE',
+          'UNEQUAL_GUSSET_TEE',
+          'SHORT_REDUCING_TEE',
+          'GUSSET_REDUCING_TEE',
         ].includes(dto.fittingType);
         const isLateralType = ['LATERAL', 'Y_PIECE'].includes(dto.fittingType);
 

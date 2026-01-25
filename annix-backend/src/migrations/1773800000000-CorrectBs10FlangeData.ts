@@ -7,7 +7,7 @@ export class CorrectBs10FlangeData1773800000000 implements MigrationInterface {
     console.warn('Correcting BS10 flange dimension data...');
 
     const bs10Result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = 'BS 10'`
+      `SELECT id FROM flange_standards WHERE code = 'BS 10'`,
     );
     if (bs10Result.length === 0) {
       console.warn('BS 10 standard not found, skipping...');
@@ -34,7 +34,7 @@ export class CorrectBs10FlangeData1773800000000 implements MigrationInterface {
 
     const getTypeId = async (code: string) => {
       const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`
+        `SELECT id FROM flange_types WHERE code = '${code}'`,
       );
       return result[0]?.id;
     };
@@ -42,7 +42,7 @@ export class CorrectBs10FlangeData1773800000000 implements MigrationInterface {
     const getBoltId = async (designation: string) => {
       if (!designation) return null;
       const result = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = '${designation}'`
+        `SELECT id FROM bolts WHERE designation = '${designation}'`,
       );
       return result[0]?.id;
     };
@@ -64,7 +64,7 @@ export class CorrectBs10FlangeData1773800000000 implements MigrationInterface {
       d1: number,
       bolt: string,
       pcd: number,
-      mass: number
+      mass: number,
     ) => {
       const nominalId = await getNominalId(nb);
       const typeId = typeIds[typeCode as keyof typeof typeIds];
@@ -249,6 +249,8 @@ export class CorrectBs10FlangeData1773800000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('BS10 correction rollback not implemented - data would need manual restoration');
+    console.warn(
+      'BS10 correction rollback not implemented - data would need manual restoration',
+    );
   }
 }

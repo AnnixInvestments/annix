@@ -1,4 +1,9 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableForeignKey,
+} from 'typeorm';
 
 export class CreateWasherTable1772700000000 implements MigrationInterface {
   name = 'CreateWasherTable1772700000000';
@@ -9,13 +14,17 @@ export class CreateWasherTable1772700000000 implements MigrationInterface {
     const tableExists = await queryRunner.hasTable('washers');
     if (tableExists) {
       const columns = await queryRunner.query(
-        `SELECT column_name FROM information_schema.columns WHERE table_name = 'washers' AND column_name = 'bolt_id'`
+        `SELECT column_name FROM information_schema.columns WHERE table_name = 'washers' AND column_name = 'bolt_id'`,
       );
       if (columns.length > 0) {
-        console.warn('Washers table already exists with correct schema, skipping creation.');
+        console.warn(
+          'Washers table already exists with correct schema, skipping creation.',
+        );
         return;
       }
-      console.warn('Washers table exists with incorrect schema, dropping and recreating...');
+      console.warn(
+        'Washers table exists with incorrect schema, dropping and recreating...',
+      );
       await queryRunner.dropTable('washers');
     }
 
