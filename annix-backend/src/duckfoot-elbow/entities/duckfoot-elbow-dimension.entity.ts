@@ -39,6 +39,14 @@ export class DuckfootElbowDimension {
   })
   plateThicknessT1Mm: number;
 
+  @Column({
+    name: 'rib_height_h_mm',
+    type: 'decimal',
+    precision: 8,
+    scale: 2,
+  })
+  ribHeightHMm: number;
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   notes: string | null;
 }

@@ -990,9 +990,14 @@ const Scene = (props: Props) => {
       })
   }, [stubs, wtMm])
 
+  const isDuckfoot = bendItemType === 'DUCKFOOT_BEND'
+  const duckfootRotation: [number, number, number] = isDuckfoot ? [Math.PI / 2, 0, -Math.PI / 2] : [0, 0, 0]
+
+  const duckfootYOffset = isDuckfoot ? 4 : 0
+
   return (
     <Center>
-      <group>
+      <group rotation={duckfootRotation} position={[0, duckfootYOffset, 0]}>
         {t1 > 0 && (
           <>
             <HollowStraightPipe
@@ -1265,75 +1270,118 @@ const Scene = (props: Props) => {
           )
         })()}
 
-        {/* Duckfoot Base Plate and Ribs */}
-        {bendItemType === 'DUCKFOOT_BEND' && (() => {
-          const duckfootDefaults: Record<number, { x: number; y: number; t1: number; t2: number }> = {
-            200: { x: 355, y: 230, t1: 6, t2: 10 },
-            250: { x: 405, y: 280, t1: 6, t2: 10 },
-            300: { x: 460, y: 330, t1: 6, t2: 10 },
-            350: { x: 510, y: 380, t1: 8, t2: 12 },
-            400: { x: 560, y: 430, t1: 8, t2: 12 },
-            450: { x: 610, y: 485, t1: 8, t2: 12 },
-            500: { x: 660, y: 535, t1: 10, t2: 14 },
-            550: { x: 710, y: 585, t1: 10, t2: 14 },
-            600: { x: 760, y: 635, t1: 10, t2: 14 },
-            650: { x: 815, y: 693, t1: 12, t2: 16 },
-            700: { x: 865, y: 733, t1: 12, t2: 16 },
-            750: { x: 915, y: 793, t1: 12, t2: 16 },
-            800: { x: 970, y: 833, t1: 14, t2: 18 },
-            850: { x: 1020, y: 883, t1: 14, t2: 18 },
-            900: { x: 1070, y: 933, t1: 14, t2: 18 }
-          };
-          const defaults = duckfootDefaults[nominalBore] || { x: 500, y: 400, t1: 10, t2: 12 };
-
-          const basePlateX = (duckfootBasePlateXMm || defaults.x) / SCALE;
-          const basePlateY = (duckfootBasePlateYMm || defaults.y) / SCALE;
-          const ribThicknessT1 = (duckfootPlateThicknessT1Mm || defaults.t1) / SCALE;
-          const basePlateT2 = (duckfootRibThicknessT2Mm || defaults.t2) / SCALE;
-
-          const outletPoint = t2 > 0 ? outletEnd : bendEndPoint;
-          const pipeBottomY = -outerR;
-          const basePlateY2 = pipeBottomY - ribThicknessT1 * 2;
-
-          const quaternion = new THREE.Quaternion();
-          quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), outletDir);
-
-          const basePlateColor = { color: '#666666', metalness: 0.5, roughness: 0.5 };
-          const ribColor = { color: '#555555', metalness: 0.5, roughness: 0.5 };
-
-          const ribHeight = Math.abs(pipeBottomY - basePlateY2) + basePlateT2;
-          const ribSpacing = outerR * 0.8;
-
-          return (
-            <group position={[outletPoint.x, 0, outletPoint.z]} quaternion={quaternion}>
-              <mesh position={[0, basePlateY2 - basePlateT2 / 2, 0]}>
-                <boxGeometry args={[basePlateY, basePlateT2, basePlateX]} />
-                <meshStandardMaterial {...basePlateColor} />
-              </mesh>
-
-              <mesh position={[-ribSpacing, basePlateY2 + ribHeight / 2, 0]}>
-                <boxGeometry args={[ribThicknessT1, ribHeight, basePlateX * 0.8]} />
-                <meshStandardMaterial {...ribColor} />
-              </mesh>
-              <mesh position={[ribSpacing, basePlateY2 + ribHeight / 2, 0]}>
-                <boxGeometry args={[ribThicknessT1, ribHeight, basePlateX * 0.8]} />
-                <meshStandardMaterial {...ribColor} />
-              </mesh>
-
-              <mesh position={[0, basePlateY2 + ribHeight / 2, -basePlateX / 2 + ribThicknessT1 / 2]}>
-                <boxGeometry args={[basePlateY * 0.6, ribHeight, ribThicknessT1]} />
-                <meshStandardMaterial {...ribColor} />
-              </mesh>
-              <mesh position={[0, basePlateY2 + ribHeight / 2, basePlateX / 2 - ribThicknessT1 / 2]}>
-                <boxGeometry args={[basePlateY * 0.6, ribHeight, ribThicknessT1]} />
-                <meshStandardMaterial {...ribColor} />
-              </mesh>
-            </group>
-          );
-        })()}
-
         <axesHelper args={[1]} />
       </group>
+
+      {/* Duckfoot Base Plate and Gusset Ribs - OUTSIDE rotation group to stay horizontal */}
+      {isDuckfoot && (() => {
+        const duckfootDefaults: Record<number, { x: number; y: number; t1: number; t2: number; h: number }> = {
+          200: { x: 355, y: 230, t1: 6, t2: 10, h: 255 },
+          250: { x: 405, y: 280, t1: 6, t2: 10, h: 280 },
+          300: { x: 460, y: 330, t1: 6, t2: 10, h: 305 },
+          350: { x: 510, y: 380, t1: 8, t2: 12, h: 330 },
+          400: { x: 560, y: 430, t1: 8, t2: 12, h: 355 },
+          450: { x: 610, y: 485, t1: 8, t2: 12, h: 380 },
+          500: { x: 660, y: 535, t1: 10, t2: 14, h: 405 },
+          550: { x: 710, y: 585, t1: 10, t2: 14, h: 430 },
+          600: { x: 760, y: 635, t1: 10, t2: 14, h: 460 },
+          650: { x: 815, y: 693, t1: 12, t2: 16, h: 485 },
+          700: { x: 865, y: 733, t1: 12, t2: 16, h: 510 },
+          750: { x: 915, y: 793, t1: 12, t2: 16, h: 535 },
+          800: { x: 970, y: 833, t1: 14, t2: 18, h: 560 },
+          850: { x: 1020, y: 883, t1: 14, t2: 18, h: 585 },
+          900: { x: 1070, y: 933, t1: 14, t2: 18, h: 610 }
+        };
+        const defaults = duckfootDefaults[nominalBore] || { x: 500, y: 400, t1: 10, t2: 12, h: 400 };
+
+        const basePlateXDim = (duckfootBasePlateXMm || defaults.x) / SCALE;
+        const basePlateYDim = (duckfootBasePlateYMm || defaults.y) / SCALE;
+        const ribThickness = (duckfootPlateThicknessT1Mm || defaults.t1) / SCALE;
+        const plateThickness = (duckfootRibThicknessT2Mm || defaults.t2) / SCALE;
+        const ribHeightH = defaults.h / SCALE;
+
+        const basePlateColor = { color: '#555555', metalness: 0.6, roughness: 0.4 };
+        const ribColor = { color: '#666666', metalness: 0.5, roughness: 0.5 };
+
+        const steelworkX = 0;
+        const steelworkY = -ribHeightH;
+        const steelworkZ = 0;
+
+        const gussetColor = { color: '#888800', metalness: 0.5, roughness: 0.5 };
+
+        const gussetShape = new THREE.Shape();
+        const gussetHeight = bendR * 1.2;
+        const gussetWidth = bendR * 0.8;
+
+        gussetShape.moveTo(0, 0);
+        gussetShape.lineTo(-gussetWidth, 0);
+        gussetShape.lineTo(-gussetWidth, gussetHeight * 0.3);
+
+        const curvePoints = 16;
+        for (let i = 0; i <= curvePoints; i++) {
+          const t = i / curvePoints;
+          const angle = (Math.PI / 2) * t;
+          const x = -gussetWidth + gussetWidth * Math.sin(angle);
+          const y = gussetHeight * 0.3 + (gussetHeight * 0.7) * (1 - Math.cos(angle));
+          gussetShape.lineTo(x, y);
+        }
+
+        gussetShape.lineTo(0, 0);
+
+        return (
+          <group position={[steelworkX, steelworkY, steelworkZ]}>
+            {/* Base Plate - horizontal at bottom */}
+            <mesh position={[0, -plateThickness / 2, 0]}>
+              <boxGeometry args={[basePlateXDim, plateThickness, basePlateYDim]} />
+              <meshStandardMaterial {...basePlateColor} />
+            </mesh>
+
+            {/* Rib running X direction - full X width, T2 thickness, H height */}
+            <mesh position={[0, ribHeightH / 2, 0]}>
+              <boxGeometry args={[basePlateXDim, ribHeightH, ribThickness]} />
+              <meshStandardMaterial {...ribColor} />
+            </mesh>
+
+            {/* Rib running Y direction - full Y length, T2 thickness, H height */}
+            <mesh position={[0, ribHeightH / 2, 0]}>
+              <boxGeometry args={[ribThickness, ribHeightH, basePlateYDim]} />
+              <meshStandardMaterial {...ribColor} />
+            </mesh>
+
+            {/* Gusset plate 1 (yellow) - at back edge of base plate, bottom aligned with top of rib (H) */}
+            <mesh
+              position={[0, ribHeightH, -basePlateYDim / 2]}
+              rotation={[0, Math.PI / 2, 0]}
+            >
+              <extrudeGeometry args={[gussetShape, { depth: ribThickness, bevelEnabled: false }]} />
+              <meshStandardMaterial {...gussetColor} />
+            </mesh>
+
+            {/* Gusset plate 2 (blue) - on X-direction rib at left edge, simple angled shape */}
+            {(() => {
+              const blueGussetShape = new THREE.Shape();
+              const tallHeight = bendR * 1.5;
+              const shortHeight = gussetHeight;
+
+              blueGussetShape.moveTo(0, 0);
+              blueGussetShape.lineTo(-gussetWidth, 0);
+              blueGussetShape.lineTo(-gussetWidth, tallHeight);
+              blueGussetShape.lineTo(0, shortHeight);
+              blueGussetShape.lineTo(0, 0);
+
+              return (
+                <mesh
+                  position={[-basePlateXDim / 2, ribHeightH, 0]}
+                  rotation={[0, Math.PI, 0]}
+                >
+                  <extrudeGeometry args={[blueGussetShape, { depth: ribThickness, bevelEnabled: false }]} />
+                  <meshStandardMaterial color="#0066cc" metalness={0.5} roughness={0.5} />
+                </mesh>
+              );
+            })()}
+          </group>
+        );
+      })()}
     </Center>
   )
 }
@@ -1359,6 +1407,7 @@ export default function CSGBend3DPreview(props: Props) {
   const t1 = (props.tangent1 || 0) / SCALE
   const t2 = (props.tangent2 || 0) / SCALE
   const angleRad = (props.bendAngle * Math.PI) / 180
+  const isDuckfootBend = props.bendItemType === 'DUCKFOOT_BEND'
 
   const bendEndX = -bendR + bendR * Math.cos(angleRad)
   const bendEndZ = t1 + bendR * Math.sin(angleRad)
@@ -1374,11 +1423,21 @@ export default function CSGBend3DPreview(props: Props) {
   const boundingDepth = maxZ - minZ
   const diagonalExtent = Math.sqrt(boundingWidth ** 2 + boundingDepth ** 2)
 
-  const autoCameraDistance = Math.max(diagonalExtent * 2, 5)
-  const autoCameraHeight = autoCameraDistance * 0.6
-  const autoCameraZ = autoCameraDistance * 1.2
+  let autoCameraPosition: [number, number, number]
 
-  const autoCameraPosition: [number, number, number] = [autoCameraDistance * 0.5, autoCameraHeight, autoCameraZ]
+  if (isDuckfootBend) {
+    const verticalExtent = boundingDepth + bendR
+    const horizontalExtent = Math.max(boundingWidth, bendR * 2)
+    const extent = Math.sqrt(horizontalExtent ** 2 + verticalExtent ** 2)
+    const autoCameraDistance = Math.max(extent * 2.5, 6)
+    autoCameraPosition = [0.01, -extent * 1.5, autoCameraDistance]
+  } else {
+    const autoCameraDistance = Math.max(diagonalExtent * 2, 5)
+    const autoCameraHeight = autoCameraDistance * 0.6
+    const autoCameraZ = autoCameraDistance * 1.2
+    autoCameraPosition = [autoCameraDistance * 0.5, autoCameraHeight, autoCameraZ]
+  }
+
   const cameraPosition = props.savedCameraPosition || autoCameraPosition
 
   return (
