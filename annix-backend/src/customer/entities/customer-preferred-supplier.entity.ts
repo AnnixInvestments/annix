@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { CustomerCompany } from './customer-company.entity';
 import { CustomerProfile } from './customer-profile.entity';
-import { SupplierProfile } from '../../supplier';
+import { SupplierProfile } from '../../supplier/entities/supplier-profile.entity';
 
 @Entity('customer_preferred_suppliers')
 @Index(['customerCompanyId', 'supplierProfileId'], { unique: true })

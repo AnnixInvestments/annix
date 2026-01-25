@@ -4,6 +4,7 @@ import { select, confirm, input, checkbox } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { execSync, spawn, ChildProcess } from 'child_process';
 import { existsSync, openSync, readFileSync, writeFileSync, unlinkSync, mkdtempSync } from 'fs';
+import { createInterface, emitKeypressEvents, Key } from 'readline';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
@@ -632,6 +633,8 @@ async function deleteBranch(branch: string): Promise<void> {
 }
 
 let appProcess: ChildProcess | null = null;
+let appStatus: 'stopped' | 'starting' | 'running' | 'error' = 'stopped';
+let appErrorMessage: string | null = null;
 
 interface ManagedSession {
   id: string;
@@ -683,26 +686,26 @@ async function startApp(): Promise<void> {
 
   log.info('\nStarting development server in background...');
 
+  appStatus = 'starting';
+  appErrorMessage = null;
+
+  if (existsSync(APP_LOG_FILE)) {
+    unlinkSync(APP_LOG_FILE);
+  }
+
   const isWindows = process.platform === 'win32';
 
   if (isWindows) {
-    const hasWindowsTerminal = exec('where wt', { silent: true }) !== '';
-    const scriptPath = join(rootDir(), 'run-dev.ps1').replace(/\\/g, '/');
-    const psCmd = `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`;
-    const cwd = rootDir().replace(/\\/g, '/');
+    const logPath = APP_LOG_FILE.replace(/\\/g, '/');
+    const cmd = `powershell -ExecutionPolicy Bypass -NoProfile -File run-dev.ps1 *> "${logPath}"`;
 
-    try {
-      if (hasWindowsTerminal) {
-        const wtCmd = `wt -w ${WINDOW_NAME} new-tab --title AnnixDev cmd /k ${psCmd}`;
-        execSync(wtCmd, { cwd, shell: true });
-      } else {
-        execSync(`start cmd /k ${psCmd}`, { cwd, shell: true });
-      }
-
-      log.info('✓ App started in new terminal window.');
-    } catch (err) {
-      log.error(`Failed to start app: ${(err as Error).message}`);
-    }
+    appProcess = spawn(cmd, [], {
+      cwd: rootDir(),
+      stdio: 'ignore',
+      detached: true,
+      shell: true,
+      windowsHide: true,
+    });
   } else {
     const logFd = openSync(APP_LOG_FILE, 'w');
     appProcess = spawn('bash', ['./run-dev.sh'], {
@@ -710,18 +713,36 @@ async function startApp(): Promise<void> {
       stdio: ['ignore', logFd, logFd],
       detached: true,
     });
-
-    appProcess.unref();
-    appProcess.on('exit', () => {
-      appProcess = null;
-    });
-
-    log.info('✓ App started in background. Use "View logs" to see output.');
   }
+
+  appProcess.unref();
+  appProcess.on('exit', (code) => {
+    appProcess = null;
+    if (appStatus === 'starting' || appStatus === 'running') {
+      if (code !== 0 && code !== null) {
+        appStatus = 'error';
+        appErrorMessage = `Process exited with code ${code}`;
+        log.error(`App failed: ${appErrorMessage}`);
+      } else {
+        appStatus = 'stopped';
+      }
+    }
+  });
+
+  appProcess.on('error', (err) => {
+    appStatus = 'error';
+    appErrorMessage = err.message;
+    log.error(`App failed to start: ${err.message}`);
+  });
+
+  log.info('✓ App started in background. Use "View logs" to see output.');
 }
 
 async function stopApp(): Promise<void> {
   log.info('\nStopping development server...');
+
+  appStatus = 'stopped';
+  appErrorMessage = null;
 
   killExistingProcesses();
 
@@ -733,8 +754,25 @@ async function stopApp(): Promise<void> {
   log.info('✓ App stopped.');
 }
 
-async function showAppLogs(): Promise<void> {
+function readAppLogs(maxLines: number): string[] {
   if (!existsSync(APP_LOG_FILE)) {
+    return ['[No log file found. Start the app first.]'];
+  }
+
+  try {
+    const content = readFileSync(APP_LOG_FILE, 'utf-8');
+    return content.split('\n').slice(-maxLines);
+  } catch {
+    return ['[Unable to read log file]'];
+  }
+}
+
+function appLogsExist(): boolean {
+  return existsSync(APP_LOG_FILE);
+}
+
+async function showAppLogs(): Promise<void> {
+  if (!appLogsExist()) {
     log.warn('\nNo log file found. Start the app first.');
     await confirm({ message: 'Press Enter to continue...', default: true });
     return;
@@ -746,13 +784,7 @@ async function showAppLogs(): Promise<void> {
     const termHeight = process.stdout.rows || 24;
     const contentHeight = termHeight - 4;
 
-    let lines: string[] = [];
-    try {
-      const content = readFileSync(APP_LOG_FILE, 'utf-8');
-      lines = content.split('\n').slice(-contentHeight);
-    } catch {
-      lines = ['[Unable to read log file]'];
-    }
+    const lines = readAppLogs(contentHeight);
 
     console.clear();
 
@@ -821,6 +853,7 @@ async function showBranchMenu(): Promise<void> {
         { name: '➕ Create a new claude/* branch', value: 'create' },
         { name: chalk.dim('← Back'), value: 'back' },
       ],
+      pageSize: 20,
     });
 
     if (action === 'create') {
@@ -849,6 +882,7 @@ async function showBranchMenu(): Promise<void> {
   const selected = await select({
     message: 'Select a branch:',
     choices,
+    pageSize: 20,
   });
 
   if (selected === 'back') return;
@@ -879,6 +913,7 @@ async function branchActions(branch: string): Promise<void> {
       { name: 'Delete branch', value: 'delete' },
       { name: chalk.dim('← Back'), value: 'back' },
     ],
+    pageSize: 20,
   });
 
   switch (action) {
@@ -1045,8 +1080,8 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
         shell: true,
       });
     } else {
-      sessionProcess = spawn('cmd', ['/c', 'start', 'cmd', '/k', fullCmd], {
-        cwd: rootDir(),
+      sessionProcess = spawn('cmd', ['/c', 'start', 'cmd', '/k', winCmd], {
+        cwd: sessionDir,
         detached: true,
         stdio: 'ignore',
       });
@@ -1398,6 +1433,7 @@ async function showSessionsMenu(): Promise<void> {
       const selectedPids = await checkbox({
         message: 'Select sessions to kill (space to toggle, enter to confirm):',
         choices: sessionChoices,
+        pageSize: 20,
       });
 
       if (selectedPids.length === 0) {
@@ -1674,42 +1710,68 @@ async function showStatus(): Promise<void> {
     const frontendRunning = processStatus.frontend;
     const appRunning = appProcess !== null || backendRunning || frontendRunning;
 
-    if (!appRunning) {
-      appStatusText = 'Stopped (use [a] to start)';
-      appStatusColor = chalk.dim;
-      appStatusIcon = '○';
+    if (appStatus === 'error') {
+      appStatusText = `Error: ${appErrorMessage ?? 'Check logs'} (use [l] to view, [a] to retry)`;
+      appStatusColor = chalk.red;
+      appStatusIcon = '✗';
+    } else if (!appRunning && appStatus !== 'starting') {
+      if (appLogsExist()) {
+        try {
+          const logLines = readAppLogs(50);
+          const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+          const cleanLog = stripAnsi(logLines.join('\n'));
+
+          if (cleanLog.includes('ELIFECYCLE') || cleanLog.includes('failed') || cleanLog.includes('Error')) {
+            appStatus = 'error';
+            appStatusText = 'Error: App crashed (use [l] to view, [a] to retry)';
+            appStatusColor = chalk.red;
+            appStatusIcon = '✗';
+          } else {
+            appStatusText = 'Stopped (use [a] to start)';
+            appStatusColor = chalk.dim;
+            appStatusIcon = '○';
+          }
+        } catch {
+          appStatusText = 'Stopped (use [a] to start)';
+          appStatusColor = chalk.dim;
+          appStatusIcon = '○';
+        }
+      } else {
+        appStatusText = 'Stopped (use [a] to start)';
+        appStatusColor = chalk.dim;
+        appStatusIcon = '○';
+      }
+    } else if (backendRunning && frontendRunning) {
+      appStatus = 'running';
+      appStatusText = 'Ready (use [x] to stop)';
+      appStatusColor = chalk.green;
+      appStatusIcon = '●';
+    } else if (backendRunning) {
+      appStatusText = 'Backend ready, frontend starting... (use [x] to stop)';
+      appStatusColor = chalk.yellow;
+      appStatusIcon = '◐';
+    } else if (frontendRunning) {
+      appStatusText = 'Frontend ready, backend starting... (use [x] to stop)';
+      appStatusColor = chalk.yellow;
+      appStatusIcon = '◐';
     } else {
       let state = 'Starting...';
-
-      if (backendRunning && frontendRunning) {
-        state = 'Ready';
-        appStatusColor = chalk.green;
-      } else if (backendRunning) {
-        state = 'Backend ready, frontend starting...';
-        appStatusColor = chalk.yellow;
-      } else if (frontendRunning) {
-        state = 'Frontend ready, backend starting...';
-        appStatusColor = chalk.yellow;
-      } else if (existsSync(APP_LOG_FILE)) {
+      if (appLogsExist()) {
         try {
-          const logContent = readFileSync(APP_LOG_FILE, 'utf-8');
+          const logLines = readAppLogs(50);
           const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
-          const cleanLog = stripAnsi(logContent);
+          const cleanLog = stripAnsi(logLines.join('\n'));
 
           if (cleanLog.includes('Compiling')) {
             state = 'Compiling...';
-            appStatusColor = chalk.yellow;
-          } else if (cleanLog.includes('error') || cleanLog.includes('Error') || cleanLog.includes('ERROR')) {
-            state = 'Error (check [l]ogs)';
-            appStatusColor = chalk.red;
           }
         } catch {
-          state = 'Starting...';
+          // ignore
         }
       }
-
       appStatusText = `${state} (use [x] to stop)`;
-      appStatusIcon = state === 'Ready' ? '●' : state.includes('Error') ? '✗' : '◐';
+      appStatusColor = chalk.yellow;
+      appStatusIcon = '◐';
     }
 
     const statusLine = appStatusColor(appStatusIcon) + ' ' + appStatusText;
@@ -1731,8 +1793,23 @@ async function selectWithEscape<T extends string>(
   choices: Array<{ name: string; value: T }>,
   _cancelValue: T = 'cancel' as T
 ): Promise<T> {
-  const result = await select({ message, choices });
+  const result = await select({ message, choices, pageSize: 20 });
   return result as T;
+}
+
+function renderMenu(message: string, choices: MenuChoice[], selectedIndex: number): void {
+  const lines = choices.length + 2;
+  process.stdout.write(`\x1b[${lines}A`);
+  process.stdout.write('\x1b[0J');
+
+  log.print(chalk.bold.green('?') + ' ' + chalk.bold(message) + ' ' + chalk.dim('(use arrow keys, enter, or shortcut)'));
+
+  choices.forEach((choice, index) => {
+    const isSelected = index === selectedIndex;
+    const prefix = isSelected ? chalk.cyan('❯ ') : '  ';
+    const text = isSelected ? chalk.cyan(choice.name) : choice.name;
+    log.print(prefix + text);
+  });
 }
 
 async function selectWithShortcuts(
@@ -1740,14 +1817,80 @@ async function selectWithShortcuts(
   choices: MenuChoice[],
   _autoRefreshMs?: number
 ): Promise<string> {
-  const result = await select({
-    message,
-    choices: choices.map(c => ({
-      name: c.name,
-      value: c.value,
-    })),
+  return new Promise((resolve) => {
+    let selectedIndex = 0;
+    const keyMap = new Map(choices.map((c, i) => [c.key.toLowerCase(), i]));
+
+    log.print(chalk.bold.green('?') + ' ' + chalk.bold(message) + ' ' + chalk.dim('(use arrow keys, enter, or shortcut)'));
+    choices.forEach((choice, index) => {
+      const isSelected = index === selectedIndex;
+      const prefix = isSelected ? chalk.cyan('❯ ') : '  ';
+      const text = isSelected ? chalk.cyan(choice.name) : choice.name;
+      log.print(prefix + text);
+    });
+
+    if (!process.stdin.isTTY) {
+      resolve(choices[0].value);
+      return;
+    }
+
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    emitKeypressEvents(process.stdin, rl);
+    process.stdin.setRawMode(true);
+
+    const cleanup = () => {
+      process.stdin.setRawMode(false);
+      process.stdin.removeAllListeners('keypress');
+      rl.close();
+    };
+
+    const handler = (_str: string | undefined, key: Key) => {
+      if (!key) return;
+
+      if (key.name === 'up') {
+        selectedIndex = (selectedIndex - 1 + choices.length) % choices.length;
+        renderMenu(message, choices, selectedIndex);
+        return;
+      }
+
+      if (key.name === 'down') {
+        selectedIndex = (selectedIndex + 1) % choices.length;
+        renderMenu(message, choices, selectedIndex);
+        return;
+      }
+
+      if (key.name === 'return') {
+        cleanup();
+        log.print('');
+        resolve(choices[selectedIndex].value);
+        return;
+      }
+
+      if (key.name === 'escape') {
+        cleanup();
+        log.print('');
+        const backChoice = choices.find(c => c.value === 'back' || c.value === 'quit');
+        resolve(backChoice?.value ?? 'back');
+        return;
+      }
+
+      if (key.ctrl && key.name === 'c') {
+        cleanup();
+        process.exit(0);
+      }
+
+      const pressed = (key.name ?? key.sequence ?? '').toLowerCase();
+      const matchIndex = keyMap.get(pressed);
+      if (matchIndex !== undefined) {
+        cleanup();
+        log.print('');
+        resolve(choices[matchIndex].value);
+        return;
+      }
+    };
+
+    process.stdin.on('keypress', handler);
   });
-  return result;
 }
 
 async function mainMenu(): Promise<void> {
