@@ -609,9 +609,14 @@ export default function BendForm({
                               const currentRadiusType = entry.specs?.bendRadiusType;
                               const switchingToSegmented = style === 'segmented';
                               const switchingToPulled = style === 'pulled';
+                              const nominalBore = entry.specs?.nominalBoreMm;
+                              const bendDegrees = entry.specs?.bendDegrees;
+                              const numberOfSegments = entry.specs?.numberOfSegments;
 
                               let newBendType: string | undefined;
                               let newBendRadiusType: string | undefined;
+                              let newCenterToFace: number | undefined;
+                              let newBendRadius: number | undefined;
 
                               if (switchingToSegmented && currentBendType) {
                                 const pulledToSegmentedMap: Record<string, string> = {
@@ -620,6 +625,13 @@ export default function BendForm({
                                   '3D': 'long',
                                 };
                                 newBendRadiusType = pulledToSegmentedMap[currentBendType];
+                                if (newBendRadiusType && nominalBore && numberOfSegments) {
+                                  const cfResult = getSABS719CenterToFaceBySegments(newBendRadiusType, nominalBore, numberOfSegments);
+                                  if (cfResult) {
+                                    newCenterToFace = cfResult.centerToFace;
+                                    newBendRadius = cfResult.radius;
+                                  }
+                                }
                               } else if (switchingToPulled && currentRadiusType) {
                                 const segmentedToPulledMap: Record<string, string> = {
                                   'elbow': '1.5D',
@@ -627,6 +639,10 @@ export default function BendForm({
                                   'long': '3D',
                                 };
                                 newBendType = segmentedToPulledMap[currentRadiusType];
+                                if (newBendType && nominalBore && bendDegrees) {
+                                  newCenterToFace = getSabs62CFInterpolated(newBendType as SABS62BendType, bendDegrees, nominalBore);
+                                  newBendRadius = SABS62_BEND_RADIUS[newBendType as SABS62BendType]?.[nominalBore];
+                                }
                               }
 
                               const updatedEntry: any = {
@@ -636,13 +652,17 @@ export default function BendForm({
                                   bendStyle: style,
                                   bendType: switchingToPulled ? newBendType : undefined,
                                   bendRadiusType: switchingToSegmented ? newBendRadiusType : undefined,
-                                  numberOfSegments: switchingToSegmented ? undefined : entry.specs?.numberOfSegments,
-                                  centerToFaceMm: undefined,
-                                  bendRadiusMm: undefined
+                                  numberOfSegments: switchingToSegmented ? entry.specs?.numberOfSegments : undefined,
+                                  centerToFaceMm: newCenterToFace,
+                                  bendRadiusMm: newBendRadius
                                 }
                               };
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
+
+                              if (nominalBore && entry.specs?.scheduleNumber && bendDegrees) {
+                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              }
                             }}
                             options={options}
                             placeholder="Select Bend Style"
@@ -2223,6 +2243,8 @@ export default function BendForm({
                     const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
                     const flangeStandardName = flangeStandard?.code === 'SABS_1123' ? 'SABS 1123' : flangeStandard?.code === 'BS_4504' ? 'BS 4504' : flangeStandard?.code?.replace(/_/g, ' ') || '';
                     const pressureClassDesignation = pressureClass?.designation || '';
+                    const steelSpecName = masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName || '';
+                    const previewIsSABS719 = steelSpecName.includes('SABS 719') || steelSpecName.includes('SANS 719');
                     return (
                       <Bend3DPreview
                         nominalBore={entry.specs.nominalBoreMm}
@@ -2233,9 +2255,9 @@ export default function BendForm({
                         tangent1={entry.specs?.tangentLengths?.[0] || 0}
                         tangent2={entry.specs?.tangentLengths?.[1] || 0}
                         schedule={entry.specs.scheduleNumber}
-                        materialName={masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName}
+                        materialName={steelSpecName}
                         numberOfSegments={entry.specs?.numberOfSegments}
-                        isSegmented={(entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8}
+                        isSegmented={entry.specs?.bendStyle === 'segmented' || (!entry.specs?.bendStyle && previewIsSABS719)}
                         stubs={entry.specs?.stubs}
                         numberOfStubs={entry.specs?.numberOfStubs || 0}
                         flangeConfig={entry.specs?.bendEndConfiguration || 'PE'}
@@ -2628,18 +2650,14 @@ export default function BendForm({
                                 const mainOdM = mainOdMm / 1000;
                                 const mainIdM = mainIdMm / 1000;
 
-                                const bendRadiusType = entry.specs?.bendType || '1.5D';
-                                const radiusFactor = parseFloat(bendRadiusType.replace('D', '')) || 1.5;
-                                const centerLineBendRadiusMm = dn * radiusFactor;
                                 const bendDegrees = entry.specs?.bendDegrees || 90;
                                 const bendAngleRad = (bendDegrees * Math.PI) / 180;
 
-                                const isPulledBend = entry.specs?.bendStyle === 'pulled' || (!entry.specs?.bendStyle && !isSABS719);
-                                const effectiveBendRadiusMm = isPulledBend
-                                  ? centerLineBendRadiusMm + (mainOdMm / 2)
-                                  : centerLineBendRadiusMm;
+                                const centerLineBendRadiusMm = entry.specs?.bendRadiusMm
+                                  ? entry.specs.bendRadiusMm
+                                  : dn * (parseFloat((entry.specs?.bendType || '1.5D').replace('D', '')) || 1.5);
 
-                                const bendArcLengthMm = effectiveBendRadiusMm * bendAngleRad;
+                                const bendArcLengthMm = centerLineBendRadiusMm * bendAngleRad;
                                 const bendArcLengthM = bendArcLengthMm / 1000;
                                 const bendExtM2 = Math.PI * mainOdM * bendArcLengthM;
                                 const bendIntM2 = Math.PI * mainIdM * bendArcLengthM;
