@@ -1629,19 +1629,19 @@ export default function FittingForm({
                             <div className="bg-blue-50 p-2 rounded text-center border border-blue-200">
                               <p className="text-xs text-blue-800 font-medium">Qty & Dimensions</p>
                               <p className="text-lg font-bold text-blue-900">{quantity} × {fittingType.replace(/_/g, ' ')}</p>
-                              <div className="mt-1 space-y-0.5 text-left">
-                                <p className="text-[10px] text-blue-700">Main: {nominalBore}NB</p>
+                              <div className="mt-1 space-y-0.5 text-xs text-blue-700">
+                                <p>Main: {nominalBore}NB</p>
                                 {branchNB !== nominalBore && (
-                                  <p className="text-[10px] text-blue-700">Branch: {branchNB}NB</p>
+                                  <p>Branch: {branchNB}NB</p>
                                 )}
                                 {pipeALength > 0 && (
-                                  <p className="text-[10px] text-blue-700">Pipe A: {pipeALength}mm</p>
+                                  <p>Pipe A: {pipeALength}mm</p>
                                 )}
                                 {pipeBLength > 0 && (
-                                  <p className="text-[10px] text-blue-700">Pipe B: {pipeBLength}mm</p>
+                                  <p>Pipe B: {pipeBLength}mm</p>
                                 )}
                                 {teeHeight > 0 && (
-                                  <p className="text-[10px] text-blue-700">Height: {teeHeight}mm</p>
+                                  <p>Height: {teeHeight}mm</p>
                                 )}
                               </div>
                             </div>
@@ -1662,24 +1662,24 @@ export default function FittingForm({
                             {/* Weight Breakdown - Green for auto-calculated */}
                             <div className="bg-green-50 p-2 rounded text-center border border-green-200">
                               <p className="text-xs text-green-800 font-medium">Weight Breakdown</p>
-                              <div className="text-left mt-1 space-y-0.5">
+                              <div className="mt-1 text-xs text-green-700">
                                 {(entry.calculation.fittingWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-green-700">Fitting: {entry.calculation.fittingWeight.toFixed(2)}kg</p>
+                                  <p>Fitting: {entry.calculation.fittingWeight.toFixed(2)}kg</p>
                                 )}
                                 {(entry.calculation.pipeWeight || 0) > 0 && (
-                                  <p className="text-[10px] text-green-700">Pipe: {entry.calculation.pipeWeight.toFixed(2)}kg</p>
+                                  <p>Pipe: {entry.calculation.pipeWeight.toFixed(2)}kg</p>
                                 )}
                                 {dynamicTotalFlangeWeight > 0 && (
-                                  <p className="text-[10px] text-green-700">Flanges: {dynamicTotalFlangeWeight.toFixed(2)}kg</p>
+                                  <p>Flanges: {dynamicTotalFlangeWeight.toFixed(2)}kg</p>
                                 )}
                                 {totalRingWeight > 0 && (
-                                  <p className="text-[10px] text-amber-700 font-medium">R/F Rings: {totalRingWeight.toFixed(2)}kg ({rotatingFlangeCount}×)</p>
+                                  <p>R/F Rings: {totalRingWeight.toFixed(2)}kg</p>
                                 )}
                                 {totalBlankFlangeWeight > 0 && (
-                                  <p className="text-[10px] text-gray-700">Blanks: {totalBlankFlangeWeight.toFixed(2)}kg</p>
+                                  <p>Blanks: {totalBlankFlangeWeight.toFixed(2)}kg</p>
                                 )}
                                 {closureTotalWeight > 0 && (
-                                  <p className="text-[10px] text-purple-700">Closures: {closureTotalWeight.toFixed(2)}kg</p>
+                                  <p>Closures: {closureTotalWeight.toFixed(2)}kg</p>
                                 )}
                               </div>
                             </div>
@@ -1688,34 +1688,42 @@ export default function FittingForm({
                             <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
                               <p className="text-xs text-amber-800 font-medium">Total Flanges</p>
                               <p className="text-lg font-bold text-amber-900">{entry.calculation.numberOfFlanges || numFlanges}</p>
-                              <div className="text-left mt-1 space-y-0.5">
+                              <div className="mt-1 text-xs text-amber-700">
                                 {flangeConfig.hasInlet && (
-                                  <p className="text-[10px] text-amber-700">1 x {nominalBore}NB {flangeConfig.inletType === 'loose' ? 'L/F' : flangeConfig.inletType === 'rotating' ? 'R/F' : 'Flange'}</p>
+                                  <p>1 x {nominalBore}NB Flange</p>
                                 )}
                                 {flangeConfig.hasOutlet && (
-                                  <p className="text-[10px] text-amber-700">1 x {nominalBore}NB {flangeConfig.outletType === 'loose' ? 'L/F' : flangeConfig.outletType === 'rotating' ? 'R/F' : 'Flange'}</p>
+                                  <p>1 x {nominalBore}NB Flange</p>
                                 )}
                                 {flangeConfig.hasBranch && (
-                                  <p className="text-[10px] text-amber-700">1 x {branchNB}NB {flangeConfig.branchType === 'loose' ? 'L/F' : flangeConfig.branchType === 'rotating' ? 'R/F' : 'Flange'}</p>
+                                  <p>1 x {branchNB}NB Flange</p>
                                 )}
                               </div>
+                              {pressureClassDesignation && (
+                                <p className="text-xs text-amber-600 mt-1 font-medium">
+                                  {pressureClassDesignation}
+                                </p>
+                              )}
+                              {dynamicTotalFlangeWeight > 0 && (
+                                <p className="text-xs text-amber-500 mt-1 font-semibold">{dynamicTotalFlangeWeight.toFixed(2)}kg total</p>
+                              )}
                             </div>
 
                             {/* Weld Summary - Purple for weld info */}
                             <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded text-center border border-purple-200 dark:border-purple-700">
-                              <p className="text-xs text-purple-800 font-medium">
-                                Weld Summary
-                                <span className="ml-1 text-gray-400 font-normal cursor-help" title="Thickness based on fitting class (STD/XH/XXH) for ASTM specs, or pipe wall for SABS 719. Rounded to 0.5mm for WPS matching.">?</span>
-                              </p>
-                              <div className="text-left mt-1 space-y-0.5">
-                                <p className="text-[10px] text-purple-700 font-medium">
-                                  Tee Junction: 1 weld @ {branchWeldThickness?.toFixed(1)}mm
-                                </p>
-                                {numFlanges > 0 && (
-                                  <p className="text-[10px] text-purple-700 font-medium">
-                                    Flange Welds: {numFlanges * 2} @ {fittingWeldThickness?.toFixed(1)}mm
-                                  </p>
-                                )}
+                              <p className="text-xs text-purple-800 font-medium">Weld Summary</p>
+                              <div className="mt-1 text-xs text-purple-700">
+                                <p>Tee Junction: 1 @ {branchWeldThickness?.toFixed(1)}mm</p>
+                                {numFlanges > 0 && (() => {
+                                  const mainCircMm = Math.PI * mainOdMm;
+                                  const totalFlangeWeldMm = numFlanges * 2 * mainCircMm;
+                                  return (
+                                    <>
+                                      <p>{numFlanges} × Flange (2×{mainCircMm.toFixed(0)}mm) @ {fittingWeldThickness?.toFixed(1)}mm</p>
+                                      <p className="font-medium">{(totalFlangeWeldMm / 1000).toFixed(2)} l/m</p>
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
 

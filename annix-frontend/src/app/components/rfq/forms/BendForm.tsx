@@ -605,15 +605,38 @@ export default function BendForm({
                             id={selectId}
                             value={currentStyle}
                             onChange={(style) => {
+                              const currentBendType = entry.specs?.bendType;
+                              const currentRadiusType = entry.specs?.bendRadiusType;
+                              const switchingToSegmented = style === 'segmented';
+                              const switchingToPulled = style === 'pulled';
+
+                              let newBendType: string | undefined;
+                              let newBendRadiusType: string | undefined;
+
+                              if (switchingToSegmented && currentBendType) {
+                                const pulledToSegmentedMap: Record<string, string> = {
+                                  '1.5D': 'elbow',
+                                  '2D': 'medium',
+                                  '3D': 'long',
+                                };
+                                newBendRadiusType = pulledToSegmentedMap[currentBendType];
+                              } else if (switchingToPulled && currentRadiusType) {
+                                const segmentedToPulledMap: Record<string, string> = {
+                                  'elbow': '1.5D',
+                                  'medium': '2D',
+                                  'long': '3D',
+                                };
+                                newBendType = segmentedToPulledMap[currentRadiusType];
+                              }
+
                               const updatedEntry: any = {
                                 ...entry,
                                 specs: {
                                   ...entry.specs,
                                   bendStyle: style,
-                                  bendType: undefined,
-                                  bendRadiusType: undefined,
-                                  numberOfSegments: undefined,
-                                  bendDegrees: undefined,
+                                  bendType: switchingToPulled ? newBendType : undefined,
+                                  bendRadiusType: switchingToSegmented ? newBendRadiusType : undefined,
+                                  numberOfSegments: switchingToSegmented ? undefined : entry.specs?.numberOfSegments,
                                   centerToFaceMm: undefined,
                                   bendRadiusMm: undefined
                                 }
@@ -2310,8 +2333,8 @@ export default function BendForm({
                           const fittingWt = (isSABS719 || !fittingClass) ? null : (dn ? FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[dn] : null);
                           const rawEffectiveWt = fittingWt || pipeWallThickness;
                           const effectiveWt = rawEffectiveWt ? roundToWeldIncrement(rawEffectiveWt) : rawEffectiveWt;
-                          const stub1Length = stubs[0]?.lengthMm || 0;
-                          const stub2Length = stubs[1]?.lengthMm || 0;
+                          const stub1Length = stubs[0]?.lengthMm || stubs[0]?.length || 0;
+                          const stub2Length = stubs[1]?.lengthMm || stubs[1]?.length || 0;
                           const stub1RawWt = (isSABS719 || !fittingClass) ? pipeWallThickness : (FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[stub1NB] || pipeWallThickness);
                           const stub2RawWt = (isSABS719 || !fittingClass) ? pipeWallThickness : (FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[stub2NB] || pipeWallThickness);
                           const stub1Wt = stub1NB && stub1RawWt ? roundToWeldIncrement(stub1RawWt) : 0;
@@ -2320,16 +2343,33 @@ export default function BendForm({
 
                           const mainOdMm = dn ? (NB_TO_OD_LOOKUP[dn] || dn * 1.05) : 0;
                           const mitreWeldCount = numSegments > 1 ? numSegments - 1 : 0;
-                          const weldVolume = mainOdMm && pipeWallThickness ? calculateBendWeldVolume({
+                          const isPulledBendForVol = entry.specs?.bendStyle === 'pulled' || (!entry.specs?.bendStyle && !isSABS719);
+                          const tangent1LenForVol = entry.specs?.tangentLengths?.[0] || 0;
+                          const tangent2LenForVol = entry.specs?.tangentLengths?.[1] || 0;
+                          const tangentButtWeldCount = isPulledBendForVol ? (tangent1LenForVol > 0 ? 1 : 0) + (tangent2LenForVol > 0 ? 1 : 0) : 0;
+                          const numStubs = entry.specs?.numberOfStubs || 0;
+                          const baseWeldVolume = mainOdMm && pipeWallThickness ? calculateBendWeldVolume({
                             mainOdMm,
                             mainWallThicknessMm: pipeWallThickness,
                             numberOfFlangeWelds: bendFlangeCount,
-                            numberOfMitreWelds: mitreWeldCount,
+                            numberOfMitreWelds: mitreWeldCount + tangentButtWeldCount,
                             stubs: [
                               stub1NB && stub1HasFlange ? { odMm: NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05, wallThicknessMm: pipeWallThickness, hasFlangeWeld: true } : null,
                               stub2NB && stub2HasFlange ? { odMm: NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05, wallThicknessMm: pipeWallThickness, hasFlangeWeld: true } : null,
                             ].filter(Boolean) as Array<{odMm: number; wallThicknessMm: number; hasFlangeWeld: boolean}>,
                           }) : null;
+                          const teeStub1OdForVol = stub1NB ? (NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05) : 0;
+                          const teeStub2OdForVol = stub2NB ? (NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05) : 0;
+                          const FILLET_LEG_RATIO = 0.7;
+                          const tee1LegSize = pipeWallThickness ? pipeWallThickness * FILLET_LEG_RATIO : 0;
+                          const tee2LegSize = pipeWallThickness ? pipeWallThickness * FILLET_LEG_RATIO : 0;
+                          const teeWeld1VolMm3 = numStubs >= 1 && teeStub1OdForVol > 0 ? 0.5 * tee1LegSize * tee1LegSize * Math.PI * teeStub1OdForVol : 0;
+                          const teeWeld2VolMm3 = numStubs >= 2 && teeStub2OdForVol > 0 ? 0.5 * tee2LegSize * tee2LegSize * Math.PI * teeStub2OdForVol : 0;
+                          const teeWeldTotalVolCm3 = (teeWeld1VolMm3 + teeWeld2VolMm3) / 1000;
+                          const weldVolume = baseWeldVolume ? {
+                            ...baseWeldVolume,
+                            totalVolumeCm3: baseWeldVolume.totalVolumeCm3 + teeWeldTotalVolCm3,
+                          } : null;
 
                           const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                           const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
@@ -2339,10 +2379,22 @@ export default function BendForm({
                           const pressureClassDesignation = pressureClass?.designation || '';
                           const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
-                          const flangeWeightPerUnit = dn && pressureClassDesignation
+                          const mainFlangeWeightPerUnit = dn && pressureClassDesignation
                             ? getFlangeWeight(dn, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
                             : (entry.calculation?.flangeWeightPerUnit || 0);
-                          const dynamicTotalFlangeWeight = totalFlanges * flangeWeightPerUnit;
+                          const mainFlangesWeight = bendFlangeCount * mainFlangeWeightPerUnit;
+
+                          const stub1FlangeWeightPerUnit = stub1NB && pressureClassDesignation
+                            ? getFlangeWeight(stub1NB, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
+                            : 0;
+                          const stub1FlangesWeight = stub1FlangeCount * stub1FlangeWeightPerUnit;
+
+                          const stub2FlangeWeightPerUnit = stub2NB && pressureClassDesignation
+                            ? getFlangeWeight(stub2NB, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
+                            : 0;
+                          const stub2FlangesWeight = stub2FlangeCount * stub2FlangeWeightPerUnit;
+
+                          const dynamicTotalFlangeWeight = mainFlangesWeight + stub1FlangesWeight + stub2FlangesWeight;
 
                           const bendQuantity = entry.specs?.quantityValue || 1;
                           const blankPositions = entry.specs?.blankFlangePositions || [];
@@ -2365,8 +2417,30 @@ export default function BendForm({
                             ? getClosureWeight(dn, closureLengthMm, closureWallThickness) * bendQuantity
                             : 0;
 
-                          const bendWeightOnly = entry.calculation.bendWeight || 0;
-                          const totalWeight = bendWeightOnly + dynamicTotalFlangeWeight + totalBlankFlangeWeight + tackWeldTotalWeight + closureTotalWeight;
+                          const STEEL_DENSITY_KG_M3 = 7850;
+                          const stub1OD = stub1NB ? (NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05) : 0;
+                          const stub1ID = stub1OD - 2 * (pipeWallThickness || 0);
+                          const stub1CrossSection = stub1OD > 0 ? (Math.PI * (stub1OD * stub1OD - stub1ID * stub1ID) / 4) : 0;
+                          const stub1PipeWeight = stub1CrossSection > 0 && stub1Length > 0
+                            ? (stub1CrossSection / 1000000) * (stub1Length / 1000) * STEEL_DENSITY_KG_M3
+                            : 0;
+
+                          const stub2OD = stub2NB ? (NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05) : 0;
+                          const stub2ID = stub2OD - 2 * (pipeWallThickness || 0);
+                          const stub2CrossSection = stub2OD > 0 ? (Math.PI * (stub2OD * stub2OD - stub2ID * stub2ID) / 4) : 0;
+                          const stub2PipeWeight = stub2CrossSection > 0 && stub2Length > 0
+                            ? (stub2CrossSection / 1000000) * (stub2Length / 1000) * STEEL_DENSITY_KG_M3
+                            : 0;
+
+                          const mainID = mainOdMm - 2 * (pipeWallThickness || 0);
+                          const mainCrossSection = mainOdMm > 0 ? (Math.PI * (mainOdMm * mainOdMm - mainID * mainID) / 4) : 0;
+                          const tangentTotalLength = (entry.specs?.tangentLengths?.[0] || 0) + (entry.specs?.tangentLengths?.[1] || 0);
+                          const tangentWeight = mainCrossSection > 0 && tangentTotalLength > 0
+                            ? (mainCrossSection / 1000000) * (tangentTotalLength / 1000) * STEEL_DENSITY_KG_M3
+                            : 0;
+                          const bendWeightFromCalc = entry.calculation.bendWeight || 0;
+                          const bendWeightOnly = bendWeightFromCalc > tangentWeight ? bendWeightFromCalc - tangentWeight : bendWeightFromCalc;
+                          const totalWeight = bendWeightFromCalc + stub1PipeWeight + stub2PipeWeight + dynamicTotalFlangeWeight + totalBlankFlangeWeight + tackWeldTotalWeight + closureTotalWeight;
 
                           const teeNumStubs = entry.specs?.numberOfStubs || 0;
                           const teeStubs = entry.specs?.stubs || [];
@@ -2382,6 +2456,13 @@ export default function BendForm({
                           const teeStub2Wt = teeStub2NB && teeStub2RawWt ? roundToWeldIncrement(teeStub2RawWt) : 0;
                           const teeTotalLinear = (teeNumStubs >= 1 && teeStub1NB ? teeStub1Circ : 0) + (teeNumStubs >= 2 && teeStub2NB ? teeStub2Circ : 0);
                           const hasTeeWelds = teeNumStubs > 0 && (teeStub1NB || teeStub2NB);
+
+                          const isPulledBend = entry.specs?.bendStyle === 'pulled' || (!entry.specs?.bendStyle && !isSABS719);
+                          const tangent1HasLength = (entry.specs?.tangentLengths?.[0] || 0) > 0;
+                          const tangent2HasLength = (entry.specs?.tangentLengths?.[1] || 0) > 0;
+                          const buttWeldCount = isPulledBend ? (tangent1HasLength ? 1 : 0) + (tangent2HasLength ? 1 : 0) : 0;
+                          const mainCircForButtWeld = mainOdMm > 0 ? Math.PI * mainOdMm : 0;
+                          const buttWeldLinear = buttWeldCount * mainCircForButtWeld;
 
                           const cfVal = Number(entry.specs?.centerToFaceMm) || 0;
                           const tan1 = entry.specs?.tangentLengths?.[0] || 0;
@@ -2404,14 +2485,15 @@ export default function BendForm({
                           const stubsSameNBAndSpec = teeStub1NB && teeStub2NB && teeStub1NB === teeStub2NB && stub1SteelSpecId === stub2SteelSpecId;
                           const stubsDiffSpecFromMain = (stub1SteelSpecId && stub1SteelSpecId !== steelSpecId) || (stub2SteelSpecId && stub2SteelSpecId !== steelSpecId);
 
-                          let totalLengthDisplay = `${mainBendLength.toFixed(0)}mm @ ${dn}NB`;
+                          const mainLengthDisplay = `${mainBendLength.toFixed(0)}mm @ ${dn}NB`;
+                          let stubLengthDisplay = '';
                           if (numSt >= 1 && st1Len > 0 && teeStub1NB) {
                             if (numSt >= 2 && st2Len > 0 && teeStub2NB && stubsSameNBAndSpec) {
-                              totalLengthDisplay += ` + ${st1Len + st2Len}mm @ ${teeStub1NB}NB`;
+                              stubLengthDisplay = `${st1Len + st2Len}mm @ ${teeStub1NB}NB`;
                             } else {
-                              totalLengthDisplay += ` + ${st1Len}mm @ ${teeStub1NB}NB`;
+                              stubLengthDisplay = `${st1Len}mm @ ${teeStub1NB}NB`;
                               if (numSt >= 2 && st2Len > 0 && teeStub2NB) {
-                                totalLengthDisplay += ` + ${st2Len}mm @ ${teeStub2NB}NB`;
+                                stubLengthDisplay += ` + ${st2Len}mm @ ${teeStub2NB}NB`;
                               }
                             }
                           }
@@ -2424,47 +2506,116 @@ export default function BendForm({
                                 <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">C/F (mm)</p>
                                 <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{cfDisplay}</p>
                                 <p className="text-xs text-purple-500 dark:text-purple-400">Radius: {Number(entry.specs?.bendRadiusMm || 0).toFixed(0)}mm</p>
-                                <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{totalLengthDisplay}</p>
-                              </div>
-                              <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
-                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Flanges</p>
-                                <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{totalFlanges}</p>
-                                <p className="text-xs text-purple-500 dark:text-purple-400">{dynamicTotalFlangeWeight.toFixed(2)}kg</p>
-                              </div>
-                              <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
-                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Weight (kg)</p>
-                                <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{totalWeight.toFixed(2)}</p>
-                                {stubsDiffSpecFromMain && (
-                                  <div className="text-xs text-purple-500 dark:text-purple-400 mt-1 text-left">
-                                    <p>{mainSpecName}: {bendWeightOnly.toFixed(2)}kg</p>
-                                    {numSt >= 1 && stub1SteelSpecId !== steelSpecId && (
-                                      <p>{stub1SpecName}: {(entry.calculation?.stub1Weight || 0).toFixed(2)}kg</p>
-                                    )}
-                                    {numSt >= 2 && stub2SteelSpecId !== steelSpecId && stub2SteelSpecId !== stub1SteelSpecId && (
-                                      <p>{stub2SpecName}: {(entry.calculation?.stub2Weight || 0).toFixed(2)}kg</p>
-                                    )}
-                                  </div>
+                                <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{mainLengthDisplay}</p>
+                                {stubLengthDisplay && (
+                                  <p className="text-xs text-purple-500 dark:text-purple-400">+ {stubLengthDisplay}</p>
                                 )}
-                                {(totalBlankFlangeWeight > 0 || closureTotalWeight > 0) && (
-                                  <p className="text-xs text-purple-500 dark:text-purple-400">
-                                    {totalBlankFlangeWeight > 0 && `+${totalBlankFlangeWeight.toFixed(2)}kg blanks`}
-                                    {closureTotalWeight > 0 && ` +${closureTotalWeight.toFixed(2)}kg closures`}
+                              </div>
+                              <div className="bg-amber-100 dark:bg-amber-900/40 p-2 rounded text-center">
+                                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Total Flanges</p>
+                                <p className="text-lg font-bold text-amber-900 dark:text-amber-100">{totalFlanges}</p>
+                                <div className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                  {bendFlangeCount > 0 && (
+                                    <p>{bendFlangeCount} x {dn}NB Flange</p>
+                                  )}
+                                  {stub1FlangeCount > 0 && (
+                                    <p>{stub1FlangeCount} x {stub1NB}NB Flange</p>
+                                  )}
+                                  {stub2FlangeCount > 0 && (
+                                    <p>{stub2FlangeCount} x {stub2NB}NB Flange</p>
+                                  )}
+                                </div>
+                                {pressureClassDesignation && (
+                                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                                    {pressureClassDesignation}
                                   </p>
                                 )}
+                                <p className="text-xs text-amber-500 dark:text-amber-400 mt-1 font-semibold">{dynamicTotalFlangeWeight.toFixed(2)}kg total</p>
+                                <div className="text-xs text-amber-500 dark:text-amber-400">
+                                  {bendFlangeCount > 0 && (
+                                    <p>{bendFlangeCount} × {mainFlangeWeightPerUnit.toFixed(2)}kg</p>
+                                  )}
+                                  {stub1FlangeCount > 0 && (
+                                    <p>{stub1FlangeCount} × {stub1FlangeWeightPerUnit.toFixed(2)}kg</p>
+                                  )}
+                                  {stub2FlangeCount > 0 && (
+                                    <p>{stub2FlangeCount} × {stub2FlangeWeightPerUnit.toFixed(2)}kg</p>
+                                  )}
+                                </div>
                               </div>
-                              {/* Weld with Tee Welds info */}
                               <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
-                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Weld (mm)</p>
-                                <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{totalWeldLength.toFixed(0)}</p>
-                                {hasTeeWelds && (
-                                  <div className="text-xs text-teal-600 dark:text-teal-400 mt-1 text-left">
-                                    <p className="font-medium">{teeNumStubs} Tee weld{teeNumStubs > 1 ? 's' : ''}{isSABS719 ? ' (SABS)' : ''}</p>
-                                    {teeStub1NB && <p>{teeStub1NB}NB: {teeStub1Circ.toFixed(0)}mm</p>}
-                                    {teeStub2NB && <p>{teeStub2NB}NB: {teeStub2Circ.toFixed(0)}mm</p>}
-                                    <p className="font-medium">+{teeTotalLinear.toFixed(0)}mm</p>
-                                  </div>
-                                )}
+                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Weight Breakdown</p>
+                                <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{totalWeight.toFixed(2)}kg</p>
+                                <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">
+                                  <p>Bend: {bendWeightOnly.toFixed(2)}kg</p>
+                                  {tangentWeight > 0 && (
+                                    <p>Tangents: {tangentWeight.toFixed(2)}kg</p>
+                                  )}
+                                  {numSt >= 1 && stub1NB && stub1PipeWeight > 0 && (
+                                    <p>Stub ({stub1NB}NB): {stub1PipeWeight.toFixed(2)}kg</p>
+                                  )}
+                                  {numSt >= 2 && stub2NB && stub2PipeWeight > 0 && (
+                                    <p>Stub ({stub2NB}NB): {stub2PipeWeight.toFixed(2)}kg</p>
+                                  )}
+                                  {dynamicTotalFlangeWeight > 0 && (
+                                    <p>Flanges: {dynamicTotalFlangeWeight.toFixed(2)}kg</p>
+                                  )}
+                                  {totalBlankFlangeWeight > 0 && (
+                                    <p>Blanks: {totalBlankFlangeWeight.toFixed(2)}kg</p>
+                                  )}
+                                  {closureTotalWeight > 0 && (
+                                    <p>Closures: {closureTotalWeight.toFixed(2)}kg</p>
+                                  )}
+                                </div>
                               </div>
+                              {/* Weld with detailed breakdown */}
+                              {(() => {
+                                const mainCirc = Math.PI * mainOdMm;
+                                const mitreWeldLinear = mitreWeldCount * mainCirc;
+                                const mainFlangeWeldLinear = bendFlangeCount * 2 * mainCirc;
+                                const stub1Circ = stub1NB ? Math.PI * (NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05) : 0;
+                                const stub2Circ = stub2NB ? Math.PI * (NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05) : 0;
+                                const stub1FlangeWeldLinear = stub1FlangeCount * 2 * stub1Circ;
+                                const stub2FlangeWeldLinear = stub2FlangeCount * 2 * stub2Circ;
+                                const totalFlangeWeldLinear = mainFlangeWeldLinear + stub1FlangeWeldLinear + stub2FlangeWeldLinear;
+                                const totalFlangeCount = bendFlangeCount + stub1FlangeCount + stub2FlangeCount;
+                                const calculatedTotalWeld = mitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear;
+
+                                return (
+                                  <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
+                                    <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Weld (mm)</p>
+                                    <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{calculatedTotalWeld.toFixed(0)}</p>
+                                    <div className="text-xs text-purple-500 dark:text-purple-400 mt-1 text-left space-y-0.5">
+                                      {mitreWeldCount > 0 && (
+                                        <p>{mitreWeldCount} × Mitre = {mitreWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
+                                      )}
+                                      {buttWeldCount > 0 && (
+                                        <p>{buttWeldCount} × Butt = {buttWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
+                                      )}
+                                      {totalFlangeCount > 0 && (
+                                        <>
+                                          {bendFlangeCount > 0 && (
+                                            <p>{bendFlangeCount} × Flange (2×{mainCirc.toFixed(0)}mm) = {mainFlangeWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
+                                          )}
+                                          {stub1FlangeCount > 0 && (
+                                            <p>{stub1FlangeCount} × Stub1 Flg (2×{stub1Circ.toFixed(0)}mm) = {stub1FlangeWeldLinear.toFixed(0)}mm @ {stub1Wt?.toFixed(1)}mm</p>
+                                          )}
+                                          {stub2FlangeCount > 0 && (
+                                            <p>{stub2FlangeCount} × Stub2 Flg (2×{stub2Circ.toFixed(0)}mm) = {stub2FlangeWeldLinear.toFixed(0)}mm @ {stub2Wt?.toFixed(1)}mm</p>
+                                          )}
+                                        </>
+                                      )}
+                                      {hasTeeWelds && (
+                                        <>
+                                          {teeStub1NB && <p>1 × Tee ({teeStub1NB}NB) = {teeStub1Circ.toFixed(0)}mm @ {teeStub1Wt?.toFixed(1)}mm</p>}
+                                          {teeStub2NB && <p>1 × Tee ({teeStub2NB}NB) = {teeStub2Circ.toFixed(0)}mm @ {teeStub2Wt?.toFixed(1)}mm</p>}
+                                        </>
+                                      )}
+                                      <p className="font-semibold border-t border-purple-300 pt-0.5 mt-1">Total: {calculatedTotalWeld.toFixed(0)}mm ({(calculatedTotalWeld / 1000).toFixed(2)} l/m)</p>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                               {weldVolume && (
                                 <div className="bg-fuchsia-100 dark:bg-fuchsia-900/40 p-2 rounded text-center">
                                   <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400 font-medium">Weld Vol</p>
@@ -2473,21 +2624,79 @@ export default function BendForm({
                                 </div>
                               )}
                               {mainOdMm && pipeWallThickness && (() => {
-                                const bendLengthM = (entry.calculation?.totalBendLengthMm || 0) / 1000;
-                                const insideDiameterMm = mainOdMm - (2 * pipeWallThickness);
-                                const surfaceArea = calculateComprehensiveSurfaceArea({
-                                  outsideDiameterMm: mainOdMm,
-                                  insideDiameterMm,
-                                  pipeLengthM: bendLengthM,
-                                  numberOfFlanges: totalFlanges,
-                                  dn,
-                                  pressureClass: pressureClassDesignation,
-                                });
+                                const mainIdMm = mainOdMm - (2 * pipeWallThickness);
+                                const mainOdM = mainOdMm / 1000;
+                                const mainIdM = mainIdMm / 1000;
+
+                                const bendRadiusType = entry.specs?.bendType || '1.5D';
+                                const radiusFactor = parseFloat(bendRadiusType.replace('D', '')) || 1.5;
+                                const centerLineBendRadiusMm = dn * radiusFactor;
+                                const bendDegrees = entry.specs?.bendDegrees || 90;
+                                const bendAngleRad = (bendDegrees * Math.PI) / 180;
+
+                                const isPulledBend = entry.specs?.bendStyle === 'pulled' || (!entry.specs?.bendStyle && !isSABS719);
+                                const effectiveBendRadiusMm = isPulledBend
+                                  ? centerLineBendRadiusMm + (mainOdMm / 2)
+                                  : centerLineBendRadiusMm;
+
+                                const bendArcLengthMm = effectiveBendRadiusMm * bendAngleRad;
+                                const bendArcLengthM = bendArcLengthMm / 1000;
+                                const bendExtM2 = Math.PI * mainOdM * bendArcLengthM;
+                                const bendIntM2 = Math.PI * mainIdM * bendArcLengthM;
+
+                                const tangentTotalMm = (entry.specs?.tangentLengths?.[0] || 0) + (entry.specs?.tangentLengths?.[1] || 0);
+                                const tangentTotalM = tangentTotalMm / 1000;
+                                const tangentExtM2 = Math.PI * mainOdM * tangentTotalM;
+                                const tangentIntM2 = Math.PI * mainIdM * tangentTotalM;
+
+                                const stub1OdM = stub1OD / 1000;
+                                const stub1IdM = stub1ID / 1000;
+                                const stub1LengthM = stub1Length / 1000;
+                                const stub1ExtM2 = stub1OD > 0 && stub1Length > 0 ? Math.PI * stub1OdM * stub1LengthM : 0;
+                                const stub1IntM2 = stub1OD > 0 && stub1Length > 0 ? Math.PI * stub1IdM * stub1LengthM : 0;
+
+                                const stub2OdM = stub2OD / 1000;
+                                const stub2IdM = stub2ID / 1000;
+                                const stub2LengthM = stub2Length / 1000;
+                                const stub2ExtM2 = stub2OD > 0 && stub2Length > 0 ? Math.PI * stub2OdM * stub2LengthM : 0;
+                                const stub2IntM2 = stub2OD > 0 && stub2Length > 0 ? Math.PI * stub2IdM * stub2LengthM : 0;
+
+                                const mainFlangeResult = flangeSpecs || null;
+                                const mainFlangeOdM = mainFlangeResult?.flangeOdMm ? mainFlangeResult.flangeOdMm / 1000 : (mainOdM * 1.8);
+                                const mainFlangeBoreM = mainFlangeResult?.flangeBoreMm ? mainFlangeResult.flangeBoreMm / 1000 : mainIdM;
+                                const mainFlangeExtFaceM2 = bendFlangeCount > 0 ? bendFlangeCount * (Math.PI / 4) * (mainFlangeOdM * mainFlangeOdM - mainOdM * mainOdM) : 0;
+                                const mainFlangeIntFaceM2 = bendFlangeCount > 0 ? bendFlangeCount * (Math.PI / 4) * (mainOdM * mainOdM - mainFlangeBoreM * mainFlangeBoreM) : 0;
+
+                                const stub1FlangeOdM = stub1NB ? ((NB_TO_OD_LOOKUP[stub1NB] || stub1NB) * 1.8) / 1000 : 0;
+                                const stub1FlangeBoreM = stub1IdM;
+                                const stub1FlangeExtFaceM2 = stub1FlangeCount > 0 ? stub1FlangeCount * (Math.PI / 4) * (stub1FlangeOdM * stub1FlangeOdM - stub1OdM * stub1OdM) : 0;
+                                const stub1FlangeIntFaceM2 = stub1FlangeCount > 0 ? stub1FlangeCount * (Math.PI / 4) * (stub1OdM * stub1OdM - stub1FlangeBoreM * stub1FlangeBoreM) : 0;
+
+                                const stub2FlangeOdM = stub2NB ? ((NB_TO_OD_LOOKUP[stub2NB] || stub2NB) * 1.8) / 1000 : 0;
+                                const stub2FlangeBoreM = stub2IdM;
+                                const stub2FlangeExtFaceM2 = stub2FlangeCount > 0 ? stub2FlangeCount * (Math.PI / 4) * (stub2FlangeOdM * stub2FlangeOdM - stub2OdM * stub2OdM) : 0;
+                                const stub2FlangeIntFaceM2 = stub2FlangeCount > 0 ? stub2FlangeCount * (Math.PI / 4) * (stub2OdM * stub2OdM - stub2FlangeBoreM * stub2FlangeBoreM) : 0;
+
+                                const totalFlangeExtM2 = mainFlangeExtFaceM2 + stub1FlangeExtFaceM2 + stub2FlangeExtFaceM2;
+                                const totalFlangeIntM2 = mainFlangeIntFaceM2 + stub1FlangeIntFaceM2 + stub2FlangeIntFaceM2;
+
+                                const pipeExtM2 = bendExtM2 + tangentExtM2 + stub1ExtM2 + stub2ExtM2;
+                                const pipeIntM2 = bendIntM2 + tangentIntM2 + stub1IntM2 + stub2IntM2;
+                                const totalExtM2 = pipeExtM2 + totalFlangeExtM2;
+                                const totalIntM2 = pipeIntM2 + totalFlangeIntM2;
+
                                 return (
                                   <div className="bg-indigo-100 dark:bg-indigo-900/40 p-2 rounded text-center">
-                                    <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Surface m²</p>
-                                    <p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">{(surfaceArea.totalExternalAreaM2 * bendQuantity).toFixed(2)}</p>
+                                    <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Surface Area</p>
+                                    <p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">{(totalExtM2 * bendQuantity).toFixed(2)}m²</p>
                                     <p className="text-xs text-indigo-500 dark:text-indigo-400">external</p>
+                                    <div className="text-xs text-indigo-500 dark:text-indigo-400 mt-1">
+                                      <p>Bend: {bendExtM2.toFixed(2)}m²</p>
+                                      {tangentExtM2 > 0 && <p>Tangents: {tangentExtM2.toFixed(2)}m²</p>}
+                                      {stub1ExtM2 > 0 && <p>Stub ({stub1NB}NB): {stub1ExtM2.toFixed(2)}m²</p>}
+                                      {stub2ExtM2 > 0 && <p>Stub ({stub2NB}NB): {stub2ExtM2.toFixed(2)}m²</p>}
+                                      {totalFlangeExtM2 > 0 && <p>Flanges: {totalFlangeExtM2.toFixed(2)}m²</p>}
+                                    </div>
                                   </div>
                                 );
                               })()}

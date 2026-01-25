@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, Between } from 'typeorm';
 import * as fs from 'fs';
@@ -10,6 +10,9 @@ import { Rfq } from '../rfq/entities/rfq.entity';
 import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
 import { RfqItem } from '../rfq/entities/rfq-item.entity';
 import { RfqDocument } from '../rfq/entities/rfq-document.entity';
+import { RfqService } from '../rfq/rfq.service';
+import { CreateUnifiedRfqDto } from '../rfq/dto/create-unified-rfq.dto';
+import { SaveRfqDraftDto, RfqDraftResponseDto } from '../rfq/dto/rfq-draft.dto';
 import {
   RfqQueryDto,
   RfqListItemDto,
@@ -33,6 +36,8 @@ export class AdminRfqService {
     private readonly rfqItemRepo: Repository<RfqItem>,
     @InjectRepository(RfqDocument)
     private readonly rfqDocumentRepo: Repository<RfqDocument>,
+    @Inject(forwardRef(() => RfqService))
+    private readonly rfqService: RfqService,
   ) {}
 
   /**
@@ -272,5 +277,58 @@ export class AdminRfqService {
       fileName: document.filename,
       mimeType: document.mimeType,
     };
+  }
+
+  /**
+   * Update RFQ as admin (bypasses customer ownership check)
+   */
+  async updateRfq(
+    id: number,
+    dto: CreateUnifiedRfqDto,
+  ): Promise<{ rfq: Rfq; itemsUpdated: number }> {
+    this.logger.log(`Admin updating RFQ ${id}`);
+
+    const draft = await this.rfqDraftRepo.findOne({
+      where: { id },
+      relations: ['createdBy'],
+    });
+
+    if (!draft) {
+      throw new NotFoundException(`RFQ Draft with ID ${id} not found`);
+    }
+
+    const userId = draft.createdBy?.id;
+    if (!userId) {
+      throw new NotFoundException(`RFQ Draft ${id} has no associated user`);
+    }
+
+    return this.rfqService.updateUnifiedRfq(id, dto, userId);
+  }
+
+  /**
+   * Save/update RFQ draft as admin (bypasses customer ownership check)
+   */
+  async saveDraft(dto: SaveRfqDraftDto): Promise<RfqDraftResponseDto> {
+    this.logger.log(`Admin saving draft ${dto.draftId || 'new'}`);
+
+    if (dto.draftId) {
+      const draft = await this.rfqDraftRepo.findOne({
+        where: { id: dto.draftId },
+        relations: ['createdBy'],
+      });
+
+      if (!draft) {
+        throw new NotFoundException(`RFQ Draft with ID ${dto.draftId} not found`);
+      }
+
+      const userId = draft.createdBy?.id;
+      if (!userId) {
+        throw new NotFoundException(`RFQ Draft ${dto.draftId} has no associated user`);
+      }
+
+      return this.rfqService.saveDraft(dto, userId);
+    }
+
+    throw new NotFoundException('Draft ID is required for admin updates');
   }
 }

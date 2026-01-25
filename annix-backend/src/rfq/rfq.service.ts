@@ -295,9 +295,9 @@ export class RfqService {
     const numberOfFlanges = calculatedPipeCount * 2;
     const numberOfFlangeWelds = numberOfFlanges;
 
-    // Calculate weld length - circumference of pipe
+    // Calculate weld length - circumference of pipe × 2 welds per flange (inside + outside)
     const circumferenceM = (Math.PI * outsideDiameterMm) / 1000;
-    const totalFlangeWeldLength = numberOfFlangeWelds * circumferenceM;
+    const totalFlangeWeldLength = numberOfFlangeWelds * 2 * circumferenceM;
 
     // No butt welds for straight pipes in standard lengths
     const numberOfButtWelds = 0;

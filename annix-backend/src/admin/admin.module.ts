@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -12,6 +12,7 @@ import { AdminRfqService } from './admin-rfq.service';
 import { AdminRfqController } from './admin-rfq.controller';
 import { AdminAuthGuard } from './guards/admin-auth.guard';
 import { AuditModule } from '../audit/audit.module';
+import { RfqModule } from '../rfq/rfq.module';
 import { CustomerProfile } from '../customer/entities/customer-profile.entity';
 import { CustomerOnboarding } from '../customer/entities/customer-onboarding.entity';
 import { CustomerSession } from '../customer/entities/customer-session.entity';
@@ -26,6 +27,7 @@ import { AuditLog } from '../audit/entities/audit-log.entity';
 
 @Module({
   imports: [
+    forwardRef(() => RfqModule),
     TypeOrmModule.forFeature([
       AdminSession,
       User,

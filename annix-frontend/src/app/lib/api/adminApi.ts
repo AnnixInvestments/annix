@@ -686,6 +686,20 @@ class AdminApiClient {
     return this.request<RfqFullDraftResponse>(`/admin/rfqs/${id}/full`);
   }
 
+  async updateRfq(id: number, data: any): Promise<any> {
+    return this.request<any>(`/admin/rfqs/${id}/unified`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async saveDraft(data: any): Promise<any> {
+    return this.request<any>(`/admin/rfqs/drafts`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async uploadNixDocument(
     file: File,
     title?: string,

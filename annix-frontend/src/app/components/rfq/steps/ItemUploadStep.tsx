@@ -400,7 +400,10 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
 
       // Check if SABS 719 (ERW steel - id 8) - uses W/T format instead of Schedule
       const isSABS719Bend = steelSpecId === 8;
-      const wallThicknessBend = entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm;
+      // For SABS 719, prioritize user-selected W/T; for others, use calculation (schedule-derived) first
+      const wallThicknessBend = isSABS719Bend
+        ? (entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm)
+        : (entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm);
 
       // Get flange specs
       const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;

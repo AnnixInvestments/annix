@@ -370,9 +370,9 @@ export class FittingService {
     const numberOfFlangeWelds = numberOfFlanges;
     const numberOfTeeWelds = dto.quantityValue; // 1 tee weld per fitting
 
-    // Calculate weld lengths
+    // Calculate weld lengths - 2 welds per flange (inside + outside)
     const circumferenceM = (Math.PI * outsideDiameterMm) / 1000;
-    const totalFlangeWeldLength = numberOfFlangeWelds * circumferenceM;
+    const totalFlangeWeldLength = numberOfFlangeWelds * 2 * circumferenceM;
     const totalTeeWeldLength = numberOfTeeWelds * circumferenceM;
 
     // Estimate weld weight (typical: 2-3% of pipe weight for butt welds)
@@ -518,9 +518,9 @@ export class FittingService {
     const numberOfFlangeWelds = numberOfFlanges;
     const numberOfTeeWelds = 0; // SABS62 are standard fittings, no fabrication welds
 
-    // Calculate weld lengths
+    // Calculate weld lengths - 2 welds per flange (inside + outside)
     const circumferenceM = (Math.PI * outsideDiameterMm) / 1000;
-    const totalFlangeWeldLength = numberOfFlangeWelds * circumferenceM;
+    const totalFlangeWeldLength = numberOfFlangeWelds * 2 * circumferenceM;
     const totalTeeWeldLength = 0;
 
     // Estimate weld weight

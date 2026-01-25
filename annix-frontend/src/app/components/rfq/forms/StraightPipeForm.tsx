@@ -1297,7 +1297,7 @@ export default function StraightPipeForm({
                 calcResultsContent={
                   <div className="mt-4">
                     <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
-                      📊 Calculation Results
+                      Calculation Results
                     </h4>
 
                     {entry.calculation ? (
@@ -1375,26 +1375,23 @@ export default function StraightPipeForm({
 
                             return (
                               <div className="bg-green-50 p-2 rounded text-center border border-green-200">
-                                <p className="text-xs text-green-800 font-medium">Total Weight</p>
+                                <p className="text-xs text-green-800 font-medium">Weight Breakdown</p>
                                 <p className="text-lg font-bold text-green-900">{formatWeight(totalWeight)}</p>
-                                <p className="text-xs text-green-600">
-                                  (Pipe: {formatWeight(entry.calculation.totalPipeWeight)})
-                                </p>
-                                {backingRingTotalWeight > 0 && (
-                                  <p className="text-xs text-amber-600">
-                                    (incl. {backingRingTotalWeight.toFixed(2)}kg R/F rings)
-                                  </p>
-                                )}
-                                {totalBlankFlangeWeight > 0 && (
-                                  <p className="text-xs text-gray-600">
-                                    (incl. {totalBlankFlangeWeight.toFixed(2)}kg blanks)
-                                  </p>
-                                )}
-                                {closureTotalWeight > 0 && (
-                                  <p className="text-xs text-purple-600">
-                                    (incl. {closureTotalWeight.toFixed(2)}kg closures)
-                                  </p>
-                                )}
+                                <div className="text-xs text-green-600 mt-1">
+                                  <p>Pipe: {formatWeight(entry.calculation.totalPipeWeight)}</p>
+                                  {dynamicTotalFlangeWeight > 0 && (
+                                    <p>Flanges: {dynamicTotalFlangeWeight.toFixed(2)}kg</p>
+                                  )}
+                                  {backingRingTotalWeight > 0 && (
+                                    <p>R/F Rings: {backingRingTotalWeight.toFixed(2)}kg</p>
+                                  )}
+                                  {totalBlankFlangeWeight > 0 && (
+                                    <p>Blanks: {totalBlankFlangeWeight.toFixed(2)}kg</p>
+                                  )}
+                                  {closureTotalWeight > 0 && (
+                                    <p>Closures: {closureTotalWeight.toFixed(2)}kg</p>
+                                  )}
+                                </div>
                               </div>
                             );
                           })()}
@@ -1416,15 +1413,44 @@ export default function StraightPipeForm({
                             const flangeWeightPerUnit = nominalBore && pressureClassDesignation
                               ? getFlangeWeight(nominalBore, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
                               : (entry.calculation?.flangeWeightPerUnit || 0);
-                            const totalFlangeWeight = totalFlanges * flangeWeightPerUnit;
+                            const regularFlangeWeight = totalFlanges * flangeWeightPerUnit;
+
+                            const blankPositions = entry.specs?.blankFlangePositions || [];
+                            const blankFlangeCount = blankPositions.length * (entry.calculation?.calculatedPipeCount || 0);
+                            const isSans1123 = flangeStandardCode.includes('SABS 1123') || flangeStandardCode.includes('SANS 1123');
+                            const blankWeightPerUnit = nominalBore && pressureClassDesignation
+                              ? (isSans1123 ? sansBlankFlangeWeight(nominalBore, pressureClassDesignation) : getBlankFlangeWeight(nominalBore, pressureClassDesignation))
+                              : 0;
+                            const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
+
+                            const totalFlangeWeight = regularFlangeWeight + totalBlankFlangeWeight;
 
                             return (
                               <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
-                                <p className="text-xs text-amber-800 font-medium">Total Flange Weight</p>
-                                <p className="text-lg font-bold text-amber-900">{formatWeight(totalFlangeWeight)}</p>
-                                <p className="text-xs text-amber-600">
-                                  {totalFlanges} flanges × {flangeWeightPerUnit.toFixed(2)}kg
-                                </p>
+                                <p className="text-xs text-amber-800 font-medium">Total Flanges</p>
+                                <p className="text-lg font-bold text-amber-900">{totalFlanges + blankFlangeCount}</p>
+                                <div className="text-xs text-amber-700 mt-1">
+                                  {totalFlanges > 0 && (
+                                    <p>{totalFlanges} x {nominalBore}NB Flange</p>
+                                  )}
+                                  {blankFlangeCount > 0 && (
+                                    <p>{blankFlangeCount} x {nominalBore}NB Blank</p>
+                                  )}
+                                </div>
+                                {pressureClassDesignation && (
+                                  <p className="text-xs text-amber-600 mt-1 font-medium">
+                                    {pressureClassDesignation}
+                                  </p>
+                                )}
+                                <p className="text-xs text-amber-500 mt-1 font-semibold">{totalFlangeWeight.toFixed(2)}kg total</p>
+                                <div className="text-xs text-amber-500">
+                                  {totalFlanges > 0 && (
+                                    <p>{totalFlanges} × {flangeWeightPerUnit.toFixed(2)}kg</p>
+                                  )}
+                                  {blankFlangeCount > 0 && (
+                                    <p>{blankFlangeCount} × {blankWeightPerUnit.toFixed(2)}kg</p>
+                                  )}
+                                </div>
                               </div>
                             );
                           })()}
@@ -1452,11 +1478,18 @@ export default function StraightPipeForm({
                             );
                           })()}
 
-                          <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
-                            <p className="text-xs text-purple-800 font-medium">Flange Welds</p>
-                            <p className="text-lg font-bold text-purple-900">{entry.calculation.numberOfFlangeWelds}</p>
-                            <p className="text-xs text-purple-600">{entry.calculation.totalFlangeWeldLength?.toFixed(2)}m</p>
-                          </div>
+                          {entry.calculation.numberOfFlangeWelds > 0 && (() => {
+                            const circumferenceMm = Math.PI * entry.calculation.outsideDiameterMm;
+                            const weldPerFlangeMm = 2 * circumferenceMm;
+                            return (
+                              <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
+                                <p className="text-xs text-purple-800 font-medium">Flange Welds</p>
+                                <p className="text-lg font-bold text-purple-900">{entry.calculation.numberOfFlangeWelds}</p>
+                                <p className="text-xs text-purple-600">2×{circumferenceMm.toFixed(0)}mm each</p>
+                                <p className="text-xs text-purple-700 font-medium">{entry.calculation.totalFlangeWeldLength?.toFixed(2)} l/m</p>
+                              </div>
+                            );
+                          })()}
 
                           {entry.calculation?.numberOfFlangeWelds > 0 && entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (() => {
                             const weldVolume = calculateFlangeWeldVolume({

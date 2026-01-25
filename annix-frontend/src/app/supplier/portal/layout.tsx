@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
 import PortalToolbar from '@/app/components/PortalToolbar';
+import RemoteAccessNotificationBanner from '@/app/components/remote-access/RemoteAccessNotificationBanner';
 import { corpId } from '@/app/lib/corpId';
 
 const navItems = [
@@ -101,6 +102,7 @@ export default function SupplierPortalLayout({
         statusBadge={statusBadge}
         additionalActions={additionalActions}
       />
+      <RemoteAccessNotificationBanner />
 
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <main className="w-full">{children}</main>

@@ -64,6 +64,7 @@ import { SecureDocumentsModule } from './secure-documents/secure-documents.modul
 import { ThermalModule } from './thermal/thermal.module';
 import { DataValidationModule } from './data-validation/data-validation.module';
 import { UnifiedApiModule } from './unified-api/unified-api.module';
+import { RemoteAccessModule } from './remote-access/remote-access.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -129,6 +130,7 @@ import typeormConfig from './config/typeorm';
     ThermalModule,
     DataValidationModule,
     UnifiedApiModule,
+    RemoteAccessModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

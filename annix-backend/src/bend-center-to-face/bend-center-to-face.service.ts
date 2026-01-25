@@ -146,6 +146,7 @@ export class BendCenterToFaceService {
     scheduleNumber?: string;
     bendType: string;
     bendDegrees: number;
+    bendStyle?: 'pulled' | 'segmented';
     numberOfTangents?: number;
     tangentLengths?: number[];
     quantity?: number;
@@ -158,6 +159,7 @@ export class BendCenterToFaceService {
       wallThicknessMm,
       bendType,
       bendDegrees,
+      bendStyle = 'pulled',
       numberOfTangents = 0,
       tangentLengths = [],
       quantity = 1,
@@ -193,7 +195,8 @@ export class BendCenterToFaceService {
     }
 
     // Calculate weights
-    const bendWeight = this.calculateBendWeight(bendData, pipeDimension);
+    const pipeOdMm = pipeDimension.nominalOutsideDiameter?.nominal_diameter_mm || nominalBoreMm;
+    const bendWeight = this.calculateBendWeight(bendData, pipeDimension, bendStyle, pipeOdMm);
     const tangentWeight = this.calculateTangentWeight(
       tangentLengths,
       pipeDimension,
@@ -223,9 +226,9 @@ export class BendCenterToFaceService {
           flangeWeight = numberOfFlanges * (flangeDimension.mass_kg || 0);
           numberOfFlangeWelds = numberOfFlanges;
 
-          // Calculate flange weld circumference (π × nominal bore in meters)
+          // Calculate flange weld circumference - 2 welds per flange (inside + outside)
           const weldCircumference = Math.PI * (nominalBoreMm / 1000);
-          totalFlangeWeldLength = numberOfFlangeWelds * weldCircumference;
+          totalFlangeWeldLength = numberOfFlangeWelds * 2 * weldCircumference;
         }
       }
     }
@@ -258,17 +261,18 @@ export class BendCenterToFaceService {
   private calculateBendWeight(
     bendData: BendCenterToFace,
     pipeDimension: PipeDimension,
+    bendStyle: 'pulled' | 'segmented' = 'pulled',
+    pipeOdMm: number = 0,
   ): number {
-    // Estimate bend weight based on radius and angle
-    // This is a simplified calculation - you might want to use more sophisticated formulas
-    const radius = Number(bendData.radiusMm);
+    const centerLineRadius = Number(bendData.radiusMm);
     const angleRad = Number(bendData.radians);
-    const arcLength = radius * angleRad;
 
-    // Arc length in meters multiplied by pipe mass per meter
+    const effectiveRadius =
+      bendStyle === 'pulled' ? centerLineRadius + pipeOdMm / 2 : centerLineRadius;
+    const arcLength = effectiveRadius * angleRad;
+
     const weightKg = (arcLength / 1000) * (pipeDimension.mass_kgm || 0);
 
-    // Add some factor for bend formation (typically 10-15% heavier due to bending process)
     return weightKg * 1.12;
   }
 

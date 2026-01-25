@@ -2407,7 +2407,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       log.debug('💾 saveData.formData:', saveData.formData);
       log.debug('💾 saveData.requiredProducts:', saveData.requiredProducts);
 
-      const result = await draftsApi.save(saveData);
+      const result = isEditing
+        ? await adminApiClient.saveDraft(saveData)
+        : await draftsApi.save(saveData);
 
       // Update draft info
       setCurrentDraftId(result.id);
@@ -2856,10 +2858,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         items: unifiedItems,
       };
 
-      log.debug('📦 Re-submitting unified RFQ payload:', unifiedPayload);
+      log.debug('📦 Re-submitting unified RFQ payload via admin API:', unifiedPayload);
 
-      const result = await unifiedRfqApi.update(editRfqId, unifiedPayload);
-      log.debug(`✅ Unified RFQ updated successfully:`, result);
+      const result = await adminApiClient.updateRfq(editRfqId, unifiedPayload);
+      log.debug(`✅ Unified RFQ updated successfully via admin API:`, result);
 
       const existingBoq = await boqApi.getByRfqId(editRfqId);
       if (existingBoq) {
