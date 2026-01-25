@@ -9,6 +9,8 @@ import {
   ParseIntPipe,
   UseGuards,
   Request,
+  Headers,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,10 +21,11 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { Request as ExpressRequest } from 'express';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 import { RemoteAccessService } from './remote-access.service';
 import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
-import { CustomerAuthGuard } from '../customer/guards/customer-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import {
@@ -37,7 +40,28 @@ import { RemoteAccessDocumentType } from './entities/remote-access-request.entit
 @ApiTags('Remote Access')
 @Controller('remote-access')
 export class RemoteAccessController {
-  constructor(private readonly remoteAccessService: RemoteAccessService) {}
+  constructor(
+    private readonly remoteAccessService: RemoteAccessService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  private async extractCustomerIdFromToken(authHeader: string | undefined): Promise<number> {
+    if (!authHeader) {
+      throw new UnauthorizedException('Authentication required');
+    }
+    const [type, token] = authHeader.split(' ');
+    if (type !== 'Bearer' || !token) {
+      throw new UnauthorizedException('Invalid token format');
+    }
+    const payload = await this.jwtService.verifyAsync(token, {
+      secret: this.configService.get<string>('JWT_SECRET'),
+    });
+    if (payload.type !== 'customer') {
+      throw new UnauthorizedException('Customer authentication required');
+    }
+    return payload.sub;
+  }
 
   @Get('enabled')
   @ApiOperation({ summary: 'Check if remote access feature is enabled' })
@@ -106,7 +130,6 @@ export class RemoteAccessController {
   }
 
   @Get('pending')
-  @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get pending access requests for document owner (Customer only)' })
   @ApiResponse({
@@ -115,14 +138,13 @@ export class RemoteAccessController {
     type: PendingAccessRequestsResponseDto,
   })
   async pendingRequests(
-    @Request() req: ExpressRequest,
+    @Headers('authorization') authHeader: string,
   ): Promise<PendingAccessRequestsResponseDto> {
-    const userId = req['customer'].userId;
+    const userId = await this.extractCustomerIdFromToken(authHeader);
     return this.remoteAccessService.pendingRequestsForOwner(userId);
   }
 
   @Put(':id/respond')
-  @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Respond to an access request (Customer only)' })
   @ApiParam({ name: 'id', description: 'Request ID', type: Number })
@@ -134,11 +156,11 @@ export class RemoteAccessController {
   @ApiResponse({ status: 403, description: 'Not the document owner' })
   @ApiResponse({ status: 404, description: 'Request not found' })
   async respondToRequest(
-    @Request() req: ExpressRequest,
+    @Headers('authorization') authHeader: string,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: RespondToAccessRequestDto,
   ): Promise<RemoteAccessRequestResponseDto> {
-    const userId = req['customer'].userId;
+    const userId = await this.extractCustomerIdFromToken(authHeader);
     return this.remoteAccessService.respondToRequest(userId, id, dto);
   }
 }

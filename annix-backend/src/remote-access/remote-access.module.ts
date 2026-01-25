@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 
 import { RemoteAccessRequest } from './entities/remote-access-request.entity';
 import { RemoteAccessService } from './remote-access.service';
@@ -10,15 +11,20 @@ import { RemoteAccessFeatureGuard } from './guards/remote-access-feature.guard';
 import { User } from '../user/entities/user.entity';
 import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
 import { AdminModule } from '../admin/admin.module';
-import { CustomerModule } from '../customer/customer.module';
 import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([RemoteAccessRequest, User, RfqDraft]),
     ConfigModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+      }),
+      inject: [ConfigService],
+    }),
     forwardRef(() => AdminModule),
-    forwardRef(() => CustomerModule),
     EmailModule,
   ],
   providers: [RemoteAccessService, RemoteAccessFeatureGuard],

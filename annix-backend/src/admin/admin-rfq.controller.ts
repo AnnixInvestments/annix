@@ -11,7 +11,6 @@ import {
   StreamableFile,
   Response,
   Request,
-  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -37,8 +36,6 @@ import {
 import { CreateUnifiedRfqDto } from '../rfq/dto/create-unified-rfq.dto';
 import { SaveRfqDraftDto, RfqDraftResponseDto } from '../rfq/dto/rfq-draft.dto';
 import { Rfq } from '../rfq/entities/rfq.entity';
-import { RemoteAccessService } from '../remote-access/remote-access.service';
-import { RemoteAccessDocumentType, RemoteAccessRequestType } from '../remote-access/entities/remote-access-request.entity';
 
 @ApiTags('Admin RFQ Management')
 @Controller('admin/rfqs')
@@ -48,30 +45,7 @@ import { RemoteAccessDocumentType, RemoteAccessRequestType } from '../remote-acc
 export class AdminRfqController {
   constructor(
     private readonly rfqService: AdminRfqService,
-    private readonly remoteAccessService: RemoteAccessService,
   ) {}
-
-  private async verifyRemoteAccess(
-    adminId: number,
-    documentId: number,
-    requestType: RemoteAccessRequestType,
-  ): Promise<void> {
-    if (!this.remoteAccessService.isFeatureEnabled()) {
-      return;
-    }
-
-    const status = await this.remoteAccessService.checkAccessStatus(
-      adminId,
-      RemoteAccessDocumentType.RFQ,
-      documentId,
-    );
-
-    if (!status.hasAccess) {
-      throw new ForbiddenException(
-        'Remote access not granted. Please request access from the document owner.',
-      );
-    }
-  }
 
   @Get()
   @ApiOperation({ summary: 'Get all RFQs (paginated, filterable) - VIEW ONLY' })
@@ -94,15 +68,9 @@ export class AdminRfqController {
     type: RfqDetailDto,
   })
   @ApiResponse({ status: 404, description: 'RFQ not found' })
-  @ApiResponse({ status: 403, description: 'Remote access not granted' })
   async getRfqDetail(
-    @Request() req: ExpressRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<RfqDetailDto> {
-    const adminId = req['user']?.id;
-    if (adminId) {
-      await this.verifyRemoteAccess(adminId, id, RemoteAccessRequestType.VIEW);
-    }
     return this.rfqService.getRfqDetail(id);
   }
 
@@ -114,15 +82,9 @@ export class AdminRfqController {
     type: RfqFullDraftDto,
   })
   @ApiResponse({ status: 404, description: 'RFQ not found' })
-  @ApiResponse({ status: 403, description: 'Remote access not granted' })
   async getRfqFullDraft(
-    @Request() req: ExpressRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<RfqFullDraftDto> {
-    const adminId = req['user']?.id;
-    if (adminId) {
-      await this.verifyRemoteAccess(adminId, id, RemoteAccessRequestType.EDIT);
-    }
     return this.rfqService.getRfqFullDraft(id);
   }
 
@@ -134,15 +96,9 @@ export class AdminRfqController {
     type: [RfqItemDetailDto],
   })
   @ApiResponse({ status: 404, description: 'RFQ not found' })
-  @ApiResponse({ status: 403, description: 'Remote access not granted' })
   async getRfqItems(
-    @Request() req: ExpressRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<RfqItemDetailDto[]> {
-    const adminId = req['user']?.id;
-    if (adminId) {
-      await this.verifyRemoteAccess(adminId, id, RemoteAccessRequestType.VIEW);
-    }
     return this.rfqService.getRfqItems(id);
   }
 
@@ -154,15 +110,9 @@ export class AdminRfqController {
     type: [RfqDocumentDto],
   })
   @ApiResponse({ status: 404, description: 'RFQ not found' })
-  @ApiResponse({ status: 403, description: 'Remote access not granted' })
   async getRfqDocuments(
-    @Request() req: ExpressRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<RfqDocumentDto[]> {
-    const adminId = req['user']?.id;
-    if (adminId) {
-      await this.verifyRemoteAccess(adminId, id, RemoteAccessRequestType.VIEW);
-    }
     return this.rfqService.getRfqDocuments(id);
   }
 
@@ -200,16 +150,10 @@ export class AdminRfqController {
     description: 'RFQ updated successfully',
   })
   @ApiResponse({ status: 404, description: 'RFQ not found' })
-  @ApiResponse({ status: 403, description: 'Remote access not granted' })
   async updateRfq(
-    @Request() req: ExpressRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateUnifiedRfqDto,
   ): Promise<{ rfq: Rfq; itemsUpdated: number }> {
-    const adminId = req['user']?.id;
-    if (adminId) {
-      await this.verifyRemoteAccess(adminId, id, RemoteAccessRequestType.EDIT);
-    }
     return this.rfqService.updateRfq(id, dto);
   }
 

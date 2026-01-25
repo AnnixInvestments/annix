@@ -38,6 +38,9 @@ import { CustomerOnboardingController } from './customer-onboarding.controller';
 import { CustomerDocumentController } from './customer-document.controller';
 import { CustomerSupplierController } from './customer-supplier.controller';
 
+// Guards
+import { CustomerAuthGuard } from './guards/customer-auth.guard';
+
 // External modules
 import { UserModule } from '../user/user.module';
 import { AuditModule } from '../audit/audit.module';
@@ -95,11 +98,13 @@ import { AdminModule } from '../admin/admin.module';
     CustomerDocumentService,
     CustomerSupplierService,
     DocumentOcrService,
+    CustomerAuthGuard,
   ],
   exports: [
     CustomerAuthService,
     CustomerService,
     CustomerOnboardingService,
+    CustomerAuthGuard,
     JwtModule,
   ],
 })
