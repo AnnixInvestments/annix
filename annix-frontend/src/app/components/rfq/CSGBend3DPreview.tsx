@@ -1309,72 +1309,59 @@ const Scene = (props: Props) => {
 
         const gussetColor = { color: '#888800', metalness: 0.5, roughness: 0.5 };
 
+        const segmentAngle = numberOfSegments ? (angleRad / numberOfSegments) : (Math.PI / 12);
+        const firstMitreHeight = ribHeightH + (bendR + outerR) * (1 - Math.cos(segmentAngle));
+        const secondMitreHeight = ribHeightH + (bendR + outerR) * (1 - Math.cos(segmentAngle * 2));
+
         const gussetShape = new THREE.Shape();
-        const gussetHeight = bendR * 1.2;
-        const gussetWidth = bendR * 0.8;
-
         gussetShape.moveTo(0, 0);
-        gussetShape.lineTo(-gussetWidth, 0);
-        gussetShape.lineTo(-gussetWidth, gussetHeight * 0.3);
-
-        const curvePoints = 16;
-        for (let i = 0; i <= curvePoints; i++) {
-          const t = i / curvePoints;
-          const angle = (Math.PI / 2) * t;
-          const x = -gussetWidth + gussetWidth * Math.sin(angle);
-          const y = gussetHeight * 0.3 + (gussetHeight * 0.7) * (1 - Math.cos(angle));
-          gussetShape.lineTo(x, y);
-        }
-
+        gussetShape.lineTo(basePlateXDim, 0);
+        gussetShape.lineTo(basePlateXDim, firstMitreHeight);
+        gussetShape.lineTo(0, secondMitreHeight);
         gussetShape.lineTo(0, 0);
 
         return (
           <group position={[steelworkX, steelworkY, steelworkZ]}>
-            {/* Base Plate - horizontal at bottom */}
+            {/* Base Plate - horizontal at bottom (X and Y swapped) */}
             <mesh position={[0, -plateThickness / 2, 0]}>
-              <boxGeometry args={[basePlateXDim, plateThickness, basePlateYDim]} />
+              <boxGeometry args={[basePlateYDim, plateThickness, basePlateXDim]} />
               <meshStandardMaterial {...basePlateColor} />
             </mesh>
 
-            {/* Rib running X direction - full X width, T2 thickness, H height */}
+            {/* Rib running X direction - uses Y dimension for width */}
             <mesh position={[0, ribHeightH / 2, 0]}>
-              <boxGeometry args={[basePlateXDim, ribHeightH, ribThickness]} />
+              <boxGeometry args={[basePlateYDim, ribHeightH, ribThickness]} />
               <meshStandardMaterial {...ribColor} />
             </mesh>
 
-            {/* Rib running Y direction - full Y length, T2 thickness, H height */}
-            <mesh position={[0, ribHeightH / 2, 0]}>
-              <boxGeometry args={[ribThickness, ribHeightH, basePlateYDim]} />
-              <meshStandardMaterial {...ribColor} />
-            </mesh>
 
-            {/* Gusset plate 1 (yellow) - at back edge of base plate, bottom aligned with top of rib (H) */}
+            {/* Gusset plate 1 (yellow) - vertical plate on left side of base plate */}
             <mesh
-              position={[0, ribHeightH, -basePlateYDim / 2]}
-              rotation={[0, Math.PI / 2, 0]}
+              position={[0, 0, -basePlateXDim / 2]}
+              rotation={[0, -Math.PI / 2, 0]}
             >
               <extrudeGeometry args={[gussetShape, { depth: ribThickness, bevelEnabled: false }]} />
               <meshStandardMaterial {...gussetColor} />
             </mesh>
 
-            {/* Gusset plate 2 (blue) - on X-direction rib at left edge, simple angled shape */}
+            {/* Gusset plate 2 - extends from base plate to top, spans full width */}
             {(() => {
-              const blueGussetShape = new THREE.Shape();
-              const tallHeight = bendR * 1.5;
-              const shortHeight = gussetHeight;
+              const gusset2Shape = new THREE.Shape();
+              const gusset2Width = basePlateYDim;
+              const gusset2Height = ribHeightH + bendR * 0.9;
 
-              blueGussetShape.moveTo(0, 0);
-              blueGussetShape.lineTo(-gussetWidth, 0);
-              blueGussetShape.lineTo(-gussetWidth, tallHeight);
-              blueGussetShape.lineTo(0, shortHeight);
-              blueGussetShape.lineTo(0, 0);
+              gusset2Shape.moveTo(0, 0);
+              gusset2Shape.lineTo(-gusset2Width, 0);
+              gusset2Shape.lineTo(-gusset2Width, gusset2Height);
+              gusset2Shape.lineTo(0, gusset2Height);
+              gusset2Shape.lineTo(0, 0);
 
               return (
                 <mesh
-                  position={[-basePlateXDim / 2, ribHeightH, 0]}
+                  position={[-basePlateYDim / 2, 0, 0]}
                   rotation={[0, Math.PI, 0]}
                 >
-                  <extrudeGeometry args={[blueGussetShape, { depth: ribThickness, bevelEnabled: false }]} />
+                  <extrudeGeometry args={[gusset2Shape, { depth: ribThickness, bevelEnabled: false }]} />
                   <meshStandardMaterial color="#0066cc" metalness={0.5} roughness={0.5} />
                 </mesh>
               );
