@@ -972,8 +972,10 @@ export default function StraightPipeForm({
                                   });
                                 } else if (isBs4504) {
                                   return BS_4504_PRESSURE_CLASSES.map((pc) => {
+                                    const pcValue = String(pc.value);
+                                    const equivalentValue = pcValue === '64' ? '63' : pcValue;
                                     const matchingPc = masterData.pressureClasses?.find(
-                                      (mpc: any) => mpc.designation?.includes(String(pc.value))
+                                      (mpc: any) => mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue)
                                     );
                                     return matchingPc ? (
                                       <option key={matchingPc.id} value={matchingPc.id}>

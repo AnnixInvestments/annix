@@ -1170,7 +1170,11 @@ export default function BendForm({
                             >
                               <option value="">Select...</option>
                               {pressureClasses.map((pc) => {
-                                const matchingPc = masterData.pressureClasses?.find((mpc: any) => mpc.designation?.includes(String(pc.value)));
+                                const pcValue = String(pc.value);
+                                const equivalentValue = pcValue === '64' ? '63' : pcValue;
+                                const matchingPc = masterData.pressureClasses?.find((mpc: any) =>
+                                  mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue)
+                                );
                                 return matchingPc ? (
                                   <option key={matchingPc.id} value={matchingPc.id}>{isSabs1123 ? pc.value : pc.label}</option>
                                 ) : null;
@@ -1710,7 +1714,11 @@ export default function BendForm({
                                 >
                                   <option value="">Select...</option>
                                   {pressureClasses.map((pc) => {
-                                    const matchingPc = masterData.pressureClasses?.find((mpc: any) => mpc.designation?.includes(String(pc.value)));
+                                    const pcValue = String(pc.value);
+                                    const equivalentValue = pcValue === '64' ? '63' : pcValue;
+                                    const matchingPc = masterData.pressureClasses?.find((mpc: any) =>
+                                      mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue)
+                                    );
                                     return matchingPc ? (
                                       <option key={matchingPc.id} value={matchingPc.id}>{isSabs1123 ? pc.value : pc.label}</option>
                                     ) : null;
@@ -2097,7 +2105,11 @@ export default function BendForm({
                                       >
                                         <option value="">Select...</option>
                                         {pressureClasses.map((pc) => {
-                                          const matchingPc = masterData.pressureClasses?.find((mpc: any) => mpc.designation?.includes(String(pc.value)));
+                                          const pcValue = String(pc.value);
+                                          const equivalentValue = pcValue === '64' ? '63' : pcValue;
+                                          const matchingPc = masterData.pressureClasses?.find((mpc: any) =>
+                                            mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue)
+                                          );
                                           return matchingPc ? (
                                             <option key={matchingPc.id} value={matchingPc.id}>{isSabs1123 ? pc.value : pc.label}</option>
                                           ) : null;
