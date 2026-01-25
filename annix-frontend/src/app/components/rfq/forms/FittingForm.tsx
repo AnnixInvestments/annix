@@ -1740,7 +1740,7 @@ export default function FittingForm({
                               </div>
                             )}
 
-                            {/* Surface Area - Indigo */}
+                            {/* Surface Area - Indigo/Cyan */}
                             {mainOdMm && pipeWallThickness && (() => {
                               const totalLengthMm = (pipeALength || 0) + (pipeBLength || 0) + (teeHeight || 0);
                               const pipeLengthM = totalLengthMm / 1000;
@@ -1754,10 +1754,27 @@ export default function FittingForm({
                                 pressureClass: pressureClassDesignation,
                               });
                               return (
-                                <div className="bg-indigo-50 p-2 rounded text-center border border-indigo-200">
-                                  <p className="text-xs text-indigo-800 font-medium">Surface Area</p>
-                                  <p className="text-lg font-bold text-indigo-900">{(surfaceArea.totalExternalAreaM2 * quantity).toFixed(2)}</p>
-                                  <p className="text-xs text-indigo-600">m² external</p>
+                                <div className="flex gap-2">
+                                  <div className="flex-1 bg-indigo-50 p-2 rounded text-center border border-indigo-200">
+                                    <p className="text-xs text-indigo-800 font-medium">External m²</p>
+                                    <p className="text-lg font-bold text-indigo-900">{(surfaceArea.totalExternalAreaM2 * quantity).toFixed(2)}</p>
+                                    <div className="text-xs text-indigo-600 mt-1 text-left">
+                                      <p>Pipe: {(surfaceArea.externalPipeAreaM2 * quantity).toFixed(3)}</p>
+                                      {surfaceArea.externalFlangeBackAreaM2 > 0 && (
+                                        <p>Flanges: {(surfaceArea.externalFlangeBackAreaM2 * quantity).toFixed(3)}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 bg-cyan-50 p-2 rounded text-center border border-cyan-200">
+                                    <p className="text-xs text-cyan-800 font-medium">Internal m²</p>
+                                    <p className="text-lg font-bold text-cyan-900">{(surfaceArea.totalInternalAreaM2 * quantity).toFixed(2)}</p>
+                                    <div className="text-xs text-cyan-600 mt-1 text-left">
+                                      <p>Pipe: {(surfaceArea.internalPipeAreaM2 * quantity).toFixed(3)}</p>
+                                      {surfaceArea.internalFlangeFaceAreaM2 > 0 && (
+                                        <p>Flanges: {(surfaceArea.internalFlangeFaceAreaM2 * quantity).toFixed(3)}</p>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               );
                             })()}

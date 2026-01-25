@@ -42,7 +42,7 @@ interface WorkingConditionsSectionProps {
   onPressureChange: (value: number | undefined) => void;
   onTemperatureChange: (value: number | undefined) => void;
   onReset: () => void;
-  gridCols?: 2 | 3;
+  gridCols?: 2 | 3 | 4;
   pressureTooltip?: string;
   temperatureTooltip?: string;
   extraFields?: React.ReactNode;
@@ -73,7 +73,9 @@ export function WorkingConditionsSection({
 
   const gridClass = gridCols === 2
     ? 'grid grid-cols-2 gap-3'
-    : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3';
+    : gridCols === 4
+      ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3'
+      : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3';
 
   return (
     <div className={`${colors.container} rounded-lg p-3 mt-3 ${className}`}>

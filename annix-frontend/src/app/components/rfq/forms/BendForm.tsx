@@ -172,80 +172,126 @@ export default function BendForm({
                   globalTemperatureC={globalSpecs?.workingTemperatureC}
                   onPressureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: value } })}
                   onTemperatureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingTemperatureC: value } })}
-                  onReset={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined, steelSpecificationId: undefined } })}
-                  gridCols={3}
+                  onReset={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined, steelSpecificationId: undefined, bendItemType: undefined } })}
+                  gridCols={4}
                   extraFields={
-                    <div>
-                      {(() => {
-                        const globalSpecId = globalSpecs?.steelSpecificationId;
-                        const effectiveSpecId = entry.specs?.steelSpecificationId || globalSpecId;
-                        const isSteelFromGlobal = globalSpecId && effectiveSpecId === globalSpecId;
-                        const isSteelOverride = globalSpecId && effectiveSpecId !== globalSpecId;
-                        const selectId = `bend-steel-spec-${entry.id}`;
-                        const groupedOptions = masterData.steelSpecs
-                          ? groupSteelSpecifications(masterData.steelSpecs)
-                          : [];
-                        const globalSelectClass = 'w-full border-2 border-green-500 dark:border-lime-400 rounded';
-                        const overrideSelectClass = 'w-full border-2 border-red-500 dark:border-red-400 rounded';
-                        const defaultSelectClass = 'w-full';
-
-                        return (
-                          <>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                              Steel Specification
-                              {isSteelFromGlobal && <span className="text-green-600 text-xs ml-2">(Global)</span>}
-                              {isSteelOverride && <span className="text-red-600 text-xs ml-2">(Override)</span>}
-                            </label>
-                            <Select
-                              id={selectId}
-                              value={String(effectiveSpecId || '')}
-                              className={isSteelFromGlobal ? globalSelectClass : isSteelOverride ? overrideSelectClass : defaultSelectClass}
-                            onChange={(value) => {
-                              const newSpecId = value ? Number(value) : undefined;
-                              const nominalBore = entry.specs?.nominalBoreMm;
-
-                              const newSpec = newSpecId ? masterData.steelSpecs?.find((s: any) => s.id === newSpecId) : null;
-                              const newSpecName = newSpec?.steelSpecName || '';
-                              const isNewSABS719 = newSpecName.includes('SABS 719') || newSpecName.includes('SANS 719');
-
-                              const oldSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                              const oldSpec = oldSpecId ? masterData.steelSpecs?.find((s: any) => s.id === oldSpecId) : null;
-                              const oldSpecName = oldSpec?.steelSpecName || '';
-                              const wasOldSABS719 = oldSpecName.includes('SABS 719') || oldSpecName.includes('SANS 719');
-
-                              const specTypeChanged = isNewSABS719 !== wasOldSABS719;
-                              const updatedEntry: any = {
-                                ...entry,
-                                specs: {
-                                  ...entry.specs,
-                                  steelSpecificationId: newSpecId,
-                                  scheduleNumber: specTypeChanged ? undefined : entry.specs?.scheduleNumber,
-                                  wallThicknessMm: specTypeChanged ? undefined : entry.specs?.wallThicknessMm,
-                                  bendType: specTypeChanged ? undefined : entry.specs?.bendType,
-                                  bendRadiusType: specTypeChanged ? undefined : entry.specs?.bendRadiusType,
-                                  bendDegrees: specTypeChanged ? undefined : entry.specs?.bendDegrees,
-                                  numberOfSegments: specTypeChanged ? undefined : entry.specs?.numberOfSegments,
-                                  centerToFaceMm: specTypeChanged ? undefined : entry.specs?.centerToFaceMm,
-                                  bendRadiusMm: specTypeChanged ? undefined : entry.specs?.bendRadiusMm
-                                }
-                              };
-                              updatedEntry.description = generateItemDescription(updatedEntry);
-                              onUpdateEntry(entry.id, updatedEntry);
-
-                              if (!specTypeChanged && nominalBore && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                    <>
+                      {/* Item Type Dropdown */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                          Item Type
+                        </label>
+                        <select
+                          id={`bend-item-type-${entry.id}`}
+                          value={entry.specs?.bendItemType || 'BEND'}
+                          onChange={(e) => {
+                            const newItemType = e.target.value;
+                            const updatedEntry: any = {
+                              ...entry,
+                              specs: {
+                                ...entry.specs,
+                                bendItemType: newItemType,
+                                duckfootBasePlateXMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateXMm : undefined,
+                                duckfootBasePlateYMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateYMm : undefined,
+                                duckfootRibThicknessT2Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootRibThicknessT2Mm : undefined,
+                                duckfootPlateThicknessT1Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootPlateThicknessT1Mm : undefined
                               }
-                            }}
-                              options={[]}
-                              groupedOptions={groupedOptions}
-                              placeholder="Select Steel Spec"
-                              open={openSelects[selectId]}
-                              onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
-                            />
-                          </>
-                        );
-                      })()}
-                    </div>
+                            };
+                            updatedEntry.description = generateItemDescription(updatedEntry);
+                            onUpdateEntry(entry.id, updatedEntry);
+                          }}
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                        >
+                          <option value="BEND">Bend</option>
+                          <option value="DUCKFOOT_BEND">Duckfoot Bend</option>
+                          <option value="SWEEP_TEE">Sweep Tee</option>
+                        </select>
+                      </div>
+                      {/* Steel Specification Dropdown */}
+                      <div>
+                        {(() => {
+                          const globalSpecId = globalSpecs?.steelSpecificationId;
+                          const effectiveSpecId = entry.specs?.steelSpecificationId || globalSpecId;
+                          const isSteelFromGlobal = globalSpecId && effectiveSpecId === globalSpecId;
+                          const isSteelOverride = globalSpecId && effectiveSpecId !== globalSpecId;
+                          const selectId = `bend-steel-spec-${entry.id}`;
+                          const groupedOptions = masterData.steelSpecs
+                            ? groupSteelSpecifications(masterData.steelSpecs)
+                            : [];
+                          const globalSelectClass = 'w-full border-2 border-green-500 dark:border-lime-400 rounded';
+                          const overrideSelectClass = 'w-full border-2 border-yellow-500 dark:border-yellow-400 rounded';
+                          const unsuitableSelectClass = 'w-full border-2 border-red-500 dark:border-red-400 rounded';
+                          const defaultSelectClass = 'w-full';
+
+                          const effectivePressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
+                          const effectiveTemp = entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC;
+                          const selectedSpec = masterData.steelSpecs?.find((s: any) => s.id === effectiveSpecId);
+                          const isSteelUnsuitable = effectiveSpecId && effectivePressure && selectedSpec && (
+                            (selectedSpec.maxPressureBar && effectivePressure > selectedSpec.maxPressureBar) ||
+                            (selectedSpec.maxTemperatureC && effectiveTemp && effectiveTemp > selectedSpec.maxTemperatureC)
+                          );
+
+                          const steelSelectClass = isSteelUnsuitable ? unsuitableSelectClass : isSteelFromGlobal ? globalSelectClass : isSteelOverride ? overrideSelectClass : defaultSelectClass;
+
+                          return (
+                            <>
+                              <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                                Steel Specification
+                                {isSteelUnsuitable && <span className="text-red-600 text-xs ml-2 font-bold">(NOT SUITABLE)</span>}
+                                {!isSteelUnsuitable && isSteelFromGlobal && <span className="text-green-600 text-xs ml-2">(Global)</span>}
+                                {!isSteelUnsuitable && isSteelOverride && <span className="text-yellow-600 text-xs ml-2">(Override)</span>}
+                              </label>
+                              <Select
+                                id={selectId}
+                                value={String(effectiveSpecId || '')}
+                                className={steelSelectClass}
+                              onChange={(value) => {
+                                const newSpecId = value ? Number(value) : undefined;
+                                const nominalBore = entry.specs?.nominalBoreMm;
+
+                                const newSpec = newSpecId ? masterData.steelSpecs?.find((s: any) => s.id === newSpecId) : null;
+                                const newSpecName = newSpec?.steelSpecName || '';
+                                const isNewSABS719 = newSpecName.includes('SABS 719') || newSpecName.includes('SANS 719');
+
+                                const oldSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                                const oldSpec = oldSpecId ? masterData.steelSpecs?.find((s: any) => s.id === oldSpecId) : null;
+                                const oldSpecName = oldSpec?.steelSpecName || '';
+                                const wasOldSABS719 = oldSpecName.includes('SABS 719') || oldSpecName.includes('SANS 719');
+
+                                const specTypeChanged = isNewSABS719 !== wasOldSABS719;
+                                const updatedEntry: any = {
+                                  ...entry,
+                                  specs: {
+                                    ...entry.specs,
+                                    steelSpecificationId: newSpecId,
+                                    scheduleNumber: specTypeChanged ? undefined : entry.specs?.scheduleNumber,
+                                    wallThicknessMm: specTypeChanged ? undefined : entry.specs?.wallThicknessMm,
+                                    bendType: specTypeChanged ? undefined : entry.specs?.bendType,
+                                    bendRadiusType: specTypeChanged ? undefined : entry.specs?.bendRadiusType,
+                                    bendDegrees: specTypeChanged ? undefined : entry.specs?.bendDegrees,
+                                    numberOfSegments: specTypeChanged ? undefined : entry.specs?.numberOfSegments,
+                                    centerToFaceMm: specTypeChanged ? undefined : entry.specs?.centerToFaceMm,
+                                    bendRadiusMm: specTypeChanged ? undefined : entry.specs?.bendRadiusMm
+                                  }
+                                };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+
+                                if (!specTypeChanged && nominalBore && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+                                  setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                                }
+                              }}
+                                options={[]}
+                                groupedOptions={groupedOptions}
+                                placeholder="Select Steel Spec"
+                                open={openSelects[selectId]}
+                                onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
+                              />
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </>
                   }
                 />
                 <MaterialSuitabilityWarning
@@ -279,18 +325,29 @@ export default function BendForm({
                   // Common Steel Spec dropdown (used in both layouts)
                   const steelGlobalSpecId = globalSpecs?.steelSpecificationId;
                   const steelEffectiveSpecId = entry.specs?.steelSpecificationId || steelGlobalSpecId;
-                  const isSteelFromGlobal = steelGlobalSpecId && steelEffectiveSpecId === steelGlobalSpecId;
-                  const isSteelOverride = steelGlobalSpecId && steelEffectiveSpecId !== steelGlobalSpecId;
+                  const isSteelFromGlobal2 = steelGlobalSpecId && steelEffectiveSpecId === steelGlobalSpecId;
+                  const isSteelOverride2 = steelGlobalSpecId && steelEffectiveSpecId !== steelGlobalSpecId;
                   const steelGlobalSelectClass = 'w-full border-2 border-green-500 dark:border-lime-400 rounded';
-                  const steelOverrideSelectClass = 'w-full border-2 border-red-500 dark:border-red-400 rounded';
+                  const steelOverrideSelectClass = 'w-full border-2 border-yellow-500 dark:border-yellow-400 rounded';
+                  const steelUnsuitableSelectClass = 'w-full border-2 border-red-500 dark:border-red-400 rounded';
                   const steelDefaultSelectClass = 'w-full';
+
+                  const effectivePressure2 = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
+                  const effectiveTemp2 = entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC;
+                  const selectedSteelSpec2 = masterData.steelSpecs?.find((s: any) => s.id === steelEffectiveSpecId);
+                  const isSteelUnsuitable2 = steelEffectiveSpecId && effectivePressure2 && selectedSteelSpec2 && (
+                    (selectedSteelSpec2.maxPressureBar && effectivePressure2 > selectedSteelSpec2.maxPressureBar) ||
+                    (selectedSteelSpec2.maxTemperatureC && effectiveTemp2 && effectiveTemp2 > selectedSteelSpec2.maxTemperatureC)
+                  );
+                  const steelSelectClass2 = isSteelUnsuitable2 ? steelUnsuitableSelectClass : isSteelFromGlobal2 ? steelGlobalSelectClass : isSteelOverride2 ? steelOverrideSelectClass : steelDefaultSelectClass;
 
                   const SteelSpecDropdown = (
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Steel Specification
-                        {isSteelFromGlobal && <span className="text-green-600 text-xs ml-2">(Global)</span>}
-                        {isSteelOverride && <span className="text-red-600 text-xs ml-2">(Override)</span>}
+                        {isSteelUnsuitable2 && <span className="text-red-600 text-xs ml-2 font-bold">(NOT SUITABLE)</span>}
+                        {!isSteelUnsuitable2 && isSteelFromGlobal2 && <span className="text-green-600 text-xs ml-2">(Global)</span>}
+                        {!isSteelUnsuitable2 && isSteelOverride2 && <span className="text-yellow-600 text-xs ml-2">(Override)</span>}
                       </label>
                       {(() => {
                         const selectId = `bend-steel-spec-${entry.id}`;
@@ -302,7 +359,7 @@ export default function BendForm({
                           <Select
                             id={selectId}
                             value={String(steelEffectiveSpecId || '')}
-                            className={isSteelFromGlobal ? steelGlobalSelectClass : isSteelOverride ? steelOverrideSelectClass : steelDefaultSelectClass}
+                            className={steelSelectClass2}
                             onChange={(value) => {
                               const newSpecId = value ? Number(value) : undefined;
                               const nominalBore = entry.specs?.nominalBoreMm;
@@ -1124,16 +1181,32 @@ export default function BendForm({
                         const isStandardOverride = globalSpecs?.flangeStandardId && effectiveStandardId !== globalSpecs?.flangeStandardId;
                         const isClassOverride = globalSpecs?.flangePressureClassId && effectivePressureClassId !== globalSpecs?.flangePressureClassId;
                         const isTypeOverride = globalSpecs?.flangeTypeCode && effectiveFlangeTypeCode !== globalSpecs?.flangeTypeCode;
+
+                        const workingPressureBar = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                        const selectedPressureClass = masterData.pressureClasses?.find((pc: any) => pc.id === effectivePressureClassId);
+                        const pressureClassRatingRaw = selectedPressureClass?.designation ? parseInt(selectedPressureClass.designation.replace(/[^0-9]/g, '')) || 0 : 0;
+                        const pressureClassRatingBar = isSabs1123 ? pressureClassRatingRaw / 100 : pressureClassRatingRaw;
+                        const isPressureClassUnsuitable = effectivePressureClassId && workingPressureBar > 0 && pressureClassRatingRaw > 0 && (
+                          (isSabs1123 && pressureClassRatingRaw < workingPressureBar * 100) ||
+                          (isBs4504 && pressureClassRatingRaw < workingPressureBar)
+                        );
+
                         const globalSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400';
-                        const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
+                        const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400';
+                        const unsuitableSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
                         const defaultSelectClass = 'w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800';
+
+                        const standardSelectClass = isStandardFromGlobal ? globalSelectClass : isStandardOverride ? overrideSelectClass : defaultSelectClass;
+                        const classSelectClass = isPressureClassUnsuitable ? unsuitableSelectClass : isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass;
+                        const typeSelectClass = isTypeFromGlobal ? globalSelectClass : isTypeOverride ? overrideSelectClass : defaultSelectClass;
+
                         return (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
                         <div>
                           <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                             Standard
                             {isStandardFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
-                            {isStandardOverride && <span className="ml-1 text-red-600 font-normal">(Override)</span>}
+                            {isStandardOverride && <span className="ml-1 text-yellow-600 font-normal">(Override)</span>}
                             <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange standard determines pressure class options and flange dimensions">?</span>
                           </label>
                           <select
@@ -1147,7 +1220,7 @@ export default function BendForm({
                                 getFilteredPressureClasses(standardId);
                               }
                             }}
-                            className={isStandardFromGlobal ? globalSelectClass : isStandardOverride ? overrideSelectClass : defaultSelectClass}
+                            className={standardSelectClass}
                           >
                             <option value="">Select...</option>
                             {masterData.flangeStandards?.map((standard: any) => (
@@ -1158,8 +1231,9 @@ export default function BendForm({
                         <div>
                           <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                             {isSabs1123 ? 'Class (kPa)' : 'Class'}
-                            {isClassFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
-                            {isClassOverride && <span className="ml-1 text-red-600 font-normal">(Override)</span>}
+                            {isPressureClassUnsuitable && <span className="ml-1 text-red-600 font-bold">(NOT SUITABLE)</span>}
+                            {!isPressureClassUnsuitable && isClassFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
+                            {!isPressureClassUnsuitable && isClassOverride && <span className="ml-1 text-yellow-600 font-normal">(Override)</span>}
                             <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange pressure rating. Should match or exceed working pressure.">?</span>
                           </label>
                           {showFlangeType ? (
@@ -1168,7 +1242,7 @@ export default function BendForm({
                               onChange={(e) => onUpdateEntry(entry.id, {
                                 specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                               })}
-                              className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
+                              className={classSelectClass}
                             >
                               <option value="">Select...</option>
                               {pressureClasses.map((pc) => {
@@ -1188,7 +1262,7 @@ export default function BendForm({
                               onChange={(e) => onUpdateEntry(entry.id, {
                                 specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                               })}
-                              className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
+                              className={classSelectClass}
                             >
                               <option value="">Select...</option>
                               {(pressureClassesByStandard[effectiveStandardId || 0] || masterData.pressureClasses || []).map((pc: any) => (
@@ -1201,7 +1275,7 @@ export default function BendForm({
                           <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                             Type
                             {isTypeFromGlobal && showFlangeType && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
-                            {isTypeOverride && showFlangeType && <span className="ml-1 text-red-600 font-normal">(Override)</span>}
+                            {isTypeOverride && showFlangeType && <span className="ml-1 text-yellow-600 font-normal">(Override)</span>}
                           </label>
                           {showFlangeType ? (
                             <select
@@ -1209,7 +1283,7 @@ export default function BendForm({
                               onChange={(e) => onUpdateEntry(entry.id, {
                                 specs: { ...entry.specs, flangeTypeCode: e.target.value || undefined }
                               })}
-                              className={isTypeFromGlobal ? globalSelectClass : isTypeOverride ? overrideSelectClass : defaultSelectClass}
+                              className={typeSelectClass}
                             >
                               <option value="">Select...</option>
                               {flangeTypes.map((ft) => (
@@ -1274,6 +1348,125 @@ export default function BendForm({
                     );
                   })()}
                 </div>
+
+                {/* Duckfoot Steelwork Row - Only shown when Item Type is Duckfoot Bend */}
+                {entry.specs?.bendItemType === 'DUCKFOOT_BEND' && (
+                  <div className="bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-700 rounded-lg p-3 mt-3">
+                    <div className="mb-2">
+                      <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                        Duckfoot Steelwork (Base Plate & Ribs)
+                      </h4>
+                    </div>
+                    {(() => {
+                      const nominalBore = entry.specs?.nominalBoreMm;
+                      const duckfootDefaults: Record<number, { x: number; y: number; t1: number; t2: number }> = {
+                        200: { x: 355, y: 230, t1: 6, t2: 10 },
+                        250: { x: 405, y: 280, t1: 6, t2: 10 },
+                        300: { x: 460, y: 330, t1: 6, t2: 10 },
+                        350: { x: 510, y: 380, t1: 8, t2: 12 },
+                        400: { x: 560, y: 430, t1: 8, t2: 12 },
+                        450: { x: 610, y: 485, t1: 8, t2: 12 },
+                        500: { x: 660, y: 535, t1: 10, t2: 14 },
+                        550: { x: 710, y: 585, t1: 10, t2: 14 },
+                        600: { x: 760, y: 635, t1: 10, t2: 14 },
+                        650: { x: 815, y: 693, t1: 12, t2: 16 },
+                        700: { x: 865, y: 733, t1: 12, t2: 16 },
+                        750: { x: 915, y: 793, t1: 12, t2: 16 },
+                        800: { x: 970, y: 833, t1: 14, t2: 18 },
+                        850: { x: 1020, y: 883, t1: 14, t2: 18 },
+                        900: { x: 1070, y: 933, t1: 14, t2: 18 }
+                      };
+                      const defaults = nominalBore && duckfootDefaults[nominalBore] ? duckfootDefaults[nominalBore] : null;
+                      const hasDefaults = !!defaults;
+
+                      return (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Base Plate X (mm)
+                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Width of the duckfoot base plate (longer dimension)">?</span>
+                            </label>
+                            <input
+                              type="number"
+                              value={entry.specs?.duckfootBasePlateXMm || defaults?.x || ''}
+                              onChange={(e) => {
+                                const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                const updatedEntry = { ...entry, specs: { ...entry.specs, duckfootBasePlateXMm: value } };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+                              }}
+                              placeholder={hasDefaults ? `Default: ${defaults.x}` : 'Enter X'}
+                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              min="100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Base Plate Y (mm)
+                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Depth of the duckfoot base plate (shorter dimension)">?</span>
+                            </label>
+                            <input
+                              type="number"
+                              value={entry.specs?.duckfootBasePlateYMm || defaults?.y || ''}
+                              onChange={(e) => {
+                                const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                const updatedEntry = { ...entry, specs: { ...entry.specs, duckfootBasePlateYMm: value } };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+                              }}
+                              placeholder={hasDefaults ? `Default: ${defaults.y}` : 'Enter Y'}
+                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              min="100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Rib Thickness T1 (mm)
+                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Thickness of the vertical ribs supporting the pipe">?</span>
+                            </label>
+                            <input
+                              type="number"
+                              value={entry.specs?.duckfootPlateThicknessT1Mm || defaults?.t1 || ''}
+                              onChange={(e) => {
+                                const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                const updatedEntry = { ...entry, specs: { ...entry.specs, duckfootPlateThicknessT1Mm: value } };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+                              }}
+                              placeholder={hasDefaults ? `Default: ${defaults.t1}` : 'Enter T1'}
+                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              min="4"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Base Plate T2 (mm)
+                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Thickness of the base plate">?</span>
+                            </label>
+                            <input
+                              type="number"
+                              value={entry.specs?.duckfootRibThicknessT2Mm || defaults?.t2 || ''}
+                              onChange={(e) => {
+                                const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                const updatedEntry = { ...entry, specs: { ...entry.specs, duckfootRibThicknessT2Mm: value } };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+                              }}
+                              placeholder={hasDefaults ? `Default: ${defaults.t2}` : 'Enter T2'}
+                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              min="6"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    {entry.specs?.nominalBoreMm && (
+                      <div className="mt-2 text-xs text-orange-700 dark:text-orange-300">
+                        <span className="font-medium">Note:</span> Default dimensions are based on MPS manual page 30 for {entry.specs.nominalBoreMm}NB duckfoot elbows/bends.
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Tangent Extensions Row */}
                 <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
@@ -1656,14 +1849,26 @@ export default function BendForm({
                         const stub1EffectiveStandardId = entry.specs?.stubs?.[0]?.flangeStandardId || globalSpecs?.flangeStandardId;
                         const stub1EffectiveClassId = entry.specs?.stubs?.[0]?.flangePressureClassId || globalSpecs?.flangePressureClassId;
                         const stub1EffectiveTypeCode = entry.specs?.stubs?.[0]?.flangeTypeCode || globalSpecs?.flangeTypeCode;
-                        const isStandardFromGlobal = globalSpecs?.flangeStandardId && stub1EffectiveStandardId === globalSpecs?.flangeStandardId;
-                        const isClassFromGlobal = globalSpecs?.flangePressureClassId && stub1EffectiveClassId === globalSpecs?.flangePressureClassId;
-                        const isTypeFromGlobal = globalSpecs?.flangeTypeCode && stub1EffectiveTypeCode === globalSpecs?.flangeTypeCode;
-                        const isStandardOverride = globalSpecs?.flangeStandardId && stub1EffectiveStandardId !== globalSpecs?.flangeStandardId;
-                        const isClassOverride = globalSpecs?.flangePressureClassId && stub1EffectiveClassId !== globalSpecs?.flangePressureClassId;
-                        const isTypeOverride = globalSpecs?.flangeTypeCode && stub1EffectiveTypeCode !== globalSpecs?.flangeTypeCode;
+                        const isStandardFromGlobal = globalSpecs?.flangeStandardId && stub1EffectiveStandardId === globalSpecs?.flangeStandardId && !entry.specs?.stubs?.[0]?.flangeStandardId;
+                        const isClassFromGlobal = globalSpecs?.flangePressureClassId && stub1EffectiveClassId === globalSpecs?.flangePressureClassId && !entry.specs?.stubs?.[0]?.flangePressureClassId;
+                        const isTypeFromGlobal = globalSpecs?.flangeTypeCode && stub1EffectiveTypeCode === globalSpecs?.flangeTypeCode && !entry.specs?.stubs?.[0]?.flangeTypeCode;
+                        const isStandardOverride = entry.specs?.stubs?.[0]?.flangeStandardId && entry.specs?.stubs?.[0]?.flangeStandardId !== globalSpecs?.flangeStandardId;
+                        const isClassOverride = entry.specs?.stubs?.[0]?.flangePressureClassId && entry.specs?.stubs?.[0]?.flangePressureClassId !== globalSpecs?.flangePressureClassId;
+                        const isTypeOverride = entry.specs?.stubs?.[0]?.flangeTypeCode && entry.specs?.stubs?.[0]?.flangeTypeCode !== globalSpecs?.flangeTypeCode;
+
+                        const stub1SelectedStandard = masterData.flangeStandards?.find((s: any) => s.id === stub1EffectiveStandardId);
+                        const stub1IsSabs1123 = stub1SelectedStandard?.code === 'SANS 1123' || stub1SelectedStandard?.code === 'SABS 1123';
+                        const stub1IsBs4504 = stub1SelectedStandard?.code === 'BS 4504' || stub1SelectedStandard?.code === 'EN 1092';
+                        const stub1SelectedClass = masterData.pressureClasses?.find((pc: any) => pc.id === stub1EffectiveClassId);
+                        const stub1PressureClassRatingRaw = stub1SelectedClass?.designation ? parseInt(stub1SelectedClass.designation.replace(/[^\d]/g, '')) : 0;
+                        const stub1WorkingPressureBar = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                        const stub1IsPressureClassUnsuitable = stub1EffectiveClassId && stub1WorkingPressureBar > 0 && stub1PressureClassRatingRaw > 0 && (
+                          (stub1IsSabs1123 && stub1PressureClassRatingRaw < stub1WorkingPressureBar * 100) ||
+                          (stub1IsBs4504 && stub1PressureClassRatingRaw < stub1WorkingPressureBar)
+                        );
                         const globalSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400';
-                        const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
+                        const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400';
+                        const unsuitableSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
                         const defaultSelectClass = 'w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800';
                         return (
                           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
@@ -1675,8 +1880,8 @@ export default function BendForm({
                             <div>
                               <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
                                 Standard
-                                {isStandardFromGlobal && <span className="ml-1 text-green-600">(Global)</span>}
-                                {isStandardOverride && <span className="ml-1 text-red-600">(Override)</span>}
+                                {isStandardFromGlobal && <span className="ml-1 text-green-600 dark:text-lime-400">(Global)</span>}
+                                {isStandardOverride && <span className="ml-1 text-yellow-600 dark:text-yellow-400">(Override)</span>}
                               </label>
                               <select
                                 value={effectiveStandardId || ''}
@@ -1700,9 +1905,10 @@ export default function BendForm({
                             {/* Class */}
                             <div>
                               <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                                {isSabs1123 ? 'Class (kPa)' : 'Class'}
-                                {isClassFromGlobal && <span className="ml-1 text-green-600">(Global)</span>}
-                                {isClassOverride && <span className="ml-1 text-red-600">(Override)</span>}
+                                {stub1IsSabs1123 ? 'Class (kPa)' : 'Class'}
+                                {isClassFromGlobal && !stub1IsPressureClassUnsuitable && <span className="ml-1 text-green-600 dark:text-lime-400">(Global)</span>}
+                                {isClassOverride && !stub1IsPressureClassUnsuitable && <span className="ml-1 text-yellow-600 dark:text-yellow-400">(Override)</span>}
+                                {stub1IsPressureClassUnsuitable && <span className="ml-1 text-red-600 dark:text-red-400">(NOT SUITABLE)</span>}
                               </label>
                               {showFlangeType ? (
                                 <select
@@ -1712,7 +1918,7 @@ export default function BendForm({
                                     stubs[0] = { ...stubs[0], flangePressureClassId: parseInt(e.target.value) || undefined };
                                     onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
                                   }}
-                                  className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
+                                  className={stub1IsPressureClassUnsuitable ? unsuitableSelectClass : isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
                                 >
                                   <option value="">Select...</option>
                                   {pressureClasses.map((pc) => {
@@ -1722,7 +1928,7 @@ export default function BendForm({
                                       mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue)
                                     );
                                     return matchingPc ? (
-                                      <option key={matchingPc.id} value={matchingPc.id}>{isSabs1123 ? pc.value : pc.label}</option>
+                                      <option key={matchingPc.id} value={matchingPc.id}>{stub1IsSabs1123 ? pc.value : pc.label}</option>
                                     ) : null;
                                   })}
                                 </select>
@@ -1734,7 +1940,7 @@ export default function BendForm({
                                     stubs[0] = { ...stubs[0], flangePressureClassId: parseInt(e.target.value) || undefined };
                                     onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
                                   }}
-                                  className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
+                                  className={stub1IsPressureClassUnsuitable ? unsuitableSelectClass : isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
                                 >
                                   <option value="">Select...</option>
                                   {(pressureClassesByStandard[effectiveStandardId || 0] || masterData.pressureClasses || []).map((pc: any) => (
@@ -1747,8 +1953,8 @@ export default function BendForm({
                             <div>
                               <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
                                 Type
-                                {isTypeFromGlobal && showFlangeType && <span className="ml-1 text-green-600">(Global)</span>}
-                                {isTypeOverride && showFlangeType && <span className="ml-1 text-red-600">(Override)</span>}
+                                {isTypeFromGlobal && showFlangeType && <span className="ml-1 text-green-600 dark:text-lime-400">(Global)</span>}
+                                {isTypeOverride && showFlangeType && <span className="ml-1 text-yellow-600 dark:text-yellow-400">(Override)</span>}
                               </label>
                               {showFlangeType ? (
                                 <select
@@ -2047,14 +2253,27 @@ export default function BendForm({
                               const stub2EffectiveStandardId = entry.specs?.stubs?.[1]?.flangeStandardId || globalSpecs?.flangeStandardId;
                               const stub2EffectiveClassId = entry.specs?.stubs?.[1]?.flangePressureClassId || globalSpecs?.flangePressureClassId;
                               const stub2EffectiveTypeCode = entry.specs?.stubs?.[1]?.flangeTypeCode || globalSpecs?.flangeTypeCode;
-                              const isStandardFromGlobal = globalSpecs?.flangeStandardId && stub2EffectiveStandardId === globalSpecs?.flangeStandardId;
-                              const isClassFromGlobal = globalSpecs?.flangePressureClassId && stub2EffectiveClassId === globalSpecs?.flangePressureClassId;
-                              const isTypeFromGlobal = globalSpecs?.flangeTypeCode && stub2EffectiveTypeCode === globalSpecs?.flangeTypeCode;
-                              const isStandardOverride = globalSpecs?.flangeStandardId && stub2EffectiveStandardId !== globalSpecs?.flangeStandardId;
-                              const isClassOverride = globalSpecs?.flangePressureClassId && stub2EffectiveClassId !== globalSpecs?.flangePressureClassId;
-                              const isTypeOverride = globalSpecs?.flangeTypeCode && stub2EffectiveTypeCode !== globalSpecs?.flangeTypeCode;
+                              const isStandardFromGlobal = globalSpecs?.flangeStandardId && stub2EffectiveStandardId === globalSpecs?.flangeStandardId && !entry.specs?.stubs?.[1]?.flangeStandardId;
+                              const isClassFromGlobal = globalSpecs?.flangePressureClassId && stub2EffectiveClassId === globalSpecs?.flangePressureClassId && !entry.specs?.stubs?.[1]?.flangePressureClassId;
+                              const isTypeFromGlobal = globalSpecs?.flangeTypeCode && stub2EffectiveTypeCode === globalSpecs?.flangeTypeCode && !entry.specs?.stubs?.[1]?.flangeTypeCode;
+                              const isStandardOverride = entry.specs?.stubs?.[1]?.flangeStandardId && entry.specs?.stubs?.[1]?.flangeStandardId !== globalSpecs?.flangeStandardId;
+                              const isClassOverride = entry.specs?.stubs?.[1]?.flangePressureClassId && entry.specs?.stubs?.[1]?.flangePressureClassId !== globalSpecs?.flangePressureClassId;
+                              const isTypeOverride = entry.specs?.stubs?.[1]?.flangeTypeCode && entry.specs?.stubs?.[1]?.flangeTypeCode !== globalSpecs?.flangeTypeCode;
+
+                              const stub2SelectedStandard = masterData.flangeStandards?.find((s: any) => s.id === stub2EffectiveStandardId);
+                              const stub2IsSabs1123 = stub2SelectedStandard?.code === 'SANS 1123' || stub2SelectedStandard?.code === 'SABS 1123';
+                              const stub2IsBs4504 = stub2SelectedStandard?.code === 'BS 4504' || stub2SelectedStandard?.code === 'EN 1092';
+                              const stub2SelectedClass = masterData.pressureClasses?.find((pc: any) => pc.id === stub2EffectiveClassId);
+                              const stub2PressureClassRatingRaw = stub2SelectedClass?.designation ? parseInt(stub2SelectedClass.designation.replace(/[^\d]/g, '')) : 0;
+                              const stub2WorkingPressureBar = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                              const stub2IsPressureClassUnsuitable = stub2EffectiveClassId && stub2WorkingPressureBar > 0 && stub2PressureClassRatingRaw > 0 && (
+                                (stub2IsSabs1123 && stub2PressureClassRatingRaw < stub2WorkingPressureBar * 100) ||
+                                (stub2IsBs4504 && stub2PressureClassRatingRaw < stub2WorkingPressureBar)
+                              );
+
                               const globalSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400';
-                              const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
+                              const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400';
+                              const unsuitableSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
                               const defaultSelectClass = 'w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800';
                               return (
                                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
@@ -2066,8 +2285,8 @@ export default function BendForm({
                                   <div>
                                     <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
                                       Standard
-                                      {isStandardFromGlobal && <span className="ml-1 text-green-600">(Global)</span>}
-                                      {isStandardOverride && <span className="ml-1 text-red-600">(Override)</span>}
+                                      {isStandardFromGlobal && <span className="ml-1 text-green-600 dark:text-lime-400">(Global)</span>}
+                                      {isStandardOverride && <span className="ml-1 text-yellow-600 dark:text-yellow-400">(Override)</span>}
                                     </label>
                                     <select
                                       value={effectiveStandardId || ''}
@@ -2091,9 +2310,10 @@ export default function BendForm({
                                   {/* Class */}
                                   <div>
                                     <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                                      {isSabs1123 ? 'Class (kPa)' : 'Class'}
-                                      {isClassFromGlobal && <span className="ml-1 text-green-600">(Global)</span>}
-                                      {isClassOverride && <span className="ml-1 text-red-600">(Override)</span>}
+                                      {stub2IsSabs1123 ? 'Class (kPa)' : 'Class'}
+                                      {isClassFromGlobal && !stub2IsPressureClassUnsuitable && <span className="ml-1 text-green-600 dark:text-lime-400">(Global)</span>}
+                                      {isClassOverride && !stub2IsPressureClassUnsuitable && <span className="ml-1 text-yellow-600 dark:text-yellow-400">(Override)</span>}
+                                      {stub2IsPressureClassUnsuitable && <span className="ml-1 text-red-600 dark:text-red-400">(NOT SUITABLE)</span>}
                                     </label>
                                     {showFlangeType ? (
                                       <select
@@ -2103,7 +2323,7 @@ export default function BendForm({
                                           stubs[1] = { ...stubs[1], flangePressureClassId: parseInt(e.target.value) || undefined };
                                           onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
                                         }}
-                                        className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
+                                        className={stub2IsPressureClassUnsuitable ? unsuitableSelectClass : isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
                                       >
                                         <option value="">Select...</option>
                                         {pressureClasses.map((pc) => {
@@ -2113,7 +2333,7 @@ export default function BendForm({
                                             mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue)
                                           );
                                           return matchingPc ? (
-                                            <option key={matchingPc.id} value={matchingPc.id}>{isSabs1123 ? pc.value : pc.label}</option>
+                                            <option key={matchingPc.id} value={matchingPc.id}>{stub2IsSabs1123 ? pc.value : pc.label}</option>
                                           ) : null;
                                         })}
                                       </select>
@@ -2125,7 +2345,7 @@ export default function BendForm({
                                           stubs[1] = { ...stubs[1], flangePressureClassId: parseInt(e.target.value) || undefined };
                                           onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
                                         }}
-                                        className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
+                                        className={stub2IsPressureClassUnsuitable ? unsuitableSelectClass : isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
                                       >
                                         <option value="">Select...</option>
                                         {(pressureClassesByStandard[effectiveStandardId || 0] || masterData.pressureClasses || []).map((pc: any) => (
@@ -2138,8 +2358,8 @@ export default function BendForm({
                                   <div>
                                     <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
                                       Type
-                                      {isTypeFromGlobal && showFlangeType && <span className="ml-1 text-green-600">(Global)</span>}
-                                      {isTypeOverride && showFlangeType && <span className="ml-1 text-red-600">(Override)</span>}
+                                      {isTypeFromGlobal && showFlangeType && <span className="ml-1 text-green-600 dark:text-lime-400">(Global)</span>}
+                                      {isTypeOverride && showFlangeType && <span className="ml-1 text-yellow-600 dark:text-yellow-400">(Override)</span>}
                                     </label>
                                     {showFlangeType ? (
                                       <select
@@ -2295,6 +2515,13 @@ export default function BendForm({
                         flangeStandardName={flangeStandardName}
                         pressureClassDesignation={pressureClassDesignation}
                         flangeTypeCode={flangeTypeCode}
+                        centerToFaceMm={entry.specs?.centerToFaceMm}
+                        bendRadiusMm={entry.specs?.bendRadiusMm}
+                        bendItemType={entry.specs?.bendItemType}
+                        duckfootBasePlateXMm={entry.specs?.duckfootBasePlateXMm}
+                        duckfootBasePlateYMm={entry.specs?.duckfootBasePlateYMm}
+                        duckfootPlateThicknessT1Mm={entry.specs?.duckfootPlateThicknessT1Mm}
+                        duckfootRibThicknessT2Mm={entry.specs?.duckfootRibThicknessT2Mm}
                       />
                     );
                   })()}
@@ -2696,18 +2923,21 @@ export default function BendForm({
                                 const mainFlangeResult = flangeSpecs || null;
                                 const mainFlangeOdM = mainFlangeResult?.flangeOdMm ? mainFlangeResult.flangeOdMm / 1000 : (mainOdM * 1.8);
                                 const mainFlangeBoreM = mainFlangeResult?.flangeBoreMm ? mainFlangeResult.flangeBoreMm / 1000 : mainIdM;
+                                const mainRaisedFaceM = mainFlangeResult?.flangeFaceMm ? mainFlangeResult.flangeFaceMm / 1000 : (mainOdM * 1.2);
                                 const mainFlangeExtFaceM2 = bendFlangeCount > 0 ? bendFlangeCount * (Math.PI / 4) * (mainFlangeOdM * mainFlangeOdM - mainOdM * mainOdM) : 0;
-                                const mainFlangeIntFaceM2 = bendFlangeCount > 0 ? bendFlangeCount * (Math.PI / 4) * (mainOdM * mainOdM - mainFlangeBoreM * mainFlangeBoreM) : 0;
+                                const mainFlangeIntFaceM2 = bendFlangeCount > 0 ? bendFlangeCount * (Math.PI / 4) * (mainRaisedFaceM * mainRaisedFaceM - mainFlangeBoreM * mainFlangeBoreM) : 0;
 
                                 const stub1FlangeOdM = stub1NB ? ((NB_TO_OD_LOOKUP[stub1NB] || stub1NB) * 1.8) / 1000 : 0;
                                 const stub1FlangeBoreM = stub1IdM;
+                                const stub1RaisedFaceM = stub1NB ? ((NB_TO_OD_LOOKUP[stub1NB] || stub1NB) * 1.2) / 1000 : 0;
                                 const stub1FlangeExtFaceM2 = stub1FlangeCount > 0 ? stub1FlangeCount * (Math.PI / 4) * (stub1FlangeOdM * stub1FlangeOdM - stub1OdM * stub1OdM) : 0;
-                                const stub1FlangeIntFaceM2 = stub1FlangeCount > 0 ? stub1FlangeCount * (Math.PI / 4) * (stub1OdM * stub1OdM - stub1FlangeBoreM * stub1FlangeBoreM) : 0;
+                                const stub1FlangeIntFaceM2 = stub1FlangeCount > 0 ? stub1FlangeCount * (Math.PI / 4) * (stub1RaisedFaceM * stub1RaisedFaceM - stub1FlangeBoreM * stub1FlangeBoreM) : 0;
 
                                 const stub2FlangeOdM = stub2NB ? ((NB_TO_OD_LOOKUP[stub2NB] || stub2NB) * 1.8) / 1000 : 0;
                                 const stub2FlangeBoreM = stub2IdM;
+                                const stub2RaisedFaceM = stub2NB ? ((NB_TO_OD_LOOKUP[stub2NB] || stub2NB) * 1.2) / 1000 : 0;
                                 const stub2FlangeExtFaceM2 = stub2FlangeCount > 0 ? stub2FlangeCount * (Math.PI / 4) * (stub2FlangeOdM * stub2FlangeOdM - stub2OdM * stub2OdM) : 0;
-                                const stub2FlangeIntFaceM2 = stub2FlangeCount > 0 ? stub2FlangeCount * (Math.PI / 4) * (stub2OdM * stub2OdM - stub2FlangeBoreM * stub2FlangeBoreM) : 0;
+                                const stub2FlangeIntFaceM2 = stub2FlangeCount > 0 ? stub2FlangeCount * (Math.PI / 4) * (stub2RaisedFaceM * stub2RaisedFaceM - stub2FlangeBoreM * stub2FlangeBoreM) : 0;
 
                                 const totalFlangeExtM2 = mainFlangeExtFaceM2 + stub1FlangeExtFaceM2 + stub2FlangeExtFaceM2;
                                 const totalFlangeIntM2 = mainFlangeIntFaceM2 + stub1FlangeIntFaceM2 + stub2FlangeIntFaceM2;
@@ -2718,16 +2948,28 @@ export default function BendForm({
                                 const totalIntM2 = pipeIntM2 + totalFlangeIntM2;
 
                                 return (
-                                  <div className="bg-indigo-100 dark:bg-indigo-900/40 p-2 rounded text-center">
-                                    <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Surface Area</p>
-                                    <p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">{(totalExtM2 * bendQuantity).toFixed(2)}m²</p>
-                                    <p className="text-xs text-indigo-500 dark:text-indigo-400">external</p>
-                                    <div className="text-xs text-indigo-500 dark:text-indigo-400 mt-1">
-                                      <p>Bend: {bendExtM2.toFixed(2)}m²</p>
-                                      {tangentExtM2 > 0 && <p>Tangents: {tangentExtM2.toFixed(2)}m²</p>}
-                                      {stub1ExtM2 > 0 && <p>Stub ({stub1NB}NB): {stub1ExtM2.toFixed(2)}m²</p>}
-                                      {stub2ExtM2 > 0 && <p>Stub ({stub2NB}NB): {stub2ExtM2.toFixed(2)}m²</p>}
-                                      {totalFlangeExtM2 > 0 && <p>Flanges: {totalFlangeExtM2.toFixed(2)}m²</p>}
+                                  <div className="flex gap-2">
+                                    <div className="flex-1 bg-indigo-100 dark:bg-indigo-900/40 p-2 rounded text-center">
+                                      <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">External m²</p>
+                                      <p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">{(totalExtM2 * bendQuantity).toFixed(2)}</p>
+                                      <div className="text-xs text-indigo-500 dark:text-indigo-400 mt-1 text-left">
+                                        <p>Bend: {bendExtM2.toFixed(3)}</p>
+                                        {tangentExtM2 > 0 && <p>Tangents: {tangentExtM2.toFixed(3)}</p>}
+                                        {stub1ExtM2 > 0 && <p>Stub ({stub1NB}NB): {stub1ExtM2.toFixed(3)}</p>}
+                                        {stub2ExtM2 > 0 && <p>Stub ({stub2NB}NB): {stub2ExtM2.toFixed(3)}</p>}
+                                        {totalFlangeExtM2 > 0 && <p>Flanges: {totalFlangeExtM2.toFixed(3)}</p>}
+                                      </div>
+                                    </div>
+                                    <div className="flex-1 bg-cyan-100 dark:bg-cyan-900/40 p-2 rounded text-center">
+                                      <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">Internal m²</p>
+                                      <p className="text-lg font-bold text-cyan-900 dark:text-cyan-100">{(totalIntM2 * bendQuantity).toFixed(2)}</p>
+                                      <div className="text-xs text-cyan-500 dark:text-cyan-400 mt-1 text-left">
+                                        <p>Bend: {bendIntM2.toFixed(3)}</p>
+                                        {tangentIntM2 > 0 && <p>Tangents: {tangentIntM2.toFixed(3)}</p>}
+                                        {stub1IntM2 > 0 && <p>Stub ({stub1NB}NB): {stub1IntM2.toFixed(3)}</p>}
+                                        {stub2IntM2 > 0 && <p>Stub ({stub2NB}NB): {stub2IntM2.toFixed(3)}</p>}
+                                        {totalFlangeIntM2 > 0 && <p>Flanges: {totalFlangeIntM2.toFixed(3)}</p>}
+                                      </div>
                                     </div>
                                   </div>
                                 );

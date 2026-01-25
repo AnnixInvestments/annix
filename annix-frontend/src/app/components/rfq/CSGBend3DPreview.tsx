@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
-import { OrbitControls, Center, Environment, ContactShadows, Tube } from '@react-three/drei'
+import { OrbitControls, Center, Environment, ContactShadows, Tube, Line, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { log } from '@/app/lib/logger'
 import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs'
@@ -41,6 +41,13 @@ interface Props {
   flangeStandardName?: string
   pressureClassDesignation?: string
   flangeTypeCode?: string
+  centerToFaceMm?: number
+  bendRadiusMm?: number
+  bendItemType?: string
+  duckfootBasePlateXMm?: number
+  duckfootBasePlateYMm?: number
+  duckfootPlateThicknessT1Mm?: number
+  duckfootRibThicknessT2Mm?: number
 }
 
 const SCALE = 200
@@ -239,6 +246,128 @@ const WeldRing = ({
       <torusGeometry args={[radius, tube, 12, 32]} />
       <meshStandardMaterial {...weldColor} />
     </mesh>
+  )
+}
+
+interface DimensionLineProps {
+  start: THREE.Vector3
+  end: THREE.Vector3
+  label: string
+  offset?: number
+  color?: string
+  hideEndExtension?: boolean
+}
+
+const DimensionLine = ({ start, end, label, offset = 0.5, color = '#333333', hideEndExtension = false }: DimensionLineProps) => {
+  const offsetY = offset
+  const startOffset = new THREE.Vector3(start.x, start.y + offsetY, start.z)
+  const endOffset = new THREE.Vector3(end.x, end.y + offsetY, end.z)
+
+  const midPoint = new THREE.Vector3().lerpVectors(startOffset, endOffset, 0.5)
+  const direction = new THREE.Vector3().subVectors(endOffset, startOffset)
+  const length = direction.length()
+
+  if (length < 0.01) return null
+
+  direction.normalize()
+
+  const textRotationY = -Math.atan2(direction.z, direction.x)
+
+  const arrowSize = Math.min(0.12, length * 0.15)
+  const arrowAngle = Math.PI * 0.85
+
+  const leftArrow1 = startOffset.clone().add(
+    new THREE.Vector3(
+      direction.x * Math.cos(arrowAngle) - direction.z * Math.sin(arrowAngle),
+      0,
+      direction.x * Math.sin(arrowAngle) + direction.z * Math.cos(arrowAngle)
+    ).multiplyScalar(arrowSize)
+  )
+  const leftArrow2 = startOffset.clone().add(
+    new THREE.Vector3(
+      direction.x * Math.cos(-arrowAngle) - direction.z * Math.sin(-arrowAngle),
+      0,
+      direction.x * Math.sin(-arrowAngle) + direction.z * Math.cos(-arrowAngle)
+    ).multiplyScalar(arrowSize)
+  )
+
+  const rightDir = direction.clone().negate()
+  const rightArrow1 = endOffset.clone().add(
+    new THREE.Vector3(
+      rightDir.x * Math.cos(arrowAngle) - rightDir.z * Math.sin(arrowAngle),
+      0,
+      rightDir.x * Math.sin(arrowAngle) + rightDir.z * Math.cos(arrowAngle)
+    ).multiplyScalar(arrowSize)
+  )
+  const rightArrow2 = endOffset.clone().add(
+    new THREE.Vector3(
+      rightDir.x * Math.cos(-arrowAngle) - rightDir.z * Math.sin(-arrowAngle),
+      0,
+      rightDir.x * Math.sin(-arrowAngle) + rightDir.z * Math.cos(-arrowAngle)
+    ).multiplyScalar(arrowSize)
+  )
+
+  return (
+    <group>
+      <Line
+        points={[[startOffset.x, startOffset.y, startOffset.z], [endOffset.x, endOffset.y, endOffset.z]]}
+        color={color}
+        lineWidth={3}
+      />
+
+      <Line
+        points={[[startOffset.x, startOffset.y, startOffset.z], [leftArrow1.x, leftArrow1.y, leftArrow1.z]]}
+        color={color}
+        lineWidth={3}
+      />
+      <Line
+        points={[[startOffset.x, startOffset.y, startOffset.z], [leftArrow2.x, leftArrow2.y, leftArrow2.z]]}
+        color={color}
+        lineWidth={3}
+      />
+
+      <Line
+        points={[[endOffset.x, endOffset.y, endOffset.z], [rightArrow1.x, rightArrow1.y, rightArrow1.z]]}
+        color={color}
+        lineWidth={3}
+      />
+      <Line
+        points={[[endOffset.x, endOffset.y, endOffset.z], [rightArrow2.x, rightArrow2.y, rightArrow2.z]]}
+        color={color}
+        lineWidth={3}
+      />
+
+      <Line
+        points={[[start.x, start.y, start.z], [startOffset.x, startOffset.y, startOffset.z]]}
+        color={color}
+        lineWidth={2}
+        dashed
+        dashSize={0.03}
+        gapSize={0.02}
+      />
+      {!hideEndExtension && (
+        <Line
+          points={[[end.x, end.y, end.z], [endOffset.x, endOffset.y, endOffset.z]]}
+          color={color}
+          lineWidth={2}
+          dashed
+          dashSize={0.03}
+          gapSize={0.02}
+        />
+      )}
+
+      <Text
+        position={[midPoint.x, midPoint.y + 0.15, midPoint.z]}
+        fontSize={0.18}
+        color={color}
+        anchorX="center"
+        anchorY="bottom"
+        fontWeight="bold"
+        rotation={[0, textRotationY, 0]}
+      >
+        {label}
+      </Text>
+    </group>
   )
 }
 
@@ -775,7 +904,14 @@ const Scene = (props: Props) => {
     stubs = [],
     flangeConfig = 'PE',
     addBlankFlange = false,
-    blankFlangePositions = []
+    blankFlangePositions = [],
+    centerToFaceMm,
+    bendRadiusMm,
+    bendItemType,
+    duckfootBasePlateXMm,
+    duckfootBasePlateYMm,
+    duckfootPlateThicknessT1Mm,
+    duckfootRibThicknessT2Mm
   } = props
 
   log.debug('CSGBend3DPreview Scene props', {
@@ -811,6 +947,7 @@ const Scene = (props: Props) => {
   const flangeOffset = flangeThickScaled / 2
 
   const weldTube = outerR * 0.05
+  const isSegmentedBend = numberOfSegments !== undefined && numberOfSegments > 1
 
   const inletStart = new THREE.Vector3(0, 0, 0)
   const inletEnd = new THREE.Vector3(0, 0, t1)
@@ -866,7 +1003,9 @@ const Scene = (props: Props) => {
               capStart={!hasInletFlange}
               capEnd={false}
             />
-            <WeldRing center={inletEnd} normal={inletDir} radius={outerR * 1.02} tube={weldTube} />
+            {!isSegmentedBend && (
+              <WeldRing center={inletEnd} normal={inletDir} radius={outerR * 1.02} tube={weldTube} />
+            )}
           </>
         )}
 
@@ -904,7 +1043,9 @@ const Scene = (props: Props) => {
           )
         })}
 
-        <WeldRing center={bendEndPoint} normal={outletDir} radius={outerR * 1.02} tube={weldTube} />
+        {!isSegmentedBend && (
+          <WeldRing center={bendEndPoint} normal={outletDir} radius={outerR * 1.02} tube={weldTube} />
+        )}
 
         {t2 > 0 && (
           <HollowStraightPipe
@@ -916,6 +1057,58 @@ const Scene = (props: Props) => {
             capEnd={!hasOutletFlange}
           />
         )}
+
+        {(() => {
+          const cfMm = centerToFaceMm || 0;
+
+          const ip = new THREE.Vector3(0, 0, t1 + bendR);
+
+          return (
+            <>
+              {t1 > 0 && (
+                <DimensionLine
+                  start={inletStart}
+                  end={inletEnd}
+                  label={`T1: ${tangent1}mm`}
+                  offset={outerR * 2.5}
+                  color="#0066cc"
+                />
+              )}
+
+              {t2 > 0 && (
+                <DimensionLine
+                  start={bendEndPoint}
+                  end={outletEnd}
+                  label={`T2: ${tangent2}mm`}
+                  offset={outerR * 2.5}
+                  color="#cc0000"
+                />
+              )}
+
+              {cfMm > 0 && (
+                <DimensionLine
+                  start={inletStart}
+                  end={ip}
+                  label={`C/F: ${cfMm}mm`}
+                  offset={outerR * 3.5}
+                  color="#cc6600"
+                  hideEndExtension
+                />
+              )}
+
+              {cfMm > 0 && (
+                <DimensionLine
+                  start={outletEnd}
+                  end={ip}
+                  label={`C/F: ${cfMm}mm`}
+                  offset={outerR * 3.5}
+                  color="#cc6600"
+                  hideEndExtension
+                />
+              )}
+            </>
+          );
+        })()}
 
         {stubsData.map((stub, i) => {
           const isOutletStub = i === 1
@@ -946,17 +1139,81 @@ const Scene = (props: Props) => {
             return rotatedDir
           })()
 
+          const stubEnd = stubCenterOnAxis.clone().add(orientationDir.clone().multiplyScalar(stub.length))
+          const distFromFlangeScaled = stub.distFromFlange
+          const stubLengthMm = Math.round(stub.length * SCALE)
+          const distFromFlangeMm = Math.round(distFromFlangeScaled * SCALE)
+
+          const stubSideOffset = (() => {
+            const perpDir = new THREE.Vector3().crossVectors(orientationDir, tangentDir).normalize()
+            if (perpDir.length() < 0.01) {
+              return new THREE.Vector3(1, 0, 0).multiplyScalar(stub.outerR * 3)
+            }
+            return perpDir.multiplyScalar(stub.outerR * 3)
+          })()
+
+          const weldPoint = stubCenterOnAxis.clone()
+          const flangePoint = stubEnd.clone()
+          const dimLineWeld = weldPoint.clone().add(stubSideOffset)
+          const dimLineFlange = flangePoint.clone().add(stubSideOffset)
+
           return (
-            <StubPipe
-              key={i}
-              baseCenter={stubCenterOnAxis}
-              direction={orientationDir}
-              length={stub.length}
-              outerR={stub.outerR}
-              innerR={stub.innerR}
-              mainPipeOuterR={outerR}
-              nb={stub.nb}
-            />
+            <group key={i}>
+              <StubPipe
+                baseCenter={stubCenterOnAxis}
+                direction={orientationDir}
+                length={stub.length}
+                outerR={stub.outerR}
+                innerR={stub.innerR}
+                mainPipeOuterR={outerR}
+                nb={stub.nb}
+              />
+
+              <DimensionLine
+                start={tangentStart}
+                end={stubCenterOnAxis}
+                label={`Stub${i + 1} dist: ${distFromFlangeMm}mm`}
+                offset={outerR * 1.5}
+                color="#009900"
+              />
+
+              <Line
+                points={[[dimLineFlange.x, dimLineFlange.y, dimLineFlange.z], [dimLineWeld.x, dimLineWeld.y, dimLineWeld.z]]}
+                color="#990099"
+                lineWidth={3}
+              />
+              <Line
+                points={[[flangePoint.x, flangePoint.y, flangePoint.z], [dimLineFlange.x, dimLineFlange.y, dimLineFlange.z]]}
+                color="#990099"
+                lineWidth={2}
+                dashed
+                dashSize={0.03}
+                gapSize={0.02}
+              />
+              <Line
+                points={[[weldPoint.x, weldPoint.y, weldPoint.z], [dimLineWeld.x, dimLineWeld.y, dimLineWeld.z]]}
+                color="#990099"
+                lineWidth={2}
+                dashed
+                dashSize={0.03}
+                gapSize={0.02}
+              />
+              <Text
+                position={[
+                  (dimLineFlange.x + dimLineWeld.x) / 2 + stubSideOffset.x * 0.3,
+                  (dimLineFlange.y + dimLineWeld.y) / 2 + stubSideOffset.y * 0.3,
+                  (dimLineFlange.z + dimLineWeld.z) / 2 + stubSideOffset.z * 0.3
+                ]}
+                fontSize={0.18}
+                color="#990099"
+                anchorX="center"
+                anchorY="middle"
+                fontWeight="bold"
+                rotation={[0, -Math.atan2(orientationDir.z, orientationDir.x), 0]}
+              >
+                {`${stubLengthMm}mm`}
+              </Text>
+            </group>
           )
         })}
 
@@ -1006,6 +1263,73 @@ const Scene = (props: Props) => {
               nb={nominalBore}
             />
           )
+        })()}
+
+        {/* Duckfoot Base Plate and Ribs */}
+        {bendItemType === 'DUCKFOOT_BEND' && (() => {
+          const duckfootDefaults: Record<number, { x: number; y: number; t1: number; t2: number }> = {
+            200: { x: 355, y: 230, t1: 6, t2: 10 },
+            250: { x: 405, y: 280, t1: 6, t2: 10 },
+            300: { x: 460, y: 330, t1: 6, t2: 10 },
+            350: { x: 510, y: 380, t1: 8, t2: 12 },
+            400: { x: 560, y: 430, t1: 8, t2: 12 },
+            450: { x: 610, y: 485, t1: 8, t2: 12 },
+            500: { x: 660, y: 535, t1: 10, t2: 14 },
+            550: { x: 710, y: 585, t1: 10, t2: 14 },
+            600: { x: 760, y: 635, t1: 10, t2: 14 },
+            650: { x: 815, y: 693, t1: 12, t2: 16 },
+            700: { x: 865, y: 733, t1: 12, t2: 16 },
+            750: { x: 915, y: 793, t1: 12, t2: 16 },
+            800: { x: 970, y: 833, t1: 14, t2: 18 },
+            850: { x: 1020, y: 883, t1: 14, t2: 18 },
+            900: { x: 1070, y: 933, t1: 14, t2: 18 }
+          };
+          const defaults = duckfootDefaults[nominalBore] || { x: 500, y: 400, t1: 10, t2: 12 };
+
+          const basePlateX = (duckfootBasePlateXMm || defaults.x) / SCALE;
+          const basePlateY = (duckfootBasePlateYMm || defaults.y) / SCALE;
+          const ribThicknessT1 = (duckfootPlateThicknessT1Mm || defaults.t1) / SCALE;
+          const basePlateT2 = (duckfootRibThicknessT2Mm || defaults.t2) / SCALE;
+
+          const outletPoint = t2 > 0 ? outletEnd : bendEndPoint;
+          const pipeBottomY = -outerR;
+          const basePlateY2 = pipeBottomY - ribThicknessT1 * 2;
+
+          const quaternion = new THREE.Quaternion();
+          quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), outletDir);
+
+          const basePlateColor = { color: '#666666', metalness: 0.5, roughness: 0.5 };
+          const ribColor = { color: '#555555', metalness: 0.5, roughness: 0.5 };
+
+          const ribHeight = Math.abs(pipeBottomY - basePlateY2) + basePlateT2;
+          const ribSpacing = outerR * 0.8;
+
+          return (
+            <group position={[outletPoint.x, 0, outletPoint.z]} quaternion={quaternion}>
+              <mesh position={[0, basePlateY2 - basePlateT2 / 2, 0]}>
+                <boxGeometry args={[basePlateY, basePlateT2, basePlateX]} />
+                <meshStandardMaterial {...basePlateColor} />
+              </mesh>
+
+              <mesh position={[-ribSpacing, basePlateY2 + ribHeight / 2, 0]}>
+                <boxGeometry args={[ribThicknessT1, ribHeight, basePlateX * 0.8]} />
+                <meshStandardMaterial {...ribColor} />
+              </mesh>
+              <mesh position={[ribSpacing, basePlateY2 + ribHeight / 2, 0]}>
+                <boxGeometry args={[ribThicknessT1, ribHeight, basePlateX * 0.8]} />
+                <meshStandardMaterial {...ribColor} />
+              </mesh>
+
+              <mesh position={[0, basePlateY2 + ribHeight / 2, -basePlateX / 2 + ribThicknessT1 / 2]}>
+                <boxGeometry args={[basePlateY * 0.6, ribHeight, ribThicknessT1]} />
+                <meshStandardMaterial {...ribColor} />
+              </mesh>
+              <mesh position={[0, basePlateY2 + ribHeight / 2, basePlateX / 2 - ribThicknessT1 / 2]}>
+                <boxGeometry args={[basePlateY * 0.6, ribHeight, ribThicknessT1]} />
+                <meshStandardMaterial {...ribColor} />
+              </mesh>
+            </group>
+          );
         })()}
 
         <axesHelper args={[1]} />
