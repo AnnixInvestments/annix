@@ -94,19 +94,25 @@ const FLANGE_DATA: { [key: number]: { flangeOD: number; pcd: number; boltHoles: 
   600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, boltSize: 27, boltLength: 120, thickness: 32 },
 }
 
-const resolveFlangeData = (nb: number, apiSpecs?: FlangeSpecData | null) => {
+const resolveFlangeData = (nb: number, apiSpecs?: FlangeSpecData | null): { specs: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; boltSize: number; boltLength: number; thickness: number }; isFromApi: boolean } => {
   if (apiSpecs) {
     return {
-      flangeOD: apiSpecs.flangeOdMm,
-      pcd: apiSpecs.flangePcdMm,
-      boltHoles: apiSpecs.flangeNumHoles,
-      holeID: apiSpecs.flangeBoltHoleDiameterMm,
-      boltSize: apiSpecs.boltDiameterMm || 16,
-      boltLength: apiSpecs.boltLengthMm || 70,
-      thickness: apiSpecs.flangeThicknessMm || 20,
+      specs: {
+        flangeOD: apiSpecs.flangeOdMm,
+        pcd: apiSpecs.flangePcdMm,
+        boltHoles: apiSpecs.flangeNumHoles,
+        holeID: apiSpecs.flangeBoltHoleDiameterMm,
+        boltSize: apiSpecs.boltDiameterMm || 16,
+        boltLength: apiSpecs.boltLengthMm || 70,
+        thickness: apiSpecs.flangeThicknessMm || 20,
+      },
+      isFromApi: true,
     }
   }
-  return FLANGE_DATA[nb] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nb).pop() || 200]
+  return {
+    specs: FLANGE_DATA[nb] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nb).pop() || 200],
+    isFromApi: false,
+  }
 }
 
 class ArcCurve extends THREE.Curve<THREE.Vector3> {
@@ -1683,19 +1689,33 @@ export default function CSGBend3DPreview(props: Props) {
           </div>
         )}
         {props.flangeConfig && props.flangeConfig !== 'PE' && (() => {
-          const resolvedFlangeSpecs = resolveFlangeData(props.nominalBore, props.flangeSpecs);
+          const { specs: flangeSpecs, isFromApi } = resolveFlangeData(props.nominalBore, props.flangeSpecs);
           const config = (props.flangeConfig || 'PE').toUpperCase();
+          const standardName = props.flangeStandardName || 'SABS 1123';
+          const isNonSabsStandard = !standardName.toLowerCase().includes('sabs') && !standardName.toLowerCase().includes('sans');
+          const showFallbackWarning = !isFromApi && isNonSabsStandard;
           return (
             <>
               <div className="font-bold text-blue-800 mt-1 mb-0.5">FLANGE ({config})</div>
-              {resolvedFlangeSpecs && (
+              {showFallbackWarning && (
+                <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
+                  Data not available for {standardName} - showing SABS 1123 reference values
+                </div>
+              )}
+              {flangeSpecs && (
                 <>
-                  <div className="text-gray-900 font-medium">OD: {resolvedFlangeSpecs.flangeOD}mm | PCD: {resolvedFlangeSpecs.pcd}mm</div>
-                  <div className="text-gray-700">Holes: {resolvedFlangeSpecs.boltHoles} × Ø{resolvedFlangeSpecs.holeID}mm</div>
-                  <div className="text-gray-700">Bolts: {resolvedFlangeSpecs.boltHoles} × M{resolvedFlangeSpecs.boltSize} × {resolvedFlangeSpecs.boltLength}mm</div>
-                  <div className="text-gray-700">Thickness: {resolvedFlangeSpecs.thickness}mm</div>
-                  <div className="text-green-700 font-medium">
-                    {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+                  <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
+                  <div className="text-gray-700">Holes: {flangeSpecs.boltHoles} × Ø{flangeSpecs.holeID}mm</div>
+                  <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize} × {flangeSpecs.boltLength}mm</div>
+                  <div className="text-gray-700">Thickness: {flangeSpecs.thickness}mm</div>
+                  <div className={showFallbackWarning ? "text-orange-600 font-medium" : "text-green-700 font-medium"}>
+                    {(() => {
+                      const designation = props.pressureClassDesignation || '';
+                      const flangeType = props.flangeTypeCode || '';
+                      const pressureMatch = designation.match(/^(\d+)/);
+                      const pressureValue = pressureMatch ? pressureMatch[1] : designation.replace(/\/\d+$/, '');
+                      return `${standardName} T${pressureValue}${flangeType}`;
+                    })()}
                   </div>
                 </>
               )}
@@ -1771,19 +1791,33 @@ export default function CSGBend3DPreview(props: Props) {
                 </div>
               )}
               {props.flangeConfig && props.flangeConfig !== 'PE' && (() => {
-                const resolvedFlangeSpecs = resolveFlangeData(props.nominalBore, props.flangeSpecs);
+                const { specs: flangeSpecs, isFromApi } = resolveFlangeData(props.nominalBore, props.flangeSpecs);
                 const config = (props.flangeConfig || 'PE').toUpperCase();
+                const standardName = props.flangeStandardName || 'SABS 1123';
+                const isNonSabsStandard = !standardName.toLowerCase().includes('sabs') && !standardName.toLowerCase().includes('sans');
+                const showFallbackWarning = !isFromApi && isNonSabsStandard;
                 return (
                   <>
                     <div className="font-bold text-blue-800 mt-2 mb-1">FLANGE ({config})</div>
-                    {resolvedFlangeSpecs && (
+                    {showFallbackWarning && (
+                      <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
+                        Data not available for {standardName} - showing SABS 1123 reference values
+                      </div>
+                    )}
+                    {flangeSpecs && (
                       <>
-                        <div className="text-gray-900 font-medium">OD: {resolvedFlangeSpecs.flangeOD}mm | PCD: {resolvedFlangeSpecs.pcd}mm</div>
-                        <div className="text-gray-700">Holes: {resolvedFlangeSpecs.boltHoles} × Ø{resolvedFlangeSpecs.holeID}mm</div>
-                        <div className="text-gray-700">Bolts: {resolvedFlangeSpecs.boltHoles} × M{resolvedFlangeSpecs.boltSize} × {resolvedFlangeSpecs.boltLength}mm</div>
-                        <div className="text-gray-700">Thickness: {resolvedFlangeSpecs.thickness}mm</div>
-                        <div className="text-green-700 font-medium">
-                          {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+                        <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
+                        <div className="text-gray-700">Holes: {flangeSpecs.boltHoles} × Ø{flangeSpecs.holeID}mm</div>
+                        <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize} × {flangeSpecs.boltLength}mm</div>
+                        <div className="text-gray-700">Thickness: {flangeSpecs.thickness}mm</div>
+                        <div className={showFallbackWarning ? "text-orange-600 font-medium" : "text-green-700 font-medium"}>
+                          {(() => {
+                            const designation = props.pressureClassDesignation || '';
+                            const flangeType = props.flangeTypeCode || '';
+                            const pressureMatch = designation.match(/^(\d+)/);
+                            const pressureValue = pressureMatch ? pressureMatch[1] : designation.replace(/\/\d+$/, '');
+                            return `${standardName} T${pressureValue}${flangeType}`;
+                          })()}
                         </div>
                       </>
                     )}

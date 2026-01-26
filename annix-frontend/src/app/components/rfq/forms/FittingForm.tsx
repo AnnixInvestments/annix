@@ -779,8 +779,17 @@ export default function FittingForm({
                     const isTypeFromGlobal = globalSpecs?.flangeTypeCode && effectiveTypeCode === globalSpecs?.flangeTypeCode;
                     const isTypeOverride = globalSpecs?.flangeTypeCode && effectiveTypeCode !== globalSpecs?.flangeTypeCode;
 
+                    const workingPressureBar = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                    const selectedPressureClass = masterData.pressureClasses?.find((pc: any) => pc.id === effectiveClassId);
+                    const pressureClassRatingRaw = selectedPressureClass?.designation ? parseInt(selectedPressureClass.designation.replace(/[^0-9]/g, '')) || 0 : 0;
+                    const isPressureClassUnsuitable = effectiveClassId && workingPressureBar > 0 && pressureClassRatingRaw > 0 && (
+                      (isSabs1123 && pressureClassRatingRaw < workingPressureBar * 100) ||
+                      (isBs4504 && pressureClassRatingRaw < workingPressureBar)
+                    );
+
                     const globalSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400';
-                    const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
+                    const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400';
+                    const unsuitableSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
                     const defaultSelectClass = 'w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800';
 
                     return (
@@ -813,8 +822,9 @@ export default function FittingForm({
                         <div>
                           <label className="block text-xs font-semibold text-green-900 mb-1">
                             Pressure Class
-                            {isClassFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
-                            {isClassOverride && <span className="ml-1 text-red-600 font-normal">(Override)</span>}
+                            {isPressureClassUnsuitable && <span className="ml-1 text-red-600 font-bold">(NOT SUITABLE)</span>}
+                            {!isPressureClassUnsuitable && isClassFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
+                            {!isPressureClassUnsuitable && isClassOverride && <span className="ml-1 text-yellow-600 font-normal">(Override)</span>}
                           </label>
                           {hasThreeDropdowns ? (
                             <select
@@ -822,7 +832,7 @@ export default function FittingForm({
                               onChange={(e) => onUpdateEntry(entry.id, {
                                 specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                               })}
-                              className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
+                              className={isPressureClassUnsuitable ? unsuitableSelectClass : isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
                             >
                               <option value="">Select Class...</option>
                               {(isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES).map((pc) => {
@@ -842,7 +852,7 @@ export default function FittingForm({
                               onChange={(e) => onUpdateEntry(entry.id, {
                                 specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                               })}
-                              className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
+                              className={isPressureClassUnsuitable ? unsuitableSelectClass : isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
                             >
                               <option value="">Select Class...</option>
                               {(() => {

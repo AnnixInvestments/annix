@@ -125,16 +125,20 @@ const getWallThickness = (nb: number, providedWT: number = 0): number => {
 
 // Flange lookup table based on nominal bore - SABS 1123 Table 1000/4 (PN16) Slip-on flanges
 // Bolt length calculated for: 2 x flange thickness + gasket (3mm) + nut + washer + thread engagement
-const getFlangeSpecs = (nb: number, apiSpecs?: FlangeSpecData | null) => {
+// Returns { specs, isFromApi } to indicate if data is from API or fallback
+const getFlangeSpecs = (nb: number, apiSpecs?: FlangeSpecData | null): { specs: { flangeOD: number; pcd: number; thickness: number; boltHoles: number; holeID: number; boltSize: number; boltLength: number }; isFromApi: boolean } => {
   if (apiSpecs) {
     return {
-      flangeOD: apiSpecs.flangeOdMm,
-      pcd: apiSpecs.flangePcdMm,
-      thickness: apiSpecs.flangeThicknessMm,
-      boltHoles: apiSpecs.flangeNumHoles,
-      holeID: apiSpecs.flangeBoltHoleDiameterMm,
-      boltSize: apiSpecs.boltDiameterMm || 16,
-      boltLength: apiSpecs.boltLengthMm || 70,
+      specs: {
+        flangeOD: apiSpecs.flangeOdMm,
+        pcd: apiSpecs.flangePcdMm,
+        thickness: apiSpecs.flangeThicknessMm,
+        boltHoles: apiSpecs.flangeNumHoles,
+        holeID: apiSpecs.flangeBoltHoleDiameterMm,
+        boltSize: apiSpecs.boltDiameterMm || 16,
+        boltLength: apiSpecs.boltLengthMm || 70,
+      },
+      isFromApi: true,
     };
   }
 
@@ -171,7 +175,10 @@ const getFlangeSpecs = (nb: number, apiSpecs?: FlangeSpecData | null) => {
     if (size <= nb) closestSize = size;
     else break;
   }
-  return flangeData[closestSize] || { flangeOD: nb * 1.5, pcd: nb * 1.3, thickness: 26, boltHoles: 12, holeID: 22, boltSize: 20, boltLength: 90 };
+  return {
+    specs: flangeData[closestSize] || { flangeOD: nb * 1.5, pcd: nb * 1.3, thickness: 26, boltHoles: 12, holeID: 22, boltSize: 20, boltLength: 90 },
+    isFromApi: false,
+  };
 };
 
 // Blank Flange component (solid disc with bolt holes, no center bore)
@@ -555,8 +562,8 @@ function TeeScene(props: Tee3DPreviewProps) {
   };
 
   // Flange specs
-  const runFlangeSpecs = getFlangeSpecs(nominalBore, props.flangeSpecs);
-  const branchFlangeSpecs = getFlangeSpecs(branchNominalBore || nominalBore, props.flangeSpecs);
+  const { specs: runFlangeSpecs } = getFlangeSpecs(nominalBore, props.flangeSpecs);
+  const { specs: branchFlangeSpecs } = getFlangeSpecs(branchNominalBore || nominalBore, props.flangeSpecs);
 
   // Gusset plate thickness (estimated based on size)
   const gussetThickness = nominalBore <= 400 ? 0.1 : 0.14;
@@ -1297,8 +1304,12 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   const teeHeight = getTeeHeight(debouncedProps.nominalBore, debouncedProps.teeType);
   const gussetSection = debouncedProps.teeType === 'gusset' ? getGussetSection(debouncedProps.nominalBore) : 0;
   // Get flange specs for display
-  const runFlangeSpecs = getFlangeSpecs(debouncedProps.nominalBore, debouncedProps.flangeSpecs);
-  const branchFlangeSpecs = getFlangeSpecs(debouncedProps.branchNominalBore || debouncedProps.nominalBore, debouncedProps.flangeSpecs);
+  const { specs: runFlangeSpecs, isFromApi: runIsFromApi } = getFlangeSpecs(debouncedProps.nominalBore, debouncedProps.flangeSpecs);
+  const { specs: branchFlangeSpecs, isFromApi: branchIsFromApi } = getFlangeSpecs(debouncedProps.branchNominalBore || debouncedProps.nominalBore, debouncedProps.flangeSpecs);
+  const flangeStandardName = debouncedProps.flangeStandardName || 'SABS 1123';
+  const isNonSabsStandard = !flangeStandardName.toLowerCase().includes('sabs') && !flangeStandardName.toLowerCase().includes('sans');
+  const showRunFallbackWarning = !runIsFromApi && isNonSabsStandard;
+  const showBranchFallbackWarning = !branchIsFromApi && isNonSabsStandard;
   const closureLength = debouncedProps.closureLengthMm ?? 150;
   const baseRunLengthMm = debouncedProps.runLength || od * 3;
   const runLengthMm = baseRunLengthMm + (debouncedProps.hasInletFlange ? closureLength : 0) + (debouncedProps.hasOutletFlange ? closureLength : 0);
@@ -1416,12 +1427,23 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
         {(props.hasInletFlange || props.hasOutletFlange) && (
           <>
             <div className="font-bold text-blue-800 mt-1 mb-0.5">RUN FLANGE</div>
+            {showRunFallbackWarning && (
+              <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
+                Data not available for {flangeStandardName} - showing SABS 1123 reference values
+              </div>
+            )}
             <div className="text-gray-900 font-medium">OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm</div>
             <div className="text-gray-700">Holes: {runFlangeSpecs.boltHoles} × Ø{runFlangeSpecs.holeID}mm</div>
             <div className="text-gray-700">Bolts: {runFlangeSpecs.boltHoles} × M{runFlangeSpecs.boltSize} × {runFlangeSpecs.boltLength}mm</div>
             <div className="text-gray-700">Thickness: {runFlangeSpecs.thickness}mm</div>
-            <div className="text-green-700 font-medium text-[9px]">
-              {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+            <div className={showRunFallbackWarning ? "text-orange-600 font-medium text-[9px]" : "text-green-700 font-medium text-[9px]"}>
+              {(() => {
+                const designation = props.pressureClassDesignation || '';
+                const flangeType = props.flangeTypeCode || '';
+                const pressureMatch = designation.match(/^(\d+)/);
+                const pressureValue = pressureMatch ? pressureMatch[1] : designation.replace(/\/\d+$/, '');
+                return `${flangeStandardName} T${pressureValue}${flangeType}`;
+              })()}
             </div>
           </>
         )}
@@ -1429,12 +1451,23 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
         {props.hasBranchFlange && (
           <>
             <div className="font-bold text-blue-800 mt-1 mb-0.5">BRANCH FLANGE</div>
+            {showBranchFallbackWarning && (
+              <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
+                Data not available for {flangeStandardName} - showing SABS 1123 reference values
+              </div>
+            )}
             <div className="text-gray-900 font-medium">OD: {branchFlangeSpecs.flangeOD}mm | PCD: {branchFlangeSpecs.pcd}mm</div>
             <div className="text-gray-700">Holes: {branchFlangeSpecs.boltHoles} × Ø{branchFlangeSpecs.holeID}mm</div>
             <div className="text-gray-700">Bolts: {branchFlangeSpecs.boltHoles} × M{branchFlangeSpecs.boltSize} × {branchFlangeSpecs.boltLength}mm</div>
             <div className="text-gray-700">Thickness: {branchFlangeSpecs.thickness}mm</div>
-            <div className="text-green-700 font-medium text-[9px]">
-              {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+            <div className={showBranchFallbackWarning ? "text-orange-600 font-medium text-[9px]" : "text-green-700 font-medium text-[9px]"}>
+              {(() => {
+                const designation = props.pressureClassDesignation || '';
+                const flangeType = props.flangeTypeCode || '';
+                const pressureMatch = designation.match(/^(\d+)/);
+                const pressureValue = pressureMatch ? pressureMatch[1] : designation.replace(/\/\d+$/, '');
+                return `${flangeStandardName} T${pressureValue}${flangeType}`;
+              })()}
             </div>
           </>
         )}
@@ -1538,24 +1571,46 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
               {(props.hasInletFlange || props.hasOutletFlange) && (
                 <>
                   <div className="font-bold text-blue-800 mt-2 mb-1">RUN FLANGE</div>
+                  {showRunFallbackWarning && (
+                    <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
+                      Data not available for {flangeStandardName} - showing SABS 1123 reference values
+                    </div>
+                  )}
                   <div className="text-gray-900 font-medium">OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm</div>
                   <div className="text-gray-700">Holes: {runFlangeSpecs.boltHoles} × Ø{runFlangeSpecs.holeID}mm</div>
                   <div className="text-gray-700">Bolts: {runFlangeSpecs.boltHoles} × M{runFlangeSpecs.boltSize} × {runFlangeSpecs.boltLength}mm</div>
                   <div className="text-gray-700">Thickness: {runFlangeSpecs.thickness}mm</div>
-                  <div className="text-green-700 font-medium">
-                    {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+                  <div className={showRunFallbackWarning ? "text-orange-600 font-medium" : "text-green-700 font-medium"}>
+                    {(() => {
+                      const designation = props.pressureClassDesignation || '';
+                      const flangeType = props.flangeTypeCode || '';
+                      const pressureMatch = designation.match(/^(\d+)/);
+                      const pressureValue = pressureMatch ? pressureMatch[1] : designation.replace(/\/\d+$/, '');
+                      return `${flangeStandardName} T${pressureValue}${flangeType}`;
+                    })()}
                   </div>
                 </>
               )}
               {props.hasBranchFlange && (
                 <>
                   <div className="font-bold text-blue-800 mt-2 mb-1">BRANCH FLANGE</div>
+                  {showBranchFallbackWarning && (
+                    <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
+                      Data not available for {flangeStandardName} - showing SABS 1123 reference values
+                    </div>
+                  )}
                   <div className="text-gray-900 font-medium">OD: {branchFlangeSpecs.flangeOD}mm | PCD: {branchFlangeSpecs.pcd}mm</div>
                   <div className="text-gray-700">Holes: {branchFlangeSpecs.boltHoles} × Ø{branchFlangeSpecs.holeID}mm</div>
                   <div className="text-gray-700">Bolts: {branchFlangeSpecs.boltHoles} × M{branchFlangeSpecs.boltSize} × {branchFlangeSpecs.boltLength}mm</div>
                   <div className="text-gray-700">Thickness: {branchFlangeSpecs.thickness}mm</div>
-                  <div className="text-green-700 font-medium">
-                    {props.flangeStandardName || 'SABS 1123'} {props.pressureClassDesignation || ''}{props.flangeTypeCode || ''}
+                  <div className={showBranchFallbackWarning ? "text-orange-600 font-medium" : "text-green-700 font-medium"}>
+                    {(() => {
+                      const designation = props.pressureClassDesignation || '';
+                      const flangeType = props.flangeTypeCode || '';
+                      const pressureMatch = designation.match(/^(\d+)/);
+                      const pressureValue = pressureMatch ? pressureMatch[1] : designation.replace(/\/\d+$/, '');
+                      return `${flangeStandardName} T${pressureValue}${flangeType}`;
+                    })()}
                   </div>
                 </>
               )}

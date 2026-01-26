@@ -1122,8 +1122,9 @@ export default function BendForm({
                     const effectivePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
                     const effectiveFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
                     const selectedStandard = masterData.flangeStandards?.find((fs: any) => fs.id === effectiveStandardId);
-                    const isSabs1123 = selectedStandard?.code?.toUpperCase().includes('SABS') && selectedStandard?.code?.includes('1123');
-                    const isBs4504 = selectedStandard?.code?.toUpperCase().includes('BS') && selectedStandard?.code?.includes('4504');
+                    const standardCode = selectedStandard?.code?.toUpperCase() || '';
+                    const isSabs1123 = (standardCode.includes('SABS') || standardCode.includes('SANS')) && standardCode.includes('1123');
+                    const isBs4504 = (standardCode.includes('BS') && standardCode.includes('4504')) || standardCode.includes('EN') && (standardCode.includes('1092') || standardCode.includes('10921'));
                     const showFlangeType = isSabs1123 || isBs4504;
                     const flangeTypes = isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES;
                     const pressureClasses = isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES;
@@ -1861,8 +1862,9 @@ export default function BendForm({
                         const isTypeOverride = entry.specs?.stubs?.[0]?.flangeTypeCode && entry.specs?.stubs?.[0]?.flangeTypeCode !== globalSpecs?.flangeTypeCode;
 
                         const stub1SelectedStandard = masterData.flangeStandards?.find((s: any) => s.id === stub1EffectiveStandardId);
-                        const stub1IsSabs1123 = stub1SelectedStandard?.code === 'SANS 1123' || stub1SelectedStandard?.code === 'SABS 1123';
-                        const stub1IsBs4504 = stub1SelectedStandard?.code === 'BS 4504' || stub1SelectedStandard?.code === 'EN 1092';
+                        const stub1StandardCode = stub1SelectedStandard?.code?.toUpperCase() || '';
+                        const stub1IsSabs1123 = (stub1StandardCode.includes('SABS') || stub1StandardCode.includes('SANS')) && stub1StandardCode.includes('1123');
+                        const stub1IsBs4504 = (stub1StandardCode.includes('BS') && stub1StandardCode.includes('4504')) || (stub1StandardCode.includes('EN') && (stub1StandardCode.includes('1092') || stub1StandardCode.includes('10921')));
                         const stub1SelectedClass = masterData.pressureClasses?.find((pc: any) => pc.id === stub1EffectiveClassId);
                         const stub1PressureClassRatingRaw = stub1SelectedClass?.designation ? parseInt(stub1SelectedClass.designation.replace(/[^\d]/g, '')) : 0;
                         const stub1WorkingPressureBar = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
@@ -2265,8 +2267,9 @@ export default function BendForm({
                               const isTypeOverride = entry.specs?.stubs?.[1]?.flangeTypeCode && entry.specs?.stubs?.[1]?.flangeTypeCode !== globalSpecs?.flangeTypeCode;
 
                               const stub2SelectedStandard = masterData.flangeStandards?.find((s: any) => s.id === stub2EffectiveStandardId);
-                              const stub2IsSabs1123 = stub2SelectedStandard?.code === 'SANS 1123' || stub2SelectedStandard?.code === 'SABS 1123';
-                              const stub2IsBs4504 = stub2SelectedStandard?.code === 'BS 4504' || stub2SelectedStandard?.code === 'EN 1092';
+                              const stub2StandardCode = stub2SelectedStandard?.code?.toUpperCase() || '';
+                              const stub2IsSabs1123 = (stub2StandardCode.includes('SABS') || stub2StandardCode.includes('SANS')) && stub2StandardCode.includes('1123');
+                              const stub2IsBs4504 = (stub2StandardCode.includes('BS') && stub2StandardCode.includes('4504')) || (stub2StandardCode.includes('EN') && (stub2StandardCode.includes('1092') || stub2StandardCode.includes('10921')));
                               const stub2SelectedClass = masterData.pressureClasses?.find((pc: any) => pc.id === stub2EffectiveClassId);
                               const stub2PressureClassRatingRaw = stub2SelectedClass?.designation ? parseInt(stub2SelectedClass.designation.replace(/[^\d]/g, '')) : 0;
                               const stub2WorkingPressureBar = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;

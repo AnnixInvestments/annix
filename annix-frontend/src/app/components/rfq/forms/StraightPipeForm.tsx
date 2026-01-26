@@ -862,8 +862,17 @@ export default function StraightPipeForm({
                     const isTypeFromGlobal = globalSpecs?.flangeTypeCode && effectiveTypeCode === globalSpecs?.flangeTypeCode;
                     const isTypeOverride = globalSpecs?.flangeTypeCode && effectiveTypeCode !== globalSpecs?.flangeTypeCode;
 
+                    const workingPressureBar = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                    const selectedPressureClass = masterData.pressureClasses?.find((pc: any) => pc.id === effectiveClassId);
+                    const pressureClassRatingRaw = selectedPressureClass?.designation ? parseInt(selectedPressureClass.designation.replace(/[^0-9]/g, '')) || 0 : 0;
+                    const isPressureClassUnsuitable = effectiveClassId && workingPressureBar > 0 && pressureClassRatingRaw > 0 && (
+                      (isSabs1123 && pressureClassRatingRaw < workingPressureBar * 100) ||
+                      (isBs4504 && pressureClassRatingRaw < workingPressureBar)
+                    );
+
                     const globalSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400';
-                    const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
+                    const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400';
+                    const unsuitableSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
                     const defaultSelectClass = 'w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800';
 
                     return (
@@ -940,8 +949,9 @@ export default function StraightPipeForm({
                           <div>
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
                               {isSabs1123 ? 'Class (kPa)' : 'Class'}
-                              {isClassFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
-                              {isClassOverride && <span className="ml-1 text-red-600 font-normal">(Override)</span>}
+                              {isPressureClassUnsuitable && <span className="ml-1 text-red-600 font-bold">(NOT SUITABLE)</span>}
+                              {!isPressureClassUnsuitable && isClassFromGlobal && <span className="ml-1 text-green-600 font-normal">(Global)</span>}
+                              {!isPressureClassUnsuitable && isClassOverride && <span className="ml-1 text-yellow-600 font-normal">(Override)</span>}
                               <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange pressure rating. Should match or exceed working pressure. Auto-selected based on working pressure.">?</span>
                             </label>
                             <select
@@ -955,7 +965,7 @@ export default function StraightPipeForm({
                                   description: newDescription
                                 });
                               }}
-                              className={isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
+                              className={isPressureClassUnsuitable ? unsuitableSelectClass : isClassFromGlobal ? globalSelectClass : isClassOverride ? overrideSelectClass : defaultSelectClass}
                               onFocus={() => {
                                 const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                                 if (stdId && !pressureClassesByStandard[stdId]) {

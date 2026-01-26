@@ -54,21 +54,25 @@ interface Pipe3DPreviewProps {
 // Standard flange dimensions based on SABS 1123 Table 1000/4 (PN16) - Slip-on flanges
 // Bolt length calculated for: 2 x flange thickness + gasket (3mm) + nut + washer + thread engagement
 // If apiSpecs are provided (from dynamic flange lookup), use those values instead
-const getFlangeSpecs = (nominalBore: number, apiSpecs?: FlangeSpecData | null) => {
+// Returns { specs, isFromApi } to indicate if data is from API or fallback
+const getFlangeSpecs = (nominalBore: number, apiSpecs?: FlangeSpecData | null): { specs: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; thickness: number; boltSize: number; boltLength: number }; isFromApi: boolean } => {
   // If API specs are provided, use them
   if (apiSpecs) {
     return {
-      flangeOD: apiSpecs.flangeOdMm,
-      pcd: apiSpecs.flangePcdMm,
-      boltHoles: apiSpecs.flangeNumHoles,
-      holeID: apiSpecs.flangeBoltHoleDiameterMm,
-      thickness: apiSpecs.flangeThicknessMm,
-      boltSize: apiSpecs.boltDiameterMm || 16,
-      boltLength: apiSpecs.boltLengthMm || 70,
+      specs: {
+        flangeOD: apiSpecs.flangeOdMm,
+        pcd: apiSpecs.flangePcdMm,
+        boltHoles: apiSpecs.flangeNumHoles,
+        holeID: apiSpecs.flangeBoltHoleDiameterMm,
+        thickness: apiSpecs.flangeThicknessMm,
+        boltSize: apiSpecs.boltDiameterMm || 16,
+        boltLength: apiSpecs.boltLengthMm || 70,
+      },
+      isFromApi: true,
     };
   }
 
-  // Fall back to local lookup
+  // Fall back to local lookup (SABS 1123 default data)
   const flangeData: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; thickness: number; boltSize: number; boltLength: number } } = {
     15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, thickness: 14, boltSize: 12, boltLength: 55 },
     20: { flangeOD: 105, pcd: 75, boltHoles: 4, holeID: 14, thickness: 14, boltSize: 12, boltLength: 55 },
@@ -99,7 +103,7 @@ const getFlangeSpecs = (nominalBore: number, apiSpecs?: FlangeSpecData | null) =
     else break;
   }
 
-  return flangeData[closestSize] || flangeData[50];
+  return { specs: flangeData[closestSize] || flangeData[50], isFromApi: false };
 };
 
 const getMaterialProps = (name: string = '') => {
@@ -711,7 +715,14 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           const matProps = getMaterialProps(props.materialName);
           const configUpper = (props.endConfiguration || 'PE').toUpperCase();
           const hasFlanges = configUpper !== 'PE';
-          const flangeSpecs = hasFlanges && props.nominalBoreMm ? getFlangeSpecs(props.nominalBoreMm, props.flangeSpecs) : null;
+          const flangeResult = hasFlanges && props.nominalBoreMm ? getFlangeSpecs(props.nominalBoreMm, props.flangeSpecs) : null;
+          const flangeSpecs = flangeResult?.specs ?? null;
+          const isFromApi = flangeResult?.isFromApi ?? false;
+
+          // Check if using fallback data with non-SABS standard
+          const standardName = props.flangeStandardName || 'SABS 1123';
+          const isNonSabsStandard = !standardName.toLowerCase().includes('sabs') && !standardName.toLowerCase().includes('sans');
+          const showFallbackWarning = hasFlanges && flangeSpecs && !isFromApi && isNonSabsStandard;
 
           // Check for R/F (rotating flange) or L/F (loose flange) configurations
           // These require longer bolts to accommodate the backing ring
@@ -766,15 +777,19 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                 <>
                   <div className="font-bold text-blue-800 mt-1 mb-0.5">FLANGE ({configUpper})</div>
                   <div className="text-gray-600 text-[9px]">{getFlangeConfigLabel(configUpper)}</div>
+                  {showFallbackWarning && (
+                    <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
+                      Data not available for {standardName} - showing SABS 1123 reference values
+                    </div>
+                  )}
                   {flangeSpecs && (
                     <>
                       <div className="text-gray-900 font-medium">OD: {flangeSpecs.flangeOD}mm | PCD: {flangeSpecs.pcd}mm</div>
                       <div className="text-gray-700">Holes: {flangeSpecs.boltHoles} × Ø{flangeSpecs.holeID}mm</div>
                       <div className="text-gray-700">Bolts: {flangeSpecs.boltHoles} × M{flangeSpecs.boltSize} × {adjustedBoltLength}mm</div>
                       <div className="text-gray-700">Thickness: {flangeSpecs.thickness}mm</div>
-                      <div className="text-green-700 font-medium">
+                      <div className={showFallbackWarning ? "text-orange-600 font-medium" : "text-green-700 font-medium"}>
                         {(() => {
-                          const standardName = props.flangeStandardName || 'SABS 1123';
                           const designation = props.pressureClassDesignation || '';
                           const flangeType = props.flangeTypeCode || '';
                           const pressureMatch = designation.match(/^(\d+)/);
