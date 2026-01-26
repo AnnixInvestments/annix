@@ -1023,6 +1023,55 @@ const Scene = (props: Props) => {
           innerR={innerR}
         />
 
+        {/* Degree markers on extrados (outside radius) every 5 degrees - LOCKED for duckfoot bends only */}
+        {isDuckfoot && Array.from({ length: 19 }).map((_, i) => {
+          const degrees = i * 5;
+          const markerAngleRad = (degrees * Math.PI) / 180;
+
+          if (markerAngleRad > angleRad) return null;
+
+          const tickInnerR = bendR + outerR * 1.05;
+          const tickOuterR = bendR + outerR * 1.25;
+          const textR = bendR + outerR * 1.45;
+
+          const tickInnerPos = new THREE.Vector3(
+            bendCenter.x + tickInnerR * Math.cos(markerAngleRad),
+            0,
+            bendCenter.z + tickInnerR * Math.sin(markerAngleRad)
+          );
+          const tickOuterPos = new THREE.Vector3(
+            bendCenter.x + tickOuterR * Math.cos(markerAngleRad),
+            0,
+            bendCenter.z + tickOuterR * Math.sin(markerAngleRad)
+          );
+          const textPos = new THREE.Vector3(
+            bendCenter.x + textR * Math.cos(markerAngleRad),
+            0,
+            bendCenter.z + textR * Math.sin(markerAngleRad)
+          );
+
+          return (
+            <group key={`deg-${degrees}`}>
+              <Line
+                points={[[tickInnerPos.x, tickInnerPos.y, tickInnerPos.z], [tickOuterPos.x, tickOuterPos.y, tickOuterPos.z]]}
+                color="#cc0000"
+                lineWidth={3}
+              />
+              <Text
+                position={[textPos.x, textPos.y, textPos.z]}
+                fontSize={0.18}
+                color="#cc0000"
+                anchorX="center"
+                anchorY="middle"
+                fontWeight="bold"
+                rotation={[Math.PI / 2, 0, markerAngleRad + Math.PI]}
+              >
+                {degrees}°
+              </Text>
+            </group>
+          );
+        })}
+
         {numberOfSegments && numberOfSegments > 1 && Array.from({ length: numberOfSegments - 1 }).map((_, i) => {
           const segAngle = angleRad / numberOfSegments
           const weldAngle = (i + 1) * segAngle
@@ -1270,6 +1319,7 @@ const Scene = (props: Props) => {
           )
         })()}
 
+
         <axesHelper args={[1]} />
       </group>
 
@@ -1307,18 +1357,6 @@ const Scene = (props: Props) => {
         const steelworkY = -ribHeightH;
         const steelworkZ = 0;
 
-        const gussetColor = { color: '#888800', metalness: 0.5, roughness: 0.5 };
-
-        const segmentAngle = numberOfSegments ? (angleRad / numberOfSegments) : (Math.PI / 12);
-        const firstMitreHeight = ribHeightH + (bendR + outerR) * (1 - Math.cos(segmentAngle));
-        const secondMitreHeight = ribHeightH + (bendR + outerR) * (1 - Math.cos(segmentAngle * 2));
-
-        const gussetShape = new THREE.Shape();
-        gussetShape.moveTo(0, 0);
-        gussetShape.lineTo(basePlateXDim, 0);
-        gussetShape.lineTo(basePlateXDim, firstMitreHeight);
-        gussetShape.lineTo(0, secondMitreHeight);
-        gussetShape.lineTo(0, 0);
 
         return (
           <group position={[steelworkX, steelworkY, steelworkZ]}>
@@ -1328,6 +1366,52 @@ const Scene = (props: Props) => {
               <meshStandardMaterial {...basePlateColor} />
             </mesh>
 
+            {/* Base plate dimension labels - all 4 sides labeled */}
+            <Text
+              position={[0, 0.02, basePlateXDim / 2 + 0.1]}
+              fontSize={0.3}
+              color="#000000"
+              anchorX="center"
+              anchorY="middle"
+              fontWeight="bold"
+              rotation={[-Math.PI / 2, 0, 0]}
+            >
+              Y
+            </Text>
+            <Text
+              position={[0, 0.02, -basePlateXDim / 2 - 0.1]}
+              fontSize={0.3}
+              color="#000000"
+              anchorX="center"
+              anchorY="middle"
+              fontWeight="bold"
+              rotation={[-Math.PI / 2, 0, Math.PI]}
+            >
+              W
+            </Text>
+            <Text
+              position={[basePlateYDim / 2 + 0.1, 0.02, 0]}
+              fontSize={0.3}
+              color="#000000"
+              anchorX="center"
+              anchorY="middle"
+              fontWeight="bold"
+              rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+            >
+              X
+            </Text>
+            <Text
+              position={[-basePlateYDim / 2 - 0.1, 0.02, 0]}
+              fontSize={0.3}
+              color="#000000"
+              anchorX="center"
+              anchorY="middle"
+              fontWeight="bold"
+              rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
+            >
+              Z
+            </Text>
+
             {/* Rib running X direction - uses Y dimension for width */}
             <mesh position={[0, ribHeightH / 2, 0]}>
               <boxGeometry args={[basePlateYDim, ribHeightH, ribThickness]} />
@@ -1335,16 +1419,8 @@ const Scene = (props: Props) => {
             </mesh>
 
 
-            {/* Gusset plate 1 (yellow) - vertical plate on left side of base plate */}
-            <mesh
-              position={[0, 0, -basePlateXDim / 2]}
-              rotation={[0, -Math.PI / 2, 0]}
-            >
-              <extrudeGeometry args={[gussetShape, { depth: ribThickness, bevelEnabled: false }]} />
-              <meshStandardMaterial {...gussetColor} />
-            </mesh>
 
-            {/* Gusset plate 2 - extends from base plate to top, spans full width */}
+            {/* Gusset plate 2 (blue) - extends from base plate to top, spans full width along X */}
             {(() => {
               const gusset2Shape = new THREE.Shape();
               const gusset2Width = basePlateYDim;
@@ -1366,6 +1442,133 @@ const Scene = (props: Props) => {
                 </mesh>
               );
             })()}
+
+            {/* Yellow saddle support plate - simple 4-sided plate */}
+            {/* A side: bottom at W, top at 15°. B side: bottom at Y, top at 75° */}
+            {(() => {
+              const yellowThickness = 30 / SCALE;
+              const plateWidth = basePlateXDim;
+
+              const extradosR = bendR + outerR;
+              const pipeBottomY = ribHeightH;
+
+              // For the gusset to span from 15° to 75° on the bend:
+              // - The degree markers are at world Z = extradosR * sin(angle)
+              // - 15° marker at Z = extradosR * sin(15°) = extradosR * 0.259
+              // - 75° marker at Z = extradosR * sin(75°) = extradosR * 0.966
+              //
+              // The gusset plate needs to be positioned so its edges align with these markers.
+              // We'll offset the plate's Z position so its center aligns with the midpoint (45°).
+
+              const aTopAngleDegrees = 15;
+              const bTopAngleDegrees = 75;
+
+              // World Z positions for the degree markers
+              const aMarkerZ = extradosR * Math.sin((aTopAngleDegrees * Math.PI) / 180);
+              const bMarkerZ = extradosR * Math.sin((bTopAngleDegrees * Math.PI) / 180);
+              const markerMidZ = (aMarkerZ + bMarkerZ) / 2;
+              const markerSpan = bMarkerZ - aMarkerZ;
+
+              // The plate has width = plateWidth, we'll scale the top edge to span from 15° to 75°
+              // Bottom stays at base plate edges, top is scaled to match markers
+
+              // Bottom corners at base plate edges (in shape X coordinates)
+              const aBottomX = plateWidth / 2; // W side
+              const bBottomX = -plateWidth / 2; // Y side
+
+              // Top corners: map marker Z positions back to shape X
+              // After rotation [0, π/2, 0]: shape X → world -Z, so shape X = -world Z
+              // But we need to account for plate position offset
+              const plateZOffset = markerMidZ; // Position plate at midpoint of markers
+
+              // Shape X = -(world Z - plateZOffset) = plateZOffset - world Z
+              const aTopX = plateZOffset - aMarkerZ; // 15° position in shape coords
+              const bTopX = plateZOffset - bMarkerZ; // 75° position in shape coords
+
+              // Compute Y positions (height) at the degree positions
+              const aTopY = pipeBottomY + extradosR * (1 - Math.cos((aTopAngleDegrees * Math.PI) / 180));
+              const bTopY = pipeBottomY + extradosR * (1 - Math.cos((bTopAngleDegrees * Math.PI) / 180));
+
+              // Simple 4-sided shape: quadrilateral
+              const yellowShape = new THREE.Shape();
+
+              // Start at A bottom (W side of base plate)
+              yellowShape.moveTo(aBottomX, 0);
+
+              // Go to A top (15° marker)
+              yellowShape.lineTo(aTopX, Math.max(0.1, aTopY));
+
+              // Straight line to B top (75° marker)
+              yellowShape.lineTo(bTopX, Math.max(0.1, bTopY));
+
+              // Go to B bottom (Y side of base plate)
+              yellowShape.lineTo(bBottomX, 0);
+
+              // Close back to A bottom
+              yellowShape.closePath();
+
+              const labelHeight = 0.15;
+
+              return (
+                <group>
+                  <mesh
+                    position={[0, 0, 0]}
+                    rotation={[0, (3 * Math.PI) / 2, 0]}
+                  >
+                    <extrudeGeometry args={[yellowShape, { depth: yellowThickness, bevelEnabled: false }]} />
+                    <meshStandardMaterial color="#cc8800" metalness={0.5} roughness={0.5} />
+                  </mesh>
+                  {/* Side labels for yellow gusset - positioned outside base plate area */}
+                  <Text
+                    position={[yellowThickness + 0.1, labelHeight, -plateWidth / 2 - 0.3]}
+                    fontSize={0.4}
+                    color="#000000"
+                    anchorX="center"
+                    anchorY="middle"
+                    fontWeight="bold"
+                    rotation={[0, Math.PI / 2, 0]}
+                  >
+                    A
+                  </Text>
+                  <Text
+                    position={[yellowThickness + 0.1, labelHeight, plateWidth / 2 + 0.3]}
+                    fontSize={0.4}
+                    color="#000000"
+                    anchorX="center"
+                    anchorY="middle"
+                    fontWeight="bold"
+                    rotation={[0, -Math.PI / 2, 0]}
+                  >
+                    B
+                  </Text>
+                  {/* C label - top corner above A (15° marker) */}
+                  <Text
+                    position={[yellowThickness + 0.1, aTopY + 0.3, aTopX]}
+                    fontSize={0.4}
+                    color="#000000"
+                    anchorX="center"
+                    anchorY="middle"
+                    fontWeight="bold"
+                    rotation={[0, Math.PI / 2, 0]}
+                  >
+                    C
+                  </Text>
+                  {/* D label - top corner above B (75° marker) */}
+                  <Text
+                    position={[yellowThickness + 0.1, bTopY + 0.3, bTopX]}
+                    fontSize={0.4}
+                    color="#000000"
+                    anchorX="center"
+                    anchorY="middle"
+                    fontWeight="bold"
+                    rotation={[0, -Math.PI / 2, 0]}
+                  >
+                    D
+                  </Text>
+                </group>
+              );
+            })()}
+
           </group>
         );
       })()}
