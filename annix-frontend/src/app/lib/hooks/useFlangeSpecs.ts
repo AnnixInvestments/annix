@@ -95,10 +95,12 @@ export async function fetchFlangeSpecsStatic(
   flangeTypeId?: number
 ): Promise<FlangeSpecData | null> {
   if (!nominalBoreMm || !flangeStandardId || !flangePressureClassId) {
+    log.debug('fetchFlangeSpecsStatic: missing required params', { nominalBoreMm, flangeStandardId, flangePressureClassId });
     return null;
   }
 
   try {
+    log.debug('fetchFlangeSpecsStatic: looking up', { nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeId });
     const result = await masterDataApi.lookupFlangeDimension(
       nominalBoreMm,
       flangeStandardId,
@@ -107,6 +109,7 @@ export async function fetchFlangeSpecsStatic(
     );
 
     if (!result) {
+      log.debug('fetchFlangeSpecsStatic: no result from API');
       return null;
     }
 
@@ -128,8 +131,10 @@ export async function fetchFlangeSpecsStatic(
       flangeData.boltMassKg = result.bolt.mass_kg;
     }
 
+    log.debug('fetchFlangeSpecsStatic: success', flangeData);
     return flangeData;
-  } catch {
+  } catch (error) {
+    log.error('fetchFlangeSpecsStatic: API error', error);
     return null;
   }
 }

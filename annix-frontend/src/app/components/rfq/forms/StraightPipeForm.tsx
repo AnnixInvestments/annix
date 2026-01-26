@@ -154,13 +154,16 @@ export default function StraightPipeForm({
 
   useEffect(() => {
     const fetchSpecs = async () => {
+      log.debug('StraightPipeForm fetchSpecs', { hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode });
       if (!hasFlanges || !nominalBoreMm || !flangeStandardId || !flangePressureClassId) {
+        log.debug('StraightPipeForm: missing required params, setting flangeSpecs to null');
         setFlangeSpecs(null);
         return;
       }
 
       const flangeType = masterData?.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode);
       const flangeTypeId = flangeType?.id;
+      log.debug('StraightPipeForm: fetching with flangeTypeId', flangeTypeId);
 
       const specs = await fetchFlangeSpecsStatic(
         nominalBoreMm,
@@ -168,6 +171,7 @@ export default function StraightPipeForm({
         flangePressureClassId,
         flangeTypeId
       );
+      log.debug('StraightPipeForm: received specs', specs);
       setFlangeSpecs(specs);
     };
 

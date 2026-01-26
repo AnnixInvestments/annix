@@ -103,13 +103,16 @@ export default function FittingForm({
 
   useEffect(() => {
     const fetchSpecs = async () => {
+      log.debug('FittingForm fetchSpecs', { hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode });
       if (!hasFlanges || !nominalBoreMm || !flangeStandardId || !flangePressureClassId) {
+        log.debug('FittingForm: missing required params, setting flangeSpecs to null');
         setFlangeSpecs(null);
         return;
       }
 
       const flangeType = masterData?.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode);
       const flangeTypeId = flangeType?.id;
+      log.debug('FittingForm: fetching with flangeTypeId', flangeTypeId);
 
       const specs = await fetchFlangeSpecsStatic(
         nominalBoreMm,
@@ -117,6 +120,7 @@ export default function FittingForm({
         flangePressureClassId,
         flangeTypeId
       );
+      log.debug('FittingForm: received specs', specs);
       setFlangeSpecs(specs);
     };
 

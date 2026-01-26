@@ -117,13 +117,16 @@ export default function BendForm({
 
   useEffect(() => {
     const fetchSpecs = async () => {
+      log.debug('BendForm fetchSpecs', { hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode });
       if (!hasFlanges || !nominalBoreMm || !flangeStandardId || !flangePressureClassId) {
+        log.debug('BendForm: missing required params, setting flangeSpecs to null');
         setFlangeSpecs(null);
         return;
       }
 
       const flangeType = masterData?.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode);
       const flangeTypeId = flangeType?.id;
+      log.debug('BendForm: fetching with flangeTypeId', flangeTypeId);
 
       const specs = await fetchFlangeSpecsStatic(
         nominalBoreMm,
@@ -131,6 +134,7 @@ export default function BendForm({
         flangePressureClassId,
         flangeTypeId
       );
+      log.debug('BendForm: received specs', specs);
       setFlangeSpecs(specs);
     };
 
