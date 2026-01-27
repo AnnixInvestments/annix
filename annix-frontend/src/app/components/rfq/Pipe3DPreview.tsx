@@ -528,13 +528,17 @@ const CameraTracker = ({
       hasRestored: hasRestoredRef.current,
       hasControls: !!controls
     }));
-    if (savedPosition && controls && !hasRestoredRef.current) {
+    const hasValidPosition = savedPosition &&
+      typeof savedPosition[0] === 'number' &&
+      typeof savedPosition[1] === 'number' &&
+      typeof savedPosition[2] === 'number';
+    if (hasValidPosition && controls && !hasRestoredRef.current) {
       log.debug('Pipe CameraTracker restoring camera position', JSON.stringify({
         position: savedPosition,
         target: savedTarget
       }));
       camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2]);
-      if (savedTarget) {
+      if (savedTarget && typeof savedTarget[0] === 'number' && typeof savedTarget[1] === 'number' && typeof savedTarget[2] === 'number') {
         const orbitControls = controls as any;
         if (orbitControls.target) {
           orbitControls.target.set(savedTarget[0], savedTarget[1], savedTarget[2]);

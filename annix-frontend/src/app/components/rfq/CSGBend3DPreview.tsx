@@ -50,6 +50,7 @@ interface Props {
   duckfootRibThicknessT2Mm?: number
   duckfootGussetPointDDegrees?: number
   duckfootGussetPointCDegrees?: number
+  sweepTeePipeALengthMm?: number
 }
 
 const SCALE = 200
@@ -753,13 +754,17 @@ const CameraTracker = ({
       hasRestored: hasRestoredRef.current,
       hasControls: !!controls
     }))
-    if (savedPosition && controls && !hasRestoredRef.current) {
+    const hasValidPosition = savedPosition &&
+      typeof savedPosition[0] === 'number' &&
+      typeof savedPosition[1] === 'number' &&
+      typeof savedPosition[2] === 'number'
+    if (hasValidPosition && controls && !hasRestoredRef.current) {
       log.debug('CameraTracker restoring camera position', JSON.stringify({
         position: savedPosition,
         target: savedTarget
       }))
       camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2])
-      if (savedTarget) {
+      if (savedTarget && typeof savedTarget[0] === 'number' && typeof savedTarget[1] === 'number' && typeof savedTarget[2] === 'number') {
         const orbitControls = controls as any
         if (orbitControls.target) {
           orbitControls.target.set(savedTarget[0], savedTarget[1], savedTarget[2])
@@ -921,7 +926,8 @@ const Scene = (props: Props) => {
     duckfootPlateThicknessT1Mm,
     duckfootRibThicknessT2Mm,
     duckfootGussetPointDDegrees,
-    duckfootGussetPointCDegrees
+    duckfootGussetPointCDegrees,
+    sweepTeePipeALengthMm
   } = props
 
   log.debug('CSGBend3DPreview Scene props', {
@@ -941,7 +947,8 @@ const Scene = (props: Props) => {
 
   const outerR = odMm / SCALE / 2
   const innerR = (odMm - 2 * wtMm) / SCALE / 2
-  const bendR = (nominalBore * 1.5) / SCALE
+  // Use bendRadiusMm prop if provided, otherwise default to 1.5 * NB
+  const bendR = (bendRadiusMm || nominalBore * 1.5) / SCALE
 
   const angleRad = (bendAngle * Math.PI) / 180
 
@@ -1001,6 +1008,10 @@ const Scene = (props: Props) => {
   }, [stubs, wtMm])
 
   const isDuckfoot = bendItemType === 'DUCKFOOT_BEND'
+  const isSweepTee = bendItemType === 'SWEEP_TEE'
+  const defaultPipeALengthMm = nominalBore * 3
+  const effectivePipeALengthMm = sweepTeePipeALengthMm || (isSweepTee ? defaultPipeALengthMm : 0)
+  const pipeALength = effectivePipeALengthMm / SCALE
   const duckfootRotation: [number, number, number] = isDuckfoot ? [Math.PI / 2, 0, -Math.PI / 2] : [0, 0, 0]
 
   const duckfootYOffset = isDuckfoot ? 4 : 0
@@ -1008,7 +1019,8 @@ const Scene = (props: Props) => {
   return (
     <Center>
       <group rotation={duckfootRotation} position={[0, duckfootYOffset, 0]}>
-        {t1 > 0 && (
+        {/* Inlet tangent section - hide for sweep tees since Pipe A replaces it */}
+        {t1 > 0 && !isSweepTee && (
           <>
             <HollowStraightPipe
               start={inletStart}
@@ -1024,14 +1036,17 @@ const Scene = (props: Props) => {
           </>
         )}
 
-        <HollowBendPipe
-          bendCenter={bendCenter}
-          bendRadius={bendR}
-          startAngle={bendStartAngle}
-          endAngle={bendEndAngle}
-          outerR={outerR}
-          innerR={innerR}
-        />
+        {/* Standard bend - hide for sweep tees which have their own geometry */}
+        {!isSweepTee && (
+          <HollowBendPipe
+            bendCenter={bendCenter}
+            bendRadius={bendR}
+            startAngle={bendStartAngle}
+            endAngle={bendEndAngle}
+            outerR={outerR}
+            innerR={innerR}
+          />
+        )}
 
         {/* Degree markers on extrados (outside radius) every 5 degrees - LOCKED for duckfoot bends only */}
         {isDuckfoot && Array.from({ length: 19 }).map((_, i) => {
@@ -1082,7 +1097,8 @@ const Scene = (props: Props) => {
           );
         })}
 
-        {numberOfSegments && numberOfSegments > 1 && Array.from({ length: numberOfSegments - 1 }).map((_, i) => {
+        {/* Segment welds - hide for sweep tees */}
+        {!isSweepTee && numberOfSegments && numberOfSegments > 1 && Array.from({ length: numberOfSegments - 1 }).map((_, i) => {
           const segAngle = angleRad / numberOfSegments
           const weldAngle = (i + 1) * segAngle
           const weldPos = new THREE.Vector3(
@@ -1107,11 +1123,13 @@ const Scene = (props: Props) => {
           )
         })}
 
-        {!isSegmentedBend && (
+        {/* Outlet weld - hide for sweep tees */}
+        {!isSweepTee && !isSegmentedBend && (
           <WeldRing center={bendEndPoint} normal={outletDir} radius={outerR * 1.02} tube={weldTube} />
         )}
 
-        {t2 > 0 && (
+        {/* Outlet tangent - hide for sweep tees */}
+        {!isSweepTee && t2 > 0 && (
           <HollowStraightPipe
             start={bendEndPoint}
             end={outletEnd}
@@ -1121,6 +1139,115 @@ const Scene = (props: Props) => {
             capEnd={!hasOutletFlange}
           />
         )}
+
+        {/* ========== SWEEP TEE GEOMETRY ==========
+            Based on MPS Technical Manual page 32:
+            - Pipe A is the HORIZONTAL main run with FLANGES ON BOTH ENDS
+            - The sweep/bend emerges from the TOP of Pipe A (saddle connection)
+            - The EXTRADOS (outside of bend curve) connects to Pipe A for smooth material flow
+            - The bend curves from horizontal (parallel to Pipe A) to vertical (pointing up)
+            - The outlet flange is at the top, pointing straight up */}
+        {isSweepTee && (() => {
+          const pipeAHalfLength = pipeALength / 2
+          const pipeALeftEnd = new THREE.Vector3(0, 0, -pipeAHalfLength)
+          const pipeARightEnd = new THREE.Vector3(0, 0, pipeAHalfLength)
+
+          // Bend geometry calculation:
+          // HollowBendPipe creates bends in the XZ plane by default.
+          // At angle 0: centerline at (bendR, 0, 0) from center, tangent +Z
+          // At angle 90: centerline at (0, 0, bendR) from center, tangent -X
+          //
+          // We need a bend in the YZ plane: tangent +Z at start, tangent +Y at end
+          // Rotating -90° around Z transforms: (x, y, z) → (y, -x, z)
+          //
+          // For a proper saddle connection where the bend MERGES into Pipe A:
+          // - The extrados (outer curve) should be at y = -outerR (bottom inside of Pipe A)
+          // - This creates the visual merge where the bend appears to emerge from within Pipe A
+          // - World bend center Y = bendR (so extrados at start = -outerR)
+          //
+          // Position the bend shifted right along Pipe A
+          // Z offset = pipeAHalfLength / 2 (halfway between center and right end)
+          const bendZOffset = pipeAHalfLength / 2
+          //
+          // For -90° Z rotation: local (x, y, z) → world (y, -x, z)
+          const localBendCenter = new THREE.Vector3(-bendR, 0, 0)
+
+          // End of bend position in world coordinates (including Z offset):
+          const sweepEndPos = new THREE.Vector3(0, bendR, bendR + bendZOffset)
+          const sweepEndDir = new THREE.Vector3(0, 1, 0)
+
+          return (
+            <>
+              {/* Pipe A - horizontal main run along Z axis */}
+              <HollowStraightPipe
+                start={pipeALeftEnd}
+                end={pipeARightEnd}
+                outerR={outerR}
+                innerR={innerR}
+                capStart={false}
+                capEnd={false}
+              />
+
+              {/* Left flange on Pipe A */}
+              <Flange
+                center={pipeALeftEnd.clone().add(new THREE.Vector3(0, 0, -flangeOffset))}
+                normal={new THREE.Vector3(0, 0, -1)}
+                pipeR={outerR}
+                innerR={innerR}
+                nb={nominalBore}
+              />
+
+              {/* Right flange on Pipe A */}
+              <Flange
+                center={pipeARightEnd.clone().add(new THREE.Vector3(0, 0, flangeOffset))}
+                normal={new THREE.Vector3(0, 0, 1)}
+                pipeR={outerR}
+                innerR={innerR}
+                nb={nominalBore}
+              />
+
+              {/* Sweep branch - 90° bend with extrados connecting to top of Pipe A */}
+              {/* Position shifts the bend right along Pipe A, rotation puts it in YZ plane */}
+              <group position={[0, 0, bendZOffset]} rotation={[0, 0, -Math.PI / 2]}>
+                <HollowBendPipe
+                  bendCenter={localBendCenter}
+                  bendRadius={bendR}
+                  startAngle={0}
+                  endAngle={Math.PI / 2}
+                  outerR={outerR}
+                  innerR={innerR}
+                />
+              </group>
+
+              {/* Outlet flange at top of sweep - pointing straight up */}
+              <Flange
+                center={sweepEndPos.clone().add(sweepEndDir.clone().multiplyScalar(flangeOffset))}
+                normal={sweepEndDir}
+                pipeR={outerR}
+                innerR={innerR}
+                nb={nominalBore}
+              />
+
+              {/* Dimension line for Pipe A length (B dimension in MPS table) */}
+              <DimensionLine
+                start={pipeALeftEnd}
+                end={pipeARightEnd}
+                label={`B: ${effectivePipeALengthMm}mm`}
+                offset={outerR * 2.5}
+                color="#009900"
+              />
+
+              {/* Dimension line for bend radius (A dimension in MPS table) */}
+              <DimensionLine
+                start={new THREE.Vector3(0, 0, bendZOffset)}
+                end={new THREE.Vector3(0, bendR, bendZOffset)}
+                label={`A: ${Math.round(bendR * SCALE)}mm`}
+                offset={outerR * 3}
+                color="#cc6600"
+              />
+            </>
+          )
+        })()}
 
         {(() => {
           const cfMm = centerToFaceMm || 0;
@@ -1600,6 +1727,7 @@ export default function CSGBend3DPreview(props: Props) {
   const t2 = (props.tangent2 || 0) / SCALE
   const angleRad = (props.bendAngle * Math.PI) / 180
   const isDuckfootBend = props.bendItemType === 'DUCKFOOT_BEND'
+  const isSweepTee = props.bendItemType === 'SWEEP_TEE'
 
   const bendEndX = -bendR + bendR * Math.cos(angleRad)
   const bendEndZ = t1 + bendR * Math.sin(angleRad)
@@ -1623,6 +1751,9 @@ export default function CSGBend3DPreview(props: Props) {
     const extent = Math.sqrt(horizontalExtent ** 2 + verticalExtent ** 2)
     const autoCameraDistance = Math.max(extent * 2.5, 6)
     autoCameraPosition = [0.01, -extent * 1.5, autoCameraDistance]
+  } else if (isSweepTee) {
+    const autoCameraDistance = Math.max(diagonalExtent * 2.5, 6)
+    autoCameraPosition = [autoCameraDistance * 0.3, autoCameraDistance * 1.2, autoCameraDistance * 0.3]
   } else {
     const autoCameraDistance = Math.max(diagonalExtent * 2, 5)
     const autoCameraHeight = autoCameraDistance * 0.6

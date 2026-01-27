@@ -198,7 +198,10 @@ export default function BendForm({
                                 duckfootBasePlateXMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateXMm : undefined,
                                 duckfootBasePlateYMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateYMm : undefined,
                                 duckfootRibThicknessT2Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootRibThicknessT2Mm : undefined,
-                                duckfootPlateThicknessT1Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootPlateThicknessT1Mm : undefined
+                                duckfootPlateThicknessT1Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootPlateThicknessT1Mm : undefined,
+                                duckfootGussetPointDDegrees: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootGussetPointDDegrees : undefined,
+                                duckfootGussetPointCDegrees: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootGussetPointCDegrees : undefined,
+                                sweepTeePipeALengthMm: newItemType === 'SWEEP_TEE' ? entry.specs?.sweepTeePipeALengthMm : undefined
                               }
                             };
                             updatedEntry.description = generateItemDescription(updatedEntry);
@@ -1058,27 +1061,48 @@ export default function BendForm({
                     </div>
                   );
 
-                  // Unified Layout: Row 1: NB | Schedule | Bend Style, Row 2: depends on style
+                  // Unified Layout: Row 1: NB | Schedule | Bend Style | Bend Radius, Row 2: depends on style
                   return (
                     <>
-                      {/* Row 1: NB | Schedule | Bend Style */}
+                      {/* Row 1: NB | Schedule | Bend Style | Bend Radius */}
                       <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                           {NBDropdown}
                           {ScheduleDropdown}
                           {BendStyleDropdown}
+                          {isSegmentedStyle ? RadiusTypeDropdown : BendTypeDropdown}
                         </div>
                       </div>
 
                       {/* Row 2: Based on Bend Style selection */}
                       {isSegmentedStyle ? (
                         <>
-                          {/* Segmented: Radius Type | Angle | Segments */}
+                          {/* Segmented: Angle | Segments | (Pipe A Length for Sweep Tee) | Quantity */}
                           <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                              {RadiusTypeDropdown}
+                            <div className={`grid grid-cols-1 sm:grid-cols-2 ${entry.specs?.bendItemType === 'SWEEP_TEE' ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3`}>
                               {AngleDropdown}
                               {SegmentsDropdown}
+                              {entry.specs?.bendItemType === 'SWEEP_TEE' && (
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                                    Pipe A Length (mm)
+                                    <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Length of Pipe A section for the sweep tee">?</span>
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={entry.specs?.sweepTeePipeALengthMm || ''}
+                                    onChange={(e) => {
+                                      const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, sweepTeePipeALengthMm: value } };
+                                      updatedEntry.description = generateItemDescription(updatedEntry);
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    placeholder="Enter length"
+                                    className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                                    min="1"
+                                  />
+                                </div>
+                              )}
                               {QuantityInput}
                             </div>
                           </div>
@@ -1100,10 +1124,9 @@ export default function BendForm({
                         </>
                       ) : (
                         <>
-                          {/* Pulled: Bend Type | Angle | C/F | QTY */}
+                          {/* Pulled: Angle | C/F | QTY */}
                           <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                              {BendTypeDropdown}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                               {AngleDropdown}
                               {CFDisplay}
                               {QuantityInput}
@@ -2579,6 +2602,7 @@ export default function BendForm({
                         duckfootRibThicknessT2Mm={entry.specs?.duckfootRibThicknessT2Mm}
                         duckfootGussetPointDDegrees={entry.specs?.duckfootGussetPointDDegrees}
                         duckfootGussetPointCDegrees={entry.specs?.duckfootGussetPointCDegrees}
+                        sweepTeePipeALengthMm={entry.specs?.sweepTeePipeALengthMm}
                       />
                     );
                   })()}

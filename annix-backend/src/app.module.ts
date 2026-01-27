@@ -39,6 +39,7 @@ import { MaterialValidationModule } from './material-validation/material-validat
 import { GasketWeightModule } from './gasket-weight/gasket-weight.module';
 import { PipeEndConfigurationModule } from './pipe-end-configuration/pipe-end-configuration.module';
 import { BendCenterToFaceModule } from './bend-center-to-face/bend-center-to-face.module';
+import { SweepTeeDimensionModule } from './sweep-tee-dimension/sweep-tee-dimension.module';
 import { RfqModule } from './rfq/rfq.module';
 // Phase 2 modules
 import { StorageModule } from './storage/storage.module';
@@ -109,6 +110,7 @@ import typeormConfig from './config/typeorm';
     GasketWeightModule,
     PipeEndConfigurationModule,
     BendCenterToFaceModule,
+    SweepTeeDimensionModule,
     RfqModule,
     // Phase 2 modules
     StorageModule,
