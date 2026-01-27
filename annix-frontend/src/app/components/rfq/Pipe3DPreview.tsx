@@ -2,10 +2,15 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Center, Environment, Text, Line, ContactShadows } from '@react-three/drei';
+import { OrbitControls, Center, Environment, Text, Line as DreiLine, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import { log } from '@/app/lib/logger';
 import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
+
+const Line = (props: React.ComponentProps<typeof DreiLine>) => {
+  const { size } = useThree();
+  return <DreiLine {...props} resolution={new THREE.Vector2(size.width, size.height)} />;
+};
 
 const useDebouncedProps = <T extends Record<string, any>>(props: T, delay: number = 150): T => {
   const [debouncedProps, setDebouncedProps] = useState(props);

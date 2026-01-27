@@ -2,10 +2,15 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
-import { OrbitControls, Center, Environment, ContactShadows, Tube, Line, Text } from '@react-three/drei'
+import { OrbitControls, Center, Environment, ContactShadows, Tube, Line as DreiLine, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { log } from '@/app/lib/logger'
 import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs'
+
+const Line = (props: React.ComponentProps<typeof DreiLine>) => {
+  const { size } = useThree()
+  return <DreiLine {...props} resolution={new THREE.Vector2(size.width, size.height)} />
+}
 
 type StubOrientation = 'top' | 'bottom' | 'inside' | 'outside'
 

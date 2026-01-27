@@ -2,9 +2,14 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows, Center, Text, Line } from '@react-three/drei';
+import { OrbitControls, Environment, ContactShadows, Center, Text, Line as DreiLine } from '@react-three/drei';
 import { log } from '@/app/lib/logger';
 import * as THREE from 'three';
+
+const Line = (props: React.ComponentProps<typeof DreiLine>) => {
+  const { size } = useThree();
+  return <DreiLine {...props} resolution={new THREE.Vector2(size.width, size.height)} />;
+};
 import {
   getSabs719TeeDimensions,
   getTeeHeight,
