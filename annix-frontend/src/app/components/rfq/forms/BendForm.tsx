@@ -1385,7 +1385,7 @@ export default function BendForm({
                       const hasDefaults = !!defaults;
 
                       return (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                           <div>
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                               Base Plate X (mm)
@@ -1461,6 +1461,54 @@ export default function BendForm({
                               className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                               min="6"
                             />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Point D Location
+                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Angle position of Point D on the yellow gusset (degrees from bend start)">?</span>
+                            </label>
+                            <select
+                              value={entry.specs?.duckfootGussetPointDDegrees || 15}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value);
+                                const updatedEntry = { ...entry, specs: { ...entry.specs, duckfootGussetPointDDegrees: value } };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                            >
+                              <option value={5}>5°</option>
+                              <option value={10}>10°</option>
+                              <option value={15}>15°</option>
+                              <option value={20}>20°</option>
+                              <option value={25}>25°</option>
+                              <option value={30}>30°</option>
+                              <option value={35}>35°</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Point C Location
+                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Angle position of Point C on the yellow gusset (degrees from bend start)">?</span>
+                            </label>
+                            <select
+                              value={entry.specs?.duckfootGussetPointCDegrees || 75}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value);
+                                const updatedEntry = { ...entry, specs: { ...entry.specs, duckfootGussetPointCDegrees: value } };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                            >
+                              <option value={55}>55°</option>
+                              <option value={60}>60°</option>
+                              <option value={65}>65°</option>
+                              <option value={70}>70°</option>
+                              <option value={75}>75°</option>
+                              <option value={80}>80°</option>
+                              <option value={85}>85°</option>
+                            </select>
                           </div>
                         </div>
                       );
@@ -2529,6 +2577,8 @@ export default function BendForm({
                         duckfootBasePlateYMm={entry.specs?.duckfootBasePlateYMm}
                         duckfootPlateThicknessT1Mm={entry.specs?.duckfootPlateThicknessT1Mm}
                         duckfootRibThicknessT2Mm={entry.specs?.duckfootRibThicknessT2Mm}
+                        duckfootGussetPointDDegrees={entry.specs?.duckfootGussetPointDDegrees}
+                        duckfootGussetPointCDegrees={entry.specs?.duckfootGussetPointCDegrees}
                       />
                     );
                   })()}

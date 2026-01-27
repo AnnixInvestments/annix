@@ -48,6 +48,8 @@ interface Props {
   duckfootBasePlateYMm?: number
   duckfootPlateThicknessT1Mm?: number
   duckfootRibThicknessT2Mm?: number
+  duckfootGussetPointDDegrees?: number
+  duckfootGussetPointCDegrees?: number
 }
 
 const SCALE = 200
@@ -917,7 +919,9 @@ const Scene = (props: Props) => {
     duckfootBasePlateXMm,
     duckfootBasePlateYMm,
     duckfootPlateThicknessT1Mm,
-    duckfootRibThicknessT2Mm
+    duckfootRibThicknessT2Mm,
+    duckfootGussetPointDDegrees,
+    duckfootGussetPointCDegrees
   } = props
 
   log.debug('CSGBend3DPreview Scene props', {
@@ -1458,16 +1462,8 @@ const Scene = (props: Props) => {
               const extradosR = bendR + outerR;
               const pipeBottomY = ribHeightH;
 
-              // For the gusset to span from 15° to 75° on the bend:
-              // - The degree markers are at world Z = extradosR * sin(angle)
-              // - 15° marker at Z = extradosR * sin(15°) = extradosR * 0.259
-              // - 75° marker at Z = extradosR * sin(75°) = extradosR * 0.966
-              //
-              // The gusset plate needs to be positioned so its edges align with these markers.
-              // We'll offset the plate's Z position so its center aligns with the midpoint (45°).
-
-              const aTopAngleDegrees = 15;
-              const bTopAngleDegrees = 75;
+              const aTopAngleDegrees = duckfootGussetPointDDegrees || 15;
+              const bTopAngleDegrees = duckfootGussetPointCDegrees || 75;
 
               // World Z positions for the degree markers
               const aMarkerZ = extradosR * Math.sin((aTopAngleDegrees * Math.PI) / 180);
