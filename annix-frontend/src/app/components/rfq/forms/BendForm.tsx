@@ -1049,14 +1049,20 @@ export default function BendForm({
                           );
                         }
 
-                        const getSegmentOptions = (deg: number): number[] => {
+                        const getSegmentOptions = (deg: number, radiusType?: string, isSweepTee?: boolean): number[] => {
+                          if (isSweepTee && radiusType) {
+                            if (radiusType === 'long') return [5, 6];
+                            if (radiusType === 'medium') return [4, 5];
+                            if (radiusType === 'elbow') return [3, 4];
+                          }
                           if (deg <= 11) return [2];
                           if (deg <= 37) return [2, 3];
                           if (deg <= 59) return [3, 4];
                           return [5, 6, 7];
                         };
 
-                        const segmentOptions = getSegmentOptions(bendDeg);
+                        const isSweepTee = entry.specs?.bendItemType === 'SWEEP_TEE';
+                        const segmentOptions = getSegmentOptions(bendDeg, bendRadiusType, isSweepTee);
                         const isAutoFill = bendDeg <= 11;
 
                         if (isAutoFill && entry.specs?.numberOfSegments !== 2) {
