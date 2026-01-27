@@ -938,6 +938,19 @@ class ApiClient {
     return this.request(`/bend-center-to-face/lookup?bendType=${bendType}&nominalBoreMm=${nominalBoreMm}&degrees=${degrees}`);
   }
 
+  // Sweep tee dimension endpoints
+  async getSweepTeeDimension(nominalBoreMm: number, radiusType: string): Promise<{
+    id: number;
+    nominalBoreMm: number;
+    outsideDiameterMm: number;
+    radiusType: string;
+    bendRadiusMm: number;
+    pipeALengthMm: number;
+    elbowEMm: number | null;
+  } | null> {
+    return this.request(`/sweep-tee-dimension/lookup?nominalBoreMm=${nominalBoreMm}&radiusType=${radiusType}`);
+  }
+
   // Weld type endpoints
   async getWeldTypes(): Promise<WeldType[]> {
     return this.request<WeldType[]>('/weld-type');
@@ -1319,8 +1332,10 @@ export const masterDataApi = {
   getBendNominalBores: (bendType: string) => apiClient.getNominalBoresForBendType(bendType),
   getBendDegrees: (bendType: string, nominalBoreMm?: number) => apiClient.getDegreesForBendType(bendType, nominalBoreMm),
   getBendOptions: (bendType: string) => apiClient.getBendOptions(bendType),
-  getBendCenterToFace: (bendType: string, nominalBoreMm: number, degrees: number) => 
+  getBendCenterToFace: (bendType: string, nominalBoreMm: number, degrees: number) =>
     apiClient.getBendCenterToFace(bendType, nominalBoreMm, degrees),
+  getSweepTeeDimension: (nominalBoreMm: number, radiusType: string) =>
+    apiClient.getSweepTeeDimension(nominalBoreMm, radiusType),
   getWeldTypes: () => apiClient.getWeldTypes(),
   getWeldTypeById: (id: number) => apiClient.getWeldTypeById(id),
 

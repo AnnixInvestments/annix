@@ -28,6 +28,7 @@ interface Props {
   tangent2?: number
   materialName?: string
   numberOfSegments?: number
+  isSegmented?: boolean
   stubs?: StubData[]
   flangeConfig?: string
   closureLengthMm?: number
@@ -72,7 +73,7 @@ const pipeOuterMat = { color: '#2E8B57', metalness: 0.3, roughness: 0.5 }
 const pipeInnerMat = { color: '#1a3a1a', metalness: 0.2, roughness: 0.7 }
 const pipeEndMat = { color: '#4ADE80', metalness: 0.5, roughness: 0.3 }
 const weldColor = { color: '#1a1a1a', metalness: 0.2, roughness: 0.9 }
-const flangeColor = { color: '#444444', metalness: 0.6, roughness: 0.4 }
+const flangeColor = { color: '#888888', metalness: 0.6, roughness: 0.4 }
 const blankFlangeColor = { color: '#cc3300', metalness: 0.6, roughness: 0.4 }
 
 const FLANGE_DATA: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; boltSize: number; boltLength: number; thickness: number } } = {
@@ -229,6 +230,115 @@ const HollowBendPipe = ({
       <Tube args={[innerCurve, segments, innerR, 32, false]}>
         <meshStandardMaterial {...pipeInnerMat} side={THREE.DoubleSide} />
       </Tube>
+    </group>
+  )
+}
+
+const SegmentedBendPipe = ({
+  bendCenter,
+  bendRadius,
+  startAngle,
+  endAngle,
+  outerR,
+  innerR,
+  numberOfSegments
+}: {
+  bendCenter: THREE.Vector3
+  bendRadius: number
+  startAngle: number
+  endAngle: number
+  outerR: number
+  innerR: number
+  numberOfSegments: number
+}) => {
+  const weldTube = outerR * 0.06
+
+  const segmentsData = useMemo(() => {
+    const totalAngle = endAngle - startAngle
+    const segmentAngle = totalAngle / numberOfSegments
+    const data: Array<{
+      startPos: THREE.Vector3
+      endPos: THREE.Vector3
+      midAngle: number
+      weldPos?: THREE.Vector3
+      weldNormal?: THREE.Vector3
+    }> = []
+
+    for (let i = 0; i < numberOfSegments; i++) {
+      const segStart = startAngle + i * segmentAngle
+      const segEnd = startAngle + (i + 1) * segmentAngle
+      const segMid = (segStart + segEnd) / 2
+
+      const startPos = new THREE.Vector3(
+        bendCenter.x + bendRadius * Math.cos(segStart),
+        bendCenter.y,
+        bendCenter.z + bendRadius * Math.sin(segStart)
+      )
+      const endPos = new THREE.Vector3(
+        bendCenter.x + bendRadius * Math.cos(segEnd),
+        bendCenter.y,
+        bendCenter.z + bendRadius * Math.sin(segEnd)
+      )
+
+      const segment: {
+        startPos: THREE.Vector3
+        endPos: THREE.Vector3
+        midAngle: number
+        weldPos?: THREE.Vector3
+        weldNormal?: THREE.Vector3
+      } = { startPos, endPos, midAngle: segMid }
+
+      if (i < numberOfSegments - 1) {
+        segment.weldPos = endPos.clone()
+        const weldAngle = segEnd
+        segment.weldNormal = new THREE.Vector3(
+          -Math.sin(weldAngle),
+          0,
+          Math.cos(weldAngle)
+        ).normalize()
+      }
+
+      data.push(segment)
+    }
+
+    return data
+  }, [bendCenter, bendRadius, startAngle, endAngle, numberOfSegments])
+
+  return (
+    <group>
+      {segmentsData.map((seg, i) => {
+        const direction = seg.endPos.clone().sub(seg.startPos)
+        const length = direction.length()
+        const midPoint = seg.startPos.clone().add(direction.clone().multiplyScalar(0.5))
+
+        const quaternion = new THREE.Quaternion()
+        quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize())
+
+        const weldQuaternion = seg.weldNormal ? (() => {
+          const q = new THREE.Quaternion()
+          q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), seg.weldNormal)
+          return q
+        })() : undefined
+
+        return (
+          <group key={i}>
+            <mesh position={[midPoint.x, midPoint.y, midPoint.z]} quaternion={quaternion}>
+              <cylinderGeometry args={[outerR, outerR, length, 32, 1, true]} />
+              <meshStandardMaterial {...pipeOuterMat} side={THREE.DoubleSide} />
+            </mesh>
+            <mesh position={[midPoint.x, midPoint.y, midPoint.z]} quaternion={quaternion}>
+              <cylinderGeometry args={[innerR, innerR, length, 32, 1, true]} />
+              <meshStandardMaterial {...pipeInnerMat} side={THREE.DoubleSide} />
+            </mesh>
+            {seg.weldPos && seg.weldNormal && weldQuaternion && (
+              <mesh position={[seg.weldPos.x, seg.weldPos.y, seg.weldPos.z]} quaternion={weldQuaternion}>
+                <torusGeometry args={[outerR * 1.02, weldTube, 12, 32]} />
+                <meshStandardMaterial {...weldColor} />
+              </mesh>
+            )}
+          </group>
+        )
+      })}
     </group>
   )
 }
@@ -448,6 +558,7 @@ const Flange = ({
   const holeR = (flangeSpecs.holeID / 2) / SCALE
   const boltCount = flangeSpecs.boltHoles
   const boreR = pipeR * 1.02
+  const weldTube = pipeR * 0.06
 
   const faceGeometry = useMemo(() => {
     const shape = new THREE.Shape()
@@ -485,7 +596,7 @@ const Flange = ({
       </mesh>
       <mesh>
         <cylinderGeometry args={[boreR, boreR, thick, 32, 1, true]} />
-        <meshStandardMaterial color="#111" side={THREE.BackSide} />
+        <meshStandardMaterial color="#555" side={THREE.BackSide} />
       </mesh>
       {Array.from({ length: boltCount }).map((_, i) => {
         const angle = (i / boltCount) * Math.PI * 2
@@ -503,6 +614,16 @@ const Flange = ({
       </mesh>
       <mesh geometry={faceGeometry} position={[0, -thick / 2 - 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Outer weld ring - where flange meets pipe on outside */}
+      <mesh position={[0, -thick / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[pipeR * 1.02, weldTube, 12, 32]} />
+        <meshStandardMaterial {...weldColor} />
+      </mesh>
+      {/* Inner weld ring - where flange bore meets pipe inside */}
+      <mesh position={[0, -thick / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[innerR * 0.98, weldTube, 12, 32]} />
+        <meshStandardMaterial {...weldColor} />
       </mesh>
     </group>
   )
@@ -914,6 +1035,7 @@ const Scene = (props: Props) => {
     tangent1 = 0,
     tangent2 = 0,
     numberOfSegments,
+    isSegmented = false,
     stubs = [],
     flangeConfig = 'PE',
     addBlankFlange = false,
@@ -961,7 +1083,7 @@ const Scene = (props: Props) => {
 
   const flangeSpecs = FLANGE_DATA[nominalBore] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nominalBore).pop() || 200]
   const flangeThickScaled = ((flangeSpecs.flangeOD / 2) / SCALE) * 0.18
-  const flangeOffset = flangeThickScaled / 2
+  const flangeOffset = flangeThickScaled / 2 * 0.8
 
   const weldTube = outerR * 0.05
   const isSegmentedBend = numberOfSegments !== undefined && numberOfSegments > 1
@@ -1161,19 +1283,19 @@ const Scene = (props: Props) => {
           // Rotating -90° around Z transforms: (x, y, z) → (y, -x, z)
           //
           // For a proper saddle connection where the bend MERGES into Pipe A:
-          // - The extrados (outer curve) should be at y = -outerR (bottom inside of Pipe A)
-          // - This creates the visual merge where the bend appears to emerge from within Pipe A
-          // - World bend center Y = bendR (so extrados at start = -outerR)
+          // - The extrados (outer curve) merges into the top of Pipe A
+          // - The bend curves TOWARD the viewer (-Z direction)
+          // - Adding 180° Y rotation flips the bend to curve in -Z direction
           //
-          // Position the bend shifted right along Pipe A
-          // Z offset = pipeAHalfLength / 2 (halfway between center and right end)
-          const bendZOffset = pipeAHalfLength / 2
+          // Position the bend at the right end of Pipe A, against the flange
+          const bendZOffset = pipeAHalfLength
           //
           // For -90° Z rotation: local (x, y, z) → world (y, -x, z)
           const localBendCenter = new THREE.Vector3(-bendR, 0, 0)
 
-          // End of bend position in world coordinates (including Z offset):
-          const sweepEndPos = new THREE.Vector3(0, bendR, bendR + bendZOffset)
+          // End of bend position in world coordinates:
+          // With 180° Y rotation, the bend curves toward -Z, so end is at z = bendZOffset - bendR
+          const sweepEndPos = new THREE.Vector3(0, bendR, bendZOffset - bendR)
           const sweepEndDir = new THREE.Vector3(0, 1, 0)
 
           return (
@@ -1207,16 +1329,28 @@ const Scene = (props: Props) => {
               />
 
               {/* Sweep branch - 90° bend with extrados connecting to top of Pipe A */}
-              {/* Position shifts the bend right along Pipe A, rotation puts it in YZ plane */}
-              <group position={[0, 0, bendZOffset]} rotation={[0, 0, -Math.PI / 2]}>
-                <HollowBendPipe
-                  bendCenter={localBendCenter}
-                  bendRadius={bendR}
-                  startAngle={0}
-                  endAngle={Math.PI / 2}
-                  outerR={outerR}
-                  innerR={innerR}
-                />
+              {/* Position shifts bend right, 180° Y flips to curve toward viewer, -90° Z puts in YZ plane */}
+              <group position={[0, 0, bendZOffset]} rotation={[0, Math.PI, -Math.PI / 2]}>
+                {isSegmented && numberOfSegments && numberOfSegments > 1 ? (
+                  <SegmentedBendPipe
+                    bendCenter={localBendCenter}
+                    bendRadius={bendR}
+                    startAngle={0}
+                    endAngle={Math.PI / 2}
+                    outerR={outerR}
+                    innerR={innerR}
+                    numberOfSegments={numberOfSegments}
+                  />
+                ) : (
+                  <HollowBendPipe
+                    bendCenter={localBendCenter}
+                    bendRadius={bendR}
+                    startAngle={0}
+                    endAngle={Math.PI / 2}
+                    outerR={outerR}
+                    innerR={innerR}
+                  />
+                )}
               </group>
 
               {/* Outlet flange at top of sweep - pointing straight up */}
@@ -1228,28 +1362,73 @@ const Scene = (props: Props) => {
                 nb={nominalBore}
               />
 
-              {/* Dimension line for Pipe A length (B dimension in MPS table) */}
-              <DimensionLine
-                start={pipeALeftEnd}
-                end={pipeARightEnd}
-                label={`B: ${effectivePipeALengthMm}mm`}
-                offset={outerR * 2.5}
-                color="#009900"
-              />
+              {/* TODO: Saddle weld line - see GitHub Issue #48
+                  The saddle weld should trace where the bend meets Pipe A:
+                  - Start at one flange face (back of flange)
+                  - Run along the junction between bend and pipe
+                  - Go over the top of Pipe A at the saddle point
+                  - Return to the other flange face
+                  Also need to calculate correct weld length for this saddle weld. */}
 
-              {/* Dimension line for bend radius (A dimension in MPS table) */}
-              <DimensionLine
-                start={new THREE.Vector3(0, 0, bendZOffset)}
-                end={new THREE.Vector3(0, bendR, bendZOffset)}
-                label={`A: ${Math.round(bendR * SCALE)}mm`}
-                offset={outerR * 3}
-                color="#cc6600"
-              />
+              {/* Dimension lines - L-shape with horizontal at top and vertical on right */}
+              {(() => {
+                const cfValue = centerToFaceMm || Math.round(bendR * SCALE)
+                const cfScaled = cfValue / SCALE
+                const aLineZ = pipeAHalfLength + outerR * 1.2
+                const aLineBottom = 0
+                const aLineTop = cfScaled
+
+                return (
+                  <>
+                    {/* Horizontal line at top (from left flange to vertical line) */}
+                    <Line
+                      points={[
+                        [0, aLineTop, -pipeAHalfLength],
+                        [0, aLineTop, aLineZ]
+                      ]}
+                      color="#cc6600"
+                      lineWidth={2}
+                    />
+                    {/* Vertical line on right (from pipe centerline to top) */}
+                    <Line
+                      points={[
+                        [0, aLineBottom, aLineZ],
+                        [0, aLineTop, aLineZ]
+                      ]}
+                      color="#cc6600"
+                      lineWidth={2}
+                    />
+                    {/* B dimension label on horizontal line */}
+                    <Text
+                      position={[outerR * 0.5, aLineTop, 0]}
+                      fontSize={outerR * 0.6}
+                      color="#cc6600"
+                      anchorX="center"
+                      anchorY="bottom"
+                      rotation={[0, -Math.PI / 2, 0]}
+                    >
+                      {`${effectivePipeALengthMm}mm`}
+                    </Text>
+                    {/* A dimension label on vertical line */}
+                    <Text
+                      position={[outerR * 0.5, (aLineBottom + aLineTop) / 2, aLineZ]}
+                      fontSize={outerR * 0.6}
+                      color="#cc6600"
+                      anchorX="center"
+                      anchorY="bottom"
+                      rotation={[0, -Math.PI / 2, Math.PI / 2]}
+                    >
+                      {`${cfValue}mm`}
+                    </Text>
+                  </>
+                )
+              })()}
             </>
           )
         })()}
 
-        {(() => {
+        {/* Standard bend dimension lines - hide for sweep tees */}
+        {!isSweepTee && (() => {
           const cfMm = centerToFaceMm || 0;
 
           const ip = new THREE.Vector3(0, 0, t1 + bendR);
@@ -1408,7 +1587,8 @@ const Scene = (props: Props) => {
           )
         })}
 
-        {hasInletFlange && (
+        {/* Inlet flange - hide for sweep tees which have their own flanges */}
+        {hasInletFlange && !isSweepTee && (
           <Flange
             center={new THREE.Vector3(0, 0, -flangeOffset)}
             normal={new THREE.Vector3(0, 0, -1)}
@@ -1418,7 +1598,8 @@ const Scene = (props: Props) => {
           />
         )}
 
-        {hasOutletFlange && (
+        {/* Outlet flange - hide for sweep tees which have their own flanges */}
+        {hasOutletFlange && !isSweepTee && (
           <Flange
             center={t2 > 0
               ? outletEnd.clone().add(outletDir.clone().multiplyScalar(flangeOffset))

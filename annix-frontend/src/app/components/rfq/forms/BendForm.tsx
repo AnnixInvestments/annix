@@ -47,6 +47,7 @@ import {
 } from '@/app/lib/utils/sabs62CfData';
 import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
+import { masterDataApi } from '@/app/lib/api/client';
 import { calculateMinWallThickness, calculateBendWeldVolume, calculateComprehensiveSurfaceArea } from '@/app/lib/utils/pipeCalculations';
 import {
   steelStandardBendRules,
@@ -141,6 +142,68 @@ export default function BendForm({
     fetchSpecs();
   }, [hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode, masterData?.flangeTypes]);
 
+  const steelSpec = masterData?.steelSpecs?.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId));
+  const steelSpecName = steelSpec?.steelSpecName || '';
+  const isSABS719 = steelSpecName.includes('SABS 719') || steelSpecName.includes('SANS 719');
+  const currentBendStyle = entry.specs?.bendStyle || (isSABS719 ? 'segmented' : 'pulled');
+  const isCurrentlySegmented = currentBendStyle === 'segmented';
+
+  const [lastFetchedParams, setLastFetchedParams] = useState<string | null>(null);
+  const [pipeALengthSource, setPipeALengthSource] = useState<'auto' | 'override' | null>(null);
+
+  useEffect(() => {
+    const fetchAndSetPipeALength = async () => {
+      if (entry.specs?.bendItemType !== 'SWEEP_TEE') {
+        return;
+      }
+      if (!entry.specs?.nominalBoreMm) {
+        return;
+      }
+
+      const segmentedToSweepTeeMap: Record<string, string> = {
+        long: 'long_radius',
+        medium: 'medium_radius',
+        elbow: 'elbow',
+      };
+
+      const pulledToSweepTeeMap: Record<string, string> = {
+        '1D': 'elbow',
+        '1.5D': 'elbow',
+        '2D': 'medium_radius',
+        '3D': 'long_radius',
+        '5D': 'long_radius',
+      };
+
+      const sweepTeeRadiusType = isCurrentlySegmented
+        ? (entry.specs?.bendRadiusType ? segmentedToSweepTeeMap[entry.specs.bendRadiusType] : null)
+        : (entry.specs?.bendType ? pulledToSweepTeeMap[entry.specs.bendType] : null);
+
+      if (!sweepTeeRadiusType) {
+        return;
+      }
+
+      const fetchKey = `${entry.specs.nominalBoreMm}-${sweepTeeRadiusType}`;
+      if (fetchKey === lastFetchedParams) {
+        return;
+      }
+
+      try {
+        const dimension = await masterDataApi.getSweepTeeDimension(entry.specs.nominalBoreMm, sweepTeeRadiusType);
+        setLastFetchedParams(fetchKey);
+        if (dimension?.pipeALengthMm) {
+          setPipeALengthSource('auto');
+          onUpdateEntry(entry.id, {
+            specs: { ...entry.specs, sweepTeePipeALengthMm: dimension.pipeALengthMm }
+          });
+        }
+      } catch {
+        setLastFetchedParams(fetchKey);
+      }
+    };
+
+    fetchAndSetPipeALength();
+  }, [entry.specs?.bendItemType, entry.specs?.nominalBoreMm, entry.specs?.bendRadiusType, entry.specs?.bendType, isCurrentlySegmented, lastFetchedParams, entry.id, entry.specs, onUpdateEntry]);
+
   return (
               <SplitPaneLayout
                 entryId={entry.id}
@@ -190,11 +253,13 @@ export default function BendForm({
                           value={entry.specs?.bendItemType || 'BEND'}
                           onChange={(e) => {
                             const newItemType = e.target.value;
+                            const isFixed90 = newItemType === 'SWEEP_TEE' || newItemType === 'DUCKFOOT_BEND';
                             const updatedEntry: any = {
                               ...entry,
                               specs: {
                                 ...entry.specs,
                                 bendItemType: newItemType,
+                                bendDegrees: isFixed90 ? 90 : entry.specs?.bendDegrees,
                                 duckfootBasePlateXMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateXMm : undefined,
                                 duckfootBasePlateYMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateYMm : undefined,
                                 duckfootRibThicknessT2Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootRibThicknessT2Mm : undefined,
@@ -556,6 +621,7 @@ export default function BendForm({
                                   newBendRadius = SABS62_BEND_RADIUS[bendType]?.[nominalBore];
                                 }
 
+                                const isSweepTee = entry.specs?.bendItemType === 'SWEEP_TEE';
                                 const updatedEntry: any = {
                                   ...entry,
                                   specs: {
@@ -564,9 +630,14 @@ export default function BendForm({
                                     scheduleNumber: matchedSchedule,
                                     wallThicknessMm: matchedWT,
                                     centerToFaceMm: newCenterToFace,
-                                    bendRadiusMm: newBendRadius
+                                    bendRadiusMm: newBendRadius,
+                                    sweepTeePipeALengthMm: isSweepTee ? undefined : entry.specs?.sweepTeePipeALengthMm
                                   }
                                 };
+                                if (isSweepTee) {
+                                  setLastFetchedParams(null);
+                                  setPipeALengthSource(null);
+                                }
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
 
@@ -762,17 +833,24 @@ export default function BendForm({
                             id={selectId}
                             value={entry.specs?.bendType || ''}
                             onChange={(bendType) => {
+                              const isSweepTee = entry.specs?.bendItemType === 'SWEEP_TEE';
+                              const isFixed90 = isSweepTee || entry.specs?.bendItemType === 'DUCKFOOT_BEND';
                               const updatedEntry: any = {
                                 ...entry,
                                 specs: {
                                   ...entry.specs,
                                   bendType: bendType || undefined,
                                   nominalBoreMm: undefined,
-                                  bendDegrees: undefined,
+                                  bendDegrees: isFixed90 ? 90 : undefined,
                                   centerToFaceMm: undefined,
-                                  bendRadiusMm: undefined
+                                  bendRadiusMm: undefined,
+                                  sweepTeePipeALengthMm: isSweepTee ? undefined : entry.specs?.sweepTeePipeALengthMm
                                 }
                               };
+                              if (isSweepTee) {
+                                setLastFetchedParams(null);
+                                setPipeALengthSource(null);
+                              }
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
 
@@ -809,6 +887,7 @@ export default function BendForm({
                             id={selectId}
                             value={entry.specs?.bendRadiusType || ''}
                             onChange={(radiusType) => {
+                              const isSweepTee = entry.specs?.bendItemType === 'SWEEP_TEE';
                               const updatedEntry: any = {
                                 ...entry,
                                 specs: {
@@ -818,13 +897,18 @@ export default function BendForm({
                                   numberOfSegments: undefined,
                                   centerToFaceMm: undefined,
                                   bendRadiusMm: undefined,
-                                  bendDegrees: undefined
+                                  bendDegrees: isSweepTee ? 90 : undefined,
+                                  sweepTeePipeALengthMm: isSweepTee ? undefined : entry.specs?.sweepTeePipeALengthMm
                                 }
                               };
+                              if (isSweepTee) {
+                                setLastFetchedParams(null);
+                                setPipeALengthSource(null);
+                              }
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
 
-                              if (radiusType) {
+                              if (radiusType && !isSweepTee) {
                                 setTimeout(() => focusAndOpenSelect(`bend-angle-${entry.id}`), 100);
                               }
                             }}
@@ -845,13 +929,23 @@ export default function BendForm({
                     ? getSabs62AvailableAngles(pulledBendType, currentNB)
                     : [];
 
+                  const isFixedAngle90 = entry.specs?.bendItemType === 'SWEEP_TEE' || entry.specs?.bendItemType === 'DUCKFOOT_BEND';
+
                   const AngleDropdown = (
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Bend Angle *
                         <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="The angle of direction change. 90° is a right-angle turn, 45° is a diagonal, 180° is a U-turn (return bend).">?</span>
                       </label>
-                      {(() => {
+                      {isFixedAngle90 ? (
+                        <input
+                          type="text"
+                          value="90°"
+                          disabled
+                          className="w-full px-3 py-2 border border-green-300 rounded-md text-sm bg-green-50 text-green-900 font-medium cursor-not-allowed"
+                          title="Sweep Tees and Duckfoot Bends are always 90°"
+                        />
+                      ) : (() => {
                         const selectId = `bend-angle-${entry.id}`;
                         const isDisabled = !isSegmentedStyle && !pulledBendType;
 
@@ -1077,22 +1171,31 @@ export default function BendForm({
                       {/* Row 2: Based on Bend Style selection */}
                       {isSegmentedStyle ? (
                         <>
-                          {/* Segmented: Angle | Segments | (Pipe A Length for Sweep Tee) | Quantity */}
+                          {/* Segmented: Angle | Segments | C/F | (Pipe A Length for Sweep Tee) | Quantity */}
                           <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
-                            <div className={`grid grid-cols-1 sm:grid-cols-2 ${entry.specs?.bendItemType === 'SWEEP_TEE' ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3`}>
+                            <div className={`grid grid-cols-1 sm:grid-cols-2 ${entry.specs?.bendItemType === 'SWEEP_TEE' ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-3`}>
                               {AngleDropdown}
                               {SegmentsDropdown}
+                              {CFDisplay}
                               {entry.specs?.bendItemType === 'SWEEP_TEE' && (
                                 <div>
-                                  <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                                    Pipe A Length (mm)
-                                    <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Length of Pipe A section for the sweep tee">?</span>
-                                  </label>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                      Pipe A Length (mm)
+                                      <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Length of Pipe A section for the sweep tee">?</span>
+                                    </label>
+                                    {pipeALengthSource && (
+                                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${pipeALengthSource === 'auto' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'}`}>
+                                        {pipeALengthSource}
+                                      </span>
+                                    )}
+                                  </div>
                                   <input
                                     type="number"
                                     value={entry.specs?.sweepTeePipeALengthMm || ''}
                                     onChange={(e) => {
                                       const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                      setPipeALengthSource('override');
                                       const updatedEntry = { ...entry, specs: { ...entry.specs, sweepTeePipeALengthMm: value } };
                                       updatedEntry.description = generateItemDescription(updatedEntry);
                                       onUpdateEntry(entry.id, updatedEntry);
@@ -1124,11 +1227,40 @@ export default function BendForm({
                         </>
                       ) : (
                         <>
-                          {/* Pulled: Angle | C/F | QTY */}
+                          {/* Pulled: Angle | C/F | (Pipe A Length for Sweep Tee) | QTY */}
                           <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            <div className={`grid grid-cols-1 sm:grid-cols-2 ${entry.specs?.bendItemType === 'SWEEP_TEE' ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3`}>
                               {AngleDropdown}
                               {CFDisplay}
+                              {entry.specs?.bendItemType === 'SWEEP_TEE' && (
+                                <div>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                      Pipe A Length (mm)
+                                      <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Length of Pipe A section for the sweep tee">?</span>
+                                    </label>
+                                    {pipeALengthSource && (
+                                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${pipeALengthSource === 'auto' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'}`}>
+                                        {pipeALengthSource}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <input
+                                    type="number"
+                                    value={entry.specs?.sweepTeePipeALengthMm || ''}
+                                    onChange={(e) => {
+                                      const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                      setPipeALengthSource('override');
+                                      const updatedEntry = { ...entry, specs: { ...entry.specs, sweepTeePipeALengthMm: value } };
+                                      updatedEntry.description = generateItemDescription(updatedEntry);
+                                      onUpdateEntry(entry.id, updatedEntry);
+                                    }}
+                                    placeholder="Enter length"
+                                    className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                                    min="1"
+                                  />
+                                </div>
+                              )}
                               {QuantityInput}
                             </div>
                           </div>
@@ -1544,7 +1676,8 @@ export default function BendForm({
                   </div>
                 )}
 
-                {/* Tangent Extensions Row */}
+                {/* Tangent Extensions Row - hide for Sweep Tees */}
+                {entry.specs?.bendItemType !== 'SWEEP_TEE' && (
                 <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
                   <div className="mb-2">
                     <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
@@ -1641,8 +1774,10 @@ export default function BendForm({
                     )}
                   </div>
                 </div>
+                )}
 
-                {/* Stub Connections Section */}
+                {/* Stub Connections Section - hide for Sweep Tees */}
+                {entry.specs?.bendItemType !== 'SWEEP_TEE' && (
                 <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-3 mt-3">
                   <div className="mb-2">
                     <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
@@ -2487,6 +2622,7 @@ export default function BendForm({
                       )}
 
                 </div>
+                )}
 
                 {/* Operating Conditions - Hidden: Uses global specs for working pressure/temp */}
 
@@ -2687,6 +2823,9 @@ export default function BendForm({
 
                           const mainOdMm = dn ? (NB_TO_OD_LOOKUP[dn] || dn * 1.05) : 0;
                           const mitreWeldCount = numSegments > 1 ? numSegments - 1 : 0;
+                          const isSweepTeeCalc = entry.specs?.bendItemType === 'SWEEP_TEE';
+                          const STEINMETZ_FACTOR = 2.7;
+                          const saddleWeldLinear = isSweepTeeCalc ? STEINMETZ_FACTOR * mainOdMm : 0;
                           const isPulledBendForVol = entry.specs?.bendStyle === 'pulled' || (!entry.specs?.bendStyle && !isSABS719);
                           const tangent1LenForVol = entry.specs?.tangentLengths?.[0] || 0;
                           const tangent2LenForVol = entry.specs?.tangentLengths?.[1] || 0;
@@ -2845,10 +2984,13 @@ export default function BendForm({
                           return (
                             <>
                             <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))' }}>
-                              {/* C/F with dimensions info */}
+                              {/* Dimensions info */}
                               <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
-                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">C/F (mm)</p>
-                                <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{cfDisplay}</p>
+                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Dimensions</p>
+                                <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{cfDisplay} C/F</p>
+                                {entry.specs?.bendItemType === 'SWEEP_TEE' && entry.specs?.sweepTeePipeALengthMm && (
+                                  <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">{entry.specs.sweepTeePipeALengthMm}mm Pipe A</p>
+                                )}
                                 <p className="text-xs text-purple-500 dark:text-purple-400">Radius: {Number(entry.specs?.bendRadiusMm || 0).toFixed(0)}mm</p>
                                 <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{mainLengthDisplay}</p>
                                 {stubLengthDisplay && (
@@ -2923,7 +3065,7 @@ export default function BendForm({
                                 const stub2FlangeWeldLinear = stub2FlangeCount * 2 * stub2Circ;
                                 const totalFlangeWeldLinear = mainFlangeWeldLinear + stub1FlangeWeldLinear + stub2FlangeWeldLinear;
                                 const totalFlangeCount = bendFlangeCount + stub1FlangeCount + stub2FlangeCount;
-                                const calculatedTotalWeld = mitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear;
+                                const calculatedTotalWeld = mitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear + saddleWeldLinear;
 
                                 return (
                                   <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
@@ -2932,6 +3074,9 @@ export default function BendForm({
                                     <div className="text-xs text-purple-500 dark:text-purple-400 mt-1 text-left space-y-0.5">
                                       {mitreWeldCount > 0 && (
                                         <p>{mitreWeldCount} × Mitre = {mitreWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
+                                      )}
+                                      {saddleWeldLinear > 0 && (
+                                        <p>1 × Saddle (2.7×OD{mainOdMm.toFixed(0)}) = {saddleWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
                                       )}
                                       {buttWeldCount > 0 && (
                                         <p>{buttWeldCount} × Butt = {buttWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
