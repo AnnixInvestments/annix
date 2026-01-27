@@ -46,6 +46,7 @@ import {
   calculateFlangeWeldVolume,
 } from '@/app/lib/utils/pipeCalculations';
 import { recommendWallThicknessCarbonPipe, roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
+import { validatePressureClass } from '@/app/lib/utils/pressureClassValidation';
 import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 import { MaterialSuitabilityWarning } from '@/app/components/rfq/MaterialSuitabilityWarning';
@@ -864,11 +865,12 @@ export default function StraightPipeForm({
 
                     const workingPressureBar = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
                     const selectedPressureClass = masterData.pressureClasses?.find((pc: any) => pc.id === effectiveClassId);
-                    const pressureClassRatingRaw = selectedPressureClass?.designation ? parseInt(selectedPressureClass.designation.replace(/[^0-9]/g, '')) || 0 : 0;
-                    const isPressureClassUnsuitable = effectiveClassId && workingPressureBar > 0 && pressureClassRatingRaw > 0 && (
-                      (isSabs1123 && pressureClassRatingRaw < workingPressureBar * 100) ||
-                      (isBs4504 && pressureClassRatingRaw < workingPressureBar)
+                    const pressureClassValidation = validatePressureClass(
+                      selectedStandard?.code,
+                      selectedPressureClass?.designation,
+                      workingPressureBar
                     );
+                    const isPressureClassUnsuitable = pressureClassValidation.isUnsuitable;
 
                     const globalSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400';
                     const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400';

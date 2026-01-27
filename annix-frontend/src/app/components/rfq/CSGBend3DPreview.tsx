@@ -101,6 +101,11 @@ const FLANGE_DATA: { [key: number]: { flangeOD: number; pcd: number; boltHoles: 
   450: { flangeOD: 640, pcd: 585, boltHoles: 20, holeID: 30, boltSize: 27, boltLength: 110, thickness: 28 },
   500: { flangeOD: 670, pcd: 620, boltHoles: 20, holeID: 26, boltSize: 24, boltLength: 115, thickness: 32 },
   600: { flangeOD: 780, pcd: 725, boltHoles: 20, holeID: 30, boltSize: 27, boltLength: 120, thickness: 32 },
+  700: { flangeOD: 895, pcd: 840, boltHoles: 24, holeID: 30, boltSize: 27, boltLength: 125, thickness: 34 },
+  750: { flangeOD: 960, pcd: 900, boltHoles: 24, holeID: 33, boltSize: 30, boltLength: 130, thickness: 36 },
+  800: { flangeOD: 1015, pcd: 950, boltHoles: 24, holeID: 33, boltSize: 30, boltLength: 135, thickness: 38 },
+  850: { flangeOD: 1075, pcd: 1010, boltHoles: 28, holeID: 33, boltSize: 30, boltLength: 140, thickness: 40 },
+  900: { flangeOD: 1130, pcd: 1060, boltHoles: 28, holeID: 36, boltSize: 33, boltLength: 145, thickness: 42 },
 }
 
 const resolveFlangeData = (nb: number, apiSpecs?: FlangeSpecData | null): { specs: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; boltSize: number; boltLength: number; thickness: number }; isFromApi: boolean } => {
@@ -1086,6 +1091,10 @@ const Scene = (props: Props) => {
   const hasInletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'].includes(config)
   const hasOutletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'].includes(config)
 
+  const fittingHasInletFlange = ['FAE', 'F2E', 'F2E_LF', 'F2E_RF', '3X_RF', '2X_RF_FOE'].includes(config)
+  const fittingHasOutletFlange = ['FAE', 'F2E', 'F2E_LF', 'F2E_RF', '3X_RF', '2X_RF_FOE'].includes(config)
+  const fittingHasBranchFlange = ['FAE', 'F2E_LF', 'F2E_RF', '3X_RF', '2X_RF_FOE'].includes(config)
+
   const flangeSpecs = FLANGE_DATA[nominalBore] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nominalBore).pop() || 200]
   const flangeThickScaled = ((flangeSpecs.flangeOD / 2) / SCALE) * 0.18
   const flangeOffset = flangeThickScaled / 2 * 0.8
@@ -1311,27 +1320,31 @@ const Scene = (props: Props) => {
                 end={pipeARightEnd}
                 outerR={outerR}
                 innerR={innerR}
-                capStart={false}
-                capEnd={false}
+                capStart={!fittingHasInletFlange}
+                capEnd={!fittingHasOutletFlange}
               />
 
-              {/* Left flange on Pipe A */}
-              <Flange
-                center={pipeALeftEnd.clone().add(new THREE.Vector3(0, 0, -flangeOffset))}
-                normal={new THREE.Vector3(0, 0, -1)}
-                pipeR={outerR}
-                innerR={innerR}
-                nb={nominalBore}
-              />
+              {/* Left flange on Pipe A (inlet) */}
+              {fittingHasInletFlange && (
+                <Flange
+                  center={pipeALeftEnd.clone().add(new THREE.Vector3(0, 0, -flangeOffset))}
+                  normal={new THREE.Vector3(0, 0, -1)}
+                  pipeR={outerR}
+                  innerR={innerR}
+                  nb={nominalBore}
+                />
+              )}
 
-              {/* Right flange on Pipe A */}
-              <Flange
-                center={pipeARightEnd.clone().add(new THREE.Vector3(0, 0, flangeOffset))}
-                normal={new THREE.Vector3(0, 0, 1)}
-                pipeR={outerR}
-                innerR={innerR}
-                nb={nominalBore}
-              />
+              {/* Right flange on Pipe A (outlet) */}
+              {fittingHasOutletFlange && (
+                <Flange
+                  center={pipeARightEnd.clone().add(new THREE.Vector3(0, 0, flangeOffset))}
+                  normal={new THREE.Vector3(0, 0, 1)}
+                  pipeR={outerR}
+                  innerR={innerR}
+                  nb={nominalBore}
+                />
+              )}
 
               {/* Sweep branch - 90° bend with extrados connecting to top of Pipe A */}
               {/* Position shifts bend right, 180° Y flips to curve toward viewer, -90° Z puts in YZ plane */}
@@ -1358,14 +1371,16 @@ const Scene = (props: Props) => {
                 )}
               </group>
 
-              {/* Outlet flange at top of sweep - pointing straight up */}
-              <Flange
-                center={sweepEndPos.clone().add(sweepEndDir.clone().multiplyScalar(flangeOffset))}
-                normal={sweepEndDir}
-                pipeR={outerR}
-                innerR={innerR}
-                nb={nominalBore}
-              />
+              {/* Branch flange at top of sweep - pointing straight up */}
+              {fittingHasBranchFlange && (
+                <Flange
+                  center={sweepEndPos.clone().add(sweepEndDir.clone().multiplyScalar(flangeOffset))}
+                  normal={sweepEndDir}
+                  pipeR={outerR}
+                  innerR={innerR}
+                  nb={nominalBore}
+                />
+              )}
 
               {/* TODO: Saddle weld line - see GitHub Issue #48
                   The saddle weld should trace where the bend meets Pipe A:
@@ -1995,15 +2010,26 @@ export default function CSGBend3DPreview(props: Props) {
         <div className="font-bold text-blue-800 mb-0.5">BEND</div>
         <div className="text-gray-900 font-medium">OD: {odMm.toFixed(0)}mm | ID: {(odMm - 2 * props.wallThickness).toFixed(0)}mm</div>
         <div className="text-gray-700">WT: {props.wallThickness}mm | {props.bendAngle}°</div>
-        <div className="text-gray-700">T1: {props.tangent1 || 0}mm | T2: {props.tangent2 || 0}mm</div>
+        {props.bendItemType !== 'SWEEP_TEE' && props.bendItemType !== 'DUCKFOOT_BEND' && (
+          <div className="text-gray-700">T1: {props.tangent1 || 0}mm | T2: {props.tangent2 || 0}mm</div>
+        )}
+        {props.bendItemType === 'SWEEP_TEE' && props.sweepTeePipeALengthMm && (
+          <div className="text-gray-700">Pipe A: {props.sweepTeePipeALengthMm}mm</div>
+        )}
         {props.stubs && props.stubs.length > 0 && (
           <div className="text-gray-700">
             Stubs: {props.stubs.map((stub, i) => `${stub.length}mm`).join(' | ')}
           </div>
         )}
-        {props.flangeConfig && props.flangeConfig !== 'PE' && (() => {
-          const { specs: flangeSpecs, isFromApi } = resolveFlangeData(props.nominalBore, props.flangeSpecs);
+        {(() => {
           const config = (props.flangeConfig || 'PE').toUpperCase();
+          const isSweepTee = props.bendItemType === 'SWEEP_TEE';
+          const validBendFlangeConfigs = ['FBE', 'FOE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'];
+          const validFittingFlangeConfigs = ['FAE', 'F2E', 'F2E_LF', 'F2E_RF', '3X_RF', '2X_RF_FOE'];
+          const validConfigs = isSweepTee ? validFittingFlangeConfigs : validBendFlangeConfigs;
+          const hasValidFlangeConfig = validConfigs.includes(config);
+          if (!hasValidFlangeConfig) return null;
+          const { specs: flangeSpecs, isFromApi } = resolveFlangeData(props.nominalBore, props.flangeSpecs);
           const standardName = props.flangeStandardName || 'SABS 1123';
           const isNonSabsStandard = !standardName.toLowerCase().includes('sabs') && !standardName.toLowerCase().includes('sans');
           const showFallbackWarning = !isFromApi && isNonSabsStandard;
@@ -2097,15 +2123,26 @@ export default function CSGBend3DPreview(props: Props) {
               <div className="font-bold text-blue-800 mb-1">BEND</div>
               <div className="text-gray-900 font-medium">OD: {odMm.toFixed(0)}mm | ID: {(odMm - 2 * props.wallThickness).toFixed(0)}mm</div>
               <div className="text-gray-700">WT: {props.wallThickness}mm | {props.bendAngle}°</div>
-              <div className="text-gray-700">T1: {props.tangent1 || 0}mm | T2: {props.tangent2 || 0}mm</div>
+              {props.bendItemType !== 'SWEEP_TEE' && props.bendItemType !== 'DUCKFOOT_BEND' && (
+                <div className="text-gray-700">T1: {props.tangent1 || 0}mm | T2: {props.tangent2 || 0}mm</div>
+              )}
+              {props.bendItemType === 'SWEEP_TEE' && props.sweepTeePipeALengthMm && (
+                <div className="text-gray-700">Pipe A: {props.sweepTeePipeALengthMm}mm</div>
+              )}
               {props.stubs && props.stubs.length > 0 && (
                 <div className="text-gray-700">
                   Stubs: {props.stubs.map((stub) => `${stub.length}mm`).join(' | ')}
                 </div>
               )}
-              {props.flangeConfig && props.flangeConfig !== 'PE' && (() => {
-                const { specs: flangeSpecs, isFromApi } = resolveFlangeData(props.nominalBore, props.flangeSpecs);
+              {(() => {
                 const config = (props.flangeConfig || 'PE').toUpperCase();
+                const isSweepTee = props.bendItemType === 'SWEEP_TEE';
+                const validBendFlangeConfigs = ['FBE', 'FOE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'];
+                const validFittingFlangeConfigs = ['FAE', 'F2E', 'F2E_LF', 'F2E_RF', '3X_RF', '2X_RF_FOE'];
+                const validConfigs = isSweepTee ? validFittingFlangeConfigs : validBendFlangeConfigs;
+                const hasValidFlangeConfig = validConfigs.includes(config);
+                if (!hasValidFlangeConfig) return null;
+                const { specs: flangeSpecs, isFromApi } = resolveFlangeData(props.nominalBore, props.flangeSpecs);
                 const standardName = props.flangeStandardName || 'SABS 1123';
                 const isNonSabsStandard = !standardName.toLowerCase().includes('sabs') && !standardName.toLowerCase().includes('sans');
                 const showFallbackWarning = !isFromApi && isNonSabsStandard;

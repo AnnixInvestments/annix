@@ -7,9 +7,12 @@ import { Select } from '@/app/components/ui/Select';
 import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
 import {
   BEND_END_OPTIONS,
+  FITTING_END_OPTIONS,
   SABS719_BEND_TYPES,
   sabs719CenterToFaceBySegments as getSABS719CenterToFaceBySegments,
   weldCountPerBend as getWeldCountPerBend,
+  weldCountPerFitting as getWeldCountPerFitting,
+  fittingFlangeConfig as getFittingFlangeConfig,
   hasLooseFlange,
   getScheduleListForSpec,
   tackWeldWeight as getTackWeldWeight,
@@ -47,6 +50,7 @@ import {
 } from '@/app/lib/utils/sabs62CfData';
 import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
 import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
+import { validatePressureClass } from '@/app/lib/utils/pressureClassValidation';
 import { masterDataApi } from '@/app/lib/api/client';
 import { calculateMinWallThickness, calculateBendWeldVolume, calculateComprehensiveSurfaceArea } from '@/app/lib/utils/pipeCalculations';
 import {
@@ -253,13 +257,20 @@ export default function BendForm({
                           value={entry.specs?.bendItemType || 'BEND'}
                           onChange={(e) => {
                             const newItemType = e.target.value;
+                            const oldItemType = entry.specs?.bendItemType || 'BEND';
                             const isFixed90 = newItemType === 'SWEEP_TEE' || newItemType === 'DUCKFOOT_BEND';
+                            const switchingToOrFromSweepTee = (newItemType === 'SWEEP_TEE') !== (oldItemType === 'SWEEP_TEE');
+                            const currentNB = entry.specs?.nominalBoreMm;
+                            const sweepTeeValidNBs = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900];
+                            const nbInvalidForSweepTee = newItemType === 'SWEEP_TEE' && currentNB && !sweepTeeValidNBs.includes(currentNB);
                             const updatedEntry: any = {
                               ...entry,
                               specs: {
                                 ...entry.specs,
                                 bendItemType: newItemType,
                                 bendDegrees: isFixed90 ? 90 : entry.specs?.bendDegrees,
+                                bendEndConfiguration: switchingToOrFromSweepTee ? 'PE' : entry.specs?.bendEndConfiguration,
+                                nominalBoreMm: nbInvalidForSweepTee ? undefined : entry.specs?.nominalBoreMm,
                                 duckfootBasePlateXMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateXMm : undefined,
                                 duckfootBasePlateYMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateYMm : undefined,
                                 duckfootRibThicknessT2Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootRibThicknessT2Mm : undefined,
@@ -544,6 +555,16 @@ export default function BendForm({
                         const nbOptions = (() => {
                           const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === effectiveSteelSpecId);
                           const steelSpecName = steelSpec?.steelSpecName || '';
+                          const isSweepTeeItem = entry.specs?.bendItemType === 'SWEEP_TEE';
+
+                          if (isSweepTeeItem) {
+                            const sweepTeeNBs = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900];
+                            return sweepTeeNBs.map((nb: number) => ({
+                              value: String(nb),
+                              label: `${nb} NB`
+                            }));
+                          }
+
                           const fallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) => steelSpecName.includes(pattern))?.[1];
                           const nbs = fallbackNBs || [40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600];
                           return nbs.map((nb: number) => ({
@@ -1350,12 +1371,12 @@ export default function BendForm({
 
                         const workingPressureBar = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
                         const selectedPressureClass = masterData.pressureClasses?.find((pc: any) => pc.id === effectivePressureClassId);
-                        const pressureClassRatingRaw = selectedPressureClass?.designation ? parseInt(selectedPressureClass.designation.replace(/[^0-9]/g, '')) || 0 : 0;
-                        const pressureClassRatingBar = isSabs1123 ? pressureClassRatingRaw / 100 : pressureClassRatingRaw;
-                        const isPressureClassUnsuitable = effectivePressureClassId && workingPressureBar > 0 && pressureClassRatingRaw > 0 && (
-                          (isSabs1123 && pressureClassRatingRaw < workingPressureBar * 100) ||
-                          (isBs4504 && pressureClassRatingRaw < workingPressureBar)
+                        const pressureClassValidation = validatePressureClass(
+                          standardCode,
+                          selectedPressureClass?.designation,
+                          workingPressureBar
                         );
+                        const isPressureClassUnsuitable = pressureClassValidation.isUnsuitable;
 
                         const globalSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400';
                         const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400';
@@ -1502,7 +1523,7 @@ export default function BendForm({
                             }}
                             className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                           >
-                            {BEND_END_OPTIONS.map(opt => (
+                            {(entry.specs?.bendItemType === 'SWEEP_TEE' ? FITTING_END_OPTIONS : BEND_END_OPTIONS).map(opt => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
                           </select>
@@ -2797,7 +2818,10 @@ export default function BendForm({
                           } else {
                             cfDisplay = `${cf.toFixed(0)}`;
                           }
-                          const bendFlangeCount = ['FBE', '2xLF', '2X_RF', 'FOE_LF', 'FOE_RF'].includes(bendEndConfig) ? 2
+                          const isSweepTeeItem = entry.specs?.bendItemType === 'SWEEP_TEE';
+                          const bendFlangeCount = isSweepTeeItem
+                            ? (getFittingFlangeConfig(bendEndConfig).hasInlet ? 1 : 0) + (getFittingFlangeConfig(bendEndConfig).hasOutlet ? 1 : 0)
+                            : ['FBE', '2xLF', '2X_RF', 'FOE_LF', 'FOE_RF'].includes(bendEndConfig) ? 2
                             : ['FOE'].includes(bendEndConfig) ? 1 : 0;
                           const stub1FlangeCount = stub1HasFlange ? 1 : 0;
                           const stub2FlangeCount = stub2HasFlange ? 1 : 0;
@@ -2927,9 +2951,15 @@ export default function BendForm({
                           const tangentWeight = mainCrossSection > 0 && tangentTotalLength > 0
                             ? (mainCrossSection / 1000000) * (tangentTotalLength / 1000) * STEEL_DENSITY_KG_M3
                             : 0;
+
+                          const pipeALengthMm = isSweepTeeCalc ? (entry.specs?.sweepTeePipeALengthMm || 0) : 0;
+                          const pipeAWeight = mainCrossSection > 0 && pipeALengthMm > 0
+                            ? (mainCrossSection / 1000000) * (pipeALengthMm / 1000) * STEEL_DENSITY_KG_M3
+                            : 0;
+
                           const bendWeightFromCalc = entry.calculation.bendWeight || 0;
                           const bendWeightOnly = bendWeightFromCalc > tangentWeight ? bendWeightFromCalc - tangentWeight : bendWeightFromCalc;
-                          const totalWeight = bendWeightFromCalc + stub1PipeWeight + stub2PipeWeight + dynamicTotalFlangeWeight + totalBlankFlangeWeight + tackWeldTotalWeight + closureTotalWeight;
+                          const totalWeight = bendWeightFromCalc + stub1PipeWeight + stub2PipeWeight + dynamicTotalFlangeWeight + totalBlankFlangeWeight + tackWeldTotalWeight + closureTotalWeight + pipeAWeight;
 
                           const teeNumStubs = entry.specs?.numberOfStubs || 0;
                           const teeStubs = entry.specs?.stubs || [];
@@ -3043,6 +3073,9 @@ export default function BendForm({
                                   {tangentWeight > 0 && (
                                     <p>Tangents: {tangentWeight.toFixed(2)}kg</p>
                                   )}
+                                  {pipeAWeight > 0 && (
+                                    <p>Pipe A: {pipeAWeight.toFixed(2)}kg</p>
+                                  )}
                                   {numSt >= 1 && stub1NB && stub1PipeWeight > 0 && (
                                     <p>Stub ({stub1NB}NB): {stub1PipeWeight.toFixed(2)}kg</p>
                                   )}
@@ -3069,8 +3102,10 @@ export default function BendForm({
                                 const stub2Circ = stub2NB ? Math.PI * (NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05) : 0;
                                 const stub1FlangeWeldLinear = stub1FlangeCount * 2 * stub1Circ;
                                 const stub2FlangeWeldLinear = stub2FlangeCount * 2 * stub2Circ;
-                                const totalFlangeWeldLinear = mainFlangeWeldLinear + stub1FlangeWeldLinear + stub2FlangeWeldLinear;
-                                const totalFlangeCount = bendFlangeCount + stub1FlangeCount + stub2FlangeCount;
+                                const branchFlangeCount = isSweepTeeItem && getFittingFlangeConfig(bendEndConfig).hasBranch ? 1 : 0;
+                                const branchFlangeWeldLinear = branchFlangeCount * 2 * mainCirc;
+                                const totalFlangeWeldLinear = mainFlangeWeldLinear + stub1FlangeWeldLinear + stub2FlangeWeldLinear + branchFlangeWeldLinear;
+                                const totalFlangeCount = bendFlangeCount + stub1FlangeCount + stub2FlangeCount + branchFlangeCount;
                                 const calculatedTotalWeld = mitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear + saddleWeldLinear;
 
                                 return (
@@ -3090,7 +3125,10 @@ export default function BendForm({
                                       {totalFlangeCount > 0 && (
                                         <>
                                           {bendFlangeCount > 0 && (
-                                            <p>{bendFlangeCount} × Flange (2×{mainCirc.toFixed(0)}mm) = {mainFlangeWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
+                                            <p>{bendFlangeCount} × {isSweepTeeItem ? 'Run' : ''} Flange (2×{mainCirc.toFixed(0)}mm) = {mainFlangeWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
+                                          )}
+                                          {branchFlangeCount > 0 && (
+                                            <p>{branchFlangeCount} × Branch Flg (2×{mainCirc.toFixed(0)}mm) = {branchFlangeWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
                                           )}
                                           {stub1FlangeCount > 0 && (
                                             <p>{stub1FlangeCount} × Stub1 Flg (2×{stub1Circ.toFixed(0)}mm) = {stub1FlangeWeldLinear.toFixed(0)}mm @ {stub1Wt?.toFixed(1)}mm</p>
@@ -3140,6 +3178,10 @@ export default function BendForm({
                                 const tangentExtM2 = Math.PI * mainOdM * tangentTotalM;
                                 const tangentIntM2 = Math.PI * mainIdM * tangentTotalM;
 
+                                const pipeALengthM = pipeALengthMm / 1000;
+                                const pipeAExtM2 = pipeALengthMm > 0 ? Math.PI * mainOdM * pipeALengthM : 0;
+                                const pipeAIntM2 = pipeALengthMm > 0 ? Math.PI * mainIdM * pipeALengthM : 0;
+
                                 const stub1OdM = stub1OD / 1000;
                                 const stub1IdM = stub1ID / 1000;
                                 const stub1LengthM = stub1Length / 1000;
@@ -3171,11 +3213,15 @@ export default function BendForm({
                                 const stub2FlangeExtFaceM2 = stub2FlangeCount > 0 ? stub2FlangeCount * (Math.PI / 4) * (stub2FlangeOdM * stub2FlangeOdM - stub2OdM * stub2OdM) : 0;
                                 const stub2FlangeIntFaceM2 = stub2FlangeCount > 0 ? stub2FlangeCount * (Math.PI / 4) * (stub2RaisedFaceM * stub2RaisedFaceM - stub2FlangeBoreM * stub2FlangeBoreM) : 0;
 
-                                const totalFlangeExtM2 = mainFlangeExtFaceM2 + stub1FlangeExtFaceM2 + stub2FlangeExtFaceM2;
-                                const totalFlangeIntM2 = mainFlangeIntFaceM2 + stub1FlangeIntFaceM2 + stub2FlangeIntFaceM2;
+                                const branchFlangeCountForArea = isSweepTeeItem && getFittingFlangeConfig(bendEndConfig).hasBranch ? 1 : 0;
+                                const branchFlangeExtFaceM2 = branchFlangeCountForArea > 0 ? branchFlangeCountForArea * (Math.PI / 4) * (mainFlangeOdM * mainFlangeOdM - mainOdM * mainOdM) : 0;
+                                const branchFlangeIntFaceM2 = branchFlangeCountForArea > 0 ? branchFlangeCountForArea * (Math.PI / 4) * (mainRaisedFaceM * mainRaisedFaceM - mainFlangeBoreM * mainFlangeBoreM) : 0;
 
-                                const pipeExtM2 = bendExtM2 + tangentExtM2 + stub1ExtM2 + stub2ExtM2;
-                                const pipeIntM2 = bendIntM2 + tangentIntM2 + stub1IntM2 + stub2IntM2;
+                                const totalFlangeExtM2 = mainFlangeExtFaceM2 + stub1FlangeExtFaceM2 + stub2FlangeExtFaceM2 + branchFlangeExtFaceM2;
+                                const totalFlangeIntM2 = mainFlangeIntFaceM2 + stub1FlangeIntFaceM2 + stub2FlangeIntFaceM2 + branchFlangeIntFaceM2;
+
+                                const pipeExtM2 = bendExtM2 + tangentExtM2 + pipeAExtM2 + stub1ExtM2 + stub2ExtM2;
+                                const pipeIntM2 = bendIntM2 + tangentIntM2 + pipeAIntM2 + stub1IntM2 + stub2IntM2;
                                 const totalExtM2 = pipeExtM2 + totalFlangeExtM2;
                                 const totalIntM2 = pipeIntM2 + totalFlangeIntM2;
 
@@ -3187,6 +3233,7 @@ export default function BendForm({
                                       <div className="text-xs text-indigo-500 dark:text-indigo-400 mt-1 text-left">
                                         <p>Bend: {bendExtM2.toFixed(3)}</p>
                                         {tangentExtM2 > 0 && <p>Tangents: {tangentExtM2.toFixed(3)}</p>}
+                                        {pipeAExtM2 > 0 && <p>Pipe A: {pipeAExtM2.toFixed(3)}</p>}
                                         {stub1ExtM2 > 0 && <p>Stub ({stub1NB}NB): {stub1ExtM2.toFixed(3)}</p>}
                                         {stub2ExtM2 > 0 && <p>Stub ({stub2NB}NB): {stub2ExtM2.toFixed(3)}</p>}
                                         {totalFlangeExtM2 > 0 && <p>Flanges: {totalFlangeExtM2.toFixed(3)}</p>}
@@ -3198,6 +3245,7 @@ export default function BendForm({
                                       <div className="text-xs text-cyan-500 dark:text-cyan-400 mt-1 text-left">
                                         <p>Bend: {bendIntM2.toFixed(3)}</p>
                                         {tangentIntM2 > 0 && <p>Tangents: {tangentIntM2.toFixed(3)}</p>}
+                                        {pipeAIntM2 > 0 && <p>Pipe A: {pipeAIntM2.toFixed(3)}</p>}
                                         {stub1IntM2 > 0 && <p>Stub ({stub1NB}NB): {stub1IntM2.toFixed(3)}</p>}
                                         {stub2IntM2 > 0 && <p>Stub ({stub2NB}NB): {stub2IntM2.toFixed(3)}</p>}
                                         {totalFlangeIntM2 > 0 && <p>Flanges: {totalFlangeIntM2.toFixed(3)}</p>}
