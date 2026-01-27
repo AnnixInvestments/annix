@@ -786,6 +786,60 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
     prefetchSchedules();
   }, [masterData.nominalBores?.length, entries, availableSchedulesMap, globalSpecs?.steelSpecificationId, fetchAvailableSchedules]);
 
+  const addItemButtons = (insertAtStart?: boolean) => (
+    <div className="flex gap-2">
+      <button
+        onClick={() => onAddEntry(undefined, insertAtStart)}
+        className="flex items-center gap-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 rounded-md border border-blue-300 transition-colors"
+      >
+        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        <span className="text-xs font-semibold text-blue-700">Pipe</span>
+      </button>
+      <button
+        onClick={() => onAddBendEntry(undefined, insertAtStart)}
+        className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 rounded-md border border-purple-300 transition-colors"
+      >
+        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        <span className="text-xs font-semibold text-purple-700">Bend</span>
+      </button>
+      <button
+        onClick={() => onAddFittingEntry(undefined, insertAtStart)}
+        className="flex items-center gap-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 rounded-md border border-green-300 transition-colors"
+      >
+        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        <span className="text-xs font-semibold text-green-700">Fitting</span>
+      </button>
+      {requiredProducts.includes('pipe_steel_work') && onAddPipeSteelWorkEntry && (
+        <button
+          onClick={() => onAddPipeSteelWorkEntry(undefined, insertAtStart)}
+          className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 rounded-md border border-orange-300 transition-colors"
+        >
+          <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span className="text-xs font-semibold text-orange-700">Steel Work</span>
+        </button>
+      )}
+      {requiredProducts.includes('expansion_joint') && onAddExpansionJointEntry && (
+        <button
+          onClick={() => onAddExpansionJointEntry(undefined, insertAtStart)}
+          className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 rounded-md border border-purple-300 transition-colors"
+        >
+          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span className="text-xs font-semibold text-purple-700">Expansion Joint</span>
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div>
       {/* Show item type selection buttons when no items exist */}
@@ -855,6 +909,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 <span className="text-green-700 font-semibold">Auto-calculating</span>
                 <span className="text-xs text-green-600">Results update automatically</span>
               </div>
+              {addItemButtons(true)}
             </div>
           </div>
 
@@ -1013,57 +1068,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-base font-bold text-blue-900">Project Summary</h3>
             {/* Add Item Buttons - inline with title */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => onAddEntry()}
-                className="flex items-center gap-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 rounded-md border border-blue-300 transition-colors"
-              >
-                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="text-xs font-semibold text-blue-700">Pipe</span>
-              </button>
-              <button
-                onClick={() => onAddBendEntry()}
-                className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 rounded-md border border-purple-300 transition-colors"
-              >
-                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="text-xs font-semibold text-purple-700">Bend</span>
-              </button>
-              <button
-                onClick={() => onAddFittingEntry()}
-                className="flex items-center gap-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 rounded-md border border-green-300 transition-colors"
-              >
-                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="text-xs font-semibold text-green-700">Fitting</span>
-              </button>
-              {requiredProducts.includes('pipe_steel_work') && onAddPipeSteelWorkEntry && (
-                <button
-                  onClick={() => onAddPipeSteelWorkEntry()}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 rounded-md border border-orange-300 transition-colors"
-                >
-                  <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span className="text-xs font-semibold text-orange-700">Steel Work</span>
-                </button>
-              )}
-              {requiredProducts.includes('expansion_joint') && onAddExpansionJointEntry && (
-                <button
-                  onClick={() => onAddExpansionJointEntry()}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 rounded-md border border-purple-300 transition-colors"
-                >
-                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span className="text-xs font-semibold text-purple-700">Expansion Joint</span>
-                </button>
-              )}
-            </div>
+            {addItemButtons()}
           </div>
           {/* Items table - each item on its own line */}
           <div className="overflow-x-auto">

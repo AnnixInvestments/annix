@@ -364,7 +364,7 @@ export const useRfqForm = () => {
     }));
   }, []);
 
-  const addStraightPipeEntry = useCallback((description?: string) => {
+  const addStraightPipeEntry = useCallback((description?: string, insertAtStart?: boolean) => {
     const newEntry: StraightPipeEntry = {
       id: generateUniqueId(),
       itemType: 'straight_pipe',
@@ -375,14 +375,14 @@ export const useRfqForm = () => {
 
     setRfqData(prev => ({
       ...prev,
-      items: [...prev.items, newEntry],
-      straightPipeEntries: [...prev.straightPipeEntries, newEntry],
+      items: insertAtStart ? [newEntry, ...prev.items] : [...prev.items, newEntry],
+      straightPipeEntries: insertAtStart ? [newEntry, ...prev.straightPipeEntries] : [...prev.straightPipeEntries, newEntry],
     }));
 
     return newEntry.id;
   }, []);
 
-  const addBendEntry = useCallback((description?: string) => {
+  const addBendEntry = useCallback((description?: string, insertAtStart?: boolean) => {
     // Steel spec will be inherited from globalSpecs - user can override in the item UI
     const newEntry: BendEntry = {
       id: generateUniqueId(),
@@ -409,13 +409,13 @@ export const useRfqForm = () => {
 
     setRfqData(prev => ({
       ...prev,
-      items: [...prev.items, newEntry],
+      items: insertAtStart ? [newEntry, ...prev.items] : [...prev.items, newEntry],
     }));
 
     return newEntry.id;
   }, [rfqData.globalSpecs?.steelSpecificationId]);
 
-  const addFittingEntry = useCallback((description?: string) => {
+  const addFittingEntry = useCallback((description?: string, insertAtStart?: boolean) => {
     // Inherit steel specification from global specs if available
     const steelSpecId = rfqData.globalSpecs?.steelSpecificationId || 2;
     // Derive fitting standard from steel spec: ID 8 = SABS 719 ERW
@@ -441,13 +441,13 @@ export const useRfqForm = () => {
 
     setRfqData(prev => ({
       ...prev,
-      items: [...prev.items, newEntry],
+      items: insertAtStart ? [newEntry, ...prev.items] : [...prev.items, newEntry],
     }));
 
     return newEntry.id;
   }, [rfqData.globalSpecs?.steelSpecificationId]);
 
-  const addPipeSteelWorkEntry = useCallback((description?: string) => {
+  const addPipeSteelWorkEntry = useCallback((description?: string, insertAtStart?: boolean) => {
     const newEntry: PipeSteelWorkEntry = {
       id: generateUniqueId(),
       itemType: 'pipe_steel_work',
@@ -465,13 +465,13 @@ export const useRfqForm = () => {
 
     setRfqData(prev => ({
       ...prev,
-      items: [...prev.items, newEntry],
+      items: insertAtStart ? [newEntry, ...prev.items] : [...prev.items, newEntry],
     }));
 
     return newEntry.id;
   }, [rfqData.globalSpecs?.workingPressureBar, rfqData.globalSpecs?.workingTemperatureC]);
 
-  const addExpansionJointEntry = useCallback((description?: string) => {
+  const addExpansionJointEntry = useCallback((description?: string, insertAtStart?: boolean) => {
     const newEntry: ExpansionJointEntry = {
       id: generateUniqueId(),
       itemType: 'expansion_joint',
@@ -489,23 +489,23 @@ export const useRfqForm = () => {
 
     setRfqData(prev => ({
       ...prev,
-      items: [...prev.items, newEntry],
+      items: insertAtStart ? [newEntry, ...prev.items] : [...prev.items, newEntry],
     }));
 
     return newEntry.id;
   }, [rfqData.globalSpecs?.workingPressureBar, rfqData.globalSpecs?.workingTemperatureC]);
 
-  const addItem = useCallback((itemType: 'straight_pipe' | 'bend' | 'fitting' | 'pipe_steel_work' | 'expansion_joint', description?: string) => {
+  const addItem = useCallback((itemType: 'straight_pipe' | 'bend' | 'fitting' | 'pipe_steel_work' | 'expansion_joint', description?: string, insertAtStart?: boolean) => {
     if (itemType === 'straight_pipe') {
-      return addStraightPipeEntry(description);
+      return addStraightPipeEntry(description, insertAtStart);
     } else if (itemType === 'bend') {
-      return addBendEntry(description);
+      return addBendEntry(description, insertAtStart);
     } else if (itemType === 'fitting') {
-      return addFittingEntry(description);
+      return addFittingEntry(description, insertAtStart);
     } else if (itemType === 'pipe_steel_work') {
-      return addPipeSteelWorkEntry(description);
+      return addPipeSteelWorkEntry(description, insertAtStart);
     } else {
-      return addExpansionJointEntry(description);
+      return addExpansionJointEntry(description, insertAtStart);
     }
   }, [addStraightPipeEntry, addBendEntry, addFittingEntry, addPipeSteelWorkEntry, addExpansionJointEntry]);
 

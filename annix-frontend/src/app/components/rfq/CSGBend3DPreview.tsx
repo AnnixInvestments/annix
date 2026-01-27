@@ -646,6 +646,8 @@ const SaddleCutStubPipe = ({
   outerR,
   innerR,
   mainPipeOuterR,
+  mainPipeDirection,
+  stubAngleDegrees = 0,
   nb,
   hasFlange = true
 }: {
@@ -655,6 +657,8 @@ const SaddleCutStubPipe = ({
   outerR: number
   innerR: number
   mainPipeOuterR: number
+  mainPipeDirection?: THREE.Vector3
+  stubAngleDegrees?: number
   nb: number
   hasFlange?: boolean
 }) => {
@@ -665,9 +669,15 @@ const SaddleCutStubPipe = ({
   const flangeOffset = stubFlangeThick / 2
 
   const saddleAxis = useMemo(() => {
-    const isVertical = Math.abs(dir.y) > 0.7
-    return isVertical ? 'y' : 'x'
-  }, [dir.y])
+    const normalizedAngle = ((stubAngleDegrees % 360) + 360) % 360
+    const isNear0or180 = normalizedAngle < 22.5 || normalizedAngle > 337.5 ||
+                         (normalizedAngle > 157.5 && normalizedAngle < 202.5)
+    const isNear90or270 = (normalizedAngle > 67.5 && normalizedAngle < 112.5) ||
+                          (normalizedAngle > 247.5 && normalizedAngle < 292.5)
+    if (isNear0or180) return 'x'
+    if (isNear90or270) return 'x'
+    return 'x'
+  }, [stubAngleDegrees])
 
   const outerTubeGeom = useMemo(() => {
     const segments = 32
@@ -803,6 +813,8 @@ const StubPipe = ({
   outerR,
   innerR,
   mainPipeOuterR,
+  mainPipeDirection,
+  stubAngleDegrees = 0,
   nb,
   hasFlange = true
 }: {
@@ -812,6 +824,8 @@ const StubPipe = ({
   outerR: number
   innerR: number
   mainPipeOuterR?: number
+  mainPipeDirection?: THREE.Vector3
+  stubAngleDegrees?: number
   nb: number
   hasFlange?: boolean
 }) => {
@@ -824,6 +838,8 @@ const StubPipe = ({
         outerR={outerR}
         innerR={innerR}
         mainPipeOuterR={mainPipeOuterR}
+        mainPipeDirection={mainPipeDirection}
+        stubAngleDegrees={stubAngleDegrees}
         nb={nb}
         hasFlange={hasFlange}
       />
@@ -1604,13 +1620,25 @@ const Scene = (props: Props) => {
                 )
               )}
 
-              {/* TODO: Saddle weld line - see GitHub Issue #48
-                  The saddle weld should trace where the bend meets Pipe A:
-                  - Start at one flange face (back of flange)
-                  - Run along the junction between bend and pipe
-                  - Go over the top of Pipe A at the saddle point
-                  - Return to the other flange face
-                  Also need to calculate correct weld length for this saddle weld. */}
+              {/* Saddle weld at junction where sweep bend meets Pipe A */}
+              {/* Positioned at the top of Pipe A where the bend emerges */}
+              <group position={[0, outerR, bendZOffset]} rotation={[Math.PI / 2, 0, 0]}>
+                <SaddleWeld
+                  stubRadius={outerR}
+                  mainPipeRadius={outerR}
+                  useXAxis={false}
+                  tube={weldTube}
+                />
+              </group>
+
+              {/* Dimension line for Pipe A length (B dimension in MPS table) */}
+              <DimensionLine
+                start={pipeALeftEnd}
+                end={pipeARightEnd}
+                label={`B: ${effectivePipeALengthMm}mm`}
+                offset={outerR * 2.5}
+                color="#009900"
+              />
 
               {/* Dimension lines - L-shape with horizontal at top and vertical on right */}
               {(() => {
@@ -1778,6 +1806,8 @@ const Scene = (props: Props) => {
                 outerR={stub.outerR}
                 innerR={stub.innerR}
                 mainPipeOuterR={outerR}
+                mainPipeDirection={tangentDir}
+                stubAngleDegrees={stub.angleDegrees}
                 nb={stub.nb}
               />
 
@@ -2017,7 +2047,10 @@ const Scene = (props: Props) => {
         const basePlateColor = { color: '#555555', metalness: 0.6, roughness: 0.4 };
         const ribColor = { color: '#666666', metalness: 0.5, roughness: 0.5 };
 
-        const steelworkX = 0;
+        // After duckfoot rotation [π/2, 0, -π/2], the bend's midpoint (45°) is at X = -sin(45°) * bendR
+        // Center the steelwork so blue gusset aligns with the bend's center
+        const bendMidpointX = -Math.sin(Math.PI / 4) * bendR;
+        const steelworkX = bendMidpointX;
         const steelworkY = -ribHeightH;
         const steelworkZ = 0;
 
@@ -2107,119 +2140,117 @@ const Scene = (props: Props) => {
               );
             })()}
 
-            {/* Yellow saddle support plate - simple 4-sided plate */}
-            {/* A side: bottom at W, top at 15°. B side: bottom at Y, top at 75° */}
+            {/* Yellow gusset plate - curved top edge following bend extrados */}
+            {/* Points A, B at bottom (base plate). Points C, D at top (touching extrados) */}
             {(() => {
               const yellowThickness = 30 / SCALE;
-              const plateWidth = basePlateXDim;
-
               const extradosR = bendR + outerR;
-              const pipeBottomY = ribHeightH;
 
-              const aTopAngleDegrees = duckfootGussetPointDDegrees || 15;
-              const bTopAngleDegrees = duckfootGussetPointCDegrees || 75;
+              const pointDAngleDegrees = duckfootGussetPointDDegrees || 15;
+              const pointCAngleDegrees = duckfootGussetPointCDegrees || 75;
 
-              // World Z positions for the degree markers
-              const aMarkerZ = extradosR * Math.sin((aTopAngleDegrees * Math.PI) / 180);
-              const bMarkerZ = extradosR * Math.sin((bTopAngleDegrees * Math.PI) / 180);
-              const markerMidZ = (aMarkerZ + bMarkerZ) / 2;
-              const markerSpan = bMarkerZ - aMarkerZ;
+              // After duckfoot rotation [π/2, 0, -π/2], the extrados at angle θ is at:
+              // World X = -extradosR * sin(θ)
+              // World Y = bendR - extradosR * cos(θ) + duckfootYOffset
+              // World Z = 0
+              // Convert to local coordinates (relative to steelwork group position)
+              const extradosLocalX = (angleDeg: number) => {
+                const angleRad = (angleDeg * Math.PI) / 180;
+                return -extradosR * Math.sin(angleRad) - steelworkX;
+              };
+              const extradosLocalY = (angleDeg: number) => {
+                const angleRad = (angleDeg * Math.PI) / 180;
+                return (bendR - extradosR * Math.cos(angleRad) + duckfootYOffset) - steelworkY;
+              };
 
-              // The plate has width = plateWidth, we'll scale the top edge to span from 15° to 75°
-              // Bottom stays at base plate edges, top is scaled to match markers
+              // Point D position (at Point D angle, e.g., 15°)
+              const pointDLocalX = extradosLocalX(pointDAngleDegrees);
+              const pointDLocalY = extradosLocalY(pointDAngleDegrees);
 
-              // Bottom corners at base plate edges (in shape X coordinates)
-              const aBottomX = plateWidth / 2; // W side
-              const bBottomX = -plateWidth / 2; // Y side
+              // Point C position (at Point C angle, e.g., 75°)
+              const pointCLocalX = extradosLocalX(pointCAngleDegrees);
+              const pointCLocalY = extradosLocalY(pointCAngleDegrees);
 
-              // Top corners: map marker Z positions back to shape X
-              // After rotation [0, π/2, 0]: shape X → world -Z, so shape X = -world Z
-              // But we need to account for plate position offset
-              const plateZOffset = markerMidZ; // Position plate at midpoint of markers
+              // Bottom corners A and B span the base plate width in X direction
+              // Centered at X=0 in local coords
+              const halfPlateX = basePlateYDim / 2;
+              const aBottomX = halfPlateX;  // Right side (positive X)
+              const bBottomX = -halfPlateX; // Left side (negative X)
 
-              // Shape X = -(world Z - plateZOffset) = plateZOffset - world Z
-              const aTopX = plateZOffset - aMarkerZ; // 15° position in shape coords
-              const bTopX = plateZOffset - bMarkerZ; // 75° position in shape coords
-
-              // Compute Y positions (height) at the degree positions
-              const aTopY = pipeBottomY + extradosR * (1 - Math.cos((aTopAngleDegrees * Math.PI) / 180));
-              const bTopY = pipeBottomY + extradosR * (1 - Math.cos((bTopAngleDegrees * Math.PI) / 180));
-
-              // Simple 4-sided shape: quadrilateral
+              // Build shape in XY plane - will be extruded in Z
               const yellowShape = new THREE.Shape();
 
-              // Start at A bottom (W side of base plate)
+              // Start at Point A (bottom right)
               yellowShape.moveTo(aBottomX, 0);
 
-              // Go to A top (15° marker)
-              yellowShape.lineTo(aTopX, Math.max(0.1, aTopY));
+              // Go to Point D (top right, at extrados)
+              yellowShape.lineTo(pointDLocalX, Math.max(0.1, pointDLocalY));
 
-              // Straight line to B top (75° marker)
-              yellowShape.lineTo(bTopX, Math.max(0.1, bTopY));
+              // Curved edge from Point D to Point C following the extrados
+              const curveSegments = 16;
+              const angleStep = (pointCAngleDegrees - pointDAngleDegrees) / curveSegments;
+              Array.from({ length: curveSegments }).forEach((_, i) => {
+                const angleDeg = pointDAngleDegrees + (i + 1) * angleStep;
+                const localX = extradosLocalX(angleDeg);
+                const localY = extradosLocalY(angleDeg);
+                yellowShape.lineTo(localX, Math.max(0.1, localY));
+              });
 
-              // Go to B bottom (Y side of base plate)
+              // Go to Point B (bottom left)
               yellowShape.lineTo(bBottomX, 0);
 
-              // Close back to A bottom
+              // Close back to Point A
               yellowShape.closePath();
 
               const labelHeight = 0.15;
 
               return (
                 <group>
-                  <mesh
-                    position={[0, 0, 0]}
-                    rotation={[0, (3 * Math.PI) / 2, 0]}
-                  >
+                  {/* Gusset plate - shape in XY plane, extruded in Z */}
+                  <mesh position={[0, 0, -yellowThickness / 2]}>
                     <extrudeGeometry args={[yellowShape, { depth: yellowThickness, bevelEnabled: false }]} />
                     <meshStandardMaterial color="#cc8800" metalness={0.5} roughness={0.5} />
                   </mesh>
-                  {/* Side labels for yellow gusset - positioned outside base plate area */}
+                  {/* Corner labels */}
                   <Text
-                    position={[yellowThickness + 0.1, labelHeight, -plateWidth / 2 - 0.3]}
+                    position={[aBottomX + 0.3, labelHeight, 0]}
                     fontSize={0.4}
                     color="#000000"
                     anchorX="center"
                     anchorY="middle"
                     fontWeight="bold"
-                    rotation={[0, Math.PI / 2, 0]}
                   >
                     A
                   </Text>
                   <Text
-                    position={[yellowThickness + 0.1, labelHeight, plateWidth / 2 + 0.3]}
+                    position={[bBottomX - 0.3, labelHeight, 0]}
                     fontSize={0.4}
                     color="#000000"
                     anchorX="center"
                     anchorY="middle"
                     fontWeight="bold"
-                    rotation={[0, -Math.PI / 2, 0]}
                   >
                     B
                   </Text>
-                  {/* C label - top corner above A (15° marker) */}
                   <Text
-                    position={[yellowThickness + 0.1, aTopY + 0.3, aTopX]}
+                    position={[pointDLocalX + 0.3, pointDLocalY + 0.3, 0]}
                     fontSize={0.4}
                     color="#000000"
                     anchorX="center"
                     anchorY="middle"
                     fontWeight="bold"
-                    rotation={[0, Math.PI / 2, 0]}
-                  >
-                    C
-                  </Text>
-                  {/* D label - top corner above B (75° marker) */}
-                  <Text
-                    position={[yellowThickness + 0.1, bTopY + 0.3, bTopX]}
-                    fontSize={0.4}
-                    color="#000000"
-                    anchorX="center"
-                    anchorY="middle"
-                    fontWeight="bold"
-                    rotation={[0, -Math.PI / 2, 0]}
                   >
                     D
+                  </Text>
+                  <Text
+                    position={[pointCLocalX - 0.3, pointCLocalY + 0.3, 0]}
+                    fontSize={0.4}
+                    color="#000000"
+                    anchorX="center"
+                    anchorY="middle"
+                    fontWeight="bold"
+                  >
+                    C
                   </Text>
                 </group>
               );
@@ -2291,7 +2322,7 @@ export default function CSGBend3DPreview(props: Props) {
   const cameraPosition = props.savedCameraPosition || autoCameraPosition
 
   return (
-    <div className="w-full h-[500px] bg-slate-50 rounded-md border overflow-hidden relative">
+    <div className="w-full h-[500px] min-h-[400px] flex-1 bg-slate-50 rounded-md border overflow-hidden relative">
       <Canvas shadows dpr={[1, 2]} camera={{ position: cameraPosition, fov: 45 }}>
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} intensity={1} castShadow />

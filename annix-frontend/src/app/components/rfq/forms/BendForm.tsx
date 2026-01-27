@@ -3132,6 +3132,12 @@ export default function BendForm({
                                 const branchFlangeWeldLinear = branchFlangeWeldCount * 2 * mainCirc;
                                 const totalFlangeWeldLinear = mainFlangeWeldLinear + stub1FlangeWeldLinear + stub2FlangeWeldLinear + branchFlangeWeldLinear;
                                 const totalFlangeWeldCount = bendFlangeWeldCount + stub1FlangeCount + stub2FlangeCount + branchFlangeWeldCount;
+
+                                // Saddle weld for sweep tees (Steinmetz curve: ~2.7 × OD for equal pipe intersection)
+                                const STEINMETZ_FACTOR = 2.7;
+                                const isSweepTee = entry.specs?.bendItemType === 'SWEEP_TEE';
+                                const saddleWeldLinear = isSweepTee ? STEINMETZ_FACTOR * mainOdMm : 0;
+
                                 const calculatedTotalWeld = mitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear + saddleWeldLinear;
 
                                 return (
@@ -3169,6 +3175,9 @@ export default function BendForm({
                                           {teeStub1NB && <p>1 × Tee ({teeStub1NB}NB) = {teeStub1Circ.toFixed(0)}mm @ {teeStub1Wt?.toFixed(1)}mm</p>}
                                           {teeStub2NB && <p>1 × Tee ({teeStub2NB}NB) = {teeStub2Circ.toFixed(0)}mm @ {teeStub2Wt?.toFixed(1)}mm</p>}
                                         </>
+                                      )}
+                                      {isSweepTee && saddleWeldLinear > 0 && (
+                                        <p>1 × Saddle ({mainOdMm.toFixed(0)}OD × 2.7) = {saddleWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
                                       )}
                                       <p className="font-semibold border-t border-purple-300 pt-0.5 mt-1">Total: {calculatedTotalWeld.toFixed(0)}mm ({(calculatedTotalWeld / 1000).toFixed(2)} l/m)</p>
                                     </div>

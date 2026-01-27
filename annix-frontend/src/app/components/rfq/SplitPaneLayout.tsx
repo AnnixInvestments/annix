@@ -254,7 +254,7 @@ export default function SplitPaneLayout({
           className="flex-shrink-0 relative flex flex-col"
           style={{ width: `${100 - width}%`, minHeight: '400px', height: `${height}px` }}
         >
-          <div className="flex-1 w-full min-h-0">
+          <div className="flex-1 w-full min-h-0 flex flex-col">
             {previewContent}
           </div>
           <div

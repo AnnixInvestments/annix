@@ -263,25 +263,29 @@ export default function BendItemsStep({
     }, 0);
   };
 
+  const actionButtons = () => (
+    <div className="flex gap-3">
+      <button
+        onClick={onAddEntry}
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+      >
+        + Add Bend Item
+      </button>
+      <button
+        onClick={handleCalculateAll}
+        disabled={isCalculating || loading}
+        className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isCalculating || loading ? 'Calculating...' : '🔄 Calculate All'}
+      </button>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-gray-900">Bend Items</h2>
-        <div className="flex gap-3">
-          <button
-            onClick={onAddEntry}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-          >
-            + Add Bend Item
-          </button>
-          <button
-            onClick={handleCalculateAll}
-            disabled={isCalculating || loading}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isCalculating || loading ? 'Calculating...' : '🔄 Calculate All'}
-          </button>
-        </div>
+        {actionButtons()}
       </div>
 
       <div className="space-y-6">
@@ -760,6 +764,11 @@ export default function BendItemsStep({
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Bottom action buttons */}
+        <div className="flex justify-end">
+          {actionButtons()}
         </div>
       </div>
     </div>

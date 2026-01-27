@@ -1798,7 +1798,7 @@ async function selectWithEscape<T extends string>(
 }
 
 function renderMenu(message: string, choices: MenuChoice[], selectedIndex: number): void {
-  const lines = choices.length + 2;
+  const lines = choices.length + 1;
   process.stdout.write(`\x1b[${lines}A`);
   process.stdout.write('\x1b[0J');
 
