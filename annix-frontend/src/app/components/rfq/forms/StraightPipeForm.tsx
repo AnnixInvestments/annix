@@ -29,6 +29,7 @@ import {
   PRESSURE_CALC_SAFETY_FACTOR,
   SABS_1123_PRESSURE_CLASSES,
   BS_4504_PRESSURE_CLASSES,
+  STEEL_SPEC_NB_FALLBACK,
 } from '@/app/lib/config/rfq';
 import {
   NB_TO_OD_LOOKUP,
@@ -475,9 +476,9 @@ export default function StraightPipeForm({
                 </div>
 
                 {/* Material & Dimensions */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
-                  <h4 className="text-xs font-semibold text-gray-800 mb-2">Material & Dimensions</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mt-2">
+                  <h4 className="text-xs font-semibold text-gray-800 mb-1">Material & Dimensions</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
                     {/* Steel Specification */}
                     <div>
                       {(() => {
@@ -689,47 +690,60 @@ export default function StraightPipeForm({
                         const recommendedSchedule = eligibleSchedules[0];
 
                         return (
-                          <div className="mt-1.5 p-2 bg-red-50 border border-red-300 rounded">
-                            <div className="flex items-start gap-1.5">
-                              <span className="text-red-600 text-sm">⚠</span>
-                              <div className="text-xs flex-1">
-                                <p className="font-semibold text-red-700">
-                                  Schedule does not meet pressure requirements
-                                </p>
-                                <p className="text-red-600 mt-0.5">
-                                  Selected: {selectedWT.toFixed(2)}mm | Required: {minimumWT.toFixed(2)}mm (short by {shortfall.toFixed(2)}mm)
-                                </p>
-                                {recommendedSchedule && (
-                                  <div className="mt-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const schedValue = recommendedSchedule.scheduleDesignation;
-                                        const updatedEntry: any = {
-                                          specs: {
-                                            ...entry.specs,
-                                            scheduleNumber: schedValue,
-                                            wallThicknessMm: recommendedSchedule.wallThicknessMm
-                                          },
-                                          isScheduleOverridden: false
-                                        };
-                                        updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
-                                        onUpdateEntry(entry.id, updatedEntry);
-                                      }}
-                                      className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 font-medium"
-                                    >
-                                      Use {recommendedSchedule.scheduleDesignation} ({recommendedSchedule.wallThicknessMm?.toFixed(2)}mm)
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                          <div className="mt-1 p-1.5 bg-red-50 border border-red-300 rounded text-xs">
+                            <span className="text-red-600">⚠ {selectedWT.toFixed(2)}mm &lt; {minimumWT.toFixed(2)}mm min</span>
+                            {recommendedSchedule && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const schedValue = recommendedSchedule.scheduleDesignation;
+                                  const updatedEntry: any = {
+                                    specs: {
+                                      ...entry.specs,
+                                      scheduleNumber: schedValue,
+                                      wallThicknessMm: recommendedSchedule.wallThicknessMm
+                                    },
+                                    isScheduleOverridden: false
+                                  };
+                                  updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
+                                  onUpdateEntry(entry.id, updatedEntry);
+                                }}
+                                className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 font-medium"
+                              >
+                                Use {recommendedSchedule.scheduleDesignation}
+                              </button>
+                            )}
                           </div>
                         );
                       })()}
                       {errors[`pipe_${index}_schedule`] && (
                         <p role="alert" className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_schedule`]}</p>
                       )}
+                    </div>
+
+                    {/* Pipe Type */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        Pipe Type
+                      </label>
+                      <select
+                        value={entry.specs?.pipeType || 'plain'}
+                        onChange={(e) => {
+                          const newPipeType = e.target.value;
+                          const updatedEntry = {
+                            specs: {
+                              ...entry.specs,
+                              pipeType: newPipeType,
+                            },
+                          };
+                          onUpdateEntry(entry.id, updatedEntry);
+                        }}
+                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
+                      >
+                        <option value="plain">Plain Pipe</option>
+                        <option value="spigot">Spigot Pipe</option>
+                        <option value="puddle">Puddle Pipe</option>
+                      </select>
                     </div>
 
                     {/* Weld Thickness Display */}
@@ -808,32 +822,164 @@ export default function StraightPipeForm({
                       })()}
                     </div>
                   </div>
-                  {/* Wall Thickness & Schedule Summary */}
-                  {entry.specs?.scheduleNumber && (
-                    <div className="mt-2 pt-2 border-t border-blue-200 flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-gray-600">Schedule: </span>
-                        <span className="font-medium text-gray-900">{entry.specs.scheduleNumber}</span>
-                        <span className="text-gray-600 ml-2">| WT: </span>
-                        <span className="font-medium text-gray-900">{entry.specs.wallThicknessMm?.toFixed(2)}mm</span>
-                        {entry.minimumWallThickness > 0 && (
-                          <span className="text-green-600 ml-2">(min: {Number(entry.minimumWallThickness).toFixed(2)}mm)</span>
-                        )}
-                      </div>
-                      {entry.isScheduleOverridden && (
-                        <span className="text-blue-600 font-medium">Override</span>
-                      )}
-                    </div>
-                  )}
                 </div>
 
-                {/* Flange Specification - Third Box (Amber) */}
-                <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mt-3">
-                  <div className="mb-2">
-                    <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-900">
-                      Flange Specification
-                    </h4>
+                {/* Spigot Configuration - Only for Spigot Pipe */}
+                {entry.specs?.pipeType === 'spigot' && (
+                  <div className="bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-700 rounded-lg p-2 mt-2">
+                    <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Spigot Configuration</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2">
+                      {/* Spigot Steel Specification */}
+                      <div>
+                        {(() => {
+                          const globalSpecId = globalSpecs?.steelSpecificationId;
+                          const mainPipeSpecId = entry.specs?.steelSpecificationId || globalSpecId;
+                          const spigotSpecId = entry.specs?.spigotSteelSpecificationId || mainPipeSpecId;
+                          const isFromMainPipe = !entry.specs?.spigotSteelSpecificationId;
+                          const isOverride = entry.specs?.spigotSteelSpecificationId && entry.specs?.spigotSteelSpecificationId !== mainPipeSpecId;
+                          const groupedOptions = masterData.steelSpecs
+                            ? groupSteelSpecifications(masterData.steelSpecs)
+                            : [];
+
+                          return (
+                            <>
+                              <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                                Steel Spec
+                                {isFromMainPipe && <span className="text-green-600 text-xs ml-1 font-normal">(Main)</span>}
+                                {isOverride && <span className="text-yellow-600 text-xs ml-1 font-normal">(Override)</span>}
+                              </label>
+                              <Select
+                                value={String(spigotSpecId || '')}
+                                className={isFromMainPipe ? 'w-full border-2 border-green-500 rounded' : isOverride ? 'w-full border-2 border-yellow-500 rounded' : 'w-full'}
+                                onChange={(value) => {
+                                  const specId = value ? Number(value) : undefined;
+                                  onUpdateEntry(entry.id, {
+                                    specs: {
+                                      ...entry.specs,
+                                      spigotSteelSpecificationId: specId,
+                                      spigotNominalBoreMm: null
+                                    }
+                                  });
+                                }}
+                                options={[]}
+                                groupedOptions={groupedOptions}
+                                placeholder="Select steel spec..."
+                                open={openSelects[`spigot-steel-spec-${entry.id}`] || false}
+                                onOpenChange={(open) => open ? openSelect(`spigot-steel-spec-${entry.id}`) : closeSelect(`spigot-steel-spec-${entry.id}`)}
+                              />
+                            </>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Number of Spigots */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                          No. of Spigots
+                        </label>
+                        <select
+                          value={entry.specs?.numberOfSpigots || 2}
+                          onChange={(e) => {
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, numberOfSpigots: parseInt(e.target.value) }
+                            });
+                          }}
+                          className="w-full px-2 py-1.5 border border-teal-300 dark:border-teal-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
+                        >
+                          <option value={2}>2</option>
+                          <option value={3}>3</option>
+                          <option value={4}>4</option>
+                        </select>
+                      </div>
+
+                      {/* NB of Spigot */}
+                      <div>
+                        {(() => {
+                          const globalSpecId = globalSpecs?.steelSpecificationId;
+                          const mainPipeSpecId = entry.specs?.steelSpecificationId || globalSpecId;
+                          const spigotSpecId = entry.specs?.spigotSteelSpecificationId || mainPipeSpecId;
+                          const spigotSpecName = masterData.steelSpecs?.find((s: any) => s.id === spigotSpecId)?.steelSpecName || '';
+
+                          const matchingPrefix = Object.keys(STEEL_SPEC_NB_FALLBACK).find(prefix =>
+                            spigotSpecName.toUpperCase().includes(prefix.toUpperCase())
+                          );
+                          const validNBsForSpec = matchingPrefix ? STEEL_SPEC_NB_FALLBACK[matchingPrefix] : nominalBores;
+
+                          const filteredNBs = validNBsForSpec.filter((nb: number) =>
+                            !entry.specs?.nominalBoreMm || nb <= entry.specs.nominalBoreMm
+                          );
+
+                          return (
+                            <>
+                              <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                                Spigot NB (mm)
+                              </label>
+                              <select
+                                value={entry.specs?.spigotNominalBoreMm || ''}
+                                onChange={(e) => {
+                                  onUpdateEntry(entry.id, {
+                                    specs: { ...entry.specs, spigotNominalBoreMm: parseInt(e.target.value) || null }
+                                  });
+                                }}
+                                className="w-full px-2 py-1.5 border border-teal-300 dark:border-teal-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
+                              >
+                                <option value="">Select NB...</option>
+                                {filteredNBs.map((nb: number) => (
+                                  <option key={nb} value={nb}>{nb} NB</option>
+                                ))}
+                              </select>
+                            </>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Distance from Pipe End */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                          Distance from End (mm)
+                        </label>
+                        <input
+                          type="number"
+                          value={entry.specs?.spigotDistanceFromEndMm || ''}
+                          onChange={(e) => {
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, spigotDistanceFromEndMm: parseInt(e.target.value) || null }
+                            });
+                          }}
+                          className="w-full px-2 py-1.5 border border-teal-300 dark:border-teal-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
+                          placeholder="e.g. 1000"
+                          min="0"
+                        />
+                      </div>
+
+                      {/* Spigot Height */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                          Spigot Height (mm)
+                        </label>
+                        <input
+                          type="number"
+                          value={entry.specs?.spigotHeightMm || ''}
+                          onChange={(e) => {
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, spigotHeightMm: parseInt(e.target.value) || null }
+                            });
+                          }}
+                          className="w-full px-2 py-1.5 border border-teal-300 dark:border-teal-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
+                          placeholder="e.g. 150"
+                          min="50"
+                        />
+                      </div>
+                    </div>
                   </div>
+                )}
+
+                {/* Plain Pipe and Spigot Pipe sections */}
+                {(!entry.specs?.pipeType || entry.specs.pipeType === 'plain' || entry.specs.pipeType === 'spigot') && (
+                  <>
+                {/* Flange Specification - Third Box (Amber) */}
+                <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-2 mt-2">
+                  <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-900 mb-1">Flange Specification</h4>
                   {(() => {
                     const selectedStandard = masterData.flangeStandards?.find(
                       (fs: any) => fs.id === (entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId)
@@ -881,7 +1027,7 @@ export default function StraightPipeForm({
 
                     return (
                       <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
                           {/* Flange Standard */}
                           <div>
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
@@ -1160,11 +1306,179 @@ export default function StraightPipeForm({
                     }
                     return null;
                   })()}
+
+                  {/* Spigot Flange Configuration - Only shown for Spigot Pipe */}
+                  {entry.specs?.pipeType === 'spigot' && entry.specs?.numberOfSpigots && entry.specs?.numberOfSpigots >= 2 && (
+                    <div className="mt-2 pt-2 border-t border-amber-300">
+                      <h5 className="text-xs font-semibold text-teal-700 mb-1">Spigot Flange Configuration</h5>
+                      {(() => {
+                        const mainFlangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                        const spigotFlangeStandardId = entry.specs?.spigotFlangeStandardId || mainFlangeStandardId;
+                        const isStandardFromMain = !entry.specs?.spigotFlangeStandardId;
+
+                        const mainPressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                        const spigotPressureClassId = entry.specs?.spigotFlangePressureClassId || mainPressureClassId;
+                        const isClassFromMain = !entry.specs?.spigotFlangePressureClassId;
+
+                        const mainFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                        const spigotFlangeTypeCode = entry.specs?.spigotFlangeTypeCode || mainFlangeTypeCode;
+                        const isTypeFromMain = !entry.specs?.spigotFlangeTypeCode;
+
+                        const spigotFlangeConfig = entry.specs?.spigotFlangeConfig || 'PE';
+
+                        const selectedStandard = masterData.flangeStandards?.find((fs: any) => fs.id === spigotFlangeStandardId);
+                        const isSabs1123 = selectedStandard?.code?.toUpperCase().includes('SABS') && selectedStandard?.code?.includes('1123');
+                        const isBs4504 = selectedStandard?.code?.toUpperCase().includes('BS') && selectedStandard?.code?.includes('4504');
+                        const showFlangeType = isSabs1123 || isBs4504;
+
+                        const availablePressureClasses = spigotFlangeStandardId
+                          ? (pressureClassesByStandard[spigotFlangeStandardId] || masterData.pressureClasses?.filter((pc: any) =>
+                              pc.flangeStandardId === spigotFlangeStandardId || pc.standardId === spigotFlangeStandardId
+                            ) || [])
+                          : [];
+
+                        const numberOfSpigots = entry.specs?.numberOfSpigots || 2;
+                        const spigotBlankFlanges = entry.specs?.spigotBlankFlanges || [];
+
+                        const mainSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 bg-white border-green-500';
+                        const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 bg-white border-yellow-500';
+                        const defaultSelectClass = 'w-full px-2 py-1.5 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 bg-white border-teal-300';
+
+                        return (
+                          <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                              {/* Spigot Flange Standard */}
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-900 mb-1">
+                                  Standard
+                                  {isStandardFromMain && <span className="ml-1 text-green-600 font-normal">(Main)</span>}
+                                </label>
+                                <select
+                                  value={spigotFlangeStandardId || ''}
+                                  onChange={(e) => {
+                                    const newStandardId = e.target.value ? Number(e.target.value) : undefined;
+                                    onUpdateEntry(entry.id, {
+                                      specs: {
+                                        ...entry.specs,
+                                        spigotFlangeStandardId: newStandardId,
+                                        spigotFlangePressureClassId: undefined,
+                                        spigotFlangeTypeCode: undefined
+                                      }
+                                    });
+                                  }}
+                                  className={isStandardFromMain ? mainSelectClass : overrideSelectClass}
+                                >
+                                  <option value="">Select...</option>
+                                  {masterData.flangeStandards?.map((fs: any) => (
+                                    <option key={fs.id} value={fs.id}>{fs.code?.replace(/_/g, ' ')}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Spigot Pressure Class */}
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-900 mb-1">
+                                  Class
+                                  {isClassFromMain && <span className="ml-1 text-green-600 font-normal">(Main)</span>}
+                                </label>
+                                <select
+                                  value={spigotPressureClassId || ''}
+                                  onChange={(e) => {
+                                    onUpdateEntry(entry.id, {
+                                      specs: { ...entry.specs, spigotFlangePressureClassId: e.target.value ? Number(e.target.value) : undefined }
+                                    });
+                                  }}
+                                  className={isClassFromMain ? mainSelectClass : overrideSelectClass}
+                                >
+                                  <option value="">Select...</option>
+                                  {availablePressureClasses.map((pc: any) => (
+                                    <option key={pc.id} value={pc.id}>{pc.designation}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Spigot Flange Type */}
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-900 mb-1">
+                                  Type
+                                  {isTypeFromMain && showFlangeType && <span className="ml-1 text-green-600 font-normal">(Main)</span>}
+                                </label>
+                                {showFlangeType ? (
+                                  <select
+                                    value={spigotFlangeTypeCode || ''}
+                                    onChange={(e) => {
+                                      onUpdateEntry(entry.id, {
+                                        specs: { ...entry.specs, spigotFlangeTypeCode: e.target.value || undefined }
+                                      });
+                                    }}
+                                    className={isTypeFromMain ? mainSelectClass : overrideSelectClass}
+                                  >
+                                    <option value="">Select...</option>
+                                    {(isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES).map((ft) => (
+                                      <option key={ft.code} value={ft.code}>{ft.name} ({ft.code})</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <div className="px-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500">N/A</div>
+                                )}
+                              </div>
+
+                              {/* Spigot End Config */}
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-900 mb-1">
+                                  Spigot Config
+                                </label>
+                                <select
+                                  value={spigotFlangeConfig}
+                                  onChange={(e) => {
+                                    onUpdateEntry(entry.id, {
+                                      specs: { ...entry.specs, spigotFlangeConfig: e.target.value }
+                                    });
+                                  }}
+                                  className={defaultSelectClass}
+                                >
+                                  <option value="PE">PE - Plain End</option>
+                                  <option value="FAE">FAE - Flanged All Ends</option>
+                                  <option value="RF">R/F - Rotating Flange</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* Blank Flange Checkboxes for each Spigot */}
+                            {spigotFlangeConfig !== 'PE' && (
+                              <div className="mt-2 flex items-center gap-4 flex-wrap">
+                                <span className="text-xs font-semibold text-gray-900">Blank Flanges:</span>
+                                {Array.from({ length: numberOfSpigots }, (_, i) => (
+                                  <label key={i} className="flex items-center gap-1 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={spigotBlankFlanges.includes(i + 1)}
+                                      onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        const newBlanks = checked
+                                          ? [...spigotBlankFlanges, i + 1]
+                                          : spigotBlankFlanges.filter((s: number) => s !== i + 1);
+                                        onUpdateEntry(entry.id, {
+                                          specs: { ...entry.specs, spigotBlankFlanges: newBlanks.sort((a: number, b: number) => a - b) }
+                                        });
+                                      }}
+                                      className="w-3.5 h-3.5 text-teal-600 border-teal-400 rounded focus:ring-teal-500"
+                                    />
+                                    <span className="text-xs text-gray-800">S{i + 1}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
 
               {/* Closure Length Field - Only shown when L/F configuration is selected */}
               {hasLooseFlange(entry.specs.pipeEndConfiguration || '') && (
-                <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
+                <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-2 mt-2">
                   <ClosureLengthSelector
                     nominalBore={entry.specs?.nominalBoreMm || 100}
                     currentValue={entry.specs?.closureLengthMm || null}
@@ -1176,8 +1490,8 @@ export default function StraightPipeForm({
               )}
 
               {/* Quantity & Lengths - Blue Box */}
-              <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-3 mt-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-2 mt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                   {/* Pipe Length */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
@@ -1247,7 +1561,7 @@ export default function StraightPipeForm({
                         const updatedEntry = calculateQuantities(entry, 'totalLength', totalLength);
                         onUpdateEntry(entry.id, updatedEntry);
                       }}
-                      className="w-full px-2 py-1.5 border border-blue-300 dark:border-blue-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-blue-900/20 mt-6"
+                      className="w-full px-2 py-1.5 border border-blue-300 dark:border-blue-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-blue-900/20 mt-5"
                       placeholder="Total length"
                       required
                     />
@@ -1271,13 +1585,15 @@ export default function StraightPipeForm({
                         const updatedEntry = calculateQuantities(entry, 'numberOfPipes', numberOfPipes);
                         onUpdateEntry(entry.id, updatedEntry);
                       }}
-                      className="w-full px-2 py-1.5 border border-blue-300 dark:border-blue-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-blue-900/20 mt-6"
+                      className="w-full px-2 py-1.5 border border-blue-300 dark:border-blue-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-blue-900/20 mt-5"
                       placeholder="Number of pipes"
                       required
                     />
                   </div>
                 </div>
               </div>
+                  </>
+                )}
                   </>
                 }
                 previewContent={
@@ -1312,6 +1628,14 @@ export default function StraightPipeForm({
                         flangeStandardName={flangeStandardName}
                         pressureClassDesignation={pressureClassDesignation}
                         flangeTypeCode={flangeTypeCode}
+                        pipeType={entry.specs?.pipeType}
+                        numberOfSpigots={entry.specs?.numberOfSpigots}
+                        spigotNominalBoreMm={entry.specs?.spigotNominalBoreMm}
+                        spigotDistanceFromEndMm={entry.specs?.spigotDistanceFromEndMm}
+                        spigotHeightMm={entry.specs?.spigotHeightMm}
+                        individualPipeLengthM={entry.specs?.individualPipeLength}
+                        spigotFlangeConfig={entry.specs?.spigotFlangeConfig}
+                        spigotBlankFlanges={entry.specs?.spigotBlankFlanges}
                       />
                     );
                   })() : null
@@ -1388,12 +1712,67 @@ export default function StraightPipeForm({
                               ? getClosureWeight(nominalBore, closureLengthMm, wallThickness) * (entry.calculation?.calculatedPipeCount || 0)
                               : 0;
 
+                            // Spigot weight calculation
+                            const isSpigotPipe = entry.specs?.pipeType === 'spigot';
+                            const spigotCount = entry.specs?.numberOfSpigots || 0;
+                            const spigotNb = entry.specs?.spigotNominalBoreMm || 0;
+                            const spigotHeight = entry.specs?.spigotHeightMm || 150;
+                            const spigotFlangeConfig = entry.specs?.spigotFlangeConfig || 'PE';
+                            const spigotBlankFlanges = entry.specs?.spigotBlankFlanges || [];
+                            const nbToOdLookup: Record<number, number> = {
+                              15: 21.3, 20: 26.9, 25: 33.7, 32: 42.4, 40: 48.3, 50: 60.3,
+                              65: 76.1, 80: 88.9, 100: 114.3, 125: 139.7, 150: 168.3,
+                              200: 219.1, 250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4,
+                              450: 457.0, 500: 508.0, 600: 610.0
+                            };
+                            const spigotOd = nbToOdLookup[spigotNb] || (spigotNb * 1.1);
+                            const spigotWt = spigotOd < 100 ? 3.2 : spigotOd < 200 ? 4.5 : 6.0;
+                            const spigotId = spigotOd - (2 * spigotWt);
+                            const steelDensity = 7850; // kg/m³
+                            const singleSpigotWeight = isSpigotPipe && spigotNb > 0
+                              ? (Math.PI * (Math.pow(spigotOd, 2) - Math.pow(spigotId, 2)) / 4) * (spigotHeight / 1000) * steelDensity / 1000000
+                              : 0;
+                            const totalSpigotWeight = singleSpigotWeight * spigotCount * (entry.calculation?.calculatedPipeCount || 0);
+
+                            // Spigot flange weight calculations
+                            const hasSpigotFlanges = isSpigotPipe && (spigotFlangeConfig === 'FAE' || spigotFlangeConfig === 'RF');
+                            const isSpigotRF = spigotFlangeConfig === 'RF';
+                            const spigotFlangeStdId = entry.specs?.spigotFlangeStandardId || entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                            const spigotPressureClassId = entry.specs?.spigotFlangePressureClassId || entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                            const spigotFlangeStd = masterData.flangeStandards?.find((s: any) => s.id === spigotFlangeStdId);
+                            const spigotFlangeStdCode = spigotFlangeStd?.code || '';
+                            const spigotPressureClass = masterData.pressureClasses?.find((p: any) => p.id === spigotPressureClassId);
+                            const spigotPressureClassDesignation = spigotPressureClass?.designation || '';
+                            const spigotFlangeTypeCode = entry.specs?.spigotFlangeTypeCode || entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+
+                            const singleSpigotFlangeWeight = hasSpigotFlanges && spigotNb && spigotPressureClassDesignation
+                              ? getFlangeWeight(spigotNb, spigotPressureClassDesignation, spigotFlangeStdCode, spigotFlangeTypeCode) || 0
+                              : 0;
+                            const totalSpigotFlangeCount = hasSpigotFlanges ? spigotCount * (entry.calculation?.calculatedPipeCount || 0) : 0;
+                            const totalSpigotFlangeWeight = singleSpigotFlangeWeight * totalSpigotFlangeCount;
+
+                            // Spigot R/F ring weight
+                            const singleSpigotRingWeight = isSpigotRF && spigotNb ? retainingRingWeight(spigotNb) || 0 : 0;
+                            const totalSpigotRingWeight = singleSpigotRingWeight * totalSpigotFlangeCount;
+
+                            // Spigot blank flange weight
+                            const spigotBlankCount = spigotBlankFlanges.length * (entry.calculation?.calculatedPipeCount || 0);
+                            const isSans1123Spigot = (spigotFlangeStdCode.toUpperCase().includes('SABS') || spigotFlangeStdCode.toUpperCase().includes('SANS')) && spigotFlangeStdCode.includes('1123');
+                            const singleSpigotBlankWeight = hasSpigotFlanges && spigotNb && spigotPressureClassDesignation
+                              ? (isSans1123Spigot ? sansBlankFlangeWeight(spigotNb, spigotPressureClassDesignation) : getBlankFlangeWeight(spigotNb, spigotPressureClassDesignation)) || 0
+                              : 0;
+                            const totalSpigotBlankWeight = singleSpigotBlankWeight * spigotBlankCount;
+
                             const totalWeight = (entry.calculation.totalPipeWeight || 0)
                               + dynamicTotalFlangeWeight
                               + backingRingTotalWeight
                               + totalBlankFlangeWeight
                               + tackWeldTotalWeight
-                              + closureTotalWeight;
+                              + closureTotalWeight
+                              + totalSpigotWeight
+                              + totalSpigotFlangeWeight
+                              + totalSpigotRingWeight
+                              + totalSpigotBlankWeight;
 
                             return (
                               <div className="bg-green-50 p-2 rounded text-center border border-green-200">
@@ -1412,6 +1791,18 @@ export default function StraightPipeForm({
                                   )}
                                   {closureTotalWeight > 0 && (
                                     <p>Closures: {closureTotalWeight.toFixed(2)}kg</p>
+                                  )}
+                                  {totalSpigotWeight > 0 && (
+                                    <p>Spigots: {totalSpigotWeight.toFixed(2)}kg ({spigotCount}×{singleSpigotWeight.toFixed(2)}kg)</p>
+                                  )}
+                                  {hasSpigotFlanges && totalSpigotFlangeCount > 0 && (
+                                    <p>Spigot Flanges: {totalSpigotFlangeWeight.toFixed(2)}kg ({totalSpigotFlangeCount}×{singleSpigotFlangeWeight.toFixed(2)}kg)</p>
+                                  )}
+                                  {isSpigotRF && totalSpigotFlangeCount > 0 && (
+                                    <p>Spigot R/F Rings: {totalSpigotRingWeight.toFixed(2)}kg ({totalSpigotFlangeCount}×{singleSpigotRingWeight.toFixed(2)}kg)</p>
+                                  )}
+                                  {hasSpigotFlanges && spigotBlankCount > 0 && (
+                                    <p>Spigot Blanks: {totalSpigotBlankWeight.toFixed(2)}kg ({spigotBlankCount}×{singleSpigotBlankWeight.toFixed(2)}kg)</p>
                                   )}
                                 </div>
                               </div>
@@ -1509,6 +1900,31 @@ export default function StraightPipeForm({
                                 <p className="text-lg font-bold text-purple-900">{entry.calculation.numberOfFlangeWelds}</p>
                                 <p className="text-xs text-purple-600">2×{circumferenceMm.toFixed(0)}mm each</p>
                                 <p className="text-xs text-purple-700 font-medium">{entry.calculation.totalFlangeWeldLength?.toFixed(2)} l/m</p>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Spigot Welds */}
+                          {entry.specs?.pipeType === 'spigot' && entry.specs?.numberOfSpigots && entry.specs?.spigotNominalBoreMm && (() => {
+                            const spigotCount = entry.specs.numberOfSpigots || 0;
+                            const spigotNb = entry.specs.spigotNominalBoreMm || 0;
+                            const nbToOd: Record<number, number> = {
+                              15: 21.3, 20: 26.9, 25: 33.7, 32: 42.4, 40: 48.3, 50: 60.3,
+                              65: 76.1, 80: 88.9, 100: 114.3, 125: 139.7, 150: 168.3,
+                              200: 219.1, 250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4,
+                              450: 457.0, 500: 508.0, 600: 610.0
+                            };
+                            const spigotOdMm = nbToOd[spigotNb] || (spigotNb * 1.1);
+                            const spigotCircumferenceMm = Math.PI * spigotOdMm;
+                            const numPipes = entry.calculation?.calculatedPipeCount || 1;
+                            const totalSpigotWelds = spigotCount * numPipes;
+                            const totalSpigotWeldLengthM = (spigotCircumferenceMm * totalSpigotWelds) / 1000;
+                            return (
+                              <div className="bg-teal-50 p-2 rounded text-center border border-teal-200">
+                                <p className="text-xs text-teal-800 font-medium">Spigot Welds</p>
+                                <p className="text-lg font-bold text-teal-900">{totalSpigotWelds}</p>
+                                <p className="text-xs text-teal-600">{spigotCircumferenceMm.toFixed(0)}mm each</p>
+                                <p className="text-xs text-teal-700 font-medium">{totalSpigotWeldLengthM.toFixed(2)} l/m</p>
                               </div>
                             );
                           })()}

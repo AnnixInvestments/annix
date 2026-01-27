@@ -54,6 +54,14 @@ interface Pipe3DPreviewProps {
   flangeStandardName?: string;
   pressureClassDesignation?: string;
   flangeTypeCode?: string;
+  pipeType?: string;
+  numberOfSpigots?: number;
+  spigotNominalBoreMm?: number;
+  spigotDistanceFromEndMm?: number;
+  spigotHeightMm?: number;
+  individualPipeLengthM?: number;
+  spigotFlangeConfig?: string;
+  spigotBlankFlanges?: number[];
 }
 
 // Standard flange dimensions based on SABS 1123 Table 1000/4 (PN16) - Slip-on flanges
@@ -236,6 +244,157 @@ const BlankFlange = ({ position, outerDiameter, thickness }: { position: [number
   );
 };
 
+// Spigot component - a stub pipe welded onto the main pipe with optional flange
+const Spigot = ({
+  position,
+  mainPipeRadius,
+  spigotOuterRadius,
+  spigotInnerRadius,
+  spigotLength,
+  materialProps,
+  label,
+  flangeConfig = 'PE',
+  hasBlankFlange = false,
+  spigotNb = 50
+}: {
+  position: [number, number, number];
+  mainPipeRadius: number;
+  spigotOuterRadius: number;
+  spigotInnerRadius: number;
+  spigotLength: number;
+  materialProps: { color: string; metalness: number; roughness: number };
+  label: string;
+  flangeConfig?: string;
+  hasBlankFlange?: boolean;
+  spigotNb?: number;
+}) => {
+  const hasFlanges = flangeConfig === 'FAE' || flangeConfig === 'RF';
+  const isRotatingFlange = flangeConfig === 'RF';
+
+  const flangeOdRatio = 2.2;
+  const flangeOd = spigotOuterRadius * flangeOdRatio;
+  const flangeThickness = spigotOuterRadius * 0.3;
+  const retainingRingThickness = spigotOuterRadius * 0.15;
+
+  return (
+    <group position={position}>
+      {/* Spigot pipe - pointing upward (Y axis) */}
+      <group position={[0, mainPipeRadius + spigotLength / 2, 0]}>
+        {/* Outer surface */}
+        <mesh>
+          <cylinderGeometry args={[spigotOuterRadius, spigotOuterRadius, spigotLength, 24, 1, true]} />
+          <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} side={THREE.DoubleSide} />
+        </mesh>
+        {/* Inner bore - visible dark interior */}
+        <mesh>
+          <cylinderGeometry args={[spigotInnerRadius, spigotInnerRadius, spigotLength + 0.01, 24, 1, true]} />
+          <meshStandardMaterial color="#2a2a2a" metalness={0.2} roughness={0.8} side={THREE.DoubleSide} />
+        </mesh>
+        {/* Top cap ring - shows the pipe wall thickness (only if no flange) */}
+        {!hasFlanges && (
+          <mesh position={[0, spigotLength / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[spigotInnerRadius, spigotOuterRadius, 24]} />
+            <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} side={THREE.DoubleSide} />
+          </mesh>
+        )}
+        {/* Bottom cap ring - where it meets the main pipe */}
+        <mesh position={[0, -spigotLength / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[spigotInnerRadius, spigotOuterRadius, 24]} />
+          <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} side={THREE.DoubleSide} />
+        </mesh>
+      </group>
+
+      {/* Flange at top of spigot - FAE (welded) or R/F (rotating) */}
+      {hasFlanges && (
+        <group position={[0, mainPipeRadius + spigotLength + flangeThickness / 2, 0]}>
+          {isRotatingFlange ? (
+            <>
+              {/* Retaining ring (welded to pipe) */}
+              <mesh position={[0, -flangeThickness / 2 - retainingRingThickness / 2, 0]}>
+                <cylinderGeometry args={[flangeOd * 0.65, flangeOd * 0.65, retainingRingThickness, 32]} />
+                <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} />
+              </mesh>
+              {/* Loose flange ring (blue tint for R/F) */}
+              <mesh>
+                <cylinderGeometry args={[flangeOd, flangeOd, flangeThickness, 32]} />
+                <meshStandardMaterial color="#4a90d9" metalness={0.6} roughness={0.3} />
+              </mesh>
+              {/* Flange face cutout */}
+              <mesh position={[0, flangeThickness / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[spigotInnerRadius, flangeOd, 32]} />
+                <meshStandardMaterial color="#4a90d9" metalness={0.6} roughness={0.3} side={THREE.DoubleSide} />
+              </mesh>
+            </>
+          ) : (
+            <>
+              {/* Welded flange - FAE */}
+              <mesh>
+                <cylinderGeometry args={[flangeOd, flangeOd, flangeThickness, 32]} />
+                <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} />
+              </mesh>
+              {/* Flange face */}
+              <mesh position={[0, flangeThickness / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[spigotInnerRadius, flangeOd, 32]} />
+                <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} side={THREE.DoubleSide} />
+              </mesh>
+            </>
+          )}
+          {/* Bolt holes (decorative) */}
+          {Array.from({ length: 4 }).map((_, i) => {
+            const angle = (i * Math.PI * 2) / 4;
+            const boltX = Math.cos(angle) * flangeOd * 0.75;
+            const boltZ = Math.sin(angle) * flangeOd * 0.75;
+            return (
+              <mesh key={`bolt-${i}`} position={[boltX, 0, boltZ]}>
+                <cylinderGeometry args={[flangeOd * 0.05, flangeOd * 0.05, flangeThickness + 0.01, 8]} />
+                <meshStandardMaterial color="#1a1a1a" />
+              </mesh>
+            );
+          })}
+        </group>
+      )}
+
+      {/* Blank flange if selected */}
+      {hasFlanges && hasBlankFlange && (
+        <group position={[0, mainPipeRadius + spigotLength + flangeThickness + 0.005 + flangeThickness / 2, 0]}>
+          <mesh>
+            <cylinderGeometry args={[flangeOd, flangeOd, flangeThickness, 32]} />
+            <meshStandardMaterial color="#f97316" metalness={0.5} roughness={0.4} />
+          </mesh>
+          <Text
+            position={[0, flangeThickness / 2 + 0.03, 0]}
+            fontSize={0.05}
+            color="#f97316"
+            anchorX="center"
+            anchorY="bottom"
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            BLANK
+          </Text>
+        </group>
+      )}
+
+      {/* Weld bead at base */}
+      <mesh position={[0, mainPipeRadius, 0]}>
+        <torusGeometry args={[spigotOuterRadius, spigotOuterRadius * 0.08, 8, 24]} />
+        <meshStandardMaterial color="#333" roughness={0.9} metalness={0.4} />
+      </mesh>
+      {/* Label */}
+      <Text
+        position={[0, mainPipeRadius + spigotLength + (hasFlanges ? flangeThickness * 2 : 0) + 0.08, 0]}
+        fontSize={0.08}
+        color="#0d9488"
+        anchorX="center"
+        anchorY="bottom"
+        outlineWidth={0.005}
+        outlineColor="white"
+      >
+        {label}{hasFlanges ? (isRotatingFlange ? ' R/F' : ' FAE') : ''}
+      </Text>
+    </group>
+  );
+};
+
 const DimensionLine = ({ start, end, label }: { start: [number, number, number], end: [number, number, number], label: string }) => {
   const p1 = new THREE.Vector3(...start);
   const p2 = new THREE.Vector3(...end);
@@ -264,7 +423,7 @@ const isValidNumber = (value: number): boolean => {
   return typeof value === 'number' && !Number.isNaN(value) && Number.isFinite(value) && value > 0;
 };
 
-const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguration = 'PE', materialName, closureLengthMm = 0, addBlankFlange = false, blankFlangePositions = [] }: Pipe3DPreviewProps) => {
+const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguration = 'PE', materialName, closureLengthMm = 0, addBlankFlange = false, blankFlangePositions = [], pipeType, numberOfSpigots = 0, spigotNominalBoreMm, spigotDistanceFromEndMm, spigotHeightMm, spigotFlangeConfig = 'PE', spigotBlankFlanges = [] }: Pipe3DPreviewProps) => {
   const safeOD = isValidNumber(outerDiameter) ? outerDiameter : 100;
   const safeWT = isValidNumber(wallThickness) ? wallThickness : 5;
   const safeLen = isValidNumber(length) ? length : 1;
@@ -476,6 +635,134 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
           </Text>
         </>
       )}
+
+      {/* Spigots - render when pipeType is 'spigot' */}
+      {pipeType === 'spigot' && numberOfSpigots && numberOfSpigots >= 2 && spigotNominalBoreMm && spigotDistanceFromEndMm && (() => {
+        const pipeLengthMm = safeLength * 1000;
+        const distFromEnd = spigotDistanceFromEndMm;
+        const availableLength = pipeLengthMm - (2 * distFromEnd);
+
+        if (availableLength <= 0) return null;
+
+        const spacing = availableLength / (numberOfSpigots - 1);
+        const spigotPositions = Array.from({ length: numberOfSpigots }, (_, i) =>
+          distFromEnd + (i * spacing)
+        );
+
+        // NB to OD lookup for spigot
+        const nbToOd: Record<number, number> = {
+          15: 21.3, 20: 26.9, 25: 33.7, 32: 42.4, 40: 48.3, 50: 60.3,
+          65: 76.1, 80: 88.9, 100: 114.3, 125: 139.7, 150: 168.3,
+          200: 219.1, 250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4,
+          450: 457.0, 500: 508.0, 600: 610.0
+        };
+
+        const spigotOdMm = nbToOd[spigotNominalBoreMm] || spigotNominalBoreMm * 1.1;
+        const spigotWtMm = spigotOdMm < 100 ? 3.2 : spigotOdMm < 200 ? 4.5 : 6.0;
+        const spigotOuterRadius = (spigotOdMm / 1000) / 2;
+        const spigotInnerRadius = ((spigotOdMm - 2 * spigotWtMm) / 1000) / 2;
+        const spigotLength = (spigotHeightMm || 150) / 1000; // Convert mm to scene units (meters)
+
+        const dimLineY = -outerRadius - 0.15; // Position below pipe
+        const dimLineY2 = -outerRadius - 0.30; // Second row for spacing
+
+        return (
+          <>
+            {/* Render spigots */}
+            {spigotPositions.map((posMm, index) => {
+              const posX = -halfLen + (posMm / 1000);
+              const spigotIndex = index + 1;
+              const hasBlank = spigotBlankFlanges.includes(spigotIndex);
+              return (
+                <Spigot
+                  key={`spigot-${index}`}
+                  position={[posX, 0, 0]}
+                  mainPipeRadius={outerRadius}
+                  spigotOuterRadius={spigotOuterRadius}
+                  spigotInnerRadius={spigotInnerRadius}
+                  spigotLength={spigotLength}
+                  materialProps={matProps}
+                  label={`S${spigotIndex} (${spigotNominalBoreMm}NB)`}
+                  flangeConfig={spigotFlangeConfig}
+                  hasBlankFlange={hasBlank}
+                  spigotNb={spigotNominalBoreMm}
+                />
+              );
+            })}
+
+            {/* Distance from end dimension line (first spigot) */}
+            <Line
+              key="dim-end-line"
+              points={[[-halfLen, dimLineY, 0], [-halfLen + (distFromEnd / 1000), dimLineY, 0]]}
+              color="#0d9488"
+              lineWidth={3}
+            />
+            <Line
+              key="dim-end-tick1"
+              points={[[-halfLen, dimLineY - 0.05, 0], [-halfLen, dimLineY + 0.05, 0]]}
+              color="#0d9488"
+              lineWidth={2}
+            />
+            <Line
+              key="dim-end-tick2"
+              points={[[-halfLen + (distFromEnd / 1000), dimLineY - 0.05, 0], [-halfLen + (distFromEnd / 1000), dimLineY + 0.05, 0]]}
+              color="#0d9488"
+              lineWidth={2}
+            />
+            <Text
+              key="dim-end-label"
+              position={[-halfLen + (distFromEnd / 2000), dimLineY - 0.12, 0]}
+              fontSize={0.18}
+              color="#0d9488"
+              anchorX="center"
+              anchorY="top"
+              outlineWidth={0.015}
+              outlineColor="white"
+              fontWeight="bold"
+            >
+              {distFromEnd}mm
+            </Text>
+
+            {/* Spacing dimension lines between spigots */}
+            {spigotPositions.slice(0, -1).map((posMm, index) => {
+              const startX = -halfLen + (posMm / 1000);
+              const endX = -halfLen + (spigotPositions[index + 1] / 1000);
+              const midX = (startX + endX) / 2;
+              return (
+                <group key={`spacing-dim-${index}`}>
+                  <Line
+                    points={[[startX, dimLineY2, 0], [endX, dimLineY2, 0]]}
+                    color="#7c3aed"
+                    lineWidth={3}
+                  />
+                  <Line
+                    points={[[startX, dimLineY2 - 0.05, 0], [startX, dimLineY2 + 0.05, 0]]}
+                    color="#7c3aed"
+                    lineWidth={2}
+                  />
+                  <Line
+                    points={[[endX, dimLineY2 - 0.05, 0], [endX, dimLineY2 + 0.05, 0]]}
+                    color="#7c3aed"
+                    lineWidth={2}
+                  />
+                  <Text
+                    position={[midX, dimLineY2 - 0.12, 0]}
+                    fontSize={0.18}
+                    color="#7c3aed"
+                    anchorX="center"
+                    anchorY="top"
+                    outlineWidth={0.015}
+                    outlineColor="white"
+                    fontWeight="bold"
+                  >
+                    {Math.round(spacing)}mm
+                  </Text>
+                </group>
+              );
+            })}
+          </>
+        );
+      })()}
 
       <DimensionLine start={[-halfLen, offsetDist, 0]} end={[halfLen, offsetDist, 0]} label={`${isInputMeters ? length : (length/1000).toFixed(2)}m`} />
       <Line points={[[-halfLen, 0, 0], [-halfLen, offsetDist, 0]]} color="#999" lineWidth={0.5} dashed dashScale={20} />
@@ -815,6 +1102,34 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                   )}
                 </>
               )}
+
+              {/* Spigot Information */}
+              {props.pipeType === 'spigot' && props.numberOfSpigots && props.numberOfSpigots >= 2 && props.spigotDistanceFromEndMm && (() => {
+                const pipeLengthM = props.individualPipeLengthM || props.length || 0;
+                const pipeLengthMm = pipeLengthM * 1000;
+                const distFromEnd = props.spigotDistanceFromEndMm;
+                const availableLength = pipeLengthMm - (2 * distFromEnd);
+
+                if (availableLength <= 0) return null;
+
+                const spacing = availableLength / (props.numberOfSpigots - 1);
+                const positions = Array.from({ length: props.numberOfSpigots }, (_, i) =>
+                  distFromEnd + (i * spacing)
+                );
+
+                return (
+                  <>
+                    <div className="font-bold text-teal-700 mt-1.5 mb-0.5">SPIGOTS ({props.numberOfSpigots}×)</div>
+                    <div className="text-gray-900 font-medium">NB: {props.spigotNominalBoreMm}mm</div>
+                    <div className="text-gray-700">Height: {props.spigotHeightMm || 150}mm</div>
+                    <div className="text-teal-600 font-medium">Distance from end: {distFromEnd}mm</div>
+                    <div className="text-purple-600 font-medium">Spacing: {Math.round(spacing)}mm</div>
+                    <div className="text-gray-600 text-[9px] mt-0.5">
+                      Positions: {positions.map(p => `${(p/1000).toFixed(2)}m`).join(', ')}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           );
       })()}
