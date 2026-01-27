@@ -12,6 +12,10 @@ import {
   sabs719CenterToFaceBySegments as getSABS719CenterToFaceBySegments,
   weldCountPerBend as getWeldCountPerBend,
   weldCountPerFitting as getWeldCountPerFitting,
+  flangeWeldCountPerBend as getFlangeWeldCountPerBend,
+  flangeWeldCountPerFitting as getFlangeWeldCountPerFitting,
+  flangeCountPerBend as getFlangeCountPerBend,
+  flangeCountPerFitting as getFlangeCountPerFitting,
   fittingFlangeConfig as getFittingFlangeConfig,
   hasLooseFlange,
   getScheduleListForSpec,
@@ -2838,9 +2842,11 @@ export default function BendForm({
                           }
                           const isSweepTeeItem = entry.specs?.bendItemType === 'SWEEP_TEE';
                           const bendFlangeCount = isSweepTeeItem
-                            ? (getFittingFlangeConfig(bendEndConfig).hasInlet ? 1 : 0) + (getFittingFlangeConfig(bendEndConfig).hasOutlet ? 1 : 0)
-                            : ['FBE', '2xLF', '2X_RF', 'FOE_LF', 'FOE_RF'].includes(bendEndConfig) ? 2
-                            : ['FOE'].includes(bendEndConfig) ? 1 : 0;
+                            ? getFlangeCountPerFitting(bendEndConfig)
+                            : getFlangeCountPerBend(bendEndConfig);
+                          const bendFlangeWeldCount = isSweepTeeItem
+                            ? getFlangeWeldCountPerFitting(bendEndConfig)
+                            : getFlangeWeldCountPerBend(bendEndConfig);
                           const stub1FlangeCount = stub1HasFlange ? 1 : 0;
                           const stub2FlangeCount = stub2HasFlange ? 1 : 0;
                           const numSegments = entry.specs?.numberOfSegments || 0;
@@ -2882,7 +2888,7 @@ export default function BendForm({
                           const baseWeldVolume = mainOdMm && pipeWallThickness ? calculateBendWeldVolume({
                             mainOdMm,
                             mainWallThicknessMm: pipeWallThickness,
-                            numberOfFlangeWelds: bendFlangeCount,
+                            numberOfFlangeWelds: bendFlangeWeldCount,
                             numberOfMitreWelds: mitreWeldCount + tangentButtWeldCount,
                             stubs: [
                               stub1NB && stub1HasFlange ? { odMm: NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05, wallThicknessMm: pipeWallThickness, hasFlangeWeld: true } : null,
@@ -3115,15 +3121,17 @@ export default function BendForm({
                               {(() => {
                                 const mainCirc = Math.PI * mainOdMm;
                                 const mitreWeldLinear = mitreWeldCount * mainCirc;
-                                const mainFlangeWeldLinear = bendFlangeCount * 2 * mainCirc;
+                                const mainFlangeWeldLinear = bendFlangeWeldCount * 2 * mainCirc;
                                 const stub1Circ = stub1NB ? Math.PI * (NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05) : 0;
                                 const stub2Circ = stub2NB ? Math.PI * (NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05) : 0;
                                 const stub1FlangeWeldLinear = stub1FlangeCount * 2 * stub1Circ;
                                 const stub2FlangeWeldLinear = stub2FlangeCount * 2 * stub2Circ;
-                                const branchFlangeCount = isSweepTeeItem && getFittingFlangeConfig(bendEndConfig).hasBranch ? 1 : 0;
-                                const branchFlangeWeldLinear = branchFlangeCount * 2 * mainCirc;
+                                const branchFlangeConfig = isSweepTeeItem ? getFittingFlangeConfig(bendEndConfig) : null;
+                                const branchHasWeldableFlange = branchFlangeConfig?.hasBranch && branchFlangeConfig?.branchType !== 'loose';
+                                const branchFlangeWeldCount = branchHasWeldableFlange ? 1 : 0;
+                                const branchFlangeWeldLinear = branchFlangeWeldCount * 2 * mainCirc;
                                 const totalFlangeWeldLinear = mainFlangeWeldLinear + stub1FlangeWeldLinear + stub2FlangeWeldLinear + branchFlangeWeldLinear;
-                                const totalFlangeCount = bendFlangeCount + stub1FlangeCount + stub2FlangeCount + branchFlangeCount;
+                                const totalFlangeWeldCount = bendFlangeWeldCount + stub1FlangeCount + stub2FlangeCount + branchFlangeWeldCount;
                                 const calculatedTotalWeld = mitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear + saddleWeldLinear;
 
                                 return (
@@ -3140,13 +3148,13 @@ export default function BendForm({
                                       {buttWeldCount > 0 && (
                                         <p>{buttWeldCount} × Butt = {buttWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
                                       )}
-                                      {totalFlangeCount > 0 && (
+                                      {totalFlangeWeldCount > 0 && (
                                         <>
-                                          {bendFlangeCount > 0 && (
-                                            <p>{bendFlangeCount} × {isSweepTeeItem ? 'Run' : ''} Flange (2×{mainCirc.toFixed(0)}mm) = {mainFlangeWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
+                                          {bendFlangeWeldCount > 0 && (
+                                            <p>{bendFlangeWeldCount} × {isSweepTeeItem ? 'Run' : ''} Flange (2×{mainCirc.toFixed(0)}mm) = {mainFlangeWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
                                           )}
-                                          {branchFlangeCount > 0 && (
-                                            <p>{branchFlangeCount} × Branch Flg (2×{mainCirc.toFixed(0)}mm) = {branchFlangeWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
+                                          {branchFlangeWeldCount > 0 && (
+                                            <p>{branchFlangeWeldCount} × Branch Flg (2×{mainCirc.toFixed(0)}mm) = {branchFlangeWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
                                           )}
                                           {stub1FlangeCount > 0 && (
                                             <p>{stub1FlangeCount} × Stub1 Flg (2×{stub1Circ.toFixed(0)}mm) = {stub1FlangeWeldLinear.toFixed(0)}mm @ {stub1Wt?.toFixed(1)}mm</p>

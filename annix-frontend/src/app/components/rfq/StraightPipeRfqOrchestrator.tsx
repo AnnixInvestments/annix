@@ -57,6 +57,7 @@ import {
   hasLooseFlange,
   fixedFlangeCount as getFixedFlangeCount,
   weldCountPerPipe as getWeldCountPerPipe,
+  flangeWeldCountPerPipe as getFlangeWeldCountPerPipe,
   flangesPerPipe as getFlangesPerPipe,
   physicalFlangeCount as getPhysicalFlangeCount,
   normalizePressureClass,
@@ -204,8 +205,8 @@ const calculateLocalPipeResult = (
   const flangeConnectionsPerPipe = getFlangesPerPipe(pipeEndConfiguration);
   const numberOfFlangeConnections = flangeConnectionsPerPipe * calculatedPipeCount;
 
-  const weldsPerPipe = getWeldCountPerPipe(pipeEndConfiguration);
-  const numberOfFlangeWelds = weldsPerPipe * calculatedPipeCount;
+  const flangeWeldsPerPipe = getFlangeWeldCountPerPipe(pipeEndConfiguration);
+  const numberOfFlangeWelds = flangeWeldsPerPipe * calculatedPipeCount;
 
   // Weld length calculations (circumference-based)
   // Each flange requires 2 full welds: 1 inside and 1 outside

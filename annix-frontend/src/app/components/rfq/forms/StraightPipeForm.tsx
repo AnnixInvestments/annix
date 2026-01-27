@@ -11,6 +11,8 @@ import {
   BEND_END_OPTIONS,
   getScheduleListForSpec,
   weldCountPerPipe as getWeldCountPerPipe,
+  flangeWeldCountPerPipe as getFlangeWeldCountPerPipe,
+  flangeCountPerPipe as getFlangeCountPerPipe,
   physicalFlangeCount as getPhysicalFlangeCount,
   hasLooseFlange,
   tackWeldWeight as getTackWeldWeight,

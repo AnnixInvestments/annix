@@ -11,6 +11,8 @@ import {
   FITTING_END_OPTIONS,
   getScheduleListForSpec,
   weldCountPerFitting as getWeldCountPerFitting,
+  flangeWeldCountPerFitting as getFlangeWeldCountPerFitting,
+  flangeCountPerFitting as getFlangeCountPerFitting,
   fittingFlangeConfig as getFittingFlangeConfig,
   hasLooseFlange,
   tackWeldWeight as getTackWeldWeight,
@@ -1570,8 +1572,8 @@ export default function FittingForm({
                         const mainOdMm = entry.calculation?.outsideDiameterMm || (nominalBore ? NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.05 : 0);
                         const branchOdMm = branchNB ? NB_TO_OD_LOOKUP[branchNB] || branchNB * 1.05 : 0;
                         const flangeConfigCalc = getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || 'PE');
-                        const mainFlangeWeldCount = (flangeConfigCalc.hasInlet ? 1 : 0) + (flangeConfigCalc.hasOutlet ? 1 : 0);
-                        const branchFlangeWeldCount = flangeConfigCalc.hasBranch ? 1 : 0;
+                        const mainFlangeWeldCount = (flangeConfigCalc.hasInlet && flangeConfigCalc.inletType !== 'loose' ? 1 : 0) + (flangeConfigCalc.hasOutlet && flangeConfigCalc.outletType !== 'loose' ? 1 : 0);
+                        const branchFlangeWeldCount = flangeConfigCalc.hasBranch && flangeConfigCalc.branchType !== 'loose' ? 1 : 0;
                         const fittingWeldVolume = mainOdMm && pipeWallThickness ? calculateFittingWeldVolume({
                           mainOdMm,
                           mainWallThicknessMm: pipeWallThickness,
