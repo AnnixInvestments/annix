@@ -41,6 +41,7 @@ import {
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 import { WorkingConditionsSection } from '@/app/components/rfq/WorkingConditionsSection';
 import { MaterialSuitabilityWarning } from '@/app/components/rfq/MaterialSuitabilityWarning';
+import { ClosureLengthSelector } from '@/app/components/rfq/ClosureLengthSelector';
 import {
   SABS62_NB_OPTIONS,
   SABS62_BEND_RADIUS,
@@ -1535,6 +1536,23 @@ export default function BendForm({
                     );
                   })()}
                 </div>
+
+                {/* Closure Length Field - Only shown when L/F configuration is selected */}
+                {hasLooseFlange(entry.specs?.bendEndConfiguration || '') && (
+                  <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
+                    <ClosureLengthSelector
+                      nominalBore={entry.specs?.nominalBoreMm || 100}
+                      currentValue={entry.specs?.closureLengthMm || null}
+                      wallThickness={entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5}
+                      onUpdate={(closureLength) => {
+                        const updatedEntry = { ...entry, specs: { ...entry.specs, closureLengthMm: closureLength } };
+                        updatedEntry.description = generateItemDescription(updatedEntry);
+                        onUpdateEntry(entry.id, updatedEntry);
+                      }}
+                      variant="compact"
+                    />
+                  </div>
+                )}
 
                 {/* Duckfoot Steelwork Row - Only shown when Item Type is Duckfoot Bend */}
                 {entry.specs?.bendItemType === 'DUCKFOOT_BEND' && (

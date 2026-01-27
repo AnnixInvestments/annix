@@ -1036,6 +1036,117 @@ const BlankFlange = ({
   )
 }
 
+const RetainingRing = ({
+  center,
+  normal,
+  pipeR,
+  innerR,
+  wallThickness
+}: {
+  center: THREE.Vector3
+  normal: THREE.Vector3
+  pipeR: number
+  innerR: number
+  wallThickness: number
+}) => {
+  const ringOuterR = pipeR * 1.15
+  const ringInnerR = pipeR
+  const ringThick = wallThickness
+  const tubeRadius = (ringOuterR - ringInnerR) / 2
+  const torusRadius = ringInnerR + tubeRadius
+
+  const quaternion = useMemo(() => {
+    const q = new THREE.Quaternion()
+    q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal.clone().normalize())
+    return q
+  }, [normal.x, normal.y, normal.z])
+
+  const euler = new THREE.Euler().setFromQuaternion(quaternion)
+
+  return (
+    <group position={[center.x, center.y, center.z]} rotation={[euler.x, euler.y, euler.z]}>
+      <mesh>
+        <torusGeometry args={[torusRadius, tubeRadius, 16, 32]} />
+        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} />
+      </mesh>
+    </group>
+  )
+}
+
+const RotatingFlange = ({
+  center,
+  normal,
+  pipeR,
+  nb
+}: {
+  center: THREE.Vector3
+  normal: THREE.Vector3
+  pipeR: number
+  nb: number
+}) => {
+  const flangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nb).pop() || 200]
+  const flangeR = (flangeSpecs.flangeOD / 2) / SCALE
+  const thick = flangeR * 0.18
+  const boltR = (flangeSpecs.pcd / 2) / SCALE
+  const holeR = (flangeSpecs.holeID / 2) / SCALE
+  const boltCount = flangeSpecs.boltHoles
+  const boreR = pipeR * 1.05
+
+  const faceGeometry = useMemo(() => {
+    const shape = new THREE.Shape()
+    shape.absarc(0, 0, flangeR, 0, Math.PI * 2, false)
+
+    const centerHole = new THREE.Path()
+    centerHole.absarc(0, 0, boreR, 0, Math.PI * 2, true)
+    shape.holes.push(centerHole)
+
+    for (let i = 0; i < boltCount; i++) {
+      const angle = (i / boltCount) * Math.PI * 2
+      const x = Math.cos(angle) * boltR
+      const y = Math.sin(angle) * boltR
+      const boltHole = new THREE.Path()
+      boltHole.absarc(x, y, holeR, 0, Math.PI * 2, true)
+      shape.holes.push(boltHole)
+    }
+
+    return new THREE.ShapeGeometry(shape, 32)
+  }, [flangeR, boltR, holeR, boltCount, boreR])
+
+  const quaternion = useMemo(() => {
+    const q = new THREE.Quaternion()
+    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal.clone().normalize())
+    return q
+  }, [normal.x, normal.y, normal.z])
+
+  const euler = new THREE.Euler().setFromQuaternion(quaternion)
+
+  return (
+    <group position={[center.x, center.y, center.z]} rotation={[euler.x, euler.y, euler.z]}>
+      <mesh>
+        <cylinderGeometry args={[flangeR, flangeR, thick, 32, 1, true]} />
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
+      </mesh>
+      {Array.from({ length: boltCount }).map((_, i) => {
+        const angle = (i / boltCount) * Math.PI * 2
+        const hx = Math.cos(angle) * boltR
+        const hz = Math.sin(angle) * boltR
+        return (
+          <mesh key={i} position={[hx, 0, hz]}>
+            <cylinderGeometry args={[holeR, holeR, thick * 1.02, 16, 1, true]} />
+            <meshStandardMaterial color="#000" side={THREE.BackSide} />
+          </mesh>
+        )
+      })}
+      <mesh geometry={faceGeometry} position={[0, thick / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh geometry={faceGeometry} position={[0, -thick / 2 - 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  )
+}
+
 const Scene = (props: Props) => {
   const {
     nominalBore,
@@ -1059,7 +1170,8 @@ const Scene = (props: Props) => {
     duckfootRibThicknessT2Mm,
     duckfootGussetPointDDegrees,
     duckfootGussetPointCDegrees,
-    sweepTeePipeALengthMm
+    sweepTeePipeALengthMm,
+    closureLengthMm = 0
   } = props
 
   log.debug('CSGBend3DPreview Scene props', {
@@ -1091,9 +1203,27 @@ const Scene = (props: Props) => {
   const hasInletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'].includes(config)
   const hasOutletFlange = ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'].includes(config)
 
+  const hasLooseInletFlange = config === 'FOE_LF' || config === '2XLF'
+  const hasLooseOutletFlange = config === '2XLF'
+
+  const hasRotatingInletFlange = config === 'FOE_RF' || config === '2X_RF'
+  const hasRotatingOutletFlange = config === '2X_RF'
+
+  const rotatingFlangeOffset = 80 / SCALE
+  const wtScaled = (wallThickness || 6) / SCALE
+
   const fittingHasInletFlange = ['FAE', 'F2E', 'F2E_LF', 'F2E_RF', '3X_RF', '2X_RF_FOE'].includes(config)
   const fittingHasOutletFlange = ['FAE', 'F2E', 'F2E_LF', 'F2E_RF', '3X_RF', '2X_RF_FOE'].includes(config)
   const fittingHasBranchFlange = ['FAE', 'F2E_LF', 'F2E_RF', '3X_RF', '2X_RF_FOE'].includes(config)
+
+  const fittingHasLooseInletFlange = config === 'F2E_LF'
+  const fittingHasLooseOutletFlange = config === 'F2E_LF'
+  const fittingHasRotatingInletFlange = ['F2E_RF', '3X_RF', '2X_RF_FOE'].includes(config)
+  const fittingHasRotatingOutletFlange = ['F2E_RF', '3X_RF', '2X_RF_FOE'].includes(config)
+  const fittingHasRotatingBranchFlange = config === '3X_RF'
+
+  const closureLength = (closureLengthMm || 150) / SCALE
+  const gapLength = 100 / SCALE
 
   const flangeSpecs = FLANGE_DATA[nominalBore] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nominalBore).pop() || 200]
   const flangeThickScaled = ((flangeSpecs.flangeOD / 2) / SCALE) * 0.18
@@ -1326,24 +1456,98 @@ const Scene = (props: Props) => {
 
               {/* Left flange on Pipe A (inlet) */}
               {fittingHasInletFlange && (
-                <Flange
-                  center={pipeALeftEnd.clone().add(new THREE.Vector3(0, 0, -flangeOffset))}
-                  normal={new THREE.Vector3(0, 0, -1)}
-                  pipeR={outerR}
-                  innerR={innerR}
-                  nb={nominalBore}
-                />
+                fittingHasLooseInletFlange ? (
+                  <>
+                    {/* Black closure piece connected directly to pipe end */}
+                    <mesh position={[0, 0, -pipeAHalfLength - closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
+                      <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
+                      <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+                    </mesh>
+                    <mesh position={[0, 0, -pipeAHalfLength - closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
+                      <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
+                      <meshStandardMaterial color="#333333" side={THREE.BackSide} />
+                    </mesh>
+                    <Flange
+                      center={new THREE.Vector3(0, 0, -pipeAHalfLength - closureLength - gapLength)}
+                      normal={new THREE.Vector3(0, 0, -1)}
+                      pipeR={outerR}
+                      innerR={innerR}
+                      nb={nominalBore}
+                    />
+                  </>
+                ) : fittingHasRotatingInletFlange ? (
+                  <>
+                    <RetainingRing
+                      center={pipeALeftEnd}
+                      normal={new THREE.Vector3(0, 0, -1)}
+                      pipeR={outerR}
+                      innerR={innerR}
+                      wallThickness={wtScaled}
+                    />
+                    <RotatingFlange
+                      center={pipeALeftEnd.clone().add(new THREE.Vector3(0, 0, rotatingFlangeOffset))}
+                      normal={new THREE.Vector3(0, 0, -1)}
+                      pipeR={outerR}
+                      nb={nominalBore}
+                    />
+                  </>
+                ) : (
+                  <Flange
+                    center={pipeALeftEnd.clone().add(new THREE.Vector3(0, 0, -flangeOffset))}
+                    normal={new THREE.Vector3(0, 0, -1)}
+                    pipeR={outerR}
+                    innerR={innerR}
+                    nb={nominalBore}
+                  />
+                )
               )}
 
               {/* Right flange on Pipe A (outlet) */}
               {fittingHasOutletFlange && (
-                <Flange
-                  center={pipeARightEnd.clone().add(new THREE.Vector3(0, 0, flangeOffset))}
-                  normal={new THREE.Vector3(0, 0, 1)}
-                  pipeR={outerR}
-                  innerR={innerR}
-                  nb={nominalBore}
-                />
+                fittingHasLooseOutletFlange ? (
+                  <>
+                    {/* Black closure piece connected directly to pipe end */}
+                    <mesh position={[0, 0, pipeAHalfLength + closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
+                      <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
+                      <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+                    </mesh>
+                    <mesh position={[0, 0, pipeAHalfLength + closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
+                      <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
+                      <meshStandardMaterial color="#333333" side={THREE.BackSide} />
+                    </mesh>
+                    <Flange
+                      center={new THREE.Vector3(0, 0, pipeAHalfLength + closureLength + gapLength)}
+                      normal={new THREE.Vector3(0, 0, 1)}
+                      pipeR={outerR}
+                      innerR={innerR}
+                      nb={nominalBore}
+                    />
+                  </>
+                ) : fittingHasRotatingOutletFlange ? (
+                  <>
+                    <RetainingRing
+                      center={pipeARightEnd}
+                      normal={new THREE.Vector3(0, 0, 1)}
+                      pipeR={outerR}
+                      innerR={innerR}
+                      wallThickness={wtScaled}
+                    />
+                    <RotatingFlange
+                      center={pipeARightEnd.clone().add(new THREE.Vector3(0, 0, -rotatingFlangeOffset))}
+                      normal={new THREE.Vector3(0, 0, 1)}
+                      pipeR={outerR}
+                      nb={nominalBore}
+                    />
+                  </>
+                ) : (
+                  <Flange
+                    center={pipeARightEnd.clone().add(new THREE.Vector3(0, 0, flangeOffset))}
+                    normal={new THREE.Vector3(0, 0, 1)}
+                    pipeR={outerR}
+                    innerR={innerR}
+                    nb={nominalBore}
+                  />
+                )
               )}
 
               {/* Sweep branch - 90° bend with extrados connecting to top of Pipe A */}
@@ -1373,13 +1577,31 @@ const Scene = (props: Props) => {
 
               {/* Branch flange at top of sweep - pointing straight up */}
               {fittingHasBranchFlange && (
-                <Flange
-                  center={sweepEndPos.clone().add(sweepEndDir.clone().multiplyScalar(flangeOffset))}
-                  normal={sweepEndDir}
-                  pipeR={outerR}
-                  innerR={innerR}
-                  nb={nominalBore}
-                />
+                fittingHasRotatingBranchFlange ? (
+                  <>
+                    <RetainingRing
+                      center={sweepEndPos}
+                      normal={sweepEndDir}
+                      pipeR={outerR}
+                      innerR={innerR}
+                      wallThickness={wtScaled}
+                    />
+                    <RotatingFlange
+                      center={sweepEndPos.clone().sub(sweepEndDir.clone().multiplyScalar(rotatingFlangeOffset))}
+                      normal={sweepEndDir}
+                      pipeR={outerR}
+                      nb={nominalBore}
+                    />
+                  </>
+                ) : (
+                  <Flange
+                    center={sweepEndPos.clone().add(sweepEndDir.clone().multiplyScalar(flangeOffset))}
+                    normal={sweepEndDir}
+                    pipeR={outerR}
+                    innerR={innerR}
+                    nb={nominalBore}
+                  />
+                )
               )}
 
               {/* TODO: Saddle weld line - see GitHub Issue #48
@@ -1609,28 +1831,132 @@ const Scene = (props: Props) => {
 
         {/* Inlet flange - hide for sweep tees which have their own flanges */}
         {hasInletFlange && !isSweepTee && (
-          <Flange
-            center={new THREE.Vector3(0, 0, -flangeOffset)}
-            normal={new THREE.Vector3(0, 0, -1)}
-            pipeR={outerR}
-            innerR={innerR}
-            nb={nominalBore}
-          />
+          hasLooseInletFlange ? (
+            <>
+              {/* Black closure piece connected directly to pipe end */}
+              <mesh position={[0, 0, -closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
+                <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+              </mesh>
+              <mesh position={[0, 0, -closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
+                <meshStandardMaterial color="#333333" side={THREE.BackSide} />
+              </mesh>
+              {/* Loose flange positioned after closure + 100mm gap */}
+              <Flange
+                center={new THREE.Vector3(0, 0, -closureLength - gapLength)}
+                normal={new THREE.Vector3(0, 0, -1)}
+                pipeR={outerR}
+                innerR={innerR}
+                nb={nominalBore}
+              />
+              {/* L/F dimension line */}
+              <Line points={[[0, -outerR - 0.15, 0], [0, -outerR - 0.15, -closureLength]]} color="#2563eb" lineWidth={2} />
+              <Line points={[[0, -outerR - 0.1, 0], [0, -outerR - 0.2, 0]]} color="#2563eb" lineWidth={1} />
+              <Line points={[[0, -outerR - 0.1, -closureLength], [0, -outerR - 0.2, -closureLength]]} color="#2563eb" lineWidth={1} />
+              <Text position={[0, -outerR - 0.28, -closureLength / 2]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                {`L/F ${closureLengthMm || 150}mm`}
+              </Text>
+            </>
+          ) : hasRotatingInletFlange ? (
+            <>
+              {/* Retaining ring welded to pipe end */}
+              <RetainingRing
+                center={new THREE.Vector3(0, 0, 0)}
+                normal={new THREE.Vector3(0, 0, -1)}
+                pipeR={outerR}
+                innerR={innerR}
+                wallThickness={wtScaled}
+              />
+              {/* Rotating flange positioned 80mm back from ring (into the pipe) */}
+              <RotatingFlange
+                center={new THREE.Vector3(0, 0, rotatingFlangeOffset)}
+                normal={new THREE.Vector3(0, 0, -1)}
+                pipeR={outerR}
+                nb={nominalBore}
+              />
+              {/* R/F dimension line */}
+              <Line points={[[0, -outerR - 0.15, 0], [0, -outerR - 0.15, rotatingFlangeOffset]]} color="#ea580c" lineWidth={2} />
+              <Line points={[[0, -outerR - 0.1, 0], [0, -outerR - 0.2, 0]]} color="#ea580c" lineWidth={1} />
+              <Line points={[[0, -outerR - 0.1, rotatingFlangeOffset], [0, -outerR - 0.2, rotatingFlangeOffset]]} color="#ea580c" lineWidth={1} />
+              <Text position={[0, -outerR - 0.28, rotatingFlangeOffset / 2]} fontSize={0.12} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+                R/F
+              </Text>
+            </>
+          ) : (
+            <Flange
+              center={new THREE.Vector3(0, 0, -flangeOffset)}
+              normal={new THREE.Vector3(0, 0, -1)}
+              pipeR={outerR}
+              innerR={innerR}
+              nb={nominalBore}
+            />
+          )
         )}
 
         {/* Outlet flange - hide for sweep tees which have their own flanges */}
-        {hasOutletFlange && !isSweepTee && (
-          <Flange
-            center={t2 > 0
-              ? outletEnd.clone().add(outletDir.clone().multiplyScalar(flangeOffset))
-              : bendEndPoint.clone().add(outletDir.clone().multiplyScalar(flangeOffset))
-            }
-            normal={outletDir}
-            pipeR={outerR}
-            innerR={innerR}
-            nb={nominalBore}
-          />
-        )}
+        {hasOutletFlange && !isSweepTee && (() => {
+          const outletBase = t2 > 0 ? outletEnd : bendEndPoint
+          const outletFlangePos = outletBase.clone().add(outletDir.clone().multiplyScalar(flangeOffset))
+
+          return hasLooseOutletFlange ? (
+            <>
+              {/* Black closure piece connected directly to pipe end */}
+              {(() => {
+                const closureCenterPos = outletBase.clone().add(outletDir.clone().multiplyScalar(closureLength / 2))
+                const quaternion = new THREE.Quaternion()
+                quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), outletDir.clone().normalize())
+                const euler = new THREE.Euler().setFromQuaternion(quaternion)
+                return (
+                  <>
+                    <mesh position={closureCenterPos.toArray()} rotation={[euler.x, euler.y, euler.z]}>
+                      <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
+                      <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+                    </mesh>
+                    <mesh position={closureCenterPos.toArray()} rotation={[euler.x, euler.y, euler.z]}>
+                      <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
+                      <meshStandardMaterial color="#333333" side={THREE.BackSide} />
+                    </mesh>
+                  </>
+                )
+              })()}
+              {/* Loose flange positioned after closure + 100mm gap */}
+              <Flange
+                center={outletBase.clone().add(outletDir.clone().multiplyScalar(closureLength + gapLength))}
+                normal={outletDir}
+                pipeR={outerR}
+                innerR={innerR}
+                nb={nominalBore}
+              />
+            </>
+          ) : hasRotatingOutletFlange ? (
+            <>
+              {/* Retaining ring welded to pipe end */}
+              <RetainingRing
+                center={outletBase}
+                normal={outletDir}
+                pipeR={outerR}
+                innerR={innerR}
+                wallThickness={wtScaled}
+              />
+              {/* Rotating flange positioned 80mm back from ring (into the pipe) */}
+              <RotatingFlange
+                center={outletBase.clone().sub(outletDir.clone().multiplyScalar(rotatingFlangeOffset))}
+                normal={outletDir}
+                pipeR={outerR}
+                nb={nominalBore}
+              />
+            </>
+          ) : (
+            <Flange
+              center={outletFlangePos}
+              normal={outletDir}
+              pipeR={outerR}
+              innerR={innerR}
+              nb={nominalBore}
+            />
+          )
+        })()}
 
         {addBlankFlange && blankFlangePositions.includes('inlet') && hasInletFlange && (() => {
           const blankOffset = flangeOffset + flangeThickScaled * 2 + 0.05
