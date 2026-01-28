@@ -24,6 +24,7 @@ import {
   WORKING_PRESSURE_BAR,
   WORKING_TEMPERATURE_CELSIUS,
   STANDARD_PIPE_LENGTHS_M,
+  PUDDLE_PIPE_LENGTHS_M,
   DEFAULT_PIPE_LENGTH_M,
   PRESSURE_CALC_JOINT_EFFICIENCY,
   PRESSURE_CALC_CORROSION_ALLOWANCE,
@@ -1382,8 +1383,20 @@ export default function StraightPipeForm({
                                     }
                                   }, 100);
                                 }
+                                // For puddle pipes, focus the Puddle Flange OD field next
+                                if (entry.specs?.pipeType === 'puddle') {
+                                  setTimeout(() => {
+                                    const puddleOdInput = document.getElementById(`puddle-od-${entry.id}`) as HTMLInputElement;
+                                    if (puddleOdInput) {
+                                      puddleOdInput.focus();
+                                      puddleOdInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                      puddleOdInput.select();
+                                    }
+                                  }, 100);
+                                }
                               }}
                               options={entry.specs?.pipeType === 'puddle' ? [
+                                { value: 'PE', label: 'PE - Plain Ended' },
                                 { value: 'FOE', label: 'FOE - Flanged One End' },
                                 { value: 'FBE', label: 'FBE - Flanged Both Ends' },
                               ] : [...PIPE_END_OPTIONS]}
@@ -1626,6 +1639,7 @@ export default function StraightPipeForm({
                             Flange OD (mm)
                           </label>
                           <input
+                            id={`puddle-od-${entry.id}`}
                             type="number"
                             value={entry.specs?.puddleFlangeOdMm || ''}
                             onChange={(e) => {
@@ -1748,7 +1762,7 @@ export default function StraightPipeForm({
                         Pipe Length (m)
                       </label>
                       <div className="flex gap-1">
-                        {STANDARD_PIPE_LENGTHS_M.map((pl) => (
+                        {(entry.specs?.pipeType === 'puddle' ? PUDDLE_PIPE_LENGTHS_M : STANDARD_PIPE_LENGTHS_M).map((pl) => (
                           <button
                             key={pl.value}
                             type="button"

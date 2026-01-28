@@ -450,8 +450,6 @@ const Spigot = ({
         color="#0d9488"
         anchorX="center"
         anchorY="bottom"
-        outlineWidth={0.005}
-        outlineColor="white"
       >
         {label}{hasFlanges ? (isRotatingFlange ? ' R/F' : ' FAE') : ''}
       </Text>
@@ -678,12 +676,12 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
               <Line points={[[-halfLen, -outerRadius - 0.1, 0], [-halfLen - closureLength, -outerRadius - 0.1, 0]]} color="#2563eb" lineWidth={2} />
               <Line points={[[-halfLen, -outerRadius - 0.05, 0], [-halfLen, -outerRadius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
               <Line points={[[-halfLen - closureLength, -outerRadius - 0.05, 0], [-halfLen - closureLength, -outerRadius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
-              <Text position={[-halfLen - closureLength / 2, -outerRadius - 0.22, 0]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Text position={[-halfLen - closureLength / 2, -outerRadius - 0.22, 0]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top">
                 {`L/F ${closureLengthMm}mm`}
               </Text>
               {/* 100mm gap indicator */}
               <Line points={[[-halfLen - closureLength, -outerRadius - 0.25, 0], [-halfLen - closureLength - gapLength, -outerRadius - 0.25, 0]]} color="#9333ea" lineWidth={1} dashed />
-              <Text position={[-halfLen - closureLength - gapLength / 2, -outerRadius - 0.35, 0]} fontSize={0.1} color="#9333ea" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Text position={[-halfLen - closureLength - gapLength / 2, -outerRadius - 0.35, 0]} fontSize={0.1} color="#9333ea" anchorX="center" anchorY="top">
                 100mm gap
               </Text>
             </>
@@ -699,7 +697,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
               <Line points={[[-halfLen, -outerRadius - 0.05, 0], [-halfLen, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
               <Line points={[[-halfLen + 0.08, -outerRadius - 0.05, 0], [-halfLen + 0.08, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
               {/* R/F label with gap dimension */}
-              <Text position={[-halfLen + 0.04, -outerRadius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Text position={[-halfLen + 0.04, -outerRadius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top">
                 R/F
               </Text>
             </>
@@ -734,12 +732,12 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
               <Line points={[[halfLen, -outerRadius - 0.1, 0], [halfLen + closureLength, -outerRadius - 0.1, 0]]} color="#2563eb" lineWidth={2} />
               <Line points={[[halfLen, -outerRadius - 0.05, 0], [halfLen, -outerRadius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
               <Line points={[[halfLen + closureLength, -outerRadius - 0.05, 0], [halfLen + closureLength, -outerRadius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
-              <Text position={[halfLen + closureLength / 2, -outerRadius - 0.22, 0]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Text position={[halfLen + closureLength / 2, -outerRadius - 0.22, 0]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top">
                 {`L/F ${closureLengthMm}mm`}
               </Text>
               {/* 100mm gap indicator */}
               <Line points={[[halfLen + closureLength, -outerRadius - 0.25, 0], [halfLen + closureLength + gapLength, -outerRadius - 0.25, 0]]} color="#9333ea" lineWidth={1} dashed />
-              <Text position={[halfLen + closureLength + gapLength / 2, -outerRadius - 0.35, 0]} fontSize={0.1} color="#9333ea" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Text position={[halfLen + closureLength + gapLength / 2, -outerRadius - 0.35, 0]} fontSize={0.1} color="#9333ea" anchorX="center" anchorY="top">
                 100mm gap
               </Text>
             </>
@@ -755,7 +753,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
               <Line points={[[halfLen - 0.08, -outerRadius - 0.05, 0], [halfLen - 0.08, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
               <Line points={[[halfLen, -outerRadius - 0.05, 0], [halfLen, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
               {/* R/F label with gap dimension */}
-              <Text position={[halfLen - 0.04, -outerRadius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Text position={[halfLen - 0.04, -outerRadius - 0.22, 0]} fontSize={0.1} color="#ea580c" anchorX="center" anchorY="top">
                 R/F
               </Text>
             </>
@@ -776,7 +774,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
             outerDiameter={odSceneUnits}
             thickness={flangeThickness}
           />
-          <Text position={[-halfLen - flangeThickness - 0.05, -outerRadius - 0.15, 0]} fontSize={0.1} color="#cc3300" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+          <Text position={[-halfLen - flangeThickness - 0.05, -outerRadius - 0.15, 0]} fontSize={0.1} color="#cc3300" anchorX="center" anchorY="top">
             BLANK
           </Text>
         </>
@@ -788,7 +786,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
             outerDiameter={odSceneUnits}
             thickness={flangeThickness}
           />
-          <Text position={[halfLen + flangeThickness + 0.15, -outerRadius - 0.15, 0]} fontSize={0.1} color="#cc3300" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+          <Text position={[halfLen + flangeThickness + 0.15, -outerRadius - 0.15, 0]} fontSize={0.1} color="#cc3300" anchorX="center" anchorY="top">
             BLANK
           </Text>
         </>
@@ -951,8 +949,6 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
               color="#b45309"
               anchorX="center"
               anchorY="bottom"
-              outlineWidth={0.008}
-              outlineColor="white"
               fontWeight="bold"
             >
               Puddle Flange
@@ -980,8 +976,6 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
               color="#b45309"
               anchorX="center"
               anchorY="top"
-              outlineWidth={0.015}
-              outlineColor="white"
               fontWeight="bold"
             >
               {locationFromFlangeEnd}mm

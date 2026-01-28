@@ -35,6 +35,14 @@ export const STANDARD_PIPE_LENGTHS_M = [
   { value: 12.192, label: '12.192m', description: '40ft imperial', isMetric: false },
 ] as const;
 
+export const PUDDLE_PIPE_LENGTHS_M = [
+  { value: 1, label: '1m', description: 'Short puddle pipe' },
+  { value: 1.5, label: '1.5m', description: 'Standard puddle pipe' },
+  { value: 2, label: '2m', description: 'Standard puddle pipe' },
+  { value: 2.5, label: '2.5m', description: 'Medium puddle pipe' },
+  { value: 3, label: '3m', description: 'Long puddle pipe' },
+] as const;
+
 export const METRIC_PIPE_LENGTHS_M = [6, 9, 12] as const;
 export const IMPERIAL_PIPE_LENGTHS_M = [6.1, 9.144, 12.192] as const;
 

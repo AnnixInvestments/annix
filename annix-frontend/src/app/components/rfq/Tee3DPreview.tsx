@@ -1046,8 +1046,6 @@ function TeeScene(props: Tee3DPreviewProps) {
               color="#cc3300"
               anchorX="center"
               anchorY="top"
-              outlineWidth={0.015}
-              outlineColor="white"
             >
               BLANK
             </Text>
@@ -1070,8 +1068,6 @@ function TeeScene(props: Tee3DPreviewProps) {
               color="#cc3300"
               anchorX="center"
               anchorY="top"
-              outlineWidth={0.015}
-              outlineColor="white"
             >
               BLANK
             </Text>
@@ -1094,8 +1090,6 @@ function TeeScene(props: Tee3DPreviewProps) {
               color="#cc3300"
               anchorX="right"
               anchorY="middle"
-              outlineWidth={0.015}
-              outlineColor="white"
             >
               BLANK
             </Text>
@@ -1125,8 +1119,6 @@ function TeeScene(props: Tee3DPreviewProps) {
           color="#dc2626"
           anchorX="left"
           anchorY="middle"
-          outlineWidth={0.02}
-          outlineColor="white"
           fontWeight="bold"
         >
           {`${teeHeight}mm`}
@@ -1156,8 +1148,6 @@ function TeeScene(props: Tee3DPreviewProps) {
               color="#16a34a"
               anchorX="center"
               anchorY="top"
-              outlineWidth={0.02}
-              outlineColor="white"
               fontWeight="bold"
             >
               {`${branchPositionMm}mm`}
@@ -1182,8 +1172,6 @@ function TeeScene(props: Tee3DPreviewProps) {
               color="#0066cc"
               anchorX="left"
               anchorY="middle"
-              outlineWidth={0.015}
-              outlineColor="white"
               fontWeight="bold"
             >
               {`C: ${gussetSection}mm`}

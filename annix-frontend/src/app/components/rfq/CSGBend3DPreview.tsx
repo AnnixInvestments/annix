@@ -1924,7 +1924,7 @@ const Scene = (props: Props) => {
               <Line points={[[0, -outerR - 0.15, 0], [0, -outerR - 0.15, -closureLength]]} color="#2563eb" lineWidth={2} />
               <Line points={[[0, -outerR - 0.1, 0], [0, -outerR - 0.2, 0]]} color="#2563eb" lineWidth={1} />
               <Line points={[[0, -outerR - 0.1, -closureLength], [0, -outerR - 0.2, -closureLength]]} color="#2563eb" lineWidth={1} />
-              <Text position={[0, -outerR - 0.28, -closureLength / 2]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Text position={[0, -outerR - 0.28, -closureLength / 2]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top">
                 {`L/F ${closureLengthMm || 150}mm`}
               </Text>
             </>
@@ -1949,7 +1949,7 @@ const Scene = (props: Props) => {
               <Line points={[[0, -outerR - 0.15, 0], [0, -outerR - 0.15, rotatingFlangeOffset]]} color="#ea580c" lineWidth={2} />
               <Line points={[[0, -outerR - 0.1, 0], [0, -outerR - 0.2, 0]]} color="#ea580c" lineWidth={1} />
               <Line points={[[0, -outerR - 0.1, rotatingFlangeOffset], [0, -outerR - 0.2, rotatingFlangeOffset]]} color="#ea580c" lineWidth={1} />
-              <Text position={[0, -outerR - 0.28, rotatingFlangeOffset / 2]} fontSize={0.12} color="#ea580c" anchorX="center" anchorY="top" outlineWidth={0.01} outlineColor="white">
+              <Text position={[0, -outerR - 0.28, rotatingFlangeOffset / 2]} fontSize={0.12} color="#ea580c" anchorX="center" anchorY="top">
                 R/F
               </Text>
             </>
