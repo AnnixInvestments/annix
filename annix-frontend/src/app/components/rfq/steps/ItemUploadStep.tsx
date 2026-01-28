@@ -150,7 +150,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
             } else if (!entry.specs?.bendDegrees) {
               focusAndOpenSelect(`bend-angle-${entry.id}`);
             }
-          } else if (entry.itemType === 'straight_pipe' && hasSteelSpec) {
+          } else if (entry.itemType === 'straight_pipe') {
             autoFocusedEntriesRef.current.add(entry.id);
             if (!entry.specs?.nominalBoreMm) {
               focusAndOpenSelect(`pipe-nb-${entry.id}`);
@@ -789,7 +789,45 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
   const addItemButtons = (insertAtStart?: boolean) => (
     <div className="flex gap-2">
       <button
-        onClick={() => onAddEntry(undefined, insertAtStart)}
+        onClick={() => {
+          // Track existing pipe NB select IDs before adding
+          const existingIds = new Set(
+            Array.from(document.querySelectorAll('[id^="pipe-nb-"]')).map(el => el.id)
+          );
+
+          onAddEntry(undefined, insertAtStart);
+
+          // Focus the NB field of the new pipe after a delay to ensure DOM is ready
+          const tryFocus = (attempt: number) => {
+            if (attempt > 10) return;
+            setTimeout(() => {
+              // Find the new NB select that wasn't there before
+              const allNbSelects = document.querySelectorAll('[id^="pipe-nb-"]');
+              let newSelect: Element | null = null;
+
+              for (const select of allNbSelects) {
+                if (!existingIds.has(select.id)) {
+                  newSelect = select;
+                  break;
+                }
+              }
+
+              if (newSelect) {
+                const selectId = newSelect.id;
+                // Set state to open the select
+                openSelect(selectId);
+                // Also try clicking the button to trigger the dropdown
+                const button = newSelect as HTMLElement;
+                button.click();
+                button.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } else {
+                // New element not found yet, retry
+                tryFocus(attempt + 1);
+              }
+            }, 150 + (attempt * 100));
+          };
+          tryFocus(0);
+        }}
         className="flex items-center gap-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 rounded-md border border-blue-300 transition-colors"
       >
         <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

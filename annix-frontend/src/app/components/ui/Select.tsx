@@ -152,7 +152,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             aria-invalid={ariaInvalid}
             aria-describedby={ariaDescribedby}
             aria-label={ariaLabel}
-            className={`flex items-center justify-between w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-left ${className || ''}`}
+            className={`flex items-center justify-between w-full px-2 py-1.5 text-xs border border-gray-300 rounded bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-left ${className || ''}`}
           >
             <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>
               {loading ? 'Loading...' : (selectedOption?.label || placeholder)}

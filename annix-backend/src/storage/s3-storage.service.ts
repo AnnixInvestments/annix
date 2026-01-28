@@ -52,6 +52,10 @@ export class S3StorageService implements IStorageService, OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
+    const storageType = this.configService.get<string>('STORAGE_TYPE') || 'local';
+    if (storageType.toLowerCase() !== 's3') {
+      return;
+    }
     await this.ensureBucketExists();
   }
 

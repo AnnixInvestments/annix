@@ -229,7 +229,7 @@ export default function BendForm({
                     id={`bend-description-${entry.id}`}
                     value={entry.description || ''}
                     onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                    className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                     rows={2}
                     placeholder="e.g., 40NB 90° 1.5D Bend"
                     required
@@ -968,7 +968,7 @@ export default function BendForm({
                           type="text"
                           value="90°"
                           disabled
-                          className="w-full px-3 py-2 border border-green-300 rounded-md text-sm bg-green-50 text-green-900 font-medium cursor-not-allowed"
+                          className="w-full px-2 py-1.5 border border-green-300 rounded text-xs bg-green-50 text-green-900 font-medium cursor-not-allowed"
                           title="Sweep Tees and Duckfoot Bends are always 90°"
                         />
                       ) : (() => {
@@ -1049,7 +1049,7 @@ export default function BendForm({
                             : 'Select specs'
                         }
                         disabled
-                        className={`w-full px-3 py-2 border rounded-md text-sm cursor-not-allowed ${
+                        className={`w-full px-2 py-1.5 border rounded text-xs cursor-not-allowed ${
                           entry.specs?.centerToFaceMm ? 'bg-green-50 border-green-300 text-green-900 font-medium' : 'bg-gray-100 border-gray-300 text-gray-600'
                         }`}
                       />
@@ -1070,7 +1070,7 @@ export default function BendForm({
                               <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                                 Segments <span className="text-purple-600 text-xs ml-1">(SABS 719)</span>
                               </label>
-                              <input type="text" value="Select radius & angle" disabled className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-500 cursor-not-allowed" />
+                              <input type="text" value="Select radius & angle" disabled className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs bg-gray-100 text-gray-500 cursor-not-allowed" />
                             </>
                           );
                         }
@@ -1117,7 +1117,7 @@ export default function BendForm({
                               <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                                 Segments <span className="text-green-600 text-xs ml-1">(Auto: 2)</span>
                               </label>
-                              <input type="text" value="2 segments" disabled className="w-full px-3 py-2 border border-green-300 rounded-md text-sm bg-green-50 text-green-900 font-medium cursor-not-allowed" />
+                              <input type="text" value="2 segments" disabled className="w-full px-2 py-1.5 border border-green-300 rounded text-xs bg-green-50 text-green-900 font-medium cursor-not-allowed" />
                             </>
                           );
                         }
@@ -1149,7 +1149,7 @@ export default function BendForm({
                                   setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                                 }
                               }}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                             >
                               <option value="">Select</option>
                               {segmentOptions.map(seg => (
@@ -1180,7 +1180,7 @@ export default function BendForm({
                             setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
                           }
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                         min="1"
                         placeholder="1"
                       />

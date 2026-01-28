@@ -203,7 +203,7 @@ function BracketEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Bra
               <select
                 value={entry.bracketType}
                 onChange={(e) => onUpdate({ bracketType: e.target.value as BracketType })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {BRACKET_TYPES.map((type) => (
                   <option key={type.id} value={type.id}>
@@ -219,7 +219,7 @@ function BracketEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Bra
               <select
                 value={entry.materialId}
                 onChange={(e) => onUpdate({ materialId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {STEEL_MATERIAL_CATEGORIES.map((cat) => (
                   <optgroup key={cat.id} label={cat.name}>
@@ -248,7 +248,7 @@ function BracketEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Bra
                   type="number"
                   value={entry.dimensions.leg1LengthMm}
                   onChange={(e) => updateDimension('leg1LengthMm', parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min={1}
                   max={2000}
                 />
@@ -259,7 +259,7 @@ function BracketEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Bra
                   type="number"
                   value={entry.dimensions.leg2LengthMm}
                   onChange={(e) => updateDimension('leg2LengthMm', parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min={1}
                   max={2000}
                   disabled={entry.bracketType === 'FLAT_BRACKET'}
@@ -271,7 +271,7 @@ function BracketEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Bra
                   type="number"
                   value={entry.dimensions.widthMm}
                   onChange={(e) => updateDimension('widthMm', parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min={1}
                   max={500}
                 />
@@ -282,7 +282,7 @@ function BracketEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Bra
                   type="number"
                   value={entry.dimensions.thicknessMm}
                   onChange={(e) => updateDimension('thicknessMm', parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min={1}
                   max={50}
                 />
@@ -293,7 +293,7 @@ function BracketEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Bra
                   type="number"
                   value={entry.dimensions.angleDegrees}
                   onChange={(e) => updateDimension('angleDegrees', parseFloat(e.target.value) || 90)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min={30}
                   max={180}
                   disabled={entry.bracketType === 'FLAT_BRACKET'}
@@ -309,7 +309,7 @@ function BracketEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Bra
                 type="number"
                 value={entry.quantity}
                 onChange={(e) => onUpdate({ quantity: Math.max(1, parseInt(e.target.value) || 1) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                 min={1}
               />
             </div>
@@ -336,12 +336,12 @@ function BracketEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Bra
                   value={entry.costPerKgOverride || ''}
                   onChange={(e) => onUpdate({ costPerKgOverride: parseFloat(e.target.value) || null })}
                   placeholder={`Default: R${material?.defaultCostPerKg || 0}`}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min={0}
                   step={0.01}
                 />
               ) : (
-                <div className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm text-gray-600">
+                <div className="w-full px-2 py-1.5 bg-gray-100 border border-gray-200 rounded text-xs text-gray-600">
                   R {effectiveCostPerKg.toFixed(2)} / kg
                 </div>
               )}
@@ -354,7 +354,7 @@ function BracketEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Bra
                 value={entry.notes || ''}
                 onChange={(e) => onUpdate({ notes: e.target.value })}
                 placeholder="e.g., Location, purpose..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>

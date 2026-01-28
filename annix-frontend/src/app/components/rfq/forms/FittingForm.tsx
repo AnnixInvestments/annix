@@ -147,7 +147,7 @@ export default function FittingForm({
                     id={`fitting-description-${entry.id}`}
                     value={entry.description || generateItemDescription(entry)}
                     onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                    className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                     rows={2}
                     placeholder="e.g., 100NB Short Equal Tee Sch40 SABS719"
                     required
@@ -791,10 +791,10 @@ export default function FittingForm({
                     );
                     const isPressureClassUnsuitable = pressureClassValidation.isUnsuitable;
 
-                    const globalSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400';
-                    const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400';
-                    const unsuitableSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
-                    const defaultSelectClass = 'w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800';
+                    const globalSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400';
+                    const overrideSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400';
+                    const unsuitableSelectClass = 'w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400';
+                    const defaultSelectClass = 'w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800';
 
                     return (
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -891,7 +891,7 @@ export default function FittingForm({
                               ))}
                             </select>
                           ) : (
-                            <select disabled className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm bg-gray-100 text-gray-500">
+                            <select disabled className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs bg-gray-100 text-gray-500">
                               <option>N/A for this standard</option>
                             </select>
                           )}
@@ -922,7 +922,7 @@ export default function FittingForm({
                           });
                           setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                         }}
-                        className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                        className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
                         min="1"
                         placeholder="1"
                       />
@@ -992,7 +992,7 @@ export default function FittingForm({
                                 }
                               });
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                            className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                           >
                             <option value="">Select angle range...</option>
                             <option value="60-90">60° - 90°</option>
@@ -1022,7 +1022,7 @@ export default function FittingForm({
                               specs: { ...entry.specs, pipeLengthAMm: newValue, pipeLengthAOverride: isOverride }
                             });
                           }}
-                          className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
+                          className={`w-full px-2 py-1.5 border rounded text-xs focus:outline-none focus:ring-1 ${
                             isEqualTee
                               ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-400 dark:border-blue-600 text-blue-900 dark:text-blue-100 cursor-not-allowed font-medium'
                               : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600 focus:ring-blue-500 text-gray-900 dark:text-gray-100'
@@ -1064,7 +1064,7 @@ export default function FittingForm({
                                 specs: { ...entry.specs, degrees: Number(e.target.value) }
                               });
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                            className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                             placeholder="e.g., 45, 60, 90"
                             min="30"
                             max="90"
@@ -1091,7 +1091,7 @@ export default function FittingForm({
                                 specs: { ...entry.specs, pipeLengthBMm: newValue, pipeLengthBOverride: isOverride }
                               });
                             }}
-                            className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
+                            className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
                             placeholder="e.g., 1000"
                             min="0"
                           />
@@ -1118,7 +1118,7 @@ export default function FittingForm({
                               specs: { ...entry.specs, pipeLengthBMm: newValue, pipeLengthBOverride: isOverride }
                             });
                           }}
-                          className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
+                          className={`w-full px-2 py-1.5 border rounded text-xs focus:outline-none focus:ring-1 ${
                             isEqualTee
                               ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-400 dark:border-blue-600 text-blue-900 dark:text-blue-100 cursor-not-allowed font-medium'
                               : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600 focus:ring-blue-500 text-gray-900 dark:text-gray-100'
@@ -1247,7 +1247,7 @@ export default function FittingForm({
                                 specs: { ...entry.specs, pipeLengthAMm: newValue, pipeLengthAOverride: isOverride }
                               });
                             }}
-                            className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
+                            className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
                             placeholder="e.g., 1000"
                             min="0"
                           />
@@ -1275,7 +1275,7 @@ export default function FittingForm({
                                 specs: { ...entry.specs, pipeLengthBMm: newValue, pipeLengthBOverride: isOverride }
                               });
                             }}
-                            className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
+                            className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
                             placeholder="e.g., 1000"
                             min="0"
                           />
@@ -1348,7 +1348,7 @@ export default function FittingForm({
                               specs: { ...entry.specs, stubLocation: value }
                             });
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                           placeholder="e.g., 500"
                           min="0"
                         />
@@ -1408,7 +1408,7 @@ export default function FittingForm({
                           onUpdateEntry(entry.id, updatedEntry);
                           setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                         required
                       >
                         {FITTING_END_OPTIONS.map(opt => (

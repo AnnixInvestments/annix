@@ -15,6 +15,7 @@ import {
   flangeCountPerPipe as getFlangeCountPerPipe,
   physicalFlangeCount as getPhysicalFlangeCount,
   hasLooseFlange,
+  tackWeldEndsPerPipe as getTackWeldEndsPerPipe,
   tackWeldWeight as getTackWeldWeight,
   closureWeight as getClosureWeight,
   FITTING_CLASS_WALL_THICKNESS,
@@ -440,6 +441,17 @@ export default function StraightPipeForm({
                           log.debug(`[NB onChange] Updating entry ${entry.id} with schedule: ${matchedSchedule}, WT: ${matchedWT}mm`);
                           onUpdateEntry(entry.id, updatedEntry);
                           fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
+                          // Focus and open the Pipe Type dropdown next
+                          setTimeout(() => {
+                            const pipeTypeSelectId = `pipe-type-${entry.id}`;
+                            const pipeTypeElement = document.getElementById(pipeTypeSelectId);
+                            if (pipeTypeElement) {
+                              pipeTypeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                            setTimeout(() => {
+                              focusAndOpenSelect(pipeTypeSelectId);
+                            }, 150);
+                          }, 150);
                         };
 
                         return (
@@ -454,6 +466,7 @@ export default function StraightPipeForm({
                             onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
                             aria-required={true}
                             aria-invalid={!!errors[`pipe_${index}_nb`]}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
                           />
                         );
                       })()}
@@ -490,9 +503,9 @@ export default function StraightPipeForm({
                         const groupedOptions = masterData.steelSpecs
                           ? groupSteelSpecifications(masterData.steelSpecs)
                           : [];
-                        const globalSelectClass = 'w-full border-2 border-green-500 dark:border-lime-400 rounded';
-                        const overrideSelectClass = 'w-full border-2 border-red-500 dark:border-red-400 rounded';
-                        const defaultSelectClass = 'w-full';
+                        const globalSelectClass = 'w-full px-2 py-1.5 border-2 border-green-500 dark:border-lime-400 rounded text-xs';
+                        const overrideSelectClass = 'w-full px-2 py-1.5 border-2 border-red-500 dark:border-red-400 rounded text-xs';
+                        const defaultSelectClass = 'w-full px-2 py-1.5 border border-gray-300 rounded text-xs';
 
                         return (
                           <>
@@ -726,24 +739,52 @@ export default function StraightPipeForm({
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Pipe Type
                       </label>
-                      <select
+                      <Select
+                        id={`pipe-type-${entry.id}`}
                         value={entry.specs?.pipeType || 'plain'}
-                        onChange={(e) => {
-                          const newPipeType = e.target.value;
-                          const updatedEntry = {
-                            specs: {
-                              ...entry.specs,
-                              pipeType: newPipeType,
-                            },
+                        onChange={(value) => {
+                          const newPipeType = value;
+                          const currentEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                          const isPuddleEndConfig = currentEndConfig === 'FOE' || currentEndConfig === 'FBE';
+                          const updatedSpecs: any = {
+                            ...entry.specs,
+                            pipeType: newPipeType,
                           };
-                          onUpdateEntry(entry.id, updatedEntry);
+                          if (newPipeType === 'puddle' && !isPuddleEndConfig) {
+                            updatedSpecs.pipeEndConfiguration = 'FOE';
+                          }
+                          if (newPipeType !== 'puddle') {
+                            updatedSpecs.puddleFlangeOdMm = null;
+                            updatedSpecs.puddleFlangePcdMm = null;
+                            updatedSpecs.puddleFlangeHoleCount = null;
+                            updatedSpecs.puddleFlangeHoleIdMm = null;
+                            updatedSpecs.puddleFlangeThicknessMm = null;
+                            updatedSpecs.puddleFlangeLocationMm = null;
+                          }
+                          onUpdateEntry(entry.id, { specs: updatedSpecs });
+                          // For plain pipes, open the Config dropdown next
+                          if (newPipeType === 'plain') {
+                            setTimeout(() => {
+                              const configSelectId = `pipe-config-${entry.id}`;
+                              const configElement = document.getElementById(configSelectId);
+                              if (configElement) {
+                                configElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
+                              setTimeout(() => {
+                                focusAndOpenSelect(configSelectId);
+                              }, 150);
+                            }, 150);
+                          }
                         }}
-                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
-                      >
-                        <option value="plain">Plain Pipe</option>
-                        <option value="spigot">Spigot Pipe</option>
-                        <option value="puddle">Puddle Pipe</option>
-                      </select>
+                        options={[
+                          { value: 'plain', label: 'Plain Pipe' },
+                          { value: 'spigot', label: 'Spigot Pipe' },
+                          { value: 'puddle', label: 'Puddle Pipe' },
+                        ]}
+                        open={openSelects[`pipe-type-${entry.id}`] || false}
+                        onOpenChange={(open) => open ? openSelect(`pipe-type-${entry.id}`) : closeSelect(`pipe-type-${entry.id}`)}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                      />
                     </div>
 
                     {/* Weld Thickness Display */}
@@ -850,7 +891,7 @@ export default function StraightPipeForm({
                               </label>
                               <Select
                                 value={String(spigotSpecId || '')}
-                                className={isFromMainPipe ? 'w-full border-2 border-green-500 rounded' : isOverride ? 'w-full border-2 border-yellow-500 rounded' : 'w-full'}
+                                className={isFromMainPipe ? 'w-full px-2 py-1.5 border-2 border-green-500 rounded text-xs' : isOverride ? 'w-full px-2 py-1.5 border-2 border-yellow-500 rounded text-xs' : 'w-full px-2 py-1.5 border border-gray-300 rounded text-xs'}
                                 onChange={(value) => {
                                   const specId = value ? Number(value) : undefined;
                                   onUpdateEntry(entry.id, {
@@ -974,8 +1015,8 @@ export default function StraightPipeForm({
                   </div>
                 )}
 
-                {/* Plain Pipe and Spigot Pipe sections */}
-                {(!entry.specs?.pipeType || entry.specs.pipeType === 'plain' || entry.specs.pipeType === 'spigot') && (
+                {/* Plain Pipe, Spigot Pipe, and Puddle Pipe sections */}
+                {(!entry.specs?.pipeType || entry.specs.pipeType === 'plain' || entry.specs.pipeType === 'spigot' || entry.specs.pipeType === 'puddle') && (
                   <>
                 {/* Flange Specification - Third Box (Amber) */}
                 <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-2 mt-2">
@@ -1202,10 +1243,11 @@ export default function StraightPipeForm({
                               Config
                               <span className="ml-1 text-gray-400 font-normal cursor-help" title="PE = Plain End (no flanges, for butt welding to other pipes). FOE = Flanged One End (connect to equipment/valve). FBE = Flanged Both Ends (spool piece). L/F = Loose Flange (slip-on, easier bolt alignment). R/F = Rotating Flange (backing ring allows rotation for bolt hole alignment).">?</span>
                             </label>
-                            <select
-                              value={entry.specs.pipeEndConfiguration || 'PE'}
-                              onChange={async (e) => {
-                                const newConfig = e.target.value as any;
+                            <Select
+                              id={`pipe-config-${entry.id}`}
+                              value={entry.specs.pipeEndConfiguration || (entry.specs?.pipeType === 'puddle' ? 'FOE' : 'PE')}
+                              onChange={async (value) => {
+                                const newConfig = value as any;
                                 let weldDetails = null;
                                 try {
                                   weldDetails = await getPipeEndConfigurationDetails(newConfig);
@@ -1245,13 +1287,26 @@ export default function StraightPipeForm({
                                 };
                                 updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
                                 onUpdateEntry(entry.id, updatedEntry);
+                                // For plain pipes, focus the Pipe Length field next
+                                if (entry.specs?.pipeType === 'plain' || !entry.specs?.pipeType) {
+                                  setTimeout(() => {
+                                    const pipeLengthInput = document.getElementById(`pipe-length-${entry.id}`) as HTMLInputElement;
+                                    if (pipeLengthInput) {
+                                      pipeLengthInput.focus();
+                                      pipeLengthInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                      pipeLengthInput.select();
+                                    }
+                                  }, 100);
+                                }
                               }}
-                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-900"
-                            >
-                              {PIPE_END_OPTIONS.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                              ))}
-                            </select>
+                              options={entry.specs?.pipeType === 'puddle' ? [
+                                { value: 'FOE', label: 'FOE - Flanged One End' },
+                                { value: 'FBE', label: 'FBE - Flanged Both Ends' },
+                              ] : [...PIPE_END_OPTIONS]}
+                              open={openSelects[`pipe-config-${entry.id}`] || false}
+                              onOpenChange={(open) => open ? openSelect(`pipe-config-${entry.id}`) : closeSelect(`pipe-config-${entry.id}`)}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                            />
                           </div>
                         </div>
 
@@ -1474,54 +1529,166 @@ export default function StraightPipeForm({
                       })()}
                     </div>
                   )}
-                </div>
 
-              {/* Closure Length Field - Only shown when L/F configuration is selected */}
-              {hasLooseFlange(entry.specs.pipeEndConfiguration || '') && (
-                <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-2 mt-2">
-                  <ClosureLengthSelector
-                    nominalBore={entry.specs?.nominalBoreMm || 100}
-                    currentValue={entry.specs?.closureLengthMm || null}
-                    wallThickness={entry.specs?.wallThicknessMm || 5}
-                    onUpdate={(closureLength) => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: closureLength } })}
-                    error={errors[`pipe_${index}_closure_length`]}
-                  />
+                  {/* Puddle Flange Dims - Only shown for Puddle Pipe */}
+                  {entry.specs?.pipeType === 'puddle' && (
+                    <div className="mt-2 pt-2 border-t border-amber-300">
+                      <h5 className="text-xs font-semibold text-amber-700 mb-1">Puddle Flange Dims</h5>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                        {/* Flange OD */}
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            Flange OD (mm)
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.puddleFlangeOdMm || ''}
+                            onChange={(e) => {
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, puddleFlangeOdMm: parseInt(e.target.value) || null }
+                              });
+                            }}
+                            className="w-full px-2 py-1.5 border border-amber-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-gray-900 bg-white"
+                            placeholder="e.g. 200"
+                            min="0"
+                          />
+                        </div>
+
+                        {/* PCD */}
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            PCD (mm)
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.puddleFlangePcdMm || ''}
+                            onChange={(e) => {
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, puddleFlangePcdMm: parseInt(e.target.value) || null }
+                              });
+                            }}
+                            className="w-full px-2 py-1.5 border border-amber-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-gray-900 bg-white"
+                            placeholder="e.g. 160"
+                            min="0"
+                          />
+                        </div>
+
+                        {/* No of Holes */}
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            No of Holes
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.puddleFlangeHoleCount || ''}
+                            onChange={(e) => {
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, puddleFlangeHoleCount: parseInt(e.target.value) || null }
+                              });
+                            }}
+                            className="w-full px-2 py-1.5 border border-amber-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-gray-900 bg-white"
+                            placeholder="e.g. 4"
+                            min="0"
+                          />
+                        </div>
+
+                        {/* Hole ID */}
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            Hole ID (mm)
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.puddleFlangeHoleIdMm || ''}
+                            onChange={(e) => {
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, puddleFlangeHoleIdMm: parseInt(e.target.value) || null }
+                              });
+                            }}
+                            className="w-full px-2 py-1.5 border border-amber-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-gray-900 bg-white"
+                            placeholder="e.g. 18"
+                            min="0"
+                          />
+                        </div>
+
+                        {/* Flange Thickness */}
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            Flange Thk (mm)
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.puddleFlangeThicknessMm || ''}
+                            onChange={(e) => {
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, puddleFlangeThicknessMm: parseInt(e.target.value) || null }
+                              });
+                            }}
+                            className="w-full px-2 py-1.5 border border-amber-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-gray-900 bg-white"
+                            placeholder="e.g. 12"
+                            min="0"
+                          />
+                        </div>
+
+                        {/* Location from Flange Face */}
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            Loc. from Face (mm)
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.puddleFlangeLocationMm || ''}
+                            onChange={(e) => {
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, puddleFlangeLocationMm: parseInt(e.target.value) || null }
+                              });
+                            }}
+                            className="w-full px-2 py-1.5 border border-amber-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-gray-900 bg-white"
+                            placeholder="e.g. 500"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
 
               {/* Quantity & Lengths - Blue Box */}
               <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-2 mt-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 items-end">
                   {/* Pipe Length */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                      Pipe Length (m)
-                    </label>
-                    <div className="flex gap-1 mb-1">
-                      {STANDARD_PIPE_LENGTHS_M.map((pl) => (
-                        <button
-                          key={pl.value}
-                          type="button"
-                          title={pl.description}
-                          onClick={() => {
-                            const numPipes = entry.specs.quantityType === 'number_of_pipes'
-                              ? (entry.specs.quantityValue || 1)
-                              : Math.ceil((entry.specs.quantityValue || pl.value) / pl.value);
-                            const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pl.value } };
-                            const newDescription = generateItemDescription(updatedEntry);
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, individualPipeLength: pl.value },
-                              calculatedPipes: numPipes,
-                              description: newDescription
-                            });
-                          }}
-                          className={`px-1.5 py-0.5 text-xs rounded border ${entry.specs.individualPipeLength && Math.abs(entry.specs.individualPipeLength - pl.value) < 0.001 ? 'bg-blue-200 dark:bg-blue-700 border-blue-400 dark:border-blue-500 font-medium text-blue-900 dark:text-blue-100' : 'bg-white dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/40 border-blue-300 dark:border-blue-600 text-gray-700 dark:text-gray-300'}`}
-                        >
-                          {pl.label}
-                        </button>
-                      ))}
+                    <div className="flex items-center gap-2 mb-1">
+                      <label className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                        Pipe Length (m)
+                      </label>
+                      <div className="flex gap-1">
+                        {STANDARD_PIPE_LENGTHS_M.map((pl) => (
+                          <button
+                            key={pl.value}
+                            type="button"
+                            title={pl.description}
+                            onClick={() => {
+                              const numPipes = entry.specs.quantityType === 'number_of_pipes'
+                                ? (entry.specs.quantityValue || 1)
+                                : Math.ceil((entry.specs.quantityValue || pl.value) / pl.value);
+                              const updatedEntry = { ...entry, specs: { ...entry.specs, individualPipeLength: pl.value } };
+                              const newDescription = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, {
+                                specs: { ...entry.specs, individualPipeLength: pl.value },
+                                calculatedPipes: numPipes,
+                                description: newDescription
+                              });
+                            }}
+                            className={`px-1.5 py-0.5 text-xs rounded border ${entry.specs.individualPipeLength && Math.abs(entry.specs.individualPipeLength - pl.value) < 0.001 ? 'bg-blue-200 dark:bg-blue-700 border-blue-400 dark:border-blue-500 font-medium text-blue-900 dark:text-blue-100' : 'bg-white dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/40 border-blue-300 dark:border-blue-600 text-gray-700 dark:text-gray-300'}`}
+                          >
+                            {pl.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <input
+                      id={`pipe-length-${entry.id}`}
                       type="number"
                       step="0.001"
                       value={entry.specs.individualPipeLength || ''}
@@ -1543,29 +1710,43 @@ export default function StraightPipeForm({
                     />
                   </div>
 
-                  {/* Total Length */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                      Total Line (m)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.001"
-                      value={
-                        entry.specs.quantityType === 'total_length'
-                          ? entry.specs.quantityValue || ''
-                          : (entry.specs.quantityValue || 1) * (entry.specs.individualPipeLength || 0)
-                      }
-                      onChange={(e) => {
-                        const totalLength = Number(e.target.value);
-                        const updatedEntry = calculateQuantities(entry, 'totalLength', totalLength);
-                        onUpdateEntry(entry.id, updatedEntry);
-                      }}
-                      className="w-full px-2 py-1.5 border border-blue-300 dark:border-blue-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-blue-900/20 mt-5"
-                      placeholder="Total length"
-                      required
-                    />
-                  </div>
+                  {/* Total Length or Closure Length (when L/F selected) */}
+                  {hasLooseFlange(entry.specs.pipeEndConfiguration || '') ? (
+                    <div>
+                      <ClosureLengthSelector
+                        nominalBore={entry.specs?.nominalBoreMm || 100}
+                        currentValue={entry.specs?.closureLengthMm || null}
+                        wallThickness={entry.specs?.wallThicknessMm || 5}
+                        onUpdate={(closureLength) => onUpdateEntry(entry.id, { specs: { ...entry.specs, closureLengthMm: closureLength } })}
+                        error={errors[`pipe_${index}_closure_length`]}
+                        variant="compact"
+                        showTackWeldInfo={false}
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        Total Line (m)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.001"
+                        value={
+                          entry.specs.quantityType === 'total_length'
+                            ? entry.specs.quantityValue || ''
+                            : (entry.specs.quantityValue || 1) * (entry.specs.individualPipeLength || 0)
+                        }
+                        onChange={(e) => {
+                          const totalLength = Number(e.target.value);
+                          const updatedEntry = calculateQuantities(entry, 'totalLength', totalLength);
+                          onUpdateEntry(entry.id, updatedEntry);
+                        }}
+                        className="w-full px-2 py-1.5 border border-blue-300 dark:border-blue-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-blue-900/20"
+                        placeholder="Total length"
+                        required
+                      />
+                    </div>
+                  )}
 
                   {/* Quantity */}
                   <div>
@@ -1585,7 +1766,7 @@ export default function StraightPipeForm({
                         const updatedEntry = calculateQuantities(entry, 'numberOfPipes', numberOfPipes);
                         onUpdateEntry(entry.id, updatedEntry);
                       }}
-                      className="w-full px-2 py-1.5 border border-blue-300 dark:border-blue-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-blue-900/20 mt-5"
+                      className="w-full px-2 py-1.5 border border-blue-300 dark:border-blue-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-blue-900/20"
                       placeholder="Number of pipes"
                       required
                     />
@@ -1636,6 +1817,12 @@ export default function StraightPipeForm({
                         individualPipeLengthM={entry.specs?.individualPipeLength}
                         spigotFlangeConfig={entry.specs?.spigotFlangeConfig}
                         spigotBlankFlanges={entry.specs?.spigotBlankFlanges}
+                        puddleFlangeOdMm={entry.specs?.puddleFlangeOdMm}
+                        puddleFlangePcdMm={entry.specs?.puddleFlangePcdMm}
+                        puddleFlangeHoleCount={entry.specs?.puddleFlangeHoleCount}
+                        puddleFlangeHoleIdMm={entry.specs?.puddleFlangeHoleIdMm}
+                        puddleFlangeThicknessMm={entry.specs?.puddleFlangeThicknessMm}
+                        puddleFlangeLocationMm={entry.specs?.puddleFlangeLocationMm}
                       />
                     );
                   })() : null
@@ -1649,15 +1836,11 @@ export default function StraightPipeForm({
                     {entry.calculation ? (
                       <div className="bg-gray-50 border border-gray-200 p-3 rounded-md">
                         <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
-                          <div className="bg-green-50 p-2 rounded text-center border border-green-200">
-                            <p className="text-xs text-green-800 font-medium">Qty Pipes</p>
-                            <p className="text-lg font-bold text-green-900">{entry.calculation.calculatedPipeCount}</p>
-                            <p className="text-xs text-green-600">pieces</p>
-                          </div>
-
                           <div className="bg-blue-50 p-2 rounded text-center border border-blue-200">
-                            <p className="text-xs text-blue-800 font-medium">Total Length</p>
-                            <p className="text-lg font-bold text-blue-900">{entry.calculation.calculatedTotalLength?.toFixed(1)}m</p>
+                            <p className="text-xs text-blue-800 font-medium">Qty Pipes</p>
+                            <p className="text-base font-bold text-blue-900">{entry.calculation.calculatedPipeCount} <span className="text-xs font-normal">pieces</span></p>
+                            <p className="text-xs text-blue-800 font-medium mt-1">Total Length</p>
+                            <p className="text-base font-bold text-blue-900">{entry.calculation.calculatedTotalLength?.toFixed(1)}m</p>
                           </div>
 
                           {(() => {
@@ -1763,6 +1946,18 @@ export default function StraightPipeForm({
                               : 0;
                             const totalSpigotBlankWeight = singleSpigotBlankWeight * spigotBlankCount;
 
+                            // Puddle flange weight calculation
+                            // Formula: Weight = π × (R_outer² - R_inner²) × thickness × density
+                            // Where R_inner = pipe OD (puddle flange slips over pipe)
+                            const isPuddlePipe = entry.specs?.pipeType === 'puddle';
+                            const puddleFlangeOd = entry.specs?.puddleFlangeOdMm || 0;
+                            const puddleFlangeThickness = entry.specs?.puddleFlangeThicknessMm || 0;
+                            const pipeOdMm = entry.calculation?.outsideDiameterMm || 0;
+                            const singlePuddleFlangeWeight = isPuddlePipe && puddleFlangeOd > 0 && puddleFlangeThickness > 0 && pipeOdMm > 0
+                              ? (Math.PI * (Math.pow(puddleFlangeOd / 2000, 2) - Math.pow(pipeOdMm / 2000, 2)) * (puddleFlangeThickness / 1000) * steelDensity)
+                              : 0;
+                            const totalPuddleFlangeWeight = singlePuddleFlangeWeight * (entry.calculation?.calculatedPipeCount || 0);
+
                             const totalWeight = (entry.calculation.totalPipeWeight || 0)
                               + dynamicTotalFlangeWeight
                               + backingRingTotalWeight
@@ -1772,7 +1967,8 @@ export default function StraightPipeForm({
                               + totalSpigotWeight
                               + totalSpigotFlangeWeight
                               + totalSpigotRingWeight
-                              + totalSpigotBlankWeight;
+                              + totalSpigotBlankWeight
+                              + totalPuddleFlangeWeight;
 
                             return (
                               <div className="bg-green-50 p-2 rounded text-center border border-green-200">
@@ -1803,6 +1999,9 @@ export default function StraightPipeForm({
                                   )}
                                   {hasSpigotFlanges && spigotBlankCount > 0 && (
                                     <p>Spigot Blanks: {totalSpigotBlankWeight.toFixed(2)}kg ({spigotBlankCount}×{singleSpigotBlankWeight.toFixed(2)}kg)</p>
+                                  )}
+                                  {isPuddlePipe && totalPuddleFlangeWeight > 0 && (
+                                    <p>Puddle Flange: {totalPuddleFlangeWeight.toFixed(2)}kg</p>
                                   )}
                                 </div>
                               </div>
@@ -1836,32 +2035,50 @@ export default function StraightPipeForm({
                               : 0;
                             const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
+                            // Puddle flange calculations
+                            const isPuddlePipe = entry.specs?.pipeType === 'puddle';
+                            const hasPuddleFlange = isPuddlePipe && entry.specs?.puddleFlangeOdMm && entry.specs?.puddleFlangeThicknessMm;
+                            const puddleOd = entry.specs?.puddleFlangeOdMm || 0;
+                            const puddleThickness = entry.specs?.puddleFlangeThicknessMm || 0;
+                            const puddlePcd = entry.specs?.puddleFlangePcdMm;
+                            const puddleHoles = entry.specs?.puddleFlangeHoleCount;
+                            const puddleHoleId = entry.specs?.puddleFlangeHoleIdMm;
+                            const pipeOd = entry.calculation?.outsideDiameterMm || 0;
+                            const numPipes = entry.calculation?.calculatedPipeCount || 1;
+                            const steelDensityKgM3 = 7850;
+                            const singlePuddleWeight = hasPuddleFlange && pipeOd > 0
+                              ? (Math.PI * (Math.pow(puddleOd / 2000, 2) - Math.pow(pipeOd / 2000, 2)) * (puddleThickness / 1000) * steelDensityKgM3)
+                              : 0;
+                            const totalPuddleWeight = singlePuddleWeight * numPipes;
+                            const puddleFlangeCount = hasPuddleFlange ? numPipes : 0;
+
                             const totalFlangeWeight = regularFlangeWeight + totalBlankFlangeWeight;
+                            const grandTotalFlangeCount = totalFlanges + blankFlangeCount + puddleFlangeCount;
 
                             return (
                               <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
-                                <p className="text-xs text-amber-800 font-medium">Total Flanges</p>
-                                <p className="text-lg font-bold text-amber-900">{totalFlanges + blankFlangeCount}</p>
-                                <div className="text-xs text-amber-700 mt-1">
+                                <p className="text-[10px] text-amber-800 font-medium">Total Flanges</p>
+                                <p className="text-lg font-bold text-amber-900">{grandTotalFlangeCount}</p>
+                                <div className="text-[10px] text-amber-700 mt-0.5">
                                   {totalFlanges > 0 && (
-                                    <p>{totalFlanges} x {nominalBore}NB Flange</p>
+                                    <p>{totalFlanges} x {nominalBore}NB Flange {pressureClassDesignation}</p>
                                   )}
                                   {blankFlangeCount > 0 && (
-                                    <p>{blankFlangeCount} x {nominalBore}NB Blank</p>
+                                    <p>{blankFlangeCount} x {nominalBore}NB Blank {pressureClassDesignation}</p>
+                                  )}
+                                  {hasPuddleFlange && (
+                                    <p>{puddleFlangeCount} x Puddle Flange (OD:{puddleOd}mm{puddlePcd ? ` PCD:${puddlePcd}mm` : ''})</p>
                                   )}
                                 </div>
-                                {pressureClassDesignation && (
-                                  <p className="text-xs text-amber-600 mt-1 font-medium">
-                                    {pressureClassDesignation}
-                                  </p>
-                                )}
-                                <p className="text-xs text-amber-500 mt-1 font-semibold">{totalFlangeWeight.toFixed(2)}kg total</p>
-                                <div className="text-xs text-amber-500">
+                                <div className="text-[10px] text-amber-500 mt-0.5">
                                   {totalFlanges > 0 && (
-                                    <p>{totalFlanges} × {flangeWeightPerUnit.toFixed(2)}kg</p>
+                                    <p>{totalFlanges} × {flangeWeightPerUnit.toFixed(2)}kg = <span className="font-semibold text-amber-600">{regularFlangeWeight.toFixed(2)}kg</span></p>
                                   )}
                                   {blankFlangeCount > 0 && (
-                                    <p>{blankFlangeCount} × {blankWeightPerUnit.toFixed(2)}kg</p>
+                                    <p>{blankFlangeCount} × {blankWeightPerUnit.toFixed(2)}kg = <span className="font-semibold text-amber-600">{totalBlankFlangeWeight.toFixed(2)}kg</span></p>
+                                  )}
+                                  {hasPuddleFlange && (
+                                    <p>{puddleFlangeCount} × {singlePuddleWeight.toFixed(2)}kg = <span className="font-semibold text-amber-600">{totalPuddleWeight.toFixed(2)}kg</span></p>
                                   )}
                                 </div>
                               </div>
@@ -1891,15 +2108,57 @@ export default function StraightPipeForm({
                             );
                           })()}
 
-                          {entry.calculation.numberOfFlangeWelds > 0 && (() => {
+
+                          {(() => {
+                            // Calculate flange welds dynamically based on configuration
+                            const pipeEndConfig = entry.specs.pipeEndConfiguration || 'PE';
+                            const baseFlangeWeldsPerPipe = getFlangeWeldCountPerPipe(pipeEndConfig);
+                            const isPuddlePipe = entry.specs?.pipeType === 'puddle';
+                            const hasPuddleFlange = isPuddlePipe && entry.specs?.puddleFlangeOdMm && entry.specs?.puddleFlangeThicknessMm;
+                            // Add 1 weld for puddle flange (2 x circumference weld around the puddle flange)
+                            const flangeWeldsPerPipe = baseFlangeWeldsPerPipe + (hasPuddleFlange ? 1 : 0);
+                            const numPipes = entry.calculation?.calculatedPipeCount || 1;
+                            const totalFlangeWelds = flangeWeldsPerPipe * numPipes;
+
+                            // Calculate tack welds for loose flanges (8 × 20mm per loose flange end)
+                            const tackWeldEnds = getTackWeldEndsPerPipe(pipeEndConfig);
+                            const totalTackWeldEnds = tackWeldEnds * numPipes;
+                            const tackWeldLengthMm = totalTackWeldEnds * 8 * 20; // 8 tacks × 20mm each
+                            const tackWeldLengthM = tackWeldLengthMm / 1000;
+
+                            if (totalFlangeWelds === 0 && totalTackWeldEnds === 0) return null;
+
                             const circumferenceMm = Math.PI * entry.calculation.outsideDiameterMm;
-                            const weldPerFlangeMm = 2 * circumferenceMm;
+                            const totalWeldLengthM = (circumferenceMm * 2 * totalFlangeWelds) / 1000; // 2x circ per flange weld
+
+                            // Calculate weld volume if we have the required data
+                            let weldVolumeInfo = null;
+                            if (entry.calculation?.numberOfFlangeWelds > 0 && entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm) {
+                              const weldVolume = calculateFlangeWeldVolume({
+                                outsideDiameterMm: entry.calculation.outsideDiameterMm,
+                                wallThicknessMm: entry.specs.wallThicknessMm,
+                                numberOfFlangeWelds: entry.calculation.numberOfFlangeWelds,
+                              });
+                              const totalVolumeCm3 = weldVolume.volumeCm3 * numPipes;
+                              weldVolumeInfo = { totalVolumeCm3, legSizeMm: weldVolume.legSizeMm };
+                            }
+
                             return (
                               <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
                                 <p className="text-xs text-purple-800 font-medium">Flange Welds</p>
-                                <p className="text-lg font-bold text-purple-900">{entry.calculation.numberOfFlangeWelds}</p>
-                                <p className="text-xs text-purple-600">2×{circumferenceMm.toFixed(0)}mm each</p>
-                                <p className="text-xs text-purple-700 font-medium">{entry.calculation.totalFlangeWeldLength?.toFixed(2)} l/m</p>
+                                <p className="text-lg font-bold text-purple-900">{totalFlangeWelds}</p>
+                                {totalFlangeWelds > 0 && (
+                                  <p className="text-xs text-purple-600">2×{circumferenceMm.toFixed(0)}mm = {totalWeldLengthM.toFixed(2)} l/m</p>
+                                )}
+                                {totalTackWeldEnds > 0 && (
+                                  <p className="text-xs text-purple-600">+ {totalTackWeldEnds} L/F tack = {tackWeldLengthM.toFixed(2)} l/m</p>
+                                )}
+                                {weldVolumeInfo && (
+                                  <>
+                                    <p className="text-xs text-purple-800 font-medium mt-1">Weld Volume</p>
+                                    <p className="text-sm font-bold text-purple-900">{weldVolumeInfo.totalVolumeCm3.toFixed(1)} cm³ <span className="font-normal text-xs text-purple-600">({weldVolumeInfo.legSizeMm.toFixed(1)}mm leg)</span></p>
+                                  </>
+                                )}
                               </div>
                             );
                           })()}
@@ -1929,22 +2188,6 @@ export default function StraightPipeForm({
                             );
                           })()}
 
-                          {entry.calculation?.numberOfFlangeWelds > 0 && entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (() => {
-                            const weldVolume = calculateFlangeWeldVolume({
-                              outsideDiameterMm: entry.calculation.outsideDiameterMm,
-                              wallThicknessMm: entry.specs.wallThicknessMm,
-                              numberOfFlangeWelds: entry.calculation.numberOfFlangeWelds,
-                            });
-                            const totalPipes = entry.calculation?.calculatedPipeCount || 1;
-                            const totalVolumeCm3 = weldVolume.volumeCm3 * totalPipes;
-                            return (
-                              <div className="bg-fuchsia-50 p-2 rounded text-center border border-fuchsia-200">
-                                <p className="text-xs text-fuchsia-700 font-medium">Weld Volume</p>
-                                <p className="text-lg font-bold text-fuchsia-900">{totalVolumeCm3.toFixed(1)} cm³</p>
-                                <p className="text-xs text-fuchsia-600">{weldVolume.legSizeMm.toFixed(1)}mm leg</p>
-                              </div>
-                            );
-                          })()}
 
                           {showSurfaceProtection && entry.calculation?.outsideDiameterMm && entry.specs.wallThicknessMm && (() => {
                             const pressureClassId = entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId;

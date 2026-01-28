@@ -216,7 +216,7 @@ export default function ExpansionJointForm({
               <textarea
                 value={entry.description || generateItemDescription(entry)}
                 onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 rows={2}
                 placeholder="e.g., 200NB Expansion Joint - Axial Bellows Type"
                 required
@@ -361,7 +361,7 @@ export default function ExpansionJointForm({
                             },
                           });
                         }}
-                        className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50 text-gray-900 dark:bg-blue-900/30 dark:border-blue-600 dark:text-gray-100"
+                        className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50 text-gray-900 dark:bg-blue-900/30 dark:border-blue-600 dark:text-gray-100"
                         placeholder="+/- mm"
                         step="0.1"
                       />
@@ -381,7 +381,7 @@ export default function ExpansionJointForm({
                             },
                           });
                         }}
-                        className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50 text-gray-900 dark:bg-blue-900/30 dark:border-blue-600 dark:text-gray-100"
+                        className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50 text-gray-900 dark:bg-blue-900/30 dark:border-blue-600 dark:text-gray-100"
                         placeholder="+/- mm"
                         step="0.1"
                       />
@@ -401,7 +401,7 @@ export default function ExpansionJointForm({
                             },
                           });
                         }}
-                        className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50 text-gray-900 dark:bg-blue-900/30 dark:border-blue-600 dark:text-gray-100"
+                        className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50 text-gray-900 dark:bg-blue-900/30 dark:border-blue-600 dark:text-gray-100"
                         placeholder="+/- deg"
                         step="0.1"
                       />
@@ -426,7 +426,7 @@ export default function ExpansionJointForm({
                             specs: { ...entry.specs, supplierReference: e.target.value },
                           });
                         }}
-                        className="w-full px-3 py-2 border border-orange-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
+                        className="w-full px-2 py-1.5 border border-orange-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
                         placeholder="e.g., Flexonics, Belman"
                       />
                     </div>
@@ -442,7 +442,7 @@ export default function ExpansionJointForm({
                             specs: { ...entry.specs, catalogNumber: e.target.value },
                           });
                         }}
-                        className="w-full px-3 py-2 border border-orange-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
+                        className="w-full px-2 py-1.5 border border-orange-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
                         placeholder="e.g., EJ-200-AX-SS"
                       />
                     </div>
@@ -463,7 +463,7 @@ export default function ExpansionJointForm({
                             },
                           });
                         }}
-                        className="w-full px-3 py-2 border border-orange-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
+                        className="w-full px-2 py-1.5 border border-orange-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
                         placeholder="Cost price"
                         step="0.01"
                       />
@@ -483,7 +483,7 @@ export default function ExpansionJointForm({
                             },
                           });
                         }}
-                        className="w-full px-3 py-2 border border-orange-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
+                        className="w-full px-2 py-1.5 border border-orange-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
                         placeholder="15"
                         min="0"
                         step="0.5"
@@ -569,7 +569,7 @@ export default function ExpansionJointForm({
                             },
                           });
                         }}
-                        className="w-full px-3 py-2 border border-green-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 bg-green-50 text-gray-900 dark:bg-green-900/30 dark:border-green-600 dark:text-gray-100"
+                        className="w-full px-2 py-1.5 border border-green-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 bg-green-50 text-gray-900 dark:bg-green-900/30 dark:border-green-600 dark:text-gray-100"
                         placeholder="e.g., 500"
                         min="0"
                       />
@@ -589,7 +589,7 @@ export default function ExpansionJointForm({
                             },
                           });
                         }}
-                        className="w-full px-3 py-2 border border-green-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 bg-green-50 text-gray-900 dark:bg-green-900/30 dark:border-green-600 dark:text-gray-100"
+                        className="w-full px-2 py-1.5 border border-green-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 bg-green-50 text-gray-900 dark:bg-green-900/30 dark:border-green-600 dark:text-gray-100"
                         placeholder="Auto-calculated if blank"
                         min="0"
                       />
@@ -642,7 +642,7 @@ export default function ExpansionJointForm({
                         specs: { ...entry.specs, quantityValue: parseInt(e.target.value) || 1 },
                       });
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                     min="1"
                     step="1"
                   />

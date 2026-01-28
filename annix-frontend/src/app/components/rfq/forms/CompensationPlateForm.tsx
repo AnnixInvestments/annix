@@ -263,7 +263,7 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                     selectStandardSize(e.target.value);
                   }
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 <option value="custom">Custom Size</option>
                 <optgroup label="Small (100-150mm)">
@@ -295,7 +295,7 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
               <select
                 value={entry.materialId}
                 onChange={(e) => onUpdate({ materialId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 {STEEL_MATERIAL_CATEGORIES.map((cat) => (
                   <optgroup key={cat.id} label={cat.name}>
@@ -329,7 +329,7 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                   type="number"
                   value={entry.dimensions.lengthMm}
                   onChange={(e) => updateDimension('lengthMm', parseFloat(e.target.value) || 0)}
-                  className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                  className={`w-full px-2 py-1.5 border rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                     entry.isCustomSize ? 'border-gray-300' : 'border-purple-200 bg-purple-50'
                   }`}
                   min={1}
@@ -342,7 +342,7 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                   type="number"
                   value={entry.dimensions.widthMm}
                   onChange={(e) => updateDimension('widthMm', parseFloat(e.target.value) || 0)}
-                  className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                  className={`w-full px-2 py-1.5 border rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                     entry.isCustomSize ? 'border-gray-300' : 'border-purple-200 bg-purple-50'
                   }`}
                   min={1}
@@ -355,7 +355,7 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                   type="number"
                   value={entry.dimensions.thicknessMm}
                   onChange={(e) => updateDimension('thicknessMm', parseFloat(e.target.value) || 0)}
-                  className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                  className={`w-full px-2 py-1.5 border rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                     entry.isCustomSize ? 'border-gray-300' : 'border-purple-200 bg-purple-50'
                   }`}
                   min={1}
@@ -372,7 +372,7 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                 type="number"
                 value={entry.quantity}
                 onChange={(e) => onUpdate({ quantity: Math.max(1, parseInt(e.target.value) || 1) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
                 min={1}
               />
             </div>
@@ -399,12 +399,12 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                   value={entry.costPerKgOverride || ''}
                   onChange={(e) => onUpdate({ costPerKgOverride: parseFloat(e.target.value) || null })}
                   placeholder={`Default: R${material?.defaultCostPerKg || 0}`}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
                   min={0}
                   step={0.01}
                 />
               ) : (
-                <div className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm text-gray-600">
+                <div className="w-full px-2 py-1.5 bg-gray-100 border border-gray-200 rounded text-xs text-gray-600">
                   R {effectiveCostPerKg.toFixed(2)} / kg
                 </div>
               )}
@@ -417,7 +417,7 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                 value={entry.notes || ''}
                 onChange={(e) => onUpdate({ notes: e.target.value })}
                 placeholder="e.g., Purpose, location..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
           </div>

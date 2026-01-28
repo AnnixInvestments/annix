@@ -62,6 +62,12 @@ interface Pipe3DPreviewProps {
   individualPipeLengthM?: number;
   spigotFlangeConfig?: string;
   spigotBlankFlanges?: number[];
+  puddleFlangeOdMm?: number;
+  puddleFlangePcdMm?: number;
+  puddleFlangeHoleCount?: number;
+  puddleFlangeHoleIdMm?: number;
+  puddleFlangeThicknessMm?: number;
+  puddleFlangeLocationMm?: number;
 }
 
 // Standard flange dimensions based on SABS 1123 Table 1000/4 (PN16) - Slip-on flanges
@@ -136,14 +142,15 @@ const WeldBead = ({ position, diameter }: { position: [number, number, number], 
   );
 };
 
-const SimpleFlange = ({ position, outerDiameter, holeDiameter, thickness }: { position: [number, number, number], outerDiameter: number, holeDiameter: number, thickness: number }) => {
-  const flangeOD = outerDiameter * 1.6;
+const SimpleFlange = ({ position, outerDiameter, holeDiameter, thickness, actualFlangeOdMm, actualFlangePcdMm, actualHoleCount, actualHoleIdMm }: { position: [number, number, number], outerDiameter: number, holeDiameter: number, thickness: number, actualFlangeOdMm?: number, actualFlangePcdMm?: number, actualHoleCount?: number, actualHoleIdMm?: number }) => {
+  const flangeOD = actualFlangeOdMm ? actualFlangeOdMm / 1000 : outerDiameter * 1.6;
   const flangeRadius = flangeOD / 2;
-  const boreRadius = holeDiameter / 2;
+  // For slip-on flanges, the bore (ID) is the pipe OD - the flange slips over the pipe
+  const boreRadius = outerDiameter / 2;
 
-  const numHoles = outerDiameter < 0.1 ? 4 : outerDiameter < 0.25 ? 8 : 12;
-  const boltCircleRadius = (flangeOD + outerDiameter) / 4;
-  const boltHoleSize = thickness * 0.4;
+  const numHoles = actualHoleCount || (outerDiameter < 0.1 ? 4 : outerDiameter < 0.25 ? 8 : 12);
+  const boltCircleRadius = actualFlangePcdMm ? (actualFlangePcdMm / 1000) / 2 : (flangeOD + outerDiameter) / 4;
+  const boltHoleSize = actualHoleIdMm ? (actualHoleIdMm / 1000) / 2 : thickness * 0.4;
 
   const boltHoles = useMemo(() => {
     const holes = [];
@@ -156,28 +163,34 @@ const SimpleFlange = ({ position, outerDiameter, holeDiameter, thickness }: { po
 
   return (
     <group position={position} rotation={[0, 0, Math.PI / 2]}>
+      {/* Outer cylinder wall - open ended tube */}
       <mesh>
-        <cylinderGeometry args={[flangeRadius, flangeRadius, thickness, 32]} />
-        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} />
+        <cylinderGeometry args={[flangeRadius, flangeRadius, thickness, 32, 1, true]} />
+        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} side={THREE.DoubleSide} />
       </mesh>
+      {/* Inner bore wall - pipe OD (the hole through the flange) */}
       <mesh>
-        <cylinderGeometry args={[boreRadius, boreRadius, thickness + 0.01, 32]} />
-        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+        <cylinderGeometry args={[boreRadius, boreRadius, thickness, 32, 1, true]} />
+        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} side={THREE.BackSide} />
       </mesh>
+      {/* Front face ring - annulus from pipe OD to flange OD */}
       <mesh position={[0, thickness / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[boreRadius, flangeRadius, 32]} />
-        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} />
+        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} side={THREE.DoubleSide} />
       </mesh>
+      {/* Back face ring - annulus from pipe OD to flange OD */}
       <mesh position={[0, -thickness / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[boreRadius, flangeRadius, 32]} />
-        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} />
+        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} side={THREE.DoubleSide} />
       </mesh>
+      {/* Bolt holes */}
       {boltHoles.map((hole, i) => (
         <mesh key={i} position={[hole.x, 0, hole.z]}>
           <cylinderGeometry args={[boltHoleSize, boltHoleSize, thickness + 0.02, 16]} />
           <meshStandardMaterial color="#111" />
         </mesh>
       ))}
+      {/* Raised ring (gasket face) */}
       <mesh position={[0, thickness / 2 + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[boreRadius * 1.1, boreRadius * 1.4, 32]} />
         <meshStandardMaterial color="#888" metalness={0.6} roughness={0.4} />
@@ -186,7 +199,7 @@ const SimpleFlange = ({ position, outerDiameter, holeDiameter, thickness }: { po
   );
 };
 
-// Retaining ring component for rotating flanges
+// Retaining ring component for rotating flanges - hollow ring with pipe OD bore
 const RetainingRing = ({ position, pipeOuterRadius, pipeInnerRadius, wallThickness }: {
   position: [number, number, number];
   pipeOuterRadius: number;
@@ -194,18 +207,29 @@ const RetainingRing = ({ position, pipeOuterRadius, pipeInnerRadius, wallThickne
   wallThickness: number;
 }) => {
   const ringOuterRadius = pipeOuterRadius * 1.15;
-  const ringInnerRadius = pipeInnerRadius;
   const ringThickness = wallThickness;
 
   return (
     <group position={position} rotation={[0, 0, Math.PI / 2]}>
+      {/* Outer cylinder wall - open ended */}
       <mesh>
-        <cylinderGeometry args={[ringOuterRadius, ringOuterRadius, ringThickness, 32]} />
-        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} />
+        <cylinderGeometry args={[ringOuterRadius, ringOuterRadius, ringThickness, 32, 1, true]} />
+        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} side={THREE.DoubleSide} />
       </mesh>
+      {/* Inner bore wall - pipe OD (retaining ring slips over pipe) */}
       <mesh>
-        <cylinderGeometry args={[ringInnerRadius, ringInnerRadius, ringThickness + 0.01, 32]} />
-        <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+        <cylinderGeometry args={[pipeOuterRadius, pipeOuterRadius, ringThickness, 32, 1, true]} />
+        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} side={THREE.BackSide} />
+      </mesh>
+      {/* Front face ring */}
+      <mesh position={[0, ringThickness / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[pipeOuterRadius, ringOuterRadius, 32]} />
+        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Back face ring */}
+      <mesh position={[0, -ringThickness / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[pipeOuterRadius, ringOuterRadius, 32]} />
+        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
@@ -309,32 +333,58 @@ const Spigot = ({
         <group position={[0, mainPipeRadius + spigotLength + flangeThickness / 2, 0]}>
           {isRotatingFlange ? (
             <>
-              {/* Retaining ring (welded to pipe) */}
-              <mesh position={[0, -flangeThickness / 2 - retainingRingThickness / 2, 0]}>
-                <cylinderGeometry args={[flangeOd * 0.65, flangeOd * 0.65, retainingRingThickness, 32]} />
-                <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} />
-              </mesh>
-              {/* Loose flange ring (blue tint for R/F) */}
+              {/* Retaining ring (welded to pipe) - hollow ring */}
+              <group position={[0, -flangeThickness / 2 - retainingRingThickness / 2, 0]}>
+                <mesh>
+                  <cylinderGeometry args={[flangeOd * 0.65, flangeOd * 0.65, retainingRingThickness, 32, 1, true]} />
+                  <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} side={THREE.DoubleSide} />
+                </mesh>
+                <mesh>
+                  <cylinderGeometry args={[spigotOuterRadius, spigotOuterRadius, retainingRingThickness, 32, 1, true]} />
+                  <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} side={THREE.BackSide} />
+                </mesh>
+              </group>
+              {/* Loose flange ring (blue tint for R/F) - hollow */}
               <mesh>
-                <cylinderGeometry args={[flangeOd, flangeOd, flangeThickness, 32]} />
-                <meshStandardMaterial color="#4a90d9" metalness={0.6} roughness={0.3} />
+                <cylinderGeometry args={[flangeOd, flangeOd, flangeThickness, 32, 1, true]} />
+                <meshStandardMaterial color="#4a90d9" metalness={0.6} roughness={0.3} side={THREE.DoubleSide} />
               </mesh>
-              {/* Flange face cutout */}
-              <mesh position={[0, flangeThickness / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <ringGeometry args={[spigotInnerRadius, flangeOd, 32]} />
+              {/* Inner bore wall - spigot OD */}
+              <mesh>
+                <cylinderGeometry args={[spigotOuterRadius, spigotOuterRadius, flangeThickness, 32, 1, true]} />
+                <meshStandardMaterial color="#4a90d9" metalness={0.6} roughness={0.3} side={THREE.BackSide} />
+              </mesh>
+              {/* Front face ring */}
+              <mesh position={[0, flangeThickness / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[spigotOuterRadius, flangeOd, 32]} />
+                <meshStandardMaterial color="#4a90d9" metalness={0.6} roughness={0.3} side={THREE.DoubleSide} />
+              </mesh>
+              {/* Back face ring */}
+              <mesh position={[0, -flangeThickness / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[spigotOuterRadius, flangeOd, 32]} />
                 <meshStandardMaterial color="#4a90d9" metalness={0.6} roughness={0.3} side={THREE.DoubleSide} />
               </mesh>
             </>
           ) : (
             <>
-              {/* Welded flange - FAE */}
+              {/* Welded flange - FAE - hollow */}
               <mesh>
-                <cylinderGeometry args={[flangeOd, flangeOd, flangeThickness, 32]} />
-                <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} />
+                <cylinderGeometry args={[flangeOd, flangeOd, flangeThickness, 32, 1, true]} />
+                <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} side={THREE.DoubleSide} />
               </mesh>
-              {/* Flange face */}
-              <mesh position={[0, flangeThickness / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <ringGeometry args={[spigotInnerRadius, flangeOd, 32]} />
+              {/* Inner bore wall - spigot OD */}
+              <mesh>
+                <cylinderGeometry args={[spigotOuterRadius, spigotOuterRadius, flangeThickness, 32, 1, true]} />
+                <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} side={THREE.BackSide} />
+              </mesh>
+              {/* Front face ring */}
+              <mesh position={[0, flangeThickness / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[spigotOuterRadius, flangeOd, 32]} />
+                <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} side={THREE.DoubleSide} />
+              </mesh>
+              {/* Back face ring */}
+              <mesh position={[0, -flangeThickness / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[spigotOuterRadius, flangeOd, 32]} />
                 <meshStandardMaterial color={materialProps.color} metalness={materialProps.metalness} roughness={materialProps.roughness} side={THREE.DoubleSide} />
               </mesh>
             </>
@@ -395,6 +445,97 @@ const Spigot = ({
   );
 };
 
+const PuddleFlange = ({
+  position,
+  pipeOuterRadius,
+  flangeOdMm,
+  flangePcdMm,
+  holeCount,
+  holeIdMm,
+  thicknessMm,
+}: {
+  position: [number, number, number];
+  pipeOuterRadius: number;
+  flangeOdMm: number;
+  flangePcdMm: number;
+  holeCount: number;
+  holeIdMm: number;
+  thicknessMm: number;
+}) => {
+  const flangeOd = flangeOdMm / 1000;
+  const flangePcd = flangePcdMm / 1000;
+  const holeId = holeIdMm / 1000;
+  const thickness = thicknessMm / 1000;
+
+  const flangeOuterRadius = flangeOd / 2;
+  const pcdRadius = flangePcd / 2;
+  const holeRadius = holeId / 2;
+
+  const boltHoles = useMemo(() => {
+    const holes = [];
+    for (let i = 0; i < holeCount; i++) {
+      const angle = (i / holeCount) * Math.PI * 2;
+      holes.push({ y: Math.cos(angle) * pcdRadius, z: Math.sin(angle) * pcdRadius });
+    }
+    return holes;
+  }, [holeCount, pcdRadius]);
+
+  const flangeColor = '#b45309';
+  const flangeFaceColor = '#d97706';
+
+  return (
+    <group position={position} rotation={[0, 0, Math.PI / 2]}>
+      {/* Outer cylinder wall of flange - open ended tube */}
+      <mesh>
+        <cylinderGeometry args={[flangeOuterRadius, flangeOuterRadius, thickness, 32, 1, true]} />
+        <meshStandardMaterial color={flangeColor} metalness={0.6} roughness={0.4} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Inner bore wall - the inside of the flange hole (pipe OD) */}
+      <mesh>
+        <cylinderGeometry args={[pipeOuterRadius, pipeOuterRadius, thickness, 32, 1, true]} />
+        <meshStandardMaterial color={flangeColor} metalness={0.6} roughness={0.4} side={THREE.BackSide} />
+      </mesh>
+      {/* Front face ring - annulus from pipe OD to flange OD */}
+      <mesh position={[0, thickness / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[pipeOuterRadius, flangeOuterRadius, 32]} />
+        <meshStandardMaterial color={flangeFaceColor} metalness={0.5} roughness={0.5} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Back face ring - annulus from pipe OD to flange OD */}
+      <mesh position={[0, -thickness / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[pipeOuterRadius, flangeOuterRadius, 32]} />
+        <meshStandardMaterial color={flangeFaceColor} metalness={0.5} roughness={0.5} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Bolt holes */}
+      {boltHoles.map((hole, i) => (
+        <mesh key={i} position={[hole.y, 0, hole.z]}>
+          <cylinderGeometry args={[holeRadius, holeRadius, thickness + 0.004, 16]} />
+          <meshStandardMaterial color="#111" />
+        </mesh>
+      ))}
+      {/* Weld bead where puddle flange meets pipe - front */}
+      <mesh position={[0, thickness / 2 + 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[pipeOuterRadius, pipeOuterRadius * 0.06, 8, 24]} />
+        <meshStandardMaterial color="#333" roughness={0.9} metalness={0.4} />
+      </mesh>
+      {/* Weld bead where puddle flange meets pipe - back */}
+      <mesh position={[0, -thickness / 2 - 0.003, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[pipeOuterRadius, pipeOuterRadius * 0.06, 8, 24]} />
+        <meshStandardMaterial color="#333" roughness={0.9} metalness={0.4} />
+      </mesh>
+      {/* Outer edge highlight ring - front */}
+      <mesh position={[0, thickness / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[flangeOuterRadius - 0.002, 0.003, 8, 32]} />
+        <meshStandardMaterial color="#92400e" roughness={0.6} metalness={0.5} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Outer edge highlight ring - back */}
+      <mesh position={[0, -thickness / 2 - 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[flangeOuterRadius - 0.002, 0.003, 8, 32]} />
+        <meshStandardMaterial color="#92400e" roughness={0.6} metalness={0.5} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+};
+
 const DimensionLine = ({ start, end, label }: { start: [number, number, number], end: [number, number, number], label: string }) => {
   const p1 = new THREE.Vector3(...start);
   const p2 = new THREE.Vector3(...end);
@@ -423,7 +564,7 @@ const isValidNumber = (value: number): boolean => {
   return typeof value === 'number' && !Number.isNaN(value) && Number.isFinite(value) && value > 0;
 };
 
-const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguration = 'PE', materialName, closureLengthMm = 0, addBlankFlange = false, blankFlangePositions = [], pipeType, numberOfSpigots = 0, spigotNominalBoreMm, spigotDistanceFromEndMm, spigotHeightMm, spigotFlangeConfig = 'PE', spigotBlankFlanges = [] }: Pipe3DPreviewProps) => {
+const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguration = 'PE', materialName, closureLengthMm = 0, addBlankFlange = false, blankFlangePositions = [], pipeType, numberOfSpigots = 0, spigotNominalBoreMm, spigotDistanceFromEndMm, spigotHeightMm, spigotFlangeConfig = 'PE', spigotBlankFlanges = [], puddleFlangeOdMm, puddleFlangePcdMm, puddleFlangeHoleCount, puddleFlangeHoleIdMm, puddleFlangeThicknessMm, puddleFlangeLocationMm, flangeSpecs }: Pipe3DPreviewProps) => {
   const safeOD = isValidNumber(outerDiameter) ? outerDiameter : 100;
   const safeWT = isValidNumber(wallThickness) ? wallThickness : 5;
   const safeLen = isValidNumber(length) ? length : 1;
@@ -456,7 +597,10 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
   // hasLeftFlange = any configuration with flange on End A (left)
   // FBE, FOE_LF, FOE_RF, 2X_RF, 2xLF all have flange on left
   const hasLeftFlange = configUpper.includes('FBE') || configUpper === 'FOE_LF' || configUpper === 'FOE_RF' || configUpper.includes('2X_RF') || configUpper.includes('2xLF');
-  const flangeThickness = odSceneUnits * 0.15;
+  // Use actual flange thickness from specs if available, otherwise fall back to calculated
+  const flangeThickness = flangeSpecs?.flangeThicknessMm
+    ? flangeSpecs.flangeThicknessMm / 1000
+    : odSceneUnits * 0.15;
 
   // Closure and gap dimensions
   const closureLength = (closureLengthMm || 150) / 1000; // Convert mm to scene units
@@ -515,7 +659,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
                 </mesh>
               </group>
               {/* Loose flange positioned 100mm after closure piece */}
-              <SimpleFlange position={[-halfLen - closureLength - gapLength, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
+              <SimpleFlange position={[-halfLen - closureLength - gapLength, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} actualFlangeOdMm={flangeSpecs?.flangeOdMm} actualFlangePcdMm={flangeSpecs?.flangePcdMm} actualHoleCount={flangeSpecs?.flangeNumHoles} actualHoleIdMm={flangeSpecs?.flangeBoltHoleDiameterMm} />
               {/* L/F dimension line */}
               <Line points={[[-halfLen, -outerRadius - 0.1, 0], [-halfLen - closureLength, -outerRadius - 0.1, 0]]} color="#2563eb" lineWidth={2} />
               <Line points={[[-halfLen, -outerRadius - 0.05, 0], [-halfLen, -outerRadius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
@@ -535,7 +679,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
               <RetainingRing position={[-halfLen, 0, 0]} pipeOuterRadius={outerRadius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
               {/* Rotating flange positioned 80mm back from ring (on the pipe) - visible gap
                   Hole diameter is slightly larger than pipe OD to allow rotation */}
-              <SimpleFlange position={[-halfLen + 0.08, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} />
+              <SimpleFlange position={[-halfLen + 0.08, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} actualFlangeOdMm={flangeSpecs?.flangeOdMm} actualFlangePcdMm={flangeSpecs?.flangePcdMm} actualHoleCount={flangeSpecs?.flangeNumHoles} actualHoleIdMm={flangeSpecs?.flangeBoltHoleDiameterMm} />
               {/* 80mm gap dimension line */}
               <Line points={[[-halfLen, -outerRadius - 0.1, 0], [-halfLen + 0.08, -outerRadius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
               <Line points={[[-halfLen, -outerRadius - 0.05, 0], [-halfLen, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
@@ -547,7 +691,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
             </>
           ) : (
             <>
-              <SimpleFlange position={[-halfLen, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
+              <SimpleFlange position={[-halfLen, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} actualFlangeOdMm={flangeSpecs?.flangeOdMm} actualFlangePcdMm={flangeSpecs?.flangePcdMm} actualHoleCount={flangeSpecs?.flangeNumHoles} actualHoleIdMm={flangeSpecs?.flangeBoltHoleDiameterMm} />
               <WeldBead position={[-halfLen + (flangeThickness/2) + 0.01, 0, 0]} diameter={odSceneUnits} />
             </>
           )}
@@ -571,7 +715,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
                 </mesh>
               </group>
               {/* Loose flange positioned 100mm after closure piece */}
-              <SimpleFlange position={[halfLen + closureLength + gapLength, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
+              <SimpleFlange position={[halfLen + closureLength + gapLength, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} actualFlangeOdMm={flangeSpecs?.flangeOdMm} actualFlangePcdMm={flangeSpecs?.flangePcdMm} actualHoleCount={flangeSpecs?.flangeNumHoles} actualHoleIdMm={flangeSpecs?.flangeBoltHoleDiameterMm} />
               {/* L/F dimension line */}
               <Line points={[[halfLen, -outerRadius - 0.1, 0], [halfLen + closureLength, -outerRadius - 0.1, 0]]} color="#2563eb" lineWidth={2} />
               <Line points={[[halfLen, -outerRadius - 0.05, 0], [halfLen, -outerRadius - 0.15, 0]]} color="#2563eb" lineWidth={1} />
@@ -591,7 +735,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
               <RetainingRing position={[halfLen, 0, 0]} pipeOuterRadius={outerRadius} pipeInnerRadius={innerRadius} wallThickness={wtSceneUnits} />
               {/* Rotating flange positioned 80mm back from ring (on the pipe) - visible gap
                   Hole diameter is slightly larger than pipe OD to allow rotation */}
-              <SimpleFlange position={[halfLen - 0.08, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} />
+              <SimpleFlange position={[halfLen - 0.08, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits * 1.05} thickness={flangeThickness} actualFlangeOdMm={flangeSpecs?.flangeOdMm} actualFlangePcdMm={flangeSpecs?.flangePcdMm} actualHoleCount={flangeSpecs?.flangeNumHoles} actualHoleIdMm={flangeSpecs?.flangeBoltHoleDiameterMm} />
               {/* 80mm gap dimension line */}
               <Line points={[[halfLen - 0.08, -outerRadius - 0.1, 0], [halfLen, -outerRadius - 0.1, 0]]} color="#ea580c" lineWidth={2} />
               <Line points={[[halfLen - 0.08, -outerRadius - 0.05, 0], [halfLen - 0.08, -outerRadius - 0.15, 0]]} color="#ea580c" lineWidth={1} />
@@ -603,7 +747,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
             </>
           ) : (
             <>
-              <SimpleFlange position={[halfLen, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} />
+              <SimpleFlange position={[halfLen, 0, 0]} outerDiameter={odSceneUnits} holeDiameter={odSceneUnits - (2 * wtSceneUnits)} thickness={flangeThickness} actualFlangeOdMm={flangeSpecs?.flangeOdMm} actualFlangePcdMm={flangeSpecs?.flangePcdMm} actualHoleCount={flangeSpecs?.flangeNumHoles} actualHoleIdMm={flangeSpecs?.flangeBoltHoleDiameterMm} />
               <WeldBead position={[halfLen - (flangeThickness/2) - 0.01, 0, 0]} diameter={odSceneUnits} />
             </>
           )}
@@ -760,6 +904,78 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
                 </group>
               );
             })}
+          </>
+        );
+      })()}
+
+      {/* Puddle Flange - render when pipeType is 'puddle' and dimensions are provided */}
+      {pipeType === 'puddle' && puddleFlangeOdMm && puddleFlangeLocationMm && (() => {
+        const locationFromFlangeEnd = puddleFlangeLocationMm;
+        const flangeOd = puddleFlangeOdMm;
+        const flangePcd = puddleFlangePcdMm || flangeOd * 0.8;
+        const holeCount = puddleFlangeHoleCount || 4;
+        const holeId = puddleFlangeHoleIdMm || 18;
+        const thickness = puddleFlangeThicknessMm || 12;
+
+        const hasFlangeEndA = endConfiguration !== 'PE' && endConfiguration !== 'FOE';
+        const flangeEndX = hasFlangeEndA ? -halfLen : halfLen;
+        const direction = hasFlangeEndA ? 1 : -1;
+        const puddleX = flangeEndX + direction * (locationFromFlangeEnd / 1000);
+
+        const dimLineY = -outerRadius - 0.15;
+
+        return (
+          <>
+            <PuddleFlange
+              position={[puddleX, 0, 0]}
+              pipeOuterRadius={outerRadius}
+              flangeOdMm={flangeOd}
+              flangePcdMm={flangePcd}
+              holeCount={holeCount}
+              holeIdMm={holeId}
+              thicknessMm={thickness}
+            />
+            <Text
+              position={[puddleX, outerRadius + 0.15, 0]}
+              fontSize={0.12}
+              color="#b45309"
+              anchorX="center"
+              anchorY="bottom"
+              outlineWidth={0.008}
+              outlineColor="white"
+              fontWeight="bold"
+            >
+              Puddle Flange
+            </Text>
+
+            {/* Dimension line from flange face to puddle flange */}
+            <Line
+              points={[[flangeEndX, dimLineY, 0], [puddleX, dimLineY, 0]]}
+              color="#b45309"
+              lineWidth={3}
+            />
+            <Line
+              points={[[flangeEndX, dimLineY - 0.05, 0], [flangeEndX, dimLineY + 0.05, 0]]}
+              color="#b45309"
+              lineWidth={2}
+            />
+            <Line
+              points={[[puddleX, dimLineY - 0.05, 0], [puddleX, dimLineY + 0.05, 0]]}
+              color="#b45309"
+              lineWidth={2}
+            />
+            <Text
+              position={[(flangeEndX + puddleX) / 2, dimLineY - 0.12, 0]}
+              fontSize={0.18}
+              color="#b45309"
+              anchorX="center"
+              anchorY="top"
+              outlineWidth={0.015}
+              outlineColor="white"
+              fontWeight="bold"
+            >
+              {locationFromFlangeEnd}mm
+            </Text>
           </>
         );
       })()}
@@ -1130,6 +1346,24 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                   </>
                 );
               })()}
+
+              {/* Puddle Flange Information */}
+              {props.pipeType === 'puddle' && props.puddleFlangeOdMm && props.puddleFlangeLocationMm && (
+                <>
+                  <div className="font-bold text-amber-700 mt-1.5 mb-0.5">PUDDLE FLANGE</div>
+                  <div className="text-gray-900 font-medium">OD: {props.puddleFlangeOdMm}mm</div>
+                  {props.puddleFlangePcdMm && (
+                    <div className="text-gray-700">PCD: {props.puddleFlangePcdMm}mm</div>
+                  )}
+                  {props.puddleFlangeHoleCount && props.puddleFlangeHoleIdMm && (
+                    <div className="text-gray-700">Holes: {props.puddleFlangeHoleCount} × Ø{props.puddleFlangeHoleIdMm}mm</div>
+                  )}
+                  {props.puddleFlangeThicknessMm && (
+                    <div className="text-gray-700">Thickness: {props.puddleFlangeThicknessMm}mm</div>
+                  )}
+                  <div className="text-amber-600 font-medium">Location: {props.puddleFlangeLocationMm}mm from flange face</div>
+                </>
+              )}
             </div>
           );
       })()}

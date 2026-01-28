@@ -99,7 +99,7 @@ export default function PipeSteelWorkForm({
               <textarea
                 value={entry.description || generateItemDescription(entry)}
                 onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 rows={2}
                 placeholder="e.g., 200NB Pipe Support Brackets - Clevis Hanger Type"
                 required
@@ -229,7 +229,7 @@ export default function PipeSteelWorkForm({
                           specs: { ...entry.specs, pipelineLengthM: parseFloat(e.target.value) || null },
                         });
                       }}
-                      className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50 text-gray-900 dark:bg-blue-900/30 dark:border-blue-600 dark:text-gray-100"
+                      className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50 text-gray-900 dark:bg-blue-900/30 dark:border-blue-600 dark:text-gray-100"
                       placeholder="e.g., 100"
                       min="0"
                       step="1"
@@ -278,7 +278,7 @@ export default function PipeSteelWorkForm({
                         specs: { ...entry.specs, quantity: parseInt(e.target.value) || 1 },
                       });
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                     min="1"
                     step="1"
                   />
