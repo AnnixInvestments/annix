@@ -1337,10 +1337,12 @@ const Scene = (props: Props) => {
   const duckfootRotation: [number, number, number] = isDuckfoot ? [Math.PI / 2, 0, -Math.PI / 2] : [0, 0, 0]
 
   const duckfootYOffset = isDuckfoot ? 4 : 0
+  const bendPositionAdjustY = isDuckfoot ? -2.3 : 0
+  const bendPositionAdjustZ = isDuckfoot ? -2.2 : 0
 
   return (
     <Center>
-      <group rotation={duckfootRotation} position={[0, duckfootYOffset, 0]}>
+      <group rotation={duckfootRotation} position={[0, duckfootYOffset + bendPositionAdjustY, bendPositionAdjustZ]}>
         {/* Inlet tangent section - hide for sweep tees since Pipe A replaces it */}
         {t1 > 0 && !isSweepTee && (
           <>
