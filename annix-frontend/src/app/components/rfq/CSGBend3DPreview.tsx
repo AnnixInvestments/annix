@@ -2057,15 +2057,15 @@ const Scene = (props: Props) => {
 
         return (
           <group position={[steelworkX, steelworkY, steelworkZ]}>
-            {/* Base Plate - horizontal at bottom (X and Y swapped) */}
+            {/* Base Plate - horizontal at bottom */}
             <mesh position={[0, -plateThickness / 2, 0]}>
-              <boxGeometry args={[basePlateYDim, plateThickness, basePlateXDim]} />
+              <boxGeometry args={[basePlateXDim, plateThickness, basePlateYDim]} />
               <meshStandardMaterial {...basePlateColor} />
             </mesh>
 
             {/* Base plate dimension labels - all 4 sides labeled */}
             <Text
-              position={[0, 0.02, basePlateXDim / 2 + 0.1]}
+              position={[0, 0.02, basePlateYDim / 2 + 0.1]}
               fontSize={0.3}
               color="#000000"
               anchorX="center"
@@ -2076,7 +2076,7 @@ const Scene = (props: Props) => {
               Y
             </Text>
             <Text
-              position={[0, 0.02, -basePlateXDim / 2 - 0.1]}
+              position={[0, 0.02, -basePlateYDim / 2 - 0.1]}
               fontSize={0.3}
               color="#000000"
               anchorX="center"
@@ -2087,7 +2087,7 @@ const Scene = (props: Props) => {
               W
             </Text>
             <Text
-              position={[basePlateYDim / 2 + 0.1, 0.02, 0]}
+              position={[basePlateXDim / 2 + 0.1, 0.02, 0]}
               fontSize={0.3}
               color="#000000"
               anchorX="center"
@@ -2098,7 +2098,7 @@ const Scene = (props: Props) => {
               X
             </Text>
             <Text
-              position={[-basePlateYDim / 2 - 0.1, 0.02, 0]}
+              position={[-basePlateXDim / 2 - 0.1, 0.02, 0]}
               fontSize={0.3}
               color="#000000"
               anchorX="center"
@@ -2109,30 +2109,60 @@ const Scene = (props: Props) => {
               Z
             </Text>
 
-            {/* Rib running X direction - uses Y dimension for width */}
+            {/* Rib running X direction */}
             <mesh position={[0, ribHeightH / 2, 0]}>
-              <boxGeometry args={[basePlateYDim, ribHeightH, ribThickness]} />
+              <boxGeometry args={[basePlateXDim, ribHeightH, ribThickness]} />
               <meshStandardMaterial {...ribColor} />
             </mesh>
 
 
 
-            {/* Gusset plate 2 (blue) - extends from base plate to top, spans full width along X */}
+            {/* Gusset plate 2 (blue) - extends from base plate to top, spans from W to Y (along Z axis) */}
+            {/* Has semicircular cutout at top to cradle the pipe */}
             {(() => {
               const gusset2Shape = new THREE.Shape();
-              const gusset2Width = basePlateYDim;
-              const gusset2Height = ribHeightH + bendR * 0.9;
+              const gusset2Width = basePlateYDim; // W to Y spans basePlateYDim (Z direction)
 
-              gusset2Shape.moveTo(0, 0);
-              gusset2Shape.lineTo(-gusset2Width, 0);
-              gusset2Shape.lineTo(-gusset2Width, gusset2Height);
-              gusset2Shape.lineTo(0, gusset2Height);
-              gusset2Shape.lineTo(0, 0);
+              // Calculate the pipe center position at 45° (middle of bend) in local coordinates
+              // This is where the yellow gusset intersects the blue gusset
+              const extradosR = bendR + outerR;
+              const midAngleRad = Math.PI / 4; // 45 degrees
+              const extradosAt45Y = (bendR - extradosR * Math.cos(midAngleRad) + duckfootYOffset) - steelworkY;
+
+              // Cutout parameters - semicircle matching pipe outer radius
+              const cutoutRadius = outerR;
+              // Position cutout so lowest point is halfway between extrados and pipe bottom
+              const cutoutBottomY = extradosAt45Y - cutoutRadius / 2;
+              const cutoutCenterY = cutoutBottomY + cutoutRadius;
+
+              // Gusset height extends up to where the cutout edges are
+              const gusset2Height = cutoutCenterY;
+
+              // Shape in ZY plane - will be positioned to span W to Y centered on base plate
+              // Start at bottom left
+              gusset2Shape.moveTo(-gusset2Width / 2, 0);
+              // Bottom edge to right
+              gusset2Shape.lineTo(gusset2Width / 2, 0);
+              // Right edge up to where cutout starts
+              gusset2Shape.lineTo(gusset2Width / 2, cutoutCenterY);
+
+              // Semicircular cutout - arc from right side, down to center, up to left side
+              // Arc goes from 0 (right) to PI (left) - this creates a downward-facing semicircle
+              const arcSegments = 24;
+              for (let i = 0; i <= arcSegments; i++) {
+                const angle = (i / arcSegments) * Math.PI; // 0 to PI
+                const arcX = cutoutRadius * Math.cos(angle); // Goes from +radius to -radius
+                const arcY = cutoutCenterY - cutoutRadius * Math.sin(angle); // Dips down by radius at center
+                gusset2Shape.lineTo(arcX, arcY);
+              }
+
+              // Left edge down to bottom
+              gusset2Shape.lineTo(-gusset2Width / 2, 0);
 
               return (
                 <mesh
-                  position={[-basePlateYDim / 2, 0, 0]}
-                  rotation={[0, Math.PI, 0]}
+                  position={[0, 0, 0]}
+                  rotation={[0, Math.PI / 2, 0]}
                 >
                   <extrudeGeometry args={[gusset2Shape, { depth: ribThickness, bevelEnabled: false }]} />
                   <meshStandardMaterial color="#0066cc" metalness={0.5} roughness={0.5} />
@@ -2173,7 +2203,7 @@ const Scene = (props: Props) => {
 
               // Bottom corners A and B span the base plate width in X direction
               // Centered at X=0 in local coords
-              const halfPlateX = basePlateYDim / 2;
+              const halfPlateX = basePlateXDim / 2;
               const aBottomX = halfPlateX;  // Right side (positive X)
               const bBottomX = -halfPlateX; // Left side (negative X)
 
