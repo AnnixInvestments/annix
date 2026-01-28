@@ -12,6 +12,20 @@ const Line = (props: React.ComponentProps<typeof DreiLine>) => {
   return <DreiLine {...props} resolution={new THREE.Vector2(size.width, size.height)} />;
 };
 
+function CaptureHelper({ captureRef }: { captureRef: React.MutableRefObject<(() => string | null) | null> }) {
+  const { gl, scene, camera } = useThree();
+
+  useEffect(() => {
+    captureRef.current = () => {
+      gl.render(scene, camera);
+      return gl.domElement.toDataURL('image/png');
+    };
+    return () => { captureRef.current = null; };
+  }, [gl, scene, camera, captureRef]);
+
+  return null;
+}
+
 const useDebouncedProps = <T extends Record<string, any>>(props: T, delay: number = 150): T => {
   const [debouncedProps, setDebouncedProps] = useState(props);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -553,7 +567,7 @@ const DimensionLine = ({ start, end, label }: { start: [number, number, number],
          <coneGeometry args={[0.04, 0.15, 8]} />
          <meshBasicMaterial color="black" />
       </mesh>
-      <Text position={[midX, midY + 0.15, 0]} fontSize={0.25} color="black" anchorX="center" anchorY="bottom" outlineWidth={0.01} outlineColor="white">
+      <Text position={[midX, midY + 0.12, 0]} fontSize={0.28} color="black" anchorX="center" anchorY="bottom" fontWeight="bold">
         {label}
       </Text>
     </group>
@@ -855,13 +869,11 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
             />
             <Text
               key="dim-end-label"
-              position={[-halfLen + (distFromEnd / 2000), dimLineY - 0.12, 0]}
-              fontSize={0.18}
+              position={[-halfLen + (distFromEnd / 2000), dimLineY - 0.08, 0]}
+              fontSize={0.22}
               color="#0d9488"
               anchorX="center"
               anchorY="top"
-              outlineWidth={0.015}
-              outlineColor="white"
               fontWeight="bold"
             >
               {distFromEnd}mm
@@ -890,13 +902,11 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
                     lineWidth={2}
                   />
                   <Text
-                    position={[midX, dimLineY2 - 0.12, 0]}
-                    fontSize={0.18}
+                    position={[midX, dimLineY2 - 0.08, 0]}
+                    fontSize={0.22}
                     color="#7c3aed"
                     anchorX="center"
                     anchorY="top"
-                    outlineWidth={0.015}
-                    outlineColor="white"
                     fontWeight="bold"
                   >
                     {Math.round(spacing)}mm
@@ -1114,6 +1124,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   const [viewMode, setViewMode] = useState(props.savedCameraPosition ? 'free' : 'iso'); //'iso', 'inlet', 'outlet', 'free'
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
+  const captureRef = useRef<(() => string | null) | null>(null);
 
   const debouncedProps = useDebouncedProps(props, 100);
 
@@ -1164,7 +1175,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   }
 
   return (
-    <div className="w-full h-[500px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
+    <div data-pipe-preview className="w-full h-[500px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
       <div className="absolute top-2 left-2 z-10 flex gap-2">
         <button
           onClick={() => setViewMode('iso')}
@@ -1189,11 +1200,13 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
       <Canvas
         shadows
         dpr={[1, 2]}
+        gl={{ preserveDrawingBuffer: true }}
         camera={{
           position: cameraTargets.iso.pos as [number, number, number],
           fov: 45
         }}
       >
+          <CaptureHelper captureRef={captureRef} />
           <ambientLight intensity={0.8} />
           <spotLight position={[10, 10, 5]} angle={0.5} penumbra={1} intensity={1} />
           <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />
@@ -1279,7 +1292,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           };
 
           return (
-            <div className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md leading-snug border border-gray-200">
+            <div data-info-box className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md leading-snug border border-gray-200">
               <div className="font-bold text-blue-800 mb-0.5">PIPE</div>
               <div className="text-gray-900 font-medium">OD: {props.outerDiameter.toFixed(0)}mm | ID: {idMm.toFixed(0)}mm</div>
               <div className="text-gray-700">WT: {props.wallThickness}mm</div>
@@ -1333,6 +1346,12 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                   distFromEnd + (i * spacing)
                 );
 
+                const spigotHasFlanges = props.spigotFlangeConfig && props.spigotFlangeConfig !== 'PE';
+                const spigotFlangeResult = spigotHasFlanges && props.spigotNominalBoreMm
+                  ? getFlangeSpecs(props.spigotNominalBoreMm, null)
+                  : null;
+                const spigotFlangeSpecs = spigotFlangeResult?.specs ?? null;
+
                 return (
                   <>
                     <div className="font-bold text-teal-700 mt-1.5 mb-0.5">SPIGOTS ({props.numberOfSpigots}×)</div>
@@ -1340,6 +1359,19 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                     <div className="text-gray-700">Height: {props.spigotHeightMm || 150}mm</div>
                     <div className="text-teal-600 font-medium">Distance from end: {distFromEnd}mm</div>
                     <div className="text-purple-600 font-medium">Spacing: {Math.round(spacing)}mm</div>
+                    {spigotHasFlanges && (
+                      <>
+                        <div className="text-amber-600 font-medium mt-1">Flange: {props.spigotFlangeConfig}</div>
+                        {spigotFlangeSpecs && (
+                          <>
+                            <div className="text-gray-900">OD: {spigotFlangeSpecs.flangeOD}mm | PCD: {spigotFlangeSpecs.pcd}mm</div>
+                            <div className="text-gray-700">Holes: {spigotFlangeSpecs.boltHoles} × Ø{spigotFlangeSpecs.holeID}mm</div>
+                            <div className="text-gray-700">Bolts: {spigotFlangeSpecs.boltHoles} × M{spigotFlangeSpecs.boltSize} × {spigotFlangeSpecs.boltLength}mm</div>
+                            <div className="text-gray-700">Thickness: {spigotFlangeSpecs.thickness}mm</div>
+                          </>
+                        )}
+                      </>
+                    )}
                     <div className="text-gray-600 text-[9px] mt-0.5">
                       Positions: {positions.map(p => `${(p/1000).toFixed(2)}m`).join(', ')}
                     </div>
@@ -1380,7 +1412,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
         </div>
       )}
 
-      {/* Bottom toolbar - Expand, Drag hint, and Hide button in horizontal row */}
+      {/* Bottom toolbar - Expand, Print, Drag hint, and Hide button in horizontal row */}
       <div className="absolute bottom-2 right-2 flex flex-row items-center gap-2">
           <button
             onClick={() => setIsExpanded(true)}
@@ -1390,6 +1422,155 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
             </svg>
             Expand
+          </button>
+          <button
+            onClick={() => {
+              const container = document.querySelector('[data-pipe-preview]');
+              const infoBox = container?.querySelector('[data-info-box]');
+
+              const dataUrl = captureRef.current ? captureRef.current() : null;
+              if (dataUrl && infoBox) {
+                const children = Array.from(infoBox.children);
+                const sections: { title: string; content: string[] }[] = [];
+                let currentSection: { title: string; content: string[] } | null = null;
+
+                children.forEach((child) => {
+                  const el = child as HTMLElement;
+                  if (el.classList.contains('font-bold')) {
+                    if (currentSection) sections.push(currentSection);
+                    currentSection = { title: el.outerHTML, content: [] };
+                  } else if (currentSection) {
+                    currentSection.content.push(el.outerHTML);
+                  }
+                });
+                if (currentSection) sections.push(currentSection);
+
+                const midPoint = Math.ceil(sections.length / 2);
+                const leftSections = sections.slice(0, midPoint);
+                const rightSections = sections.slice(midPoint);
+
+                const renderSections = (secs: typeof sections) =>
+                  secs.map((s) => `${s.title}${s.content.join('')}`).join('');
+
+                const printWindow = window.open('', '_blank');
+                if (printWindow) {
+                  printWindow.document.write(`
+                    <html>
+                      <head>
+                        <title>3D Pipe Drawing</title>
+                        <style>
+                          body { margin: 15px; font-family: Arial, sans-serif; }
+                          .drawing-section { width: 100%; margin-bottom: 15px; }
+                          .drawing-section img { width: 100%; border: 1px solid #ccc; }
+                          .info-container { display: flex; gap: 20px; }
+                          .info-column { flex: 1; padding: 12px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; font-size: 11px; }
+                          .info-column > div { margin-bottom: 3px; }
+                          .font-bold { font-weight: bold; margin-top: 8px; }
+                          .text-blue-800 { color: #1e40af; }
+                          .text-teal-700 { color: #0f766e; }
+                          .text-amber-700 { color: #b45309; }
+                          .text-gray-900 { color: #111827; }
+                          .text-gray-700 { color: #374151; }
+                          .text-gray-600 { color: #4b5563; }
+                          .text-blue-600 { color: #2563eb; }
+                          .text-purple-600 { color: #9333ea; }
+                          .text-amber-600 { color: #d97706; }
+                          .text-green-700 { color: #15803d; }
+                          @media print { body { margin: 10px; } }
+                        </style>
+                      </head>
+                      <body>
+                        <div class="drawing-section">
+                          <img src="${dataUrl}" />
+                        </div>
+                        <div class="info-container">
+                          <div class="info-column">${renderSections(leftSections)}</div>
+                          <div class="info-column">${renderSections(rightSections)}</div>
+                        </div>
+                        <script>
+                          window.onload = function() { setTimeout(function() { window.print(); }, 100); };
+                        </script>
+                      </body>
+                    </html>
+                  `);
+                  printWindow.document.close();
+                }
+              }
+            }}
+            className="text-[10px] text-green-600 bg-white/90 px-2 py-1 rounded shadow-sm hover:bg-green-50 hover:text-green-700 transition-colors flex items-center gap-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Print
+          </button>
+          <button
+            onClick={() => {
+              const pipeLengthMm = (debouncedProps.length < 50 ? debouncedProps.length * 1000 : debouncedProps.length);
+              const odMm = debouncedProps.outerDiameter;
+              const idMm = odMm - (2 * debouncedProps.wallThickness);
+              const flangeOd = odMm * 1.8;
+              const hasFlanges = debouncedProps.endConfiguration && debouncedProps.endConfiguration !== 'PE';
+
+              let dxf = `0\nSECTION\n2\nHEADER\n0\nENDSEC\n`;
+              dxf += `0\nSECTION\n2\nENTITIES\n`;
+
+              const pipeTop = odMm / 2;
+              const pipeBottom = -odMm / 2;
+
+              dxf += `0\nLINE\n8\nPIPE\n10\n0\n20\n${pipeTop}\n11\n${pipeLengthMm}\n21\n${pipeTop}\n`;
+              dxf += `0\nLINE\n8\nPIPE\n10\n0\n20\n${pipeBottom}\n11\n${pipeLengthMm}\n21\n${pipeBottom}\n`;
+
+              const idTop = idMm / 2;
+              const idBottom = -idMm / 2;
+              dxf += `0\nLINE\n8\nPIPE_ID\n62\n8\n10\n0\n20\n${idTop}\n11\n${pipeLengthMm}\n21\n${idTop}\n`;
+              dxf += `0\nLINE\n8\nPIPE_ID\n62\n8\n10\n0\n20\n${idBottom}\n11\n${pipeLengthMm}\n21\n${idBottom}\n`;
+
+              dxf += `0\nLINE\n8\nPIPE\n10\n0\n20\n${pipeTop}\n11\n0\n21\n${pipeBottom}\n`;
+              dxf += `0\nLINE\n8\nPIPE\n10\n${pipeLengthMm}\n20\n${pipeTop}\n11\n${pipeLengthMm}\n21\n${pipeBottom}\n`;
+
+              if (hasFlanges) {
+                const flangeR = flangeOd / 2;
+                dxf += `0\nCIRCLE\n8\nFLANGE\n62\n5\n10\n0\n20\n0\n40\n${flangeR}\n`;
+                dxf += `0\nCIRCLE\n8\nFLANGE\n62\n5\n10\n${pipeLengthMm}\n20\n0\n40\n${flangeR}\n`;
+              }
+
+              const dimY = -odMm - 50;
+              dxf += `0\nLINE\n8\nDIMENSION\n62\n1\n10\n0\n20\n${dimY}\n11\n${pipeLengthMm}\n21\n${dimY}\n`;
+              dxf += `0\nLINE\n8\nDIMENSION\n62\n1\n10\n0\n20\n${dimY - 10}\n11\n0\n21\n${dimY + 10}\n`;
+              dxf += `0\nLINE\n8\nDIMENSION\n62\n1\n10\n${pipeLengthMm}\n20\n${dimY - 10}\n11\n${pipeLengthMm}\n21\n${dimY + 10}\n`;
+              dxf += `0\nTEXT\n8\nDIMENSION\n10\n${pipeLengthMm / 2}\n20\n${dimY - 25}\n40\n20\n1\n${pipeLengthMm.toFixed(0)}mm\n72\n1\n11\n${pipeLengthMm / 2}\n21\n${dimY - 25}\n`;
+
+              if (debouncedProps.pipeType === 'spigot' && debouncedProps.numberOfSpigots && debouncedProps.numberOfSpigots >= 2) {
+                const distFromEnd = debouncedProps.spigotDistanceFromEndMm || 0;
+                const spigotOd = (debouncedProps.spigotNominalBoreMm || 50) * 1.2;
+                const availableLen = pipeLengthMm - (2 * distFromEnd);
+                const spacing = availableLen / (debouncedProps.numberOfSpigots - 1);
+
+                for (let i = 0; i < debouncedProps.numberOfSpigots; i++) {
+                  const spigotX = distFromEnd + (i * spacing);
+                  dxf += `0\nCIRCLE\n8\nSPIGOT\n62\n3\n10\n${spigotX}\n20\n0\n40\n${spigotOd / 2}\n`;
+                }
+              }
+
+              dxf += `0\nENDSEC\n0\nEOF\n`;
+
+              const blob = new Blob([dxf], { type: 'application/dxf' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `pipe_${pipeLengthMm.toFixed(0)}mm_OD${odMm.toFixed(0)}.dxf`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+            className="text-[10px] text-orange-600 bg-white/90 px-2 py-1 rounded shadow-sm hover:bg-orange-50 hover:text-orange-700 transition-colors flex items-center gap-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export DXF
           </button>
           <div className="text-[10px] text-slate-400 bg-white/90 px-2 py-1 rounded shadow-sm">
             Drag to Rotate

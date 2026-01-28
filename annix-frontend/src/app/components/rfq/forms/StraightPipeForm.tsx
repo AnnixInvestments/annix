@@ -753,6 +753,9 @@ export default function StraightPipeForm({
                           if (newPipeType === 'puddle' && !isPuddleEndConfig) {
                             updatedSpecs.pipeEndConfiguration = 'FOE';
                           }
+                          if (newPipeType === 'spigot') {
+                            updatedSpecs.pipeEndConfiguration = 'FBE';
+                          }
                           if (newPipeType !== 'puddle') {
                             updatedSpecs.puddleFlangeOdMm = null;
                             updatedSpecs.puddleFlangePcdMm = null;
@@ -772,6 +775,19 @@ export default function StraightPipeForm({
                               }
                               setTimeout(() => {
                                 focusAndOpenSelect(configSelectId);
+                              }, 150);
+                            }, 150);
+                          }
+                          // For spigot pipes, open the Spigot Steel Spec dropdown next
+                          if (newPipeType === 'spigot') {
+                            setTimeout(() => {
+                              const spigotSteelSelectId = `spigot-steel-spec-${entry.id}`;
+                              const spigotSteelElement = document.getElementById(spigotSteelSelectId);
+                              if (spigotSteelElement) {
+                                spigotSteelElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
+                              setTimeout(() => {
+                                focusAndOpenSelect(spigotSteelSelectId);
                               }, 150);
                             }, 150);
                           }
@@ -890,6 +906,7 @@ export default function StraightPipeForm({
                                 {isOverride && <span className="text-yellow-600 text-xs ml-1 font-normal">(Override)</span>}
                               </label>
                               <Select
+                                id={`spigot-steel-spec-${entry.id}`}
                                 value={String(spigotSpecId || '')}
                                 className={isFromMainPipe ? 'w-full px-2 py-1.5 border-2 border-green-500 rounded text-xs' : isOverride ? 'w-full px-2 py-1.5 border-2 border-yellow-500 rounded text-xs' : 'w-full px-2 py-1.5 border border-gray-300 rounded text-xs'}
                                 onChange={(value) => {
@@ -901,6 +918,17 @@ export default function StraightPipeForm({
                                       spigotNominalBoreMm: null
                                     }
                                   });
+                                  // Navigate to No. of Spigots next
+                                  setTimeout(() => {
+                                    const noSpigotSelectId = `spigot-count-${entry.id}`;
+                                    const noSpigotElement = document.getElementById(noSpigotSelectId);
+                                    if (noSpigotElement) {
+                                      noSpigotElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    }
+                                    setTimeout(() => {
+                                      focusAndOpenSelect(noSpigotSelectId);
+                                    }, 150);
+                                  }, 150);
                                 }}
                                 options={[]}
                                 groupedOptions={groupedOptions}
@@ -918,19 +946,34 @@ export default function StraightPipeForm({
                         <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                           No. of Spigots
                         </label>
-                        <select
-                          value={entry.specs?.numberOfSpigots || 2}
-                          onChange={(e) => {
+                        <Select
+                          id={`spigot-count-${entry.id}`}
+                          value={String(entry.specs?.numberOfSpigots || 2)}
+                          onChange={(value) => {
                             onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, numberOfSpigots: parseInt(e.target.value) }
+                              specs: { ...entry.specs, numberOfSpigots: parseInt(value) }
                             });
+                            // Navigate to Spigot NB next
+                            setTimeout(() => {
+                              const spigotNbSelectId = `spigot-nb-${entry.id}`;
+                              const spigotNbElement = document.getElementById(spigotNbSelectId);
+                              if (spigotNbElement) {
+                                spigotNbElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
+                              setTimeout(() => {
+                                focusAndOpenSelect(spigotNbSelectId);
+                              }, 150);
+                            }, 150);
                           }}
-                          className="w-full px-2 py-1.5 border border-teal-300 dark:border-teal-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
-                        >
-                          <option value={2}>2</option>
-                          <option value={3}>3</option>
-                          <option value={4}>4</option>
-                        </select>
+                          options={[
+                            { value: '2', label: '2' },
+                            { value: '3', label: '3' },
+                            { value: '4', label: '4' },
+                          ]}
+                          open={openSelects[`spigot-count-${entry.id}`] || false}
+                          onOpenChange={(open) => open ? openSelect(`spigot-count-${entry.id}`) : closeSelect(`spigot-count-${entry.id}`)}
+                          className="w-full px-2 py-1.5 border border-teal-300 rounded text-xs"
+                        />
                       </div>
 
                       {/* NB of Spigot */}
@@ -955,20 +998,31 @@ export default function StraightPipeForm({
                               <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                                 Spigot NB (mm)
                               </label>
-                              <select
-                                value={entry.specs?.spigotNominalBoreMm || ''}
-                                onChange={(e) => {
+                              <Select
+                                id={`spigot-nb-${entry.id}`}
+                                value={String(entry.specs?.spigotNominalBoreMm || '')}
+                                onChange={(value) => {
                                   onUpdateEntry(entry.id, {
-                                    specs: { ...entry.specs, spigotNominalBoreMm: parseInt(e.target.value) || null }
+                                    specs: { ...entry.specs, spigotNominalBoreMm: parseInt(value) || null }
                                   });
+                                  // Navigate to Distance from End next
+                                  setTimeout(() => {
+                                    const distanceInputId = `spigot-distance-${entry.id}`;
+                                    const distanceElement = document.getElementById(distanceInputId);
+                                    if (distanceElement) {
+                                      distanceElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                      distanceElement.focus();
+                                    }
+                                  }, 150);
                                 }}
-                                className="w-full px-2 py-1.5 border border-teal-300 dark:border-teal-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
-                              >
-                                <option value="">Select NB...</option>
-                                {filteredNBs.map((nb: number) => (
-                                  <option key={nb} value={nb}>{nb} NB</option>
-                                ))}
-                              </select>
+                                options={[
+                                  { value: '', label: 'Select NB...' },
+                                  ...filteredNBs.map((nb: number) => ({ value: String(nb), label: `${nb} NB` }))
+                                ]}
+                                open={openSelects[`spigot-nb-${entry.id}`] || false}
+                                onOpenChange={(open) => open ? openSelect(`spigot-nb-${entry.id}`) : closeSelect(`spigot-nb-${entry.id}`)}
+                                className="w-full px-2 py-1.5 border border-teal-300 rounded text-xs"
+                              />
                             </>
                           );
                         })()}
@@ -980,12 +1034,24 @@ export default function StraightPipeForm({
                           Distance from End (mm)
                         </label>
                         <input
+                          id={`spigot-distance-${entry.id}`}
                           type="number"
                           value={entry.specs?.spigotDistanceFromEndMm || ''}
                           onChange={(e) => {
                             onUpdateEntry(entry.id, {
                               specs: { ...entry.specs, spigotDistanceFromEndMm: parseInt(e.target.value) || null }
                             });
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === 'Tab') {
+                              e.preventDefault();
+                              const heightInputId = `spigot-height-${entry.id}`;
+                              const heightElement = document.getElementById(heightInputId);
+                              if (heightElement) {
+                                heightElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                heightElement.focus();
+                              }
+                            }
                           }}
                           className="w-full px-2 py-1.5 border border-teal-300 dark:border-teal-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
                           placeholder="e.g. 1000"
@@ -999,12 +1065,25 @@ export default function StraightPipeForm({
                           Spigot Height (mm)
                         </label>
                         <input
+                          id={`spigot-height-${entry.id}`}
                           type="number"
                           value={entry.specs?.spigotHeightMm || ''}
                           onChange={(e) => {
                             onUpdateEntry(entry.id, {
                               specs: { ...entry.specs, spigotHeightMm: parseInt(e.target.value) || null }
                             });
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === 'Tab') {
+                              e.preventDefault();
+                              // Navigate to Pipe Length (skip Config for spigot pipes)
+                              const pipeLengthInput = document.getElementById(`pipe-length-${entry.id}`) as HTMLInputElement;
+                              if (pipeLengthInput) {
+                                pipeLengthInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                pipeLengthInput.focus();
+                                pipeLengthInput.select();
+                              }
+                            }
                           }}
                           className="w-full px-2 py-1.5 border border-teal-300 dark:border-teal-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
                           placeholder="e.g. 150"
@@ -1243,6 +1322,11 @@ export default function StraightPipeForm({
                               Config
                               <span className="ml-1 text-gray-400 font-normal cursor-help" title="PE = Plain End (no flanges, for butt welding to other pipes). FOE = Flanged One End (connect to equipment/valve). FBE = Flanged Both Ends (spool piece). L/F = Loose Flange (slip-on, easier bolt alignment). R/F = Rotating Flange (backing ring allows rotation for bolt hole alignment).">?</span>
                             </label>
+                            {entry.specs?.pipeType === 'spigot' ? (
+                              <div className="px-2 py-1.5 bg-teal-100 border border-teal-300 rounded text-xs text-teal-800 font-medium">
+                                FBE - Flanged Both Ends
+                              </div>
+                            ) : (
                             <Select
                               id={`pipe-config-${entry.id}`}
                               value={entry.specs.pipeEndConfiguration || (entry.specs?.pipeType === 'puddle' ? 'FOE' : 'PE')}
@@ -1307,6 +1391,7 @@ export default function StraightPipeForm({
                               onOpenChange={(open) => open ? openSelect(`pipe-config-${entry.id}`) : closeSelect(`pipe-config-${entry.id}`)}
                               className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
                             />
+                            )}
                           </div>
                         </div>
 
@@ -2052,8 +2137,36 @@ export default function StraightPipeForm({
                             const totalPuddleWeight = singlePuddleWeight * numPipes;
                             const puddleFlangeCount = hasPuddleFlange ? numPipes : 0;
 
-                            const totalFlangeWeight = regularFlangeWeight + totalBlankFlangeWeight;
-                            const grandTotalFlangeCount = totalFlanges + blankFlangeCount + puddleFlangeCount;
+                            // Spigot flange calculations
+                            const isSpigotPipe = entry.specs?.pipeType === 'spigot';
+                            const spigotCount = entry.specs?.numberOfSpigots || 0;
+                            const spigotNb = entry.specs?.spigotNominalBoreMm || 0;
+                            const spigotFlangeConfig = entry.specs?.spigotFlangeConfig || 'PE';
+                            const hasSpigotFlanges = isSpigotPipe && (spigotFlangeConfig === 'FAE' || spigotFlangeConfig === 'RF');
+                            const spigotFlangeStdId = entry.specs?.spigotFlangeStandardId || entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                            const spigotPressureClassId = entry.specs?.spigotFlangePressureClassId || entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                            const spigotFlangeStd = masterData.flangeStandards?.find((s: any) => s.id === spigotFlangeStdId);
+                            const spigotFlangeStdCode = spigotFlangeStd?.code || '';
+                            const spigotPressureClass = masterData.pressureClasses?.find((p: any) => p.id === spigotPressureClassId);
+                            const spigotPressureClassDesignation = spigotPressureClass?.designation || '';
+                            const spigotFlangeTypeCode = entry.specs?.spigotFlangeTypeCode || entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                            const spigotFlangeWeightPerUnit = hasSpigotFlanges && spigotNb && spigotPressureClassDesignation
+                              ? getFlangeWeight(spigotNb, spigotPressureClassDesignation, spigotFlangeStdCode, spigotFlangeTypeCode) || 0
+                              : 0;
+                            const totalSpigotFlangeCount = hasSpigotFlanges ? spigotCount * numPipes : 0;
+                            const totalSpigotFlangeWeight = spigotFlangeWeightPerUnit * totalSpigotFlangeCount;
+
+                            // Spigot blank flanges
+                            const spigotBlankPositions = entry.specs?.spigotBlankFlanges || [];
+                            const spigotBlankCount = spigotBlankPositions.length * numPipes;
+                            const isSans1123Spigot = (spigotFlangeStdCode.toUpperCase().includes('SABS') || spigotFlangeStdCode.toUpperCase().includes('SANS')) && spigotFlangeStdCode.includes('1123');
+                            const spigotBlankWeightPerUnit = hasSpigotFlanges && spigotNb && spigotPressureClassDesignation
+                              ? (isSans1123Spigot ? sansBlankFlangeWeight(spigotNb, spigotPressureClassDesignation) : getBlankFlangeWeight(spigotNb, spigotPressureClassDesignation)) || 0
+                              : 0;
+                            const totalSpigotBlankWeight = spigotBlankWeightPerUnit * spigotBlankCount;
+
+                            const totalFlangeWeight = regularFlangeWeight + totalBlankFlangeWeight + totalSpigotFlangeWeight + totalSpigotBlankWeight;
+                            const grandTotalFlangeCount = totalFlanges + blankFlangeCount + puddleFlangeCount + totalSpigotFlangeCount + spigotBlankCount;
 
                             return (
                               <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
@@ -2069,6 +2182,12 @@ export default function StraightPipeForm({
                                   {hasPuddleFlange && (
                                     <p>{puddleFlangeCount} x Puddle Flange (OD:{puddleOd}mm{puddlePcd ? ` PCD:${puddlePcd}mm` : ''})</p>
                                   )}
+                                  {totalSpigotFlangeCount > 0 && (
+                                    <p>{totalSpigotFlangeCount} x {spigotNb}NB Spigot Flange {spigotPressureClassDesignation}</p>
+                                  )}
+                                  {spigotBlankCount > 0 && (
+                                    <p>{spigotBlankCount} x {spigotNb}NB Spigot Blank {spigotPressureClassDesignation}</p>
+                                  )}
                                 </div>
                                 <div className="text-[10px] text-amber-500 mt-0.5">
                                   {totalFlanges > 0 && (
@@ -2079,6 +2198,12 @@ export default function StraightPipeForm({
                                   )}
                                   {hasPuddleFlange && (
                                     <p>{puddleFlangeCount} × {singlePuddleWeight.toFixed(2)}kg = <span className="font-semibold text-amber-600">{totalPuddleWeight.toFixed(2)}kg</span></p>
+                                  )}
+                                  {totalSpigotFlangeCount > 0 && (
+                                    <p>{totalSpigotFlangeCount} × {spigotFlangeWeightPerUnit.toFixed(2)}kg = <span className="font-semibold text-amber-600">{totalSpigotFlangeWeight.toFixed(2)}kg</span></p>
+                                  )}
+                                  {spigotBlankCount > 0 && (
+                                    <p>{spigotBlankCount} × {spigotBlankWeightPerUnit.toFixed(2)}kg = <span className="font-semibold text-amber-600">{totalSpigotBlankWeight.toFixed(2)}kg</span></p>
                                   )}
                                 </div>
                               </div>
