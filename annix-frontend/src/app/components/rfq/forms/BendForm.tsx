@@ -1668,8 +1668,8 @@ export default function BendForm({
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                              Point D Location
-                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Angle position of Point D on the yellow gusset (degrees from bend start)">?</span>
+                              Point C Location
+                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Angle position of Point C on the yellow gusset (degrees from bend start)">?</span>
                             </label>
                             <select
                               value={entry.specs?.duckfootGussetPointDDegrees || 15}
@@ -1692,8 +1692,8 @@ export default function BendForm({
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                              Point C Location
-                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Angle position of Point C on the yellow gusset (degrees from bend start)">?</span>
+                              Point D Location
+                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Angle position of Point D on the yellow gusset (degrees from bend start)">?</span>
                             </label>
                             <select
                               value={entry.specs?.duckfootGussetPointCDegrees || 75}
@@ -1725,8 +1725,8 @@ export default function BendForm({
                   </div>
                 )}
 
-                {/* Tangent Extensions Row - hide for Sweep Tees */}
-                {entry.specs?.bendItemType !== 'SWEEP_TEE' && (
+                {/* Tangent Extensions Row - hide for Sweep Tees and Duckfoot Bends */}
+                {entry.specs?.bendItemType !== 'SWEEP_TEE' && entry.specs?.bendItemType !== 'DUCKFOOT_BEND' && (
                 <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
                   <div className="mb-2">
                     <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
@@ -1825,8 +1825,8 @@ export default function BendForm({
                 </div>
                 )}
 
-                {/* Stub Connections Section - hide for Sweep Tees */}
-                {entry.specs?.bendItemType !== 'SWEEP_TEE' && (
+                {/* Stub Connections Section - hide for Sweep Tees and Duckfoot Bends */}
+                {entry.specs?.bendItemType !== 'SWEEP_TEE' && entry.specs?.bendItemType !== 'DUCKFOOT_BEND' && (
                 <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-3 mt-3">
                   <div className="mb-2">
                     <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
