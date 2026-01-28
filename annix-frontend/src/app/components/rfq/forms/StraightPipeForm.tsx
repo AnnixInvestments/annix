@@ -2240,7 +2240,6 @@ export default function StraightPipeForm({
                             const baseFlangeWeldsPerPipe = getFlangeWeldCountPerPipe(pipeEndConfig);
                             const isPuddlePipe = entry.specs?.pipeType === 'puddle';
                             const hasPuddleFlange = isPuddlePipe && entry.specs?.puddleFlangeOdMm && entry.specs?.puddleFlangeThicknessMm;
-                            // Add 1 weld for puddle flange (2 x circumference weld around the puddle flange)
                             const flangeWeldsPerPipe = baseFlangeWeldsPerPipe + (hasPuddleFlange ? 1 : 0);
                             const numPipes = entry.calculation?.calculatedPipeCount || 1;
                             const totalFlangeWelds = flangeWeldsPerPipe * numPipes;
@@ -2248,13 +2247,32 @@ export default function StraightPipeForm({
                             // Calculate tack welds for loose flanges (8 × 20mm per loose flange end)
                             const tackWeldEnds = getTackWeldEndsPerPipe(pipeEndConfig);
                             const totalTackWeldEnds = tackWeldEnds * numPipes;
-                            const tackWeldLengthMm = totalTackWeldEnds * 8 * 20; // 8 tacks × 20mm each
+                            const tackWeldLengthMm = totalTackWeldEnds * 8 * 20;
                             const tackWeldLengthM = tackWeldLengthMm / 1000;
 
-                            if (totalFlangeWelds === 0 && totalTackWeldEnds === 0) return null;
-
                             const circumferenceMm = Math.PI * entry.calculation.outsideDiameterMm;
-                            const totalWeldLengthM = (circumferenceMm * 2 * totalFlangeWelds) / 1000; // 2x circ per flange weld
+                            const flangeWeldLengthM = (circumferenceMm * 2 * totalFlangeWelds) / 1000;
+
+                            // Spigot weld calculations
+                            const isSpigotPipe = entry.specs?.pipeType === 'spigot';
+                            const spigotCount = entry.specs?.numberOfSpigots || 0;
+                            const spigotNb = entry.specs?.spigotNominalBoreMm || 0;
+                            const nbToOd: Record<number, number> = {
+                              15: 21.3, 20: 26.9, 25: 33.7, 32: 42.4, 40: 48.3, 50: 60.3,
+                              65: 76.1, 80: 88.9, 100: 114.3, 125: 139.7, 150: 168.3,
+                              200: 219.1, 250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4,
+                              450: 457.0, 500: 508.0, 600: 610.0
+                            };
+                            const spigotOdMm = nbToOd[spigotNb] || (spigotNb * 1.1);
+                            const spigotCircumferenceMm = Math.PI * spigotOdMm;
+                            const totalSpigotWelds = isSpigotPipe && spigotNb > 0 ? spigotCount * numPipes : 0;
+                            const spigotWeldLengthM = (spigotCircumferenceMm * totalSpigotWelds) / 1000;
+
+                            // Combined totals
+                            const totalWelds = totalFlangeWelds + totalSpigotWelds;
+                            const totalWeldLengthM = flangeWeldLengthM + tackWeldLengthM + spigotWeldLengthM;
+
+                            if (totalWelds === 0 && totalTackWeldEnds === 0) return null;
 
                             // Calculate weld volume if we have the required data
                             let weldVolumeInfo = null;
@@ -2270,45 +2288,26 @@ export default function StraightPipeForm({
 
                             return (
                               <div className="bg-purple-50 p-2 rounded text-center border border-purple-200">
-                                <p className="text-xs text-purple-800 font-medium">Flange Welds</p>
-                                <p className="text-lg font-bold text-purple-900">{totalFlangeWelds}</p>
-                                {totalFlangeWelds > 0 && (
-                                  <p className="text-xs text-purple-600">2×{circumferenceMm.toFixed(0)}mm = {totalWeldLengthM.toFixed(2)} l/m</p>
-                                )}
-                                {totalTackWeldEnds > 0 && (
-                                  <p className="text-xs text-purple-600">+ {totalTackWeldEnds} L/F tack = {tackWeldLengthM.toFixed(2)} l/m</p>
-                                )}
+                                <p className="text-xs text-purple-800 font-medium">Welds</p>
+                                <p className="text-lg font-bold text-purple-900">{totalWelds}</p>
+                                <div className="text-xs text-purple-600 mt-0.5">
+                                  {totalFlangeWelds > 0 && (
+                                    <p>{totalFlangeWelds} flange × 2×{circumferenceMm.toFixed(0)}mm = {flangeWeldLengthM.toFixed(2)} l/m</p>
+                                  )}
+                                  {totalSpigotWelds > 0 && (
+                                    <p>{totalSpigotWelds} spigot × {spigotCircumferenceMm.toFixed(0)}mm = {spigotWeldLengthM.toFixed(2)} l/m</p>
+                                  )}
+                                  {totalTackWeldEnds > 0 && (
+                                    <p>{totalTackWeldEnds} L/F tack = {tackWeldLengthM.toFixed(2)} l/m</p>
+                                  )}
+                                </div>
+                                <p className="text-xs text-purple-800 font-semibold mt-1">Total: {totalWeldLengthM.toFixed(2)} l/m</p>
                                 {weldVolumeInfo && (
                                   <>
                                     <p className="text-xs text-purple-800 font-medium mt-1">Weld Volume</p>
                                     <p className="text-sm font-bold text-purple-900">{weldVolumeInfo.totalVolumeCm3.toFixed(1)} cm³ <span className="font-normal text-xs text-purple-600">({weldVolumeInfo.legSizeMm.toFixed(1)}mm leg)</span></p>
                                   </>
                                 )}
-                              </div>
-                            );
-                          })()}
-
-                          {/* Spigot Welds */}
-                          {entry.specs?.pipeType === 'spigot' && entry.specs?.numberOfSpigots && entry.specs?.spigotNominalBoreMm && (() => {
-                            const spigotCount = entry.specs.numberOfSpigots || 0;
-                            const spigotNb = entry.specs.spigotNominalBoreMm || 0;
-                            const nbToOd: Record<number, number> = {
-                              15: 21.3, 20: 26.9, 25: 33.7, 32: 42.4, 40: 48.3, 50: 60.3,
-                              65: 76.1, 80: 88.9, 100: 114.3, 125: 139.7, 150: 168.3,
-                              200: 219.1, 250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4,
-                              450: 457.0, 500: 508.0, 600: 610.0
-                            };
-                            const spigotOdMm = nbToOd[spigotNb] || (spigotNb * 1.1);
-                            const spigotCircumferenceMm = Math.PI * spigotOdMm;
-                            const numPipes = entry.calculation?.calculatedPipeCount || 1;
-                            const totalSpigotWelds = spigotCount * numPipes;
-                            const totalSpigotWeldLengthM = (spigotCircumferenceMm * totalSpigotWelds) / 1000;
-                            return (
-                              <div className="bg-teal-50 p-2 rounded text-center border border-teal-200">
-                                <p className="text-xs text-teal-800 font-medium">Spigot Welds</p>
-                                <p className="text-lg font-bold text-teal-900">{totalSpigotWelds}</p>
-                                <p className="text-xs text-teal-600">{spigotCircumferenceMm.toFixed(0)}mm each</p>
-                                <p className="text-xs text-teal-700 font-medium">{totalSpigotWeldLengthM.toFixed(2)} l/m</p>
                               </div>
                             );
                           })()}
