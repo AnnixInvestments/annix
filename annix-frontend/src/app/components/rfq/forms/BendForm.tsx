@@ -3138,7 +3138,59 @@ export default function BendForm({
                                 const isSweepTee = entry.specs?.bendItemType === 'SWEEP_TEE';
                                 const saddleWeldLinear = isSweepTee ? STEINMETZ_FACTOR * mainOdMm : 0;
 
-                                const calculatedTotalWeld = mitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear + saddleWeldLinear;
+                                // Duckfoot weld calculations
+                                const isDuckfootBend = entry.specs?.bendItemType === 'DUCKFOOT_BEND';
+                                const duckfootWeldDefaults: Record<number, { x: number; y: number; h: number }> = {
+                                  200: { x: 355, y: 230, h: 255 },
+                                  250: { x: 405, y: 280, h: 280 },
+                                  300: { x: 460, y: 330, h: 305 },
+                                  350: { x: 510, y: 380, h: 330 },
+                                  400: { x: 560, y: 430, h: 355 },
+                                  450: { x: 610, y: 485, h: 380 },
+                                  500: { x: 660, y: 535, h: 405 },
+                                  550: { x: 710, y: 585, h: 430 },
+                                  600: { x: 760, y: 635, h: 460 },
+                                  650: { x: 815, y: 693, h: 485 },
+                                  700: { x: 865, y: 733, h: 510 },
+                                  750: { x: 915, y: 793, h: 535 },
+                                  800: { x: 970, y: 833, h: 560 },
+                                  850: { x: 1020, y: 883, h: 585 },
+                                  900: { x: 1070, y: 933, h: 610 }
+                                };
+                                const duckfootDefaults = dn && duckfootWeldDefaults[dn] ? duckfootWeldDefaults[dn] : { x: 500, y: 400, h: 400 };
+                                const duckfootBasePlateXMm = entry.specs?.duckfootBasePlateXMm || duckfootDefaults.x;
+                                const duckfootBasePlateYMm = entry.specs?.duckfootBasePlateYMm || duckfootDefaults.y;
+                                const duckfootRibHeightMm = duckfootDefaults.h;
+                                const duckfootPointDDeg = entry.specs?.duckfootGussetPointDDegrees || 15;
+                                const duckfootPointCDeg = entry.specs?.duckfootGussetPointCDegrees || 75;
+
+                                const outerRadiusMm = mainOdMm / 2;
+                                const bendRadiusMm = entry.specs?.bendRadiusMm || (dn ? dn * 1.5 : 750);
+                                const extradosRadiusMm = bendRadiusMm + outerRadiusMm;
+                                const duckfootYOffsetMm = 800;
+
+                                // Blue gusset cutout weld (semicircle where it welds to pipe)
+                                const blueGussetCutoutWeld = isDuckfootBend ? Math.PI * outerRadiusMm : 0;
+
+                                // Yellow gusset curve weld (arc from point D to point C along extrados)
+                                const pointDRad = (duckfootPointDDeg * Math.PI) / 180;
+                                const pointCRad = (duckfootPointCDeg * Math.PI) / 180;
+                                const yellowGussetCurveWeld = isDuckfootBend ? extradosRadiusMm * (pointCRad - pointDRad) : 0;
+
+                                // Gusset intersection weld (4 corners from base plate to where gussets meet)
+                                const extradosAt45Y = bendRadiusMm - extradosRadiusMm * Math.cos(Math.PI / 4) + duckfootYOffsetMm + duckfootRibHeightMm;
+                                const gussetIntersectionHeight = extradosAt45Y - outerRadiusMm / 2;
+                                const gussetIntersectionWeld = isDuckfootBend ? 4 * gussetIntersectionHeight : 0;
+
+                                // Blue gusset to base plate weld (both sides of the plate)
+                                const blueGussetToBaseWeld = isDuckfootBend ? 2 * duckfootBasePlateYMm : 0;
+
+                                // Yellow gusset to base plate weld (both sides of the plate)
+                                const yellowGussetToBaseWeld = isDuckfootBend ? 2 * duckfootBasePlateXMm : 0;
+
+                                const totalDuckfootWeld = blueGussetCutoutWeld + yellowGussetCurveWeld + gussetIntersectionWeld + blueGussetToBaseWeld + yellowGussetToBaseWeld;
+
+                                const calculatedTotalWeld = mitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear + saddleWeldLinear + totalDuckfootWeld;
 
                                 return (
                                   <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
@@ -3178,6 +3230,16 @@ export default function BendForm({
                                       )}
                                       {isSweepTee && saddleWeldLinear > 0 && (
                                         <p>1 × Saddle ({mainOdMm.toFixed(0)}OD × 2.7) = {saddleWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
+                                      )}
+                                      {isDuckfootBend && (
+                                        <>
+                                          <p className="font-medium text-purple-600 dark:text-purple-400 mt-1 border-t border-purple-200 pt-1">Duckfoot Steelwork:</p>
+                                          <p>Blue cutout (π×{outerRadiusMm.toFixed(0)}) = {blueGussetCutoutWeld.toFixed(0)}mm</p>
+                                          <p>Yellow curve ({duckfootPointDDeg}°-{duckfootPointCDeg}°) = {yellowGussetCurveWeld.toFixed(0)}mm</p>
+                                          <p>Gusset corners (4×{gussetIntersectionHeight.toFixed(0)}) = {gussetIntersectionWeld.toFixed(0)}mm</p>
+                                          <p>Blue→Base (2×{duckfootBasePlateYMm}) = {blueGussetToBaseWeld.toFixed(0)}mm</p>
+                                          <p>Yellow→Base (2×{duckfootBasePlateXMm}) = {yellowGussetToBaseWeld.toFixed(0)}mm</p>
+                                        </>
                                       )}
                                       <p className="font-semibold border-t border-purple-300 pt-0.5 mt-1">Total: {calculatedTotalWeld.toFixed(0)}mm ({(calculatedTotalWeld / 1000).toFixed(2)} l/m)</p>
                                     </div>

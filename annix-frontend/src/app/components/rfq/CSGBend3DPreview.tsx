@@ -2,14 +2,40 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
-import { OrbitControls, Center, Environment, ContactShadows, Tube, Line as DreiLine, Text } from '@react-three/drei'
+import { OrbitControls, Center, Environment, ContactShadows, Tube, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { log } from '@/app/lib/logger'
 import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs'
 
-const Line = (props: React.ComponentProps<typeof DreiLine>) => {
-  const { size } = useThree()
-  return <DreiLine {...props} resolution={new THREE.Vector2(size.width, size.height)} />
+interface SimpleLineProps {
+  points: Array<[number, number, number]>
+  color?: string
+  lineWidth?: number
+  dashed?: boolean
+  dashSize?: number
+  gapSize?: number
+}
+
+const Line = ({ points, color = '#000000', lineWidth = 1, dashed = false, dashSize = 0.1, gapSize = 0.1 }: SimpleLineProps) => {
+  const tubeGeo = useMemo(() => {
+    if (points.length < 2) return null
+    const curve = new THREE.CatmullRomCurve3(
+      points.map(p => new THREE.Vector3(p[0], p[1], p[2])),
+      false,
+      'catmullrom',
+      0
+    )
+    const tubeRadius = lineWidth * 0.01
+    return new THREE.TubeGeometry(curve, Math.max(points.length * 4, 8), tubeRadius, 6, false)
+  }, [points, lineWidth])
+
+  if (!tubeGeo) return null
+
+  return (
+    <mesh geometry={tubeGeo} renderOrder={999}>
+      <meshBasicMaterial color={color} depthTest={false} />
+    </mesh>
+  )
 }
 
 type StubOrientation = 'top' | 'bottom' | 'inside' | 'outside'
@@ -2047,16 +2073,17 @@ const Scene = (props: Props) => {
         const basePlateColor = { color: '#555555', metalness: 0.6, roughness: 0.4 };
         const ribColor = { color: '#666666', metalness: 0.5, roughness: 0.5 };
 
-        // After duckfoot rotation [π/2, 0, -π/2], the bend's midpoint (45°) is at X = -sin(45°) * bendR
-        // Center the steelwork so blue gusset aligns with the bend's center
         const bendMidpointX = -Math.sin(Math.PI / 4) * bendR;
-        const steelworkX = bendMidpointX;
+        const gussetRefX = bendMidpointX;
+        const steelworkX = 0;
         const steelworkY = -ribHeightH;
         const steelworkZ = 0;
+        const steelworkRotationY = -Math.PI / 2;
+        const visualOffsetY = -10;
 
 
         return (
-          <group position={[steelworkX, steelworkY, steelworkZ]}>
+          <group position={[steelworkX, steelworkY + visualOffsetY, steelworkZ]} rotation={[0, steelworkRotationY, 0]}>
             {/* Base Plate - horizontal at bottom */}
             <mesh position={[0, -plateThickness / 2, 0]}>
               <boxGeometry args={[basePlateXDim, plateThickness, basePlateYDim]} />
@@ -2186,7 +2213,7 @@ const Scene = (props: Props) => {
               // Convert to local coordinates (relative to steelwork group position)
               const extradosLocalX = (angleDeg: number) => {
                 const angleRad = (angleDeg * Math.PI) / 180;
-                return -extradosR * Math.sin(angleRad) - steelworkX;
+                return -extradosR * Math.sin(angleRad) - gussetRefX;
               };
               const extradosLocalY = (angleDeg: number) => {
                 const angleRad = (angleDeg * Math.PI) / 180;
@@ -2282,6 +2309,79 @@ const Scene = (props: Props) => {
                   >
                     C
                   </Text>
+                </group>
+              );
+            })()}
+
+            {/* Weld lines visualization */}
+            {(() => {
+              const weldLineColor = '#000000';
+              const weldLineWidth = 8;
+
+              const extradosR = bendR + outerR;
+              const midAngleRad = Math.PI / 4;
+              const extradosAt45Y = (bendR - extradosR * Math.cos(midAngleRad) + duckfootYOffset) - steelworkY;
+              const cutoutRadius = outerR;
+              const cutoutBottomY = extradosAt45Y - cutoutRadius / 2;
+              const cutoutCenterY = cutoutBottomY + cutoutRadius;
+              const gussetIntersectionHeight = cutoutBottomY;
+
+              const pointDAngleDegrees = duckfootGussetPointDDegrees || 15;
+              const pointCAngleDegrees = duckfootGussetPointCDegrees || 75;
+
+              const extradosLocalX = (angleDeg: number) => {
+                const angleRad = (angleDeg * Math.PI) / 180;
+                return -extradosR * Math.sin(angleRad) - gussetRefX;
+              };
+              const extradosLocalY = (angleDeg: number) => {
+                const angleRad = (angleDeg * Math.PI) / 180;
+                return (bendR - extradosR * Math.cos(angleRad) + duckfootYOffset) - steelworkY;
+              };
+
+              const halfPlateX = basePlateXDim / 2;
+              const halfPlateY = basePlateYDim / 2;
+
+              const blueGussetCutoutPoints: Array<[number, number, number]> = [];
+              const arcSegments = 24;
+              for (let i = 0; i <= arcSegments; i++) {
+                const angle = (i / arcSegments) * Math.PI;
+                const arcZ = cutoutRadius * Math.cos(angle);
+                const arcY = cutoutCenterY - cutoutRadius * Math.sin(angle);
+                blueGussetCutoutPoints.push([0, arcY, arcZ]);
+              }
+
+              const yellowGussetCurvePoints: Array<[number, number, number]> = [];
+              const curveSegments = 16;
+              for (let i = 0; i <= curveSegments; i++) {
+                const angleDeg = pointDAngleDegrees + (i / curveSegments) * (pointCAngleDegrees - pointDAngleDegrees);
+                const localX = extradosLocalX(angleDeg);
+                const localY = extradosLocalY(angleDeg);
+                yellowGussetCurvePoints.push([localX, Math.max(0.1, localY), 0]);
+              }
+
+              const weldOffset = 0.05;
+
+              return (
+                <group>
+                  {/* 1. Blue gusset cutout weld (semicircle where it welds to pipe) */}
+                  <Line points={blueGussetCutoutPoints} color={weldLineColor} lineWidth={weldLineWidth} />
+
+                  {/* 2. Yellow gusset curve weld (arc from D to C) */}
+                  <Line points={yellowGussetCurvePoints} color={weldLineColor} lineWidth={weldLineWidth} />
+
+                  {/* 3. Gusset intersection welds (4 corners where blue and yellow meet) */}
+                  <Line points={[[ribThickness/2 + weldOffset, weldOffset, weldOffset], [ribThickness/2 + weldOffset, gussetIntersectionHeight, weldOffset]]} color={weldLineColor} lineWidth={weldLineWidth} />
+                  <Line points={[[-ribThickness/2 - weldOffset, weldOffset, weldOffset], [-ribThickness/2 - weldOffset, gussetIntersectionHeight, weldOffset]]} color={weldLineColor} lineWidth={weldLineWidth} />
+                  <Line points={[[weldOffset, weldOffset, ribThickness/2 + weldOffset], [weldOffset, gussetIntersectionHeight, ribThickness/2 + weldOffset]]} color={weldLineColor} lineWidth={weldLineWidth} />
+                  <Line points={[[weldOffset, weldOffset, -ribThickness/2 - weldOffset], [weldOffset, gussetIntersectionHeight, -ribThickness/2 - weldOffset]]} color={weldLineColor} lineWidth={weldLineWidth} />
+
+                  {/* 4. Blue gusset to base plate weld (both sides along Z) */}
+                  <Line points={[[ribThickness/2 + weldOffset, weldOffset, -halfPlateY], [ribThickness/2 + weldOffset, weldOffset, halfPlateY]]} color={weldLineColor} lineWidth={weldLineWidth} />
+                  <Line points={[[-ribThickness/2 - weldOffset, weldOffset, -halfPlateY], [-ribThickness/2 - weldOffset, weldOffset, halfPlateY]]} color={weldLineColor} lineWidth={weldLineWidth} />
+
+                  {/* 5. Yellow gusset to base plate weld (both sides along X) */}
+                  <Line points={[[-halfPlateX, weldOffset, ribThickness/2 + weldOffset], [halfPlateX, weldOffset, ribThickness/2 + weldOffset]]} color={weldLineColor} lineWidth={weldLineWidth} />
+                  <Line points={[[-halfPlateX, weldOffset, -ribThickness/2 - weldOffset], [halfPlateX, weldOffset, -ribThickness/2 - weldOffset]]} color={weldLineColor} lineWidth={weldLineWidth} />
                 </group>
               );
             })()}
