@@ -25,23 +25,24 @@ function Throw-Error {
 }
 
 function Use-NodeVersion {
+    if (Get-Command node -ErrorAction SilentlyContinue) {
+        $current = (node -v)
+        $normalized = [Version]($current.TrimStart('v'))
+        if ($normalized.Major -ge 22) {
+            Write-Info "Using system Node $current"
+            return
+        }
+    }
+
     if (Get-Command nvm -ErrorAction SilentlyContinue) {
         nvm install $NodeVersion | Out-Null
         nvm use $NodeVersion | Out-Null
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
         Write-Info "Using Node $(node -v) via nvm-windows"
         return
     }
 
-    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-        Throw-Error "Node.js not detected. Install Node $NodeVersion or nvm-windows."
-    }
-
-    $current = (node -v)
-    $normalized = [Version]($current.TrimStart('v'))
-    if ($normalized.Major -lt 22) {
-        Throw-Error "Node $current is too old. Install Node $NodeVersion or newer."
-    }
-    Write-Info "Using system Node $current"
+    Throw-Error "Node.js not detected. Install Node $NodeVersion or nvm-windows."
 }
 
 function Ensure-Pnpm {

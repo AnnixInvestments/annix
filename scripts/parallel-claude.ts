@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import { execSync, spawn, ChildProcess } from 'child_process';
 import { existsSync, openSync, readFileSync, writeFileSync, unlinkSync, mkdtempSync } from 'fs';
 import { createInterface, emitKeypressEvents, Key } from 'readline';
-import { tmpdir } from 'os';
+import { tmpdir, homedir } from 'os';
 import { join } from 'path';
 
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
@@ -223,8 +223,10 @@ function appProcessStatus(): { backend: boolean; frontend: boolean } {
   const isWindows = process.platform === 'win32';
 
   if (isWindows) {
-    const backend = exec('netstat -ano | findstr ":4001.*LISTENING"', { silent: true }) !== '';
-    const frontend = exec('netstat -ano | findstr ":3000.*LISTENING"', { silent: true }) !== '';
+    const netstat = exec('netstat -ano', { silent: true });
+    const lines = netstat.split('\n');
+    const backend = lines.some(line => line.includes(':4001') && line.includes('LISTENING'));
+    const frontend = lines.some(line => line.includes(':3000') && line.includes('LISTENING'));
     return { backend, frontend };
   } else {
     const backend = exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== '';
@@ -424,7 +426,7 @@ const terminalWidth = () => process.stdout.columns || 80;
 const boxContentWidth = () => terminalWidth() - 2;
 
 function printHeader(): void {
-  console.clear();
+  process.stdout.write('\x1b[2J\x1b[H');
   const width = boxContentWidth();
   log.print(chalk.bold.cyan('┌' + '─'.repeat(width) + '┐'));
   const title = '  Parallel Claude';
@@ -523,12 +525,44 @@ async function pullChanges(): Promise<void> {
   log.warn(`\nPulling changes for ${branch}...`);
   exec('git fetch origin');
 
+  const hasChanges = exec('git status --porcelain', { silent: true }) !== '';
+  let stashed = false;
+
+  if (hasChanges) {
+    log.info('Stashing local changes...');
+    try {
+      execSync('git stash push -m "parallel-claude auto-stash"', { cwd: rootDir(), stdio: 'pipe' });
+      stashed = true;
+    } catch {
+      log.error('✗ Failed to stash changes');
+      await confirm({ message: 'Press Enter to continue...', default: true });
+      return;
+    }
+  }
+
   try {
     execSync(`git pull --rebase origin ${branch}`, { cwd: rootDir(), stdio: 'inherit' });
     log.info(`✓ Pulled latest changes for ${branch}`);
-  } catch {
-    log.error(`✗ Pull failed. You may have local changes or conflicts to resolve.`);
+  } catch (error) {
+    const errorMsg = (error as { stderr?: Buffer })?.stderr?.toString() || '';
+    log.error(`✗ Pull failed${errorMsg ? ': ' + errorMsg.trim() : ''}`);
+    if (stashed) {
+      log.info('Restoring stashed changes...');
+      exec('git stash pop', { silent: true });
+    }
+    await confirm({ message: 'Press Enter to continue...', default: true });
     return;
+  }
+
+  if (stashed) {
+    log.info('Restoring stashed changes...');
+    try {
+      execSync('git stash pop', { cwd: rootDir(), stdio: 'pipe' });
+      log.info('✓ Local changes restored');
+    } catch {
+      log.warn('⚠ Could not auto-restore stashed changes. Run "git stash pop" manually.');
+      await confirm({ message: 'Press Enter to continue...', default: true });
+    }
   }
 
   const headAfter = exec('git rev-parse HEAD', { silent: true });
@@ -684,7 +718,8 @@ async function startApp(): Promise<void> {
 
   killExistingProcesses();
 
-  log.info('\nStarting development server in background...');
+  const isWindows = process.platform === 'win32';
+  log.info(isWindows ? '\nStarting development server in new tab...' : '\nStarting development server in background...');
 
   appStatus = 'starting';
   appErrorMessage = null;
@@ -693,19 +728,27 @@ async function startApp(): Promise<void> {
     unlinkSync(APP_LOG_FILE);
   }
 
-  const isWindows = process.platform === 'win32';
-
   if (isWindows) {
-    const logPath = APP_LOG_FILE.replace(/\\/g, '/');
-    const cmd = `powershell -ExecutionPolicy Bypass -NoProfile -File run-dev.ps1 *> "${logPath}"`;
+    const scriptPath = join(rootDir(), 'run-dev.ps1');
+    const hasWindowsTerminal = exec('where wt', { silent: true }) !== '';
 
-    appProcess = spawn(cmd, [], {
-      cwd: rootDir(),
-      stdio: 'ignore',
-      detached: true,
-      shell: true,
-      windowsHide: true,
-    });
+    if (hasWindowsTerminal) {
+      const wtCmd = `wt -w 0 new-tab --title "App Dev Server" -d "${rootDir()}" powershell -ExecutionPolicy Bypass -NoProfile -File "${scriptPath}"`;
+      appProcess = spawn(wtCmd, [], {
+        cwd: rootDir(),
+        stdio: 'ignore',
+        detached: true,
+        shell: true,
+        env: process.env,
+      });
+    } else {
+      appProcess = spawn('powershell', ['-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', scriptPath], {
+        cwd: rootDir(),
+        stdio: 'ignore',
+        detached: true,
+        env: process.env,
+      });
+    }
   } else {
     const logFd = openSync(APP_LOG_FILE, 'w');
     appProcess = spawn('bash', ['./run-dev.sh'], {
@@ -735,7 +778,27 @@ async function startApp(): Promise<void> {
     log.error(`App failed to start: ${err.message}`);
   });
 
-  log.info('✓ App started in background. Use "View logs" to see output.');
+  const maxWaitMs = 120000;
+  const pollIntervalMs = 2000;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxWaitMs) {
+    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+
+    const status = appProcessStatus();
+
+    if (status.backend && status.frontend) {
+      appStatus = 'running';
+      return;
+    }
+
+    if (appStatus === 'error') {
+      return;
+    }
+  }
+
+  appStatus = 'error';
+  appErrorMessage = 'Timed out waiting for app';
 }
 
 async function stopApp(): Promise<void> {
@@ -786,7 +849,7 @@ async function showAppLogs(): Promise<void> {
 
     const lines = readAppLogs(contentHeight);
 
-    console.clear();
+    process.stdout.write('\x1b[2J\x1b[H');
 
     const title = '  📄 App Logs (live)';
     log.print(chalk.bold.cyan('┌' + '─'.repeat(contentWidth) + '┐'));
@@ -836,7 +899,7 @@ async function showAppLogs(): Promise<void> {
     }
   });
 
-  console.clear();
+  process.stdout.write('\x1b[2J\x1b[H');
 }
 
 async function showBranchMenu(): Promise<void> {
@@ -1072,7 +1135,7 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
     if (hasWindowsTerminal) {
       const claudePath = exec('where claude.cmd', { silent: true }).split('\n')[0].trim();
       const fullWinCmd = winCmd.replace(/^claude/, `"${claudePath}"`);
-      const wtCmd = `wt -w ${WINDOW_NAME} new-tab --title "Claude ${sessionCounter}" -d "${sessionDir}" ${fullWinCmd}`;
+      const wtCmd = `wt -w 0 new-tab --title "Claude ${sessionCounter}" -d "${sessionDir}" ${fullWinCmd}`;
       sessionProcess = spawn(wtCmd, [], {
         cwd: rootDir(),
         detached: true,
@@ -1911,15 +1974,31 @@ async function mainMenu(): Promise<void> {
     ];
 
     if (hasAppScripts) {
+      const isWindows = process.platform === 'win32';
       choices.push(
         { name: `🚀 ${padLabel('Start app', 28)}${chalk.cyan('[a]')}`, value: 'start', key: 'a' },
-        { name: `📄 ${padLabel('View app logs', 28)}${chalk.cyan('[l]')}`, value: 'logs', key: 'l' },
+      );
+      if (!isWindows) {
+        choices.push(
+          { name: `📄 ${padLabel('View app logs', 28)}${chalk.cyan('[l]')}`, value: 'logs', key: 'l' },
+        );
+      }
+      choices.push(
         { name: `🛑 ${padLabel('Stop app', 28)}${chalk.cyan('[x]')}`, value: 'stop', key: 'x' },
       );
     }
 
     choices.push(
       { name: `🔄 ${padLabel('Refresh', 28)}${chalk.cyan('[r]')}`, value: 'refresh', key: 'r' },
+    );
+
+    if (process.platform === 'win32') {
+      choices.push(
+        { name: `🖥️ ${padLabel('Create desktop shortcut', 28)}${chalk.cyan('[d]')}`, value: 'shortcut', key: 'd' },
+      );
+    }
+
+    choices.push(
       { name: chalk.dim(`❌ ${padLabel('Quit', 28)}[q]`), value: 'quit', key: 'q' },
     );
 
@@ -1939,13 +2018,21 @@ async function mainMenu(): Promise<void> {
         await startApp();
         break;
       case 'logs':
-        await showAppLogs();
+        if (process.platform === 'win32') {
+          log.info('\nOn Windows, app logs are visible in the "App Dev Server" tab.\n');
+          await confirm({ message: 'Press Enter to continue...', default: true });
+        } else {
+          await showAppLogs();
+        }
         break;
       case 'stop':
         await stopApp();
         break;
       case 'refresh':
         // Just loop again
+        break;
+      case 'shortcut':
+        await createDesktopShortcut();
         break;
       case 'quit':
         if (appProcess || isAppProcessRunning()) {
@@ -1963,37 +2050,47 @@ async function mainMenu(): Promise<void> {
   }
 }
 
-const WINDOW_NAME = 'ParallelClaude';
-
 function ensureNamedWindow(): boolean {
-  if (process.platform !== 'win32') return true;
+  return true;
+}
 
-  if (process.env.PARALLEL_CLAUDE_WINDOW === '1') {
-    return true;
+async function createDesktopShortcut(): Promise<void> {
+  if (process.platform !== 'win32') {
+    log.warn('Desktop shortcuts are only supported on Windows.');
+    return;
   }
 
-  const hasWindowsTerminal = exec('where wt', { silent: true }) !== '';
-  if (!hasWindowsTerminal) return true;
+  const desktop = join(homedir(), 'Desktop');
+  const launcherPath = join(desktop, 'ParallelClaude.ps1');
+  const shortcutPath = join(desktop, 'Parallel Claude.lnk');
+  const tempScript = join(tmpdir(), 'create-shortcut.ps1');
 
-  log.info('Launching in named window...');
-
-  const tempBat = join(tmpdir(), 'parallel-claude-launch.bat');
-  const batContent = `@echo off
-cd /d "${rootDir()}"
-set PARALLEL_CLAUDE_WINDOW=1
-pnpm parallel-claude
+  const launcherContent = `Set-Location "${rootDir()}"
+npx ts-node --transpile-only scripts/parallel-claude.ts
 `;
-  writeFileSync(tempBat, batContent);
 
-  const cmd = `wt --window ${WINDOW_NAME} new-tab --title "Parallel Claude" cmd /k "${tempBat}"`;
+  writeFileSync(launcherPath, launcherContent);
+
+  const shortcutScript = [
+    '$WshShell = New-Object -ComObject WScript.Shell',
+    `$Shortcut = $WshShell.CreateShortcut("${shortcutPath}")`,
+    '$Shortcut.TargetPath = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"',
+    `$Shortcut.Arguments = '-NoExit -File "${launcherPath}"'`,
+    `$Shortcut.WorkingDirectory = "${rootDir()}"`,
+    '$Shortcut.Save()',
+  ].join('\n');
+
+  writeFileSync(tempScript, shortcutScript);
 
   try {
-    spawn(cmd, [], { cwd: rootDir(), shell: true, stdio: 'ignore', detached: true }).unref();
-    return false;
-  } catch {
-    log.error('Failed to launch named window');
-    return true;
+    execSync(`powershell -ExecutionPolicy Bypass -File "${tempScript}"`, { stdio: 'pipe' });
+    log.info(chalk.green('\n✓ Desktop shortcut created!'));
+    log.info('  Right-click it and select "Pin to taskbar" for quick access.\n');
+  } catch (err) {
+    log.error('Failed to create desktop shortcut: ' + (err as Error).message);
   }
+
+  await confirm({ message: 'Press Enter to continue...', default: true });
 }
 
 async function main(): Promise<void> {
