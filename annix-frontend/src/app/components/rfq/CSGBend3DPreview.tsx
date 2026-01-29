@@ -1868,20 +1868,20 @@ const Scene = (props: Props) => {
 
                     for (let i = 0; i <= arcSegments; i++) {
                       const t = i / arcSegments;
-                      const currentAngle = (Math.PI / 2 - angleRad) + t * angleRad;
+                      const currentAngle = t * angleRad;
                       arcPoints.push([
-                        insideCorner.x + arcRadius3D * Math.cos(currentAngle),
-                        arcRadius3D * Math.sin(currentAngle),
-                        0
+                        insideCorner.x + arcRadius3D * Math.sin(currentAngle),
+                        0,
+                        arcRadius3D * Math.cos(currentAngle)
                       ]);
                     }
 
-                    const midAngle = Math.PI / 2 - angleRad / 2;
+                    const midAngle = angleRad / 2;
                     const textRadius = arcRadius3D * 0.6;
                     const textPos = new THREE.Vector3(
-                      insideCorner.x + textRadius * Math.cos(midAngle),
-                      textRadius * Math.sin(midAngle),
-                      0
+                      insideCorner.x + textRadius * Math.sin(midAngle),
+                      0,
+                      textRadius * Math.cos(midAngle)
                     );
 
                     return (
