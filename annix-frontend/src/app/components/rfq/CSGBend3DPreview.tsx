@@ -2788,11 +2788,11 @@ export default function CSGBend3DPreview(props: Props) {
         <div className="font-bold text-blue-800 mb-0.5">BEND</div>
         <div className="text-gray-900 font-medium">OD: {odMm.toFixed(0)}mm | ID: {(odMm - 2 * props.wallThickness).toFixed(0)}mm</div>
         <div className="text-gray-700">WT: {props.wallThickness}mm | {props.bendAngle}°</div>
-        {props.bendItemType !== 'SWEEP_TEE' && props.bendItemType !== 'DUCKFOOT_BEND' && (props.tangent1 > 0 || props.tangent2 > 0) && (
+        {props.bendItemType !== 'SWEEP_TEE' && props.bendItemType !== 'DUCKFOOT_BEND' && ((props.tangent1 || 0) > 0 || (props.tangent2 || 0) > 0) && (
           <div className="text-gray-700">
-            {props.tangent1 > 0 && props.tangent2 > 0
+            {(props.tangent1 || 0) > 0 && (props.tangent2 || 0) > 0
               ? `T1: ${props.tangent1}mm | T2: ${props.tangent2}mm`
-              : props.tangent1 > 0
+              : (props.tangent1 || 0) > 0
                 ? `T1: ${props.tangent1}mm`
                 : `T2: ${props.tangent2}mm`}
           </div>
@@ -3063,11 +3063,11 @@ export default function CSGBend3DPreview(props: Props) {
               <div className="font-bold text-blue-800 mb-1">BEND</div>
               <div className="text-gray-900 font-medium">OD: {odMm.toFixed(0)}mm | ID: {(odMm - 2 * props.wallThickness).toFixed(0)}mm</div>
               <div className="text-gray-700">WT: {props.wallThickness}mm | {props.bendAngle}°</div>
-              {props.bendItemType !== 'SWEEP_TEE' && props.bendItemType !== 'DUCKFOOT_BEND' && (props.tangent1 > 0 || props.tangent2 > 0) && (
+              {props.bendItemType !== 'SWEEP_TEE' && props.bendItemType !== 'DUCKFOOT_BEND' && ((props.tangent1 || 0) > 0 || (props.tangent2 || 0) > 0) && (
                 <div className="text-gray-700">
-                  {props.tangent1 > 0 && props.tangent2 > 0
+                  {(props.tangent1 || 0) > 0 && (props.tangent2 || 0) > 0
                     ? `T1: ${props.tangent1}mm | T2: ${props.tangent2}mm`
-                    : props.tangent1 > 0
+                    : (props.tangent1 || 0) > 0
                       ? `T1: ${props.tangent1}mm`
                       : `T2: ${props.tangent2}mm`}
                 </div>
