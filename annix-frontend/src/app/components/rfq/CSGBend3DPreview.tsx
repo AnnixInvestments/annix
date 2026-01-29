@@ -2042,28 +2042,30 @@ const Scene = (props: Props) => {
                 innerR={innerR}
                 nb={nominalBore}
               />
-              {/* L/F dimension lines - vertical with large text below */}
+              {/* L/F dimension lines - at bottom of pipe */}
               {(() => {
-                const dimOffset = outerR * 1.5;
-                const dimY = -outerR - dimOffset;
+                const dimX = -outerR - outerR * 0.3;
+                const dimXOuter = -outerR - outerR * 0.8;
                 return (
                   <>
                     {/* Vertical line from pipe end down */}
-                    <Line points={[[0, 0, 0], [0, dimY, 0]]} color="#cc6600" lineWidth={2} />
+                    <Line points={[[dimX, 0, 0], [dimXOuter, 0, 0]]} color="#cc6600" lineWidth={2} />
                     {/* Vertical line from closure end down */}
-                    <Line points={[[0, 0, -closureLength], [0, dimY, -closureLength]]} color="#cc6600" lineWidth={2} />
+                    <Line points={[[dimX, 0, -closureLength], [dimXOuter, 0, -closureLength]]} color="#cc6600" lineWidth={2} />
                     {/* Horizontal line connecting at bottom */}
-                    <Line points={[[0, dimY, 0], [0, dimY, -closureLength]]} color="#cc6600" lineWidth={3} />
-                    {/* Arrow head at closure end */}
-                    <Line points={[[0, dimY + 0.08, -closureLength + 0.08], [0, dimY, -closureLength], [0, dimY - 0.08, -closureLength + 0.08]]} color="#cc6600" lineWidth={2} />
+                    <Line points={[[dimXOuter, 0, 0], [dimXOuter, 0, -closureLength]]} color="#cc6600" lineWidth={3} />
+                    {/* Arrow heads */}
+                    <Line points={[[dimXOuter + 0.05, 0, 0.05], [dimXOuter, 0, 0], [dimXOuter - 0.05, 0, 0.05]]} color="#cc6600" lineWidth={2} />
+                    <Line points={[[dimXOuter + 0.05, 0, -closureLength - 0.05], [dimXOuter, 0, -closureLength], [dimXOuter - 0.05, 0, -closureLength - 0.05]]} color="#cc6600" lineWidth={2} />
                     {/* Closure length text - large font below */}
                     <Text
-                      position={[0, dimY - outerR * 0.5, -closureLength / 2]}
+                      position={[dimXOuter - outerR * 0.3, 0, -closureLength / 2]}
                       fontSize={outerR * 0.5}
                       color="#cc6600"
                       anchorX="center"
-                      anchorY="top"
+                      anchorY="middle"
                       fontWeight="bold"
+                      rotation={[0, Math.PI / 2, 0]}
                     >
                       {`${closureLengthMm || 150}mm`}
                     </Text>
