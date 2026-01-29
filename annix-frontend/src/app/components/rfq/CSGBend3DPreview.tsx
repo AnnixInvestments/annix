@@ -1375,7 +1375,8 @@ const Scene = (props: Props) => {
         )}
 
         {/* Degree markers on extrados (outside radius) every 5 degrees - LOCKED for duckfoot bends only */}
-        {isDuckfoot && Array.from({ length: 19 }).map((_, i) => {
+        {/* Hide markers when C/F dimension lines are shown to avoid duplicate angle labels */}
+        {isDuckfoot && !centerToFaceMm && Array.from({ length: 19 }).map((_, i) => {
           const degrees = i * 5;
           const markerAngleRad = (degrees * Math.PI) / 180;
 
