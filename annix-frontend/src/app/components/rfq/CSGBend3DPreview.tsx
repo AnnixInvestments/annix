@@ -1737,38 +1737,46 @@ const Scene = (props: Props) => {
                         C/F: {cfValue}mm
                       </div>
                     </Html>
-                    {/* 90° angle arc at corner */}
+                    {/* 3D 90° angle arc at corner */}
                     {(() => {
-                      const startAngle = Math.PI / 2 - sweepAngleRad
-                      const startX = arcRadius * Math.cos(startAngle)
-                      const startY = arcRadius * Math.sin(startAngle)
-                      const endX = 0
-                      const endY = arcRadius
-                      const midAngle = Math.PI / 2 - sweepAngleRad / 2
-                      const textDistance = arcRadius * 0.55
-                      const textX = textDistance * Math.cos(midAngle)
-                      const textY = textDistance * Math.sin(midAngle)
+                      const arcRadius3D = outerR * 0.8
+                      const arcSegments = 32
+                      const arcPoints: [number, number, number][] = []
+
+                      for (let i = 0; i <= arcSegments; i++) {
+                        const t = i / arcSegments
+                        const currentAngle = t * (Math.PI / 2)
+                        arcPoints.push([
+                          0,
+                          arcRadius3D * Math.sin(currentAngle),
+                          aLineZ - arcRadius3D * (1 - Math.cos(currentAngle))
+                        ])
+                      }
+
+                      const textPos = new THREE.Vector3(
+                        0,
+                        arcRadius3D * 0.4,
+                        aLineZ - arcRadius3D * 0.4
+                      )
+
                       return (
-                        <Html position={cornerPos} center>
-                          <svg width="80" height="80" viewBox="-40 -40 80 80" style={{ overflow: 'visible' }}>
-                            <path
-                              d={`M ${startX.toFixed(2)} ${startY.toFixed(2)} A ${arcRadius} ${arcRadius} 0 0 1 ${endX} ${endY}`}
-                              fill="none"
-                              stroke="#cc6600"
-                              strokeWidth="2"
-                            />
-                            <text
-                              x={textX.toFixed(2)}
-                              y={(textY + 4).toFixed(2)}
-                              fill="#cc6600"
-                              fontSize="12"
-                              fontWeight="bold"
-                              textAnchor="middle"
-                            >
-                              90°
-                            </text>
-                          </svg>
-                        </Html>
+                        <>
+                          <Line
+                            points={arcPoints}
+                            color="#cc6600"
+                            lineWidth={2}
+                          />
+                          <Text
+                            position={[textPos.x, textPos.y, textPos.z]}
+                            fontSize={outerR * 0.4}
+                            color="#cc6600"
+                            anchorX="center"
+                            anchorY="middle"
+                            fontWeight="bold"
+                          >
+                            90°
+                          </Text>
+                        </>
                       )
                     })()}
                   </>
@@ -1852,40 +1860,48 @@ const Scene = (props: Props) => {
                       C/F: {cfMm}mm
                     </div>
                   </Html>
-                  {/* Arc showing angle at inside corner - scales with bend angle */}
+                  {/* 3D Arc showing angle at inside corner - scales with bend angle */}
                   {(() => {
-                    const arcRadius = 30;
-                    const startAngle = Math.PI / 2 - angleRad;
-                    const startX = arcRadius * Math.cos(startAngle);
-                    const startY = arcRadius * Math.sin(startAngle);
-                    const endX = 0;
-                    const endY = arcRadius;
-                    const largeArc = angleRad > Math.PI ? 1 : 0;
+                    const arcRadius3D = outerR * 0.8;
+                    const arcSegments = 32;
+                    const arcPoints: [number, number, number][] = [];
+
+                    for (let i = 0; i <= arcSegments; i++) {
+                      const t = i / arcSegments;
+                      const currentAngle = (Math.PI / 2 - angleRad) + t * angleRad;
+                      arcPoints.push([
+                        insideCorner.x + arcRadius3D * Math.cos(currentAngle),
+                        arcRadius3D * Math.sin(currentAngle),
+                        0
+                      ]);
+                    }
+
                     const midAngle = Math.PI / 2 - angleRad / 2;
-                    const textDistance = arcRadius * 0.55;
-                    const textX = textDistance * Math.cos(midAngle);
-                    const textY = textDistance * Math.sin(midAngle);
+                    const textRadius = arcRadius3D * 0.6;
+                    const textPos = new THREE.Vector3(
+                      insideCorner.x + textRadius * Math.cos(midAngle),
+                      textRadius * Math.sin(midAngle),
+                      0
+                    );
+
                     return (
-                      <Html position={[insideCorner.x, insideCorner.y, insideCorner.z]} center>
-                        <svg width="80" height="80" viewBox="-40 -40 80 80" style={{ overflow: 'visible' }}>
-                          <path
-                            d={`M ${startX.toFixed(2)} ${startY.toFixed(2)} A ${arcRadius} ${arcRadius} 0 ${largeArc} 1 ${endX} ${endY}`}
-                            fill="none"
-                            stroke="#cc6600"
-                            strokeWidth="2"
-                          />
-                          <text
-                            x={textX.toFixed(2)}
-                            y={(textY + 4).toFixed(2)}
-                            fill="#cc6600"
-                            fontSize="12"
-                            fontWeight="bold"
-                            textAnchor="middle"
-                          >
-                            {bendDegrees}°
-                          </text>
-                        </svg>
-                      </Html>
+                      <>
+                        <Line
+                          points={arcPoints}
+                          color="#cc6600"
+                          lineWidth={2}
+                        />
+                        <Text
+                          position={[textPos.x, textPos.y, textPos.z]}
+                          fontSize={outerR * 0.4}
+                          color="#cc6600"
+                          anchorX="center"
+                          anchorY="middle"
+                          fontWeight="bold"
+                        >
+                          {bendDegrees}°
+                        </Text>
+                      </>
                     );
                   })()}
                 </>
