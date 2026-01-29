@@ -2748,7 +2748,7 @@ function BendFormComponent({
                       <Bend3DPreview
                         nominalBore={entry.specs.nominalBoreMm}
                         outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}
-                        wallThickness={entry.calculation?.wallThicknessMm || 5}
+                        wallThickness={entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5}
                         bendAngle={entry.specs.bendDegrees}
                         bendType={entry.specs.bendType || '1.5D'}
                         tangent1={entry.specs?.tangentLengths?.[0] || 0}

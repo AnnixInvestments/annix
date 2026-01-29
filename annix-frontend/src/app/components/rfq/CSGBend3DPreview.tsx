@@ -1795,46 +1795,77 @@ const Scene = (props: Props) => {
           const inletFlangePoint = new THREE.Vector3(0, 0, 0);
           const outletFlangePoint = t2 > 0 ? outletEnd.clone() : bendEndPoint.clone();
 
-          const insideCorner = new THREE.Vector3(bendCenter.x, 0, 0);
+          const insideCorner = new THREE.Vector3(bendCenter.x, 0, t1);
 
           return (
             <>
-              {t1 > 0 && (
-                <DimensionLine
-                  start={inletStart}
-                  end={inletEnd}
-                  label={`T1: ${tangent1}mm`}
-                  offset={outerR * 2.5}
-                  color="#0066cc"
-                />
-              )}
+              {t1 > 0 && (() => {
+                const dimX = -outerR - outerR * 0.5;
+                return (
+                  <group>
+                    {/* Extension lines */}
+                    <Line points={[[-outerR, 0, 0], [dimX, 0, 0]]} color="#0066cc" lineWidth={2} />
+                    <Line points={[[-outerR, 0, t1], [dimX, 0, t1]]} color="#0066cc" lineWidth={2} />
+                    {/* Main dimension line */}
+                    <Line points={[[dimX, 0, 0], [dimX, 0, t1]]} color="#0066cc" lineWidth={3} />
+                    {/* Arrow heads */}
+                    <Line points={[[dimX + 0.05, 0, 0.1], [dimX, 0, 0], [dimX - 0.05, 0, 0.1]]} color="#0066cc" lineWidth={2} />
+                    <Line points={[[dimX + 0.05, 0, t1 - 0.1], [dimX, 0, t1], [dimX - 0.05, 0, t1 - 0.1]]} color="#0066cc" lineWidth={2} />
+                    {/* Label */}
+                    <Text
+                      position={[dimX - outerR * 0.3, 0, t1 / 2]}
+                      fontSize={outerR * 0.4}
+                      color="#0066cc"
+                      anchorX="center"
+                      anchorY="middle"
+                      fontWeight="bold"
+                      rotation={[-Math.PI / 2, Math.PI, -Math.PI / 2]}
+                    >
+                      {`T1: ${tangent1}mm`}
+                    </Text>
+                  </group>
+                );
+              })()}
 
-              {t2 > 0 && (
-                <DimensionLine
-                  start={bendEndPoint}
-                  end={outletEnd}
-                  label={`T2: ${tangent2}mm`}
-                  offset={outerR * 2.5}
-                  color="#cc0000"
-                />
-              )}
+              {t2 > 0 && (() => {
+                const dimOffset = outerR * 1.5;
+                const t2Dir = new THREE.Vector3().subVectors(outletEnd, bendEndPoint).normalize();
+                const perpDir = new THREE.Vector3(-t2Dir.z, 0, t2Dir.x).multiplyScalar(dimOffset);
+                const dimStart = bendEndPoint.clone().add(perpDir);
+                const dimEnd = outletEnd.clone().add(perpDir);
+                return (
+                  <group>
+                    {/* Extension lines */}
+                    <Line points={[[bendEndPoint.x, bendEndPoint.y, bendEndPoint.z], [dimStart.x, dimStart.y, dimStart.z]]} color="#cc0000" lineWidth={2} />
+                    <Line points={[[outletEnd.x, outletEnd.y, outletEnd.z], [dimEnd.x, dimEnd.y, dimEnd.z]]} color="#cc0000" lineWidth={2} />
+                    {/* Main dimension line */}
+                    <Line points={[[dimStart.x, dimStart.y, dimStart.z], [dimEnd.x, dimEnd.y, dimEnd.z]]} color="#cc0000" lineWidth={3} />
+                    {/* Label */}
+                    <Html position={[(dimStart.x + dimEnd.x) / 2, (dimStart.y + dimEnd.y) / 2 + 0.2, (dimStart.z + dimEnd.z) / 2]} center>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#cc0000', backgroundColor: 'rgba(255,255,255,0.9)', padding: '2px 6px', borderRadius: '3px', whiteSpace: 'nowrap' }}>
+                        T2: {tangent2}mm
+                      </div>
+                    </Html>
+                  </group>
+                );
+              })()}
 
               {cfMm > 0 && (
                 <>
-                  {/* Line from inlet flange to inside corner */}
+                  {/* Line from bend start to inside corner */}
                   <Line
                     points={[
-                      [inletFlangePoint.x, inletFlangePoint.y, inletFlangePoint.z],
+                      [inletEnd.x, inletEnd.y, inletEnd.z],
                       [insideCorner.x, insideCorner.y, insideCorner.z]
                     ]}
                     color="#cc6600"
                     lineWidth={3}
                   />
-                  {/* Line from inside corner to outlet flange */}
+                  {/* Line from inside corner to bend end */}
                   <Line
                     points={[
                       [insideCorner.x, insideCorner.y, insideCorner.z],
-                      [outletFlangePoint.x, outletFlangePoint.y, outletFlangePoint.z]
+                      [bendEndPoint.x, bendEndPoint.y, bendEndPoint.z]
                     ]}
                     color="#cc6600"
                     lineWidth={3}
@@ -1842,9 +1873,9 @@ const Scene = (props: Props) => {
                   {/* C/F label on the top line */}
                   <Html
                     position={[
-                      (insideCorner.x + outletFlangePoint.x) / 2,
-                      (insideCorner.y + outletFlangePoint.y) / 2,
-                      (insideCorner.z + outletFlangePoint.z) / 2
+                      (insideCorner.x + bendEndPoint.x) / 2,
+                      (insideCorner.y + bendEndPoint.y) / 2,
+                      (insideCorner.z + bendEndPoint.z) / 2
                     ]}
                     center
                   >
@@ -1873,7 +1904,7 @@ const Scene = (props: Props) => {
                       arcPoints.push([
                         insideCorner.x + arcRadius3D * Math.sin(currentAngle),
                         0,
-                        arcRadius3D * Math.cos(currentAngle)
+                        insideCorner.z + arcRadius3D * Math.cos(currentAngle)
                       ]);
                     }
 
@@ -1882,7 +1913,7 @@ const Scene = (props: Props) => {
                     const textPos = new THREE.Vector3(
                       insideCorner.x + textRadius * Math.sin(midAngle),
                       0,
-                      textRadius * Math.cos(midAngle)
+                      insideCorner.z + textRadius * Math.cos(midAngle)
                     );
 
                     return (
@@ -2057,7 +2088,7 @@ const Scene = (props: Props) => {
                     {/* Arrow heads */}
                     <Line points={[[dimXOuter + 0.05, 0, 0.05], [dimXOuter, 0, 0], [dimXOuter - 0.05, 0, 0.05]]} color="#cc6600" lineWidth={2} />
                     <Line points={[[dimXOuter + 0.05, 0, -closureLength - 0.05], [dimXOuter, 0, -closureLength], [dimXOuter - 0.05, 0, -closureLength - 0.05]]} color="#cc6600" lineWidth={2} />
-                    {/* Closure length text - large font */}
+                    {/* Closure length text - large font, rotated to align with pipe */}
                     <Text
                       position={[dimXOuter - outerR * 0.3, 0, -closureLength / 2]}
                       fontSize={outerR * 0.5}
@@ -2065,6 +2096,7 @@ const Scene = (props: Props) => {
                       anchorX="center"
                       anchorY="middle"
                       fontWeight="bold"
+                      rotation={[-Math.PI / 2, Math.PI, -Math.PI / 2]}
                     >
                       {`${closureLengthMm || 150}mm`}
                     </Text>
@@ -2593,6 +2625,10 @@ export default function CSGBend3DPreview(props: Props) {
   const diagonalExtent = Math.sqrt(boundingWidth ** 2 + boundingDepth ** 2)
 
   let autoCameraPosition: [number, number, number]
+  let autoCameraTarget: [number, number, number]
+
+  const centerX = (minX + maxX) / 2
+  const centerZ = (minZ + maxZ) / 2
 
   if (isDuckfootBend) {
     const verticalExtent = boundingDepth + bendR
@@ -2600,15 +2636,19 @@ export default function CSGBend3DPreview(props: Props) {
     const extent = Math.sqrt(horizontalExtent ** 2 + verticalExtent ** 2)
     const autoCameraDistance = Math.max(extent * 2.5, 6)
     autoCameraPosition = [0.01, -extent * 1.5, autoCameraDistance]
+    autoCameraTarget = [centerX, 0, centerZ]
   } else if (isSweepTee) {
     const autoCameraDistance = Math.max(diagonalExtent * 2.5, 6)
     autoCameraPosition = [autoCameraDistance * 0.3, autoCameraDistance * 1.2, autoCameraDistance * 0.3]
+    autoCameraTarget = [centerX, 0, centerZ]
   } else {
     const autoCameraDistance = Math.max(diagonalExtent * 2, 5)
-    autoCameraPosition = [-autoCameraDistance * 0.3, autoCameraDistance * 1.2, autoCameraDistance * 0.8]
+    autoCameraPosition = [centerX - autoCameraDistance * 0.3, autoCameraDistance * 1.2, centerZ + autoCameraDistance * 0.8]
+    autoCameraTarget = [centerX, 0, centerZ]
   }
 
   const cameraPosition = props.savedCameraPosition || autoCameraPosition
+  const cameraTarget = props.savedCameraTarget || autoCameraTarget
 
   return (
     <div data-bend-preview className="w-full h-[500px] min-h-[400px] flex-1 bg-slate-50 rounded-md border overflow-hidden relative">
@@ -2620,7 +2660,7 @@ export default function CSGBend3DPreview(props: Props) {
         <Environment preset="city" />
         <Scene {...props} />
         <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={15} />
-        <OrbitControls makeDefault enablePan />
+        <OrbitControls makeDefault enablePan target={cameraTarget} />
         <CameraTracker
           onCameraChange={props.onCameraChange}
           onCameraUpdate={(pos, zoom) => {
@@ -2628,7 +2668,7 @@ export default function CSGBend3DPreview(props: Props) {
             setCurrentZoom(zoom)
           }}
           savedPosition={props.savedCameraPosition}
-          savedTarget={props.savedCameraTarget}
+          savedTarget={cameraTarget}
         />
       </Canvas>
 
@@ -2657,9 +2697,29 @@ export default function CSGBend3DPreview(props: Props) {
         <div className="font-bold text-blue-800 mb-0.5">BEND</div>
         <div className="text-gray-900 font-medium">OD: {odMm.toFixed(0)}mm | ID: {(odMm - 2 * props.wallThickness).toFixed(0)}mm</div>
         <div className="text-gray-700">WT: {props.wallThickness}mm | {props.bendAngle}°</div>
-        {props.bendItemType !== 'SWEEP_TEE' && props.bendItemType !== 'DUCKFOOT_BEND' && (
-          <div className="text-gray-700">T1: {props.tangent1 || 0}mm | T2: {props.tangent2 || 0}mm</div>
+        {props.bendItemType !== 'SWEEP_TEE' && props.bendItemType !== 'DUCKFOOT_BEND' && (props.tangent1 > 0 || props.tangent2 > 0) && (
+          <div className="text-gray-700">
+            {props.tangent1 > 0 && props.tangent2 > 0
+              ? `T1: ${props.tangent1}mm | T2: ${props.tangent2}mm`
+              : props.tangent1 > 0
+                ? `T1: ${props.tangent1}mm`
+                : `T2: ${props.tangent2}mm`}
+          </div>
         )}
+        {(() => {
+          const config = (props.flangeConfig || 'PE').toUpperCase();
+          const hasLooseInlet = config === 'FOE_LF' || config === '2XLF';
+          const hasLooseOutlet = config === '2XLF';
+          if (!hasLooseInlet && !hasLooseOutlet) return null;
+          const closureValue = props.closureLengthMm || 150;
+          return (
+            <div className="text-gray-700">
+              {hasLooseInlet && hasLooseOutlet
+                ? `C1: ${closureValue}mm | C2: ${closureValue}mm`
+                : `C1: ${closureValue}mm`}
+            </div>
+          );
+        })()}
         {props.bendItemType === 'SWEEP_TEE' && props.sweepTeePipeALengthMm && (
           <div className="text-gray-700">Pipe A: {props.sweepTeePipeALengthMm}mm</div>
         )}
@@ -2895,7 +2955,7 @@ export default function CSGBend3DPreview(props: Props) {
               <Environment preset="city" />
               <Scene {...props} />
               <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={15} />
-              <OrbitControls makeDefault enablePan />
+              <OrbitControls makeDefault enablePan target={cameraTarget} />
               <CameraTracker
                 onCameraChange={props.onCameraChange}
                 onCameraUpdate={(pos, zoom) => {
@@ -2903,7 +2963,7 @@ export default function CSGBend3DPreview(props: Props) {
                   setCurrentZoom(zoom)
                 }}
                 savedPosition={props.savedCameraPosition}
-                savedTarget={props.savedCameraTarget}
+                savedTarget={cameraTarget}
               />
             </Canvas>
 
@@ -2912,9 +2972,29 @@ export default function CSGBend3DPreview(props: Props) {
               <div className="font-bold text-blue-800 mb-1">BEND</div>
               <div className="text-gray-900 font-medium">OD: {odMm.toFixed(0)}mm | ID: {(odMm - 2 * props.wallThickness).toFixed(0)}mm</div>
               <div className="text-gray-700">WT: {props.wallThickness}mm | {props.bendAngle}°</div>
-              {props.bendItemType !== 'SWEEP_TEE' && props.bendItemType !== 'DUCKFOOT_BEND' && (
-                <div className="text-gray-700">T1: {props.tangent1 || 0}mm | T2: {props.tangent2 || 0}mm</div>
+              {props.bendItemType !== 'SWEEP_TEE' && props.bendItemType !== 'DUCKFOOT_BEND' && (props.tangent1 > 0 || props.tangent2 > 0) && (
+                <div className="text-gray-700">
+                  {props.tangent1 > 0 && props.tangent2 > 0
+                    ? `T1: ${props.tangent1}mm | T2: ${props.tangent2}mm`
+                    : props.tangent1 > 0
+                      ? `T1: ${props.tangent1}mm`
+                      : `T2: ${props.tangent2}mm`}
+                </div>
               )}
+              {(() => {
+                const config = (props.flangeConfig || 'PE').toUpperCase();
+                const hasLooseInlet = config === 'FOE_LF' || config === '2XLF';
+                const hasLooseOutlet = config === '2XLF';
+                if (!hasLooseInlet && !hasLooseOutlet) return null;
+                const closureValue = props.closureLengthMm || 150;
+                return (
+                  <div className="text-gray-700">
+                    {hasLooseInlet && hasLooseOutlet
+                      ? `C1: ${closureValue}mm | C2: ${closureValue}mm`
+                      : `C1: ${closureValue}mm`}
+                  </div>
+                );
+              })()}
               {props.bendItemType === 'SWEEP_TEE' && props.sweepTeePipeALengthMm && (
                 <div className="text-gray-700">Pipe A: {props.sweepTeePipeALengthMm}mm</div>
               )}
