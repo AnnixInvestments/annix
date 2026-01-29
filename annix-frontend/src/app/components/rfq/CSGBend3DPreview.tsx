@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
-import { OrbitControls, Center, Environment, ContactShadows, Tube, Text, Html } from '@react-three/drei'
+import { OrbitControls, Center, Environment, ContactShadows, Tube, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { log } from '@/app/lib/logger'
 import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs'
@@ -1720,23 +1720,17 @@ const Scene = (props: Props) => {
                       lineWidth={3}
                     />
                     {/* C/F label on horizontal line */}
-                    <Html
-                      position={[0, aLineTop, 0]}
-                      center
+                    <Text
+                      position={[outerR * 0.3, aLineTop, 0]}
+                      fontSize={outerR * 0.35}
+                      color="#cc6600"
+                      anchorX="center"
+                      anchorY="middle"
+                      fontWeight="bold"
+                      rotation={[0, -Math.PI / 2, 0]}
                     >
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        color: '#cc6600',
-                        backgroundColor: 'rgba(255,255,255,0.9)',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        whiteSpace: 'nowrap',
-                        transform: 'translateY(-25px)'
-                      }}>
-                        C/F: {cfValue}mm
-                      </div>
-                    </Html>
+                      {`C/F: ${cfValue}mm`}
+                    </Text>
                     {/* 3D 90° angle arc at corner */}
                     {(() => {
                       const arcRadius3D = outerR * 0.8
@@ -1841,11 +1835,17 @@ const Scene = (props: Props) => {
                     {/* Main dimension line */}
                     <Line points={[[dimStart.x, dimStart.y, dimStart.z], [dimEnd.x, dimEnd.y, dimEnd.z]]} color="#cc0000" lineWidth={3} />
                     {/* Label */}
-                    <Html position={[(dimStart.x + dimEnd.x) / 2, (dimStart.y + dimEnd.y) / 2 + 0.2, (dimStart.z + dimEnd.z) / 2]} center>
-                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#cc0000', backgroundColor: 'rgba(255,255,255,0.9)', padding: '2px 6px', borderRadius: '3px', whiteSpace: 'nowrap' }}>
-                        T2: {tangent2}mm
-                      </div>
-                    </Html>
+                    <Text
+                      position={[(dimStart.x + dimEnd.x) / 2 + perpDir.x * outerR * 0.3, 0.01, (dimStart.z + dimEnd.z) / 2 + perpDir.z * outerR * 0.3]}
+                      fontSize={outerR * 0.35}
+                      color="#cc0000"
+                      anchorX="center"
+                      anchorY="middle"
+                      fontWeight="bold"
+                      rotation={[-Math.PI / 2, Math.PI, Math.atan2(t2Dir.x, t2Dir.z)]}
+                    >
+                      {`T2: ${tangent2}mm`}
+                    </Text>
                   </group>
                 );
               })()}
@@ -1871,27 +1871,28 @@ const Scene = (props: Props) => {
                     lineWidth={3}
                   />
                   {/* C/F label on the top line */}
-                  <Html
-                    position={[
-                      (insideCorner.x + bendEndPoint.x) / 2,
-                      (insideCorner.y + bendEndPoint.y) / 2,
-                      (insideCorner.z + bendEndPoint.z) / 2
-                    ]}
-                    center
-                  >
-                    <div style={{
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      color: '#cc6600',
-                      backgroundColor: 'rgba(255,255,255,0.9)',
-                      padding: '2px 6px',
-                      borderRadius: '3px',
-                      whiteSpace: 'nowrap',
-                      transform: 'translateY(-25px)'
-                    }}>
-                      C/F: {cfMm}mm
-                    </div>
-                  </Html>
+                  {(() => {
+                    const cfLineDir = new THREE.Vector3().subVectors(bendEndPoint, insideCorner).normalize();
+                    const cfLineAngle = Math.atan2(cfLineDir.x, cfLineDir.z);
+                    const labelOffset = new THREE.Vector3(-cfLineDir.z, 0, cfLineDir.x).multiplyScalar(outerR * 0.4);
+                    return (
+                      <Text
+                        position={[
+                          (insideCorner.x + bendEndPoint.x) / 2 + labelOffset.x,
+                          0.01,
+                          (insideCorner.z + bendEndPoint.z) / 2 + labelOffset.z
+                        ]}
+                        fontSize={outerR * 0.35}
+                        color="#cc6600"
+                        anchorX="center"
+                        anchorY="middle"
+                        fontWeight="bold"
+                        rotation={[-Math.PI / 2, Math.PI, cfLineAngle - Math.PI / 2]}
+                      >
+                        {`C/F: ${cfMm}mm`}
+                      </Text>
+                    );
+                  })()}
                   {/* 3D Arc showing angle at inside corner - scales with bend angle */}
                   {(() => {
                     const arcRadius3D = outerR * 0.8;
@@ -1930,7 +1931,7 @@ const Scene = (props: Props) => {
                           anchorX="center"
                           anchorY="middle"
                           fontWeight="bold"
-                          rotation={[-Math.PI / 2, Math.PI, 0]}
+                          rotation={[-Math.PI / 2, Math.PI, -Math.PI / 2]}
                         >
                           {bendDegrees}°
                         </Text>
@@ -2175,6 +2176,48 @@ const Scene = (props: Props) => {
                 innerR={innerR}
                 nb={nominalBore}
               />
+              {/* L/F dimension lines for outlet closure - C2 */}
+              {(() => {
+                const perpDir = new THREE.Vector3(-outletDir.z, 0, outletDir.x).normalize()
+                const dimOffset = outerR + outerR * 0.3
+                const dimOffsetOuter = outerR + outerR * 0.8
+                const closureEnd = outletBase.clone().add(outletDir.clone().multiplyScalar(closureLength))
+                return (
+                  <>
+                    {/* Extension line from pipe end */}
+                    <Line points={[
+                      [outletBase.x + perpDir.x * dimOffset, outletBase.y, outletBase.z + perpDir.z * dimOffset],
+                      [outletBase.x + perpDir.x * dimOffsetOuter, outletBase.y, outletBase.z + perpDir.z * dimOffsetOuter]
+                    ]} color="#cc6600" lineWidth={2} />
+                    {/* Extension line from closure end */}
+                    <Line points={[
+                      [closureEnd.x + perpDir.x * dimOffset, closureEnd.y, closureEnd.z + perpDir.z * dimOffset],
+                      [closureEnd.x + perpDir.x * dimOffsetOuter, closureEnd.y, closureEnd.z + perpDir.z * dimOffsetOuter]
+                    ]} color="#cc6600" lineWidth={2} />
+                    {/* Dimension line connecting */}
+                    <Line points={[
+                      [outletBase.x + perpDir.x * dimOffsetOuter, outletBase.y, outletBase.z + perpDir.z * dimOffsetOuter],
+                      [closureEnd.x + perpDir.x * dimOffsetOuter, closureEnd.y, closureEnd.z + perpDir.z * dimOffsetOuter]
+                    ]} color="#cc6600" lineWidth={3} />
+                    {/* Closure length text */}
+                    <Text
+                      position={[
+                        (outletBase.x + closureEnd.x) / 2 + perpDir.x * (dimOffsetOuter + outerR * 0.3),
+                        0.01,
+                        (outletBase.z + closureEnd.z) / 2 + perpDir.z * (dimOffsetOuter + outerR * 0.3)
+                      ]}
+                      fontSize={outerR * 0.35}
+                      color="#cc6600"
+                      anchorX="center"
+                      anchorY="middle"
+                      fontWeight="bold"
+                      rotation={[-Math.PI / 2, Math.PI, Math.atan2(outletDir.x, outletDir.z)]}
+                    >
+                      {`${closureLengthMm || 150}mm`}
+                    </Text>
+                  </>
+                )
+              })()}
             </>
           ) : hasRotatingOutletFlange ? (
             <>
