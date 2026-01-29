@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { Select } from '@/app/components/ui/Select';
 import { fetchFlangeSpecsStatic, FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
 import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
@@ -71,7 +71,7 @@ export interface FittingFormProps {
 }
 
 
-export default function FittingForm({
+function FittingFormComponent({
   entry,
   index,
   entries,
@@ -96,6 +96,18 @@ export default function FittingForm({
   isLoadingNominalBores = false,
 }: FittingFormProps) {
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
+  const calculateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedCalculate = useCallback(() => {
+    if (calculateTimeoutRef.current) {
+      clearTimeout(calculateTimeoutRef.current);
+    }
+    calculateTimeoutRef.current = setTimeout(() => {
+      if (onCalculateFitting) {
+        onCalculateFitting(entry.id);
+      }
+    }, 100);
+  }, [entry.id, onCalculateFitting]);
 
   const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
   const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
@@ -103,6 +115,8 @@ export default function FittingForm({
   const nominalBoreMm = entry.specs?.nominalBoreMm;
   const pipeEndConfiguration = entry.specs?.pipeEndConfiguration || 'PE';
   const hasFlanges = pipeEndConfiguration !== 'PE';
+
+  const flangeTypesLength = masterData?.flangeTypes?.length ?? 0;
 
   useEffect(() => {
     const fetchSpecs = async () => {
@@ -128,7 +142,7 @@ export default function FittingForm({
     };
 
     fetchSpecs();
-  }, [hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode, masterData?.flangeTypes]);
+  }, [hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode, flangeTypesLength, masterData?.flangeTypes]);
 
   return (
     <>
@@ -387,7 +401,7 @@ export default function FittingForm({
                                 });
                               }
 
-                              setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                              debouncedCalculate();
 
                               if (fittingType && !entry.specs?.nominalDiameterMm) {
                                 setTimeout(() => focusAndOpenSelect(`fitting-nb-${entry.id}`), 100);
@@ -509,7 +523,7 @@ export default function FittingForm({
                                 });
                               }
 
-                              setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                              debouncedCalculate();
 
                               const isReducingTee = ['SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE'].includes(entry.specs?.fittingType || '');
                               const isSABS719Fitting = effectiveStandard === 'SABS719';
@@ -603,7 +617,7 @@ export default function FittingForm({
                                     wallThicknessMm: selectedDim?.wallThicknessMm || entry.specs?.wallThicknessMm
                                   }
                                 });
-                                setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                                debouncedCalculate();
                               }}
                               options={options}
                               placeholder="Select schedule..."
@@ -660,7 +674,7 @@ export default function FittingForm({
                               };
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
-                              setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                              debouncedCalculate();
                             }}
                             options={manualOptions}
                             placeholder="Select Schedule"
@@ -920,7 +934,7 @@ export default function FittingForm({
                           onUpdateEntry(entry.id, {
                             specs: { ...entry.specs, quantityValue: qty }
                           });
-                          setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                          debouncedCalculate();
                         }}
                         className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
                         min="1"
@@ -1173,7 +1187,7 @@ export default function FittingForm({
                                     branchNominalDiameterMm: branchDiameter
                                   }
                                 });
-                                setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                                debouncedCalculate();
                               }}
                               options={options}
                               placeholder="Select branch diameter..."
@@ -1310,7 +1324,7 @@ export default function FittingForm({
                                     teeNominalDiameterMm: teeDiameter
                                   }
                                 });
-                                setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                                debouncedCalculate();
                               }}
                               options={options}
                               placeholder="Select tee diameter..."
@@ -1406,7 +1420,7 @@ export default function FittingForm({
                           updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
 
                           onUpdateEntry(entry.id, updatedEntry);
-                          setTimeout(() => onCalculateFitting && onCalculateFitting(entry.id), 100);
+                          debouncedCalculate();
                         }}
                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                         required
@@ -1523,6 +1537,20 @@ export default function FittingForm({
                     placeholder="Select quality/inspection requirements..."
                   />
                 </div>
+
+                {/* Calculation Error Display */}
+                {entry.calculationError && (
+                  <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      {(() => {
+                        const match = entry.calculationError.match(/^\*\*([^*]+)\*\*\s*(.*)$/);
+                        return match
+                          ? <><strong>{match[1]}</strong> {match[2]}</>
+                          : entry.calculationError;
+                      })()}
+                    </p>
+                  </div>
+                )}
 
                 {/* Calculation Results - Compact Layout matching Bend style */}
                 {entry.calculation && (
@@ -1807,12 +1835,32 @@ export default function FittingForm({
                 previewContent={
                   <>
                     {(() => {
-                      if (!Tee3DPreview) return null;
+                      if (!Tee3DPreview) {
+                        return (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                            3D preview hidden. Use the toggle above to show drawings.
+                          </div>
+                        );
+                      }
 
                       const fittingType = entry.specs?.fittingType || '';
                       const isTeeType = ['SHORT_TEE', 'GUSSET_TEE', 'UNEQUAL_SHORT_TEE', 'UNEQUAL_GUSSET_TEE', 'SHORT_REDUCING_TEE', 'GUSSET_REDUCING_TEE', 'EQUAL_TEE', 'UNEQUAL_TEE', 'SWEEP_TEE', 'GUSSETTED_TEE'].includes(fittingType);
 
-                      if (!isTeeType) return null;
+                      if (!isTeeType) {
+                        return (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                            3D preview is only available for tee fittings
+                          </div>
+                        );
+                      }
+
+                      if (!entry.specs?.nominalDiameterMm) {
+                        return (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                            Select nominal bore to see preview
+                          </div>
+                        );
+                      }
 
                       const teeType = ['GUSSET_TEE', 'UNEQUAL_GUSSET_TEE', 'GUSSET_REDUCING_TEE', 'GUSSETTED_TEE'].includes(fittingType)
                         ? 'gusset' as const
@@ -1930,3 +1978,6 @@ export default function FittingForm({
               </>
   );
 }
+
+const FittingForm = memo(FittingFormComponent);
+export default FittingForm;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Select } from '@/app/components/ui/Select';
 import { fetchFlangeSpecsStatic, FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
 import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
@@ -119,7 +119,7 @@ export interface StraightPipeFormProps {
   requiredProducts?: string[];
 }
 
-export default function StraightPipeForm({
+function StraightPipeFormComponent({
   entry,
   index,
   entries,
@@ -158,6 +158,13 @@ export default function StraightPipeForm({
   const pipeEndConfiguration = entry.specs?.pipeEndConfiguration || 'PE';
   const hasFlanges = pipeEndConfiguration !== 'PE';
 
+  const groupedSteelOptions = useMemo(
+    () => masterData?.steelSpecs ? groupSteelSpecifications(masterData.steelSpecs) : [],
+    [masterData?.steelSpecs]
+  );
+
+  const flangeTypesLength = masterData?.flangeTypes?.length ?? 0;
+
   useEffect(() => {
     const fetchSpecs = async () => {
       log.debug('StraightPipeForm fetchSpecs', { hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode });
@@ -182,7 +189,7 @@ export default function StraightPipeForm({
     };
 
     fetchSpecs();
-  }, [hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode, masterData?.flangeTypes]);
+  }, [hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode, flangeTypesLength, masterData?.flangeTypes]);
 
   return (
     <>
@@ -583,7 +590,7 @@ export default function StraightPipeForm({
                               onUpdateEntry(entry.id, updatedEntry);
                             }}
                               options={[]}
-                              groupedOptions={groupedOptions}
+                              groupedOptions={groupedSteelOptions}
                               placeholder="Select steel spec..."
                               open={openSelects[selectId] || false}
                               onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
@@ -895,9 +902,6 @@ export default function StraightPipeForm({
                           const spigotSpecId = entry.specs?.spigotSteelSpecificationId || mainPipeSpecId;
                           const isFromMainPipe = !entry.specs?.spigotSteelSpecificationId;
                           const isOverride = entry.specs?.spigotSteelSpecificationId && entry.specs?.spigotSteelSpecificationId !== mainPipeSpecId;
-                          const groupedOptions = masterData.steelSpecs
-                            ? groupSteelSpecifications(masterData.steelSpecs)
-                            : [];
 
                           return (
                             <>
@@ -932,7 +936,7 @@ export default function StraightPipeForm({
                                   }, 150);
                                 }}
                                 options={[]}
-                                groupedOptions={groupedOptions}
+                                groupedOptions={groupedSteelOptions}
                                 placeholder="Select steel spec..."
                                 open={openSelects[`spigot-steel-spec-${entry.id}`] || false}
                                 onOpenChange={(open) => open ? openSelect(`spigot-steel-spec-${entry.id}`) : closeSelect(`spigot-steel-spec-${entry.id}`)}
@@ -1878,6 +1882,14 @@ export default function StraightPipeForm({
                 }
                 previewContent={
                   Pipe3DPreview ? (() => {
+                    const canRenderPreview = entry.specs?.nominalBoreMm && entry.specs?.individualPipeLength;
+                    if (!canRenderPreview) {
+                      return (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                          Select nominal bore and pipe length to see preview
+                        </div>
+                      );
+                    }
                     const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                     const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
                     const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
@@ -1924,13 +1936,29 @@ export default function StraightPipeForm({
                         puddleFlangeLocationMm={entry.specs?.puddleFlangeLocationMm}
                       />
                     );
-                  })() : null
+                  })() : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                      3D preview hidden. Use the toggle above to show drawings.
+                    </div>
+                  )
                 }
                 calcResultsContent={
                   <div className="mt-4">
                     <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
                       Calculation Results
                     </h4>
+                    {entry.calculationError && (
+                      <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                          {(() => {
+                            const match = entry.calculationError.match(/^\*\*([^*]+)\*\*\s*(.*)$/);
+                            return match
+                              ? <><strong>{match[1]}</strong> {match[2]}</>
+                              : entry.calculationError;
+                          })()}
+                        </p>
+                      </div>
+                    )}
 
                     {entry.calculation ? (
                       <div className="bg-gray-50 border border-gray-200 p-3 rounded-md">
@@ -2452,3 +2480,6 @@ export default function StraightPipeForm({
               </>
   );
 }
+
+const StraightPipeForm = memo(StraightPipeFormComponent);
+export default StraightPipeForm;

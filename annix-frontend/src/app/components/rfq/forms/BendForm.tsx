@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react';
 import { log } from '@/app/lib/logger';
 import { fetchFlangeSpecsStatic, FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
 import { Select } from '@/app/components/ui/Select';
@@ -92,7 +92,7 @@ export interface BendFormProps {
   requiredProducts?: string[];
 }
 
-export default function BendForm({
+function BendFormComponent({
   entry,
   index,
   entries,
@@ -125,6 +125,13 @@ export default function BendForm({
   const bendEndConfiguration = entry.specs?.bendEndConfiguration || 'PE';
   const hasFlanges = bendEndConfiguration !== 'PE';
 
+  const groupedSteelOptions = useMemo(
+    () => masterData?.steelSpecs ? groupSteelSpecifications(masterData.steelSpecs) : [],
+    [masterData?.steelSpecs]
+  );
+
+  const flangeTypesLength = masterData?.flangeTypes?.length ?? 0;
+
   useEffect(() => {
     const fetchSpecs = async () => {
       log.debug('BendForm fetchSpecs', { hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode });
@@ -149,7 +156,7 @@ export default function BendForm({
     };
 
     fetchSpecs();
-  }, [hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode, masterData?.flangeTypes]);
+  }, [hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode, flangeTypesLength, masterData?.flangeTypes]);
 
   const steelSpec = masterData?.steelSpecs?.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId));
   const steelSpecName = steelSpec?.steelSpecName || '';
@@ -158,6 +165,18 @@ export default function BendForm({
   const isCurrentlySegmented = currentBendStyle === 'segmented';
 
   const [lastFetchedParams, setLastFetchedParams] = useState<string | null>(null);
+  const calculateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedCalculate = useCallback(() => {
+    if (calculateTimeoutRef.current) {
+      clearTimeout(calculateTimeoutRef.current);
+    }
+    calculateTimeoutRef.current = setTimeout(() => {
+      if (onCalculateBend) {
+        onCalculateBend(entry.id);
+      }
+    }, 100);
+  }, [entry.id, onCalculateBend]);
   const [pipeALengthSource, setPipeALengthSource] = useState<'auto' | 'override' | null>(null);
 
   useEffect(() => {
@@ -303,9 +322,6 @@ export default function BendForm({
                           const isSteelFromGlobal = globalSpecId && effectiveSpecId === globalSpecId;
                           const isSteelOverride = globalSpecId && effectiveSpecId !== globalSpecId;
                           const selectId = `bend-steel-spec-${entry.id}`;
-                          const groupedOptions = masterData.steelSpecs
-                            ? groupSteelSpecifications(masterData.steelSpecs)
-                            : [];
                           const globalSelectClass = 'w-full border-2 border-green-500 dark:border-lime-400 rounded';
                           const overrideSelectClass = 'w-full border-2 border-yellow-500 dark:border-yellow-400 rounded';
                           const unsuitableSelectClass = 'w-full border-2 border-red-500 dark:border-red-400 rounded';
@@ -366,11 +382,11 @@ export default function BendForm({
                                 onUpdateEntry(entry.id, updatedEntry);
 
                                 if (!specTypeChanged && nominalBore && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                                  setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                                  debouncedCalculate();
                                 }
                               }}
                                 options={[]}
-                                groupedOptions={groupedOptions}
+                                groupedOptions={groupedSteelOptions}
                                 placeholder="Select Steel Spec"
                                 open={openSelects[selectId]}
                                 onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
@@ -439,9 +455,6 @@ export default function BendForm({
                       </label>
                       {(() => {
                         const selectId = `bend-steel-spec-${entry.id}`;
-                        const groupedOptions = masterData.steelSpecs
-                          ? groupSteelSpecifications(masterData.steelSpecs)
-                          : [];
 
                         return (
                           <Select
@@ -529,11 +542,11 @@ export default function BendForm({
                                   : `bend-type-${entry.id}`;
                                 setTimeout(() => focusAndOpenSelect(nextFieldId), 100);
                               } else if (keepNB && matchedSchedule) {
-                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                                debouncedCalculate();
                               }
                             }}
                             options={[]}
-                            groupedOptions={groupedOptions}
+                            groupedOptions={groupedSteelOptions}
                             placeholder="Select Steel Spec"
                             open={openSelects[selectId]}
                             onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
@@ -671,7 +684,7 @@ export default function BendForm({
                                   ? (entry.specs?.bendRadiusType && entry.specs?.bendDegrees)
                                   : (entry.specs?.bendType && entry.specs?.bendDegrees);
                                 if (matchedSchedule && hasBendSpecs) {
-                                  setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                                  debouncedCalculate();
                                 }
 
                                 if (!entry.specs?.bendDegrees) {
@@ -824,7 +837,7 @@ export default function BendForm({
                               onUpdateEntry(entry.id, updatedEntry);
 
                               if (nominalBore && entry.specs?.scheduleNumber && bendDegrees) {
-                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                                debouncedCalculate();
                               }
                             }}
                             options={options}
@@ -1020,7 +1033,7 @@ export default function BendForm({
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
                               if (bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber) {
-                                setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                                debouncedCalculate();
                               }
                             }}
                             options={angleOptions}
@@ -1106,7 +1119,7 @@ export default function BendForm({
                             updatedEntry.description = generateItemDescription(updatedEntry);
                             onUpdateEntry(entry.id, updatedEntry);
                             if (nominalBore && entry.specs?.scheduleNumber) {
-                              setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              debouncedCalculate();
                             }
                           }, 50);
                         }
@@ -1146,7 +1159,7 @@ export default function BendForm({
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
                                 if (segments && nominalBore && entry.specs?.scheduleNumber) {
-                                  setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                                  debouncedCalculate();
                                 }
                               }}
                               className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
@@ -1177,7 +1190,7 @@ export default function BendForm({
                             specs: { ...entry.specs, quantityValue: quantity }
                           });
                           if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                            debouncedCalculate();
                           }
                         }}
                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
@@ -1763,7 +1776,7 @@ export default function BendForm({
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
                           if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                            setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                            debouncedCalculate();
                           }
                         }}
                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
@@ -1788,7 +1801,7 @@ export default function BendForm({
                               specs: { ...entry.specs, tangentLengths: lengths }
                             });
                             if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                              setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              debouncedCalculate();
                             }
                           }}
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
@@ -1812,7 +1825,7 @@ export default function BendForm({
                               specs: { ...entry.specs, tangentLengths: lengths }
                             });
                             if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                              setTimeout(() => onCalculateBend && onCalculateBend(entry.id), 100);
+                              debouncedCalculate();
                             }
                           }}
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
@@ -1891,7 +1904,6 @@ export default function BendForm({
                         {(() => {
                           const selectId = `bend-stub1-steel-spec-${entry.id}`;
                           const stub1EffectiveSpecId = entry.specs?.stubs?.[0]?.steelSpecificationId || entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                          const groupedOptions = masterData.steelSpecs ? groupSteelSpecifications(masterData.steelSpecs) : [];
                           return (
                             <Select
                               id={selectId}
@@ -1905,7 +1917,7 @@ export default function BendForm({
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
                               options={[]}
-                              groupedOptions={groupedOptions}
+                              groupedOptions={groupedSteelOptions}
                               placeholder="Spec"
                               open={openSelects[selectId]}
                               onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
@@ -2276,9 +2288,6 @@ export default function BendForm({
                               {(() => {
                                 const selectId = `bend-stub2-steel-spec-${entry.id}`;
                                 const stub2EffectiveSpecId = entry.specs?.stubs?.[1]?.steelSpecificationId || entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                                const groupedOptions = masterData.steelSpecs
-                                  ? groupSteelSpecifications(masterData.steelSpecs)
-                                  : [];
 
                                 return (
                                   <Select
@@ -2298,7 +2307,7 @@ export default function BendForm({
                                       onUpdateEntry(entry.id, updatedEntry);
                                     }}
                                     options={[]}
-                                    groupedOptions={groupedOptions}
+                                    groupedOptions={groupedSteelOptions}
                                     placeholder="Spec"
                                     open={openSelects[selectId]}
                                     onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
@@ -2732,7 +2741,15 @@ export default function BendForm({
                 }
                 previewContent={
                   <>
-                  {Bend3DPreview && (() => {
+                  {Bend3DPreview ? (() => {
+                    const canRenderPreview = entry.specs?.nominalBoreMm && entry.specs?.bendDegrees;
+                    if (!canRenderPreview) {
+                      return (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                          Select nominal bore and bend angle to see preview
+                        </div>
+                      );
+                    }
                     const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                     const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
                     const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
@@ -2790,7 +2807,11 @@ export default function BendForm({
                         sweepTeePipeALengthMm={entry.specs?.sweepTeePipeALengthMm}
                       />
                     );
-                  })()}
+                  })() : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                      3D preview hidden. Use the toggle above to show drawings.
+                    </div>
+                  )}
 
                   {/* Smart Notes Dropdown - Below 3D Preview */}
                   <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
@@ -2813,6 +2834,18 @@ export default function BendForm({
                     <h4 className="text-sm font-bold text-gray-900 border-b-2 border-purple-500 pb-1.5 mb-3">
                       Calculation Results
                     </h4>
+                    {entry.calculationError && (
+                      <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                          {(() => {
+                            const match = entry.calculationError.match(/^\*\*([^*]+)\*\*\s*(.*)$/);
+                            return match
+                              ? <><strong>{match[1]}</strong> {match[2]}</>
+                              : entry.calculationError;
+                          })()}
+                        </p>
+                      </div>
+                    )}
                     {entry.calculation ? (
                       <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 p-3 rounded-md">
                         {(() => {
@@ -3366,3 +3399,6 @@ export default function BendForm({
               />
   );
 }
+
+const BendForm = memo(BendFormComponent);
+export default BendForm;

@@ -1936,15 +1936,22 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   };
 
   // Auto-generate client item numbers based on customer name for ALL item types
+  // Track which items we've already auto-numbered to avoid infinite loops
+  const autoNumberedItemsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (rfqData.customerName && rfqData.items) {
-      rfqData.items.forEach((entry: any, index: number) => {
-        if (!entry.clientItemNumber || entry.clientItemNumber.trim() === '') {
+      const itemsNeedingNumbers = rfqData.items.filter((entry: any) =>
+        (!entry.clientItemNumber || entry.clientItemNumber.trim() === '') &&
+        !autoNumberedItemsRef.current.has(entry.id)
+      );
+      if (itemsNeedingNumbers.length > 0) {
+        itemsNeedingNumbers.forEach((entry: any) => {
+          const index = rfqData.items.findIndex((e: any) => e.id === entry.id);
           const autoGenNumber = generateClientItemNumber(rfqData.customerName, index + 1);
-          // Use updateItem for all item types to maintain unified numbering sequence
+          autoNumberedItemsRef.current.add(entry.id);
           updateItem(entry.id, { clientItemNumber: autoGenNumber });
-        }
-      });
+        });
+      }
     }
   }, [rfqData.items, rfqData.customerName, updateItem]);
 
@@ -2067,16 +2074,22 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             log.debug('✅ Local calculation result:', localResult);
             updateEntryCalculation(entry.id, localResult);
           } else {
-            showToast(
-              `Calculation error for item: ${entry.description || 'Untitled'}\n${errorMessage}`,
-              'error'
-            );
+            const nb = entry.specs.nominalBoreMm;
+            const schedule = entry.specs.scheduleNumber;
+            const details = [nb ? `${nb}mm bore` : null, schedule ? `${schedule} schedule` : null].filter(Boolean).join(' with ');
+            const capitalizedDetails = details ? details.charAt(0).toUpperCase() + details.slice(1) : null;
+            const friendlyError = capitalizedDetails
+              ? `**Pipe:** ${capitalizedDetails} is not available. Please try a different size or schedule.`
+              : '**Pipe:** This combination is not available. Please try different specifications.';
+            updateStraightPipeEntry(entry.id, { calculationError: friendlyError });
           }
         }
       }
-    } catch (error) {
-      console.error('Calculation error:', error);
-      showToast('An unexpected error occurred during calculation. Please check your inputs and try again.', 'error');
+    } catch (error: any) {
+      const isNotFoundError = error?.message?.includes('404') || error?.message?.toLowerCase().includes('not found');
+      if (!isNotFoundError) {
+        console.error('Calculation error:', error);
+      }
     }
   };
 
@@ -2187,13 +2200,27 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           ...result,
           flangeSpecs: flangeSpecData,
         },
+        calculationError: null,
       });
 
     } catch (error: any) {
-      console.error('Bend calculation failed:', error);
-      const errorMessage = error?.message || error?.response?.data?.message || 'Unknown error';
-      console.error('Bend calculation error details:', { error, errorMessage });
-      showToast(`Bend calculation failed: ${errorMessage}`, 'error');
+      const isNotFoundError = error?.message?.includes('404') || error?.message?.toLowerCase().includes('not found');
+      if (isNotFoundError) {
+        log.debug('Bend not found (expected):', error?.message);
+      } else {
+        console.error('Bend calculation failed:', error);
+      }
+      const bendEntry = rfqData.items.find(e => e.id === entryId && e.itemType === 'bend') as BendEntry | undefined;
+      const nb = bendEntry?.specs?.nominalBoreMm;
+      const schedule = bendEntry?.specs?.scheduleNumber;
+      const angle = bendEntry?.specs?.bendDegrees;
+      const parts = [nb ? `${nb}mm bore` : null, schedule ? `${schedule} schedule` : null, angle ? `${angle}° angle` : null].filter(Boolean);
+      const details = parts.length > 0 ? parts.join(', ') : null;
+      const capitalizedDetails = details ? details.charAt(0).toUpperCase() + details.slice(1) : null;
+      const friendlyError = capitalizedDetails
+        ? `**Bend:** ${capitalizedDetails} is not available. Please try a different combination.`
+        : '**Bend:** This combination is not available. Please try different specifications.';
+      updateItem(entryId, { calculationError: friendlyError });
     }
   };
 
@@ -2301,16 +2328,28 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           ...result,
           flangeSpecs: flangeSpecData,
         },
+        calculationError: null,
       });
       log.debug('Updated entry with calculation');
 
     } catch (error: any) {
-      console.error('Fitting calculation failed:', error);
-      const rawMessage = error?.message || 'Please check your specifications.';
-      const friendlyMessage = rawMessage.includes('fittingType must be one of')
-        ? 'This fitting type is not supported by the selected standard. Please pick a supported type or switch standards.'
-        : rawMessage;
-      showToast(`Fitting calculation failed: ${friendlyMessage}`, 'error');
+      const isNotFoundError = error?.message?.includes('404') || error?.message?.toLowerCase().includes('not found');
+      if (isNotFoundError) {
+        log.debug('Fitting not found (expected):', error?.message);
+      } else {
+        console.error('Fitting calculation failed:', error);
+      }
+      const fittingEntry = rfqData.items.find(e => e.id === entryId && e.itemType === 'fitting') as FittingEntry | undefined;
+      const nb = fittingEntry?.specs?.nominalDiameterMm;
+      const schedule = fittingEntry?.specs?.scheduleNumber;
+      const fittingType = fittingEntry?.specs?.fittingType?.replace(/_/g, ' ').toLowerCase();
+      const parts = [fittingType, nb ? `${nb}mm` : null, schedule ? `${schedule} schedule` : null].filter(Boolean);
+      const details = parts.length > 0 ? parts.join(', ') : null;
+      const capitalizedDetails = details ? details.charAt(0).toUpperCase() + details.slice(1) : null;
+      const friendlyError = capitalizedDetails
+        ? `**Fitting:** ${capitalizedDetails} is not available. Please try a different combination.`
+        : '**Fitting:** This combination is not available. Please try different specifications.';
+      updateItem(entryId, { calculationError: friendlyError });
     }
   };
 

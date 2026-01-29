@@ -14,6 +14,7 @@ export interface StraightPipeEntry {
   useSequentialNumbering?: boolean;
   specs: CreateStraightPipeRfqDto;
   calculation?: StraightPipeCalculationResult;
+  calculationError?: string | null;
   calculatedPipes?: number;
   notes?: string;
   // Schedule override tracking
@@ -61,6 +62,7 @@ export interface BendEntry {
     useGlobalFlangeSpecs?: boolean;
   };
   calculation?: any;
+  calculationError?: string | null;
   notes?: string;
 }
 
@@ -90,6 +92,7 @@ export interface FittingEntry {
     workingTemperatureC?: number;
   };
   calculation?: any;
+  calculationError?: string | null;
   notes?: string;
 }
 
@@ -114,6 +117,7 @@ export interface PipeSteelWorkEntry {
     workingTemperatureC?: number;
   };
   calculation?: any;
+  calculationError?: string | null;
   notes?: string;
 }
 
@@ -150,6 +154,7 @@ export interface ExpansionJointEntry {
     workingTemperatureC?: number;
   };
   calculation?: any;
+  calculationError?: string | null;
   totalWeightKg?: number;
   notes?: string;
 }
