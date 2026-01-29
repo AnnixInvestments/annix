@@ -71,6 +71,9 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
   }, []);
 
   const focusAndOpenSelect = useCallback((selectId: string, retryCount = 0) => {
+    // AUTO-FOCUS DISABLED: Remove this return statement to re-enable auto field jumping
+    return;
+
     if (pendingFocusRef.current.has(selectId) && retryCount === 0) {
       return;
     }
@@ -1013,6 +1016,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 Bend3DPreview={drawingsHidden ? null : Bend3DPreview}
                 pressureClassesByStandard={pressureClassesByStandard}
                 getFilteredPressureClasses={getFilteredPressureClasses}
+                requiredProducts={requiredProducts}
               />
             ) : entry.itemType === 'fitting' ? (
               <FittingForm

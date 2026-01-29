@@ -1510,30 +1510,14 @@ function BendFormComponent({
                             value={entry.specs?.bendEndConfiguration || 'PE'}
                             onChange={(e) => {
                               const newConfig = e.target.value;
-                              const newFlangeTypeCode = recommendedFlangeTypeCode(newConfig);
-                              const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                              const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
-                              const flangeCode = flangeStandard?.code || '';
-                              const workingPressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
-                              let availableClasses = flangeStandardId ? (pressureClassesByStandard[flangeStandardId] || []) : [];
-                              if (availableClasses.length === 0) {
-                                availableClasses = masterData.pressureClasses?.filter((pc: any) =>
-                                  pc.flangeStandardId === flangeStandardId || pc.standardId === flangeStandardId
-                                ) || [];
-                              }
-                              const newPressureClassId = workingPressure > 0 && availableClasses.length > 0
-                                ? recommendedPressureClassId(workingPressure, availableClasses, flangeCode)
-                                : (entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId);
                               const updatedEntry: any = {
                                 ...entry,
                                 specs: {
                                   ...entry.specs,
                                   bendEndConfiguration: newConfig,
-                                  flangeTypeCode: newFlangeTypeCode,
                                   blankFlangePositions: [],
                                   addBlankFlange: false,
-                                  blankFlangeCount: 0,
-                                  ...(newPressureClassId && { flangePressureClassId: newPressureClassId })
+                                  blankFlangeCount: 0
                                 }
                               };
                               updatedEntry.description = generateItemDescription(updatedEntry);
@@ -1567,6 +1551,7 @@ function BendFormComponent({
                         onUpdateEntry(entry.id, updatedEntry);
                       }}
                       variant="compact"
+                      showTackWeldInfo={false}
                     />
                   </div>
                 )}
@@ -3089,6 +3074,9 @@ function BendFormComponent({
                                 {stubLengthDisplay && (
                                   <p className="text-xs text-purple-500 dark:text-purple-400">+ {stubLengthDisplay}</p>
                                 )}
+                                {closureLengthMm > 0 && (
+                                  <p className="text-xs text-purple-500 dark:text-purple-400">Closure: {closureLengthMm}mm</p>
+                                )}
                               </div>
                               <div className="bg-amber-100 dark:bg-amber-900/40 p-2 rounded text-center">
                                 <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Total Flanges</p>
@@ -3223,70 +3211,44 @@ function BendFormComponent({
 
                                 const totalDuckfootWeld = blueGussetCutoutWeld + yellowGussetCurveWeld + gussetIntersectionWeld + blueGussetToBaseWeld + yellowGussetToBaseWeld;
 
-                                const calculatedTotalWeld = mitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear + saddleWeldLinear + totalDuckfootWeld;
+                                // Tack weld calculation (8 tack welds × 20mm per end for L/F configuration)
+                                const tackWeldLinear = tackWeldEnds * 8 * 20;
+
+                                const calculatedTotalWeld = mitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear + saddleWeldLinear + totalDuckfootWeld + tackWeldLinear;
 
                                 return (
                                   <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
                                     <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Weld (mm)</p>
                                     <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{calculatedTotalWeld.toFixed(0)}</p>
-                                    <div className="text-xs text-purple-500 dark:text-purple-400 mt-1 text-left space-y-0.5">
-                                      {mitreWeldCount > 0 && (
-                                        <p>{mitreWeldCount} × Mitre = {mitreWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
-                                      )}
-                                      {saddleWeldLinear > 0 && (
-                                        <p>1 × Saddle (2.7×OD{mainOdMm.toFixed(0)}) = {saddleWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
-                                      )}
-                                      {buttWeldCount > 0 && (
-                                        <p>{buttWeldCount} × Butt = {buttWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
-                                      )}
-                                      {totalFlangeWeldCount > 0 && (
-                                        <>
-                                          {bendFlangeWeldCount > 0 && (
-                                            <p>{bendFlangeWeldCount} × {isSweepTeeItem ? 'Run' : ''} Flange (2×{mainCirc.toFixed(0)}mm) = {mainFlangeWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
-                                          )}
-                                          {branchFlangeWeldCount > 0 && (
-                                            <p>{branchFlangeWeldCount} × Branch Flg (2×{mainCirc.toFixed(0)}mm) = {branchFlangeWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
-                                          )}
-                                          {stub1FlangeCount > 0 && (
-                                            <p>{stub1FlangeCount} × Stub1 Flg (2×{stub1Circ.toFixed(0)}mm) = {stub1FlangeWeldLinear.toFixed(0)}mm @ {stub1Wt?.toFixed(1)}mm</p>
-                                          )}
-                                          {stub2FlangeCount > 0 && (
-                                            <p>{stub2FlangeCount} × Stub2 Flg (2×{stub2Circ.toFixed(0)}mm) = {stub2FlangeWeldLinear.toFixed(0)}mm @ {stub2Wt?.toFixed(1)}mm</p>
-                                          )}
-                                        </>
-                                      )}
-                                      {hasTeeWelds && (
-                                        <>
-                                          {teeStub1NB && <p>1 × Tee ({teeStub1NB}NB) = {teeStub1Circ.toFixed(0)}mm @ {teeStub1Wt?.toFixed(1)}mm</p>}
-                                          {teeStub2NB && <p>1 × Tee ({teeStub2NB}NB) = {teeStub2Circ.toFixed(0)}mm @ {teeStub2Wt?.toFixed(1)}mm</p>}
-                                        </>
-                                      )}
-                                      {isSweepTee && saddleWeldLinear > 0 && (
-                                        <p>1 × Saddle ({mainOdMm.toFixed(0)}OD × 2.7) = {saddleWeldLinear.toFixed(0)}mm @ {effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}mm</p>
-                                      )}
+                                    <div className="text-xs text-purple-500 dark:text-purple-400 mt-1 text-left space-y-0.5 whitespace-nowrap">
+                                      {mitreWeldCount > 0 && <p>{mitreWeldCount}×Mitre={mitreWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
+                                      {saddleWeldLinear > 0 && !isSweepTee && <p>Saddle={saddleWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
+                                      {buttWeldCount > 0 && <p>{buttWeldCount}×Butt={buttWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
+                                      {bendFlangeWeldCount > 0 && <p>{bendFlangeWeldCount}×{isSweepTeeItem ? 'Run ' : ''}Flg={mainFlangeWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
+                                      {branchFlangeWeldCount > 0 && <p>{branchFlangeWeldCount}×BranchFlg={branchFlangeWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
+                                      {stub1FlangeCount > 0 && <p>{stub1FlangeCount}×Stub1Flg={stub1FlangeWeldLinear.toFixed(0)}@{stub1Wt?.toFixed(1)}</p>}
+                                      {stub2FlangeCount > 0 && <p>{stub2FlangeCount}×Stub2Flg={stub2FlangeWeldLinear.toFixed(0)}@{stub2Wt?.toFixed(1)}</p>}
+                                      {teeStub1NB && <p>Tee({teeStub1NB}NB)={teeStub1Circ.toFixed(0)}@{teeStub1Wt?.toFixed(1)}</p>}
+                                      {teeStub2NB && <p>Tee({teeStub2NB}NB)={teeStub2Circ.toFixed(0)}@{teeStub2Wt?.toFixed(1)}</p>}
+                                      {isSweepTee && saddleWeldLinear > 0 && <p>Saddle={saddleWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
                                       {isDuckfootBend && (
                                         <>
-                                          <p className="font-medium text-purple-600 dark:text-purple-400 mt-1 border-t border-purple-200 pt-1">Duckfoot Steelwork:</p>
-                                          <p>Blue cutout (π×{outerRadiusMm.toFixed(0)}) = {blueGussetCutoutWeld.toFixed(0)}mm</p>
-                                          <p>Yellow curve ({duckfootPointDDeg}°-{duckfootPointCDeg}°) = {yellowGussetCurveWeld.toFixed(0)}mm</p>
-                                          <p>Gusset corners (4×{gussetIntersectionHeight.toFixed(0)}) = {gussetIntersectionWeld.toFixed(0)}mm</p>
-                                          <p>Blue→Base (2×{duckfootBasePlateYMm}) = {blueGussetToBaseWeld.toFixed(0)}mm</p>
-                                          <p>Yellow→Base (2×{duckfootBasePlateXMm}) = {yellowGussetToBaseWeld.toFixed(0)}mm</p>
+                                          <p className="font-medium text-purple-600 dark:text-purple-400 mt-1 border-t border-purple-200 pt-1">Duckfoot:</p>
+                                          <p>BlueCut={blueGussetCutoutWeld.toFixed(0)}</p>
+                                          <p>YellowCurve={yellowGussetCurveWeld.toFixed(0)}</p>
+                                          <p>Corners={gussetIntersectionWeld.toFixed(0)}</p>
+                                          <p>Blue→Base={blueGussetToBaseWeld.toFixed(0)}</p>
+                                          <p>Yellow→Base={yellowGussetToBaseWeld.toFixed(0)}</p>
                                         </>
                                       )}
-                                      <p className="font-semibold border-t border-purple-300 pt-0.5 mt-1">Total: {calculatedTotalWeld.toFixed(0)}mm ({(calculatedTotalWeld / 1000).toFixed(2)} l/m)</p>
+                                      {tackWeldLinear > 0 && <p>{tackWeldEnds}×L/F Tack={tackWeldLinear.toFixed(0)}</p>}
+                                      <p className="font-semibold border-t border-purple-300 pt-0.5 mt-1">Total: {calculatedTotalWeld.toFixed(0)}mm ({(calculatedTotalWeld / 1000).toFixed(2)}l/m)</p>
+                                      {weldVolume && <p className="font-semibold">Vol: {(weldVolume.totalVolumeCm3 * bendQuantity).toFixed(1)}cm³</p>}
                                     </div>
                                   </div>
                                 );
                               })()}
-                              {weldVolume && (
-                                <div className="bg-fuchsia-100 dark:bg-fuchsia-900/40 p-2 rounded text-center">
-                                  <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400 font-medium">Weld Vol</p>
-                                  <p className="text-lg font-bold text-fuchsia-900 dark:text-fuchsia-100">{(weldVolume.totalVolumeCm3 * bendQuantity).toFixed(1)}</p>
-                                  <p className="text-xs text-fuchsia-500 dark:text-fuchsia-400">cm³</p>
-                                </div>
-                              )}
-                              {mainOdMm && pipeWallThickness && (() => {
+                              {requiredProducts.includes('surface_protection') && mainOdMm && pipeWallThickness && (() => {
                                 const mainIdMm = mainOdMm - (2 * pipeWallThickness);
                                 const mainOdM = mainOdMm / 1000;
                                 const mainIdM = mainIdMm / 1000;

@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
-import { OrbitControls, Center, Environment, ContactShadows, Tube, Text } from '@react-three/drei'
+import { OrbitControls, Center, Environment, ContactShadows, Tube, Text, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { log } from '@/app/lib/logger'
 import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs'
@@ -607,7 +607,7 @@ const Flange = ({
   const boltR = (flangeSpecs.pcd / 2) / SCALE
   const holeR = (flangeSpecs.holeID / 2) / SCALE
   const boltCount = flangeSpecs.boltHoles
-  const boreR = pipeR * 1.02
+  const boreR = innerR * 1.02
   const weldTube = pipeR * 0.06
 
   const faceGeometry = useMemo(() => {
@@ -1133,11 +1133,13 @@ const RotatingFlange = ({
   center,
   normal,
   pipeR,
+  innerR,
   nb
 }: {
   center: THREE.Vector3
   normal: THREE.Vector3
   pipeR: number
+  innerR: number
   nb: number
 }) => {
   const flangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[Object.keys(FLANGE_DATA).map(Number).filter(k => k <= nb).pop() || 200]
@@ -1146,7 +1148,7 @@ const RotatingFlange = ({
   const boltR = (flangeSpecs.pcd / 2) / SCALE
   const holeR = (flangeSpecs.holeID / 2) / SCALE
   const boltCount = flangeSpecs.boltHoles
-  const boreR = pipeR * 1.05
+  const boreR = innerR * 1.05
 
   const faceGeometry = useMemo(() => {
     const shape = new THREE.Shape()
@@ -1546,6 +1548,7 @@ const Scene = (props: Props) => {
                       center={pipeALeftEnd.clone().add(new THREE.Vector3(0, 0, rotatingFlangeOffset))}
                       normal={new THREE.Vector3(0, 0, -1)}
                       pipeR={outerR}
+                      innerR={innerR}
                       nb={nominalBore}
                     />
                   </>
@@ -1594,6 +1597,7 @@ const Scene = (props: Props) => {
                       center={pipeARightEnd.clone().add(new THREE.Vector3(0, 0, -rotatingFlangeOffset))}
                       normal={new THREE.Vector3(0, 0, 1)}
                       pipeR={outerR}
+                      innerR={innerR}
                       nb={nominalBore}
                     />
                   </>
@@ -1648,6 +1652,7 @@ const Scene = (props: Props) => {
                       center={sweepEndPos.clone().sub(sweepEndDir.clone().multiplyScalar(rotatingFlangeOffset))}
                       normal={sweepEndDir}
                       pipeR={outerR}
+                      innerR={innerR}
                       nb={nominalBore}
                     />
                   </>
@@ -1689,49 +1694,82 @@ const Scene = (props: Props) => {
                 const aLineZ = pipeAHalfLength + outerR * 1.2
                 const aLineBottom = 0
                 const aLineTop = cfScaled
+                const cornerPos: [number, number, number] = [0, aLineBottom, aLineZ]
+                const arcRadius = 30
+                const sweepAngleRad = Math.PI / 2
 
                 return (
                   <>
-                    {/* Horizontal line at top (from left flange to vertical line) */}
+                    {/* Horizontal line at top (from left flange to corner) */}
                     <Line
                       points={[
                         [0, aLineTop, -pipeAHalfLength],
                         [0, aLineTop, aLineZ]
                       ]}
                       color="#cc6600"
-                      lineWidth={2}
+                      lineWidth={3}
                     />
-                    {/* Vertical line on right (from pipe centerline to top) */}
+                    {/* Vertical line on right (from corner to top) */}
                     <Line
                       points={[
                         [0, aLineBottom, aLineZ],
                         [0, aLineTop, aLineZ]
                       ]}
                       color="#cc6600"
-                      lineWidth={2}
+                      lineWidth={3}
                     />
-                    {/* B dimension label on horizontal line */}
-                    <Text
-                      position={[outerR * 0.5, aLineTop, 0]}
-                      fontSize={outerR * 0.6}
-                      color="#cc6600"
-                      anchorX="center"
-                      anchorY="bottom"
-                      rotation={[0, -Math.PI / 2, 0]}
+                    {/* C/F label on horizontal line */}
+                    <Html
+                      position={[0, aLineTop, 0]}
+                      center
                     >
-                      {`${effectivePipeALengthMm}mm`}
-                    </Text>
-                    {/* A dimension label on vertical line */}
-                    <Text
-                      position={[outerR * 0.5, (aLineBottom + aLineTop) / 2, aLineZ]}
-                      fontSize={outerR * 0.6}
-                      color="#cc6600"
-                      anchorX="center"
-                      anchorY="bottom"
-                      rotation={[0, -Math.PI / 2, Math.PI / 2]}
-                    >
-                      {`${cfValue}mm`}
-                    </Text>
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        color: '#cc6600',
+                        backgroundColor: 'rgba(255,255,255,0.9)',
+                        padding: '2px 6px',
+                        borderRadius: '3px',
+                        whiteSpace: 'nowrap',
+                        transform: 'translateY(-25px)'
+                      }}>
+                        C/F: {cfValue}mm
+                      </div>
+                    </Html>
+                    {/* 90° angle arc at corner */}
+                    {(() => {
+                      const startAngle = Math.PI / 2 - sweepAngleRad
+                      const startX = arcRadius * Math.cos(startAngle)
+                      const startY = arcRadius * Math.sin(startAngle)
+                      const endX = 0
+                      const endY = arcRadius
+                      const midAngle = Math.PI / 2 - sweepAngleRad / 2
+                      const textDistance = arcRadius * 0.55
+                      const textX = textDistance * Math.cos(midAngle)
+                      const textY = textDistance * Math.sin(midAngle)
+                      return (
+                        <Html position={cornerPos} center>
+                          <svg width="80" height="80" viewBox="-40 -40 80 80" style={{ overflow: 'visible' }}>
+                            <path
+                              d={`M ${startX.toFixed(2)} ${startY.toFixed(2)} A ${arcRadius} ${arcRadius} 0 0 1 ${endX} ${endY}`}
+                              fill="none"
+                              stroke="#cc6600"
+                              strokeWidth="2"
+                            />
+                            <text
+                              x={textX.toFixed(2)}
+                              y={(textY + 4).toFixed(2)}
+                              fill="#cc6600"
+                              fontSize="12"
+                              fontWeight="bold"
+                              textAnchor="middle"
+                            >
+                              90°
+                            </text>
+                          </svg>
+                        </Html>
+                      )
+                    })()}
                   </>
                 )
               })()}
@@ -1742,8 +1780,12 @@ const Scene = (props: Props) => {
         {/* Standard bend dimension lines - hide for sweep tees */}
         {!isSweepTee && (() => {
           const cfMm = centerToFaceMm || 0;
+          const bendDegrees = Math.round(angleRad * 180 / Math.PI);
 
-          const ip = new THREE.Vector3(0, 0, t1 + bendR);
+          const inletFlangePoint = new THREE.Vector3(0, 0, 0);
+          const outletFlangePoint = t2 > 0 ? outletEnd.clone() : bendEndPoint.clone();
+
+          const insideCorner = new THREE.Vector3(bendCenter.x, 0, 0);
 
           return (
             <>
@@ -1768,25 +1810,84 @@ const Scene = (props: Props) => {
               )}
 
               {cfMm > 0 && (
-                <DimensionLine
-                  start={inletStart}
-                  end={ip}
-                  label={`C/F: ${cfMm}mm`}
-                  offset={outerR * 3.5}
-                  color="#cc6600"
-                  hideEndExtension
-                />
-              )}
-
-              {cfMm > 0 && (
-                <DimensionLine
-                  start={outletEnd}
-                  end={ip}
-                  label={`C/F: ${cfMm}mm`}
-                  offset={outerR * 3.5}
-                  color="#cc6600"
-                  hideEndExtension
-                />
+                <>
+                  {/* Line from inlet flange to inside corner */}
+                  <Line
+                    points={[
+                      [inletFlangePoint.x, inletFlangePoint.y, inletFlangePoint.z],
+                      [insideCorner.x, insideCorner.y, insideCorner.z]
+                    ]}
+                    color="#cc6600"
+                    lineWidth={3}
+                  />
+                  {/* Line from inside corner to outlet flange */}
+                  <Line
+                    points={[
+                      [insideCorner.x, insideCorner.y, insideCorner.z],
+                      [outletFlangePoint.x, outletFlangePoint.y, outletFlangePoint.z]
+                    ]}
+                    color="#cc6600"
+                    lineWidth={3}
+                  />
+                  {/* C/F label on the top line */}
+                  <Html
+                    position={[
+                      (insideCorner.x + outletFlangePoint.x) / 2,
+                      (insideCorner.y + outletFlangePoint.y) / 2,
+                      (insideCorner.z + outletFlangePoint.z) / 2
+                    ]}
+                    center
+                  >
+                    <div style={{
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      color: '#cc6600',
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                      padding: '2px 6px',
+                      borderRadius: '3px',
+                      whiteSpace: 'nowrap',
+                      transform: 'translateY(-25px)'
+                    }}>
+                      C/F: {cfMm}mm
+                    </div>
+                  </Html>
+                  {/* Arc showing angle at inside corner - scales with bend angle */}
+                  {(() => {
+                    const arcRadius = 30;
+                    const startAngle = Math.PI / 2 - angleRad;
+                    const startX = arcRadius * Math.cos(startAngle);
+                    const startY = arcRadius * Math.sin(startAngle);
+                    const endX = 0;
+                    const endY = arcRadius;
+                    const largeArc = angleRad > Math.PI ? 1 : 0;
+                    const midAngle = Math.PI / 2 - angleRad / 2;
+                    const textDistance = arcRadius * 0.55;
+                    const textX = textDistance * Math.cos(midAngle);
+                    const textY = textDistance * Math.sin(midAngle);
+                    return (
+                      <Html position={[insideCorner.x, insideCorner.y, insideCorner.z]} center>
+                        <svg width="80" height="80" viewBox="-40 -40 80 80" style={{ overflow: 'visible' }}>
+                          <path
+                            d={`M ${startX.toFixed(2)} ${startY.toFixed(2)} A ${arcRadius} ${arcRadius} 0 ${largeArc} 1 ${endX} ${endY}`}
+                            fill="none"
+                            stroke="#cc6600"
+                            strokeWidth="2"
+                          />
+                          <text
+                            x={textX.toFixed(2)}
+                            y={(textY + 4).toFixed(2)}
+                            fill="#cc6600"
+                            fontSize="12"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                          >
+                            {bendDegrees}°
+                          </text>
+                        </svg>
+                      </Html>
+                    );
+                  })()}
+                </>
               )}
             </>
           );
@@ -1945,6 +2046,7 @@ const Scene = (props: Props) => {
                 center={new THREE.Vector3(0, 0, rotatingFlangeOffset)}
                 normal={new THREE.Vector3(0, 0, -1)}
                 pipeR={outerR}
+                innerR={innerR}
                 nb={nominalBore}
               />
               {/* R/F dimension line */}
@@ -2016,6 +2118,7 @@ const Scene = (props: Props) => {
                 center={outletBase.clone().sub(outletDir.clone().multiplyScalar(rotatingFlangeOffset))}
                 normal={outletDir}
                 pipeR={outerR}
+                innerR={innerR}
                 nb={nominalBore}
               />
             </>
