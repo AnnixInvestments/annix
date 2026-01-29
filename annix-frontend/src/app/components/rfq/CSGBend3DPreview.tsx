@@ -2042,28 +2042,28 @@ const Scene = (props: Props) => {
                 innerR={innerR}
                 nb={nominalBore}
               />
-              {/* L/F dimension lines - below pipe in XY plane */}
+              {/* L/F dimension lines - at bottom of pipe */}
               {(() => {
-                const dimY = -outerR - outerR * 0.3;
-                const dimYOuter = -outerR - outerR * 1.0;
+                const dimX = -outerR - outerR * 0.3;
+                const dimXOuter = -outerR - outerR * 0.8;
                 return (
                   <>
-                    {/* Vertical line from pipe end down */}
-                    <Line points={[[0, dimY, 0], [0, dimYOuter, 0]]} color="#cc6600" lineWidth={2} />
-                    {/* Vertical line from closure end down */}
-                    <Line points={[[0, dimY, -closureLength], [0, dimYOuter, -closureLength]]} color="#cc6600" lineWidth={2} />
-                    {/* Horizontal line connecting at bottom */}
-                    <Line points={[[0, dimYOuter, 0], [0, dimYOuter, -closureLength]]} color="#cc6600" lineWidth={3} />
+                    {/* Extension line from pipe end */}
+                    <Line points={[[dimX, 0, 0], [dimXOuter, 0, 0]]} color="#cc6600" lineWidth={2} />
+                    {/* Extension line from closure end */}
+                    <Line points={[[dimX, 0, -closureLength], [dimXOuter, 0, -closureLength]]} color="#cc6600" lineWidth={2} />
+                    {/* Dimension line connecting */}
+                    <Line points={[[dimXOuter, 0, 0], [dimXOuter, 0, -closureLength]]} color="#cc6600" lineWidth={3} />
                     {/* Arrow heads */}
-                    <Line points={[[0, dimYOuter + 0.05, 0.05], [0, dimYOuter, 0], [0, dimYOuter - 0.05, 0.05]]} color="#cc6600" lineWidth={2} />
-                    <Line points={[[0, dimYOuter + 0.05, -closureLength - 0.05], [0, dimYOuter, -closureLength], [0, dimYOuter - 0.05, -closureLength - 0.05]]} color="#cc6600" lineWidth={2} />
-                    {/* Closure length text - large font below */}
+                    <Line points={[[dimXOuter + 0.05, 0, 0.05], [dimXOuter, 0, 0], [dimXOuter - 0.05, 0, 0.05]]} color="#cc6600" lineWidth={2} />
+                    <Line points={[[dimXOuter + 0.05, 0, -closureLength - 0.05], [dimXOuter, 0, -closureLength], [dimXOuter - 0.05, 0, -closureLength - 0.05]]} color="#cc6600" lineWidth={2} />
+                    {/* Closure length text - large font */}
                     <Text
-                      position={[0, dimYOuter - outerR * 0.4, -closureLength / 2]}
+                      position={[dimXOuter - outerR * 0.3, 0, -closureLength / 2]}
                       fontSize={outerR * 0.5}
                       color="#cc6600"
                       anchorX="center"
-                      anchorY="top"
+                      anchorY="middle"
                       fontWeight="bold"
                     >
                       {`${closureLengthMm || 150}mm`}
