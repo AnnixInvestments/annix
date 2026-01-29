@@ -2065,7 +2065,6 @@ const Scene = (props: Props) => {
                       anchorX="center"
                       anchorY="top"
                       fontWeight="bold"
-                      rotation={[-Math.PI / 2, Math.PI, 0]}
                     >
                       {`${closureLengthMm || 150}mm`}
                     </Text>
