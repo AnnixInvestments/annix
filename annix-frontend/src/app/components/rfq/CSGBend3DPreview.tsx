@@ -1898,7 +1898,7 @@ const Scene = (props: Props) => {
                           anchorX="center"
                           anchorY="middle"
                           fontWeight="bold"
-                          rotation={[-Math.PI / 2, 0, 0]}
+                          rotation={[-Math.PI / 2, Math.PI, 0]}
                         >
                           {bendDegrees}°
                         </Text>
