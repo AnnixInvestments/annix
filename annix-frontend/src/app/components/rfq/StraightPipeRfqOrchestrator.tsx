@@ -269,6 +269,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     restoreFromDraft,
   } = useRfqForm();
 
+  // Ref to track current rfqData for memoized callbacks
+  const rfqDataRef = useRef(rfqData);
+  rfqDataRef.current = rfqData;
+
   // Draft management state
   const [currentDraftId, setCurrentDraftId] = useState<number | null>(null);
   const [draftNumber, setDraftNumber] = useState<string | null>(null);
@@ -2093,9 +2097,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     }
   };
 
-  const handleCalculateBend = async (entryId: string) => {
+  const handleCalculateBend = useCallback(async (entryId: string) => {
     try {
-      const entry = rfqData.items.find(e => e.id === entryId && e.itemType === 'bend');
+      const entry = rfqDataRef.current.items.find(e => e.id === entryId && e.itemType === 'bend');
       if (!entry || entry.itemType !== 'bend') return;
 
       const bendEntry = entry;
@@ -2112,7 +2116,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         const centerToFace = bendEntry.specs?.centerToFaceMm || 100;
 
         // Get wall thickness from fallback schedules - use correct schedule list based on steel spec
-        const bendEffectiveSpecId = bendEntry.specs?.steelSpecificationId ?? rfqData.globalSpecs?.steelSpecificationId;
+        const bendEffectiveSpecId = bendEntry.specs?.steelSpecificationId ?? rfqDataRef.current.globalSpecs?.steelSpecificationId;
         const schedules = getScheduleListForSpec(nominalBoreMm, bendEffectiveSpecId);
         const scheduleData = schedules.find((s: any) => s.scheduleDesignation === scheduleNumber);
         const wallThickness = scheduleData?.wallThicknessMm || 6.35;
@@ -2149,10 +2153,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       // Use item-level flange specs if set, otherwise use global
       const useGlobal = bendEntry.specs?.useGlobalFlangeSpecs !== false;
       const flangeStandardId = useGlobal
-        ? (bendEntry.specs?.flangeStandardId || rfqData.globalSpecs?.flangeStandardId)
+        ? (bendEntry.specs?.flangeStandardId || rfqDataRef.current.globalSpecs?.flangeStandardId)
         : bendEntry.specs?.flangeStandardId;
       const flangePressureClassId = useGlobal
-        ? (bendEntry.specs?.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId)
+        ? (bendEntry.specs?.flangePressureClassId || rfqDataRef.current.globalSpecs?.flangePressureClassId)
         : bendEntry.specs?.flangePressureClassId;
 
       const calculationData = {
@@ -2164,9 +2168,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         quantityType: 'number_of_items' as const,
         numberOfTangents: bendEntry.specs?.numberOfTangents || 0,
         tangentLengths: bendEntry.specs?.tangentLengths || [],
-        workingPressureBar: bendEntry.specs?.workingPressureBar || rfqData.globalSpecs.workingPressureBar || 10,
-        workingTemperatureC: bendEntry.specs?.workingTemperatureC || rfqData.globalSpecs.workingTemperatureC || 20,
-        steelSpecificationId: bendEntry.specs?.steelSpecificationId || rfqData.globalSpecs.steelSpecificationId || 2,
+        workingPressureBar: bendEntry.specs?.workingPressureBar || rfqDataRef.current.globalSpecs.workingPressureBar || 10,
+        workingTemperatureC: bendEntry.specs?.workingTemperatureC || rfqDataRef.current.globalSpecs.workingTemperatureC || 20,
+        steelSpecificationId: bendEntry.specs?.steelSpecificationId || rfqDataRef.current.globalSpecs.steelSpecificationId || 2,
         useGlobalFlangeSpecs: useGlobal,
         flangeStandardId,
         flangePressureClassId,
@@ -2179,7 +2183,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       const nominalBoreMm = bendEntry.specs?.nominalBoreMm;
       if (flangeStandardId && flangePressureClassId && nominalBoreMm) {
         const flangeTypeCode = useGlobal
-          ? (bendEntry.specs?.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode)
+          ? (bendEntry.specs?.flangeTypeCode || rfqDataRef.current.globalSpecs?.flangeTypeCode)
           : bendEntry.specs?.flangeTypeCode;
         const flangeTypeId = flangeTypeCode
           ? masterData.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode)?.id
@@ -2210,7 +2214,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       } else {
         console.error('Bend calculation failed:', error);
       }
-      const bendEntry = rfqData.items.find(e => e.id === entryId && e.itemType === 'bend') as BendEntry | undefined;
+      const bendEntry = rfqDataRef.current.items.find(e => e.id === entryId && e.itemType === 'bend') as BendEntry | undefined;
       const nb = bendEntry?.specs?.nominalBoreMm;
       const schedule = bendEntry?.specs?.scheduleNumber;
       const angle = bendEntry?.specs?.bendDegrees;
@@ -2222,21 +2226,21 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         : '**Bend:** This combination is not available. Please try different specifications.';
       updateItem(entryId, { calculationError: friendlyError });
     }
-  };
+  }, [updateItem, masterData.flangeTypes]);
 
-  const handleCalculateFitting = async (entryId: string) => {
+  const handleCalculateFitting = useCallback(async (entryId: string) => {
     log.debug('handleCalculateFitting called with entryId:', entryId);
     try {
       const { masterDataApi } = await import('@/app/lib/api/client');
-      
-      const entry = rfqData.items.find(e => e.id === entryId && e.itemType === 'fitting');
+
+      const entry = rfqDataRef.current.items.find(e => e.id === entryId && e.itemType === 'fitting');
       if (!entry || entry.itemType !== 'fitting') return;
 
       const fittingEntry = entry;
       
       // Get effective fitting standard (use item-level override first, then global spec)
       // Item-level steelSpecificationId takes precedence over global
-      const effectiveSteelSpecId = fittingEntry.specs?.steelSpecificationId ?? rfqData.globalSpecs?.steelSpecificationId;
+      const effectiveSteelSpecId = fittingEntry.specs?.steelSpecificationId ?? rfqDataRef.current.globalSpecs?.steelSpecificationId;
       const isSABS719 = effectiveSteelSpecId === 8;
       const effectiveFittingStandard = fittingEntry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
 
@@ -2291,11 +2295,11 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         pipeLengthBMm: fittingEntry.specs.pipeLengthBMm,
         quantityValue: fittingEntry.specs.quantityValue || 1,
         scheduleNumber: fittingEntry.specs.scheduleNumber,
-        workingPressureBar: fittingEntry.specs.workingPressureBar || rfqData.globalSpecs.workingPressureBar,
-        workingTemperatureC: fittingEntry.specs.workingTemperatureC || rfqData.globalSpecs.workingTemperatureC,
-        steelSpecificationId: fittingEntry.specs.steelSpecificationId || rfqData.globalSpecs.steelSpecificationId,
-        flangeStandardId: fittingEntry.specs.flangeStandardId || rfqData.globalSpecs.flangeStandardId,
-        flangePressureClassId: fittingEntry.specs.flangePressureClassId || rfqData.globalSpecs.flangePressureClassId,
+        workingPressureBar: fittingEntry.specs.workingPressureBar || rfqDataRef.current.globalSpecs.workingPressureBar,
+        workingTemperatureC: fittingEntry.specs.workingTemperatureC || rfqDataRef.current.globalSpecs.workingTemperatureC,
+        steelSpecificationId: fittingEntry.specs.steelSpecificationId || rfqDataRef.current.globalSpecs.steelSpecificationId,
+        flangeStandardId: fittingEntry.specs.flangeStandardId || rfqDataRef.current.globalSpecs.flangeStandardId,
+        flangePressureClassId: fittingEntry.specs.flangePressureClassId || rfqDataRef.current.globalSpecs.flangePressureClassId,
       };
 
       log.debug('Calling API with:', calculationData);
@@ -2303,9 +2307,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       log.debug('API result:', result);
 
       // Fetch dynamic flange specs if available
-      const effectiveFlangeStandardId = fittingEntry.specs?.flangeStandardId || rfqData.globalSpecs?.flangeStandardId;
-      const effectiveFlangePressureClassId = fittingEntry.specs?.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
-      const effectiveFlangeTypeCode = fittingEntry.specs?.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
+      const effectiveFlangeStandardId = fittingEntry.specs?.flangeStandardId || rfqDataRef.current.globalSpecs?.flangeStandardId;
+      const effectiveFlangePressureClassId = fittingEntry.specs?.flangePressureClassId || rfqDataRef.current.globalSpecs?.flangePressureClassId;
+      const effectiveFlangeTypeCode = fittingEntry.specs?.flangeTypeCode || rfqDataRef.current.globalSpecs?.flangeTypeCode;
       let flangeSpecData: FlangeSpecData | null = null;
 
       if (effectiveFlangeStandardId && effectiveFlangePressureClassId && fittingEntry.specs?.nominalDiameterMm) {
@@ -2339,7 +2343,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       } else {
         console.error('Fitting calculation failed:', error);
       }
-      const fittingEntry = rfqData.items.find(e => e.id === entryId && e.itemType === 'fitting') as FittingEntry | undefined;
+      const fittingEntry = rfqDataRef.current.items.find(e => e.id === entryId && e.itemType === 'fitting') as FittingEntry | undefined;
       const nb = fittingEntry?.specs?.nominalDiameterMm;
       const schedule = fittingEntry?.specs?.scheduleNumber;
       const fittingType = fittingEntry?.specs?.fittingType?.replace(/_/g, ' ').toLowerCase();
@@ -2351,7 +2355,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         : '**Fitting:** This combination is not available. Please try different specifications.';
       updateItem(entryId, { calculationError: friendlyError });
     }
-  };
+  }, [updateItem, masterData.flangeTypes]);
 
   const isNixExtractedItem = (item: PipeItem | undefined): boolean => {
     return item?.notes?.includes('Extracted by Nix') || false;
@@ -2375,8 +2379,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     }
   };
 
-  const handleUpdateEntry = (id: string, updates: any) => {
-    const entry = rfqData.items.find(e => e.id === id);
+  const handleUpdateEntry = useCallback((id: string, updates: any) => {
+    const entry = rfqDataRef.current.items.find(e => e.id === id);
 
     if (entry && isNixExtractedItem(entry) && updates.specs) {
       const fieldsToTrack = ['nominalBoreMm', 'nominalDiameterMm', 'scheduleNumber', 'wallThicknessMm', 'pipeEndConfiguration', 'bendType', 'bendDegrees', 'fittingType'];
@@ -2394,7 +2398,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     } else {
       updateStraightPipeEntry(id, updates);
     }
-  };
+  }, [updateItem, updateStraightPipeEntry]);
 
   // State for save progress feedback
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
