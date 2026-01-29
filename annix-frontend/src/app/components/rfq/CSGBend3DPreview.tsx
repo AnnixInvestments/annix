@@ -1767,12 +1767,13 @@ const Scene = (props: Props) => {
                             lineWidth={2}
                           />
                           <Text
-                            position={[textPos.x, textPos.y, textPos.z]}
+                            position={[textPos.x + 0.01, textPos.y, textPos.z]}
                             fontSize={outerR * 0.4}
                             color="#cc6600"
                             anchorX="center"
                             anchorY="middle"
                             fontWeight="bold"
+                            rotation={[0, -Math.PI / 2, 0]}
                           >
                             90°
                           </Text>
