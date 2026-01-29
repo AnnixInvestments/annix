@@ -2565,9 +2565,7 @@ export default function CSGBend3DPreview(props: Props) {
     autoCameraPosition = [autoCameraDistance * 0.3, autoCameraDistance * 1.2, autoCameraDistance * 0.3]
   } else {
     const autoCameraDistance = Math.max(diagonalExtent * 2, 5)
-    const autoCameraHeight = autoCameraDistance * 0.6
-    const autoCameraZ = autoCameraDistance * 1.2
-    autoCameraPosition = [autoCameraDistance * 0.5, autoCameraHeight, autoCameraZ]
+    autoCameraPosition = [-autoCameraDistance * 0.3, autoCameraDistance * 1.2, autoCameraDistance * 0.8]
   }
 
   const cameraPosition = props.savedCameraPosition || autoCameraPosition
