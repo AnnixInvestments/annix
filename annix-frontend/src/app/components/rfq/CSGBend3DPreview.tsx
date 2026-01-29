@@ -2042,30 +2042,30 @@ const Scene = (props: Props) => {
                 innerR={innerR}
                 nb={nominalBore}
               />
-              {/* L/F dimension lines - at bottom of pipe */}
+              {/* L/F dimension lines - below pipe in XY plane */}
               {(() => {
-                const dimX = -outerR - outerR * 0.3;
-                const dimXOuter = -outerR - outerR * 0.8;
+                const dimY = -outerR - outerR * 0.3;
+                const dimYOuter = -outerR - outerR * 1.0;
                 return (
                   <>
                     {/* Vertical line from pipe end down */}
-                    <Line points={[[dimX, 0, 0], [dimXOuter, 0, 0]]} color="#cc6600" lineWidth={2} />
+                    <Line points={[[0, dimY, 0], [0, dimYOuter, 0]]} color="#cc6600" lineWidth={2} />
                     {/* Vertical line from closure end down */}
-                    <Line points={[[dimX, 0, -closureLength], [dimXOuter, 0, -closureLength]]} color="#cc6600" lineWidth={2} />
+                    <Line points={[[0, dimY, -closureLength], [0, dimYOuter, -closureLength]]} color="#cc6600" lineWidth={2} />
                     {/* Horizontal line connecting at bottom */}
-                    <Line points={[[dimXOuter, 0, 0], [dimXOuter, 0, -closureLength]]} color="#cc6600" lineWidth={3} />
+                    <Line points={[[0, dimYOuter, 0], [0, dimYOuter, -closureLength]]} color="#cc6600" lineWidth={3} />
                     {/* Arrow heads */}
-                    <Line points={[[dimXOuter + 0.05, 0, 0.05], [dimXOuter, 0, 0], [dimXOuter - 0.05, 0, 0.05]]} color="#cc6600" lineWidth={2} />
-                    <Line points={[[dimXOuter + 0.05, 0, -closureLength - 0.05], [dimXOuter, 0, -closureLength], [dimXOuter - 0.05, 0, -closureLength - 0.05]]} color="#cc6600" lineWidth={2} />
+                    <Line points={[[0, dimYOuter + 0.05, 0.05], [0, dimYOuter, 0], [0, dimYOuter - 0.05, 0.05]]} color="#cc6600" lineWidth={2} />
+                    <Line points={[[0, dimYOuter + 0.05, -closureLength - 0.05], [0, dimYOuter, -closureLength], [0, dimYOuter - 0.05, -closureLength - 0.05]]} color="#cc6600" lineWidth={2} />
                     {/* Closure length text - large font below */}
                     <Text
-                      position={[dimXOuter - outerR * 0.3, 0, -closureLength / 2]}
+                      position={[0, dimYOuter - outerR * 0.4, -closureLength / 2]}
                       fontSize={outerR * 0.5}
                       color="#cc6600"
                       anchorX="center"
-                      anchorY="middle"
+                      anchorY="top"
                       fontWeight="bold"
-                      rotation={[0, Math.PI / 2, 0]}
+                      rotation={[-Math.PI / 2, Math.PI, 0]}
                     >
                       {`${closureLengthMm || 150}mm`}
                     </Text>
