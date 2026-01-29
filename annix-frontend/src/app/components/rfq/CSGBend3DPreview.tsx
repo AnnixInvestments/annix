@@ -2042,13 +2042,34 @@ const Scene = (props: Props) => {
                 innerR={innerR}
                 nb={nominalBore}
               />
-              {/* L/F dimension line */}
-              <Line points={[[0, -outerR - 0.15, 0], [0, -outerR - 0.15, -closureLength]]} color="#2563eb" lineWidth={2} />
-              <Line points={[[0, -outerR - 0.1, 0], [0, -outerR - 0.2, 0]]} color="#2563eb" lineWidth={1} />
-              <Line points={[[0, -outerR - 0.1, -closureLength], [0, -outerR - 0.2, -closureLength]]} color="#2563eb" lineWidth={1} />
-              <Text position={[0, -outerR - 0.28, -closureLength / 2]} fontSize={0.12} color="#2563eb" anchorX="center" anchorY="top">
-                {`L/F ${closureLengthMm || 150}mm`}
-              </Text>
+              {/* L/F dimension lines - vertical with large text below */}
+              {(() => {
+                const dimOffset = outerR * 1.5;
+                const dimY = -outerR - dimOffset;
+                return (
+                  <>
+                    {/* Vertical line from pipe end down */}
+                    <Line points={[[0, 0, 0], [0, dimY, 0]]} color="#cc6600" lineWidth={2} />
+                    {/* Vertical line from closure end down */}
+                    <Line points={[[0, 0, -closureLength], [0, dimY, -closureLength]]} color="#cc6600" lineWidth={2} />
+                    {/* Horizontal line connecting at bottom */}
+                    <Line points={[[0, dimY, 0], [0, dimY, -closureLength]]} color="#cc6600" lineWidth={3} />
+                    {/* Arrow head at closure end */}
+                    <Line points={[[0, dimY + 0.08, -closureLength + 0.08], [0, dimY, -closureLength], [0, dimY - 0.08, -closureLength + 0.08]]} color="#cc6600" lineWidth={2} />
+                    {/* Closure length text - large font below */}
+                    <Text
+                      position={[0, dimY - outerR * 0.5, -closureLength / 2]}
+                      fontSize={outerR * 0.5}
+                      color="#cc6600"
+                      anchorX="center"
+                      anchorY="top"
+                      fontWeight="bold"
+                    >
+                      {`${closureLengthMm || 150}mm`}
+                    </Text>
+                  </>
+                );
+              })()}
             </>
           ) : hasRotatingInletFlange ? (
             <>
