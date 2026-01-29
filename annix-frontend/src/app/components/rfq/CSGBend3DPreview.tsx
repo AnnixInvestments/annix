@@ -1955,17 +1955,26 @@ const Scene = (props: Props) => {
           const stubCenterOnAxis = tangentStart.clone().add(tangentDir.clone().multiplyScalar(stub.distFromFlange))
 
           const orientationDir = (() => {
-            const angleRad = (stub.angleDegrees * Math.PI) / 180
+            const angleRad = ((stub.angleDegrees + 90) * Math.PI) / 180
 
-            const yUp = new THREE.Vector3(0, 1, 0)
-            const perpHorizontal = new THREE.Vector3().crossVectors(tangentDir, yUp).normalize()
+            const globalDown = new THREE.Vector3(0, -1, 0)
+            const tangentDotDown = tangentDir.dot(globalDown)
+            const tangentComponent = tangentDir.clone().multiplyScalar(tangentDotDown)
+            const perpDown = globalDown.clone().sub(tangentComponent)
+
+            if (perpDown.length() < 0.01) {
+              perpDown.set(-1, 0, 0)
+            } else {
+              perpDown.normalize()
+            }
+
+            const perpHorizontal = new THREE.Vector3().crossVectors(tangentDir, perpDown).normalize()
 
             if (perpHorizontal.length() < 0.01) {
               perpHorizontal.set(1, 0, 0)
             }
 
-            const baseUp = yUp.clone()
-            const rotatedDir = baseUp.clone()
+            const rotatedDir = perpDown.clone()
               .multiplyScalar(Math.cos(angleRad))
               .add(perpHorizontal.clone().multiplyScalar(Math.sin(angleRad)))
               .normalize()
@@ -1978,18 +1987,17 @@ const Scene = (props: Props) => {
           const stubLengthMm = Math.round(stub.length * SCALE)
           const distFromFlangeMm = Math.round(distFromFlangeScaled * SCALE)
 
-          const stubSideOffset = (() => {
-            const perpDir = new THREE.Vector3().crossVectors(orientationDir, tangentDir).normalize()
-            if (perpDir.length() < 0.01) {
-              return new THREE.Vector3(1, 0, 0).multiplyScalar(stub.outerR * 3)
-            }
-            return perpDir.multiplyScalar(stub.outerR * 3)
-          })()
-
           const weldPoint = stubCenterOnAxis.clone()
           const flangePoint = stubEnd.clone()
-          const dimLineWeld = weldPoint.clone().add(stubSideOffset)
-          const dimLineFlange = flangePoint.clone().add(stubSideOffset)
+
+          const stubRightOffset = new THREE.Vector3(stub.outerR + 0.05, 0, 0)
+          const dimLineWeld = weldPoint.clone().add(stubRightOffset)
+          const dimLineFlange = flangePoint.clone().add(stubRightOffset)
+
+          const distLineY = weldPoint.y - outerR * 3
+          const distLineStart = new THREE.Vector3(tangentStart.x, distLineY, tangentStart.z)
+          const distLineEnd = new THREE.Vector3(weldPoint.x, distLineY, weldPoint.z)
+          const distLineOffset = new THREE.Vector3(stub.outerR + 0.1, 0, 0)
 
           return (
             <group key={i}>
@@ -2005,14 +2013,54 @@ const Scene = (props: Props) => {
                 nb={stub.nb}
               />
 
-              <DimensionLine
-                start={tangentStart}
-                end={stubCenterOnAxis}
-                label={`Stub${i + 1} dist: ${distFromFlangeMm}mm`}
-                offset={outerR * 1.5}
+              {/* Green line - distance from flange to stub (below pipe) */}
+              <Line
+                points={[
+                  [tangentStart.x, distLineY, tangentStart.z],
+                  [stubCenterOnAxis.x, distLineY, stubCenterOnAxis.z]
+                ]}
                 color="#009900"
+                lineWidth={3}
               />
+              <Line
+                points={[
+                  [tangentStart.x, tangentStart.y - outerR, tangentStart.z],
+                  [tangentStart.x, distLineY, tangentStart.z]
+                ]}
+                color="#009900"
+                lineWidth={2}
+                dashed
+                dashSize={0.03}
+                gapSize={0.02}
+              />
+              <Line
+                points={[
+                  [stubCenterOnAxis.x, stubCenterOnAxis.y - outerR, stubCenterOnAxis.z],
+                  [stubCenterOnAxis.x, distLineY, stubCenterOnAxis.z]
+                ]}
+                color="#009900"
+                lineWidth={2}
+                dashed
+                dashSize={0.03}
+                gapSize={0.02}
+              />
+              <Text
+                position={[
+                  (distLineStart.x + distLineEnd.x) / 2,
+                  distLineY - 0.1,
+                  (distLineStart.z + distLineEnd.z) / 2
+                ]}
+                fontSize={0.15}
+                color="#009900"
+                anchorX="center"
+                anchorY="top"
+                fontWeight="bold"
+                rotation={[-Math.PI / 2, 0, 0]}
+              >
+                {`${distFromFlangeMm}mm`}
+              </Text>
 
+              {/* Purple line - stub length (vertical beside stub) */}
               <Line
                 points={[[dimLineFlange.x, dimLineFlange.y, dimLineFlange.z], [dimLineWeld.x, dimLineWeld.y, dimLineWeld.z]]}
                 color="#990099"
@@ -2036,16 +2084,16 @@ const Scene = (props: Props) => {
               />
               <Text
                 position={[
-                  (dimLineFlange.x + dimLineWeld.x) / 2 + stubSideOffset.x * 0.3,
-                  (dimLineFlange.y + dimLineWeld.y) / 2 + stubSideOffset.y * 0.3,
-                  (dimLineFlange.z + dimLineWeld.z) / 2 + stubSideOffset.z * 0.3
+                  dimLineWeld.x + 0.1,
+                  (dimLineFlange.y + dimLineWeld.y) / 2,
+                  dimLineWeld.z
                 ]}
-                fontSize={0.18}
+                fontSize={0.15}
                 color="#990099"
-                anchorX="center"
+                anchorX="left"
                 anchorY="middle"
                 fontWeight="bold"
-                rotation={[0, -Math.atan2(orientationDir.z, orientationDir.x), 0]}
+                rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
               >
                 {`${stubLengthMm}mm`}
               </Text>
