@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import dynamic from 'next/dynamic';
 import { log } from '@/app/lib/logger';
 import {
@@ -26,6 +26,202 @@ const Pipe3DPreview = dynamic(() => import('@/app/components/rfq/Pipe3DPreview')
 const Bend3DPreview = dynamic(() => import('@/app/components/rfq/CSGBend3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 const Tee3DPreview = dynamic(() => import('@/app/components/rfq/Tee3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 import { BendForm, FittingForm, StraightPipeForm, PipeSteelWorkForm, ExpansionJointForm } from '@/app/components/rfq/forms';
+
+interface ItemWrapperProps {
+  entry: any;
+  index: number;
+  entriesCount: number;
+  globalSpecs: any;
+  masterData: any;
+  onUpdateEntry: (id: string, updates: any) => void;
+  onRemoveEntry: (id: string) => void;
+  onDuplicateEntry: (entry: any, index: number) => void;
+  onCopyEntry: (entry: any) => void;
+  copiedItemId: string | null;
+  onCalculate?: () => void;
+  onCalculateBend?: (id: string) => void;
+  onCalculateFitting?: (id: string) => void;
+  generateItemDescription: (entry: any) => string;
+  Pipe3DPreview: React.ComponentType<any> | null;
+  Bend3DPreview: React.ComponentType<any> | null;
+  Tee3DPreview: React.ComponentType<any> | null;
+  availableNominalBores: number[];
+  availableSchedulesMap: Record<string, any[]>;
+  setAvailableSchedulesMap: (map: Record<string, any[]> | ((prev: Record<string, any[]>) => Record<string, any[]>)) => void;
+  fetchAvailableSchedules: (entryId: string, steelSpecId: number, nominalBoreMm: number) => Promise<any[]>;
+  pressureClassesByStandard: Record<number, any[]>;
+  getFilteredPressureClasses: (standardId: number) => Promise<any[]>;
+  requiredProducts: string[];
+}
+
+const ItemWrapper = memo(function ItemWrapper({
+  entry,
+  index,
+  entriesCount,
+  globalSpecs,
+  masterData,
+  onUpdateEntry,
+  onRemoveEntry,
+  onDuplicateEntry,
+  onCopyEntry,
+  copiedItemId,
+  onCalculate,
+  onCalculateBend,
+  onCalculateFitting,
+  generateItemDescription,
+  Pipe3DPreview,
+  Bend3DPreview,
+  Tee3DPreview,
+  availableNominalBores,
+  availableSchedulesMap,
+  setAvailableSchedulesMap,
+  fetchAvailableSchedules,
+  pressureClassesByStandard,
+  getFilteredPressureClasses,
+  requiredProducts,
+}: ItemWrapperProps) {
+  const handleClientItemNumberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onUpdateEntry(entry.id, { clientItemNumber: e.target.value });
+  }, [entry.id, onUpdateEntry]);
+
+  const handleSequentialNumberingChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onUpdateEntry(entry.id, { useSequentialNumbering: e.target.checked });
+  }, [entry.id, onUpdateEntry]);
+
+  const handleDuplicate = useCallback(() => {
+    onDuplicateEntry(entry, index);
+  }, [entry, index, onDuplicateEntry]);
+
+  const handleCopy = useCallback(() => {
+    onCopyEntry(entry);
+  }, [entry, onCopyEntry]);
+
+  return (
+    <div className="border-2 border-gray-200 rounded-lg p-5 bg-white shadow-sm">
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            <span className="text-base font-semibold text-gray-800">Item</span>
+            <input
+              type="text"
+              value={entry.clientItemNumber || `#${index + 1}`}
+              onChange={handleClientItemNumberChange}
+              className="min-w-32 px-2 py-0.5 text-base font-semibold text-gray-800 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              style={{ width: `${Math.max(10, (entry.clientItemNumber || `#${index + 1}`).length + 2)}ch` }}
+              placeholder={`#${index + 1}`}
+            />
+          </div>
+          <span className={`px-3 py-1 ${
+            entry.itemType === 'bend' ? 'bg-purple-100 text-purple-800' :
+            entry.itemType === 'fitting' ? 'bg-green-100 text-green-800' :
+            'bg-blue-100 text-blue-800'
+          } text-xs font-semibold rounded-full`}>
+            {entry.itemType === 'bend' ? 'Bend Section' :
+             entry.itemType === 'fitting' ? 'Fittings' :
+             'Straight Pipe'}
+          </span>
+          {entry.specs?.quantityValue > 1 && (
+            <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer ml-2">
+              <input
+                type="checkbox"
+                checked={entry.useSequentialNumbering || false}
+                onChange={handleSequentialNumberingChange}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span>Sequential (e.g., {entry.clientItemNumber || `#${index + 1}`}-01, -02)</span>
+            </label>
+          )}
+        </div>
+      </div>
+
+      {entry.itemType === 'bend' ? (
+        <BendForm
+          entry={entry}
+          index={index}
+          entriesCount={entriesCount}
+          globalSpecs={globalSpecs}
+          masterData={masterData}
+          onUpdateEntry={onUpdateEntry}
+          onRemoveEntry={onRemoveEntry}
+          onDuplicateEntry={handleDuplicate}
+          onCopyEntry={handleCopy}
+          copiedItemId={copiedItemId}
+          onCalculateBend={onCalculateBend}
+          generateItemDescription={generateItemDescription}
+          Bend3DPreview={Bend3DPreview}
+          pressureClassesByStandard={pressureClassesByStandard}
+          getFilteredPressureClasses={getFilteredPressureClasses}
+          requiredProducts={requiredProducts}
+        />
+      ) : entry.itemType === 'fitting' ? (
+        <FittingForm
+          entry={entry}
+          index={index}
+          entriesCount={entriesCount}
+          globalSpecs={globalSpecs}
+          masterData={masterData}
+          onUpdateEntry={onUpdateEntry}
+          onRemoveEntry={onRemoveEntry}
+          onDuplicateEntry={handleDuplicate}
+          onCopyEntry={handleCopy}
+          copiedItemId={copiedItemId}
+          onCalculateFitting={onCalculateFitting}
+          generateItemDescription={generateItemDescription}
+          Tee3DPreview={Tee3DPreview}
+          pressureClassesByStandard={pressureClassesByStandard}
+          getFilteredPressureClasses={getFilteredPressureClasses}
+          requiredProducts={requiredProducts}
+        />
+      ) : entry.itemType === 'pipe_steel_work' ? (
+        <PipeSteelWorkForm
+          entry={entry}
+          index={index}
+          entriesCount={entriesCount}
+          globalSpecs={globalSpecs}
+          masterData={masterData}
+          onUpdateEntry={onUpdateEntry}
+          onRemoveEntry={onRemoveEntry}
+          generateItemDescription={generateItemDescription}
+          requiredProducts={requiredProducts}
+        />
+      ) : entry.itemType === 'expansion_joint' ? (
+        <ExpansionJointForm
+          entry={entry}
+          index={index}
+          entriesCount={entriesCount}
+          globalSpecs={globalSpecs}
+          masterData={masterData}
+          onUpdateEntry={onUpdateEntry}
+          onRemoveEntry={onRemoveEntry}
+          generateItemDescription={generateItemDescription}
+          requiredProducts={requiredProducts}
+        />
+      ) : (
+        <StraightPipeForm
+          entry={entry}
+          index={index}
+          entriesCount={entriesCount}
+          globalSpecs={globalSpecs}
+          masterData={masterData}
+          onUpdateEntry={onUpdateEntry}
+          onRemoveEntry={onRemoveEntry}
+          onDuplicateEntry={handleDuplicate}
+          onCopyEntry={handleCopy}
+          copiedItemId={copiedItemId}
+          onCalculate={onCalculate}
+          generateItemDescription={generateItemDescription}
+          Pipe3DPreview={Pipe3DPreview}
+          nominalBores={availableNominalBores}
+          availableSchedulesMap={availableSchedulesMap}
+          setAvailableSchedulesMap={setAvailableSchedulesMap}
+          fetchAvailableSchedules={fetchAvailableSchedules}
+          pressureClassesByStandard={pressureClassesByStandard}
+          getFilteredPressureClasses={getFilteredPressureClasses}
+        />
+      )}
+    </div>
+  );
+});
 
 // Render counter for performance debugging
 let itemUploadStepRenderCount = 0;
@@ -918,110 +1114,9 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
           </div>
 
           <div className="space-y-3">
-        {entries.map((entry: any, index: number) => (
-          <div key={`${entry.id}-${index}`} className="border-2 border-gray-200 rounded-lg p-5 bg-white shadow-sm">
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center gap-3">
-                {/* Editable Item Number - dynamic width based on content */}
-                <div className="flex items-center gap-1">
-                  <span className="text-base font-semibold text-gray-800">Item</span>
-                  <input
-                    type="text"
-                    value={entry.clientItemNumber || `#${index + 1}`}
-                    onChange={(e) => onUpdateEntry(entry.id, { clientItemNumber: e.target.value })}
-                    className="min-w-32 px-2 py-0.5 text-base font-semibold text-gray-800 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    style={{ width: `${Math.max(10, (entry.clientItemNumber || `#${index + 1}`).length + 2)}ch` }}
-                    placeholder={`#${index + 1}`}
-                  />
-                </div>
-                <span className={`px-3 py-1 ${
-                  entry.itemType === 'bend' ? 'bg-purple-100 text-purple-800' :
-                  entry.itemType === 'fitting' ? 'bg-green-100 text-green-800' :
-                  'bg-blue-100 text-blue-800'
-                } text-xs font-semibold rounded-full`}>
-                  {entry.itemType === 'bend' ? 'Bend Section' :
-                   entry.itemType === 'fitting' ? 'Fittings' :
-                   'Straight Pipe'}
-                </span>
-                {/* Sequential numbering checkbox */}
-                {entry.specs?.quantityValue > 1 && (
-                  <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer ml-2">
-                    <input
-                      type="checkbox"
-                      checked={entry.useSequentialNumbering || false}
-                      onChange={(e) => onUpdateEntry(entry.id, { useSequentialNumbering: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>Sequential (e.g., {entry.clientItemNumber || `#${index + 1}`}-01, -02)</span>
-                  </label>
-                )}
-              </div>
-            </div>
-
-            {entry.itemType === 'bend' ? (
-              <BendForm
-                entry={entry}
-                index={index}
-                entriesCount={entries.length}
-                globalSpecs={globalSpecs}
-                masterData={masterData}
-                onUpdateEntry={onUpdateEntry}
-                onRemoveEntry={onRemoveEntry}
-                onDuplicateEntry={duplicateItem}
-                onCopyEntry={copyItemToClipboard}
-                copiedItemId={copiedItemId}
-                onCalculateBend={onCalculateBend}
-                generateItemDescription={generateItemDescription}
-                Bend3DPreview={drawingsHidden ? null : Bend3DPreview}
-                pressureClassesByStandard={pressureClassesByStandard}
-                getFilteredPressureClasses={getFilteredPressureClasses}
-                requiredProducts={requiredProducts}
-              />
-            ) : entry.itemType === 'fitting' ? (
-              <FittingForm
-                entry={entry}
-                index={index}
-                entriesCount={entries.length}
-                globalSpecs={globalSpecs}
-                masterData={masterData}
-                onUpdateEntry={onUpdateEntry}
-                onRemoveEntry={onRemoveEntry}
-                onDuplicateEntry={duplicateItem}
-                onCopyEntry={copyItemToClipboard}
-                copiedItemId={copiedItemId}
-                onCalculateFitting={onCalculateFitting}
-                generateItemDescription={generateItemDescription}
-                Tee3DPreview={drawingsHidden ? null : Tee3DPreview}
-                pressureClassesByStandard={pressureClassesByStandard}
-                getFilteredPressureClasses={getFilteredPressureClasses}
-                requiredProducts={requiredProducts}
-              />
-            ) : entry.itemType === 'pipe_steel_work' ? (
-              <PipeSteelWorkForm
-                entry={entry}
-                index={index}
-                entriesCount={entries.length}
-                globalSpecs={globalSpecs}
-                masterData={masterData}
-                onUpdateEntry={onUpdateEntry}
-                onRemoveEntry={onRemoveEntry}
-                generateItemDescription={generateItemDescription}
-                requiredProducts={requiredProducts}
-              />
-            ) : entry.itemType === 'expansion_joint' ? (
-              <ExpansionJointForm
-                entry={entry}
-                index={index}
-                entriesCount={entries.length}
-                globalSpecs={globalSpecs}
-                masterData={masterData}
-                onUpdateEntry={onUpdateEntry}
-                onRemoveEntry={onRemoveEntry}
-                generateItemDescription={generateItemDescription}
-                requiredProducts={requiredProducts}
-              />
-            ) : (
-              <StraightPipeForm
+            {entries.map((entry: any, index: number) => (
+              <ItemWrapper
+                key={entry.id}
                 entry={entry}
                 index={index}
                 entriesCount={entries.length}
@@ -1033,19 +1128,22 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 onCopyEntry={copyItemToClipboard}
                 copiedItemId={copiedItemId}
                 onCalculate={onCalculate}
+                onCalculateBend={onCalculateBend}
+                onCalculateFitting={onCalculateFitting}
                 generateItemDescription={generateItemDescription}
                 Pipe3DPreview={drawingsHidden ? null : Pipe3DPreview}
-                nominalBores={availableNominalBores}
+                Bend3DPreview={drawingsHidden ? null : Bend3DPreview}
+                Tee3DPreview={drawingsHidden ? null : Tee3DPreview}
+                availableNominalBores={availableNominalBores}
                 availableSchedulesMap={availableSchedulesMap}
                 setAvailableSchedulesMap={setAvailableSchedulesMap}
                 fetchAvailableSchedules={fetchAvailableSchedules}
                 pressureClassesByStandard={pressureClassesByStandard}
                 getFilteredPressureClasses={getFilteredPressureClasses}
+                requiredProducts={requiredProducts}
               />
-            )}
+            ))}
           </div>
-        ))}
-        </div>
 
         {/* Total Summary */}
         <div className="border-2 border-blue-200 rounded-md p-3 bg-blue-50">

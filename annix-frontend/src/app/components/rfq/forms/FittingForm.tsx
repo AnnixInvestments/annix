@@ -105,6 +105,18 @@ function FittingFormComponent({
     }, 100);
   }, [entry.id, onCalculateFitting]);
 
+  const handleWorkingPressureChange = useCallback((value: number | undefined) => {
+    onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: value } });
+  }, [entry.id, entry.specs, onUpdateEntry]);
+
+  const handleWorkingTemperatureChange = useCallback((value: number | undefined) => {
+    onUpdateEntry(entry.id, { specs: { ...entry.specs, workingTemperatureC: value } });
+  }, [entry.id, entry.specs, onUpdateEntry]);
+
+  const handleResetOverrides = useCallback(() => {
+    onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined } });
+  }, [entry.id, entry.specs, onUpdateEntry]);
+
   const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
   const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
   const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
@@ -233,9 +245,9 @@ function FittingFormComponent({
                   workingTemperatureC={entry.specs?.workingTemperatureC}
                   globalPressureBar={globalSpecs?.workingPressureBar}
                   globalTemperatureC={globalSpecs?.workingTemperatureC}
-                  onPressureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: value } })}
-                  onTemperatureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingTemperatureC: value } })}
-                  onReset={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined } })}
+                  onPressureChange={handleWorkingPressureChange}
+                  onTemperatureChange={handleWorkingTemperatureChange}
+                  onReset={handleResetOverrides}
                   gridCols={3}
                   className="mb-3"
                   extraFields={

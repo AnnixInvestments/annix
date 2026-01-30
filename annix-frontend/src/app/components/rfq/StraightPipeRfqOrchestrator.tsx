@@ -677,7 +677,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   };
 
   // Get filtered pressure classes for a specific standard (with caching)
-  const getFilteredPressureClasses = async (standardId: number): Promise<any[]> => {
+  const getFilteredPressureClasses = useCallback(async (standardId: number): Promise<any[]> => {
     if (!standardId) return [];
 
     // Return cached if available
@@ -693,7 +693,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       console.error('Error fetching pressure classes for standard', standardId, error);
       return [];
     }
-  };
+  }, [pressureClassesByStandard]);
 
   // Load master data from API
   useEffect(() => {
@@ -1349,7 +1349,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   // Fetch available schedules for a specific entry
   // IMPORTANT: This function should NOT replace working fallback data with API data
   // because API schedule names may differ from fallback names, breaking the selected value
-  const fetchAvailableSchedules = async (entryId: string, steelSpecId: number, nominalBoreMm: number) => {
+  const fetchAvailableSchedules = useCallback(async (entryId: string, steelSpecId: number, nominalBoreMm: number) => {
     // Check for fallback data first to provide immediate response - use correct schedule list based on steel spec
     const fallbackSchedules = getScheduleListForSpec(nominalBoreMm, steelSpecId);
 
@@ -1409,10 +1409,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       }
       return [];
     }
-  };
+  }, [availableSchedulesMap, masterData.nominalBores]);
 
   // Fetch bend options (nominal bores and degrees) for a bend type
-  const fetchBendOptions = async (bendType: string) => {
+  const fetchBendOptions = useCallback(async (bendType: string) => {
     // Return cached data if available
     if (bendOptionsCache[bendType]) {
       return bendOptionsCache[bendType];
@@ -1435,10 +1435,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       }
       return { nominalBores: [], degrees: [] };
     }
-  };
+  }, [bendOptionsCache]);
 
   // Fetch center-to-face dimension from API based on bend type, NB, and angle
-  const fetchCenterToFace = async (entryId: string, bendType: string, nominalBoreMm: number, degrees: number) => {
+  const fetchCenterToFace = useCallback(async (entryId: string, bendType: string, nominalBoreMm: number, degrees: number) => {
     if (!bendType || !nominalBoreMm || !degrees) {
       log.debug('[CenterToFace] Missing required parameters:', { bendType, nominalBoreMm, degrees });
       return null;
@@ -1451,8 +1451,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       if (result && result.centerToFaceMm) {
         log.debug(`[CenterToFace] Found: ${result.centerToFaceMm}mm for ${bendType} ${nominalBoreMm}NB @ ${degrees}°`);
 
-        // Find the current entry to merge specs
-        const currentEntry = rfqData.items.find((item: any) => item.id === entryId);
+        // Find the current entry to merge specs using ref for stable reference
+        const currentEntry = rfqDataRef.current.items.find((item: any) => item.id === entryId);
         if (currentEntry && currentEntry.specs) {
           // Update the entry with the center-to-face value, merging with existing specs
           updateItem(entryId, {
@@ -1473,10 +1473,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       }
       return null;
     }
-  };
+  }, [updateItem]);
 
   // Auto-select flange specifications based on item-level operating conditions
-  const autoSelectFlangeSpecs = async (
+  const autoSelectFlangeSpecs = useCallback(async (
     entryId: string,
     entryType: 'straight-pipe' | 'bend',
     workingPressureBar: number,
@@ -1539,7 +1539,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     } catch (error) {
       console.error('Error auto-selecting flange specs:', error);
     }
-  };
+  }, []);
 
   // Refetch available schedules when global steel specification changes
   // NOTE: Removed rfqData.straightPipeEntries from dependencies to prevent re-fetching on every entry change
@@ -1959,16 +1959,17 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     }
   }, [rfqData.items, rfqData.customerName, updateItem]);
 
-  const handleCalculateAll = async () => {
+  const handleCalculateAll = useCallback(async () => {
+    const currentRfqData = rfqDataRef.current;
     try {
-      for (const entry of rfqData.straightPipeEntries) {
+      for (const entry of currentRfqData.straightPipeEntries) {
         try {
           // Merge entry specs with global specs (same as auto-calculate)
-          const workingPressureBar = entry.specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10;
-          const workingTemperatureC = entry.specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC || 20;
-          const steelSpecificationId = entry.specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId || 2;
-          const flangeStandardId = entry.specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId || 1;
-          const flangePressureClassId = entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
+          const workingPressureBar = entry.specs.workingPressureBar || currentRfqData.globalSpecs?.workingPressureBar || 10;
+          const workingTemperatureC = entry.specs.workingTemperatureC || currentRfqData.globalSpecs?.workingTemperatureC || 20;
+          const steelSpecificationId = entry.specs.steelSpecificationId || currentRfqData.globalSpecs?.steelSpecificationId || 2;
+          const flangeStandardId = entry.specs.flangeStandardId || currentRfqData.globalSpecs?.flangeStandardId || 1;
+          const flangePressureClassId = entry.specs.flangePressureClassId || currentRfqData.globalSpecs?.flangePressureClassId;
 
           const calculationData = {
             ...entry.specs,
@@ -1985,12 +1986,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
           // Recalculate flange weight for accurate values, default to PN16
           // Combine with flange type code for SABS 1123 / BS 4504 standards
-          const entryPressureClassId = entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
+          const entryPressureClassId = entry.specs.flangePressureClassId || currentRfqData.globalSpecs?.flangePressureClassId;
           const basePressureClassDesignation = masterData.pressureClasses?.find(
             (pc: { id: number; designation: string }) => pc.id === entryPressureClassId
           )?.designation || 'PN16';
           const flangeStandardCode = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code;
-          const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
+          const flangeTypeCode = entry.specs.flangeTypeCode || currentRfqData.globalSpecs?.flangeTypeCode;
           const pressureClassDesignation = getPressureClassWithFlangeType(basePressureClassDesignation, flangeTypeCode, flangeStandardCode);
 
           // Calculate number of flanges from pipe configuration if not in result
@@ -2055,13 +2056,13 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
             // Get pressure class designation for accurate flange weights, default to PN16
             // Combine with flange type code for SABS 1123 / BS 4504 standards
-            const entryPressureClassId = entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
-            const entryFlangeStandardId = entry.specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId;
+            const entryPressureClassId = entry.specs.flangePressureClassId || currentRfqData.globalSpecs?.flangePressureClassId;
+            const entryFlangeStandardId = entry.specs.flangeStandardId || currentRfqData.globalSpecs?.flangeStandardId;
             const basePressureClassDesignation = masterData.pressureClasses?.find(
               (pc: { id: number; designation: string }) => pc.id === entryPressureClassId
             )?.designation || 'PN16';
             const flangeStandardCode = masterData.flangeStandards?.find((s: any) => s.id === entryFlangeStandardId)?.code;
-            const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
+            const flangeTypeCode = entry.specs.flangeTypeCode || currentRfqData.globalSpecs?.flangeTypeCode;
             const pressureClassDesignation = getPressureClassWithFlangeType(basePressureClassDesignation, flangeTypeCode, flangeStandardCode);
 
             const localResult = calculateLocalPipeResult(
@@ -2095,7 +2096,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         console.error('Calculation error:', error);
       }
     }
-  };
+  }, [masterData.pressureClasses, masterData.flangeStandards, masterData.flangeTypes, updateEntryCalculation, updateStraightPipeEntry]);
 
   const handleCalculateBend = useCallback(async (entryId: string) => {
     try {

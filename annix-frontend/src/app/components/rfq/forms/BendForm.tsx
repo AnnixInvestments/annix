@@ -46,6 +46,7 @@ import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/
 import { WorkingConditionsSection } from '@/app/components/rfq/WorkingConditionsSection';
 import { MaterialSuitabilityWarning } from '@/app/components/rfq/MaterialSuitabilityWarning';
 import { ClosureLengthSelector } from '@/app/components/rfq/ClosureLengthSelector';
+import { TangentExtensionsSection } from '@/app/components/rfq/TangentExtensionsSection';
 import {
   SABS62_NB_OPTIONS,
   SABS62_BEND_RADIUS,
@@ -172,6 +173,130 @@ function BendFormComponent({
       }
     }, 100);
   }, [entry.id, onCalculateBend]);
+
+  const handleSteelSpecChange = useCallback((value: string) => {
+    const newSpecId = value ? Number(value) : undefined;
+    const nominalBore = entry.specs?.nominalBoreMm;
+
+    const newSpec = newSpecId ? masterData.steelSpecs?.find((s: any) => s.id === newSpecId) : null;
+    const newSpecName = newSpec?.steelSpecName || '';
+    const isNewSABS719 = newSpecName.includes('SABS 719') || newSpecName.includes('SANS 719');
+
+    const oldSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+    const oldSpec = oldSpecId ? masterData.steelSpecs?.find((s: any) => s.id === oldSpecId) : null;
+    const oldSpecName = oldSpec?.steelSpecName || '';
+    const wasOldSABS719 = oldSpecName.includes('SABS 719') || oldSpecName.includes('SANS 719');
+
+    const specTypeChanged = isNewSABS719 !== wasOldSABS719;
+    const updatedEntry: any = {
+      ...entry,
+      specs: {
+        ...entry.specs,
+        steelSpecificationId: newSpecId,
+        scheduleNumber: specTypeChanged ? undefined : entry.specs?.scheduleNumber,
+        wallThicknessMm: specTypeChanged ? undefined : entry.specs?.wallThicknessMm,
+        bendType: specTypeChanged ? undefined : entry.specs?.bendType,
+        bendRadiusType: specTypeChanged ? undefined : entry.specs?.bendRadiusType,
+        bendDegrees: specTypeChanged ? undefined : entry.specs?.bendDegrees,
+        numberOfSegments: specTypeChanged ? undefined : entry.specs?.numberOfSegments,
+        centerToFaceMm: specTypeChanged ? undefined : entry.specs?.centerToFaceMm,
+        bendRadiusMm: specTypeChanged ? undefined : entry.specs?.bendRadiusMm
+      }
+    };
+    updatedEntry.description = generateItemDescription(updatedEntry);
+    onUpdateEntry(entry.id, updatedEntry);
+
+    if (!specTypeChanged && nominalBore && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+      debouncedCalculate();
+    }
+  }, [entry, globalSpecs?.steelSpecificationId, masterData.steelSpecs, generateItemDescription, onUpdateEntry, debouncedCalculate]);
+
+  const handleWorkingPressureChange = useCallback((value: number | undefined) => {
+    onUpdateEntry(entry.id, {
+      specs: { ...entry.specs, workingPressureBar: value }
+    });
+  }, [entry.id, entry.specs, onUpdateEntry]);
+
+  const handleWorkingTemperatureChange = useCallback((value: number | undefined) => {
+    onUpdateEntry(entry.id, {
+      specs: { ...entry.specs, workingTemperatureC: value }
+    });
+  }, [entry.id, entry.specs, onUpdateEntry]);
+
+  const handleResetOverrides = useCallback(() => {
+    onUpdateEntry(entry.id, {
+      specs: {
+        ...entry.specs,
+        workingPressureBar: undefined,
+        workingTemperatureC: undefined,
+        steelSpecificationId: undefined,
+        bendItemType: undefined
+      }
+    });
+  }, [entry.id, entry.specs, onUpdateEntry]);
+
+  const handleItemTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newItemType = e.target.value;
+    const oldItemType = entry.specs?.bendItemType || 'BEND';
+    const isFixed90 = newItemType === 'SWEEP_TEE' || newItemType === 'DUCKFOOT_BEND';
+    const switchingToOrFromSweepTee = (newItemType === 'SWEEP_TEE') !== (oldItemType === 'SWEEP_TEE');
+    const currentNB = entry.specs?.nominalBoreMm;
+    const sweepTeeValidNBs = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900];
+    const nbInvalidForSweepTee = newItemType === 'SWEEP_TEE' && currentNB && !sweepTeeValidNBs.includes(currentNB);
+    const updatedEntry: any = {
+      ...entry,
+      specs: {
+        ...entry.specs,
+        bendItemType: newItemType,
+        bendDegrees: isFixed90 ? 90 : entry.specs?.bendDegrees,
+        bendEndConfiguration: switchingToOrFromSweepTee ? 'PE' : entry.specs?.bendEndConfiguration,
+        nominalBoreMm: nbInvalidForSweepTee ? undefined : entry.specs?.nominalBoreMm,
+        duckfootBasePlateXMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateXMm : undefined,
+        duckfootBasePlateYMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateYMm : undefined,
+        duckfootRibThicknessT2Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootRibThicknessT2Mm : undefined,
+        duckfootPlateThicknessT1Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootPlateThicknessT1Mm : undefined,
+        duckfootGussetPointDDegrees: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootGussetPointDDegrees : undefined,
+        duckfootGussetPointCDegrees: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootGussetPointCDegrees : undefined,
+        sweepTeePipeALengthMm: newItemType === 'SWEEP_TEE' ? entry.specs?.sweepTeePipeALengthMm : undefined
+      }
+    };
+    updatedEntry.description = generateItemDescription(updatedEntry);
+    onUpdateEntry(entry.id, updatedEntry);
+  }, [entry, generateItemDescription, onUpdateEntry]);
+
+  const handleTangentCountChange = useCallback((count: number, newLengths: number[]) => {
+    const currentNumStubs = entry.specs?.numberOfStubs || 0;
+    const adjustedNumStubs = (count < 2 && currentNumStubs > 1) ? 1 : currentNumStubs;
+    const currentStubs = entry.specs?.stubs || [];
+    const adjustedStubs = adjustedNumStubs < currentNumStubs ? currentStubs.slice(0, adjustedNumStubs) : currentStubs;
+    const updatedEntry = {
+      ...entry,
+      specs: {
+        ...entry.specs,
+        numberOfTangents: count,
+        tangentLengths: newLengths,
+        numberOfStubs: adjustedNumStubs,
+        stubs: adjustedStubs
+      }
+    };
+    updatedEntry.description = generateItemDescription(updatedEntry);
+    onUpdateEntry(entry.id, updatedEntry);
+    if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+      debouncedCalculate();
+    }
+  }, [entry, generateItemDescription, onUpdateEntry, debouncedCalculate]);
+
+  const handleTangentLengthChange = useCallback((index: number, length: number) => {
+    const lengths = [...(entry.specs?.tangentLengths || [])];
+    lengths[index] = length;
+    onUpdateEntry(entry.id, {
+      specs: { ...entry.specs, tangentLengths: lengths }
+    });
+    if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
+      debouncedCalculate();
+    }
+  }, [entry.id, entry.specs, onUpdateEntry, debouncedCalculate]);
+
   const [pipeALengthSource, setPipeALengthSource] = useState<'auto' | 'override' | null>(null);
 
   useEffect(() => {
@@ -260,9 +385,9 @@ function BendFormComponent({
                   workingTemperatureC={entry.specs?.workingTemperatureC}
                   globalPressureBar={globalSpecs?.workingPressureBar}
                   globalTemperatureC={globalSpecs?.workingTemperatureC}
-                  onPressureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: value } })}
-                  onTemperatureChange={(value) => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingTemperatureC: value } })}
-                  onReset={() => onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: undefined, workingTemperatureC: undefined, steelSpecificationId: undefined, bendItemType: undefined } })}
+                  onPressureChange={handleWorkingPressureChange}
+                  onTemperatureChange={handleWorkingTemperatureChange}
+                  onReset={handleResetOverrides}
                   gridCols={4}
                   extraFields={
                     <>
@@ -274,34 +399,7 @@ function BendFormComponent({
                         <select
                           id={`bend-item-type-${entry.id}`}
                           value={entry.specs?.bendItemType || 'BEND'}
-                          onChange={(e) => {
-                            const newItemType = e.target.value;
-                            const oldItemType = entry.specs?.bendItemType || 'BEND';
-                            const isFixed90 = newItemType === 'SWEEP_TEE' || newItemType === 'DUCKFOOT_BEND';
-                            const switchingToOrFromSweepTee = (newItemType === 'SWEEP_TEE') !== (oldItemType === 'SWEEP_TEE');
-                            const currentNB = entry.specs?.nominalBoreMm;
-                            const sweepTeeValidNBs = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900];
-                            const nbInvalidForSweepTee = newItemType === 'SWEEP_TEE' && currentNB && !sweepTeeValidNBs.includes(currentNB);
-                            const updatedEntry: any = {
-                              ...entry,
-                              specs: {
-                                ...entry.specs,
-                                bendItemType: newItemType,
-                                bendDegrees: isFixed90 ? 90 : entry.specs?.bendDegrees,
-                                bendEndConfiguration: switchingToOrFromSweepTee ? 'PE' : entry.specs?.bendEndConfiguration,
-                                nominalBoreMm: nbInvalidForSweepTee ? undefined : entry.specs?.nominalBoreMm,
-                                duckfootBasePlateXMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateXMm : undefined,
-                                duckfootBasePlateYMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateYMm : undefined,
-                                duckfootRibThicknessT2Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootRibThicknessT2Mm : undefined,
-                                duckfootPlateThicknessT1Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootPlateThicknessT1Mm : undefined,
-                                duckfootGussetPointDDegrees: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootGussetPointDDegrees : undefined,
-                                duckfootGussetPointCDegrees: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootGussetPointCDegrees : undefined,
-                                sweepTeePipeALengthMm: newItemType === 'SWEEP_TEE' ? entry.specs?.sweepTeePipeALengthMm : undefined
-                              }
-                            };
-                            updatedEntry.description = generateItemDescription(updatedEntry);
-                            onUpdateEntry(entry.id, updatedEntry);
-                          }}
+                          onChange={handleItemTypeChange}
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                         >
                           <option value="BEND">Bend</option>
@@ -344,42 +442,7 @@ function BendFormComponent({
                                 id={selectId}
                                 value={String(effectiveSpecId || '')}
                                 className={steelSelectClass}
-                              onChange={(value) => {
-                                const newSpecId = value ? Number(value) : undefined;
-                                const nominalBore = entry.specs?.nominalBoreMm;
-
-                                const newSpec = newSpecId ? masterData.steelSpecs?.find((s: any) => s.id === newSpecId) : null;
-                                const newSpecName = newSpec?.steelSpecName || '';
-                                const isNewSABS719 = newSpecName.includes('SABS 719') || newSpecName.includes('SANS 719');
-
-                                const oldSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                                const oldSpec = oldSpecId ? masterData.steelSpecs?.find((s: any) => s.id === oldSpecId) : null;
-                                const oldSpecName = oldSpec?.steelSpecName || '';
-                                const wasOldSABS719 = oldSpecName.includes('SABS 719') || oldSpecName.includes('SANS 719');
-
-                                const specTypeChanged = isNewSABS719 !== wasOldSABS719;
-                                const updatedEntry: any = {
-                                  ...entry,
-                                  specs: {
-                                    ...entry.specs,
-                                    steelSpecificationId: newSpecId,
-                                    scheduleNumber: specTypeChanged ? undefined : entry.specs?.scheduleNumber,
-                                    wallThicknessMm: specTypeChanged ? undefined : entry.specs?.wallThicknessMm,
-                                    bendType: specTypeChanged ? undefined : entry.specs?.bendType,
-                                    bendRadiusType: specTypeChanged ? undefined : entry.specs?.bendRadiusType,
-                                    bendDegrees: specTypeChanged ? undefined : entry.specs?.bendDegrees,
-                                    numberOfSegments: specTypeChanged ? undefined : entry.specs?.numberOfSegments,
-                                    centerToFaceMm: specTypeChanged ? undefined : entry.specs?.centerToFaceMm,
-                                    bendRadiusMm: specTypeChanged ? undefined : entry.specs?.bendRadiusMm
-                                  }
-                                };
-                                updatedEntry.description = generateItemDescription(updatedEntry);
-                                onUpdateEntry(entry.id, updatedEntry);
-
-                                if (!specTypeChanged && nominalBore && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                                  debouncedCalculate();
-                                }
-                              }}
+                              onChange={handleSteelSpecChange}
                                 options={[]}
                                 groupedOptions={groupedSteelOptions}
                                 placeholder="Select Steel Spec"
@@ -1688,102 +1751,13 @@ function BendFormComponent({
 
                 {/* Tangent Extensions Row - hide for Sweep Tees and Duckfoot Bends */}
                 {entry.specs?.bendItemType !== 'SWEEP_TEE' && entry.specs?.bendItemType !== 'DUCKFOOT_BEND' && (
-                <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
-                  <div className="mb-2">
-                    <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
-                      Tangent Extensions
-                    </h4>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        Number of Tangents
-                      </label>
-                      <select
-                        value={entry.specs?.numberOfTangents || 0}
-                        onChange={(e) => {
-                          const count = parseInt(e.target.value) || 0;
-                          const currentLengths = entry.specs?.tangentLengths || [];
-                          const newLengths = count === 0 ? [] :
-                                           count === 1 ? [currentLengths[0] || 150] :
-                                           [currentLengths[0] || 150, currentLengths[1] || 150];
-                          const currentNumStubs = entry.specs?.numberOfStubs || 0;
-                          const adjustedNumStubs = (count < 2 && currentNumStubs > 1) ? 1 : currentNumStubs;
-                          const currentStubs = entry.specs?.stubs || [];
-                          const adjustedStubs = adjustedNumStubs < currentNumStubs ? currentStubs.slice(0, adjustedNumStubs) : currentStubs;
-                          const updatedEntry = {
-                            ...entry,
-                            specs: {
-                              ...entry.specs,
-                              numberOfTangents: count,
-                              tangentLengths: newLengths,
-                              numberOfStubs: adjustedNumStubs,
-                              stubs: adjustedStubs
-                            }
-                          };
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          onUpdateEntry(entry.id, updatedEntry);
-                          if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                            debouncedCalculate();
-                          }
-                        }}
-                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                      >
-                        <option value="0">0 - No Tangents</option>
-                        <option value="1">1 - Single Tangent</option>
-                        <option value="2">2 - Both Tangents</option>
-                      </select>
-                    </div>
-                    {(entry.specs?.numberOfTangents || 0) >= 1 && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                          Tangent 1 Length (mm)
-                        </label>
-                        <input
-                          type="number"
-                          value={entry.specs?.tangentLengths?.[0] || ''}
-                          onChange={(e) => {
-                            const lengths = [...(entry.specs?.tangentLengths || [])];
-                            lengths[0] = parseInt(e.target.value) || 0;
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, tangentLengths: lengths }
-                            });
-                            if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                              debouncedCalculate();
-                            }
-                          }}
-                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                          min="0"
-                          placeholder="150"
-                        />
-                      </div>
-                    )}
-                    {(entry.specs?.numberOfTangents || 0) >= 2 && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                          Tangent 2 Length (mm)
-                        </label>
-                        <input
-                          type="number"
-                          value={entry.specs?.tangentLengths?.[1] || ''}
-                          onChange={(e) => {
-                            const lengths = [...(entry.specs?.tangentLengths || [])];
-                            lengths[1] = parseInt(e.target.value) || 0;
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, tangentLengths: lengths }
-                            });
-                            if (entry.specs?.nominalBoreMm && entry.specs?.scheduleNumber && entry.specs?.bendType && entry.specs?.bendDegrees) {
-                              debouncedCalculate();
-                            }
-                          }}
-                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                          min="0"
-                          placeholder="150"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  <TangentExtensionsSection
+                    entryId={entry.id}
+                    numberOfTangents={entry.specs?.numberOfTangents || 0}
+                    tangentLengths={entry.specs?.tangentLengths || []}
+                    onTangentCountChange={handleTangentCountChange}
+                    onTangentLengthChange={handleTangentLengthChange}
+                  />
                 )}
 
                 {/* Stub Connections Section - hide for Sweep Tees and Duckfoot Bends */}

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import * as Popover from '@radix-ui/react-popover';
+import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
 
 interface SelectOption {
   value: string;
@@ -33,7 +34,7 @@ interface SelectProps {
   'aria-label'?: string;
 }
 
-const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
+const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
   ({ id, value, onChange, options, groupedOptions, placeholder = 'Select...', className, disabled, loading, open: controlledOpen, onOpenChange, 'aria-required': ariaRequired, 'aria-invalid': ariaInvalid, 'aria-describedby': ariaDescribedby, 'aria-label': ariaLabel }, ref) => {
     const [internalOpen, setInternalOpen] = React.useState(false);
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -41,7 +42,12 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     const [shouldScrollToHighlighted, setShouldScrollToHighlighted] = React.useState(false);
     const searchInputRef = React.useRef<HTMLInputElement>(null);
     const listRef = React.useRef<HTMLDivElement>(null);
+    const virtualListRef = React.useRef<List>(null);
     const highlightedOptionRef = React.useRef<HTMLButtonElement>(null);
+
+    const ITEM_HEIGHT = 36;
+    const MAX_HEIGHT = 256;
+    const VIRTUALIZATION_THRESHOLD = 20;
 
     const isControlled = controlledOpen !== undefined;
     const isOpen = isControlled ? controlledOpen : internalOpen;
@@ -131,11 +137,15 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     };
 
     React.useEffect(() => {
-      if (shouldScrollToHighlighted && highlightedOptionRef.current) {
-        highlightedOptionRef.current.scrollIntoView({ block: 'nearest' });
+      if (shouldScrollToHighlighted) {
+        if (virtualListRef.current && !filteredGroupedOptions && filteredOptions.length > VIRTUALIZATION_THRESHOLD) {
+          virtualListRef.current.scrollToItem(highlightedIndex, 'smart');
+        } else if (highlightedOptionRef.current) {
+          highlightedOptionRef.current.scrollIntoView({ block: 'nearest' });
+        }
         setShouldScrollToHighlighted(false);
       }
-    }, [highlightedIndex, shouldScrollToHighlighted]);
+    }, [highlightedIndex, shouldScrollToHighlighted, filteredGroupedOptions, filteredOptions.length]);
 
     return (
       <Popover.Root open={isOpen} onOpenChange={handleOpenChange}>
@@ -227,6 +237,50 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                     </div>
                   ));
                 })()
+              ) : filteredOptions.length > VIRTUALIZATION_THRESHOLD ? (
+                <List
+                  ref={virtualListRef}
+                  height={Math.min(filteredOptions.length * ITEM_HEIGHT, MAX_HEIGHT)}
+                  itemCount={filteredOptions.length}
+                  itemSize={ITEM_HEIGHT}
+                  width="100%"
+                  overscanCount={5}
+                >
+                  {({ index, style }: ListChildComponentProps<SelectOption[]>) => {
+                    const option = filteredOptions[index];
+                    const isHighlighted = index === highlightedIndex;
+                    const isDisabled = option.disabled;
+                    return isDisabled ? (
+                      <div
+                        style={style}
+                        className="relative flex items-center w-full px-8 text-sm rounded select-none text-left text-gray-400 cursor-not-allowed"
+                        title={option.disabledReason}
+                      >
+                        {option.label}
+                        {option.disabledReason && (
+                          <span className="ml-2 text-xs text-red-400">- {option.disabledReason}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        style={style}
+                        type="button"
+                        onClick={() => handleSelect(option)}
+                        onMouseEnter={() => setHighlightedIndex(index)}
+                        className={`relative flex items-center w-full px-8 text-sm rounded cursor-pointer select-none text-left ${
+                          isHighlighted ? 'bg-green-50' : ''
+                        } ${option.value === value ? 'text-green-700 font-medium' : 'text-gray-900'} hover:bg-green-50`}
+                      >
+                        {option.value === value && (
+                          <span className="absolute left-2 inline-flex items-center">
+                            <CheckIcon />
+                          </span>
+                        )}
+                        {option.label}
+                      </button>
+                    );
+                  }}
+                </List>
               ) : (
                 filteredOptions.map((option, index) => {
                   const isHighlighted = index === highlightedIndex;
@@ -271,7 +325,9 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
   }
 );
 
-Select.displayName = 'Select';
+SelectComponent.displayName = 'Select';
+
+const Select = React.memo(SelectComponent);
 
 function ChevronDownIcon() {
   return (

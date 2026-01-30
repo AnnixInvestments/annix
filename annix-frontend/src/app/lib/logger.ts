@@ -9,29 +9,21 @@ const LEVELS: Record<LogLevel, number> = {
   error: 3,
 };
 
-const shouldLog = (level: LogLevel): boolean => {
-  return LEVELS[level] >= LEVELS[LOG_LEVEL];
-};
+const currentLevel = LEVELS[LOG_LEVEL];
+
+const noop = () => {};
 
 export const log = {
-  debug: (...args: any[]) => {
-    if (shouldLog('debug')) {
-      console.debug(...args);
-    }
-  },
-  info: (...args: any[]) => {
-    if (shouldLog('info')) {
-      console.info(...args);
-    }
-  },
-  warn: (...args: any[]) => {
-    if (shouldLog('warn')) {
-      console.warn(...args);
-    }
-  },
-  error: (...args: any[]) => {
-    if (shouldLog('error')) {
-      console.error(...args);
-    }
-  },
+  debug: currentLevel <= LEVELS.debug
+    ? (...args: any[]) => console.debug(...args)
+    : noop,
+  info: currentLevel <= LEVELS.info
+    ? (...args: any[]) => console.info(...args)
+    : noop,
+  warn: currentLevel <= LEVELS.warn
+    ? (...args: any[]) => console.warn(...args)
+    : noop,
+  error: currentLevel <= LEVELS.error
+    ? (...args: any[]) => console.error(...args)
+    : noop,
 };

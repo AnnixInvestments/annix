@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, memo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Select } from '@/app/components/ui/Select';
 import { fetchFlangeSpecsStatic, FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
 import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
@@ -56,10 +56,56 @@ import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
 import { SmartNotesDropdown, formatNotesForDisplay } from '@/app/components/rfq/SmartNotesDropdown';
 import { MaterialSuitabilityWarning } from '@/app/components/rfq/MaterialSuitabilityWarning';
 import { ClosureLengthSelector } from '@/app/components/rfq/ClosureLengthSelector';
+import { SpigotConfigurationSection } from '@/app/components/rfq/SpigotConfigurationSection';
 
 const formatWeight = (weight: number | undefined) => {
   if (weight === undefined || weight === null || isNaN(weight)) return 'Not calculated';
   return `${weight.toFixed(2)} kg`;
+};
+
+const extractBarRating = (designation: string, isSabs1123: boolean, isBs4504: boolean): number => {
+  const pnMatch = designation.match(/PN\s*(\d+)/i);
+  if (pnMatch) {
+    return parseInt(pnMatch[1]);
+  }
+  if (isSabs1123) {
+    const kpaMatch = designation.match(/^(\d+)/);
+    if (kpaMatch) {
+      return parseInt(kpaMatch[1]) / 100;
+    }
+  }
+  if (isBs4504) {
+    const numMatch = designation.match(/^(\d+)/);
+    if (numMatch) {
+      return parseInt(numMatch[1]);
+    }
+  }
+  const numMatch = designation.match(/^(\d+)/);
+  if (numMatch) {
+    const num = parseInt(numMatch[1]);
+    return num >= 500 ? num / 100 : num;
+  }
+  return 0;
+};
+
+const findRecommendedPressureClass = (
+  availableClasses: any[],
+  workingPressure: number,
+  isSabs1123: boolean,
+  isBs4504: boolean
+): number | undefined => {
+  if (!workingPressure || availableClasses.length === 0) return undefined;
+
+  const classesWithRating = availableClasses
+    .map((pc: any) => ({
+      ...pc,
+      barRating: extractBarRating(pc.designation || '', isSabs1123, isBs4504)
+    }))
+    .filter((pc: any) => pc.barRating > 0)
+    .sort((a: any, b: any) => a.barRating - b.barRating);
+
+  const suitableClass = classesWithRating.find((pc: any) => pc.barRating >= workingPressure);
+  return suitableClass?.id;
 };
 
 const calculateQuantities = (entry: any, field: string, value: number) => {
@@ -158,6 +204,165 @@ function StraightPipeFormComponent({
   );
 
   const flangeTypesLength = masterData?.flangeTypes?.length ?? 0;
+
+  const handleWorkingPressureChange = useCallback((value: number | undefined) => {
+    const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+    const flangeCode = flangeStandard?.code || '';
+    const isSabs1123 = flangeCode.includes('SABS 1123') || flangeCode.includes('SANS 1123');
+    const isBs4504 = flangeCode.includes('BS 4504');
+
+    if (flangeStandardId && !pressureClassesByStandard[flangeStandardId]) {
+      getFilteredPressureClasses(flangeStandardId);
+    }
+
+    let availableClasses = flangeStandardId ? (pressureClassesByStandard[flangeStandardId] || []) : [];
+    if (availableClasses.length === 0) {
+      availableClasses = masterData.pressureClasses?.filter((pc: any) =>
+        pc.flangeStandardId === flangeStandardId || pc.standardId === flangeStandardId
+      ) || [];
+    }
+
+    const recommendedPressureClassId = value
+      ? findRecommendedPressureClass(availableClasses, value, isSabs1123, isBs4504) || entry.specs?.flangePressureClassId
+      : entry.specs?.flangePressureClassId;
+
+    const endConfig = entry.specs?.pipeEndConfiguration || 'PE';
+    const effectiveFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(endConfig);
+
+    onUpdateEntry(entry.id, {
+      specs: {
+        ...entry.specs,
+        workingPressureBar: value,
+        flangePressureClassId: recommendedPressureClassId,
+        flangeTypeCode: effectiveFlangeTypeCode
+      }
+    });
+  }, [entry.id, entry.specs, flangeStandardId, globalSpecs?.flangeTypeCode, masterData.flangeStandards, masterData.pressureClasses, pressureClassesByStandard, getFilteredPressureClasses, onUpdateEntry]);
+
+  const handleNominalBoreChange = useCallback((value: string) => {
+    const nominalBore = Number(value);
+    if (!nominalBore) return;
+
+    const steelSpecId = entry.specs.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
+    const pressure = globalSpecs?.workingPressureBar || 0;
+    const temperature = globalSpecs?.workingTemperatureC || 20;
+
+    const nbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+    const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId);
+
+    if (schedules.length > 0) {
+      setAvailableSchedulesMap((prev: Record<string, any[]>) => ({
+        ...prev,
+        [entry.id]: schedules
+      }));
+    }
+
+    let matchedSchedule: string | null = null;
+    let matchedWT = 0;
+    let minWT = 0;
+
+    if (schedules.length > 0) {
+      if (pressure > 0) {
+        const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
+        const materialCode = steelSpecId === 1 ? 'ASTM_A53_Grade_B' : 'ASTM_A106_Grade_B';
+        minWT = calculateMinWallThickness(od, pressure, materialCode, temperature, PRESSURE_CALC_JOINT_EFFICIENCY, PRESSURE_CALC_CORROSION_ALLOWANCE, PRESSURE_CALC_SAFETY_FACTOR);
+
+        const recommendation = findRecommendedSchedule(schedules, od, pressure, materialCode, temperature, PRESSURE_CALC_SAFETY_FACTOR);
+
+        if (recommendation.schedule) {
+          matchedSchedule = recommendation.schedule.scheduleDesignation;
+          matchedWT = recommendation.schedule.wallThicknessMm;
+        } else {
+          const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
+          matchedSchedule = sorted[0].scheduleDesignation;
+          matchedWT = sorted[0].wallThicknessMm;
+        }
+      } else {
+        const sorted = [...schedules].sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
+        matchedSchedule = sorted[0].scheduleDesignation;
+        matchedWT = sorted[0].wallThicknessMm;
+      }
+    }
+
+    const updatedEntry: any = {
+      ...entry,
+      minimumSchedule: matchedSchedule,
+      minimumWallThickness: minWT,
+      isScheduleOverridden: false,
+      specs: {
+        ...entry.specs,
+        nominalBoreMm: nominalBore,
+        scheduleNumber: matchedSchedule,
+        wallThicknessMm: matchedWT,
+      }
+    };
+
+    updatedEntry.description = generateItemDescription(updatedEntry);
+    onUpdateEntry(entry.id, updatedEntry);
+    fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
+  }, [entry, globalSpecs?.steelSpecificationId, globalSpecs?.workingPressureBar, globalSpecs?.workingTemperatureC, setAvailableSchedulesMap, generateItemDescription, onUpdateEntry, fetchAvailableSchedules]);
+
+  const handleScheduleChange = useCallback((newSchedule: string) => {
+    const fallbackEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+    const fallbackSchedules = getScheduleListForSpec(entry.specs?.nominalBoreMm, fallbackEffectiveSpecId);
+    const mapSchedules = availableSchedulesMap[entry.id] || [];
+    const availableSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
+    const selectedDimension = availableSchedules.find((dim: any) => {
+      const schedName = dim.scheduleDesignation || dim.schedule_designation || dim.scheduleNumber?.toString() || dim.schedule_number?.toString();
+      return schedName === newSchedule;
+    });
+    const autoWallThickness = selectedDimension?.wallThicknessMm || selectedDimension?.wall_thickness_mm || null;
+    const updatedEntry: any = {
+      specs: {
+        ...entry.specs,
+        scheduleNumber: newSchedule,
+        wallThicknessMm: autoWallThickness || entry.specs?.wallThicknessMm
+      },
+      isScheduleOverridden: newSchedule !== entry.minimumSchedule
+    };
+    updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
+    onUpdateEntry(entry.id, updatedEntry);
+  }, [entry, globalSpecs?.steelSpecificationId, availableSchedulesMap, generateItemDescription, onUpdateEntry]);
+
+  const handleTemperatureChange = useCallback((value: number | undefined) => {
+    onUpdateEntry(entry.id, {
+      specs: { ...entry.specs, workingTemperatureC: value }
+    });
+  }, [entry.id, entry.specs, onUpdateEntry]);
+
+  const handleSpigotSteelSpecChange = useCallback((specId: number | undefined) => {
+    onUpdateEntry(entry.id, {
+      specs: {
+        ...entry.specs,
+        spigotSteelSpecificationId: specId,
+        spigotNominalBoreMm: null
+      }
+    });
+  }, [entry.id, entry.specs, onUpdateEntry]);
+
+  const handleNumberOfSpigots = useCallback((count: number) => {
+    onUpdateEntry(entry.id, {
+      specs: { ...entry.specs, numberOfSpigots: count }
+    });
+  }, [entry.id, entry.specs, onUpdateEntry]);
+
+  const handleSpigotNominalBoreChange = useCallback((nb: number | null) => {
+    onUpdateEntry(entry.id, {
+      specs: { ...entry.specs, spigotNominalBoreMm: nb }
+    });
+  }, [entry.id, entry.specs, onUpdateEntry]);
+
+  const handleSpigotDistanceChange = useCallback((distance: number | null) => {
+    onUpdateEntry(entry.id, {
+      specs: { ...entry.specs, spigotDistanceFromEndMm: distance }
+    });
+  }, [entry.id, entry.specs, onUpdateEntry]);
+
+  const handleSpigotHeightChange = useCallback((height: number | null) => {
+    onUpdateEntry(entry.id, {
+      specs: { ...entry.specs, spigotHeightMm: height }
+    });
+  }, [entry.id, entry.specs, onUpdateEntry]);
 
   useEffect(() => {
     const fetchSpecs = async () => {
@@ -258,76 +463,7 @@ function StraightPipeFormComponent({
                         id={`pipe-pressure-${entry.id}`}
                         aria-describedby={`pipe-pressure-help-${entry.id}`}
                         value={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || ''}
-                        onChange={(e) => {
-                          const value = e.target.value ? Number(e.target.value) : undefined;
-                          const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                          const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
-                          const flangeCode = flangeStandard?.code || '';
-                          const isSabs1123 = flangeCode.includes('SABS 1123') || flangeCode.includes('SANS 1123');
-                          const isBs4504 = flangeCode.includes('BS 4504');
-
-                          if (flangeStandardId && !pressureClassesByStandard[flangeStandardId]) {
-                            getFilteredPressureClasses(flangeStandardId);
-                          }
-
-                          let availableClasses = flangeStandardId ? (pressureClassesByStandard[flangeStandardId] || []) : [];
-                          if (availableClasses.length === 0) {
-                            availableClasses = masterData.pressureClasses?.filter((pc: any) =>
-                              pc.flangeStandardId === flangeStandardId || pc.standardId === flangeStandardId
-                            ) || [];
-                          }
-
-                          let recommendedPressureClassId = entry.specs?.flangePressureClassId;
-                          const requiredKpa = value ? value * 100 : 0;
-
-                          if (value && availableClasses.length > 0) {
-                            const classesWithRating = availableClasses.map((pc: any) => {
-                              const designation = pc.designation || '';
-                              let barRating = 0;
-                              const pnMatch = designation.match(/PN\s*(\d+)/i);
-                              if (pnMatch) {
-                                barRating = parseInt(pnMatch[1]);
-                              } else if (isSabs1123) {
-                                const kpaMatch = designation.match(/^(\d+)/);
-                                if (kpaMatch) {
-                                  barRating = parseInt(kpaMatch[1]) / 100;
-                                }
-                              } else if (isBs4504) {
-                                const numMatch = designation.match(/^(\d+)/);
-                                if (numMatch) {
-                                  barRating = parseInt(numMatch[1]);
-                                }
-                              } else {
-                                const numMatch = designation.match(/^(\d+)/);
-                                if (numMatch) {
-                                  const num = parseInt(numMatch[1]);
-                                  barRating = num >= 500 ? num / 100 : num;
-                                }
-                              }
-                              return { ...pc, barRating };
-                            }).filter((pc: any) => pc.barRating > 0);
-
-                            classesWithRating.sort((a: any, b: any) => a.barRating - b.barRating);
-
-                            const suitableClass = classesWithRating.find((pc: any) => pc.barRating >= value);
-                            if (suitableClass) {
-                              recommendedPressureClassId = suitableClass.id;
-                              log.debug(`Auto-selecting pressure class: ${suitableClass.designation} (${suitableClass.barRating} bar) for ${value} bar`);
-                            }
-                          }
-
-                          const endConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                          const effectiveFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(endConfig);
-
-                          onUpdateEntry(entry.id, {
-                            specs: {
-                              ...entry.specs,
-                              workingPressureBar: value,
-                              flangePressureClassId: recommendedPressureClassId,
-                              flangeTypeCode: effectiveFlangeTypeCode
-                            }
-                          });
-                        }}
+                        onChange={(e) => handleWorkingPressureChange(e.target.value ? Number(e.target.value) : undefined)}
                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
                       >
                         <option value="">Select pressure...</option>
@@ -345,12 +481,7 @@ function StraightPipeFormComponent({
                         id={`pipe-temp-${entry.id}`}
                         aria-describedby={`pipe-temp-help-${entry.id}`}
                         value={entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC || ''}
-                        onChange={(e) => {
-                          const value = e.target.value ? Number(e.target.value) : undefined;
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, workingTemperatureC: value }
-                          });
-                        }}
+                        onChange={(e) => handleTemperatureChange(e.target.value ? Number(e.target.value) : undefined)}
                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
                       >
                         <option value="">Select temperature...</option>
@@ -366,110 +497,17 @@ function StraightPipeFormComponent({
                           <label htmlFor={`pipe-nb-pressure-${entry.id}`} className={`block text-xs font-semibold mb-1 ${isMissingForPreview ? 'text-red-700' : 'text-gray-900'}`}>
                             Nominal Bore (mm) * {isMissingForPreview && <span className="text-red-600 font-bold">⚠ Required for preview</span>}
                           </label>
-                    {(() => {
-                        const selectId = `pipe-nb-pressure-${entry.id}`;
-                        const options = nominalBores.map((nb: number) => ({
-                          value: String(nb),
-                          label: `${nb}NB`
-                        }));
-
-                        const handleNominalBoreChange = (value: string) => {
-                          const nominalBore = Number(value);
-                          if (!nominalBore) return;
-
-                          log.debug(`[NB onChange] Selected NB: ${nominalBore}mm`);
-
-                          const steelSpecId = entry.specs.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
-                          const pressure = globalSpecs?.workingPressureBar || 0;
-                          const temperature = globalSpecs?.workingTemperatureC || 20;
-
-                          const nbEffectiveSpecId = entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                          const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId);
-                          log.debug(`[NB onChange] Using ${schedules.length} fallback schedules for ${nominalBore}mm`);
-
-                          if (schedules.length > 0) {
-                            setAvailableSchedulesMap((prev: Record<string, any[]>) => ({
-                              ...prev,
-                              [entry.id]: schedules
-                            }));
-                            log.debug(`[NB onChange] Set availableSchedulesMap for entry ${entry.id} with ${schedules.length} schedules`);
-                          }
-
-                          let matchedSchedule: string | null = null;
-                          let matchedWT = 0;
-                          let minWT = 0;
-
-                          if (schedules.length > 0) {
-                            if (pressure > 0) {
-                              const od = NB_TO_OD_LOOKUP[nominalBore] || (nominalBore * 1.05);
-                              const materialCode = steelSpecId === 1 ? 'ASTM_A53_Grade_B' : 'ASTM_A106_Grade_B';
-                              minWT = calculateMinWallThickness(od, pressure, materialCode, temperature, PRESSURE_CALC_JOINT_EFFICIENCY, PRESSURE_CALC_CORROSION_ALLOWANCE, PRESSURE_CALC_SAFETY_FACTOR);
-                              log.debug(`[NB onChange] ASME B31.3 calc minWT: ${minWT.toFixed(2)}mm for ${pressure} bar @ ${temperature}°C, OD=${od}mm`);
-
-                              const recommendation = findRecommendedSchedule(schedules, od, pressure, materialCode, temperature, PRESSURE_CALC_SAFETY_FACTOR);
-
-                              if (recommendation.schedule) {
-                                matchedSchedule = recommendation.schedule.scheduleDesignation;
-                                matchedWT = recommendation.schedule.wallThicknessMm;
-                                const maxPressure = recommendation.validation?.maxAllowablePressure || 0;
-                                const margin = recommendation.validation?.safetyMargin || 0;
-                                log.debug(`[NB onChange] ASME B31.3 recommended: ${matchedSchedule} (${matchedWT}mm), max ${maxPressure.toFixed(1)} bar, ${margin.toFixed(1)}x margin`);
-                              } else {
-                                const sorted = [...schedules].sort((a, b) => b.wallThicknessMm - a.wallThicknessMm);
-                                matchedSchedule = sorted[0].scheduleDesignation;
-                                matchedWT = sorted[0].wallThicknessMm;
-                                const validation = validateScheduleForPressure(od, matchedWT, pressure, materialCode, temperature);
-                                log.warn(`[NB onChange] No schedule meets ${minWT.toFixed(2)}mm minWT, using thickest: ${matchedSchedule} (${matchedWT}mm). ${validation.message}`);
-                              }
-                            } else {
-                              const sorted = [...schedules].sort((a, b) => a.wallThicknessMm - b.wallThicknessMm);
-                              matchedSchedule = sorted[0].scheduleDesignation;
-                              matchedWT = sorted[0].wallThicknessMm;
-                              log.debug(`[NB onChange] No pressure set, using lightest schedule: ${matchedSchedule}`);
-                            }
-                          }
-
-                          const updatedEntry: any = {
-                            ...entry,
-                            minimumSchedule: matchedSchedule,
-                            minimumWallThickness: minWT,
-                            isScheduleOverridden: false,
-                            specs: {
-                              ...entry.specs,
-                              nominalBoreMm: nominalBore,
-                              scheduleNumber: matchedSchedule,
-                              wallThicknessMm: matchedWT,
-                            }
-                          };
-
-                          updatedEntry.description = generateItemDescription(updatedEntry);
-                          log.debug(`[NB onChange] Updating entry ${entry.id} with schedule: ${matchedSchedule}, WT: ${matchedWT}mm`);
-                          onUpdateEntry(entry.id, updatedEntry);
-                          fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
-                          // Focus and open the Pipe Type dropdown next
-                          setTimeout(() => {
-                            const pipeTypeSelectId = `pipe-type-${entry.id}`;
-                            const pipeTypeElement = document.getElementById(pipeTypeSelectId);
-                            if (pipeTypeElement) {
-                              pipeTypeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                                                      }, 150);
-                        };
-
-                        return (
-                          <Select
-                            id={selectId}
-                            value={entry.specs.nominalBoreMm ? String(entry.specs.nominalBoreMm) : ''}
-                            onChange={handleNominalBoreChange}
-                            options={options}
-                            placeholder={isLoadingNominalBores ? 'Loading...' : 'Select NB'}
-                            disabled={isLoadingNominalBores}
-                                                        aria-required={true}
-                            aria-invalid={!!errors[`pipe_${index}_nb`]}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          />
-                        );
-                      })()}
+                    <Select
+                      id={`pipe-nb-pressure-${entry.id}`}
+                      value={entry.specs.nominalBoreMm ? String(entry.specs.nominalBoreMm) : ''}
+                      onChange={handleNominalBoreChange}
+                      options={nominalBores.map((nb: number) => ({ value: String(nb), label: `${nb}NB` }))}
+                      placeholder={isLoadingNominalBores ? 'Loading...' : 'Select NB'}
+                      disabled={isLoadingNominalBores}
+                      aria-required={true}
+                      aria-invalid={!!errors[`pipe_${index}_nb`]}
+                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                    />
                       {errors[`pipe_${index}_nb`] && (
                         <p role="alert" className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_nb`]}</p>
                       )}
@@ -607,28 +645,7 @@ function StraightPipeFormComponent({
                       </label>
                       <select
                         value={entry.specs?.scheduleNumber || ''}
-                        onChange={(e) => {
-                          const newSchedule = e.target.value;
-                          const fallbackEffectiveSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                          const fallbackSchedules = getScheduleListForSpec(entry.specs?.nominalBoreMm, fallbackEffectiveSpecId);
-                          const mapSchedules = availableSchedulesMap[entry.id] || [];
-                          const availableSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
-                          const selectedDimension = availableSchedules.find((dim: any) => {
-                            const schedName = dim.scheduleDesignation || dim.schedule_designation || dim.scheduleNumber?.toString() || dim.schedule_number?.toString();
-                            return schedName === newSchedule;
-                          });
-                          const autoWallThickness = selectedDimension?.wallThicknessMm || selectedDimension?.wall_thickness_mm || null;
-                          const updatedEntry: any = {
-                            specs: {
-                              ...entry.specs,
-                              scheduleNumber: newSchedule,
-                              wallThicknessMm: autoWallThickness || entry.specs?.wallThicknessMm
-                            },
-                            isScheduleOverridden: newSchedule !== entry.minimumSchedule
-                          };
-                          updatedEntry.description = generateItemDescription({ ...entry, ...updatedEntry });
-                          onUpdateEntry(entry.id, updatedEntry);
-                        }}
+                        onChange={(e) => handleScheduleChange(e.target.value)}
                         disabled={!entry.specs?.nominalBoreMm}
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
                       >
@@ -874,200 +891,25 @@ function StraightPipeFormComponent({
 
                 {/* Spigot Configuration - Only for Spigot Pipe */}
                 {entry.specs?.pipeType === 'spigot' && (
-                  <div className="bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-700 rounded-lg p-2 mt-2">
-                    <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Spigot Configuration</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2">
-                      {/* Spigot Steel Specification */}
-                      <div>
-                        {(() => {
-                          const globalSpecId = globalSpecs?.steelSpecificationId;
-                          const mainPipeSpecId = entry.specs?.steelSpecificationId || globalSpecId;
-                          const spigotSpecId = entry.specs?.spigotSteelSpecificationId || mainPipeSpecId;
-                          const isFromMainPipe = !entry.specs?.spigotSteelSpecificationId;
-                          const isOverride = entry.specs?.spigotSteelSpecificationId && entry.specs?.spigotSteelSpecificationId !== mainPipeSpecId;
-
-                          return (
-                            <>
-                              <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                                Steel Spec
-                                {isFromMainPipe && <span className="text-green-600 text-xs ml-1 font-normal">(Main)</span>}
-                                {isOverride && <span className="text-yellow-600 text-xs ml-1 font-normal">(Override)</span>}
-                              </label>
-                              <Select
-                                id={`spigot-steel-spec-${entry.id}`}
-                                value={String(spigotSpecId || '')}
-                                className={isFromMainPipe ? 'w-full px-2 py-1.5 border-2 border-green-500 rounded text-xs' : isOverride ? 'w-full px-2 py-1.5 border-2 border-yellow-500 rounded text-xs' : 'w-full px-2 py-1.5 border border-gray-300 rounded text-xs'}
-                                onChange={(value) => {
-                                  const specId = value ? Number(value) : undefined;
-                                  onUpdateEntry(entry.id, {
-                                    specs: {
-                                      ...entry.specs,
-                                      spigotSteelSpecificationId: specId,
-                                      spigotNominalBoreMm: null
-                                    }
-                                  });
-                                  // Navigate to No. of Spigots next
-                                  setTimeout(() => {
-                                    const noSpigotSelectId = `spigot-count-${entry.id}`;
-                                    const noSpigotElement = document.getElementById(noSpigotSelectId);
-                                    if (noSpigotElement) {
-                                      noSpigotElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                    }
-                                                                      }, 150);
-                                }}
-                                options={[]}
-                                groupedOptions={groupedSteelOptions}
-                                placeholder="Select steel spec..."
-                              />
-                            </>
-                          );
-                        })()}
-                      </div>
-
-                      {/* Number of Spigots */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                          No. of Spigots
-                        </label>
-                        <Select
-                          id={`spigot-count-${entry.id}`}
-                          value={String(entry.specs?.numberOfSpigots || 2)}
-                          onChange={(value) => {
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, numberOfSpigots: parseInt(value) }
-                            });
-                            // Navigate to Spigot NB next
-                            setTimeout(() => {
-                              const spigotNbSelectId = `spigot-nb-${entry.id}`;
-                              const spigotNbElement = document.getElementById(spigotNbSelectId);
-                              if (spigotNbElement) {
-                                spigotNbElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                              }
-                                                          }, 150);
-                          }}
-                          options={[
-                            { value: '2', label: '2' },
-                            { value: '3', label: '3' },
-                            { value: '4', label: '4' },
-                          ]}
-                          className="w-full px-2 py-1.5 border border-teal-300 rounded text-xs"
-                        />
-                      </div>
-
-                      {/* NB of Spigot */}
-                      <div>
-                        {(() => {
-                          const globalSpecId = globalSpecs?.steelSpecificationId;
-                          const mainPipeSpecId = entry.specs?.steelSpecificationId || globalSpecId;
-                          const spigotSpecId = entry.specs?.spigotSteelSpecificationId || mainPipeSpecId;
-                          const spigotSpecName = masterData.steelSpecs?.find((s: any) => s.id === spigotSpecId)?.steelSpecName || '';
-
-                          const matchingPrefix = Object.keys(STEEL_SPEC_NB_FALLBACK).find(prefix =>
-                            spigotSpecName.toUpperCase().includes(prefix.toUpperCase())
-                          );
-                          const validNBsForSpec = matchingPrefix ? STEEL_SPEC_NB_FALLBACK[matchingPrefix] : nominalBores;
-
-                          const filteredNBs = validNBsForSpec.filter((nb: number) =>
-                            !entry.specs?.nominalBoreMm || nb <= entry.specs.nominalBoreMm
-                          );
-
-                          return (
-                            <>
-                              <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                                Spigot NB (mm)
-                              </label>
-                              <Select
-                                id={`spigot-nb-${entry.id}`}
-                                value={String(entry.specs?.spigotNominalBoreMm || '')}
-                                onChange={(value) => {
-                                  onUpdateEntry(entry.id, {
-                                    specs: { ...entry.specs, spigotNominalBoreMm: parseInt(value) || null }
-                                  });
-                                  // Navigate to Distance from End next
-                                  setTimeout(() => {
-                                    const distanceInputId = `spigot-distance-${entry.id}`;
-                                    const distanceElement = document.getElementById(distanceInputId);
-                                    if (distanceElement) {
-                                      distanceElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                      distanceElement.focus();
-                                    }
-                                  }, 150);
-                                }}
-                                options={[
-                                  { value: '', label: 'Select NB...' },
-                                  ...filteredNBs.map((nb: number) => ({ value: String(nb), label: `${nb} NB` }))
-                                ]}
-                                className="w-full px-2 py-1.5 border border-teal-300 rounded text-xs"
-                              />
-                            </>
-                          );
-                        })()}
-                      </div>
-
-                      {/* Distance from Pipe End */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                          Distance from End (mm)
-                        </label>
-                        <input
-                          id={`spigot-distance-${entry.id}`}
-                          type="number"
-                          value={entry.specs?.spigotDistanceFromEndMm || ''}
-                          onChange={(e) => {
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, spigotDistanceFromEndMm: parseInt(e.target.value) || null }
-                            });
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === 'Tab') {
-                              e.preventDefault();
-                              const heightInputId = `spigot-height-${entry.id}`;
-                              const heightElement = document.getElementById(heightInputId);
-                              if (heightElement) {
-                                heightElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                heightElement.focus();
-                              }
-                            }
-                          }}
-                          className="w-full px-2 py-1.5 border border-teal-300 dark:border-teal-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
-                          placeholder="e.g. 1000"
-                          min="0"
-                        />
-                      </div>
-
-                      {/* Spigot Height */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                          Spigot Height (mm)
-                        </label>
-                        <input
-                          id={`spigot-height-${entry.id}`}
-                          type="number"
-                          value={entry.specs?.spigotHeightMm || ''}
-                          onChange={(e) => {
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, spigotHeightMm: parseInt(e.target.value) || null }
-                            });
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === 'Tab') {
-                              e.preventDefault();
-                              // Navigate to Pipe Length (skip Config for spigot pipes)
-                              const pipeLengthInput = document.getElementById(`pipe-length-${entry.id}`) as HTMLInputElement;
-                              if (pipeLengthInput) {
-                                pipeLengthInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                pipeLengthInput.focus();
-                                pipeLengthInput.select();
-                              }
-                            }
-                          }}
-                          className="w-full px-2 py-1.5 border border-teal-300 dark:border-teal-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 dark:text-gray-100 dark:bg-gray-700"
-                          placeholder="e.g. 150"
-                          min="50"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  <SpigotConfigurationSection
+                    entryId={entry.id}
+                    spigotSteelSpecificationId={entry.specs?.spigotSteelSpecificationId}
+                    numberOfSpigots={entry.specs?.numberOfSpigots || 2}
+                    spigotNominalBoreMm={entry.specs?.spigotNominalBoreMm}
+                    spigotDistanceFromEndMm={entry.specs?.spigotDistanceFromEndMm}
+                    spigotHeightMm={entry.specs?.spigotHeightMm}
+                    mainPipeSteelSpecificationId={entry.specs?.steelSpecificationId}
+                    mainPipeNominalBoreMm={entry.specs?.nominalBoreMm}
+                    globalSteelSpecificationId={globalSpecs?.steelSpecificationId}
+                    steelSpecs={masterData.steelSpecs || []}
+                    nominalBores={nominalBores}
+                    groupedSteelOptions={groupedSteelOptions}
+                    onSpigotSteelSpecChange={handleSpigotSteelSpecChange}
+                    onNumberOfSpigots={handleNumberOfSpigots}
+                    onSpigotNominalBoreChange={handleSpigotNominalBoreChange}
+                    onSpigotDistanceChange={handleSpigotDistanceChange}
+                    onSpigotHeightChange={handleSpigotHeightChange}
+                  />
                 )}
 
                 {/* Plain Pipe, Spigot Pipe, and Puddle Pipe sections */}
