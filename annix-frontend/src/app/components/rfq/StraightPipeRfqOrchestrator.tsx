@@ -1235,6 +1235,51 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     setSaveProgressStep('confirm');
   }, []);
 
+  // Save draft and send recovery email in background (non-blocking) for unregistered users
+  const saveAndSendRecoveryEmailInBackground = useCallback(async () => {
+    if (isAuthenticated) return;
+    if (!rfqData.customerEmail) return;
+
+    try {
+      const { anonymousDraftsApi } = await import('@/app/lib/api/client');
+
+      await anonymousDraftsApi.save({
+        customerEmail: rfqData.customerEmail,
+        projectName: rfqData.projectName,
+        currentStep,
+        formData: {
+          projectName: rfqData.projectName,
+          projectType: rfqData.projectType,
+          description: rfqData.description,
+          customerName: rfqData.customerName,
+          customerEmail: rfqData.customerEmail,
+          customerPhone: rfqData.customerPhone,
+          requiredDate: rfqData.requiredDate,
+          requiredProducts: rfqData.requiredProducts,
+          notes: rfqData.notes,
+          latitude: rfqData.latitude,
+          longitude: rfqData.longitude,
+          siteAddress: rfqData.siteAddress,
+          region: rfqData.region,
+          country: rfqData.country,
+          mineId: rfqData.mineId,
+          mineName: rfqData.mineName,
+          skipDocuments: rfqData.skipDocuments,
+          useNix: rfqData.useNix,
+          nixPopupShown: rfqData.nixPopupShown,
+        },
+        globalSpecs: rfqData.globalSpecs,
+        requiredProducts: rfqData.requiredProducts,
+        entries: rfqData.items,
+      });
+
+      await anonymousDraftsApi.requestRecoveryEmail(rfqData.customerEmail);
+      log.debug('Background: Draft saved and recovery email sent to:', rfqData.customerEmail);
+    } catch (error) {
+      log.warn('Background save/email failed (non-blocking):', error);
+    }
+  }, [isAuthenticated, rfqData, currentStep]);
+
   // Temperature derating factors for flange pressure classes
   // SABS 1123 / EN 1092-1 / PN standards: No significant derating below 200°C for carbon steel
   // ASME B16.5: More aggressive derating curve
@@ -2213,6 +2258,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     if (Object.keys(errors).length === 0) {
       originalNextStep();
       scrollToTop();
+      // For unregistered users, save draft and send recovery email in background
+      saveAndSendRecoveryEmailInBackground();
     } else {
       // Scroll to the first field with an error
       const firstErrorKey = Object.keys(errors)[0];
