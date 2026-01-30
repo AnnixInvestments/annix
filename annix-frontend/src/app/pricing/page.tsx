@@ -17,8 +17,8 @@ export default function PricingPage() {
   const customerTiers = [
     {
       name: 'Pay Per RFQ',
-      price: 'R0',
-      period: '/month',
+      price: 'R59.99',
+      period: '/RFQ',
       description: 'Pay only when you submit an RFQ',
       features: [
         'Up to 5 items per RFQ',
