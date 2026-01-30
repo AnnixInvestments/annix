@@ -139,26 +139,28 @@ export class AnonymousDraftService {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Resume Your RFQ Draft - Annix</title>
+        <title>Welcome to Annix RFQ - Your Progress Has Been Saved</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">Resume Your RFQ Draft</h1>
-          <p>You requested a link to resume your RFQ draft${draft.projectName ? ` for "${draft.projectName}"` : ''}.</p>
+          <h1 style="color: #2563eb;">Welcome to the Annix RFQ App</h1>
+          <p>Thank you for starting a Request for Quotation${draft.projectName ? ` for "${draft.projectName}"` : ''} with Annix.</p>
+
+          <p>This is a confirmation that your RFQ progress has been saved. Each time you click <strong>Save Progress</strong>, an email will be sent to you so you can resume from that point directly.</p>
 
           <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
-            <strong>Draft Details:</strong>
+            <strong>Your RFQ Details:</strong>
             <p style="margin: 5px 0 0 0;">
               ${draft.projectName ? `<strong>Project:</strong> ${draft.projectName}<br/>` : ''}
               <strong>Progress:</strong> Step ${draft.currentStep} of 5<br/>
-              <strong>Last Updated:</strong> ${draft.updatedAt.toLocaleDateString()}
+              <strong>Last Saved:</strong> ${draft.updatedAt.toLocaleDateString()}
             </p>
           </div>
 
           <p style="margin: 30px 0;">
             <a href="${recoveryLink}"
                style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Resume Your RFQ
+              Continue Your RFQ
             </a>
           </p>
           <p>Or copy and paste this link into your browser:</p>
@@ -166,7 +168,7 @@ export class AnonymousDraftService {
           <p style="color: #666; font-size: 14px;">This link will expire in ${this.DRAFT_EXPIRY_DAYS} days.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
           <p style="color: #999; font-size: 12px;">
-            If you did not request this link, please ignore this email. Your draft will remain saved.
+            If you did not start this RFQ, please ignore this email.
           </p>
         </div>
       </body>
@@ -174,24 +176,27 @@ export class AnonymousDraftService {
     `;
 
     const text = `
-      Resume Your RFQ Draft
+      Welcome to the Annix RFQ App
 
-      You requested a link to resume your RFQ draft${draft.projectName ? ` for "${draft.projectName}"` : ''}.
+      Thank you for starting a Request for Quotation${draft.projectName ? ` for "${draft.projectName}"` : ''} with Annix.
 
+      This is a confirmation that your RFQ progress has been saved. Each time you click Save Progress, an email will be sent to you so you can resume from that point directly.
+
+      Your RFQ Details:
       Project: ${draft.projectName || 'Unnamed'}
       Progress: Step ${draft.currentStep} of 5
-      Last Updated: ${draft.updatedAt.toLocaleDateString()}
+      Last Saved: ${draft.updatedAt.toLocaleDateString()}
 
-      Click here to resume: ${recoveryLink}
+      Click here to continue: ${recoveryLink}
 
       This link will expire in ${this.DRAFT_EXPIRY_DAYS} days.
 
-      If you did not request this link, please ignore this email.
+      If you did not start this RFQ, please ignore this email.
     `;
 
     await this.emailService.sendEmail({
       to: customerEmail,
-      subject: 'Resume Your RFQ Draft - Annix',
+      subject: 'Welcome to Annix RFQ - Your Progress Has Been Saved',
       html,
       text,
     });

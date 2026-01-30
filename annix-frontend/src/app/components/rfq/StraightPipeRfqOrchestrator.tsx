@@ -2256,10 +2256,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
     // Only proceed if no validation errors
     if (Object.keys(errors).length === 0) {
+      // For unregistered users on page 1, save draft and send welcome email in background
+      if (currentStep === 1) {
+        saveAndSendRecoveryEmailInBackground();
+      }
       originalNextStep();
       scrollToTop();
-      // For unregistered users, save draft and send recovery email in background
-      saveAndSendRecoveryEmailInBackground();
     } else {
       // Scroll to the first field with an error
       const firstErrorKey = Object.keys(errors)[0];
