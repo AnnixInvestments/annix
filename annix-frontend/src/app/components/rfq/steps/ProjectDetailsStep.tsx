@@ -11,6 +11,7 @@ import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
 import { AutoFilledInput, AutoFilledSelect, AutoFilledDisplay } from '@/app/components/rfq/AutoFilledField';
 import AddMineModal from '@/app/components/rfq/AddMineModal';
 import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
+import { useOptionalAdminAuth } from '@/app/context/AdminAuthContext';
 import { PRODUCTS_AND_SERVICES, isProductAvailableForUnregistered, isProjectTypeAvailableForUnregistered } from '@/app/lib/config/productsServices';
 import { log } from '@/app/lib/logger';
 import { useToast } from '@/app/components/Toast';
@@ -796,10 +797,11 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
   };
 
   // Customer auth for auto-filling customer fields (optional - may be used in admin context)
-  const { isAuthenticated, customer, profile } = useOptionalCustomerAuth();
+  const { isAuthenticated: isCustomerAuthenticated, customer, profile } = useOptionalCustomerAuth();
+  const { isAuthenticated: isAdminAuthenticated } = useOptionalAdminAuth();
 
-  // Unregistered customer restrictions - when not authenticated, limit available options
-  const isUnregisteredCustomer = !isAuthenticated;
+  // Unregistered customer restrictions - when not authenticated as customer or admin, limit available options
+  const isUnregisteredCustomer = !isCustomerAuthenticated && !isAdminAuthenticated;
 
   // Restriction popup state for unregistered customers
   const [restrictionPopup, setRestrictionPopup] = useState<RestrictionPopupPosition | null>(null);
@@ -831,7 +833,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('draft') || urlParams.get('draftId')) return;
 
-    if (isAuthenticated && profile) {
+    if (isCustomerAuthenticated && profile) {
       const updates: { customerName?: boolean; customerEmail?: boolean; customerPhone?: boolean } = {};
 
       // Auto-fill customer name if empty
@@ -858,7 +860,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
         setCustomerAutoFilled(prev => ({ ...prev, ...updates }));
       }
     }
-  }, [isAuthenticated, profile, rfqData.customerName, rfqData.customerEmail, rfqData.customerPhone, onUpdate]);
+  }, [isCustomerAuthenticated, profile, rfqData.customerName, rfqData.customerEmail, rfqData.customerPhone, onUpdate]);
 
   // Derived state for locked sections
   const isLocationLocked = locationConfirmed && !isEditingLocation;
@@ -904,7 +906,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
             Customer Information
-            {isAuthenticated && (
+            {isCustomerAuthenticated && (
               <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
                 Logged in
               </span>

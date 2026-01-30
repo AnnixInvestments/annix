@@ -144,3 +144,19 @@ export function useAdminAuth() {
   }
   return context;
 }
+
+export function useOptionalAdminAuth(): AdminAuthContextType {
+  const context = useContext(AdminAuthContext);
+  if (context === undefined) {
+    return {
+      isAuthenticated: false,
+      isLoading: false,
+      admin: null,
+      profile: null,
+      login: async () => { throw new Error('Admin login not available in this context'); },
+      logout: async () => { /* no-op */ },
+      refreshProfile: async () => { /* no-op */ },
+    };
+  }
+  return context;
+}

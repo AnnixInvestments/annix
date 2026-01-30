@@ -8,6 +8,7 @@ import { DEFAULT_PIPE_LENGTH_M } from '@/app/lib/config/rfq';
 import { boltSetCountPerBend, boltSetCountPerPipe, boltSetCountPerFitting } from '@/app/lib/config/rfq/pipeEndOptions';
 import { nowISO, formatDateLongZA, fromJSDate } from '@/app/lib/datetime';
 import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
+import { useOptionalAdminAuth } from '@/app/context/AdminAuthContext';
 
 export default function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, onPrevStep, onSubmit, onResubmit, isEditing, loading }: {
   rfqData: RfqFormData;
@@ -22,8 +23,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
   loading?: boolean;
 }) {
   // Authentication status for unregistered customer restrictions
-  const { isAuthenticated } = useOptionalCustomerAuth();
-  const isUnregisteredCustomer = !isAuthenticated;
+  const { isAuthenticated: isCustomerAuthenticated } = useOptionalCustomerAuth();
+  const { isAuthenticated: isAdminAuthenticated } = useOptionalAdminAuth();
+  const isUnregisteredCustomer = !isCustomerAuthenticated && !isAdminAuthenticated;
 
   // Restriction popup state
   type RestrictionPopupType = 'export';

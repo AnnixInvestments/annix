@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { log } from '@/app/lib/logger';
 import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
+import { useOptionalAdminAuth } from '@/app/context/AdminAuthContext';
 import {
   flangesPerPipe as getFlangesPerPipe,
   boltSetCountPerBend as getBoltSetCountPerBend,
@@ -250,8 +251,9 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
   const hasCalledOnReady = useRef(false);
 
   // Authentication status for unregistered customer restrictions
-  const { isAuthenticated } = useOptionalCustomerAuth();
-  const isUnregisteredCustomer = !isAuthenticated;
+  const { isAuthenticated: isCustomerAuthenticated } = useOptionalCustomerAuth();
+  const { isAuthenticated: isAdminAuthenticated } = useOptionalAdminAuth();
+  const isUnregisteredCustomer = !isCustomerAuthenticated && !isAdminAuthenticated;
 
   // Restriction popup state - supports different popup types
   type RestrictionPopupType = 'fittings' | 'itemLimit' | 'quantityLimit' | 'drawings';

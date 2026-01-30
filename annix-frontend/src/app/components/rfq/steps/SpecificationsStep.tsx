@@ -10,6 +10,7 @@ import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
 import { log } from '@/app/lib/logger';
 import { nowISO } from '@/app/lib/datetime';
 import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
+import { useOptionalAdminAuth } from '@/app/context/AdminAuthContext';
 import { SABS_1123_FLANGE_TYPES, BS_4504_FLANGE_TYPES, ASME_B16_5_FLANGE_TYPES, BS_10_FLANGE_TYPES, ASME_B16_47_SERIES_A_FLANGE_TYPES, ASME_B16_47_SERIES_B_FLANGE_TYPES } from '@/app/lib/hooks/useFlangeWeights';
 
 interface MaterialProperties {
@@ -654,8 +655,9 @@ function FeatureRestrictionPopup({ feature, position, onClose }: FeatureRestrict
 
 export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, errors, fetchAndSelectPressureClass, availablePressureClasses, requiredProducts = [], rfqData }: any) {
   // Authentication status for restrictions
-  const { isAuthenticated } = useOptionalCustomerAuth();
-  const isUnregisteredCustomer = !isAuthenticated;
+  const { isAuthenticated: isCustomerAuthenticated } = useOptionalCustomerAuth();
+  const { isAuthenticated: isAdminAuthenticated } = useOptionalAdminAuth();
+  const isUnregisteredCustomer = !isCustomerAuthenticated && !isAdminAuthenticated;
 
   // Restriction popup state
   const [restrictionPopup, setRestrictionPopup] = useState<RestrictionPopupPosition | null>(null);

@@ -16,13 +16,15 @@ export default function PricingPage() {
 
   const customerTiers = [
     {
-      name: 'Free',
+      name: 'Pay Per RFQ',
       price: 'R0',
       period: '/month',
-      description: 'Get started with basic RFQ management',
+      description: 'Pay only when you submit an RFQ',
       features: [
-        'Up to 5 RFQs per month',
-        'Basic project management',
+        'Up to 5 items per RFQ',
+        'Limited access to Products & Services',
+        'Full access to Registered Suppliers within allowed Products & Services',
+        'Save Draft RFQ function',
         'Email notifications',
         'Standard support',
       ],
