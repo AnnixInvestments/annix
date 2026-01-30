@@ -1169,7 +1169,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   }
 
   return (
-    <div data-pipe-preview className="w-full h-[500px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
+    <div data-pipe-preview className="w-full h-full min-h-[400px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
       <div className="absolute top-2 left-2 z-10 flex gap-2">
         <button
           onClick={() => setViewMode('iso')}

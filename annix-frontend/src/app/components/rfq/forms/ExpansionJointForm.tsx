@@ -19,15 +19,11 @@ import { NB_TO_OD_LOOKUP } from '@/app/lib/hooks/useFlangeWeights';
 export interface ExpansionJointFormProps {
   entry: any;
   index: number;
-  entries: any[];
+  entriesCount: number;
   globalSpecs: any;
   masterData: any;
   onUpdateEntry: (id: string, updates: any) => void;
   onRemoveEntry: (id: string) => void;
-  openSelects: Record<string, boolean>;
-  openSelect: (id: string) => void;
-  closeSelect: (id: string) => void;
-  focusAndOpenSelect: (id: string, retryCount?: number) => void;
   generateItemDescription: (entry: any) => string;
   requiredProducts?: string[];
 }
@@ -45,15 +41,11 @@ const SCHEDULE_OPTIONS = [
 export default function ExpansionJointForm({
   entry,
   index: _index,
-  entries: _entries,
+  entriesCount: _entriesCount,
   globalSpecs,
   masterData: _masterData,
   onUpdateEntry,
   onRemoveEntry,
-  openSelects,
-  openSelect,
-  closeSelect,
-  focusAndOpenSelect: _focusAndOpenSelect,
   generateItemDescription,
   requiredProducts: _requiredProducts = [],
 }: ExpansionJointFormProps) {
@@ -244,12 +236,6 @@ export default function ExpansionJointForm({
                       value: et.value,
                       label: et.label,
                     }))}
-                    open={openSelects[`expansion-type-${entry.id}`] || false}
-                    onOpenChange={(open) =>
-                      open
-                        ? openSelect(`expansion-type-${entry.id}`)
-                        : closeSelect(`expansion-type-${entry.id}`)
-                    }
                     placeholder="Select type"
                     className="bg-purple-50 border-purple-300 dark:bg-purple-900/30 dark:border-purple-600"
                   />
@@ -271,10 +257,6 @@ export default function ExpansionJointForm({
                       value: nb.toString(),
                       label: `${nb} NB`,
                     }))}
-                    open={openSelects[`nb-${entry.id}`] || false}
-                    onOpenChange={(open) =>
-                      open ? openSelect(`nb-${entry.id}`) : closeSelect(`nb-${entry.id}`)
-                    }
                     placeholder="Select NB"
                     className="bg-purple-50 border-purple-300 dark:bg-purple-900/30 dark:border-purple-600"
                   />
@@ -306,12 +288,6 @@ export default function ExpansionJointForm({
                           label: bt.label,
                           description: bt.description,
                         }))}
-                        open={openSelects[`bellows-type-${entry.id}`] || false}
-                        onOpenChange={(open) =>
-                          open
-                            ? openSelect(`bellows-type-${entry.id}`)
-                            : closeSelect(`bellows-type-${entry.id}`)
-                        }
                         placeholder="Select joint type"
                         className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                       />
@@ -333,12 +309,6 @@ export default function ExpansionJointForm({
                           value: bm.value,
                           label: bm.label,
                         }))}
-                        open={openSelects[`bellows-material-${entry.id}`] || false}
-                        onOpenChange={(open) =>
-                          open
-                            ? openSelect(`bellows-material-${entry.id}`)
-                            : closeSelect(`bellows-material-${entry.id}`)
-                        }
                         placeholder="Select material"
                         className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                       />
@@ -514,12 +484,6 @@ export default function ExpansionJointForm({
                           });
                         }}
                         options={SCHEDULE_OPTIONS}
-                        open={openSelects[`schedule-${entry.id}`] || false}
-                        onOpenChange={(open) =>
-                          open
-                            ? openSelect(`schedule-${entry.id}`)
-                            : closeSelect(`schedule-${entry.id}`)
-                        }
                         placeholder="Select schedule"
                         className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
                       />
@@ -541,12 +505,6 @@ export default function ExpansionJointForm({
                           label: lt.label,
                           description: lt.description,
                         }))}
-                        open={openSelects[`loop-type-${entry.id}`] || false}
-                        onOpenChange={(open) =>
-                          open
-                            ? openSelect(`loop-type-${entry.id}`)
-                            : closeSelect(`loop-type-${entry.id}`)
-                        }
                         placeholder="Select loop type"
                         className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
                       />
@@ -610,12 +568,6 @@ export default function ExpansionJointForm({
                           value: opt.value,
                           label: opt.label,
                         }))}
-                        open={openSelects[`end-config-${entry.id}`] || false}
-                        onOpenChange={(open) =>
-                          open
-                            ? openSelect(`end-config-${entry.id}`)
-                            : closeSelect(`end-config-${entry.id}`)
-                        }
                         placeholder="Select end config"
                         className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
                       />

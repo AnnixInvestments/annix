@@ -70,7 +70,7 @@ import {
 export interface BendFormProps {
   entry: any;
   index: number;
-  entries: any[];
+  entriesCount: number;
   globalSpecs: any;
   masterData: any;
   onUpdateEntry: (id: string, updates: any) => void;
@@ -79,10 +79,6 @@ export interface BendFormProps {
   onCopyEntry?: (entry: any) => void;
   copiedItemId?: string | null;
   onCalculateBend?: (id: string) => void;
-  openSelects: Record<string, boolean>;
-  openSelect: (id: string) => void;
-  closeSelect: (id: string) => void;
-  focusAndOpenSelect: (id: string, retryCount?: number) => void;
   generateItemDescription: (entry: any) => string;
   Bend3DPreview?: React.ComponentType<any> | null;
   pressureClassesByStandard: Record<number, any[]>;
@@ -95,7 +91,7 @@ export interface BendFormProps {
 function BendFormComponent({
   entry,
   index,
-  entries,
+  entriesCount,
   globalSpecs,
   masterData,
   onUpdateEntry,
@@ -104,10 +100,6 @@ function BendFormComponent({
   onCopyEntry,
   copiedItemId,
   onCalculateBend,
-  openSelects,
-  openSelect,
-  closeSelect,
-  focusAndOpenSelect,
   generateItemDescription,
   Bend3DPreview,
   pressureClassesByStandard,
@@ -116,6 +108,8 @@ function BendFormComponent({
   isLoadingNominalBores = false,
   requiredProducts = [],
 }: BendFormProps) {
+  log.info(`🔄 BendForm RENDER - entry.id: ${entry.id}, index: ${index}`);
+
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
 
   const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
@@ -133,6 +127,7 @@ function BendFormComponent({
   const flangeTypesLength = masterData?.flangeTypes?.length ?? 0;
 
   useEffect(() => {
+    log.info(`🔥 BendForm useEffect[flangeSpecs] FIRED - entry.id: ${entry.id}`);
     const fetchSpecs = async () => {
       log.debug('BendForm fetchSpecs', { hasFlanges, nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeCode });
       if (!hasFlanges || !nominalBoreMm || !flangeStandardId || !flangePressureClassId) {
@@ -388,8 +383,6 @@ function BendFormComponent({
                                 options={[]}
                                 groupedOptions={groupedSteelOptions}
                                 placeholder="Select Steel Spec"
-                                open={openSelects[selectId]}
-                                onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                               />
                             </>
                           );
@@ -536,20 +529,13 @@ function BendFormComponent({
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
 
-                              if (newSpecId && specTypeChanged) {
-                                const nextFieldId = isNewSABS719
-                                  ? `bend-radius-type-${entry.id}`
-                                  : `bend-type-${entry.id}`;
-                                setTimeout(() => focusAndOpenSelect(nextFieldId), 100);
-                              } else if (keepNB && matchedSchedule) {
+                              if (keepNB && matchedSchedule) {
                                 debouncedCalculate();
                               }
                             }}
                             options={[]}
                             groupedOptions={groupedSteelOptions}
                             placeholder="Select Steel Spec"
-                            open={openSelects[selectId]}
-                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -686,16 +672,10 @@ function BendFormComponent({
                                 if (matchedSchedule && hasBendSpecs) {
                                   debouncedCalculate();
                                 }
-
-                                if (!entry.specs?.bendDegrees) {
-                                  setTimeout(() => focusAndOpenSelect(`bend-angle-${entry.id}`), 100);
-                                }
                               }}
                               options={nbOptions}
                               placeholder="Select NB"
                               disabled={isDisabled}
-                              open={openSelects[selectId]}
-                              onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                             />
                             {selectedNB && !nbValid && nbRules && (
                               <p className="text-xs text-orange-600 mt-0.5">
@@ -747,8 +727,6 @@ function BendFormComponent({
                             options={options}
                             placeholder={entry.specs?.nominalBoreMm ? 'Select Schedule' : 'Select NB first'}
                             disabled={!entry.specs?.nominalBoreMm}
-                            open={openSelects[selectId]}
-                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -842,8 +820,6 @@ function BendFormComponent({
                             }}
                             options={options}
                             placeholder="Select Bend Style"
-                            open={openSelects[selectId]}
-                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -892,15 +868,9 @@ function BendFormComponent({
                               }
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
-
-                              if (bendType) {
-                                setTimeout(() => focusAndOpenSelect(`bend-nb-${entry.id}`), 100);
-                              }
                             }}
                             options={options}
                             placeholder="Select Bend Type"
-                            open={openSelects[selectId]}
-                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -946,15 +916,9 @@ function BendFormComponent({
                               }
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
-
-                              if (radiusType && !isSweepTee) {
-                                setTimeout(() => focusAndOpenSelect(`bend-angle-${entry.id}`), 100);
-                              }
                             }}
                             options={options}
                             placeholder="Select Radius Type"
-                            open={openSelects[selectId]}
-                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -969,11 +933,12 @@ function BendFormComponent({
                     : [];
 
                   const isFixedAngle90 = entry.specs?.bendItemType === 'SWEEP_TEE' || entry.specs?.bendItemType === 'DUCKFOOT_BEND';
+                  const isMissingBendAngle = entry.specs?.nominalBoreMm && !entry.specs?.bendDegrees && !isFixedAngle90;
 
                   const AngleDropdown = (
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        Bend Angle *
+                    <div className={isMissingBendAngle ? 'ring-2 ring-red-500 rounded-md p-1 bg-red-50' : ''}>
+                      <label className={`block text-xs font-semibold mb-1 ${isMissingBendAngle ? 'text-red-700' : 'text-gray-900 dark:text-gray-100'}`}>
+                        Bend Angle * {isMissingBendAngle && <span className="text-red-600 font-bold">⚠ Required for preview</span>}
                         <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="The angle of direction change. 90° is a right-angle turn, 45° is a diagonal, 180° is a U-turn (return bend).">?</span>
                       </label>
                       {isFixedAngle90 ? (
@@ -1039,8 +1004,6 @@ function BendFormComponent({
                             options={angleOptions}
                             placeholder={isDisabled ? 'Select Bend Radius first' : 'Select Angle'}
                             disabled={isDisabled}
-                            open={openSelects[selectId]}
-                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -1873,8 +1836,6 @@ function BendFormComponent({
                             }}
                             options={options}
                             placeholder="Stubs"
-                            open={openSelects[selectId]}
-                            onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                           />
                         );
                       })()}
@@ -1904,8 +1865,6 @@ function BendFormComponent({
                               options={[]}
                               groupedOptions={groupedSteelOptions}
                               placeholder="Spec"
-                              open={openSelects[selectId]}
-                              onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                             />
                           );
                         })()}
@@ -1938,8 +1897,6 @@ function BendFormComponent({
                               }}
                               options={options}
                               placeholder="NB"
-                              open={openSelects[selectId]}
-                              onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                             />
                           );
                         })()}
@@ -2012,8 +1969,6 @@ function BendFormComponent({
                               }}
                               options={wtOptions}
                               placeholder="W/T"
-                              open={openSelects[selectId]}
-                              onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                             />
                           );
                         })()}
@@ -2044,8 +1999,6 @@ function BendFormComponent({
                               }}
                               options={angleOptions}
                               placeholder="Pos"
-                              open={openSelects[selectId]}
-                              onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                             />
                           );
                         })()}
@@ -2294,8 +2247,6 @@ function BendFormComponent({
                                     options={[]}
                                     groupedOptions={groupedSteelOptions}
                                     placeholder="Spec"
-                                    open={openSelects[selectId]}
-                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                                   />
                                 );
                               })()}
@@ -2329,8 +2280,6 @@ function BendFormComponent({
                                     }}
                                     options={options}
                                     placeholder="Select NB"
-                                    open={openSelects[selectId]}
-                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                                   />
                                 );
                               })()}
@@ -2421,8 +2370,6 @@ function BendFormComponent({
                                     }}
                                     options={wtOptions}
                                     placeholder="Select W/T"
-                                    open={openSelects[selectId]}
-                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                                   />
                                 );
                               })()}
@@ -2454,8 +2401,6 @@ function BendFormComponent({
                                     }}
                                     options={angleOptions}
                                     placeholder="Select angle"
-                                    open={openSelects[selectId]}
-                                    onOpenChange={(isOpen) => isOpen ? openSelect(selectId) : closeSelect(selectId)}
                                   />
                                 );
                               })()}
@@ -2710,7 +2655,7 @@ function BendFormComponent({
                       )}
                     </button>
                   )}
-                  {entries.length > 1 && (
+                  {entriesCount > 1 && (
                     <button
                       onClick={() => onRemoveEntry(entry.id)}
                       className="flex items-center gap-1 px-3 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 text-sm font-medium border border-red-300 rounded-md transition-colors"
@@ -2728,10 +2673,11 @@ function BendFormComponent({
                   <>
                   {Bend3DPreview ? (() => {
                     const canRenderPreview = entry.specs?.nominalBoreMm && entry.specs?.bendDegrees;
+                    log.info(`🎨 BendForm preview check - entry.id: ${entry.id}, nominalBoreMm: ${entry.specs?.nominalBoreMm}, bendDegrees: ${entry.specs?.bendDegrees}, canRender: ${!!canRenderPreview}`);
                     if (!canRenderPreview) {
                       return (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
-                          Select nominal bore and bend angle to see preview
+                        <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
+                          ℹ️ Select nominal bore and bend angle to see 3D preview
                         </div>
                       );
                     }
@@ -2793,8 +2739,8 @@ function BendFormComponent({
                       />
                     );
                   })() : (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
-                      3D preview hidden. Use the toggle above to show drawings.
+                    <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 text-center text-blue-600 text-sm font-medium">
+                      ℹ️ 3D preview hidden. Use the toggle above to show drawings.
                     </div>
                   )}
 

@@ -27,7 +27,13 @@ const Bend3DPreview = dynamic(() => import('@/app/components/rfq/CSGBend3DPrevie
 const Tee3DPreview = dynamic(() => import('@/app/components/rfq/Tee3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 import { BendForm, FittingForm, StraightPipeForm, PipeSteelWorkForm, ExpansionJointForm } from '@/app/components/rfq/forms';
 
+// Render counter for performance debugging
+let itemUploadStepRenderCount = 0;
+
 export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onAddPipeSteelWorkEntry, onAddExpansionJointEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses, hideDrawings = false, onReady }: any) {
+  itemUploadStepRenderCount++;
+  log.info(`🔄 ItemUploadStep RENDER #${itemUploadStepRenderCount} - entries: ${entries?.length}`);
+
   const autoFocusedEntriesRef = useRef<Set<string>>(new Set());
   const fetchedSchedulesRef = useRef<Set<string>>(new Set());
   const [availableNominalBores, setAvailableNominalBores] = useState<number[]>([]);
@@ -52,48 +58,8 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
     }
   }, [onDuplicateEntry]);
 
-  const pendingFocusRef = useRef<Set<string>>(new Set());
-  const [openSelects, setOpenSelects] = useState<Record<string, boolean>>({});
-
-  const openSelect = useCallback((selectId: string) => {
-    setOpenSelects(prev => ({ ...prev, [selectId]: true }));
-    requestAnimationFrame(() => {
-      const element = document.getElementById(selectId);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        element.focus();
-      }
-    });
-  }, []);
-
-  const closeSelect = useCallback((selectId: string) => {
-    setOpenSelects(prev => ({ ...prev, [selectId]: false }));
-  }, []);
-
-  const focusAndOpenSelect = useCallback((selectId: string, retryCount = 0) => {
-    // AUTO-FOCUS DISABLED: Remove this return statement to re-enable auto field jumping
-    return;
-
-    if (pendingFocusRef.current.has(selectId) && retryCount === 0) {
-      return;
-    }
-    pendingFocusRef.current.add(selectId);
-
-    const delay = 50 + (retryCount * 50);
-
-    setTimeout(() => {
-      pendingFocusRef.current.delete(selectId);
-
-      // Always try to open via Radix state first (works for all our migrated selects)
-      openSelect(selectId);
-
-      // Also scroll to the element
-      const element = document.getElementById(selectId);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, delay);
-  }, [openSelect]);
+  // AUTO-FOCUS DISABLED: This is a no-op stub for compatibility
+  const focusAndOpenSelect = useCallback((_selectId: string, _retryCount = 0) => {}, []);
 
   // Track the last entry count to detect new entries
   const lastEntryCountRef = useRef<number>(0);
@@ -374,7 +340,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
     }, 0);
   };
 
-  const generateItemDescription = (entry: any) => {
+  const generateItemDescription = useCallback((entry: any) => {
     // Handle bend items
     if (entry.itemType === 'bend') {
       const nb = entry.specs?.nominalBoreMm || 'XX';
@@ -742,7 +708,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
     }
 
     return description;
-  };
+  }, [globalSpecs, masterData.steelSpecs, masterData.flangeStandards, masterData.pressureClasses]);
 
   // Update item descriptions when globalSpecs.workingPressureBar changes
   useEffect(() => {
@@ -816,10 +782,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
               }
 
               if (newSelect) {
-                const selectId = newSelect.id;
-                // Set state to open the select
-                openSelect(selectId);
-                // Also try clicking the button to trigger the dropdown
+                // Click and scroll to the new select
                 const button = newSelect as HTMLElement;
                 button.click();
                 button.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -999,7 +962,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
               <BendForm
                 entry={entry}
                 index={index}
-                entries={entries}
+                entriesCount={entries.length}
                 globalSpecs={globalSpecs}
                 masterData={masterData}
                 onUpdateEntry={onUpdateEntry}
@@ -1008,10 +971,6 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 onCopyEntry={copyItemToClipboard}
                 copiedItemId={copiedItemId}
                 onCalculateBend={onCalculateBend}
-                openSelects={openSelects}
-                openSelect={openSelect}
-                closeSelect={closeSelect}
-                focusAndOpenSelect={focusAndOpenSelect}
                 generateItemDescription={generateItemDescription}
                 Bend3DPreview={drawingsHidden ? null : Bend3DPreview}
                 pressureClassesByStandard={pressureClassesByStandard}
@@ -1022,7 +981,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
               <FittingForm
                 entry={entry}
                 index={index}
-                entries={entries}
+                entriesCount={entries.length}
                 globalSpecs={globalSpecs}
                 masterData={masterData}
                 onUpdateEntry={onUpdateEntry}
@@ -1031,10 +990,6 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 onCopyEntry={copyItemToClipboard}
                 copiedItemId={copiedItemId}
                 onCalculateFitting={onCalculateFitting}
-                openSelects={openSelects}
-                openSelect={openSelect}
-                closeSelect={closeSelect}
-                focusAndOpenSelect={focusAndOpenSelect}
                 generateItemDescription={generateItemDescription}
                 Tee3DPreview={drawingsHidden ? null : Tee3DPreview}
                 pressureClassesByStandard={pressureClassesByStandard}
@@ -1045,15 +1000,11 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
               <PipeSteelWorkForm
                 entry={entry}
                 index={index}
-                entries={entries}
+                entriesCount={entries.length}
                 globalSpecs={globalSpecs}
                 masterData={masterData}
                 onUpdateEntry={onUpdateEntry}
                 onRemoveEntry={onRemoveEntry}
-                openSelects={openSelects}
-                openSelect={openSelect}
-                closeSelect={closeSelect}
-                focusAndOpenSelect={focusAndOpenSelect}
                 generateItemDescription={generateItemDescription}
                 requiredProducts={requiredProducts}
               />
@@ -1061,15 +1012,11 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
               <ExpansionJointForm
                 entry={entry}
                 index={index}
-                entries={entries}
+                entriesCount={entries.length}
                 globalSpecs={globalSpecs}
                 masterData={masterData}
                 onUpdateEntry={onUpdateEntry}
                 onRemoveEntry={onRemoveEntry}
-                openSelects={openSelects}
-                openSelect={openSelect}
-                closeSelect={closeSelect}
-                focusAndOpenSelect={focusAndOpenSelect}
                 generateItemDescription={generateItemDescription}
                 requiredProducts={requiredProducts}
               />
@@ -1077,7 +1024,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
               <StraightPipeForm
                 entry={entry}
                 index={index}
-                entries={entries}
+                entriesCount={entries.length}
                 globalSpecs={globalSpecs}
                 masterData={masterData}
                 onUpdateEntry={onUpdateEntry}
@@ -1086,10 +1033,6 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 onCopyEntry={copyItemToClipboard}
                 copiedItemId={copiedItemId}
                 onCalculate={onCalculate}
-                openSelects={openSelects}
-                openSelect={openSelect}
-                closeSelect={closeSelect}
-                focusAndOpenSelect={focusAndOpenSelect}
                 generateItemDescription={generateItemDescription}
                 Pipe3DPreview={drawingsHidden ? null : Pipe3DPreview}
                 nominalBores={availableNominalBores}

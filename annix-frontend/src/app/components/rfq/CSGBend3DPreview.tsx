@@ -2742,7 +2742,7 @@ export default function CSGBend3DPreview(props: Props) {
   const cameraTarget = props.savedCameraTarget || autoCameraTarget
 
   return (
-    <div data-bend-preview className="w-full h-[500px] min-h-[400px] flex-1 bg-slate-50 rounded-md border overflow-hidden relative">
+    <div data-bend-preview className="w-full h-full min-h-[400px] bg-slate-50 rounded-md border overflow-hidden relative">
       <Canvas shadows dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }} camera={{ position: cameraPosition, fov: 45 }}>
         <CaptureHelper captureRef={captureRef} />
         <ambientLight intensity={0.7} />

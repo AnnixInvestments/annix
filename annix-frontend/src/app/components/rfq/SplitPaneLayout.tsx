@@ -180,7 +180,10 @@ export default function SplitPaneLayout({
       {/* Main content container - flex in split mode, stacked in non-split */}
       <div className={isEnabled ? "flex gap-0" : "space-y-5"}>
         {/* Left Pane - Form Fields */}
-        <div className={isEnabled ? "flex-1 space-y-5 pr-4" : "space-y-5"}>
+        <div
+          className={isEnabled ? "flex-shrink-0 space-y-5 pr-4" : "space-y-5"}
+          style={isEnabled ? { width: `${width}%` } : undefined}
+        >
           {formContent}
 
           {/* Toggle Button for Split-Pane 3D Preview */}

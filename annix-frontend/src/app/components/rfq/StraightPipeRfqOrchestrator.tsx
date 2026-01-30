@@ -2380,6 +2380,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   };
 
   const handleUpdateEntry = useCallback((id: string, updates: any) => {
+    log.info(`📝 handleUpdateEntry CALLED - id: ${id}, updates keys: ${Object.keys(updates).join(', ')}`);
     const entry = rfqDataRef.current.items.find(e => e.id === id);
 
     if (entry && isNixExtractedItem(entry) && updates.specs) {

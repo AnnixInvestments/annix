@@ -93,7 +93,7 @@ const calculateQuantities = (entry: any, field: string, value: number) => {
 export interface StraightPipeFormProps {
   entry: any;
   index: number;
-  entries: any[];
+  entriesCount: number;
   globalSpecs: any;
   masterData: any;
   onUpdateEntry: (id: string, updates: any) => void;
@@ -102,10 +102,6 @@ export interface StraightPipeFormProps {
   onCopyEntry?: (entry: any) => void;
   copiedItemId?: string | null;
   onCalculate?: (id: string) => void;
-  openSelects: Record<string, boolean>;
-  openSelect: (id: string) => void;
-  closeSelect: (id: string) => void;
-  focusAndOpenSelect: (id: string, retryCount?: number) => void;
   generateItemDescription: (entry: any) => string;
   Pipe3DPreview?: React.ComponentType<any> | null;
   nominalBores: number[];
@@ -122,7 +118,7 @@ export interface StraightPipeFormProps {
 function StraightPipeFormComponent({
   entry,
   index,
-  entries,
+  entriesCount,
   globalSpecs,
   masterData,
   onUpdateEntry,
@@ -131,10 +127,6 @@ function StraightPipeFormComponent({
   onCopyEntry,
   copiedItemId,
   onCalculate,
-  openSelects,
-  openSelect,
-  closeSelect,
-  focusAndOpenSelect,
   generateItemDescription,
   Pipe3DPreview,
   nominalBores,
@@ -147,6 +139,8 @@ function StraightPipeFormComponent({
   isLoadingNominalBores = false,
   requiredProducts = [],
 }: StraightPipeFormProps) {
+  log.info(`🔄 StraightPipeForm RENDER - entry.id: ${entry.id}, index: ${index}`);
+
   const showSurfaceProtection = requiredProducts.includes('surface_protection');
 
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
@@ -365,11 +359,14 @@ function StraightPipeFormComponent({
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label htmlFor={`pipe-nb-pressure-${entry.id}`} className="block text-xs font-semibold text-gray-900 mb-1">
-                        Nominal Bore (mm) *
-                      </label>
-                      {(() => {
+                    {(() => {
+                      const isMissingForPreview = entry.specs?.individualPipeLength && !entry.specs?.nominalBoreMm;
+                      return (
+                        <div className={isMissingForPreview ? 'ring-2 ring-red-500 rounded-md p-1 bg-red-50' : ''}>
+                          <label htmlFor={`pipe-nb-pressure-${entry.id}`} className={`block text-xs font-semibold mb-1 ${isMissingForPreview ? 'text-red-700' : 'text-gray-900'}`}>
+                            Nominal Bore (mm) * {isMissingForPreview && <span className="text-red-600 font-bold">⚠ Required for preview</span>}
+                          </label>
+                    {(() => {
                         const selectId = `pipe-nb-pressure-${entry.id}`;
                         const options = nominalBores.map((nb: number) => ({
                           value: String(nb),
@@ -456,10 +453,7 @@ function StraightPipeFormComponent({
                             if (pipeTypeElement) {
                               pipeTypeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
-                            setTimeout(() => {
-                              focusAndOpenSelect(pipeTypeSelectId);
-                            }, 150);
-                          }, 150);
+                                                      }, 150);
                         };
 
                         return (
@@ -470,9 +464,7 @@ function StraightPipeFormComponent({
                             options={options}
                             placeholder={isLoadingNominalBores ? 'Loading...' : 'Select NB'}
                             disabled={isLoadingNominalBores}
-                            open={openSelects[selectId] || false}
-                            onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
-                            aria-required={true}
+                                                        aria-required={true}
                             aria-invalid={!!errors[`pipe_${index}_nb`]}
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
                           />
@@ -481,7 +473,9 @@ function StraightPipeFormComponent({
                       {errors[`pipe_${index}_nb`] && (
                         <p role="alert" className="mt-1 text-xs text-red-600">{errors[`pipe_${index}_nb`]}</p>
                       )}
-                    </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <MaterialSuitabilityWarning
                     color="blue"
@@ -538,8 +532,7 @@ function StraightPipeFormComponent({
                                   }
                                 });
                                 if (specId && !nominalBore) {
-                                  setTimeout(() => focusAndOpenSelect(`pipe-nb-${entry.id}`), 100);
-                                }
+                                                                  }
                                 return;
                               }
 
@@ -592,8 +585,6 @@ function StraightPipeFormComponent({
                               options={[]}
                               groupedOptions={groupedSteelOptions}
                               placeholder="Select steel spec..."
-                              open={openSelects[selectId] || false}
-                              onOpenChange={(open) => open ? openSelect(selectId) : closeSelect(selectId)}
                               aria-required={true}
                               aria-invalid={!!errors[`pipe_${index}_steel_spec`]}
                             />
@@ -781,10 +772,7 @@ function StraightPipeFormComponent({
                               if (configElement) {
                                 configElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                               }
-                              setTimeout(() => {
-                                focusAndOpenSelect(configSelectId);
-                              }, 150);
-                            }, 150);
+                                                          }, 150);
                           }
                           // For spigot pipes, open the Spigot Steel Spec dropdown next
                           if (newPipeType === 'spigot') {
@@ -794,10 +782,7 @@ function StraightPipeFormComponent({
                               if (spigotSteelElement) {
                                 spigotSteelElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                               }
-                              setTimeout(() => {
-                                focusAndOpenSelect(spigotSteelSelectId);
-                              }, 150);
-                            }, 150);
+                                                          }, 150);
                           }
                         }}
                         options={[
@@ -805,8 +790,6 @@ function StraightPipeFormComponent({
                           { value: 'spigot', label: 'Spigot Pipe' },
                           { value: 'puddle', label: 'Puddle Pipe' },
                         ]}
-                        open={openSelects[`pipe-type-${entry.id}`] || false}
-                        onOpenChange={(open) => open ? openSelect(`pipe-type-${entry.id}`) : closeSelect(`pipe-type-${entry.id}`)}
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
                       />
                     </div>
@@ -930,16 +913,11 @@ function StraightPipeFormComponent({
                                     if (noSpigotElement) {
                                       noSpigotElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                     }
-                                    setTimeout(() => {
-                                      focusAndOpenSelect(noSpigotSelectId);
-                                    }, 150);
-                                  }, 150);
+                                                                      }, 150);
                                 }}
                                 options={[]}
                                 groupedOptions={groupedSteelOptions}
                                 placeholder="Select steel spec..."
-                                open={openSelects[`spigot-steel-spec-${entry.id}`] || false}
-                                onOpenChange={(open) => open ? openSelect(`spigot-steel-spec-${entry.id}`) : closeSelect(`spigot-steel-spec-${entry.id}`)}
                               />
                             </>
                           );
@@ -965,18 +943,13 @@ function StraightPipeFormComponent({
                               if (spigotNbElement) {
                                 spigotNbElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                               }
-                              setTimeout(() => {
-                                focusAndOpenSelect(spigotNbSelectId);
-                              }, 150);
-                            }, 150);
+                                                          }, 150);
                           }}
                           options={[
                             { value: '2', label: '2' },
                             { value: '3', label: '3' },
                             { value: '4', label: '4' },
                           ]}
-                          open={openSelects[`spigot-count-${entry.id}`] || false}
-                          onOpenChange={(open) => open ? openSelect(`spigot-count-${entry.id}`) : closeSelect(`spigot-count-${entry.id}`)}
                           className="w-full px-2 py-1.5 border border-teal-300 rounded text-xs"
                         />
                       </div>
@@ -1024,8 +997,6 @@ function StraightPipeFormComponent({
                                   { value: '', label: 'Select NB...' },
                                   ...filteredNBs.map((nb: number) => ({ value: String(nb), label: `${nb} NB` }))
                                 ]}
-                                open={openSelects[`spigot-nb-${entry.id}`] || false}
-                                onOpenChange={(open) => open ? openSelect(`spigot-nb-${entry.id}`) : closeSelect(`spigot-nb-${entry.id}`)}
                                 className="w-full px-2 py-1.5 border border-teal-300 rounded text-xs"
                               />
                             </>
@@ -1404,8 +1375,6 @@ function StraightPipeFormComponent({
                                 { value: 'FOE', label: 'FOE - Flanged One End' },
                                 { value: 'FBE', label: 'FBE - Flanged Both Ends' },
                               ] : [...PIPE_END_OPTIONS]}
-                              open={openSelects[`pipe-config-${entry.id}`] || false}
-                              onOpenChange={(open) => open ? openSelect(`pipe-config-${entry.id}`) : closeSelect(`pipe-config-${entry.id}`)}
                               className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
                             />
                             )}
@@ -1760,11 +1729,14 @@ function StraightPipeFormComponent({
               <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-2 mt-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 items-end">
                   {/* Pipe Length */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <label className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-                        Pipe Length (m)
-                      </label>
+                  {(() => {
+                    const isMissingForPreview = entry.specs?.nominalBoreMm && !entry.specs?.individualPipeLength;
+                    return (
+                      <div className={isMissingForPreview ? 'ring-2 ring-red-500 rounded-md p-1 bg-red-50' : ''}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <label className={`text-xs font-semibold ${isMissingForPreview ? 'text-red-700' : 'text-gray-900 dark:text-gray-100'}`}>
+                            Pipe Length (m) {isMissingForPreview && <span className="text-red-600 font-bold">⚠ Required for preview</span>}
+                          </label>
                       <div className="flex gap-1">
                         {(entry.specs?.pipeType === 'puddle' ? PUDDLE_PIPE_LENGTHS_M : STANDARD_PIPE_LENGTHS_M).map((pl) => (
                           <button
@@ -1811,7 +1783,9 @@ function StraightPipeFormComponent({
                       className="w-full px-2 py-1.5 border border-blue-300 dark:border-blue-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-blue-900/20"
                       placeholder="Custom length"
                     />
-                  </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Total Length or Closure Length (when L/F selected) */}
                   {hasLooseFlange(entry.specs.pipeEndConfiguration || '') ? (
@@ -1885,8 +1859,8 @@ function StraightPipeFormComponent({
                     const canRenderPreview = entry.specs?.nominalBoreMm && entry.specs?.individualPipeLength;
                     if (!canRenderPreview) {
                       return (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
-                          Select nominal bore and pipe length to see preview
+                        <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
+                          ℹ️ Select nominal bore and pipe length to see 3D preview
                         </div>
                       );
                     }
@@ -2450,7 +2424,7 @@ function StraightPipeFormComponent({
                     )}
                   </button>
                 )}
-                {entries.length > 1 && (
+                {entriesCount > 1 && (
                   <button
                     onClick={() => onRemoveEntry(entry.id)}
                     className="flex items-center gap-1 px-3 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 text-sm font-medium border border-red-300 rounded-md transition-colors"

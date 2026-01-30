@@ -9,15 +9,11 @@ import { usePipeSteelWorkCalculations } from '@/app/lib/pipe-steel-work/usePipeS
 export interface PipeSteelWorkFormProps {
   entry: any;
   index: number;
-  entries: any[];
+  entriesCount: number;
   globalSpecs: any;
   masterData: any;
   onUpdateEntry: (id: string, updates: any) => void;
   onRemoveEntry: (id: string) => void;
-  openSelects: Record<string, boolean>;
-  openSelect: (id: string) => void;
-  closeSelect: (id: string) => void;
-  focusAndOpenSelect: (id: string, retryCount?: number) => void;
   generateItemDescription: (entry: any) => string;
   requiredProducts?: string[];
 }
@@ -34,15 +30,11 @@ const NB_OPTIONS = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300
 export default function PipeSteelWorkForm({
   entry,
   index: _index,
-  entries,
+  entriesCount: _entriesCount,
   globalSpecs,
   masterData,
   onUpdateEntry,
   onRemoveEntry,
-  openSelects,
-  openSelect,
-  closeSelect,
-  focusAndOpenSelect,
   generateItemDescription,
   requiredProducts = [],
 }: PipeSteelWorkFormProps) {
@@ -127,9 +119,7 @@ export default function PipeSteelWorkForm({
                       value: wt.value,
                       label: wt.label,
                     }))}
-                    open={openSelects[`work-type-${entry.id}`] || false}
-                    onOpenChange={(open) => open ? openSelect(`work-type-${entry.id}`) : closeSelect(`work-type-${entry.id}`)}
-                    placeholder="Select work type"
+                                        placeholder="Select work type"
                     className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                   />
                 </div>
@@ -150,9 +140,7 @@ export default function PipeSteelWorkForm({
                       value: nb.toString(),
                       label: `${nb} NB`,
                     }))}
-                    open={openSelects[`nb-${entry.id}`] || false}
-                    onOpenChange={(open) => open ? openSelect(`nb-${entry.id}`) : closeSelect(`nb-${entry.id}`)}
-                    placeholder="Select NB"
+                                        placeholder="Select NB"
                     className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                   />
                 </div>
@@ -176,9 +164,7 @@ export default function PipeSteelWorkForm({
                           value: bt.typeCode,
                           label: bt.displayName,
                         }))}
-                      open={openSelects[`bracket-type-${entry.id}`] || false}
-                      onOpenChange={(open) => open ? openSelect(`bracket-type-${entry.id}`) : closeSelect(`bracket-type-${entry.id}`)}
-                      placeholder="Select bracket type"
+                                            placeholder="Select bracket type"
                       className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                     />
                   </div>
@@ -201,9 +187,7 @@ export default function PipeSteelWorkForm({
                         value: nb.toString(),
                         label: `${nb} NB`,
                       }))}
-                      open={openSelects[`branch-nb-${entry.id}`] || false}
-                      onOpenChange={(open) => open ? openSelect(`branch-nb-${entry.id}`) : closeSelect(`branch-nb-${entry.id}`)}
-                      placeholder="Select Branch NB"
+                                            placeholder="Select Branch NB"
                       className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                     />
                   </div>
@@ -251,9 +235,7 @@ export default function PipeSteelWorkForm({
                         { value: 'water_filled', label: 'Water Filled' },
                         { value: 'vapor_gas', label: 'Vapor/Gas' },
                       ]}
-                      open={openSelects[`media-type-${entry.id}`] || false}
-                      onOpenChange={(open) => open ? openSelect(`media-type-${entry.id}`) : closeSelect(`media-type-${entry.id}`)}
-                      placeholder="Select media"
+                                            placeholder="Select media"
                       className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                     />
                   </div>
