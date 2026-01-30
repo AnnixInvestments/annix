@@ -1583,10 +1583,32 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                   </label>
                   <select
                     value={globalSpecs?.flangeTypeCode || ''}
-                    onChange={(e) => onUpdateGlobalSpecs({
-                      ...globalSpecs,
-                      flangeTypeCode: e.target.value || undefined
-                    })}
+                    onChange={(e) => {
+                      const newFlangeTypeCode = e.target.value || undefined;
+                      let newPressureClassId = globalSpecs?.flangePressureClassId;
+
+                      if (newFlangeTypeCode && globalSpecs?.flangePressureClassId && availablePressureClasses?.length > 0) {
+                        const currentPressureClass = availablePressureClasses.find(
+                          (pc: any) => pc.id === globalSpecs.flangePressureClassId
+                        );
+                        if (currentPressureClass?.designation) {
+                          const basePressure = currentPressureClass.designation.replace(/\/\d+$/, '');
+                          const targetDesignation = `${basePressure}/${newFlangeTypeCode}`;
+                          const matchingClass = availablePressureClasses.find(
+                            (pc: any) => pc.designation === targetDesignation
+                          );
+                          if (matchingClass) {
+                            newPressureClassId = matchingClass.id;
+                          }
+                        }
+                      }
+
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        flangeTypeCode: newFlangeTypeCode,
+                        flangePressureClassId: newPressureClassId
+                      });
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                     required
                   >

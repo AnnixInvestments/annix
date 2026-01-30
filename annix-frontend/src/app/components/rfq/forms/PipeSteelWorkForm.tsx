@@ -43,7 +43,7 @@ export default function PipeSteelWorkForm({
   const bracketType = entry.specs?.bracketType || 'clevis_hanger';
   const pipelineLengthM = entry.specs?.pipelineLengthM || null;
   const branchDiameterMm = entry.specs?.branchDiameterMm || null;
-  const quantity = entry.specs?.quantity || 1;
+  const quantity = entry.specs?.quantity;
 
   const {
     supportSpacing,
@@ -254,11 +254,21 @@ export default function PipeSteelWorkForm({
                   </label>
                   <input
                     type="number"
-                    value={quantity}
+                    value={quantity ?? ''}
                     onChange={(e) => {
+                      const rawValue = e.target.value;
+                      if (rawValue === '') {
+                        onUpdateEntry(entry.id, { specs: { ...entry.specs, quantity: undefined } });
+                        return;
+                      }
                       onUpdateEntry(entry.id, {
-                        specs: { ...entry.specs, quantity: parseInt(e.target.value) || 1 },
+                        specs: { ...entry.specs, quantity: parseInt(rawValue) },
                       });
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                        onUpdateEntry(entry.id, { specs: { ...entry.specs, quantity: 1 } });
+                      }
                     }}
                     className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                     min="1"

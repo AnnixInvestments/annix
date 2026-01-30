@@ -64,6 +64,8 @@ export interface FittingFormProps {
   requiredProducts?: string[];
   errors?: Record<string, string>;
   isLoadingNominalBores?: boolean;
+  isUnregisteredCustomer?: boolean;
+  onShowRestrictionPopup?: (type: 'fittings' | 'itemLimit' | 'quantityLimit' | 'drawings') => (e: React.MouseEvent) => void;
 }
 
 
@@ -86,6 +88,8 @@ function FittingFormComponent({
   requiredProducts = [],
   errors = {},
   isLoadingNominalBores = false,
+  isUnregisteredCustomer = false,
+  onShowRestrictionPopup,
 }: FittingFormProps) {
   log.info(`🔄 FittingForm RENDER - entry.id: ${entry.id}, index: ${index}`);
 
@@ -812,12 +816,22 @@ function FittingFormComponent({
                     const hasThreeDropdowns = isSabs1123 || isBs4504;
 
                     const effectiveStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                    const effectiveClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
                     const effectiveTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+
+                    const globalClass = masterData.pressureClasses?.find((p: any) => p.id === globalSpecs?.flangePressureClassId);
+                    const globalBasePressure = globalClass?.designation?.replace(/\/\d+$/, '') || '';
+                    const targetDesignationForGlobal = effectiveTypeCode && globalBasePressure ? `${globalBasePressure}/${effectiveTypeCode}` : null;
+                    const matchingClassForGlobal = targetDesignationForGlobal
+                      ? masterData.pressureClasses?.find((pc: any) => pc.designation === targetDesignationForGlobal)
+                      : null;
+                    const effectiveClassId = entry.specs?.flangePressureClassId || (matchingClassForGlobal?.id || globalSpecs?.flangePressureClassId);
+
                     const isStandardFromGlobal = globalSpecs?.flangeStandardId && effectiveStandardId === globalSpecs?.flangeStandardId;
                     const isStandardOverride = globalSpecs?.flangeStandardId && effectiveStandardId !== globalSpecs?.flangeStandardId;
-                    const isClassFromGlobal = globalSpecs?.flangePressureClassId && effectiveClassId === globalSpecs?.flangePressureClassId;
-                    const isClassOverride = globalSpecs?.flangePressureClassId && effectiveClassId !== globalSpecs?.flangePressureClassId;
+                    const effectiveClass = masterData.pressureClasses?.find((p: any) => p.id === effectiveClassId);
+                    const effectiveBasePressure = effectiveClass?.designation?.replace(/\/\d+$/, '') || '';
+                    const isClassFromGlobal = globalSpecs?.flangePressureClassId && effectiveBasePressure === globalBasePressure;
+                    const isClassOverride = globalSpecs?.flangePressureClassId && effectiveBasePressure !== globalBasePressure;
                     const isTypeFromGlobal = globalSpecs?.flangeTypeCode && effectiveTypeCode === globalSpecs?.flangeTypeCode;
                     const isTypeOverride = globalSpecs?.flangeTypeCode && effectiveTypeCode !== globalSpecs?.flangeTypeCode;
 
@@ -881,9 +895,11 @@ function FittingFormComponent({
                               {(isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES).map((pc) => {
                                 const pcValue = String(pc.value);
                                 const equivalentValue = pcValue === '64' ? '63' : pcValue;
-                                const matchingPc = masterData.pressureClasses?.find(
-                                  (mpc: any) => mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue)
-                                );
+                                const targetDesignation = effectiveTypeCode ? `${pcValue}/${effectiveTypeCode}` : null;
+                                const matchingPc = masterData.pressureClasses?.find((mpc: any) => {
+                                  if (targetDesignation && mpc.designation === targetDesignation) return true;
+                                  return mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue);
+                                });
                                 return matchingPc ? (
                                   <option key={matchingPc.id} value={matchingPc.id}>{isSabs1123 ? pc.value : pc.label}</option>
                                 ) : null;
@@ -902,7 +918,7 @@ function FittingFormComponent({
                                 const stdId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                                 const filtered = stdId ? (pressureClassesByStandard[stdId] || []) : masterData.pressureClasses || [];
                                 return filtered.map((pressureClass: any) => (
-                                  <option key={pressureClass.id} value={pressureClass.id}>{pressureClass.designation}</option>
+                                  <option key={pressureClass.id} value={pressureClass.id}>{pressureClass.designation?.replace(/\/\d+$/, '') || pressureClass.designation}</option>
                                 ));
                               })()}
                             </select>
@@ -955,11 +971,22 @@ function FittingFormComponent({
                         type="number"
                         value={entry.specs?.quantityValue ?? ''}
                         onChange={(e) => {
-                          const qty = e.target.value === '' ? 1 : Number(e.target.value);
+                          const rawValue = e.target.value;
+                          if (rawValue === '') {
+                            onUpdateEntry(entry.id, { specs: { ...entry.specs, quantityValue: undefined } });
+                            return;
+                          }
+                          const qty = Number(rawValue);
                           onUpdateEntry(entry.id, {
                             specs: { ...entry.specs, quantityValue: qty }
                           });
                           debouncedCalculate();
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === '' || Number(e.target.value) < 1) {
+                            onUpdateEntry(entry.id, { specs: { ...entry.specs, quantityValue: 1 } });
+                            debouncedCalculate();
+                          }
                         }}
                         className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
                         min="1"
@@ -1382,7 +1409,7 @@ function FittingFormComponent({
                             log.warn('Could not get pipe end configuration details:', error);
                           }
 
-                          const newFlangeTypeCode = recommendedFlangeTypeCode(newConfig);
+                          const effectiveFlangeTypeCode = globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(newConfig);
 
                           const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                           const flangeStandard = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId);
@@ -1396,14 +1423,14 @@ function FittingFormComponent({
                             ) || [];
                           }
                           const newPressureClassId = workingPressure > 0 && availableClasses.length > 0
-                            ? recommendedPressureClassId(workingPressure, availableClasses, flangeCode)
+                            ? recommendedPressureClassId(workingPressure, availableClasses, flangeCode, effectiveFlangeTypeCode)
                             : (entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId);
 
                           const updatedEntry: any = {
                             specs: {
                               ...entry.specs,
                               pipeEndConfiguration: newConfig,
-                              flangeTypeCode: newFlangeTypeCode,
+                              flangeTypeCode: effectiveFlangeTypeCode,
                               ...(newPressureClassId && { flangePressureClassId: newPressureClassId })
                             },
                             ...(weldDetails && { weldInfo: weldDetails })
@@ -1827,10 +1854,30 @@ function FittingFormComponent({
                 previewContent={
                   <>
                     {(() => {
+                      if (isUnregisteredCustomer && onShowRestrictionPopup) {
+                        return (
+                          <div
+                            className="relative cursor-pointer group"
+                            onClick={onShowRestrictionPopup('drawings')}
+                          >
+                            <div className="bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-300 rounded-lg p-3 flex items-center gap-3">
+                              <svg className="w-6 h-6 text-slate-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                              </svg>
+                              <div>
+                                <p className="text-slate-600 font-semibold text-sm">3D Preview Locked</p>
+                                <p className="text-slate-500 text-xs">Click to learn more</p>
+                              </div>
+                            </div>
+                            <div className="absolute inset-0 bg-blue-500 opacity-0 group-hover:opacity-10 rounded-lg transition-opacity" />
+                          </div>
+                        );
+                      }
+
                       if (!Tee3DPreview) {
                         return (
                           <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
-                            ℹ️ 3D preview hidden. Use the toggle above to show drawings.
+                            3D preview hidden. Use the toggle above to show drawings.
                           </div>
                         );
                       }
@@ -1841,7 +1888,7 @@ function FittingFormComponent({
                       if (!isTeeType) {
                         return (
                           <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
-                            ℹ️ 3D preview is only available for tee fittings
+                            3D preview is only available for tee fittings
                           </div>
                         );
                       }
@@ -1849,7 +1896,7 @@ function FittingFormComponent({
                       if (!entry.specs?.nominalDiameterMm) {
                         return (
                           <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
-                            ℹ️ Select nominal bore to see 3D preview
+                            Select nominal bore to see 3D preview
                           </div>
                         );
                       }

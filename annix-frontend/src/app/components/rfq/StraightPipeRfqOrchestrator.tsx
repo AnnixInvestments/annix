@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { StraightPipeEntry, BendEntry, FittingEntry, PipeItem, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
 import { useRfqDraftStorage, formatLastSaved } from '@/app/lib/hooks/useRfqDraftStorage';
 import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
-import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, boqApi, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
+import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, boqApi, anonymousDraftsApi, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
 import { adminApiClient } from '@/app/lib/api/adminApi';
 import { nixApi, NixAiPopup, NixFloatingAvatar, NixClarificationPopup, NixProcessingPopup, type NixExtractedItem, type NixClarificationDto } from '@/app/lib/nix';
 import { consolidateBoqData } from '@/app/lib/utils/boqConsolidation';
@@ -2802,7 +2802,50 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       log.debug('💾 Complete saveData being sent to API:', saveData);
       log.debug('💾 saveData.formData:', saveData.formData);
       log.debug('💾 saveData.requiredProducts:', saveData.requiredProducts);
+      log.debug('💾 isAuthenticated:', isAuthenticated);
 
+      if (!isAuthenticated) {
+        // Unregistered customer - use anonymous drafts API
+        if (!rfqData.customerEmail) {
+          showToast('Please enter your email address to save progress', 'warning');
+          setIsSavingDraft(false);
+          return;
+        }
+
+        const anonymousSaveData = {
+          customerEmail: rfqData.customerEmail,
+          projectName: rfqData.projectName,
+          formData: saveData.formData,
+          globalSpecs: saveData.globalSpecs,
+          entries: saveData.straightPipeEntries,
+          currentStep: saveData.currentStep,
+        };
+
+        const result = await anonymousDraftsApi.save(anonymousSaveData);
+        log.debug('✅ Anonymous draft saved:', result);
+
+        // Save to localStorage as backup
+        localStorage.setItem('annix_rfq_draft', JSON.stringify({
+          ...saveData,
+          savedAt: nowISO(),
+        }));
+
+        // Send recovery email
+        try {
+          await anonymousDraftsApi.requestRecoveryEmail(rfqData.customerEmail);
+          log.debug('✅ Recovery email sent to:', rfqData.customerEmail);
+          showToast(`Progress saved! Recovery link sent to ${rfqData.customerEmail}`, 'success');
+        } catch (emailError) {
+          log.warn('Failed to send recovery email:', emailError);
+          showToast('Progress saved locally', 'success');
+        }
+
+        setShowSaveConfirmation(true);
+        setTimeout(() => setShowSaveConfirmation(false), 5000);
+        return;
+      }
+
+      // Authenticated user - use regular drafts API
       const result = isEditing
         ? await adminApiClient.saveDraft(saveData)
         : await draftsApi.save(saveData);
@@ -2834,21 +2877,27 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         return;
       }
 
-      console.error('Failed to save progress:', error);
+      const isAuthError = error instanceof SessionExpiredError ||
+        errorMessage.includes('Authentication required') ||
+        errorMessage.includes('Unauthorized') ||
+        errorMessage.includes('401');
 
-      if (error instanceof SessionExpiredError) {
+      if (isAuthError) {
         try {
           localStorage.setItem('annix_rfq_draft', JSON.stringify({
-            rfqData,
-            currentStep,
+            ...saveData,
             savedAt: nowISO(),
           }));
-          log.debug('✅ RFQ progress saved to localStorage (session expired, will sync after login)');
+          setShowSaveConfirmation(true);
+          setTimeout(() => setShowSaveConfirmation(false), 3000);
+          log.debug('✅ RFQ progress saved to localStorage (not authenticated)');
         } catch (e) {
           console.error('Failed to save to localStorage:', e);
         }
         return;
       }
+
+      console.error('Failed to save progress:', error);
 
       try {
         localStorage.setItem('annix_rfq_draft', JSON.stringify({

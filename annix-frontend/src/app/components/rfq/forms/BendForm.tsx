@@ -89,6 +89,8 @@ export interface BendFormProps {
   errors?: Record<string, string>;
   isLoadingNominalBores?: boolean;
   requiredProducts?: string[];
+  isUnregisteredCustomer?: boolean;
+  onShowRestrictionPopup?: (type: 'fittings' | 'itemLimit' | 'quantityLimit' | 'drawings') => (e: React.MouseEvent) => void;
 }
 
 function BendFormComponent({
@@ -110,13 +112,15 @@ function BendFormComponent({
   errors = {},
   isLoadingNominalBores = false,
   requiredProducts = [],
+  isUnregisteredCustomer: isUnregisteredCustomerProp,
+  onShowRestrictionPopup,
 }: BendFormProps) {
   log.info(`🔄 BendForm RENDER - entry.id: ${entry.id}, index: ${index}`);
 
   // Authentication status for quantity restrictions
   const { isAuthenticated } = useOptionalCustomerAuth();
-  const isUnregisteredCustomer = !isAuthenticated;
-  const MAX_QUANTITY_UNREGISTERED = 10;
+  const isUnregisteredCustomer = isUnregisteredCustomerProp ?? !isAuthenticated;
+  const MAX_QUANTITY_UNREGISTERED = 1;
   const [quantityLimitPopup, setQuantityLimitPopup] = useState<{ x: number; y: number } | null>(null);
 
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
@@ -1214,18 +1218,23 @@ function BendFormComponent({
                   const QuantityInput = (
                     <div className="relative">
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        Quantity * {isUnregisteredCustomer && <span className="text-gray-400 font-normal">(max {MAX_QUANTITY_UNREGISTERED})</span>}
+                        Quantity * {isUnregisteredCustomer && <span className="text-gray-400 font-normal">(fixed)</span>}
                       </label>
                       <input
                         type="number"
-                        value={entry.specs?.quantityValue || ''}
+                        value={entry.specs?.quantityValue ?? ''}
                         onChange={(e) => {
-                          const quantity = parseInt(e.target.value) || 1;
-                          if (isUnregisteredCustomer && quantity > MAX_QUANTITY_UNREGISTERED) {
+                          if (isUnregisteredCustomer) {
                             const rect = e.target.getBoundingClientRect();
                             setQuantityLimitPopup({ x: rect.left + rect.width / 2, y: rect.bottom });
                             return;
                           }
+                          const rawValue = e.target.value;
+                          if (rawValue === '') {
+                            onUpdateEntry(entry.id, { specs: { ...entry.specs, quantityValue: undefined } });
+                            return;
+                          }
+                          const quantity = parseInt(rawValue);
                           onUpdateEntry(entry.id, {
                             specs: { ...entry.specs, quantityValue: quantity }
                           });
@@ -1233,10 +1242,17 @@ function BendFormComponent({
                             debouncedCalculate();
                           }
                         }}
-                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                        onBlur={(e) => {
+                          if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                            onUpdateEntry(entry.id, { specs: { ...entry.specs, quantityValue: 1 } });
+                            debouncedCalculate();
+                          }
+                        }}
+                        className={`w-full px-2 py-1.5 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 ${isUnregisteredCustomer ? 'border-gray-300 bg-gray-100 cursor-not-allowed' : 'border-gray-300 dark:border-gray-600 dark:bg-gray-800'}`}
                         min="1"
                         max={isUnregisteredCustomer ? MAX_QUANTITY_UNREGISTERED : undefined}
                         placeholder="1"
+                        readOnly={isUnregisteredCustomer}
                       />
                     </div>
                   );
@@ -1360,7 +1376,6 @@ function BendFormComponent({
                 <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mt-3">
                   {(() => {
                     const effectiveStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                    const effectivePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
                     const effectiveFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
                     const selectedStandard = masterData.flangeStandards?.find((fs: any) => fs.id === effectiveStandardId);
                     const standardCode = selectedStandard?.code?.toUpperCase() || '';
@@ -1369,6 +1384,14 @@ function BendFormComponent({
                     const showFlangeType = isSabs1123 || isBs4504;
                     const flangeTypes = isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES;
                     const pressureClasses = isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES;
+
+                    const globalClass = masterData.pressureClasses?.find((p: any) => p.id === globalSpecs?.flangePressureClassId);
+                    const globalBasePressure = globalClass?.designation?.replace(/\/\d+$/, '') || '';
+                    const targetDesignationForGlobal = effectiveFlangeTypeCode && globalBasePressure ? `${globalBasePressure}/${effectiveFlangeTypeCode}` : null;
+                    const matchingClassForGlobal = targetDesignationForGlobal
+                      ? masterData.pressureClasses?.find((pc: any) => pc.designation === targetDesignationForGlobal)
+                      : null;
+                    const effectivePressureClassId = entry.specs?.flangePressureClassId || (matchingClassForGlobal?.id || globalSpecs?.flangePressureClassId);
                     const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
                     const configUpper = bendEndConfig.toUpperCase();
                     const hasInletFlange = ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2xLF'].includes(configUpper);
@@ -1381,7 +1404,9 @@ function BendFormComponent({
                     const currentBlankPositions = entry.specs?.blankFlangePositions || [];
 
                     const isStandardFromGlobal = globalSpecs?.flangeStandardId && effectiveStandardId === globalSpecs?.flangeStandardId;
-                    const isClassFromGlobal = globalSpecs?.flangePressureClassId && effectivePressureClassId === globalSpecs?.flangePressureClassId;
+                    const effectiveClass = masterData.pressureClasses?.find((p: any) => p.id === effectivePressureClassId);
+                    const effectiveBasePressure = effectiveClass?.designation?.replace(/\/\d+$/, '') || '';
+                    const isClassFromGlobal = globalSpecs?.flangePressureClassId && effectiveBasePressure === globalBasePressure;
                     const isTypeFromGlobal = globalSpecs?.flangeTypeCode && effectiveFlangeTypeCode === globalSpecs?.flangeTypeCode;
 
                     return (
@@ -1425,7 +1450,7 @@ function BendFormComponent({
                       {/* Dropdown row - 4 columns */}
                       {(() => {
                         const isStandardOverride = globalSpecs?.flangeStandardId && effectiveStandardId !== globalSpecs?.flangeStandardId;
-                        const isClassOverride = globalSpecs?.flangePressureClassId && effectivePressureClassId !== globalSpecs?.flangePressureClassId;
+                        const isClassOverride = globalSpecs?.flangePressureClassId && effectiveBasePressure !== globalBasePressure;
                         const isTypeOverride = globalSpecs?.flangeTypeCode && effectiveFlangeTypeCode !== globalSpecs?.flangeTypeCode;
 
                         const workingPressureBar = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
@@ -1494,9 +1519,11 @@ function BendFormComponent({
                               {pressureClasses.map((pc) => {
                                 const pcValue = String(pc.value);
                                 const equivalentValue = pcValue === '64' ? '63' : pcValue;
-                                const matchingPc = masterData.pressureClasses?.find((mpc: any) =>
-                                  mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue)
-                                );
+                                const targetDesignation = effectiveFlangeTypeCode ? `${pcValue}/${effectiveFlangeTypeCode}` : null;
+                                const matchingPc = masterData.pressureClasses?.find((mpc: any) => {
+                                  if (targetDesignation && mpc.designation === targetDesignation) return true;
+                                  return mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue);
+                                });
                                 return matchingPc ? (
                                   <option key={matchingPc.id} value={matchingPc.id}>{isSabs1123 ? pc.value : pc.label}</option>
                                 ) : null;
@@ -1512,7 +1539,7 @@ function BendFormComponent({
                             >
                               <option value="">Select...</option>
                               {(pressureClassesByStandard[effectiveStandardId || 0] || masterData.pressureClasses || []).map((pc: any) => (
-                                <option key={pc.id} value={pc.id}>{pc.designation}</option>
+                                <option key={pc.id} value={pc.id}>{pc.designation?.replace(/\/\d+$/, '') || pc.designation}</option>
                               ))}
                             </select>
                           )}
@@ -2037,7 +2064,6 @@ function BendFormComponent({
                     <div className="mt-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
                       {(() => {
                         const effectiveStandardId = entry.specs?.stubs?.[0]?.flangeStandardId || globalSpecs?.flangeStandardId;
-                        const effectivePressureClassId = entry.specs?.stubs?.[0]?.flangePressureClassId || globalSpecs?.flangePressureClassId;
                         const effectiveFlangeTypeCode = entry.specs?.stubs?.[0]?.flangeTypeCode || globalSpecs?.flangeTypeCode;
                         const selectedStandard = masterData.flangeStandards?.find((fs: any) => fs.id === effectiveStandardId);
                         const isSabs1123 = selectedStandard?.code?.toUpperCase().includes('SABS') && selectedStandard?.code?.includes('1123');
@@ -2045,14 +2071,25 @@ function BendFormComponent({
                         const showFlangeType = isSabs1123 || isBs4504;
                         const flangeTypes = isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES;
                         const pressureClasses = isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES;
+
+                        const stub1GlobalClass = masterData.pressureClasses?.find((p: any) => p.id === globalSpecs?.flangePressureClassId);
+                        const stub1GlobalBasePressure = stub1GlobalClass?.designation?.replace(/\/\d+$/, '') || '';
+                        const stub1TargetDesignation = effectiveFlangeTypeCode && stub1GlobalBasePressure ? `${stub1GlobalBasePressure}/${effectiveFlangeTypeCode}` : null;
+                        const stub1MatchingClass = stub1TargetDesignation
+                          ? masterData.pressureClasses?.find((pc: any) => pc.designation === stub1TargetDesignation)
+                          : null;
+                        const effectivePressureClassId = entry.specs?.stubs?.[0]?.flangePressureClassId || (stub1MatchingClass?.id || globalSpecs?.flangePressureClassId);
+
                         const stub1EffectiveStandardId = entry.specs?.stubs?.[0]?.flangeStandardId || globalSpecs?.flangeStandardId;
-                        const stub1EffectiveClassId = entry.specs?.stubs?.[0]?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                        const stub1EffectiveClassId = effectivePressureClassId;
                         const stub1EffectiveTypeCode = entry.specs?.stubs?.[0]?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                        const stub1EffectiveClass = masterData.pressureClasses?.find((p: any) => p.id === stub1EffectiveClassId);
+                        const stub1EffectiveBasePressure = stub1EffectiveClass?.designation?.replace(/\/\d+$/, '') || '';
                         const isStandardFromGlobal = globalSpecs?.flangeStandardId && stub1EffectiveStandardId === globalSpecs?.flangeStandardId && !entry.specs?.stubs?.[0]?.flangeStandardId;
-                        const isClassFromGlobal = globalSpecs?.flangePressureClassId && stub1EffectiveClassId === globalSpecs?.flangePressureClassId && !entry.specs?.stubs?.[0]?.flangePressureClassId;
+                        const isClassFromGlobal = globalSpecs?.flangePressureClassId && stub1EffectiveBasePressure === stub1GlobalBasePressure && !entry.specs?.stubs?.[0]?.flangePressureClassId;
                         const isTypeFromGlobal = globalSpecs?.flangeTypeCode && stub1EffectiveTypeCode === globalSpecs?.flangeTypeCode && !entry.specs?.stubs?.[0]?.flangeTypeCode;
                         const isStandardOverride = entry.specs?.stubs?.[0]?.flangeStandardId && entry.specs?.stubs?.[0]?.flangeStandardId !== globalSpecs?.flangeStandardId;
-                        const isClassOverride = entry.specs?.stubs?.[0]?.flangePressureClassId && entry.specs?.stubs?.[0]?.flangePressureClassId !== globalSpecs?.flangePressureClassId;
+                        const isClassOverride = entry.specs?.stubs?.[0]?.flangePressureClassId && stub1EffectiveBasePressure !== stub1GlobalBasePressure;
                         const isTypeOverride = entry.specs?.stubs?.[0]?.flangeTypeCode && entry.specs?.stubs?.[0]?.flangeTypeCode !== globalSpecs?.flangeTypeCode;
 
                         const stub1SelectedStandard = masterData.flangeStandards?.find((s: any) => s.id === stub1EffectiveStandardId);
@@ -2124,9 +2161,11 @@ function BendFormComponent({
                                   {pressureClasses.map((pc) => {
                                     const pcValue = String(pc.value);
                                     const equivalentValue = pcValue === '64' ? '63' : pcValue;
-                                    const matchingPc = masterData.pressureClasses?.find((mpc: any) =>
-                                      mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue)
-                                    );
+                                    const targetDesignation = effectiveFlangeTypeCode ? `${pcValue}/${effectiveFlangeTypeCode}` : null;
+                                    const matchingPc = masterData.pressureClasses?.find((mpc: any) => {
+                                      if (targetDesignation && mpc.designation === targetDesignation) return true;
+                                      return mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue);
+                                    });
                                     return matchingPc ? (
                                       <option key={matchingPc.id} value={matchingPc.id}>{stub1IsSabs1123 ? pc.value : pc.label}</option>
                                     ) : null;
@@ -2144,7 +2183,7 @@ function BendFormComponent({
                                 >
                                   <option value="">Select...</option>
                                   {(pressureClassesByStandard[effectiveStandardId || 0] || masterData.pressureClasses || []).map((pc: any) => (
-                                    <option key={pc.id} value={pc.id}>{pc.designation}</option>
+                                    <option key={pc.id} value={pc.id}>{pc.designation?.replace(/\/\d+$/, '') || pc.designation}</option>
                                   ))}
                                 </select>
                               )}
@@ -2431,7 +2470,6 @@ function BendFormComponent({
                           <div className="mt-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
                             {(() => {
                               const effectiveStandardId = entry.specs?.stubs?.[1]?.flangeStandardId || globalSpecs?.flangeStandardId;
-                              const effectivePressureClassId = entry.specs?.stubs?.[1]?.flangePressureClassId || globalSpecs?.flangePressureClassId;
                               const effectiveFlangeTypeCode = entry.specs?.stubs?.[1]?.flangeTypeCode || globalSpecs?.flangeTypeCode;
                               const selectedStandard = masterData.flangeStandards?.find((fs: any) => fs.id === effectiveStandardId);
                               const isSabs1123 = selectedStandard?.code?.toUpperCase().includes('SABS') && selectedStandard?.code?.includes('1123');
@@ -2439,14 +2477,25 @@ function BendFormComponent({
                               const showFlangeType = isSabs1123 || isBs4504;
                               const flangeTypes = isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES;
                               const pressureClasses = isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES;
+
+                              const stub2GlobalClass = masterData.pressureClasses?.find((p: any) => p.id === globalSpecs?.flangePressureClassId);
+                              const stub2GlobalBasePressure = stub2GlobalClass?.designation?.replace(/\/\d+$/, '') || '';
+                              const stub2TargetDesignation = effectiveFlangeTypeCode && stub2GlobalBasePressure ? `${stub2GlobalBasePressure}/${effectiveFlangeTypeCode}` : null;
+                              const stub2MatchingClass = stub2TargetDesignation
+                                ? masterData.pressureClasses?.find((pc: any) => pc.designation === stub2TargetDesignation)
+                                : null;
+                              const effectivePressureClassId = entry.specs?.stubs?.[1]?.flangePressureClassId || (stub2MatchingClass?.id || globalSpecs?.flangePressureClassId);
+
                               const stub2EffectiveStandardId = entry.specs?.stubs?.[1]?.flangeStandardId || globalSpecs?.flangeStandardId;
-                              const stub2EffectiveClassId = entry.specs?.stubs?.[1]?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                              const stub2EffectiveClassId = effectivePressureClassId;
                               const stub2EffectiveTypeCode = entry.specs?.stubs?.[1]?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                              const stub2EffectiveClass = masterData.pressureClasses?.find((p: any) => p.id === stub2EffectiveClassId);
+                              const stub2EffectiveBasePressure = stub2EffectiveClass?.designation?.replace(/\/\d+$/, '') || '';
                               const isStandardFromGlobal = globalSpecs?.flangeStandardId && stub2EffectiveStandardId === globalSpecs?.flangeStandardId && !entry.specs?.stubs?.[1]?.flangeStandardId;
-                              const isClassFromGlobal = globalSpecs?.flangePressureClassId && stub2EffectiveClassId === globalSpecs?.flangePressureClassId && !entry.specs?.stubs?.[1]?.flangePressureClassId;
+                              const isClassFromGlobal = globalSpecs?.flangePressureClassId && stub2EffectiveBasePressure === stub2GlobalBasePressure && !entry.specs?.stubs?.[1]?.flangePressureClassId;
                               const isTypeFromGlobal = globalSpecs?.flangeTypeCode && stub2EffectiveTypeCode === globalSpecs?.flangeTypeCode && !entry.specs?.stubs?.[1]?.flangeTypeCode;
                               const isStandardOverride = entry.specs?.stubs?.[1]?.flangeStandardId && entry.specs?.stubs?.[1]?.flangeStandardId !== globalSpecs?.flangeStandardId;
-                              const isClassOverride = entry.specs?.stubs?.[1]?.flangePressureClassId && entry.specs?.stubs?.[1]?.flangePressureClassId !== globalSpecs?.flangePressureClassId;
+                              const isClassOverride = entry.specs?.stubs?.[1]?.flangePressureClassId && stub2EffectiveBasePressure !== stub2GlobalBasePressure;
                               const isTypeOverride = entry.specs?.stubs?.[1]?.flangeTypeCode && entry.specs?.stubs?.[1]?.flangeTypeCode !== globalSpecs?.flangeTypeCode;
 
                               const stub2SelectedStandard = masterData.flangeStandards?.find((s: any) => s.id === stub2EffectiveStandardId);
@@ -2519,9 +2568,11 @@ function BendFormComponent({
                                         {pressureClasses.map((pc) => {
                                           const pcValue = String(pc.value);
                                           const equivalentValue = pcValue === '64' ? '63' : pcValue;
-                                          const matchingPc = masterData.pressureClasses?.find((mpc: any) =>
-                                            mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue)
-                                          );
+                                          const targetDesignation = effectiveFlangeTypeCode ? `${pcValue}/${effectiveFlangeTypeCode}` : null;
+                                          const matchingPc = masterData.pressureClasses?.find((mpc: any) => {
+                                            if (targetDesignation && mpc.designation === targetDesignation) return true;
+                                            return mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue);
+                                          });
                                           return matchingPc ? (
                                             <option key={matchingPc.id} value={matchingPc.id}>{stub2IsSabs1123 ? pc.value : pc.label}</option>
                                           ) : null;
@@ -2539,7 +2590,7 @@ function BendFormComponent({
                                       >
                                         <option value="">Select...</option>
                                         {(pressureClassesByStandard[effectiveStandardId || 0] || masterData.pressureClasses || []).map((pc: any) => (
-                                          <option key={pc.id} value={pc.id}>{pc.designation}</option>
+                                          <option key={pc.id} value={pc.id}>{pc.designation?.replace(/\/\d+$/, '') || pc.designation}</option>
                                         ))}
                                       </select>
                                     )}
@@ -2660,13 +2711,29 @@ function BendFormComponent({
                 }
                 previewContent={
                   <>
-                  {Bend3DPreview ? (() => {
+                  {isUnregisteredCustomer && onShowRestrictionPopup ? (
+                    <div
+                      className="relative cursor-pointer group"
+                      onClick={onShowRestrictionPopup('drawings')}
+                    >
+                      <div className="bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-300 rounded-lg p-3 flex items-center gap-3">
+                        <svg className="w-6 h-6 text-slate-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <p className="text-slate-600 font-semibold text-sm">3D Preview Locked</p>
+                          <p className="text-slate-500 text-xs">Click to learn more</p>
+                        </div>
+                      </div>
+                      <div className="absolute inset-0 bg-blue-500 opacity-0 group-hover:opacity-10 rounded-lg transition-opacity" />
+                    </div>
+                  ) : Bend3DPreview ? (() => {
                     const canRenderPreview = entry.specs?.nominalBoreMm && entry.specs?.bendDegrees;
                     log.info(`🎨 BendForm preview check - entry.id: ${entry.id}, nominalBoreMm: ${entry.specs?.nominalBoreMm}, bendDegrees: ${entry.specs?.bendDegrees}, canRender: ${!!canRenderPreview}`);
                     if (!canRenderPreview) {
                       return (
                         <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
-                          ℹ️ Select nominal bore and bend angle to see 3D preview
+                          Select nominal bore and bend angle to see 3D preview
                         </div>
                       );
                     }
@@ -2729,7 +2796,7 @@ function BendFormComponent({
                     );
                   })() : (
                     <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 text-center text-blue-600 text-sm font-medium">
-                      ℹ️ 3D preview hidden. Use the toggle above to show drawings.
+                      3D preview hidden. Use the toggle above to show drawings.
                     </div>
                   )}
 

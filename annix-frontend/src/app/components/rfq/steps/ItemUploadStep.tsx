@@ -54,6 +54,8 @@ interface ItemWrapperProps {
   pressureClassesByStandard: Record<number, any[]>;
   getFilteredPressureClasses: (standardId: number) => Promise<any[]>;
   requiredProducts: string[];
+  isUnregisteredCustomer: boolean;
+  onShowRestrictionPopup: (type: 'fittings' | 'itemLimit' | 'quantityLimit' | 'drawings') => (e: React.MouseEvent) => void;
 }
 
 const ItemWrapper = memo(function ItemWrapper({
@@ -81,6 +83,8 @@ const ItemWrapper = memo(function ItemWrapper({
   pressureClassesByStandard,
   getFilteredPressureClasses,
   requiredProducts,
+  isUnregisteredCustomer,
+  onShowRestrictionPopup,
 }: ItemWrapperProps) {
   const handleClientItemNumberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onUpdateEntry(entry.id, { clientItemNumber: e.target.value });
@@ -154,6 +158,8 @@ const ItemWrapper = memo(function ItemWrapper({
           pressureClassesByStandard={pressureClassesByStandard}
           getFilteredPressureClasses={getFilteredPressureClasses}
           requiredProducts={requiredProducts}
+          isUnregisteredCustomer={isUnregisteredCustomer}
+          onShowRestrictionPopup={onShowRestrictionPopup}
         />
       ) : entry.itemType === 'fitting' ? (
         <FittingForm
@@ -173,6 +179,8 @@ const ItemWrapper = memo(function ItemWrapper({
           pressureClassesByStandard={pressureClassesByStandard}
           getFilteredPressureClasses={getFilteredPressureClasses}
           requiredProducts={requiredProducts}
+          isUnregisteredCustomer={isUnregisteredCustomer}
+          onShowRestrictionPopup={onShowRestrictionPopup}
         />
       ) : entry.itemType === 'pipe_steel_work' ? (
         <PipeSteelWorkForm
@@ -219,6 +227,8 @@ const ItemWrapper = memo(function ItemWrapper({
           fetchAvailableSchedules={fetchAvailableSchedules}
           pressureClassesByStandard={pressureClassesByStandard}
           getFilteredPressureClasses={getFilteredPressureClasses}
+          isUnregisteredCustomer={isUnregisteredCustomer}
+          onShowRestrictionPopup={onShowRestrictionPopup}
         />
       )}
     </div>
@@ -255,7 +265,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
 
   // Constants for unregistered customer limits
   const MAX_ITEMS_UNREGISTERED = 5;
-  const MAX_QUANTITY_UNREGISTERED = 10;
+  const MAX_QUANTITY_UNREGISTERED = 1;
 
   // Check if user can add more items
   const canAddMoreItems = !isUnregisteredCustomer || entries.length < MAX_ITEMS_UNREGISTERED;
@@ -1184,7 +1194,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 <span className="text-green-700 font-semibold">Auto-calculating</span>
                 <span className="text-xs text-green-600">Results update automatically</span>
               </div>
-              {addItemButtons(true)}
+              {addItemButtons()}
             </div>
           </div>
 
@@ -1206,9 +1216,9 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 onCalculateBend={onCalculateBend}
                 onCalculateFitting={onCalculateFitting}
                 generateItemDescription={generateItemDescription}
-                Pipe3DPreview={effectiveDrawingsHidden ? null : Pipe3DPreview}
-                Bend3DPreview={effectiveDrawingsHidden ? null : Bend3DPreview}
-                Tee3DPreview={effectiveDrawingsHidden ? null : Tee3DPreview}
+                Pipe3DPreview={isUnregisteredCustomer ? Pipe3DPreview : (effectiveDrawingsHidden ? null : Pipe3DPreview)}
+                Bend3DPreview={isUnregisteredCustomer ? Bend3DPreview : (effectiveDrawingsHidden ? null : Bend3DPreview)}
+                Tee3DPreview={isUnregisteredCustomer ? Tee3DPreview : (effectiveDrawingsHidden ? null : Tee3DPreview)}
                 availableNominalBores={availableNominalBores}
                 availableSchedulesMap={availableSchedulesMap}
                 setAvailableSchedulesMap={setAvailableSchedulesMap}
@@ -1216,6 +1226,8 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 pressureClassesByStandard={pressureClassesByStandard}
                 getFilteredPressureClasses={getFilteredPressureClasses}
                 requiredProducts={requiredProducts}
+                isUnregisteredCustomer={isUnregisteredCustomer}
+                onShowRestrictionPopup={showRestrictionPopup}
               />
             ))}
           </div>

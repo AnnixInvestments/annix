@@ -366,7 +366,8 @@ export const recommendedFlangeTypeCode = (endConfig: string): string => {
 export const recommendedPressureClassId = (
   workingPressureBar: number,
   availableClasses: Array<{ id: number; designation: string; flangeStandardId?: number }>,
-  flangeStandardCode?: string
+  flangeStandardCode?: string,
+  flangeTypeCode?: string
 ): number | null => {
   if (!workingPressureBar || availableClasses.length === 0) {
     return null;
@@ -376,7 +377,16 @@ export const recommendedPressureClassId = (
                      flangeStandardCode?.toUpperCase().includes('SANS') && flangeStandardCode?.includes('1123');
   const isBs4504 = flangeStandardCode?.includes('BS') && flangeStandardCode?.includes('4504');
 
-  const classesWithRating = availableClasses.map((pc) => {
+  const filteredClasses = flangeTypeCode && (isSabs1123 || isBs4504)
+    ? availableClasses.filter((pc) => {
+        const designation = pc.designation || '';
+        return designation.endsWith(`/${flangeTypeCode}`);
+      })
+    : availableClasses;
+
+  const classesToUse = filteredClasses.length > 0 ? filteredClasses : availableClasses;
+
+  const classesWithRating = classesToUse.map((pc) => {
     const designation = pc.designation || '';
     let barRating = 0;
 
@@ -449,7 +459,8 @@ export const selectPressureClassForWorking = (
   flangeStandardCode: string | undefined,
   pressureClassesByStandard: Record<number, PressureClass[]>,
   allPressureClasses: PressureClass[],
-  currentPressureClassId?: number
+  currentPressureClassId?: number,
+  flangeTypeCode?: string
 ): number | null => {
   if (!workingPressureBar || workingPressureBar <= 0) {
     return currentPressureClassId || null;
@@ -461,5 +472,5 @@ export const selectPressureClassForWorking = (
     return currentPressureClassId || null;
   }
 
-  return recommendedPressureClassId(workingPressureBar, classes, flangeStandardCode) || currentPressureClassId || null;
+  return recommendedPressureClassId(workingPressureBar, classes, flangeStandardCode, flangeTypeCode) || currentPressureClassId || null;
 };

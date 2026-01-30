@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
 import { flangeWeightSync as getFlangeWeight, bnwSetInfoSync as getBnwSetInfo, gasketWeightSync as getGasketWeight, blankFlangeSurfaceAreaSync as blankFlangeSurfaceArea } from '@/app/lib/hooks/useFlangeWeights';
 import { DEFAULT_PIPE_LENGTH_M } from '@/app/lib/config/rfq';
 import { boltSetCountPerBend, boltSetCountPerPipe, boltSetCountPerFitting } from '@/app/lib/config/rfq/pipeEndOptions';
 import { nowISO, formatDateLongZA, fromJSDate } from '@/app/lib/datetime';
+import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
 
 export default function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, onPrevStep, onSubmit, onResubmit, isEditing, loading }: {
   rfqData: RfqFormData;
@@ -20,6 +21,19 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
   isEditing?: boolean;
   loading?: boolean;
 }) {
+  // Authentication status for unregistered customer restrictions
+  const { isAuthenticated } = useOptionalCustomerAuth();
+  const isUnregisteredCustomer = !isAuthenticated;
+
+  // Restriction popup state
+  type RestrictionPopupType = 'export';
+  const [restrictionPopup, setRestrictionPopup] = useState<{ type: RestrictionPopupType; x: number; y: number } | null>(null);
+
+  const showRestrictionPopup = useCallback((type: RestrictionPopupType) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRestrictionPopup({ type, x: e.clientX, y: e.clientY });
+  }, []);
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return 'Not specified';
     if (typeof date === 'string') {
@@ -1267,22 +1281,40 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         </div>
         <div className="flex gap-4">
           <button
-            onClick={exportToExcel}
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center gap-2 text-white"
+            onClick={isUnregisteredCustomer ? showRestrictionPopup('export') : exportToExcel}
+            className={`px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+              isUnregisteredCustomer
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-700 text-white'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Export Excel
+            {isUnregisteredCustomer && (
+              <svg className="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+              </svg>
+            )}
           </button>
           <button
-            onClick={() => window.print()}
-            className="px-6 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition-colors flex items-center gap-2 text-gray-700"
+            onClick={isUnregisteredCustomer ? showRestrictionPopup('export') : () => window.print()}
+            className={`px-6 py-2 border rounded-lg transition-colors flex items-center gap-2 ${
+              isUnregisteredCustomer
+                ? 'bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
             Print BOQ
+            {isUnregisteredCustomer && (
+              <svg className="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+              </svg>
+            )}
           </button>
           {isEditing && onResubmit ? (
             <button
@@ -1333,6 +1365,51 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           )}
         </div>
       </div>
+
+      {/* Restriction Popup for unregistered customers */}
+      {restrictionPopup && (
+        <div
+          className="fixed inset-0 z-50"
+          onClick={() => setRestrictionPopup(null)}
+        >
+          <div
+            className="absolute bg-white rounded-lg shadow-xl border border-gray-200 p-4 max-w-xs"
+            style={{
+              left: Math.min(restrictionPopup.x, window.innerWidth - 320),
+              top: Math.min(restrictionPopup.y, window.innerHeight - 200),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900">Export Feature Locked</h4>
+                <p className="text-sm text-gray-600 mt-1">
+                  Export to Excel and Print BOQ are available for registered customers only.
+                </p>
+                <a
+                  href="/customer/register"
+                  className="inline-block mt-3 text-sm font-medium text-blue-600 hover:text-blue-800"
+                >
+                  Register for free →
+                </a>
+              </div>
+            </div>
+            <button
+              onClick={() => setRestrictionPopup(null)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

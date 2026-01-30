@@ -307,8 +307,20 @@ function BracketEntryCard({ entry, index, onUpdate, onRemove, onDuplicate }: Bra
               <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
               <input
                 type="number"
-                value={entry.quantity}
-                onChange={(e) => onUpdate({ quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                value={entry.quantity ?? ''}
+                onChange={(e) => {
+                  const rawValue = e.target.value;
+                  if (rawValue === '') {
+                    onUpdate({ quantity: undefined });
+                    return;
+                  }
+                  onUpdate({ quantity: parseInt(rawValue) });
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                    onUpdate({ quantity: 1 });
+                  }
+                }}
                 className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                 min={1}
               />

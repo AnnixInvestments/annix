@@ -667,7 +667,7 @@ export default function BendItemsStep({
                             <option value="">Select pressure class...</option>
                             {masterData.pressureClasses.map((pc: any) => (
                               <option key={pc.id} value={pc.id}>
-                                {pc.designation}
+                                {pc.designation?.replace(/\/\d+$/, '') || pc.designation}
                               </option>
                             ))}
                           </select>

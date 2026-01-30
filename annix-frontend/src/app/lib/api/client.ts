@@ -554,8 +554,8 @@ class ApiClient {
     try {
       let response = await fetch(url, config);
 
-      // Handle 401 by attempting token refresh
-      if (response.status === 401) {
+      // Handle 401 by attempting token refresh (only if user had a token)
+      if (response.status === 401 && token) {
         const refreshed = await this.refreshCustomerToken();
         if (refreshed) {
           // Retry with new token
@@ -574,7 +574,7 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        if (response.status === 401) {
+        if (response.status === 401 && token) {
           sessionExpiredEvent.emit();
           throw new SessionExpiredError();
         }

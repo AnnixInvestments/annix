@@ -54,7 +54,7 @@ export default function ExpansionJointForm({
   const expansionJointType = entry.specs?.expansionJointType || 'bought_in_bellows';
   const nominalDiameterMm = entry.specs?.nominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
   const scheduleNumber = entry.specs?.scheduleNumber || globalSpecs?.scheduleNumber || 'Sch40';
-  const quantity = entry.specs?.quantityValue || 1;
+  const quantity = entry.specs?.quantityValue;
 
   const bellowsJointType = entry.specs?.bellowsJointType || 'axial';
   const bellowsMaterial = entry.specs?.bellowsMaterial || 'stainless_steel_304';
@@ -588,11 +588,21 @@ export default function ExpansionJointForm({
                   </label>
                   <input
                     type="number"
-                    value={quantity}
+                    value={quantity ?? ''}
                     onChange={(e) => {
+                      const rawValue = e.target.value;
+                      if (rawValue === '') {
+                        onUpdateEntry(entry.id, { specs: { ...entry.specs, quantityValue: undefined } });
+                        return;
+                      }
                       onUpdateEntry(entry.id, {
-                        specs: { ...entry.specs, quantityValue: parseInt(e.target.value) || 1 },
+                        specs: { ...entry.specs, quantityValue: parseInt(rawValue) },
                       });
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                        onUpdateEntry(entry.id, { specs: { ...entry.specs, quantityValue: 1 } });
+                      }
                     }}
                     className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                     min="1"
