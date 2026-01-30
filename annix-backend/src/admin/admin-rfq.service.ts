@@ -16,6 +16,7 @@ import { Rfq } from '../rfq/entities/rfq.entity';
 import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
 import { RfqItem } from '../rfq/entities/rfq-item.entity';
 import { RfqDocument } from '../rfq/entities/rfq-document.entity';
+import { AnonymousDraft } from '../rfq/entities/anonymous-draft.entity';
 import { RfqService } from '../rfq/rfq.service';
 import { CreateUnifiedRfqDto } from '../rfq/dto/create-unified-rfq.dto';
 import { SaveRfqDraftDto, RfqDraftResponseDto } from '../rfq/dto/rfq-draft.dto';
@@ -42,12 +43,15 @@ export class AdminRfqService {
     private readonly rfqItemRepo: Repository<RfqItem>,
     @InjectRepository(RfqDocument)
     private readonly rfqDocumentRepo: Repository<RfqDocument>,
+    @InjectRepository(AnonymousDraft)
+    private readonly anonymousDraftRepo: Repository<AnonymousDraft>,
     @Inject(forwardRef(() => RfqService))
     private readonly rfqService: RfqService,
   ) {}
 
   /**
    * Get all RFQ Drafts with filtering and pagination (VIEW-ONLY)
+   * Includes both registered customer drafts and anonymous (unregistered) drafts
    */
   async getAllRfqs(queryDto: RfqQueryDto): Promise<RfqListResponseDto> {
     const {
@@ -62,6 +66,7 @@ export class AdminRfqService {
       limit = 20,
     } = queryDto;
 
+    // Query registered customer drafts
     const queryBuilder = this.rfqDraftRepo
       .createQueryBuilder('draft')
       .leftJoinAndSelect('draft.createdBy', 'user');
@@ -75,7 +80,7 @@ export class AdminRfqService {
     }
 
     // Apply status filter - map to currentStep for drafts
-    if (status) {
+    if (status && status !== 'UNREGISTERED') {
       // For drafts, status is based on completion/conversion
       if (status === 'DRAFT') {
         queryBuilder.andWhere('draft.isConverted = false');
@@ -102,18 +107,45 @@ export class AdminRfqService {
       sortBy === 'projectName' ? 'draft.projectName' : 'draft.createdAt';
     queryBuilder.orderBy(sortField, sortOrder);
 
-    // Get total count
-    const total = await queryBuilder.getCount();
+    // Get registered drafts (skip if filtering for UNREGISTERED only)
+    let registeredDrafts: RfqDraft[] = [];
+    let registeredTotal = 0;
+    if (status !== 'UNREGISTERED') {
+      registeredTotal = await queryBuilder.getCount();
+      registeredDrafts = await queryBuilder.getMany();
+    }
 
-    // Apply pagination
-    const skip = (page - 1) * limit;
-    queryBuilder.skip(skip).take(limit);
+    // Query anonymous (unregistered) drafts
+    const anonQueryBuilder = this.anonymousDraftRepo
+      .createQueryBuilder('anon')
+      .where('anon.isClaimed = false');
 
-    // Execute query
-    const drafts = await queryBuilder.getMany();
+    // Apply search filter for anonymous drafts
+    if (search) {
+      anonQueryBuilder.andWhere(
+        '(anon.projectName ILIKE :search OR anon.customerEmail ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
 
-    // Map to DTOs
-    const items: RfqListItemDto[] = drafts.map((draft) => ({
+    // Apply date range filter for anonymous drafts
+    if (dateFrom && dateTo) {
+      anonQueryBuilder.andWhere('anon.createdAt BETWEEN :dateFrom AND :dateTo', {
+        dateFrom: fromISO(dateFrom).toJSDate(),
+        dateTo: fromISO(dateTo).toJSDate(),
+      });
+    }
+
+    // Get anonymous drafts (skip if filtering for non-UNREGISTERED status)
+    let anonymousDrafts: AnonymousDraft[] = [];
+    let anonymousTotal = 0;
+    if (!status || status === 'UNREGISTERED' || status === 'DRAFT') {
+      anonymousTotal = await anonQueryBuilder.getCount();
+      anonymousDrafts = await anonQueryBuilder.getMany();
+    }
+
+    // Map registered drafts to DTOs
+    const registeredItems: RfqListItemDto[] = registeredDrafts.map((draft) => ({
       id: draft.id,
       projectName: draft.projectName || draft.draftNumber,
       customerName: draft.createdBy?.username || '',
@@ -124,8 +156,34 @@ export class AdminRfqService {
       itemCount: draft.straightPipeEntries?.length || 0,
     }));
 
+    // Map anonymous drafts to DTOs (use negative IDs to distinguish them)
+    const anonymousItems: RfqListItemDto[] = anonymousDrafts.map((draft) => ({
+      id: -draft.id,
+      projectName: draft.projectName || `Anonymous Draft`,
+      customerName: draft.formData?.customerName || 'Unregistered',
+      customerEmail: draft.customerEmail || '',
+      status: 'UNREGISTERED',
+      createdAt: draft.createdAt,
+      updatedAt: draft.updatedAt,
+      itemCount: draft.entries?.length || 0,
+    }));
+
+    // Combine and sort all items
+    const allItems = [...registeredItems, ...anonymousItems];
+    allItems.sort((a, b) => {
+      if (sortOrder === 'DESC') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+
+    // Calculate total and apply pagination
+    const total = registeredTotal + anonymousTotal;
+    const skip = (page - 1) * limit;
+    const paginatedItems = allItems.slice(skip, skip + limit);
+
     return {
-      items,
+      items: paginatedItems,
       total,
       page,
       limit,

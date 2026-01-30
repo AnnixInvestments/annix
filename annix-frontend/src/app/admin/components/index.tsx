@@ -18,6 +18,7 @@ const defaultColorMap: Record<string, string> = {
   accepted: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
   cancelled: 'bg-red-100 text-red-800',
+  unregistered: 'bg-purple-100 text-purple-800',
 };
 
 export function StatusBadge({ status, colorMap = defaultColorMap }: StatusBadgeProps) {

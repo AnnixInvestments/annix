@@ -23,6 +23,7 @@ import { Rfq } from '../rfq/entities/rfq.entity';
 import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
 import { RfqItem } from '../rfq/entities/rfq-item.entity';
 import { RfqDocument } from '../rfq/entities/rfq-document.entity';
+import { AnonymousDraft } from '../rfq/entities/anonymous-draft.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 
 @Module({
@@ -41,6 +42,7 @@ import { AuditLog } from '../audit/entities/audit-log.entity';
       RfqDraft,
       RfqItem,
       RfqDocument,
+      AnonymousDraft,
       AuditLog,
     ]),
     JwtModule.registerAsync({
