@@ -2733,8 +2733,10 @@ export default function CSGBend3DPreview(props: Props) {
     autoCameraPosition = [autoCameraDistance * 0.3, autoCameraDistance * 1.2, autoCameraDistance * 0.3]
     autoCameraTarget = [centerX, 0, centerZ]
   } else {
-    const autoCameraDistance = Math.max(diagonalExtent * 1.2, 3)
-    autoCameraPosition = [centerX - autoCameraDistance * 0.2, autoCameraDistance * 0.5, centerZ + autoCameraDistance * 0.9]
+    // Camera positioned below and in front of the bend, looking up
+    // This places the model at the bottom of the preview area
+    const autoCameraDistance = Math.max(diagonalExtent * 0.8, 2)
+    autoCameraPosition = [centerX + autoCameraDistance * 0.3, -autoCameraDistance * 0.4, centerZ + autoCameraDistance]
     autoCameraTarget = [centerX, 0, centerZ]
   }
 
