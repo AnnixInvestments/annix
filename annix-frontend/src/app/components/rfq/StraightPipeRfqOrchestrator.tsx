@@ -299,6 +299,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const [showDraftRestorePrompt, setShowDraftRestorePrompt] = useState(false);
   const [pendingLocalDraft, setPendingLocalDraft] = useState<any>(null);
   const hasCheckedLocalDraft = useRef(false);
+  const hasProcessedRecoveryToken = useRef(false);
 
   const [masterData, setMasterData] = useState<MasterData>({
     steelSpecs: [],
@@ -961,7 +962,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   useEffect(() => {
     const recoveryToken = searchParams?.get('recover');
     if (!recoveryToken) return;
-    if (isLoadingDraft) return;
+    if (hasProcessedRecoveryToken.current) return;
+
+    hasProcessedRecoveryToken.current = true;
 
     const loadRecoveryDraft = async () => {
       setIsLoadingDraft(true);
@@ -1035,7 +1038,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     };
 
     loadRecoveryDraft();
-  }, [searchParams, isLoadingDraft, restoreFromDraft, clearLocalDraft, loadLocalDraft, showToast]);
+  }, [searchParams, restoreFromDraft, clearLocalDraft, loadLocalDraft, showToast]);
 
   // Check for existing localStorage draft on mount (for unregistered users)
   useEffect(() => {
