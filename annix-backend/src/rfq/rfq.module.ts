@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
 import { RfqController } from './rfq.controller';
 import { RfqService } from './rfq.service';
+import { AnonymousDraftController } from './anonymous-draft.controller';
+import { AnonymousDraftService } from './anonymous-draft.service';
 import { Rfq } from './entities/rfq.entity';
 import { RfqItem } from './entities/rfq-item.entity';
 import { StraightPipeRfq } from './entities/straight-pipe-rfq.entity';
@@ -11,6 +13,7 @@ import { FittingRfq } from './entities/fitting-rfq.entity';
 import { ExpansionJointRfq } from './entities/expansion-joint-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
+import { AnonymousDraft } from './entities/anonymous-draft.entity';
 import { RfqSequence } from './entities/rfq-sequence.entity';
 import { User } from '../user/entities/user.entity';
 import { SteelSpecification } from '../steel-specification/entities/steel-specification.entity';
@@ -40,6 +43,7 @@ import { EmailModule } from '../email/email.module';
       ExpansionJointRfq,
       RfqDocument,
       RfqDraft,
+      AnonymousDraft,
       RfqSequence,
       User,
       SteelSpecification,
@@ -60,8 +64,8 @@ import { EmailModule } from '../email/email.module';
       },
     }),
   ],
-  controllers: [RfqController],
-  providers: [RfqService],
-  exports: [RfqService],
+  controllers: [RfqController, AnonymousDraftController],
+  providers: [RfqService, AnonymousDraftService],
+  exports: [RfqService, AnonymousDraftService],
 })
 export class RfqModule {}

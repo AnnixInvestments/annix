@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { isNumber } from 'es-toolkit/compat';
 import { minesApi, SaMine } from '@/app/lib/api/client';
 import { generateSystemReferenceNumber } from '@/app/lib/utils/systemUtils';
@@ -10,9 +11,74 @@ import RfqDocumentUpload from '@/app/components/rfq/RfqDocumentUpload';
 import { AutoFilledInput, AutoFilledSelect, AutoFilledDisplay } from '@/app/components/rfq/AutoFilledField';
 import AddMineModal from '@/app/components/rfq/AddMineModal';
 import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
-import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
+import { PRODUCTS_AND_SERVICES, isProductAvailableForUnregistered, isProjectTypeAvailableForUnregistered } from '@/app/lib/config/productsServices';
 import { log } from '@/app/lib/logger';
 import { useToast } from '@/app/components/Toast';
+
+interface RestrictionPopupPosition {
+  x: number;
+  y: number;
+}
+
+function RestrictionPopup({ position, onClose }: { position: RestrictionPopupPosition; onClose: () => void }) {
+  useEffect(() => {
+    const handleClickOutside = () => onClose();
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+
+    setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }, 100);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-4 max-w-xs"
+      style={{
+        left: Math.min(position.x, window.innerWidth - 320),
+        top: position.y + 10,
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+          <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+            This area is currently restricted. It is available on other pricing tiers.
+          </p>
+          <Link
+            href="/pricing"
+            className="inline-flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+          >
+            Click here to see pricing tiers
+            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
+      </div>
+      <button
+        onClick={onClose}
+        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
@@ -632,7 +698,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
   useEffect(() => {
     // Skip auto-generation if we're loading a draft - the draft will provide the projectName
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('draft') || urlParams.get('draftId')) return;
+    if (urlParams.get('draft') || urlParams.get('draftId') || urlParams.get('recover')) return;
 
     if (!rfqData.projectName || rfqData.projectName.trim() === '') {
       const autoGenNumber = generateSystemReferenceNumber();
@@ -731,6 +797,22 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
 
   // Customer auth for auto-filling customer fields (optional - may be used in admin context)
   const { isAuthenticated, customer, profile } = useOptionalCustomerAuth();
+
+  // Unregistered customer restrictions - when not authenticated, limit available options
+  const isUnregisteredCustomer = !isAuthenticated;
+
+  // Restriction popup state for unregistered customers
+  const [restrictionPopup, setRestrictionPopup] = useState<RestrictionPopupPosition | null>(null);
+
+  const showRestrictionPopup = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRestrictionPopup({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const closeRestrictionPopup = useCallback(() => {
+    setRestrictionPopup(null);
+  }, []);
 
   // Track which customer fields were auto-filled
   const [customerAutoFilled, setCustomerAutoFilled] = useState<{
@@ -954,15 +1036,24 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
               { value: 'phase1', label: 'Phase 1 Tender' },
               { value: 'retender', label: 'Re-Tender' },
               { value: 'feasibility', label: 'Feasibility' }
-            ].map((type) => (
+            ].map((type) => {
+              const isDisabledForUnregistered = isUnregisteredCustomer && !isProjectTypeAvailableForUnregistered(type.value);
+              const isDisabled = projectTypeConfirmed || isDisabledForUnregistered;
+
+              return (
               <label
                 key={type.value}
-                className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg cursor-pointer transition-colors text-sm ${
-                  rfqData.projectType === type.value
-                    ? 'border-blue-600 bg-blue-50'
-                    : hasProjectTypeError
-                      ? 'border-red-400 hover:border-red-500'
-                      : 'border-gray-200 hover:border-blue-300'
+                title={isDisabledForUnregistered ? 'Register or login to access this option' : undefined}
+                onClick={isDisabledForUnregistered ? showRestrictionPopup : undefined}
+                onMouseEnter={isDisabledForUnregistered ? showRestrictionPopup : undefined}
+                className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg transition-colors text-sm ${
+                  isDisabledForUnregistered
+                    ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
+                    : rfqData.projectType === type.value
+                      ? 'border-blue-600 bg-blue-50 cursor-pointer'
+                      : hasProjectTypeError
+                        ? 'border-red-400 hover:border-red-500 cursor-pointer'
+                        : 'border-gray-200 hover:border-blue-300 cursor-pointer'
                 }`}
               >
                 <input
@@ -971,6 +1062,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
                   value={type.value}
                   checked={rfqData.projectType === type.value}
                   onChange={(e) => {
+                    if (isDisabledForUnregistered) return;
                     const selectedType = e.target.value;
                     log.debug('🔘 Project type selected:', selectedType);
                     onUpdate('projectType', selectedType);
@@ -985,16 +1077,23 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
                     }
                   }}
                   className="sr-only"
-                  disabled={projectTypeConfirmed}
+                  disabled={isDisabled}
                 />
                 <div className={`w-3 h-3 border-2 rounded-full flex items-center justify-center ${
-                  rfqData.projectType === type.value ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
+                  isDisabledForUnregistered
+                    ? 'border-gray-300 bg-gray-200'
+                    : rfqData.projectType === type.value ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
                 }`}>
-                  {rfqData.projectType === type.value && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
+                  {rfqData.projectType === type.value && !isDisabledForUnregistered && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                 </div>
-                <span className="font-medium text-gray-900">{type.label}</span>
+                <span className={`font-medium ${isDisabledForUnregistered ? 'text-gray-400' : 'text-gray-900'}`}>{type.label}</span>
+                {isDisabledForUnregistered && (
+                  <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                )}
               </label>
-            ))}
+            );})}
           </div>
           {errors.projectType && <p className="mt-1 text-xs text-red-600">{errors.projectType}</p>}
         </div>
@@ -1009,17 +1108,28 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
             <div className={`grid grid-cols-4 gap-2 ${projectTypeConfirmed ? 'pointer-events-none' : ''}`}>
               {PRODUCTS_AND_SERVICES.map((product) => {
                 const isSelected = rfqData.requiredProducts?.includes(product.value);
+                const isDisabledForUnregistered = isUnregisteredCustomer && !isProductAvailableForUnregistered(product.value);
+                const isDisabled = projectTypeConfirmed || isDisabledForUnregistered;
+
                 return (
                   <label
                     key={product.value}
-                    className={`flex items-center gap-2 px-2 py-2 border-2 rounded-lg cursor-pointer transition-all text-xs ${
-                      isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+                    title={isDisabledForUnregistered ? 'Register or login to access this product/service' : product.description}
+                    onClick={isDisabledForUnregistered ? showRestrictionPopup : undefined}
+                    onMouseEnter={isDisabledForUnregistered ? showRestrictionPopup : undefined}
+                    className={`flex items-center gap-2 px-2 py-2 border-2 rounded-lg transition-all text-xs ${
+                      isDisabledForUnregistered
+                        ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
+                        : isSelected
+                          ? 'border-blue-600 bg-blue-50 cursor-pointer'
+                          : 'border-gray-200 hover:border-blue-300 cursor-pointer'
                     }`}
                   >
                     <input
                       type="checkbox"
-                      checked={isSelected}
+                      checked={isSelected && !isDisabledForUnregistered}
                       onChange={(e) => {
+                        if (isDisabledForUnregistered) return;
                         const currentProducts = rfqData.requiredProducts || [];
                         let newProducts: string[];
                         if (e.target.checked) {
@@ -1031,15 +1141,22 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
                         onUpdate('requiredProducts', newProducts);
                       }}
                       className="sr-only"
-                      disabled={projectTypeConfirmed}
+                      disabled={isDisabled}
                     />
                     <div className={`w-4 h-4 border-2 rounded flex items-center justify-center flex-shrink-0 ${
-                      isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
+                      isDisabledForUnregistered
+                        ? 'border-gray-300 bg-gray-200'
+                        : isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
                     }`}>
-                      {isSelected && <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+                      {isSelected && !isDisabledForUnregistered && <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
                     </div>
-                    <span>{product.icon}</span>
-                    <span className="font-medium text-gray-900">{product.label}</span>
+                    <span className={isDisabledForUnregistered ? 'grayscale' : ''}>{product.icon}</span>
+                    <span className={`font-medium ${isDisabledForUnregistered ? 'text-gray-400' : 'text-gray-900'}`}>{product.label}</span>
+                    {isDisabledForUnregistered && (
+                      <svg className="w-3 h-3 text-gray-400 ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    )}
                   </label>
                 );
               })}
@@ -1492,9 +1609,36 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
           )}
         </div>
 
-        {/* Environmental Intelligence Section - Only show when Surface Protection is selected */}
+        {/* Environmental Intelligence Section - Only show when Surface Protection is selected AND user is registered */}
         {!useNix && rfqData.requiredProducts?.includes('surface_protection') && (
         <div className="mt-4 pt-4 border-t border-gray-300">
+          {isUnregisteredCustomer ? (
+            <div
+              onClick={showRestrictionPopup}
+              onMouseEnter={showRestrictionPopup}
+              className="bg-gray-100 rounded-lg p-3 border border-gray-300 opacity-60 cursor-pointer hover:opacity-70 transition-opacity"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1.5 bg-gray-400 rounded">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-500">Environmental Intelligence</h3>
+                  <p className="text-xs text-gray-400">Pipeline Corrosion & Coating Data</p>
+                </div>
+                <div className="ml-auto">
+                  <span className="text-xs bg-gray-200 text-gray-500 px-2 py-1 rounded-full font-medium">
+                    Registered Users Only
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                Register or login to access Environmental Intelligence features including automatic soil analysis, climate data, and ISO 12944 corrosivity classification.
+              </p>
+            </div>
+          ) : (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
             <div className="flex items-center gap-2 mb-2">
               <div className="p-1.5 bg-blue-600 rounded">
@@ -1928,6 +2072,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
               )}
             </div>
           </div>
+          )}
         </div>
         )}
       </div>
@@ -1937,6 +2082,38 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
         <div className="mt-4 pt-4 border-t border-gray-300">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* BOQ & Drawing Documents */}
+            {isUnregisteredCustomer ? (
+              <div
+                onClick={showRestrictionPopup}
+                onMouseEnter={showRestrictionPopup}
+                className="bg-gray-100 rounded-lg p-3 border border-gray-300 opacity-60 cursor-pointer hover:opacity-70 transition-opacity"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-gray-400 rounded">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-500">BOQ & Drawing Documents</h3>
+                    <p className="text-xs text-gray-400">Bills of quantities and technical drawings</p>
+                  </div>
+                  <div className="ml-auto">
+                    <span className="text-xs bg-gray-200 text-gray-500 px-2 py-1 rounded-full font-medium">
+                      Registered Users Only
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-gray-200 rounded-lg p-4 border-2 border-dashed border-gray-300">
+                  <div className="text-center text-gray-400">
+                    <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p className="text-xs">Document upload available for registered users</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
               <div className="flex items-center gap-2 mb-2">
                 <div className="p-1.5 bg-blue-600 rounded">
@@ -2011,8 +2188,41 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
                 </div>
               )}
             </div>
+            )}
 
             {/* Tender Specification Documents */}
+            {isUnregisteredCustomer ? (
+              <div
+                onClick={showRestrictionPopup}
+                onMouseEnter={showRestrictionPopup}
+                className="bg-gray-100 rounded-lg p-3 border border-gray-300 opacity-60 cursor-pointer hover:opacity-70 transition-opacity"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-gray-400 rounded">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-500">Tender Specification Documents</h3>
+                    <p className="text-xs text-gray-400">Tender specs and requirements</p>
+                  </div>
+                  <div className="ml-auto">
+                    <span className="text-xs bg-gray-200 text-gray-500 px-2 py-1 rounded-full font-medium">
+                      Registered Users Only
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-gray-200 rounded-lg p-4 border-2 border-dashed border-gray-300">
+                  <div className="text-center text-gray-400">
+                    <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p className="text-xs">Document upload available for registered users</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
             <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-3 border border-purple-200">
               <div className="flex items-center gap-2 mb-2">
                 <div className="p-1.5 bg-purple-600 rounded">
@@ -2087,6 +2297,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
       )}
@@ -2183,6 +2394,14 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
         onClose={() => setShowAddMineModal(false)}
         onMineCreated={handleMineCreated}
       />
+
+      {/* Restriction Popup for Unregistered Customers */}
+      {restrictionPopup && (
+        <RestrictionPopup
+          position={restrictionPopup}
+          onClose={closeRestrictionPopup}
+        />
+      )}
     </div>
   );
 }

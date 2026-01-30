@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { log } from '@/app/lib/logger';
+import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
 import {
   flangesPerPipe as getFlangesPerPipe,
   boltSetCountPerBend as getBoltSetCountPerBend,
@@ -236,6 +238,30 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
   const [drawingsHidden, setDrawingsHidden] = useState(hideDrawings);
   const hasCalledOnReady = useRef(false);
+
+  // Authentication status for unregistered customer restrictions
+  const { isAuthenticated } = useOptionalCustomerAuth();
+  const isUnregisteredCustomer = !isAuthenticated;
+
+  // Restriction popup state - supports different popup types
+  type RestrictionPopupType = 'fittings' | 'itemLimit' | 'quantityLimit' | 'drawings';
+  const [restrictionPopup, setRestrictionPopup] = useState<{ type: RestrictionPopupType; x: number; y: number } | null>(null);
+
+  const showRestrictionPopup = useCallback((type: RestrictionPopupType) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRestrictionPopup({ type, x: e.clientX, y: e.clientY });
+  }, []);
+
+  // Constants for unregistered customer limits
+  const MAX_ITEMS_UNREGISTERED = 5;
+  const MAX_QUANTITY_UNREGISTERED = 10;
+
+  // Check if user can add more items
+  const canAddMoreItems = !isUnregisteredCustomer || entries.length < MAX_ITEMS_UNREGISTERED;
+
+  // Force drawings hidden for unregistered customers
+  const effectiveDrawingsHidden = isUnregisteredCustomer ? true : drawingsHidden;
 
   const copyItemToClipboard = useCallback(async (entry: any) => {
     const itemData = JSON.stringify(entry, null, 2);
@@ -954,7 +980,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
   const addItemButtons = (insertAtStart?: boolean) => (
     <div className="flex gap-2">
       <button
-        onClick={() => {
+        onClick={!canAddMoreItems ? showRestrictionPopup('itemLimit') : () => {
           // Track existing pipe NB select IDs before adding
           const existingIds = new Set(
             Array.from(document.querySelectorAll('[id^="pipe-nb-"]')).map(el => el.id)
@@ -990,30 +1016,58 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
           };
           tryFocus(0);
         }}
-        className="flex items-center gap-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 rounded-md border border-blue-300 transition-colors"
+        className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+          !canAddMoreItems
+            ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+            : 'bg-blue-100 hover:bg-blue-200 border-blue-300'
+        }`}
       >
-        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {!canAddMoreItems && (
+          <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+          </svg>
+        )}
+        <svg className={`w-4 h-4 ${!canAddMoreItems ? 'text-gray-400' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
-        <span className="text-xs font-semibold text-blue-700">Pipe</span>
+        <span className={`text-xs font-semibold ${!canAddMoreItems ? 'text-gray-500' : 'text-blue-700'}`}>Pipe</span>
       </button>
       <button
-        onClick={() => onAddBendEntry(undefined, insertAtStart)}
-        className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 rounded-md border border-purple-300 transition-colors"
+        onClick={!canAddMoreItems ? showRestrictionPopup('itemLimit') : () => onAddBendEntry(undefined, insertAtStart)}
+        className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+          !canAddMoreItems
+            ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+            : 'bg-purple-100 hover:bg-purple-200 border-purple-300'
+        }`}
       >
-        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {!canAddMoreItems && (
+          <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+          </svg>
+        )}
+        <svg className={`w-4 h-4 ${!canAddMoreItems ? 'text-gray-400' : 'text-purple-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
-        <span className="text-xs font-semibold text-purple-700">Bend</span>
+        <span className={`text-xs font-semibold ${!canAddMoreItems ? 'text-gray-500' : 'text-purple-700'}`}>Bend</span>
       </button>
       <button
-        onClick={() => onAddFittingEntry(undefined, insertAtStart)}
-        className="flex items-center gap-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 rounded-md border border-green-300 transition-colors"
+        onClick={isUnregisteredCustomer ? showRestrictionPopup('fittings') : () => onAddFittingEntry(undefined, insertAtStart)}
+        onMouseEnter={isUnregisteredCustomer ? showRestrictionPopup('fittings') : undefined}
+        className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+          isUnregisteredCustomer
+            ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+            : 'bg-green-100 hover:bg-green-200 border-green-300'
+        }`}
       >
-        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {isUnregisteredCustomer && (
+          <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+          </svg>
+        )}
+        <svg className={`w-4 h-4 ${isUnregisteredCustomer ? 'text-gray-400' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
-        <span className="text-xs font-semibold text-green-700">Fitting</span>
+        <span className={`text-xs font-semibold ${isUnregisteredCustomer ? 'text-gray-500' : 'text-green-700'}`}>Fitting</span>
       </button>
       {requiredProducts.includes('pipe_steel_work') && onAddPipeSteelWorkEntry && (
         <button
@@ -1069,14 +1123,28 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
               <span className="text-xs text-blue-200 mt-1">Elbows and custom bends</span>
             </button>
             <button
-              onClick={() => onAddFittingEntry()}
-              className="flex flex-col items-center justify-center w-48 h-40 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all shadow-lg hover:shadow-xl"
+              onClick={isUnregisteredCustomer ? showRestrictionPopup('fittings') : () => onAddFittingEntry()}
+              onMouseEnter={isUnregisteredCustomer ? showRestrictionPopup('fittings') : undefined}
+              className={`flex flex-col items-center justify-center w-48 h-40 rounded-xl focus:outline-none focus:ring-4 transition-all shadow-lg relative ${
+                isUnregisteredCustomer
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed focus:ring-gray-300'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-xl focus:ring-blue-300'
+              }`}
             >
+              {isUnregisteredCustomer && (
+                <div className="absolute top-2 right-2">
+                  <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              )}
               <svg className="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               <span className="text-lg font-semibold">Fittings</span>
-              <span className="text-xs text-blue-200 mt-1">Tees, laterals, and other fittings</span>
+              <span className={`text-xs mt-1 ${isUnregisteredCustomer ? 'text-gray-300' : 'text-blue-200'}`}>
+                {isUnregisteredCustomer ? 'Coming soon' : 'Tees, laterals, and other fittings'}
+              </span>
             </button>
           </div>
         </div>
@@ -1086,14 +1154,21 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
             <h2 className="text-2xl font-bold text-gray-900">Items</h2>
             <div className="flex items-center gap-4">
               <button
-                onClick={() => setDrawingsHidden(!drawingsHidden)}
+                onClick={isUnregisteredCustomer ? showRestrictionPopup('drawings') : () => setDrawingsHidden(!drawingsHidden)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
-                  drawingsHidden
-                    ? 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
-                    : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                  isUnregisteredCustomer
+                    ? 'bg-gray-100 border-gray-300 text-gray-500 hover:bg-gray-200'
+                    : effectiveDrawingsHidden
+                      ? 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
+                      : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
                 }`}
               >
-                {drawingsHidden ? (
+                {isUnregisteredCustomer && (
+                  <svg className="w-3.5 h-3.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+                {effectiveDrawingsHidden ? (
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                   </svg>
@@ -1103,7 +1178,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
                 )}
-                <span className="text-sm font-medium">{drawingsHidden ? 'Show 3D Drawings' : 'Hide 3D Drawings'}</span>
+                <span className="text-sm font-medium">{effectiveDrawingsHidden ? 'Show 3D Drawings' : 'Hide 3D Drawings'}</span>
               </button>
               <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
                 <span className="text-green-700 font-semibold">Auto-calculating</span>
@@ -1131,9 +1206,9 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 onCalculateBend={onCalculateBend}
                 onCalculateFitting={onCalculateFitting}
                 generateItemDescription={generateItemDescription}
-                Pipe3DPreview={drawingsHidden ? null : Pipe3DPreview}
-                Bend3DPreview={drawingsHidden ? null : Bend3DPreview}
-                Tee3DPreview={drawingsHidden ? null : Tee3DPreview}
+                Pipe3DPreview={effectiveDrawingsHidden ? null : Pipe3DPreview}
+                Bend3DPreview={effectiveDrawingsHidden ? null : Bend3DPreview}
+                Tee3DPreview={effectiveDrawingsHidden ? null : Tee3DPreview}
                 availableNominalBores={availableNominalBores}
                 availableSchedulesMap={availableSchedulesMap}
                 setAvailableSchedulesMap={setAvailableSchedulesMap}
@@ -1804,6 +1879,107 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
           </div>
         </div>
         </>
+      )}
+
+      {/* Restriction Popup for unregistered customers */}
+      {restrictionPopup && (
+        <div
+          className="fixed z-[100] bg-slate-800 text-white px-4 py-4 rounded-lg shadow-xl border border-slate-600 max-w-sm"
+          style={{
+            left: Math.min(restrictionPopup.x - 150, window.innerWidth - 400),
+            top: Math.min(restrictionPopup.y + 10, window.innerHeight - 250),
+          }}
+          onMouseLeave={() => setRestrictionPopup(null)}
+        >
+          <div className="flex items-start gap-3">
+            <svg className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {restrictionPopup.type === 'fittings' ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m11-7a9 9 0 11-18 0 9 9 0 0118 0z" />
+              )}
+            </svg>
+            <div className="flex-1">
+              {restrictionPopup.type === 'fittings' && (
+                <>
+                  <p className="text-sm font-semibold text-amber-400">Feature Under Construction</p>
+                  <p className="text-xs text-gray-300 mt-2">
+                    The Fittings module is currently being developed and will be available in a future update.
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    This feature will include support for tees, laterals, reducers, and other pipe fittings with automatic calculation of weights and materials.
+                  </p>
+                  <div className="mt-3 pt-2 border-t border-slate-600">
+                    <p className="text-xs text-gray-300">
+                      In the meantime, you can add straight pipes and bends to your RFQ.{' '}
+                      <Link href="/register" className="text-blue-400 hover:text-blue-300 underline" onClick={() => setRestrictionPopup(null)}>
+                        Create an account
+                      </Link>
+                      {' '}to be notified when this feature launches.
+                    </p>
+                  </div>
+                </>
+              )}
+              {restrictionPopup.type === 'itemLimit' && (
+                <>
+                  <p className="text-sm font-semibold text-amber-400">Item Limit Reached</p>
+                  <p className="text-xs text-gray-300 mt-2">
+                    Unregistered users can add a maximum of {MAX_ITEMS_UNREGISTERED} items to an RFQ.
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    You have reached this limit. To add more items to your request for quote, please create a free account.
+                  </p>
+                  <div className="mt-3 pt-2 border-t border-slate-600">
+                    <p className="text-xs text-gray-300">
+                      <Link href="/register" className="text-blue-400 hover:text-blue-300 underline" onClick={() => setRestrictionPopup(null)}>
+                        Create a free account
+                      </Link>
+                      {' '}to add unlimited items and access all features.
+                    </p>
+                  </div>
+                </>
+              )}
+              {restrictionPopup.type === 'quantityLimit' && (
+                <>
+                  <p className="text-sm font-semibold text-amber-400">Quantity Limit Reached</p>
+                  <p className="text-xs text-gray-300 mt-2">
+                    Unregistered users can set a maximum quantity of {MAX_QUANTITY_UNREGISTERED} units per item.
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    To request larger quantities, please create a free account.
+                  </p>
+                  <div className="mt-3 pt-2 border-t border-slate-600">
+                    <p className="text-xs text-gray-300">
+                      <Link href="/register" className="text-blue-400 hover:text-blue-300 underline" onClick={() => setRestrictionPopup(null)}>
+                        Create a free account
+                      </Link>
+                      {' '}to request unlimited quantities and access all features.
+                    </p>
+                  </div>
+                </>
+              )}
+              {restrictionPopup.type === 'drawings' && (
+                <>
+                  <p className="text-sm font-semibold text-amber-400">3D Preview - Registered Feature</p>
+                  <p className="text-xs text-gray-300 mt-2">
+                    Interactive 3D drawings and previews are available to registered users.
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Create a free account to visualize your pipes, bends, and fittings in 3D before submitting your RFQ.
+                  </p>
+                  <div className="mt-3 pt-2 border-t border-slate-600">
+                    <p className="text-xs text-gray-300">
+                      <Link href="/register" className="text-blue-400 hover:text-blue-300 underline" onClick={() => setRestrictionPopup(null)}>
+                        Create a free account
+                      </Link>
+                      {' '}to access 3D previews and all features.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

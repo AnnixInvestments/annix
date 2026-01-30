@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { StraightPipeEntry, BendEntry, FittingEntry, PipeItem, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
+import { useRfqDraftStorage, formatLastSaved } from '@/app/lib/hooks/useRfqDraftStorage';
+import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, boqApi, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
 import { adminApiClient } from '@/app/lib/api/adminApi';
 import { nixApi, NixAiPopup, NixFloatingAvatar, NixClarificationPopup, NixProcessingPopup, type NixExtractedItem, type NixClarificationDto } from '@/app/lib/nix';
@@ -279,6 +281,24 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const initialDraftDataRef = useRef<string | null>(null);
   const [isLoadingDraft, setIsLoadingDraft] = useState(false);
+
+  // Authentication status for draft storage
+  const { isAuthenticated } = useOptionalCustomerAuth();
+
+  // LocalStorage draft storage for unregistered users
+  const {
+    loadDraft: loadLocalDraft,
+    saveDraft: saveLocalDraft,
+    clearDraft: clearLocalDraft,
+    hasDraft: hasLocalDraft,
+    lastSaved: localDraftLastSaved,
+    draftEmail: localDraftEmail,
+  } = useRfqDraftStorage();
+
+  // State for showing draft restoration prompt
+  const [showDraftRestorePrompt, setShowDraftRestorePrompt] = useState(false);
+  const [pendingLocalDraft, setPendingLocalDraft] = useState<any>(null);
+  const hasCheckedLocalDraft = useRef(false);
 
   const [masterData, setMasterData] = useState<MasterData>({
     steelSpecs: [],
@@ -935,6 +955,282 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       return () => clearTimeout(timer);
     }
   }, [isLoadingDraft, currentDraftId, rfqData]);
+
+  // Load anonymous draft from recovery token URL parameter
+  // Also compare with localStorage draft and use the newer one
+  useEffect(() => {
+    const recoveryToken = searchParams?.get('recover');
+    if (!recoveryToken) return;
+    if (isLoadingDraft) return;
+
+    const loadRecoveryDraft = async () => {
+      setIsLoadingDraft(true);
+      try {
+        const { anonymousDraftsApi } = await import('@/app/lib/api/client');
+        const serverDraft = await anonymousDraftsApi.getByToken(recoveryToken);
+        log.debug('Loaded anonymous draft from recovery token:', serverDraft);
+
+        const localDraft = loadLocalDraft();
+        let useServerDraft = true;
+        let draftSource = 'recovery link';
+
+        if (localDraft && localDraft.lastSaved && serverDraft.updatedAt) {
+          const localDate = new Date(localDraft.lastSaved);
+          const serverDate = new Date(serverDraft.updatedAt);
+
+          log.debug('Comparing draft timestamps:', {
+            local: localDraft.lastSaved,
+            server: serverDraft.updatedAt,
+            localNewer: localDate > serverDate
+          });
+
+          if (localDate > serverDate) {
+            useServerDraft = false;
+            draftSource = 'local browser storage (more recent)';
+            log.debug('Using localStorage draft (newer than server)');
+          }
+        }
+
+        if (useServerDraft) {
+          restoreFromDraft({
+            formData: serverDraft.formData,
+            globalSpecs: serverDraft.globalSpecs,
+            requiredProducts: serverDraft.requiredProducts,
+            straightPipeEntries: serverDraft.entries,
+            currentStep: serverDraft.currentStep,
+          });
+          clearLocalDraft();
+        } else if (localDraft) {
+          restoreFromDraft({
+            formData: localDraft.rfqData,
+            globalSpecs: localDraft.globalSpecs,
+            requiredProducts: localDraft.rfqData?.requiredProducts,
+            straightPipeEntries: localDraft.entries,
+            currentStep: localDraft.currentStep,
+          });
+        }
+
+        hasCheckedLocalDraft.current = true;
+        showToast(`Draft restored from ${draftSource}`, 'success');
+      } catch (error) {
+        console.error('Failed to load draft from recovery token:', error);
+        const localDraft = loadLocalDraft();
+        if (localDraft && localDraft.rfqData) {
+          log.debug('Server draft failed, falling back to localStorage');
+          restoreFromDraft({
+            formData: localDraft.rfqData,
+            globalSpecs: localDraft.globalSpecs,
+            requiredProducts: localDraft.rfqData?.requiredProducts,
+            straightPipeEntries: localDraft.entries,
+            currentStep: localDraft.currentStep,
+          });
+          hasCheckedLocalDraft.current = true;
+          showToast('Draft restored from local storage (recovery link expired)', 'warning');
+        } else {
+          showToast('Failed to load draft. The link may have expired.', 'error');
+        }
+      } finally {
+        setIsLoadingDraft(false);
+      }
+    };
+
+    loadRecoveryDraft();
+  }, [searchParams, isLoadingDraft, restoreFromDraft, clearLocalDraft, loadLocalDraft, showToast]);
+
+  // Check for existing localStorage draft on mount (for unregistered users)
+  useEffect(() => {
+    if (hasCheckedLocalDraft.current) return;
+    if (isAuthenticated) return;
+    if (isLoadingDraft) return;
+    if (editRfqId) return;
+
+    const draftIdFromUrl = searchParams?.get('draft') || searchParams?.get('draftId');
+    if (draftIdFromUrl) return;
+
+    const recoveryToken = searchParams?.get('recover');
+    if (recoveryToken) return;
+
+    hasCheckedLocalDraft.current = true;
+
+    const draft = loadLocalDraft();
+    if (draft && draft.rfqData) {
+      log.debug('Found localStorage draft:', draft);
+      setPendingLocalDraft(draft);
+      setShowDraftRestorePrompt(true);
+    }
+  }, [isAuthenticated, isLoadingDraft, editRfqId, searchParams, loadLocalDraft]);
+
+  // Auto-save to localStorage for unregistered users
+  useEffect(() => {
+    if (isAuthenticated) return;
+    if (isLoadingDraft) return;
+    if (!hasCheckedLocalDraft.current) return;
+
+    const hasContent = rfqData.customerEmail ||
+      rfqData.projectName ||
+      rfqData.items.length > 0 ||
+      Object.keys(rfqData.globalSpecs).length > 0;
+
+    if (!hasContent) return;
+
+    saveLocalDraft({
+      rfqData: {
+        projectName: rfqData.projectName,
+        projectType: rfqData.projectType,
+        description: rfqData.description,
+        customerName: rfqData.customerName,
+        customerEmail: rfqData.customerEmail,
+        customerPhone: rfqData.customerPhone,
+        requiredDate: rfqData.requiredDate,
+        requiredProducts: rfqData.requiredProducts,
+        notes: rfqData.notes,
+        latitude: rfqData.latitude,
+        longitude: rfqData.longitude,
+        siteAddress: rfqData.siteAddress,
+        region: rfqData.region,
+        country: rfqData.country,
+        mineId: rfqData.mineId,
+        mineName: rfqData.mineName,
+        skipDocuments: rfqData.skipDocuments,
+        useNix: rfqData.useNix,
+        nixPopupShown: rfqData.nixPopupShown,
+      },
+      globalSpecs: rfqData.globalSpecs,
+      currentStep,
+      entries: rfqData.items,
+      customerEmail: rfqData.customerEmail,
+    });
+  }, [
+    isAuthenticated,
+    isLoadingDraft,
+    rfqData.projectName,
+    rfqData.projectType,
+    rfqData.description,
+    rfqData.customerName,
+    rfqData.customerEmail,
+    rfqData.customerPhone,
+    rfqData.requiredDate,
+    rfqData.requiredProducts,
+    rfqData.notes,
+    rfqData.latitude,
+    rfqData.longitude,
+    rfqData.siteAddress,
+    rfqData.region,
+    rfqData.country,
+    rfqData.mineId,
+    rfqData.mineName,
+    rfqData.skipDocuments,
+    rfqData.useNix,
+    rfqData.nixPopupShown,
+    rfqData.globalSpecs,
+    rfqData.items,
+    currentStep,
+    saveLocalDraft
+  ]);
+
+  // Handler to restore localStorage draft
+  const handleRestoreLocalDraft = useCallback(() => {
+    if (!pendingLocalDraft) return;
+
+    log.debug('Restoring localStorage draft:', pendingLocalDraft);
+
+    restoreFromDraft({
+      formData: pendingLocalDraft.rfqData,
+      globalSpecs: pendingLocalDraft.globalSpecs,
+      requiredProducts: pendingLocalDraft.rfqData?.requiredProducts,
+      straightPipeEntries: pendingLocalDraft.entries,
+      currentStep: pendingLocalDraft.currentStep,
+    });
+
+    setShowDraftRestorePrompt(false);
+    setPendingLocalDraft(null);
+    showToast('Draft restored successfully', 'success');
+  }, [pendingLocalDraft, restoreFromDraft, showToast]);
+
+  // Handler to discard localStorage draft
+  const handleDiscardLocalDraft = useCallback(() => {
+    clearLocalDraft();
+    setShowDraftRestorePrompt(false);
+    setPendingLocalDraft(null);
+    showToast('Starting fresh', 'info');
+  }, [clearLocalDraft, showToast]);
+
+  // State for save progress dialog
+  const [showSaveProgressDialog, setShowSaveProgressDialog] = useState(false);
+  const [isSavingProgress, setIsSavingProgress] = useState(false);
+  const [saveProgressStep, setSaveProgressStep] = useState<'confirm' | 'success'>('confirm');
+
+  // Handler to save progress and request recovery email
+  const handleSaveProgressToServer = useCallback(async () => {
+    if (!rfqData.customerEmail) {
+      showToast('Please enter your email address to save progress', 'error');
+      return;
+    }
+
+    setIsSavingProgress(true);
+    try {
+      const { anonymousDraftsApi } = await import('@/app/lib/api/client');
+
+      await anonymousDraftsApi.save({
+        customerEmail: rfqData.customerEmail,
+        projectName: rfqData.projectName,
+        currentStep,
+        formData: {
+          projectName: rfqData.projectName,
+          projectType: rfqData.projectType,
+          description: rfqData.description,
+          customerName: rfqData.customerName,
+          customerEmail: rfqData.customerEmail,
+          customerPhone: rfqData.customerPhone,
+          requiredDate: rfqData.requiredDate,
+          requiredProducts: rfqData.requiredProducts,
+          notes: rfqData.notes,
+          latitude: rfqData.latitude,
+          longitude: rfqData.longitude,
+          siteAddress: rfqData.siteAddress,
+          region: rfqData.region,
+          country: rfqData.country,
+          mineId: rfqData.mineId,
+          mineName: rfqData.mineName,
+          skipDocuments: rfqData.skipDocuments,
+          useNix: rfqData.useNix,
+          nixPopupShown: rfqData.nixPopupShown,
+        },
+        globalSpecs: rfqData.globalSpecs,
+        requiredProducts: rfqData.requiredProducts,
+        entries: rfqData.items,
+      });
+
+      await anonymousDraftsApi.requestRecoveryEmail(rfqData.customerEmail);
+
+      setSaveProgressStep('success');
+      log.debug('Progress saved and recovery email sent to:', rfqData.customerEmail);
+    } catch (error) {
+      console.error('Failed to save progress:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      if (errorMessage === 'Backend unavailable') {
+        showToast('Server unavailable. Your progress is saved locally on this browser.', 'warning');
+      } else {
+        showToast('Failed to save progress. Your data is still saved locally.', 'error');
+      }
+      setShowSaveProgressDialog(false);
+    } finally {
+      setIsSavingProgress(false);
+    }
+  }, [rfqData, currentStep, showToast]);
+
+  // Handler to open save progress dialog
+  const handleOpenSaveProgressDialog = useCallback(() => {
+    setSaveProgressStep('confirm');
+    setShowSaveProgressDialog(true);
+  }, []);
+
+  // Handler to close save progress dialog
+  const handleCloseSaveProgressDialog = useCallback(() => {
+    setShowSaveProgressDialog(false);
+    setSaveProgressStep('confirm');
+  }, []);
 
   // Temperature derating factors for flange pressure classes
   // SABS 1123 / EN 1092-1 / PN standards: No significant derating below 200°C for carbon steel
@@ -3248,6 +3544,152 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         />
       )}
 
+      {/* LocalStorage Draft Restoration Prompt */}
+      {showDraftRestorePrompt && pendingLocalDraft && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full mx-4 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-white">Resume Your Draft?</h3>
+                  <p className="mt-2 text-sm text-gray-300">
+                    We found a saved draft from your previous session.
+                  </p>
+                  {pendingLocalDraft.lastSaved && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      Last saved: {formatLastSaved(new Date(pendingLocalDraft.lastSaved))}
+                    </p>
+                  )}
+                  {pendingLocalDraft.rfqData?.projectName && (
+                    <p className="mt-2 text-sm text-blue-300">
+                      Project: {pendingLocalDraft.rfqData.projectName}
+                    </p>
+                  )}
+                  {pendingLocalDraft.rfqData?.customerEmail && (
+                    <p className="text-sm text-gray-400">
+                      Email: {pendingLocalDraft.rfqData.customerEmail}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 p-4 bg-slate-900/50 border-t border-slate-700">
+              <button
+                onClick={handleDiscardLocalDraft}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-300 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+              >
+                Start Fresh
+              </button>
+              <button
+                onClick={handleRestoreLocalDraft}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-500 transition-colors"
+              >
+                Resume Draft
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save Progress Dialog for Unregistered Users */}
+      {showSaveProgressDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full mx-4 overflow-hidden">
+            {saveProgressStep === 'confirm' ? (
+              <>
+                <div className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-white">Save Your Progress</h3>
+                      <p className="mt-2 text-sm text-gray-300">
+                        {rfqData.customerEmail
+                          ? `We'll save your progress and send a recovery link to ${rfqData.customerEmail}`
+                          : 'Please enter your email address on the form to save your progress.'}
+                      </p>
+                      {rfqData.projectName && (
+                        <p className="mt-2 text-sm text-blue-300">
+                          Project: {rfqData.projectName}
+                        </p>
+                      )}
+                      <p className="mt-2 text-xs text-gray-400">
+                        Your draft will be saved for 7 days. You can use the recovery link to continue from any device.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3 p-4 bg-slate-900/50 border-t border-slate-700">
+                  <button
+                    onClick={handleCloseSaveProgressDialog}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-300 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+                    disabled={isSavingProgress}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveProgressToServer}
+                    disabled={!rfqData.customerEmail || isSavingProgress}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSavingProgress ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Saving...
+                      </span>
+                    ) : (
+                      'Save & Send Link'
+                    )}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-6">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
+                      <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-white">Progress Saved!</h3>
+                    <p className="mt-2 text-sm text-gray-300">
+                      A recovery link has been sent to:
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-blue-300">
+                      {rfqData.customerEmail}
+                    </p>
+                    <p className="mt-4 text-xs text-gray-400">
+                      Check your inbox (and spam folder) for an email from Annix.
+                      Use the link to continue your RFQ from any device within 7 days.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex p-4 bg-slate-900/50 border-t border-slate-700">
+                  <button
+                    onClick={handleCloseSaveProgressDialog}
+                    className="w-full px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-500 transition-colors"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Save Progress Confirmation Toast */}
       {showSaveConfirmation && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
@@ -3291,6 +3733,26 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                 <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
                   {draftNumber}
                 </span>
+              )}
+              {!isAuthenticated && hasLocalDraft && localDraftLastSaved && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs bg-green-100 text-green-700 border border-green-200">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Auto-saved {formatLastSaved(localDraftLastSaved)}
+                </span>
+              )}
+              {!isAuthenticated && (
+                <button
+                  onClick={handleOpenSaveProgressDialog}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors"
+                  title="Save progress and get a recovery link via email"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                  </svg>
+                  Save Progress
+                </button>
               )}
               <div className="text-sm text-gray-500">
                 {rfqData?.projectName || 'New RFQ'}

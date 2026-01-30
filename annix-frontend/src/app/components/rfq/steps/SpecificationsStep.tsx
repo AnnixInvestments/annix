@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { type MaterialLimits, materialLimits as getMaterialLimits, checkMaterialSuitability, WORKING_PRESSURE_BAR, WORKING_TEMPERATURE_CELSIUS } from '@/app/lib/config/rfq';
 import { materialValidationApi, coatingSpecificationApi, type ISO12944System, type ISO12944SystemsByDurabilityResult, type ValidPressureClassInfo } from '@/app/lib/api/client';
 import { usePtRecommendations } from '@/app/lib/hooks/usePtRecommendations';
@@ -8,6 +9,7 @@ import { isStainlessSteelSpec } from '@/app/lib/config/rfq/boltGradeRecommendati
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
 import { log } from '@/app/lib/logger';
 import { nowISO } from '@/app/lib/datetime';
+import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { SABS_1123_FLANGE_TYPES, BS_4504_FLANGE_TYPES, ASME_B16_5_FLANGE_TYPES, BS_10_FLANGE_TYPES, ASME_B16_47_SERIES_A_FLANGE_TYPES, ASME_B16_47_SERIES_B_FLANGE_TYPES } from '@/app/lib/hooks/useFlangeWeights';
 
 interface MaterialProperties {
@@ -512,7 +514,167 @@ function hasCompleteExternalProfile(profile: ExternalEnvironmentProfile): boolea
 }
 
 
+// Steel specs allowed for unregistered customers
+const isSteelSpecAllowedForUnregistered = (specName: string): boolean => {
+  const name = specName.toLowerCase();
+  // Allow SABS 62 (Medium and Heavy variants)
+  if (name.includes('sabs 62') && (name.includes('medium') || name.includes('heavy'))) {
+    return true;
+  }
+  // Allow SABS 719
+  if (name.includes('sabs 719')) {
+    return true;
+  }
+  // Allow ASTM A106 Gr.B (Grade B)
+  if (name.includes('astm a106') && (name.includes('gr.b') || name.includes('grade b') || name.includes('gr b'))) {
+    return true;
+  }
+  return false;
+};
+
+// Flange standards allowed for unregistered customers
+const UNREGISTERED_ALLOWED_FLANGE_STANDARDS = [
+  'BS 4504',
+  'SABS 1123',
+  'BS 10',
+  'ASME B16.5',
+];
+
+const isFlangeStandardAllowedForUnregistered = (standardCode: string): boolean => {
+  return UNREGISTERED_ALLOWED_FLANGE_STANDARDS.some(allowed =>
+    standardCode.toLowerCase().includes(allowed.toLowerCase()) ||
+    allowed.toLowerCase().includes(standardCode.toLowerCase())
+  );
+};
+
+interface RestrictionPopupPosition {
+  x: number;
+  y: number;
+}
+
+function RestrictionPopup({ position, onClose }: { position: RestrictionPopupPosition; onClose: () => void }) {
+  return (
+    <div
+      className="fixed z-[100] bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl border border-slate-600 max-w-xs"
+      style={{
+        left: Math.min(position.x, window.innerWidth - 300),
+        top: position.y + 10,
+      }}
+      onMouseLeave={onClose}
+    >
+      <div className="flex items-start gap-2">
+        <svg className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m11-7a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+          <p className="text-sm font-medium">This option is restricted</p>
+          <p className="text-xs text-gray-300 mt-1">
+            Available on other pricing tiers.{' '}
+            <Link href="/pricing" className="text-blue-400 hover:text-blue-300 underline" onClick={onClose}>
+              View pricing
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type FeatureType = 'coating-assistant' | 'lining-assistant';
+
+interface FeatureRestrictionPopupProps {
+  feature: FeatureType;
+  position: RestrictionPopupPosition;
+  onClose: () => void;
+}
+
+const FEATURE_DESCRIPTIONS: Record<FeatureType, { title: string; description: string; benefits: string[] }> = {
+  'coating-assistant': {
+    title: 'External Coating Assistant',
+    description: 'An intelligent coating recommendation system based on ISO 12944 and ISO 21809 standards.',
+    benefits: [
+      'Analyzes atmospheric conditions including marine influence, industrial pollution, and UV exposure',
+      'Profiles installation environments (above ground, buried, submerged, splash zone)',
+      'Recommends optimal coating systems based on corrosivity category',
+      'Provides durability classifications and system specifications'
+    ]
+  },
+  'lining-assistant': {
+    title: 'Internal Lining Assistant',
+    description: 'A comprehensive lining recommendation system for material transfer applications based on ASTM and ISO standards.',
+    benefits: [
+      'Analyzes material properties including particle size, hardness, and silica content',
+      'Evaluates chemical environment (pH levels, chloride exposure, operating temperatures)',
+      'Considers flow characteristics (velocity, solids percentage, impact angles)',
+      'Recommends appropriate lining systems (rubber, ceramic, polyurethane, HDPE) with thickness specifications'
+    ]
+  }
+};
+
+function FeatureRestrictionPopup({ feature, position, onClose }: FeatureRestrictionPopupProps) {
+  const info = FEATURE_DESCRIPTIONS[feature];
+  return (
+    <div
+      className="fixed z-[100] bg-slate-800 text-white px-4 py-4 rounded-lg shadow-xl border border-slate-600 max-w-md"
+      style={{
+        left: Math.min(position.x - 150, window.innerWidth - 450),
+        top: Math.min(position.y + 10, window.innerHeight - 300),
+      }}
+      onMouseLeave={onClose}
+    >
+      <div className="flex items-start gap-3">
+        <svg className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m11-7a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-amber-400">{info.title}</p>
+          <p className="text-xs text-gray-300 mt-1">{info.description}</p>
+          <ul className="mt-2 space-y-1">
+            {info.benefits.map((benefit, idx) => (
+              <li key={idx} className="text-xs text-gray-400 flex items-start gap-1.5">
+                <span className="text-emerald-400 mt-0.5">•</span>
+                <span>{benefit}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 pt-2 border-t border-slate-600">
+            <p className="text-xs text-gray-300">
+              This feature is available to registered users.{' '}
+              <Link href="/register" className="text-blue-400 hover:text-blue-300 underline" onClick={onClose}>
+                Create an account
+              </Link>
+              {' '}to access this assistant.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, masterData, errors, fetchAndSelectPressureClass, availablePressureClasses, requiredProducts = [], rfqData }: any) {
+  // Authentication status for restrictions
+  const { isAuthenticated } = useOptionalCustomerAuth();
+  const isUnregisteredCustomer = !isAuthenticated;
+
+  // Restriction popup state
+  const [restrictionPopup, setRestrictionPopup] = useState<RestrictionPopupPosition | null>(null);
+
+  const showRestrictionPopup = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRestrictionPopup({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  // Feature restriction popup state (for Coating/Lining assistants)
+  const [featureRestrictionPopup, setFeatureRestrictionPopup] = useState<{ feature: FeatureType; position: RestrictionPopupPosition } | null>(null);
+
+  const showFeatureRestrictionPopup = useCallback((feature: FeatureType) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFeatureRestrictionPopup({ feature, position: { x: e.clientX, y: e.clientY } });
+  }, []);
+
   // Check which product types are selected
   const showSteelPipes = requiredProducts.includes('fabricated_steel');
   const showFastenersGaskets = requiredProducts.includes('fasteners_gaskets');
@@ -552,28 +714,37 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
   const [steelSpecDropdownOpen, setSteelSpecDropdownOpen] = useState(false);
   const steelSpecDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
+  // Flange Standard custom dropdown state
+  const [flangeStandardDropdownOpen, setFlangeStandardDropdownOpen] = useState(false);
+  const flangeStandardDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (steelSpecDropdownRef.current && !steelSpecDropdownRef.current.contains(event.target as Node)) {
         setSteelSpecDropdownOpen(false);
       }
+      if (flangeStandardDropdownRef.current && !flangeStandardDropdownRef.current.contains(event.target as Node)) {
+        setFlangeStandardDropdownOpen(false);
+      }
     };
-    if (steelSpecDropdownOpen) {
+    if (steelSpecDropdownOpen || flangeStandardDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [steelSpecDropdownOpen]);
+  }, [steelSpecDropdownOpen, flangeStandardDropdownOpen]);
 
   const hasErrors = errors && (errors.workingPressure || errors.workingTemperature || errors.steelPipesConfirmation || errors.fastenersConfirmation);
 
   const currentSteelSpec = masterData?.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
-  const { recommendations: ptRecommendations, boltRecommendation, isLoading: ptLoading } = usePtRecommendations({
+  const currentPressureClass = availablePressureClasses?.find((pc: any) => pc.id === globalSpecs?.flangePressureClassId);
+  const { recommendations: ptRecommendations, boltRecommendation, gasketRecommendation, isLoading: ptLoading } = usePtRecommendations({
     standardId: globalSpecs?.flangeStandardId !== 'PE' ? globalSpecs?.flangeStandardId : undefined,
     workingPressureBar: globalSpecs?.workingPressureBar,
     temperatureCelsius: globalSpecs?.workingTemperatureC,
     currentPressureClassId: globalSpecs?.flangePressureClassId,
     steelSpecName: currentSteelSpec?.steelSpecName,
+    pressureClassDesignation: currentPressureClass?.designation,
     enabled: showSteelPipes && !globalSpecs?.steelPipesSpecsConfirmed,
   });
 
@@ -953,40 +1124,48 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                       const newSteelSpec = masterData.steelSpecs?.find((s: any) => s.id === specId);
                       const specName = newSteelSpec?.steelSpecName || '';
 
-                      if (specName && (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC)) {
-                        const suitability = await materialValidationApi.checkMaterialSuitability(
-                          specName,
-                          globalSpecs?.workingTemperatureC,
-                          globalSpecs?.workingPressureBar
-                        );
-
-                        if (!suitability.isSuitable) {
-                          const mappedLimits = suitability.limits ? {
-                            minTempC: suitability.limits.minTempC,
-                            maxTempC: suitability.limits.maxTempC,
-                            maxPressureBar: suitability.limits.maxPressureBar,
-                            type: suitability.limits.materialType,
-                            notes: suitability.limits.notes
-                          } : undefined;
-
-                          setMaterialWarning({
-                            show: true,
+                      try {
+                        if (specName && (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC)) {
+                          const suitability = await materialValidationApi.checkMaterialSuitability(
                             specName,
-                            specId,
-                            warnings: suitability.warnings,
-                            recommendation: suitability.recommendation,
-                            limits: mappedLimits
-                          });
-                          setSteelSpecDropdownOpen(false);
-                          return;
+                            globalSpecs?.workingTemperatureC,
+                            globalSpecs?.workingPressureBar
+                          );
+
+                          if (!suitability.isSuitable) {
+                            const mappedLimits = suitability.limits ? {
+                              minTempC: suitability.limits.minTempC,
+                              maxTempC: suitability.limits.maxTempC,
+                              maxPressureBar: suitability.limits.maxPressureBar,
+                              type: suitability.limits.materialType,
+                              notes: suitability.limits.notes
+                            } : undefined;
+
+                            setMaterialWarning({
+                              show: true,
+                              specName,
+                              specId,
+                              warnings: suitability.warnings,
+                              recommendation: suitability.recommendation,
+                              limits: mappedLimits
+                            });
+                            setSteelSpecDropdownOpen(false);
+                            return;
+                          }
                         }
+                      } catch (error) {
+                        console.warn('Material validation API unavailable, proceeding with selection:', error);
                       }
 
-                      if (specId && globalSpecs?.flangeStandardId && globalSpecs?.workingPressureBar) {
-                        const materialGroup = getFlangeMaterialGroup(newSteelSpec?.steelSpecName);
-                        recommendedPressureClassId = await fetchAndSelectPressureClass(
-                          globalSpecs.flangeStandardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup
-                        );
+                      try {
+                        if (specId && globalSpecs?.flangeStandardId && globalSpecs?.workingPressureBar) {
+                          const materialGroup = getFlangeMaterialGroup(newSteelSpec?.steelSpecName);
+                          recommendedPressureClassId = await fetchAndSelectPressureClass(
+                            globalSpecs.flangeStandardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup
+                          );
+                        }
+                      } catch (error) {
+                        console.warn('Pressure class API unavailable:', error);
                       }
 
                       onUpdateGlobalSpecs({
@@ -1021,26 +1200,59 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                           <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 sticky top-0">
                             {suitableSpecs.length > 0 ? group.label : `${group.label} (Not Suitable)`}
                           </div>
-                          {suitableSpecs.map((spec: any) => (
-                            <button
-                              key={spec.id}
-                              type="button"
-                              onClick={() => handleSpecSelect(spec.id)}
-                              className={`w-full px-3 py-1.5 text-sm text-left hover:bg-blue-50 ${
-                                globalSpecs?.steelSpecificationId === spec.id ? 'bg-blue-100 text-blue-800' : 'text-gray-900'
-                              }`}
-                            >
-                              {spec.steelSpecName}
-                            </button>
-                          ))}
-                          {unsuitableSpecs.map((spec: any) => (
-                            <div
-                              key={spec.id}
-                              className="w-full px-3 py-1.5 text-sm text-left text-gray-400 cursor-not-allowed"
-                            >
-                              {spec.steelSpecName}{getLimitsText(spec.steelSpecName)} - NOT SUITABLE
-                            </div>
-                          ))}
+                          {suitableSpecs.map((spec: any) => {
+                            const isAllowedForUnregistered = isSteelSpecAllowedForUnregistered(spec.steelSpecName || '');
+                            const isRestricted = isUnregisteredCustomer && !isAllowedForUnregistered;
+
+                            if (isRestricted) {
+                              return (
+                                <div
+                                  key={spec.id}
+                                  onClick={showRestrictionPopup}
+                                  onMouseEnter={showRestrictionPopup}
+                                  className="w-full px-3 py-1.5 text-sm text-left text-gray-400 cursor-not-allowed hover:bg-gray-100 flex items-center justify-between"
+                                >
+                                  <span>{spec.steelSpecName}</span>
+                                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                  </svg>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <button
+                                key={spec.id}
+                                type="button"
+                                onClick={() => handleSpecSelect(spec.id)}
+                                className={`w-full px-3 py-1.5 text-sm text-left hover:bg-blue-50 ${
+                                  globalSpecs?.steelSpecificationId === spec.id ? 'bg-blue-100 text-blue-800' : 'text-gray-900'
+                                }`}
+                              >
+                                {spec.steelSpecName}
+                              </button>
+                            );
+                          })}
+                          {unsuitableSpecs.map((spec: any) => {
+                            const isAllowedForUnregistered = isSteelSpecAllowedForUnregistered(spec.steelSpecName || '');
+                            const isRestricted = isUnregisteredCustomer && !isAllowedForUnregistered;
+
+                            return (
+                              <div
+                                key={spec.id}
+                                onClick={isRestricted ? showRestrictionPopup : undefined}
+                                onMouseEnter={isRestricted ? showRestrictionPopup : undefined}
+                                className="w-full px-3 py-1.5 text-sm text-left text-gray-400 cursor-not-allowed flex items-center justify-between"
+                              >
+                                <span>{spec.steelSpecName}{getLimitsText(spec.steelSpecName)} - NOT SUITABLE</span>
+                                {isRestricted && (
+                                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                  </svg>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       );
                     });
@@ -1075,61 +1287,115 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
             </div>
 
             {/* Flange Standard */}
-            <div>
+            <div ref={flangeStandardDropdownRef} className="relative">
               <label className="block text-xs font-semibold text-gray-900 mb-1">Flange Standard <span className="text-red-500">*</span></label>
-              <select
-                value={globalSpecs?.flangeStandardId || ''}
-                onChange={async (e) => {
-                  const rawValue = e.target.value;
-
-                  // Handle Plain Ended (PE) option - no flanges
-                  if (rawValue === 'PE') {
-                    onUpdateGlobalSpecs({
-                      ...globalSpecs,
-                      flangeStandardId: 'PE',
-                      flangePressureClassId: undefined // No pressure class needed for plain ended
-                    });
-                    return;
-                  }
-
-                  const standardId = rawValue ? Number(rawValue) : undefined;
-                  let recommendedPressureClassId: number | undefined = undefined;
-
-                  // Clear pressure class when switching standards (must pick new one for the new standard)
-                  const standardChanged = standardId !== globalSpecs?.flangeStandardId;
-
-                  // Get material group from selected steel spec
-                  const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
-                  const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
-
-                  if (standardId && globalSpecs?.workingPressureBar) {
-                    recommendedPressureClassId = await fetchAndSelectPressureClass(standardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup) || undefined;
-                  } else if (standardId) {
-                    await fetchAndSelectPressureClass(standardId);
-                  }
-
-                  // If standard changed, only use new recommendation (don't keep old class from different standard)
-                  const newPressureClassId = standardChanged
-                    ? recommendedPressureClassId  // Only use new recommendation when switching standards
-                    : (recommendedPressureClassId || globalSpecs?.flangePressureClassId);
-
-                  log.debug(`Flange standard changed to ${standardId}, recommended class: ${recommendedPressureClassId}, final: ${newPressureClassId}`);
-
-                  onUpdateGlobalSpecs({
-                    ...globalSpecs,
-                    flangeStandardId: standardId,
-                    flangePressureClassId: newPressureClassId
-                  });
-                }}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                required
+              <button
+                type="button"
+                onClick={() => setFlangeStandardDropdownOpen(!flangeStandardDropdownOpen)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-left flex items-center justify-between bg-white"
               >
-                <option value="">Select flange standard...</option>
-                <option value="PE">Plain Ended (No Flanges)</option>
-                {masterData.flangeStandards.map((standard: any) => (
-                  <option key={standard.id} value={standard.id}>{standard.code}</option>
-                ))}
-              </select>
+                <span className={globalSpecs?.flangeStandardId ? 'text-gray-900' : 'text-gray-400'}>
+                  {globalSpecs?.flangeStandardId === 'PE'
+                    ? 'Plain Ended (No Flanges)'
+                    : globalSpecs?.flangeStandardId
+                      ? masterData.flangeStandards?.find((s: any) => s.id === globalSpecs.flangeStandardId)?.code || 'Select flange standard...'
+                      : 'Select flange standard...'}
+                </span>
+                <svg className={`w-4 h-4 text-gray-400 transition-transform ${flangeStandardDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {flangeStandardDropdownOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {(() => {
+                    const handleFlangeStandardSelect = async (rawValue: string | number) => {
+                      if (rawValue === 'PE') {
+                        onUpdateGlobalSpecs({
+                          ...globalSpecs,
+                          flangeStandardId: 'PE',
+                          flangePressureClassId: undefined
+                        });
+                        setFlangeStandardDropdownOpen(false);
+                        return;
+                      }
+
+                      const standardId = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+                      let recommendedPressureClassId: number | undefined = undefined;
+                      const standardChanged = standardId !== globalSpecs?.flangeStandardId;
+                      const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === globalSpecs?.steelSpecificationId);
+                      const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
+
+                      try {
+                        if (standardId && globalSpecs?.workingPressureBar) {
+                          recommendedPressureClassId = await fetchAndSelectPressureClass(standardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup) || undefined;
+                        } else if (standardId) {
+                          await fetchAndSelectPressureClass(standardId);
+                        }
+                      } catch (error) {
+                        console.warn('Pressure class fetch failed:', error);
+                      }
+
+                      const newPressureClassId = standardChanged
+                        ? recommendedPressureClassId
+                        : (recommendedPressureClassId || globalSpecs?.flangePressureClassId);
+
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        flangeStandardId: standardId,
+                        flangePressureClassId: newPressureClassId
+                      });
+                      setFlangeStandardDropdownOpen(false);
+                    };
+
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleFlangeStandardSelect('PE')}
+                          className={`w-full px-3 py-2 text-sm text-left hover:bg-blue-50 ${
+                            globalSpecs?.flangeStandardId === 'PE' ? 'bg-blue-100 text-blue-800' : 'text-gray-900'
+                          }`}
+                        >
+                          Plain Ended (No Flanges)
+                        </button>
+                        {masterData.flangeStandards.map((standard: any) => {
+                          const isAllowed = isFlangeStandardAllowedForUnregistered(standard.code);
+                          const isRestricted = isUnregisteredCustomer && !isAllowed;
+
+                          if (isRestricted) {
+                            return (
+                              <div
+                                key={standard.id}
+                                onClick={showRestrictionPopup}
+                                onMouseEnter={showRestrictionPopup}
+                                className="w-full px-3 py-2 text-sm text-left text-gray-400 cursor-not-allowed hover:bg-gray-100 flex items-center justify-between"
+                              >
+                                <span>{standard.code}</span>
+                                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <button
+                              key={standard.id}
+                              type="button"
+                              onClick={() => handleFlangeStandardSelect(standard.id)}
+                              className={`w-full px-3 py-2 text-sm text-left hover:bg-blue-50 ${
+                                globalSpecs?.flangeStandardId === standard.id ? 'bg-blue-100 text-blue-800' : 'text-gray-900'
+                              }`}
+                            >
+                              {standard.code}
+                            </button>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
             {/* Flange Pressure Class */}
@@ -1442,12 +1708,25 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
             <div className="mb-2">
               <button
                 type="button"
-                onClick={() => onUpdateGlobalSpecs({
-                  ...globalSpecs,
-                  showExternalCoatingProfile: !globalSpecs?.showExternalCoatingProfile
-                })}
-                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-medium text-xs mb-2"
+                onClick={isUnregisteredCustomer
+                  ? showFeatureRestrictionPopup('coating-assistant')
+                  : () => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      showExternalCoatingProfile: !globalSpecs?.showExternalCoatingProfile
+                    })
+                }
+                onMouseEnter={isUnregisteredCustomer ? showFeatureRestrictionPopup('coating-assistant') : undefined}
+                className={`flex items-center gap-1.5 font-medium text-xs mb-2 ${
+                  isUnregisteredCustomer
+                    ? 'text-gray-400 cursor-not-allowed'
+                    : 'text-blue-600 hover:text-blue-800'
+                }`}
               >
+                {isUnregisteredCustomer && (
+                  <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                )}
                 <svg className={`w-3 h-3 transition-transform ${globalSpecs?.showExternalCoatingProfile ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -3404,12 +3683,25 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
             <div className="mb-2">
               <button
                 type="button"
-                onClick={() => onUpdateGlobalSpecs({
-                  ...globalSpecs,
-                  showMaterialTransferProfile: !globalSpecs?.showMaterialTransferProfile
-                })}
-                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-medium text-xs mb-2"
+                onClick={isUnregisteredCustomer
+                  ? showFeatureRestrictionPopup('lining-assistant')
+                  : () => onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      showMaterialTransferProfile: !globalSpecs?.showMaterialTransferProfile
+                    })
+                }
+                onMouseEnter={isUnregisteredCustomer ? showFeatureRestrictionPopup('lining-assistant') : undefined}
+                className={`flex items-center gap-1.5 font-medium text-xs mb-2 ${
+                  isUnregisteredCustomer
+                    ? 'text-gray-400 cursor-not-allowed'
+                    : 'text-blue-600 hover:text-blue-800'
+                }`}
               >
+                {isUnregisteredCustomer && (
+                  <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                )}
                 <svg className={`w-3 h-3 transition-transform ${globalSpecs?.showMaterialTransferProfile ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -4994,6 +5286,50 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                     <p className="mt-1 text-xs text-gray-500">
                       Select based on pressure class, temperature, and media compatibility
                     </p>
+
+                    {/* Gasket Recommendation - show when no gasket selected */}
+                    {!globalSpecs?.gasketType && gasketRecommendation && globalSpecs?.workingTemperatureC !== undefined && (
+                      <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                        <div className="flex items-start gap-2">
+                          <svg className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <div className="flex-1">
+                            <p className="text-blue-900">
+                              <span className="font-medium">Recommended: {gasketRecommendation.gasketName}</span>
+                            </p>
+                            <p className="text-blue-700 mt-0.5">{gasketRecommendation.reason}</p>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                gasketType: gasketRecommendation.gasketCode
+                              })}
+                              className="mt-1.5 px-2 py-0.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                            >
+                              Apply
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Gasket Warning - show when selected gasket differs from recommendation */}
+                    {globalSpecs?.gasketType && gasketRecommendation && globalSpecs.gasketType !== gasketRecommendation.gasketCode && globalSpecs?.workingTemperatureC !== undefined && (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
+                        <div className="flex items-start gap-2">
+                          <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <div className="flex-1">
+                            <p className="text-amber-800">
+                              Selected gasket differs from recommendation for {globalSpecs.workingTemperatureC}°C / Class {currentPressureClass?.designation || 'N/A'}
+                            </p>
+                            <p className="text-amber-700 text-[10px] mt-0.5">Recommended: {gasketRecommendation.gasketName}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -5218,6 +5554,23 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
               </div>
             </div>
           </div>
+        )}
+
+        {/* Restriction Popup for unregistered users */}
+        {restrictionPopup && (
+          <RestrictionPopup
+            position={restrictionPopup}
+            onClose={() => setRestrictionPopup(null)}
+          />
+        )}
+
+        {/* Feature Restriction Popup for Coating/Lining Assistants */}
+        {featureRestrictionPopup && (
+          <FeatureRestrictionPopup
+            feature={featureRestrictionPopup.feature}
+            position={featureRestrictionPopup.position}
+            onClose={() => setFeatureRestrictionPopup(null)}
+          />
         )}
       </div>
     </div>

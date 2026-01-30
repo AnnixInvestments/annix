@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
-import { OrbitControls, Center, Environment, ContactShadows, Tube, Text } from '@react-three/drei'
+import { OrbitControls, Center, Environment, ContactShadows, Tube, Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { log } from '@/app/lib/logger'
 import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs'
@@ -1997,7 +1997,11 @@ const Scene = (props: Props) => {
           const distLineY = weldPoint.y - outerR * 3
           const distLineStart = new THREE.Vector3(tangentStart.x, distLineY, tangentStart.z)
           const distLineEnd = new THREE.Vector3(weldPoint.x, distLineY, weldPoint.z)
-          const distLineOffset = new THREE.Vector3(stub.outerR + 0.1, 0, 0)
+
+          const dimOffsetAmount = stub.outerR + outerR * 0.5
+          const stubLengthDimOffset = isOutletStub
+            ? new THREE.Vector3(-tangentDir.z, 0, tangentDir.x).normalize().multiplyScalar(dimOffsetAmount)
+            : new THREE.Vector3(-dimOffsetAmount, 0, 0)
 
           return (
             <group key={i}>
@@ -2013,90 +2017,129 @@ const Scene = (props: Props) => {
                 nb={stub.nb}
               />
 
-              {/* Green line - distance from flange to stub (below pipe) */}
-              <Line
-                points={[
-                  [tangentStart.x, distLineY, tangentStart.z],
-                  [stubCenterOnAxis.x, distLineY, stubCenterOnAxis.z]
-                ]}
-                color="#009900"
-                lineWidth={3}
-              />
-              <Line
-                points={[
-                  [tangentStart.x, tangentStart.y - outerR, tangentStart.z],
-                  [tangentStart.x, distLineY, tangentStart.z]
-                ]}
-                color="#009900"
-                lineWidth={2}
-                dashed
-                dashSize={0.03}
-                gapSize={0.02}
-              />
-              <Line
-                points={[
-                  [stubCenterOnAxis.x, stubCenterOnAxis.y - outerR, stubCenterOnAxis.z],
-                  [stubCenterOnAxis.x, distLineY, stubCenterOnAxis.z]
-                ]}
-                color="#009900"
-                lineWidth={2}
-                dashed
-                dashSize={0.03}
-                gapSize={0.02}
-              />
-              <Text
-                position={[
-                  (distLineStart.x + distLineEnd.x) / 2,
-                  distLineY - 0.1,
-                  (distLineStart.z + distLineEnd.z) / 2
-                ]}
-                fontSize={0.15}
-                color="#009900"
-                anchorX="center"
-                anchorY="top"
-                fontWeight="bold"
-                rotation={[-Math.PI / 2, 0, 0]}
-              >
-                {`${distFromFlangeMm}mm`}
-              </Text>
+              {/* Green L-bracket dimension for stub distance from flange */}
+              {(() => {
+                const flangeEnd = isOutletStub ? outletEnd : inletStart
+                const leftOffset = isOutletStub
+                  ? new THREE.Vector3(-tangentDir.z, 0, tangentDir.x).normalize().multiplyScalar(-outerR * 1.5)
+                  : new THREE.Vector3(-outerR * 1.5, 0, 0)
+                const dimLeftX = stubCenterOnAxis.x + leftOffset.x
+                const dimLeftZ = stubCenterOnAxis.z + leftOffset.z
+                const flangeLeftX = flangeEnd.x + leftOffset.x
+                const flangeLeftZ = flangeEnd.z + leftOffset.z
+                const bottomY = stubEnd.y - outerR * 0.5
 
-              {/* Purple line - stub length (vertical beside stub) */}
-              <Line
-                points={[[dimLineFlange.x, dimLineFlange.y, dimLineFlange.z], [dimLineWeld.x, dimLineWeld.y, dimLineWeld.z]]}
-                color="#990099"
-                lineWidth={3}
-              />
-              <Line
-                points={[[flangePoint.x, flangePoint.y, flangePoint.z], [dimLineFlange.x, dimLineFlange.y, dimLineFlange.z]]}
-                color="#990099"
-                lineWidth={2}
-                dashed
-                dashSize={0.03}
-                gapSize={0.02}
-              />
-              <Line
-                points={[[weldPoint.x, weldPoint.y, weldPoint.z], [dimLineWeld.x, dimLineWeld.y, dimLineWeld.z]]}
-                color="#990099"
-                lineWidth={2}
-                dashed
-                dashSize={0.03}
-                gapSize={0.02}
-              />
-              <Text
-                position={[
-                  dimLineWeld.x + 0.1,
-                  (dimLineFlange.y + dimLineWeld.y) / 2,
-                  dimLineWeld.z
-                ]}
-                fontSize={0.15}
-                color="#990099"
-                anchorX="left"
-                anchorY="middle"
-                fontWeight="bold"
-                rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
-              >
-                {`${stubLengthMm}mm`}
-              </Text>
+                return (
+                  <>
+                    {/* Vertical line on left side of stub */}
+                    <Line
+                      points={[
+                        [dimLeftX, stubCenterOnAxis.y, dimLeftZ],
+                        [dimLeftX, bottomY, dimLeftZ]
+                      ]}
+                      color="#009900"
+                      lineWidth={3}
+                    />
+                    {/* Horizontal line at bottom */}
+                    <Line
+                      points={[
+                        [flangeLeftX, bottomY, flangeLeftZ],
+                        [dimLeftX, bottomY, dimLeftZ]
+                      ]}
+                      color="#009900"
+                      lineWidth={3}
+                    />
+                    {/* Vertical line from flange */}
+                    <Line
+                      points={[
+                        [flangeLeftX, flangeEnd.y, flangeLeftZ],
+                        [flangeLeftX, bottomY, flangeLeftZ]
+                      ]}
+                      color="#009900"
+                      lineWidth={3}
+                    />
+                    {/* Upright text - distance from flange */}
+                    <Text
+                      position={[
+                        dimLeftX - outerR * 0.3,
+                        stubCenterOnAxis.y + outerR * 0.3,
+                        dimLeftZ
+                      ]}
+                      fontSize={0.18}
+                      color="#009900"
+                      anchorX="right"
+                      anchorY="bottom"
+                      fontWeight="bold"
+                      rotation={[0, isOutletStub ? Math.atan2(leftOffset.x, leftOffset.z) + Math.PI : Math.PI, 0]}
+                    >
+                      {`${distFromFlangeMm}mm`}
+                    </Text>
+                  </>
+                )
+              })()}
+
+              {/* Purple dimension for stub length */}
+              {(() => {
+                const rightOffset = isOutletStub
+                  ? new THREE.Vector3(-tangentDir.z, 0, tangentDir.x).normalize().multiplyScalar(outerR * 1.5)
+                  : new THREE.Vector3(outerR * 1.5, 0, 0)
+                const dimRightX = stubCenterOnAxis.x + rightOffset.x
+                const dimRightZ = stubCenterOnAxis.z + rightOffset.z
+
+                return (
+                  <>
+                    {/* Vertical line beside stub */}
+                    <Line
+                      points={[
+                        [dimRightX, stubCenterOnAxis.y, dimRightZ],
+                        [dimRightX, stubEnd.y, dimRightZ]
+                      ]}
+                      color="#990099"
+                      lineWidth={3}
+                    />
+                    {/* Horizontal connector at top */}
+                    <Line
+                      points={[
+                        [stubCenterOnAxis.x, stubCenterOnAxis.y, stubCenterOnAxis.z],
+                        [dimRightX, stubCenterOnAxis.y, dimRightZ]
+                      ]}
+                      color="#990099"
+                      lineWidth={2}
+                      dashed
+                      dashSize={0.03}
+                      gapSize={0.02}
+                    />
+                    {/* Horizontal connector at bottom */}
+                    <Line
+                      points={[
+                        [stubEnd.x, stubEnd.y, stubEnd.z],
+                        [dimRightX, stubEnd.y, dimRightZ]
+                      ]}
+                      color="#990099"
+                      lineWidth={2}
+                      dashed
+                      dashSize={0.03}
+                      gapSize={0.02}
+                    />
+                    {/* Upright text - stub length */}
+                    <Text
+                      position={[
+                        dimRightX + rightOffset.x * 0.3,
+                        (stubCenterOnAxis.y + stubEnd.y) / 2,
+                        dimRightZ + rightOffset.z * 0.3
+                      ]}
+                      fontSize={0.18}
+                      color="#990099"
+                      anchorX="left"
+                      anchorY="middle"
+                      fontWeight="bold"
+                      rotation={[0, isOutletStub ? Math.atan2(rightOffset.x, rightOffset.z) : 0, 0]}
+                    >
+                      {`${stubLengthMm}mm`}
+                    </Text>
+                  </>
+                )
+              })()}
             </group>
           )
         })}

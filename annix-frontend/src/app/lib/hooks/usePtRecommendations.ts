@@ -7,6 +7,12 @@ import {
   isStainlessSteelSpec,
   BoltGradeRecommendation,
 } from '@/app/lib/config/rfq/boltGradeRecommendations';
+import {
+  recommendGasket,
+  type GasketRecommendation,
+} from '@/app/lib/config/rfq/gasketRecommendations';
+
+export type { GasketRecommendation };
 import { log } from '@/app/lib/logger';
 
 interface UsePtRecommendationsParams {
@@ -16,12 +22,14 @@ interface UsePtRecommendationsParams {
   materialGroup?: string;
   currentPressureClassId?: number;
   steelSpecName?: string;
+  pressureClassDesignation?: string;
   enabled?: boolean;
 }
 
 interface UsePtRecommendationsReturn {
   recommendations: PtRecommendationResult | null;
   boltRecommendation: BoltGradeRecommendation | null;
+  gasketRecommendation: GasketRecommendation | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -35,6 +43,7 @@ export function usePtRecommendations({
   materialGroup,
   currentPressureClassId,
   steelSpecName,
+  pressureClassDesignation,
   enabled = true,
 }: UsePtRecommendationsParams): UsePtRecommendationsReturn {
   const [recommendations, setRecommendations] = useState<PtRecommendationResult | null>(null);
@@ -43,11 +52,17 @@ export function usePtRecommendations({
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const isStainless = useMemo(() => isStainlessSteelSpec(steelSpecName), [steelSpecName]);
+
   const boltRecommendation = useMemo(() => {
     if (temperatureCelsius === undefined) return null;
-    const isStainless = isStainlessSteelSpec(steelSpecName);
     return recommendBoltGrade(temperatureCelsius, isStainless);
-  }, [temperatureCelsius, steelSpecName]);
+  }, [temperatureCelsius, isStainless]);
+
+  const gasketRecommendation = useMemo(() => {
+    if (temperatureCelsius === undefined) return null;
+    return recommendGasket(temperatureCelsius, pressureClassDesignation, isStainless);
+  }, [temperatureCelsius, pressureClassDesignation, isStainless]);
 
   const fetchRecommendations = useCallback(async () => {
     if (!standardId || workingPressureBar === undefined || temperatureCelsius === undefined) {
@@ -80,7 +95,11 @@ export function usePtRecommendations({
       }
       const message = err instanceof Error ? err.message : 'Failed to fetch recommendations';
       setError(message);
-      log.error('P-T recommendations error', { err });
+      if (message === 'Backend unavailable') {
+        log.debug('P-T recommendations: backend unavailable');
+      } else {
+        log.warn('P-T recommendations error', { message });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -113,6 +132,7 @@ export function usePtRecommendations({
   return {
     recommendations,
     boltRecommendation,
+    gasketRecommendation,
     isLoading,
     error,
   };

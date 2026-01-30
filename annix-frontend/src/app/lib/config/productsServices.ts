@@ -87,3 +87,22 @@ export const getProductServiceByValue = (value: string): ProductService | undefi
 // Helper to get labels for an array of values
 export const getProductServiceLabels = (values: string[]): string[] =>
   values.map(v => getProductServiceByValue(v)?.label || v);
+
+// Unregistered customer restrictions
+// Products/services available to unregistered customers (guests)
+export const UNREGISTERED_ALLOWED_PRODUCTS = [
+  'fabricated_steel',      // Steel Pipes
+  'fasteners_gaskets',     // Nuts, Bolts, Washers & Gaskets
+  'surface_protection',    // Surface Protection
+];
+
+// RFQ types available to unregistered customers
+export const UNREGISTERED_ALLOWED_PROJECT_TYPES = ['standard'];
+
+// Check if a product/service is available to unregistered customers
+export const isProductAvailableForUnregistered = (value: string): boolean =>
+  UNREGISTERED_ALLOWED_PRODUCTS.includes(value);
+
+// Check if a project type is available to unregistered customers
+export const isProjectTypeAvailableForUnregistered = (value: string): boolean =>
+  UNREGISTERED_ALLOWED_PROJECT_TYPES.includes(value);

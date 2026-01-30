@@ -45,22 +45,13 @@ export default function Navigation() {
                 Home
               </Link>
               <Link
-                href="/hdpe"
+                href="/rfq"
                 className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
-                  pathname === '/hdpe' || pathname.startsWith('/hdpe/') ? 'bg-[#FFA500]' : 'hover:bg-[#4a4da3]'
+                  pathname === '/rfq' || pathname.startsWith('/rfq/') ? 'bg-[#FFA500]' : 'hover:bg-[#4a4da3]'
                 }`}
-                style={{ color: pathname === '/hdpe' || pathname.startsWith('/hdpe/') ? '#323288' : '#FFA500' }}
+                style={{ color: pathname === '/rfq' || pathname.startsWith('/rfq/') ? '#323288' : '#FFA500' }}
               >
-                HDPE Pipes
-              </Link>
-              <Link
-                href="/pvc"
-                className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
-                  pathname === '/pvc' || pathname.startsWith('/pvc/') ? 'bg-[#FFA500]' : 'hover:bg-[#4a4da3]'
-                }`}
-                style={{ color: pathname === '/pvc' || pathname.startsWith('/pvc/') ? '#323288' : '#FFA500' }}
-              >
-                PVC Pipes
+                Create an RFQ
               </Link>
               <Link
                 href="/pricing"
@@ -70,6 +61,15 @@ export default function Navigation() {
                 style={{ color: pathname === '/pricing' ? '#323288' : '#FFA500' }}
               >
                 Pricing
+              </Link>
+              <Link
+                href="/about"
+                className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
+                  pathname === '/about' ? 'bg-[#FFA500]' : 'hover:bg-[#4a4da3]'
+                }`}
+                style={{ color: pathname === '/about' ? '#323288' : '#FFA500' }}
+              >
+                About
               </Link>
             </div>
           </div>

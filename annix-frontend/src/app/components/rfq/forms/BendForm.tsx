@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { log } from '@/app/lib/logger';
 import { fetchFlangeSpecsStatic, FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
 import { Select } from '@/app/components/ui/Select';
+import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
 import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
 import {
   BEND_END_OPTIONS,
@@ -110,6 +112,12 @@ function BendFormComponent({
   requiredProducts = [],
 }: BendFormProps) {
   log.info(`🔄 BendForm RENDER - entry.id: ${entry.id}, index: ${index}`);
+
+  // Authentication status for quantity restrictions
+  const { isAuthenticated } = useOptionalCustomerAuth();
+  const isUnregisteredCustomer = !isAuthenticated;
+  const MAX_QUANTITY_UNREGISTERED = 10;
+  const [quantityLimitPopup, setQuantityLimitPopup] = useState<{ x: number; y: number } | null>(null);
 
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
 
@@ -353,6 +361,7 @@ function BendFormComponent({
   }, [entry.specs?.bendItemType, entry.specs?.nominalBoreMm, entry.specs?.bendRadiusType, entry.specs?.bendType, isCurrentlySegmented, lastFetchedParams, entry.id, entry.specs, onUpdateEntry]);
 
   return (
+              <>
               <SplitPaneLayout
                 entryId={entry.id}
                 itemType="bend"
@@ -1203,15 +1212,20 @@ function BendFormComponent({
 
                   // Quantity Input (shared by both layouts)
                   const QuantityInput = (
-                    <div>
+                    <div className="relative">
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        Quantity *
+                        Quantity * {isUnregisteredCustomer && <span className="text-gray-400 font-normal">(max {MAX_QUANTITY_UNREGISTERED})</span>}
                       </label>
                       <input
                         type="number"
                         value={entry.specs?.quantityValue || ''}
                         onChange={(e) => {
                           const quantity = parseInt(e.target.value) || 1;
+                          if (isUnregisteredCustomer && quantity > MAX_QUANTITY_UNREGISTERED) {
+                            const rect = e.target.getBoundingClientRect();
+                            setQuantityLimitPopup({ x: rect.left + rect.width / 2, y: rect.bottom });
+                            return;
+                          }
                           onUpdateEntry(entry.id, {
                             specs: { ...entry.specs, quantityValue: quantity }
                           });
@@ -1221,6 +1235,7 @@ function BendFormComponent({
                         }}
                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                         min="1"
+                        max={isUnregisteredCustomer ? MAX_QUANTITY_UNREGISTERED : undefined}
                         placeholder="1"
                       />
                     </div>
@@ -3279,6 +3294,42 @@ function BendFormComponent({
                   </div>
                 }
               />
+
+              {/* Quantity Limit Popup for unregistered customers */}
+              {quantityLimitPopup && (
+                <div
+                  className="fixed z-[100] bg-slate-800 text-white px-4 py-4 rounded-lg shadow-xl border border-slate-600 max-w-sm"
+                  style={{
+                    left: Math.min(quantityLimitPopup.x - 150, window.innerWidth - 400),
+                    top: quantityLimitPopup.y + 10,
+                  }}
+                  onMouseLeave={() => setQuantityLimitPopup(null)}
+                >
+                  <div className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m11-7a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-amber-400">Quantity Limit Reached</p>
+                      <p className="text-xs text-gray-300 mt-2">
+                        Unregistered users can set a maximum quantity of {MAX_QUANTITY_UNREGISTERED} units per item.
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        To request larger quantities, please create a free account.
+                      </p>
+                      <div className="mt-3 pt-2 border-t border-slate-600">
+                        <p className="text-xs text-gray-300">
+                          <Link href="/register" className="text-blue-400 hover:text-blue-300 underline" onClick={() => setQuantityLimitPopup(null)}>
+                            Create a free account
+                          </Link>
+                          {' '}to request unlimited quantities and access all features.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              </>
   );
 }
 

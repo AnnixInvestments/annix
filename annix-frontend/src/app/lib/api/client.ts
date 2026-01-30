@@ -1507,6 +1507,99 @@ export const draftsApi = {
   },
 };
 
+export interface SaveAnonymousDraftDto {
+  customerEmail?: string;
+  projectName?: string;
+  currentStep: number;
+  formData: Record<string, any>;
+  globalSpecs?: Record<string, any>;
+  requiredProducts?: string[];
+  entries?: Record<string, any>[];
+  browserFingerprint?: string;
+}
+
+export interface AnonymousDraftResponse {
+  id: number;
+  recoveryToken: string;
+  customerEmail?: string;
+  projectName?: string;
+  currentStep: number;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AnonymousDraftFullResponse extends AnonymousDraftResponse {
+  formData: Record<string, any>;
+  globalSpecs?: Record<string, any>;
+  requiredProducts?: string[];
+  entries?: Record<string, any>[];
+}
+
+export interface RecoveryEmailResponse {
+  message: string;
+  draftFound: boolean;
+}
+
+export const anonymousDraftsApi = {
+  save: async (dto: SaveAnonymousDraftDto): Promise<AnonymousDraftResponse> => {
+    const response = await fetch(`${API_BASE_URL}/rfq/anonymous-drafts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(dto),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to save anonymous draft');
+    }
+    return response.json();
+  },
+
+  getByToken: async (token: string): Promise<AnonymousDraftFullResponse> => {
+    const response = await fetch(`${API_BASE_URL}/rfq/anonymous-drafts/token/${token}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Draft not found or expired');
+      }
+      throw new Error('Failed to retrieve anonymous draft');
+    }
+    return response.json();
+  },
+
+  requestRecoveryEmail: async (customerEmail: string): Promise<RecoveryEmailResponse> => {
+    const response = await fetch(`${API_BASE_URL}/rfq/anonymous-drafts/request-recovery`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ customerEmail }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to request recovery email');
+    }
+    return response.json();
+  },
+
+  claimDraft: async (token: string, userId: number): Promise<{ message: string; draftId: number }> => {
+    const response = await fetch(`${API_BASE_URL}/rfq/anonymous-drafts/token/${token}/claim/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to claim draft');
+    }
+    return response.json();
+  },
+};
+
 // BOQ Distribution API types
 export interface ConsolidatedBoqDataDto {
   straightPipes?: ConsolidatedItemDto[];
