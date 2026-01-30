@@ -2733,8 +2733,8 @@ export default function CSGBend3DPreview(props: Props) {
     autoCameraPosition = [autoCameraDistance * 0.3, autoCameraDistance * 1.2, autoCameraDistance * 0.3]
     autoCameraTarget = [centerX, 0, centerZ]
   } else {
-    const autoCameraDistance = Math.max(diagonalExtent * 2, 5)
-    autoCameraPosition = [centerX - autoCameraDistance * 0.3, autoCameraDistance * 1.2, centerZ + autoCameraDistance * 0.8]
+    const autoCameraDistance = Math.max(diagonalExtent * 1.2, 3)
+    autoCameraPosition = [centerX - autoCameraDistance * 0.2, autoCameraDistance * 0.5, centerZ + autoCameraDistance * 0.9]
     autoCameraTarget = [centerX, 0, centerZ]
   }
 
