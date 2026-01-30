@@ -971,7 +971,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       try {
         const { anonymousDraftsApi } = await import('@/app/lib/api/client');
         const serverDraft = await anonymousDraftsApi.getByToken(recoveryToken);
-        log.debug('Loaded anonymous draft from recovery token:', serverDraft);
+        log.debug('📥 Loaded anonymous draft from recovery token:', JSON.stringify(serverDraft, null, 2));
+        log.debug('📥 serverDraft.formData:', JSON.stringify(serverDraft.formData, null, 2));
+        log.debug('📥 serverDraft.entries:', serverDraft.entries?.length, 'entries');
+        log.debug('📥 serverDraft.globalSpecs:', JSON.stringify(serverDraft.globalSpecs, null, 2));
 
         const localDraft = loadLocalDraft();
         let useServerDraft = true;
@@ -2817,10 +2820,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           projectName: rfqData.projectName,
           formData: saveData.formData,
           globalSpecs: saveData.globalSpecs,
+          requiredProducts: saveData.requiredProducts,
           entries: saveData.straightPipeEntries,
           currentStep: saveData.currentStep,
         };
 
+        log.debug('📤 Sending anonymous draft to server:', JSON.stringify(anonymousSaveData, null, 2));
         const result = await anonymousDraftsApi.save(anonymousSaveData);
         log.debug('✅ Anonymous draft saved:', result);
 

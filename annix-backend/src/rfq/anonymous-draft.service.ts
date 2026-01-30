@@ -40,6 +40,11 @@ export class AnonymousDraftService {
   }
 
   async saveDraft(dto: SaveAnonymousDraftDto): Promise<AnonymousDraftResponseDto> {
+    this.logger.log(`Saving anonymous draft for ${dto.customerEmail}`);
+    this.logger.log(`Received formData keys: ${dto.formData ? Object.keys(dto.formData).join(', ') : 'null'}`);
+    this.logger.log(`Received entries count: ${dto.entries?.length || 0}`);
+    this.logger.log(`Received globalSpecs keys: ${dto.globalSpecs ? Object.keys(dto.globalSpecs).join(', ') : 'null'}`);
+
     let draft: AnonymousDraft | null = null;
 
     if (dto.customerEmail) {
@@ -89,13 +94,20 @@ export class AnonymousDraftService {
   }
 
   async getDraftByToken(token: string): Promise<AnonymousDraftFullResponseDto> {
+    this.logger.log(`Getting draft by token: ${token.substring(0, 8)}...`);
     const draft = await this.anonymousDraftRepository.findOne({
       where: { recoveryToken: token },
     });
 
     if (!draft) {
+      this.logger.warn(`Draft not found for token: ${token.substring(0, 8)}...`);
       throw new NotFoundException('Draft not found');
     }
+
+    this.logger.log(`Found draft ${draft.id} for ${draft.customerEmail}`);
+    this.logger.log(`Draft formData keys: ${draft.formData ? Object.keys(draft.formData).join(', ') : 'null'}`);
+    this.logger.log(`Draft entries count: ${draft.entries?.length || 0}`);
+    this.logger.log(`Draft globalSpecs keys: ${draft.globalSpecs ? Object.keys(draft.globalSpecs).join(', ') : 'null'}`);
 
     if (new Date() > draft.expiresAt) {
       throw new NotFoundException('Draft has expired');
