@@ -2738,8 +2738,9 @@ export default function CSGBend3DPreview(props: Props) {
     autoCameraTarget = [centerX, 0, centerZ]
   }
 
-  const cameraPosition = props.savedCameraPosition || autoCameraPosition
-  const cameraTarget = props.savedCameraTarget || autoCameraTarget
+  // Always use auto camera position for consistent default view
+  const cameraPosition = autoCameraPosition
+  const cameraTarget = autoCameraTarget
 
   return (
     <div data-bend-preview className="w-full h-full min-h-[400px] bg-slate-50 rounded-md border overflow-hidden relative">
