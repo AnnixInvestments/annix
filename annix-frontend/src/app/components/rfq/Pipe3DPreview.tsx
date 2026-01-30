@@ -1197,7 +1197,9 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
         gl={{ preserveDrawingBuffer: true }}
         camera={{
           position: cameraTargets.iso.pos as [number, number, number],
-          fov: 45
+          fov: 45,
+          near: 0.1,
+          far: 10000
         }}
       >
           <CaptureHelper captureRef={captureRef} />
@@ -1595,7 +1597,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
             </button>
 
             {/* Expanded Canvas */}
-            <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 1.5, 5], fov: 45 }}>
+            <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 1.5, 5], fov: 45, near: 0.01, far: 50000 }}>
               <ambientLight intensity={0.8} />
               <spotLight position={[10, 10, 5]} angle={0.5} penumbra={1} intensity={1} />
               <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />

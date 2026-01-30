@@ -1391,7 +1391,7 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
 
   return (
     <div data-tee-preview className="w-full h-full min-h-[400px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
-      <Canvas shadows dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }} camera={{ position: defaultCameraPosition, fov: 50 }} style={{ width: '100%', height: '100%' }}>
+      <Canvas shadows dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }} camera={{ position: defaultCameraPosition, fov: 50, near: 0.01, far: 50000 }} style={{ width: '100%', height: '100%' }}>
         <CaptureHelper captureRef={captureRef} />
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
@@ -1666,7 +1666,7 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
             </button>
 
             {/* Expanded Canvas */}
-            <Canvas shadows dpr={[1, 2]} camera={{ position: expandedCameraPosition, fov: 45 }}>
+            <Canvas shadows dpr={[1, 2]} camera={{ position: expandedCameraPosition, fov: 45, near: 0.01, far: 50000 }}>
               <ambientLight intensity={0.7} />
               <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
               <Environment preset="sunset" />

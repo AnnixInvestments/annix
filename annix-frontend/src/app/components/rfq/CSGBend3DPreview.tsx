@@ -2743,7 +2743,7 @@ export default function CSGBend3DPreview(props: Props) {
 
   return (
     <div data-bend-preview className="w-full h-full min-h-[400px] bg-slate-50 rounded-md border overflow-hidden relative">
-      <Canvas shadows dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }} camera={{ position: cameraPosition, fov: 45 }}>
+      <Canvas shadows dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }} camera={{ position: cameraPosition, fov: 45, near: 0.01, far: 50000 }}>
         <CaptureHelper captureRef={captureRef} />
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} intensity={1} castShadow />
@@ -3039,7 +3039,7 @@ export default function CSGBend3DPreview(props: Props) {
         <div className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4" onClick={() => setExpanded(false)}>
           <div className="relative w-full h-full max-w-[95vw] max-h-[90vh] bg-slate-100 rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setExpanded(false)} className="absolute top-4 right-4 z-[10001] bg-white p-2 rounded-full shadow">✕</button>
-            <Canvas shadows dpr={[1, 2]} camera={{ position: cameraPosition, fov: 40 }}>
+            <Canvas shadows dpr={[1, 2]} camera={{ position: cameraPosition, fov: 40, near: 0.01, far: 50000 }}>
               <ambientLight intensity={0.7} />
               <spotLight position={[10, 10, 10]} intensity={1} castShadow />
               <pointLight position={[-5, 5, -5]} intensity={0.5} />
