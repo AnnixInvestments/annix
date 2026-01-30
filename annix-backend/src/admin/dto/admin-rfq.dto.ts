@@ -8,6 +8,7 @@ export enum RfqStatus {
   ACCEPTED = 'ACCEPTED',
   REJECTED = 'REJECTED',
   CANCELLED = 'CANCELLED',
+  UNREGISTERED = 'UNREGISTERED',
 }
 
 export class RfqQueryDto {

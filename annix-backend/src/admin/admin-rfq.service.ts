@@ -28,6 +28,7 @@ import {
   RfqItemDetailDto,
   RfqDocumentDto,
   RfqFullDraftDto,
+  RfqStatus,
 } from './dto/admin-rfq.dto';
 
 @Injectable()
@@ -80,7 +81,7 @@ export class AdminRfqService {
     }
 
     // Apply status filter - map to currentStep for drafts
-    if (status && status !== 'UNREGISTERED') {
+    if (status && status !== RfqStatus.UNREGISTERED) {
       // For drafts, status is based on completion/conversion
       if (status === 'DRAFT') {
         queryBuilder.andWhere('draft.isConverted = false');
@@ -110,7 +111,7 @@ export class AdminRfqService {
     // Get registered drafts (skip if filtering for UNREGISTERED only)
     let registeredDrafts: RfqDraft[] = [];
     let registeredTotal = 0;
-    if (status !== 'UNREGISTERED') {
+    if (status !== RfqStatus.UNREGISTERED) {
       registeredTotal = await queryBuilder.getCount();
       registeredDrafts = await queryBuilder.getMany();
     }
@@ -139,7 +140,7 @@ export class AdminRfqService {
     // Get anonymous drafts (skip if filtering for non-UNREGISTERED status)
     let anonymousDrafts: AnonymousDraft[] = [];
     let anonymousTotal = 0;
-    if (!status || status === 'UNREGISTERED' || status === 'DRAFT') {
+    if (!status || status === RfqStatus.UNREGISTERED || status === RfqStatus.DRAFT) {
       anonymousTotal = await anonQueryBuilder.getCount();
       anonymousDrafts = await anonQueryBuilder.getMany();
     }
