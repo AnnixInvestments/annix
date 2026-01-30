@@ -311,7 +311,7 @@ export default function SplitPaneLayout({
 
       {/* 3D Preview - shown below calc results when split-pane is disabled */}
       {!isEnabled && showSplitToggle && previewContent && (
-        <div>
+        <div className="w-full" style={{ minHeight: '500px', height: '500px' }}>
           {previewContent}
         </div>
       )}

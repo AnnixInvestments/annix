@@ -2776,10 +2776,9 @@ export default function CSGBend3DPreview(props: Props) {
     autoCameraPosition = [autoCameraDistance * 0.3, autoCameraDistance * 1.2, autoCameraDistance * 0.3]
     autoCameraTarget = [centerX, 0, centerZ]
   } else {
-    // Camera positioned below and in front of the bend, looking up
-    // This places the model at the bottom of the preview area
-    const autoCameraDistance = Math.max(diagonalExtent * 0.8, 2)
-    autoCameraPosition = [centerX + autoCameraDistance * 0.3, -autoCameraDistance * 0.4, centerZ + autoCameraDistance]
+    // Camera positioned for a good default view of the bend
+    const autoCameraDistance = Math.max(diagonalExtent * 1.2, 3)
+    autoCameraPosition = [centerX + autoCameraDistance * 0.3, autoCameraDistance * 0.4, centerZ + autoCameraDistance * 0.8]
     autoCameraTarget = [centerX, 0, centerZ]
   }
 
@@ -2788,8 +2787,8 @@ export default function CSGBend3DPreview(props: Props) {
   const cameraTarget = autoCameraTarget
 
   return (
-    <div data-bend-preview className="w-full h-full min-h-[400px] bg-slate-50 rounded-md border overflow-hidden relative">
-      <Canvas shadows dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }} camera={{ position: cameraPosition, fov: 45, near: 0.01, far: 50000 }}>
+    <div data-bend-preview className="w-full h-full min-h-[500px] bg-slate-50 rounded-md border overflow-hidden relative">
+      <Canvas shadows dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }} camera={{ position: cameraPosition, fov: 45, near: 0.01, far: 50000 }} style={{ width: '100%', height: '100%' }}>
         <CaptureHelper captureRef={captureRef} />
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} intensity={1} castShadow />
@@ -3085,7 +3084,7 @@ export default function CSGBend3DPreview(props: Props) {
         <div className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4" onClick={() => setExpanded(false)}>
           <div className="relative w-full h-full max-w-[95vw] max-h-[90vh] bg-slate-100 rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setExpanded(false)} className="absolute top-4 right-4 z-[10001] bg-white p-2 rounded-full shadow">✕</button>
-            <Canvas shadows dpr={[1, 2]} camera={{ position: cameraPosition, fov: 40, near: 0.01, far: 50000 }}>
+            <Canvas shadows dpr={[1, 2]} camera={{ position: cameraPosition, fov: 40, near: 0.01, far: 50000 }} style={{ width: '100%', height: '100%' }}>
               <ambientLight intensity={0.7} />
               <spotLight position={[10, 10, 10]} intensity={1} castShadow />
               <pointLight position={[-5, 5, -5]} intensity={0.5} />

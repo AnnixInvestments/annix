@@ -1128,8 +1128,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   const halfLen = safeLen / 2;
 
   // Auto-calculate camera distance based on pipe length for better framing
-  // Formula: camera distance = max(pipe length * 0.8, 2.5) to ensure good view of entire pipe
-  const autoCameraDistance = Math.max(safeLen * 0.8, 2.5);
+  const autoCameraDistance = Math.max(safeLen * 1.0, 2.5);
   const autoCameraHeight = autoCameraDistance * 0.4;
 
   const cameraTargets = {
@@ -1169,7 +1168,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   }
 
   return (
-    <div data-pipe-preview className="w-full h-full min-h-[400px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
+    <div data-pipe-preview className="w-full h-full min-h-[500px] bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative">
       <div className="absolute top-2 left-2 z-10 flex gap-2">
         <button
           onClick={() => setViewMode('iso')}
@@ -1201,6 +1200,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           near: 0.1,
           far: 10000
         }}
+        style={{ width: '100%', height: '100%' }}
       >
           <CaptureHelper captureRef={captureRef} />
           <ambientLight intensity={0.8} />
@@ -1597,7 +1597,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
             </button>
 
             {/* Expanded Canvas */}
-            <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 1.5, 5], fov: 45, near: 0.01, far: 50000 }}>
+            <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 1.5, 5], fov: 45, near: 0.01, far: 50000 }} style={{ width: '100%', height: '100%' }}>
               <ambientLight intensity={0.8} />
               <spotLight position={[10, 10, 5]} angle={0.5} penumbra={1} intensity={1} />
               <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />
