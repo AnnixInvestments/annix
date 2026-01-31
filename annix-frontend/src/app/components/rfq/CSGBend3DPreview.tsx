@@ -1337,11 +1337,12 @@ const Scene = (props: Props) => {
   const defaultPipeALengthMm = nominalBore * 3
   const effectivePipeALengthMm = sweepTeePipeALengthMm || (isSweepTee ? defaultPipeALengthMm : 0)
   const pipeALength = effectivePipeALengthMm / SCALE
-  const duckfootRotation: [number, number, number] = isDuckfoot ? [-Math.PI / 2, Math.PI, -Math.PI] : [0, 0, 0]
+  const bendTiltZ = 0.00; // No tilt
+  const duckfootRotation: [number, number, number] = isDuckfoot ? [-Math.PI / 2, Math.PI, -Math.PI + bendTiltZ] : [0, 0, 0]
 
   const duckfootXOffset = isDuckfoot ? -24.5 : 0
   const duckfootYOffset = isDuckfoot ? 8 : 0
-  const bendPositionAdjustY = isDuckfoot ? 3 : 0
+  const bendPositionAdjustY = isDuckfoot ? 5 : 0
   const bendPositionAdjustZ = isDuckfoot ? -10 : 0
 
   return (
@@ -1376,9 +1377,8 @@ const Scene = (props: Props) => {
           />
         )}
 
-        {/* Degree markers on extrados (outside radius) every 5 degrees - LOCKED for duckfoot bends only */}
-        {/* Hide markers when C/F dimension lines are shown to avoid duplicate angle labels */}
-        {isDuckfoot && !centerToFaceMm && Array.from({ length: 19 }).map((_, i) => {
+        {/* Degree markers on extrados (outside radius) every 5 degrees - for duckfoot bends */}
+        {isDuckfoot && Array.from({ length: 19 }).map((_, i) => {
           const degrees = i * 5;
           const markerAngleRad = (degrees * Math.PI) / 180;
 
@@ -1404,6 +1404,9 @@ const Scene = (props: Props) => {
             bendCenter.z + textR * Math.sin(markerAngleRad)
           );
 
+          // Display inverted: 0° at inlet (bottom), 90° at outlet (top)
+          const displayDegrees = 90 - degrees;
+
           return (
             <group key={`deg-${degrees}`}>
               <Line
@@ -1420,7 +1423,7 @@ const Scene = (props: Props) => {
                 fontWeight="bold"
                 rotation={[Math.PI / 2, 0, markerAngleRad + Math.PI]}
               >
-                {degrees}°
+                {displayDegrees}°
               </Text>
             </group>
           );
@@ -2756,11 +2759,12 @@ const Scene = (props: Props) => {
         const steelworkY = -ribHeightH;
         const steelworkZ = -10;
         const steelworkRotationY = -Math.PI;
+        const steelworkTiltZ = 0.00; // No tilt
         const visualOffsetY = -10;
 
 
         return (
-          <group position={[steelworkX, steelworkY + visualOffsetY, steelworkZ]} rotation={[0, steelworkRotationY, 0]}>
+          <group position={[steelworkX, steelworkY + visualOffsetY, steelworkZ]} rotation={[0, steelworkRotationY, steelworkTiltZ]}>
             {/* Base Plate - horizontal at bottom */}
             <mesh position={[0, -plateThickness / 2, 0]}>
               <boxGeometry args={[basePlateXDim, plateThickness, basePlateYDim]} />
@@ -2880,8 +2884,8 @@ const Scene = (props: Props) => {
               const yellowThickness = 30 / SCALE;
               const extradosR = bendR + outerR;
 
-              const pointDAngleDegrees = duckfootGussetPointDDegrees || 15;
-              const pointCAngleDegrees = duckfootGussetPointCDegrees || 75;
+              const pointDAngleDegrees = duckfootGussetPointDDegrees || 75;
+              const pointCAngleDegrees = duckfootGussetPointCDegrees || 15;
 
               // After duckfoot rotation [π/2, 0, -π/2], the extrados at angle θ is at:
               // World X = -extradosR * sin(θ)
@@ -2897,11 +2901,11 @@ const Scene = (props: Props) => {
                 return (bendR - extradosR * Math.cos(angleRad) + duckfootYOffset) - steelworkY;
               };
 
-              // Point D position (at Point D angle, e.g., 15°)
+              // Point D position (at Point D angle)
               const pointDLocalX = extradosLocalX(pointDAngleDegrees);
               const pointDLocalY = extradosLocalY(pointDAngleDegrees);
 
-              // Point C position (at Point C angle, e.g., 75°)
+              // Point C position (at Point C angle)
               const pointCLocalX = extradosLocalX(pointCAngleDegrees);
               const pointCLocalY = extradosLocalY(pointCAngleDegrees);
 
@@ -2914,17 +2918,26 @@ const Scene = (props: Props) => {
               // Build shape in XY plane - will be extruded in Z
               const yellowShape = new THREE.Shape();
 
+              // Determine which point is on the right (smaller angle = closer to outlet = less negative X)
+              const cIsOnRight = pointCAngleDegrees < pointDAngleDegrees;
+              const rightTopX = cIsOnRight ? pointCLocalX : pointDLocalX;
+              const rightTopY = cIsOnRight ? pointCLocalY : pointDLocalY;
+              const leftTopX = cIsOnRight ? pointDLocalX : pointCLocalX;
+              const leftTopY = cIsOnRight ? pointDLocalY : pointCLocalY;
+              const startAngle = cIsOnRight ? pointCAngleDegrees : pointDAngleDegrees;
+              const endAngle = cIsOnRight ? pointDAngleDegrees : pointCAngleDegrees;
+
               // Start at Point A (bottom right)
               yellowShape.moveTo(aBottomX, 0);
 
-              // Go to Point D (top right, at extrados)
-              yellowShape.lineTo(pointDLocalX, Math.max(0.1, pointDLocalY));
+              // Go to top right point (whichever is at smaller angle)
+              yellowShape.lineTo(rightTopX, Math.max(0.1, rightTopY));
 
-              // Curved edge from Point D to Point C following the extrados
+              // Curved edge following the extrados from right to left
               const curveSegments = 16;
-              const angleStep = (pointCAngleDegrees - pointDAngleDegrees) / curveSegments;
+              const angleStep = (endAngle - startAngle) / curveSegments;
               Array.from({ length: curveSegments }).forEach((_, i) => {
-                const angleDeg = pointDAngleDegrees + (i + 1) * angleStep;
+                const angleDeg = startAngle + (i + 1) * angleStep;
                 const localX = extradosLocalX(angleDeg);
                 const localY = extradosLocalY(angleDeg);
                 yellowShape.lineTo(localX, Math.max(0.1, localY));
@@ -2986,6 +2999,104 @@ const Scene = (props: Props) => {
                   >
                     C
                   </Text>
+                  {/* MM markers along right edge (A to C/D) */}
+                  {(() => {
+                    const mmInterval = 20 / SCALE; // 20mm intervals
+                    const rightEdgeStartX = aBottomX;
+                    const rightEdgeStartY = 0;
+                    const rightEdgeEndX = rightTopX;
+                    const rightEdgeEndY = rightTopY;
+                    const rightEdgeLength = Math.sqrt(
+                      Math.pow(rightEdgeEndX - rightEdgeStartX, 2) +
+                      Math.pow(rightEdgeEndY - rightEdgeStartY, 2)
+                    );
+                    const rightEdgeLengthMm = rightEdgeLength * SCALE;
+                    const numRightMarkers = Math.floor(rightEdgeLengthMm / 20);
+                    const rightDirX = (rightEdgeEndX - rightEdgeStartX) / rightEdgeLength;
+                    const rightDirY = (rightEdgeEndY - rightEdgeStartY) / rightEdgeLength;
+
+                    return Array.from({ length: numRightMarkers + 1 }).map((_, i) => {
+                      const dist = i * mmInterval;
+                      const markerX = rightEdgeStartX + rightDirX * dist;
+                      const markerY = rightEdgeStartY + rightDirY * dist;
+                      const tickOffsetX = rightDirY * 0.15; // Perpendicular offset
+                      const tickOffsetY = -rightDirX * 0.15;
+                      const mmValue = i * 20;
+
+                      return (
+                        <group key={`right-mm-${i}`}>
+                          <Line
+                            points={[
+                              [markerX - tickOffsetX, markerY - tickOffsetY, 0.01],
+                              [markerX + tickOffsetX, markerY + tickOffsetY, 0.01]
+                            ]}
+                            color="#000000"
+                            lineWidth={2}
+                          />
+                          {i % 2 === 0 && (
+                            <Text
+                              position={[markerX + tickOffsetX * 2, markerY + tickOffsetY * 2, 0.01]}
+                              fontSize={0.12}
+                              color="#000000"
+                              anchorX="center"
+                              anchorY="middle"
+                            >
+                              {mmValue}
+                            </Text>
+                          )}
+                        </group>
+                      );
+                    });
+                  })()}
+                  {/* MM markers along left edge (B to D/C) */}
+                  {(() => {
+                    const mmInterval = 20 / SCALE; // 20mm intervals
+                    const leftEdgeStartX = bBottomX;
+                    const leftEdgeStartY = 0;
+                    const leftEdgeEndX = leftTopX;
+                    const leftEdgeEndY = leftTopY;
+                    const leftEdgeLength = Math.sqrt(
+                      Math.pow(leftEdgeEndX - leftEdgeStartX, 2) +
+                      Math.pow(leftEdgeEndY - leftEdgeStartY, 2)
+                    );
+                    const leftEdgeLengthMm = leftEdgeLength * SCALE;
+                    const numLeftMarkers = Math.floor(leftEdgeLengthMm / 20);
+                    const leftDirX = (leftEdgeEndX - leftEdgeStartX) / leftEdgeLength;
+                    const leftDirY = (leftEdgeEndY - leftEdgeStartY) / leftEdgeLength;
+
+                    return Array.from({ length: numLeftMarkers + 1 }).map((_, i) => {
+                      const dist = i * mmInterval;
+                      const markerX = leftEdgeStartX + leftDirX * dist;
+                      const markerY = leftEdgeStartY + leftDirY * dist;
+                      const tickOffsetX = -leftDirY * 0.15; // Perpendicular offset
+                      const tickOffsetY = leftDirX * 0.15;
+                      const mmValue = i * 20;
+
+                      return (
+                        <group key={`left-mm-${i}`}>
+                          <Line
+                            points={[
+                              [markerX - tickOffsetX, markerY - tickOffsetY, 0.01],
+                              [markerX + tickOffsetX, markerY + tickOffsetY, 0.01]
+                            ]}
+                            color="#000000"
+                            lineWidth={2}
+                          />
+                          {i % 2 === 0 && (
+                            <Text
+                              position={[markerX + tickOffsetX * 2, markerY + tickOffsetY * 2, 0.01]}
+                              fontSize={0.12}
+                              color="#000000"
+                              anchorX="center"
+                              anchorY="middle"
+                            >
+                              {mmValue}
+                            </Text>
+                          )}
+                        </group>
+                      );
+                    });
+                  })()}
                 </group>
               );
             })()}
@@ -3003,8 +3114,8 @@ const Scene = (props: Props) => {
               const cutoutCenterY = cutoutBottomY + cutoutRadius;
               const gussetIntersectionHeight = cutoutBottomY;
 
-              const pointDAngleDegrees = duckfootGussetPointDDegrees || 15;
-              const pointCAngleDegrees = duckfootGussetPointCDegrees || 75;
+              const pointDAngleDegrees = duckfootGussetPointDDegrees || 75;
+              const pointCAngleDegrees = duckfootGussetPointCDegrees || 15;
 
               const extradosLocalX = (angleDeg: number) => {
                 const angleRad = (angleDeg * Math.PI) / 180;
@@ -3144,8 +3255,8 @@ export default function CSGBend3DPreview(props: Props) {
   const cameraTarget = autoCameraTarget
 
   return (
-    <div data-bend-preview className="w-full h-full min-h-[500px] bg-slate-50 rounded-md border overflow-hidden relative">
-      <Canvas shadows dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }} camera={{ position: cameraPosition, fov: 45, near: 0.01, far: 50000 }} style={{ width: '100%', height: '100%' }}>
+    <div data-bend-preview className="w-full bg-slate-50 rounded-md border overflow-hidden relative" style={{ height: '500px', minHeight: '500px' }}>
+      <Canvas shadows dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }} camera={{ position: cameraPosition, fov: 45, near: 0.01, far: 50000 }} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
         <CaptureHelper captureRef={captureRef} />
         <ambientLight intensity={0.7} />
         <spotLight position={[10, 10, 10]} intensity={1} castShadow />
