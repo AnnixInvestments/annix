@@ -380,6 +380,7 @@ function FittingFormComponent({
                         const commonOptions = [
                           { value: 'CON_REDUCER', label: 'Concentric Reducer' },
                           { value: 'ECCENTRIC_REDUCER', label: 'Eccentric Reducer' },
+                          { value: 'OFFSET_BEND', label: 'Offset Bend' },
                         ];
                         const options = effectiveStandard === 'SABS62'
                           ? [...sabs62Options, ...commonOptions]

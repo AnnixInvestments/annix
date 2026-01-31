@@ -442,7 +442,6 @@ function BendFormComponent({
                           <option value="S_BEND" disabled={isSBendDisabled} className={isSBendDisabled ? 'text-gray-400' : ''}>
                             S-Bend {isSBendDisabled ? '(Not available)' : ''}
                           </option>
-                          <option value="OFFSET_BEND">Offset Bend</option>
                           <option value="DUCKFOOT_BEND">Duckfoot Bend</option>
                           <option value="SWEEP_TEE">Sweep Tee</option>
                         </select>
