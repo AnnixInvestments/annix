@@ -1836,24 +1836,160 @@ const Scene = (props: Props) => {
 
               {/* S-Bend Inlet Flange - at origin, pointing -Z */}
               {hasInletFlange && (
-                <Flange
-                  center={new THREE.Vector3(0, 0, -flangeOffset)}
-                  normal={new THREE.Vector3(0, 0, -1)}
-                  pipeR={outerR}
-                  innerR={innerR}
-                  nb={nominalBore}
-                />
+                hasLooseInletFlange ? (
+                  <>
+                    {/* Black closure piece connected directly to pipe end */}
+                    <mesh position={[0, 0, -closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
+                      <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
+                      <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+                    </mesh>
+                    <mesh position={[0, 0, -closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
+                      <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
+                      <meshStandardMaterial color="#333333" side={THREE.BackSide} />
+                    </mesh>
+                    {/* Loose flange positioned after closure + gap */}
+                    <Flange
+                      center={new THREE.Vector3(0, 0, -closureLength - gapLength)}
+                      normal={new THREE.Vector3(0, 0, -1)}
+                      pipeR={outerR}
+                      innerR={innerR}
+                      nb={nominalBore}
+                    />
+                    {/* L/F dimension line */}
+                    {(() => {
+                      const dimX = -outerR - outerR * 0.3;
+                      const dimXOuter = -outerR - outerR * 0.8;
+                      return (
+                        <>
+                          <Line points={[[dimX, 0, 0], [dimXOuter, 0, 0]]} color="#cc6600" lineWidth={2} />
+                          <Line points={[[dimX, 0, -closureLength], [dimXOuter, 0, -closureLength]]} color="#cc6600" lineWidth={2} />
+                          <Line points={[[dimXOuter, 0, 0], [dimXOuter, 0, -closureLength]]} color="#cc6600" lineWidth={3} />
+                          <Text
+                            position={[dimXOuter - outerR * 0.3, 0, -closureLength / 2]}
+                            fontSize={outerR * 0.5}
+                            color="#cc6600"
+                            anchorX="center"
+                            anchorY="middle"
+                            fontWeight="bold"
+                            rotation={[-Math.PI / 2, Math.PI, -Math.PI / 2]}
+                          >
+                            {`C1: ${closureLengthMm || 150}mm`}
+                          </Text>
+                        </>
+                      );
+                    })()}
+                  </>
+                ) : hasRotatingInletFlange ? (
+                  <>
+                    {/* Retaining ring welded to pipe end */}
+                    <RetainingRing
+                      center={new THREE.Vector3(0, 0, 0)}
+                      normal={new THREE.Vector3(0, 0, -1)}
+                      pipeR={outerR}
+                      innerR={innerR}
+                      wallThickness={wtScaled}
+                    />
+                    {/* Rotating flange positioned back from ring */}
+                    <RotatingFlange
+                      center={new THREE.Vector3(0, 0, rotatingFlangeOffset)}
+                      normal={new THREE.Vector3(0, 0, -1)}
+                      pipeR={outerR}
+                      innerR={innerR}
+                      nb={nominalBore}
+                    />
+                    {/* R/F label */}
+                    <Text position={[0, -outerR - 0.28, rotatingFlangeOffset / 2]} fontSize={0.12} color="#ea580c" anchorX="center" anchorY="top">
+                      R/F
+                    </Text>
+                  </>
+                ) : (
+                  <Flange
+                    center={new THREE.Vector3(0, 0, -flangeOffset)}
+                    normal={new THREE.Vector3(0, 0, -1)}
+                    pipeR={outerR}
+                    innerR={innerR}
+                    nb={nominalBore}
+                  />
+                )
               )}
 
               {/* S-Bend Outlet Flange - at outlet (-2*bendR, 0, 2*bendR), pointing +Z */}
               {hasOutletFlange && (
-                <Flange
-                  center={new THREE.Vector3(-2 * bendR, 0, 2 * bendR + flangeOffset)}
-                  normal={new THREE.Vector3(0, 0, 1)}
-                  pipeR={outerR}
-                  innerR={innerR}
-                  nb={nominalBore}
-                />
+                hasLooseOutletFlange ? (
+                  <>
+                    {/* Black closure piece connected directly to pipe end */}
+                    <mesh position={[-2 * bendR, 0, 2 * bendR + closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
+                      <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
+                      <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+                    </mesh>
+                    <mesh position={[-2 * bendR, 0, 2 * bendR + closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
+                      <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
+                      <meshStandardMaterial color="#333333" side={THREE.BackSide} />
+                    </mesh>
+                    {/* Loose flange positioned after closure + gap */}
+                    <Flange
+                      center={new THREE.Vector3(-2 * bendR, 0, 2 * bendR + closureLength + gapLength)}
+                      normal={new THREE.Vector3(0, 0, 1)}
+                      pipeR={outerR}
+                      innerR={innerR}
+                      nb={nominalBore}
+                    />
+                    {/* L/F dimension line for outlet */}
+                    {(() => {
+                      const dimX = -2 * bendR + outerR + outerR * 0.3;
+                      const dimXOuter = -2 * bendR + outerR + outerR * 0.8;
+                      return (
+                        <>
+                          <Line points={[[dimX, 0, 2 * bendR], [dimXOuter, 0, 2 * bendR]]} color="#cc6600" lineWidth={2} />
+                          <Line points={[[dimX, 0, 2 * bendR + closureLength], [dimXOuter, 0, 2 * bendR + closureLength]]} color="#cc6600" lineWidth={2} />
+                          <Line points={[[dimXOuter, 0, 2 * bendR], [dimXOuter, 0, 2 * bendR + closureLength]]} color="#cc6600" lineWidth={3} />
+                          <Text
+                            position={[dimXOuter + outerR * 0.3, 0, 2 * bendR + closureLength / 2]}
+                            fontSize={outerR * 0.5}
+                            color="#cc6600"
+                            anchorX="center"
+                            anchorY="middle"
+                            fontWeight="bold"
+                            rotation={[-Math.PI / 2, Math.PI, -Math.PI / 2]}
+                          >
+                            {`C2: ${closureLengthMm || 150}mm`}
+                          </Text>
+                        </>
+                      );
+                    })()}
+                  </>
+                ) : hasRotatingOutletFlange ? (
+                  <>
+                    {/* Retaining ring welded to pipe end */}
+                    <RetainingRing
+                      center={new THREE.Vector3(-2 * bendR, 0, 2 * bendR)}
+                      normal={new THREE.Vector3(0, 0, 1)}
+                      pipeR={outerR}
+                      innerR={innerR}
+                      wallThickness={wtScaled}
+                    />
+                    {/* Rotating flange positioned back from ring */}
+                    <RotatingFlange
+                      center={new THREE.Vector3(-2 * bendR, 0, 2 * bendR - rotatingFlangeOffset)}
+                      normal={new THREE.Vector3(0, 0, 1)}
+                      pipeR={outerR}
+                      innerR={innerR}
+                      nb={nominalBore}
+                    />
+                    {/* R/F label */}
+                    <Text position={[-2 * bendR, -outerR - 0.28, 2 * bendR - rotatingFlangeOffset / 2]} fontSize={0.12} color="#ea580c" anchorX="center" anchorY="top">
+                      R/F
+                    </Text>
+                  </>
+                ) : (
+                  <Flange
+                    center={new THREE.Vector3(-2 * bendR, 0, 2 * bendR + flangeOffset)}
+                    normal={new THREE.Vector3(0, 0, 1)}
+                    pipeR={outerR}
+                    innerR={innerR}
+                    nb={nominalBore}
+                  />
+                )
               )}
 
               {/* C/F dimension line - from flange face center to where horizontal line starts */}
@@ -2944,7 +3080,7 @@ export default function CSGBend3DPreview(props: Props) {
   }
 
   const odMm = props.outerDiameter || nbToOd(props.nominalBore)
-  const bendR = (props.nominalBore * 1.5) / SCALE
+  const bendR = (props.bendRadiusMm || props.nominalBore * 1.5) / SCALE
   const t1 = (props.tangent1 || 0) / SCALE
   const t2 = (props.tangent2 || 0) / SCALE
   const angleRad = (props.bendAngle * Math.PI) / 180
@@ -3026,7 +3162,7 @@ export default function CSGBend3DPreview(props: Props) {
       </div>
 
       {props.numberOfSegments && props.numberOfSegments > 1 && (() => {
-        const bendRadius = props.nominalBore * 1.5;
+        const bendRadius = props.bendRadiusMm || props.nominalBore * 1.5;
         const degreesPerSeg = props.bendAngle / props.numberOfSegments;
         const arcLengthPerSeg = (bendRadius * Math.PI * degreesPerSeg) / 180;
         const totalArcLength = (bendRadius * Math.PI * props.bendAngle) / 180;
@@ -3232,7 +3368,7 @@ export default function CSGBend3DPreview(props: Props) {
         <button
           onClick={() => {
             const bendAngle = props.bendAngle
-            const bendRadius = props.nominalBore * 1.5
+            const bendRadius = props.bendRadiusMm || props.nominalBore * 1.5
             const odMm = props.outerDiameter || (props.nominalBore * 1.1 + 6)
             const t1 = props.tangent1 || 0
             const t2 = props.tangent2 || 0
@@ -3396,7 +3532,7 @@ export default function CSGBend3DPreview(props: Props) {
 
             {/* Segmented bend info in expanded view */}
             {props.numberOfSegments && props.numberOfSegments > 1 && (() => {
-              const bendRadius = props.nominalBore * 1.5;
+              const bendRadius = props.bendRadiusMm || props.nominalBore * 1.5;
               const degreesPerSeg = props.bendAngle / props.numberOfSegments;
               const arcLengthPerSeg = (bendRadius * Math.PI * degreesPerSeg) / 180;
               const totalArcLength = (bendRadius * Math.PI * props.bendAngle) / 180;
