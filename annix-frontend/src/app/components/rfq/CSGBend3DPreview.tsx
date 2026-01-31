@@ -1337,17 +1337,18 @@ const Scene = (props: Props) => {
   const defaultPipeALengthMm = nominalBore * 3
   const effectivePipeALengthMm = sweepTeePipeALengthMm || (isSweepTee ? defaultPipeALengthMm : 0)
   const pipeALength = effectivePipeALengthMm / SCALE
-  const duckfootRotation: [number, number, number] = isDuckfoot ? [Math.PI / 2, 0, -Math.PI / 2] : [0, 0, 0]
+  const duckfootRotation: [number, number, number] = isDuckfoot ? [-Math.PI / 2, Math.PI, -Math.PI] : [0, 0, 0]
 
-  const duckfootYOffset = isDuckfoot ? 4 : 0
-  const bendPositionAdjustY = isDuckfoot ? -2.3 : 0
-  const bendPositionAdjustZ = isDuckfoot ? -2.2 : 0
+  const duckfootXOffset = isDuckfoot ? -24.5 : 0
+  const duckfootYOffset = isDuckfoot ? 8 : 0
+  const bendPositionAdjustY = isDuckfoot ? 3 : 0
+  const bendPositionAdjustZ = isDuckfoot ? -10 : 0
 
   return (
     <Center>
-      <group rotation={duckfootRotation} position={[0, duckfootYOffset + bendPositionAdjustY, bendPositionAdjustZ]}>
-        {/* Inlet tangent section - hide for sweep tees and S-bends */}
-        {t1 > 0 && !isSweepTee && !isSBend && (
+      <group rotation={duckfootRotation} position={[duckfootXOffset, duckfootYOffset + bendPositionAdjustY, bendPositionAdjustZ]}>
+        {/* Inlet tangent section - hide for sweep tees, S-bends, and duckfoot bends */}
+        {t1 > 0 && !isSweepTee && !isSBend && !isDuckfoot && (
           <>
             <HollowStraightPipe
               start={inletStart}
@@ -1456,8 +1457,8 @@ const Scene = (props: Props) => {
           <WeldRing center={bendEndPoint} normal={outletDir} radius={outerR * 1.02} tube={weldTube} />
         )}
 
-        {/* Outlet tangent - hide for sweep tees and S-bends */}
-        {!isSweepTee && !isSBend && t2 > 0 && (
+        {/* Outlet tangent - hide for sweep tees, S-bends, and duckfoot bends */}
+        {!isSweepTee && !isSBend && !isDuckfoot && t2 > 0 && (
           <HollowStraightPipe
             start={bendEndPoint}
             end={outletEnd}
@@ -1490,8 +1491,8 @@ const Scene = (props: Props) => {
           //
           // For a proper saddle connection where the bend MERGES into Pipe A:
           // - The extrados (outer curve) merges into the top of Pipe A
-          // - The bend curves TOWARD the viewer (-Z direction)
-          // - Adding 180° Y rotation flips the bend to curve in -Z direction
+          // - The bend curves AWAY from the viewer (+Z direction)
+          // - No Y rotation means bend curves in +Z direction
           //
           // Position the bend at the right end of Pipe A, against the flange
           const bendZOffset = pipeAHalfLength
@@ -1500,8 +1501,8 @@ const Scene = (props: Props) => {
           const localBendCenter = new THREE.Vector3(-bendR, 0, 0)
 
           // End of bend position in world coordinates:
-          // With 180° Y rotation, the bend curves toward -Z, so end is at z = bendZOffset - bendR
-          const sweepEndPos = new THREE.Vector3(0, bendR, bendZOffset - bendR)
+          // Without Y rotation, the bend curves away from viewer, so end is at z = bendZOffset + bendR
+          const sweepEndPos = new THREE.Vector3(0, bendR, bendZOffset + bendR)
           const sweepEndDir = new THREE.Vector3(0, 1, 0)
 
           return (
@@ -1615,8 +1616,8 @@ const Scene = (props: Props) => {
               )}
 
               {/* Sweep branch - 90° bend with extrados connecting to top of Pipe A */}
-              {/* Position shifts bend right, 180° Y flips to curve toward viewer, -90° Z puts in YZ plane */}
-              <group position={[0, 0, bendZOffset]} rotation={[0, Math.PI, -Math.PI / 2]}>
+              {/* Position shifts bend, no Y flip curves away from viewer, -90° Z puts in YZ plane */}
+              <group position={[0, 0, bendZOffset]} rotation={[0, 0, -Math.PI / 2]}>
                 {isSegmented && numberOfSegments && numberOfSegments > 1 ? (
                   <SegmentedBendPipe
                     bendCenter={localBendCenter}
@@ -2136,7 +2137,8 @@ const Scene = (props: Props) => {
 
           return (
             <>
-              {t1 > 0 && (() => {
+              {/* T1 dimension - hide for duckfoot bends (no tangents) */}
+              {!isDuckfoot && t1 > 0 && (() => {
                 const dimX = -outerR - outerR * 0.5;
                 return (
                   <group>
@@ -2164,7 +2166,8 @@ const Scene = (props: Props) => {
                 );
               })()}
 
-              {t2 > 0 && (() => {
+              {/* T2 dimension - hide for duckfoot bends (no tangents) */}
+              {!isDuckfoot && t2 > 0 && (() => {
                 const dimOffset = outerR * 1.5;
                 const t2Dir = new THREE.Vector3().subVectors(outletEnd, bendEndPoint).normalize();
                 const perpDir = new THREE.Vector3(-t2Dir.z, 0, t2Dir.x).multiplyScalar(dimOffset);
@@ -2287,7 +2290,8 @@ const Scene = (props: Props) => {
           );
         })()}
 
-        {stubsData.map((stub, i) => {
+        {/* Stubs - hide for duckfoot bends */}
+        {!isDuckfoot && stubsData.map((stub, i) => {
           const isOutletStub = i === 1
           const tangentLength = isOutletStub ? t2 : t1
 
@@ -2488,8 +2492,12 @@ const Scene = (props: Props) => {
         })}
 
         {/* Inlet flange - hide for sweep tees (which have their own flanges) and S-bends (plain ends only) */}
-        {hasInletFlange && !isSweepTee && !isSBend && (
-          hasLooseInletFlange ? (
+        {hasInletFlange && !isSweepTee && !isSBend && (() => {
+          const inletFlangeZ = isDuckfoot ? (t1 - flangeOffset) : -flangeOffset
+          const inletFlangeCenter = new THREE.Vector3(0, 0, inletFlangeZ)
+          const inletFlangeNormal = new THREE.Vector3(0, 0, -1)
+
+          return hasLooseInletFlange ? (
             <>
               {/* Black closure piece connected directly to pipe end */}
               <mesh position={[0, 0, -closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
@@ -2567,18 +2575,18 @@ const Scene = (props: Props) => {
             </>
           ) : (
             <Flange
-              center={new THREE.Vector3(0, 0, -flangeOffset)}
-              normal={new THREE.Vector3(0, 0, -1)}
+              center={inletFlangeCenter}
+              normal={inletFlangeNormal}
               pipeR={outerR}
               innerR={innerR}
               nb={nominalBore}
             />
           )
-        )}
+        })()}
 
         {/* Outlet flange - hide for sweep tees (which have their own flanges) and S-bends (plain ends only) */}
         {hasOutletFlange && !isSweepTee && !isSBend && (() => {
-          const outletBase = t2 > 0 ? outletEnd : bendEndPoint
+          const outletBase = isDuckfoot ? bendEndPoint : (t2 > 0 ? outletEnd : bendEndPoint)
           const outletFlangePos = outletBase.clone().add(outletDir.clone().multiplyScalar(flangeOffset))
 
           return hasLooseOutletFlange ? (
@@ -2742,12 +2750,12 @@ const Scene = (props: Props) => {
         const basePlateColor = { color: '#555555', metalness: 0.6, roughness: 0.4 };
         const ribColor = { color: '#666666', metalness: 0.5, roughness: 0.5 };
 
-        const bendMidpointX = -Math.sin(Math.PI / 4) * bendR;
+        const bendMidpointX = -Math.sin(Math.PI / 4) * bendR; // 45 degrees - midpoint of bend
         const gussetRefX = bendMidpointX;
-        const steelworkX = 0;
+        const steelworkX = -25; // Move toward the bend
         const steelworkY = -ribHeightH;
-        const steelworkZ = 0;
-        const steelworkRotationY = -Math.PI / 2;
+        const steelworkZ = -10;
+        const steelworkRotationY = -Math.PI;
         const visualOffsetY = -10;
 
 
@@ -3125,9 +3133,9 @@ export default function CSGBend3DPreview(props: Props) {
     autoCameraPosition = [autoCameraDistance * 0.5, autoCameraDistance * 0.6, autoCameraDistance * 0.8]
     autoCameraTarget = [-bendR, 0, bendR]
   } else {
-    // Camera positioned for a good default view of the bend
+    // Camera positioned for a good default view of the bend (rotated 90° right)
     const autoCameraDistance = Math.max(diagonalExtent * 1.2, 3)
-    autoCameraPosition = [centerX + autoCameraDistance * 0.3, autoCameraDistance * 0.4, centerZ + autoCameraDistance * 0.8]
+    autoCameraPosition = [centerX + autoCameraDistance * 0.8, autoCameraDistance * 0.4, centerZ - autoCameraDistance * 0.3]
     autoCameraTarget = [centerX, 0, centerZ]
   }
 
@@ -3208,9 +3216,9 @@ export default function CSGBend3DPreview(props: Props) {
         {props.bendItemType === 'SWEEP_TEE' && props.sweepTeePipeALengthMm && (
           <div className="text-gray-700">Pipe A: {props.sweepTeePipeALengthMm}mm</div>
         )}
-        {props.stubs && props.stubs.length > 0 && (
+        {props.stubs && props.stubs.length > 0 && props.bendItemType !== 'DUCKFOOT_BEND' && props.stubs.some(s => s.length && s.length > 0) && (
           <div className="text-gray-700">
-            Stubs: {props.stubs.map((stub, i) => `${stub.length}mm`).join(' | ')}
+            Stubs: {props.stubs.filter(s => s.length && s.length > 0).map((stub) => `${stub.length}mm`).join(' | ')}
           </div>
         )}
         {(() => {
@@ -3483,9 +3491,9 @@ export default function CSGBend3DPreview(props: Props) {
               {props.bendItemType === 'SWEEP_TEE' && props.sweepTeePipeALengthMm && (
                 <div className="text-gray-700">Pipe A: {props.sweepTeePipeALengthMm}mm</div>
               )}
-              {props.stubs && props.stubs.length > 0 && (
+              {props.stubs && props.stubs.length > 0 && props.bendItemType !== 'DUCKFOOT_BEND' && props.stubs.some(s => s.length && s.length > 0) && (
                 <div className="text-gray-700">
-                  Stubs: {props.stubs.map((stub) => `${stub.length}mm`).join(' | ')}
+                  Stubs: {props.stubs.filter(s => s.length && s.length > 0).map((stub) => `${stub.length}mm`).join(' | ')}
                 </div>
               )}
               {(() => {
