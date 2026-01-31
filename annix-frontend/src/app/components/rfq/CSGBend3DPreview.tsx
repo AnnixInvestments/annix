@@ -1333,6 +1333,7 @@ const Scene = (props: Props) => {
 
   const isDuckfoot = bendItemType === 'DUCKFOOT_BEND'
   const isSweepTee = bendItemType === 'SWEEP_TEE'
+  const isSBend = bendItemType === 'S_BEND'
   const defaultPipeALengthMm = nominalBore * 3
   const effectivePipeALengthMm = sweepTeePipeALengthMm || (isSweepTee ? defaultPipeALengthMm : 0)
   const pipeALength = effectivePipeALengthMm / SCALE
@@ -1345,8 +1346,8 @@ const Scene = (props: Props) => {
   return (
     <Center>
       <group rotation={duckfootRotation} position={[0, duckfootYOffset + bendPositionAdjustY, bendPositionAdjustZ]}>
-        {/* Inlet tangent section - hide for sweep tees since Pipe A replaces it */}
-        {t1 > 0 && !isSweepTee && (
+        {/* Inlet tangent section - hide for sweep tees and S-bends */}
+        {t1 > 0 && !isSweepTee && !isSBend && (
           <>
             <HollowStraightPipe
               start={inletStart}
@@ -1362,8 +1363,8 @@ const Scene = (props: Props) => {
           </>
         )}
 
-        {/* Standard bend - hide for sweep tees which have their own geometry */}
-        {!isSweepTee && (
+        {/* Standard bend - hide for sweep tees and S-bends which have their own geometry */}
+        {!isSweepTee && !isSBend && (
           <HollowBendPipe
             bendCenter={bendCenter}
             bendRadius={bendR}
@@ -1424,8 +1425,8 @@ const Scene = (props: Props) => {
           );
         })}
 
-        {/* Segment welds - hide for sweep tees */}
-        {!isSweepTee && numberOfSegments && numberOfSegments > 1 && Array.from({ length: numberOfSegments - 1 }).map((_, i) => {
+        {/* Segment welds - hide for sweep tees and S-bends */}
+        {!isSweepTee && !isSBend && numberOfSegments && numberOfSegments > 1 && Array.from({ length: numberOfSegments - 1 }).map((_, i) => {
           const segAngle = angleRad / numberOfSegments
           const weldAngle = (i + 1) * segAngle
           const weldPos = new THREE.Vector3(
@@ -1450,13 +1451,13 @@ const Scene = (props: Props) => {
           )
         })}
 
-        {/* Outlet weld - hide for sweep tees */}
-        {!isSweepTee && !isSegmentedBend && (
+        {/* Outlet weld - hide for sweep tees and S-bends */}
+        {!isSweepTee && !isSBend && !isSegmentedBend && (
           <WeldRing center={bendEndPoint} normal={outletDir} radius={outerR * 1.02} tube={weldTube} />
         )}
 
-        {/* Outlet tangent - hide for sweep tees */}
-        {!isSweepTee && t2 > 0 && (
+        {/* Outlet tangent - hide for sweep tees and S-bends */}
+        {!isSweepTee && !isSBend && t2 > 0 && (
           <HollowStraightPipe
             start={bendEndPoint}
             end={outletEnd}
@@ -1781,8 +1782,214 @@ const Scene = (props: Props) => {
           )
         })()}
 
-        {/* Standard bend dimension lines - hide for sweep tees */}
-        {!isSweepTee && (() => {
+        {/* ========== S-BEND GEOMETRY ==========
+            Two 90° pulled bends butt-welded together to create an S-shape.
+            - First bend: inlet at origin pointing +Z, curves 90° to the left (-X direction)
+            - Second bend: continues from connection, curves 90° back to +Z direction
+            - Inlet at (0, 0, 0) going +Z
+            - Connection at (-bendR, 0, bendR) going -X
+            - Outlet at (0, 0, 2*bendR) going +Z
+            - Butt weld at the connection point in the middle */}
+        {isSBend && (() => {
+          const bend1Center = new THREE.Vector3(-bendR, 0, 0)
+          const connectionPoint = new THREE.Vector3(-bendR, 0, bendR)
+          const bend2Center = new THREE.Vector3(bendR, 0, bendR)
+          const sBendOutlet = new THREE.Vector3(0, 0, 2 * bendR)
+
+          return (
+            <>
+              {/* First 90° bend - inlet at origin pointing +Z, curves left to -X direction
+                  Center at (-R, 0, 0), from angle 0 to π/2
+                  - At angle 0: position (0, 0, 0), tangent +Z
+                  - At angle π/2: position (-R, 0, R), tangent -X */}
+              <HollowBendPipe
+                bendCenter={bend1Center}
+                bendRadius={bendR}
+                startAngle={0}
+                endAngle={Math.PI / 2}
+                outerR={outerR}
+                innerR={innerR}
+              />
+
+              {/* Second 90° bend - FLIPPED to curve opposite direction
+                  Center moved to opposite side of inlet-outlet line
+                  Local center at (0, 0, R), angles π to 3π/2
+                  - Both endpoints stay fixed, only the bulge moves to opposite side */}
+              <group position={[connectionPoint.x, connectionPoint.y, connectionPoint.z]}>
+                <HollowBendPipe
+                  bendCenter={new THREE.Vector3(0, 0, bendR)}
+                  bendRadius={bendR}
+                  startAngle={Math.PI}
+                  endAngle={3 * Math.PI / 2}
+                  outerR={outerR}
+                  innerR={innerR}
+                />
+              </group>
+
+              {/* Butt weld at connection between the two bends */}
+              <WeldRing
+                center={connectionPoint}
+                normal={new THREE.Vector3(-1, 0, 0)}
+                radius={outerR * 1.02}
+                tube={weldTube}
+              />
+
+              {/* S-Bend Inlet Flange - at origin, pointing -Z */}
+              {hasInletFlange && (
+                <Flange
+                  center={new THREE.Vector3(0, 0, -flangeOffset)}
+                  normal={new THREE.Vector3(0, 0, -1)}
+                  pipeR={outerR}
+                  innerR={innerR}
+                  nb={nominalBore}
+                />
+              )}
+
+              {/* S-Bend Outlet Flange - at outlet (-2*bendR, 0, 2*bendR), pointing +Z */}
+              {hasOutletFlange && (
+                <Flange
+                  center={new THREE.Vector3(-2 * bendR, 0, 2 * bendR + flangeOffset)}
+                  normal={new THREE.Vector3(0, 0, 1)}
+                  pipeR={outerR}
+                  innerR={innerR}
+                  nb={nominalBore}
+                />
+              )}
+
+              {/* C/F dimension line - from flange face center to where horizontal line starts */}
+              <Line
+                points={[
+                  [0, -outerR * 1.5, 0],
+                  [0, -outerR * 1.5, bendR]
+                ]}
+                color="#0066cc"
+                lineWidth={3}
+              />
+              <Line
+                points={[[-outerR * 0.3, -outerR * 1.5, 0], [outerR * 0.3, -outerR * 1.5, 0]]}
+                color="#0066cc"
+                lineWidth={2}
+              />
+              <Line
+                points={[[-outerR * 0.3, -outerR * 1.5, bendR], [outerR * 0.3, -outerR * 1.5, bendR]]}
+                color="#0066cc"
+                lineWidth={2}
+              />
+              <Billboard position={[outerR * 1.2, -outerR * 1.5, bendR / 2]}>
+                <Text fontSize={outerR * 0.7} color="#0066cc" anchorX="left" anchorY="middle" fontWeight="bold">
+                  {Math.round(bendR * SCALE)}mm
+                </Text>
+              </Billboard>
+
+              {/* X-direction dimension line - horizontal at connection point height */}
+              <Line
+                points={[
+                  [0, -outerR * 1.5, bendR],
+                  [-2 * bendR, -outerR * 1.5, bendR]
+                ]}
+                color="#0066cc"
+                lineWidth={3}
+              />
+              <Line
+                points={[[0, -outerR * 1.5, bendR - outerR * 0.2], [0, -outerR * 1.5, bendR + outerR * 0.2]]}
+                color="#0066cc"
+                lineWidth={2}
+              />
+              <Line
+                points={[[-2 * bendR, -outerR * 1.5, bendR - outerR * 0.2], [-2 * bendR, -outerR * 1.5, bendR + outerR * 0.2]]}
+                color="#0066cc"
+                lineWidth={2}
+              />
+              <Billboard position={[-bendR, -outerR * 2.5, bendR]}>
+                <Text fontSize={outerR * 0.7} color="#0066cc" anchorX="center" anchorY="middle" fontWeight="bold">
+                  {Math.round(bendR * 2 * SCALE)}mm
+                </Text>
+              </Billboard>
+
+              {/* C/F dimension line for outlet - from outlet flange face to horizontal line */}
+              <Line
+                points={[
+                  [-2 * bendR, -outerR * 1.5, bendR],
+                  [-2 * bendR, -outerR * 1.5, 2 * bendR]
+                ]}
+                color="#0066cc"
+                lineWidth={3}
+              />
+              <Line
+                points={[[-2 * bendR - outerR * 0.3, -outerR * 1.5, 2 * bendR], [-2 * bendR + outerR * 0.3, -outerR * 1.5, 2 * bendR]]}
+                color="#0066cc"
+                lineWidth={2}
+              />
+              <Billboard position={[-2 * bendR - outerR * 1.2, -outerR * 1.5, bendR * 1.5]}>
+                <Text fontSize={outerR * 0.7} color="#0066cc" anchorX="right" anchorY="middle" fontWeight="bold">
+                  {Math.round(bendR * SCALE)}mm
+                </Text>
+              </Billboard>
+
+              {/* 90° arc at inlet corner - where vertical C/F line meets horizontal line */}
+              {(() => {
+                const arcRadius = outerR * 1.2
+                const arcSegments = 32
+                const arcPoints: [number, number, number][] = []
+                const cornerY = -outerR * 1.5
+
+                for (let i = 0; i <= arcSegments; i++) {
+                  const t = i / arcSegments
+                  const currentAngle = Math.PI + t * (Math.PI / 2)
+                  arcPoints.push([
+                    arcRadius * Math.cos(currentAngle),
+                    cornerY,
+                    bendR + arcRadius * Math.sin(currentAngle)
+                  ])
+                }
+
+                return (
+                  <>
+                    <Line points={arcPoints} color="#0066cc" lineWidth={2} />
+                    <Billboard position={[-arcRadius * 0.3, cornerY, bendR - arcRadius * 0.3]}>
+                      <Text fontSize={outerR * 0.4} color="#0066cc" anchorX="center" anchorY="middle" fontWeight="bold">
+                        90°
+                      </Text>
+                    </Billboard>
+                  </>
+                )
+              })()}
+
+              {/* 90° arc at outlet corner - where horizontal line meets vertical C/F line */}
+              {(() => {
+                const arcRadius = outerR * 1.2
+                const arcSegments = 32
+                const arcPoints: [number, number, number][] = []
+                const cornerY = -outerR * 1.5
+                const cornerX = -2 * bendR
+
+                for (let i = 0; i <= arcSegments; i++) {
+                  const t = i / arcSegments
+                  const currentAngle = t * (Math.PI / 2)
+                  arcPoints.push([
+                    cornerX + arcRadius * Math.cos(currentAngle),
+                    cornerY,
+                    bendR + arcRadius * Math.sin(currentAngle)
+                  ])
+                }
+
+                return (
+                  <>
+                    <Line points={arcPoints} color="#0066cc" lineWidth={2} />
+                    <Billboard position={[cornerX + arcRadius * 0.3, cornerY, bendR + arcRadius * 0.3]}>
+                      <Text fontSize={outerR * 0.4} color="#0066cc" anchorX="center" anchorY="middle" fontWeight="bold">
+                        90°
+                      </Text>
+                    </Billboard>
+                  </>
+                )
+              })()}
+            </>
+          )
+        })()}
+
+        {/* Standard bend dimension lines - hide for sweep tees and S-bends */}
+        {!isSweepTee && !isSBend && (() => {
           const cfMm = centerToFaceMm || 0;
           const bendDegrees = Math.round(angleRad * 180 / Math.PI);
 
@@ -2144,8 +2351,8 @@ const Scene = (props: Props) => {
           )
         })}
 
-        {/* Inlet flange - hide for sweep tees which have their own flanges */}
-        {hasInletFlange && !isSweepTee && (
+        {/* Inlet flange - hide for sweep tees (which have their own flanges) and S-bends (plain ends only) */}
+        {hasInletFlange && !isSweepTee && !isSBend && (
           hasLooseInletFlange ? (
             <>
               {/* Black closure piece connected directly to pipe end */}
@@ -2233,8 +2440,8 @@ const Scene = (props: Props) => {
           )
         )}
 
-        {/* Outlet flange - hide for sweep tees which have their own flanges */}
-        {hasOutletFlange && !isSweepTee && (() => {
+        {/* Outlet flange - hide for sweep tees (which have their own flanges) and S-bends (plain ends only) */}
+        {hasOutletFlange && !isSweepTee && !isSBend && (() => {
           const outletBase = t2 > 0 ? outletEnd : bendEndPoint
           const outletFlangePos = outletBase.clone().add(outletDir.clone().multiplyScalar(flangeOffset))
 
@@ -2743,6 +2950,7 @@ export default function CSGBend3DPreview(props: Props) {
   const angleRad = (props.bendAngle * Math.PI) / 180
   const isDuckfootBend = props.bendItemType === 'DUCKFOOT_BEND'
   const isSweepTee = props.bendItemType === 'SWEEP_TEE'
+  const isSBend = props.bendItemType === 'S_BEND'
 
   const bendEndX = -bendR + bendR * Math.cos(angleRad)
   const bendEndZ = t1 + bendR * Math.sin(angleRad)
@@ -2775,6 +2983,11 @@ export default function CSGBend3DPreview(props: Props) {
     const autoCameraDistance = Math.max(diagonalExtent * 2.5, 6)
     autoCameraPosition = [autoCameraDistance * 0.3, autoCameraDistance * 1.2, autoCameraDistance * 0.3]
     autoCameraTarget = [centerX, 0, centerZ]
+  } else if (isSBend) {
+    const sBendExtent = bendR * 2 * Math.sqrt(2)
+    const autoCameraDistance = Math.max(sBendExtent * 2.5, 6)
+    autoCameraPosition = [autoCameraDistance * 0.5, autoCameraDistance * 0.6, autoCameraDistance * 0.8]
+    autoCameraTarget = [-bendR, 0, bendR]
   } else {
     // Camera positioned for a good default view of the bend
     const autoCameraDistance = Math.max(diagonalExtent * 1.2, 3)

@@ -250,7 +250,8 @@ function BendFormComponent({
   const handleItemTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const newItemType = e.target.value;
     const oldItemType = entry.specs?.bendItemType || 'BEND';
-    const isFixed90 = newItemType === 'SWEEP_TEE' || newItemType === 'DUCKFOOT_BEND';
+    const isFixed90 = newItemType === 'SWEEP_TEE' || newItemType === 'DUCKFOOT_BEND' || newItemType === 'S_BEND';
+    const isSBend = newItemType === 'S_BEND';
     const switchingToOrFromSweepTee = (newItemType === 'SWEEP_TEE') !== (oldItemType === 'SWEEP_TEE');
     const currentNB = entry.specs?.nominalBoreMm;
     const sweepTeeValidNBs = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900];
@@ -261,8 +262,12 @@ function BendFormComponent({
         ...entry.specs,
         bendItemType: newItemType,
         bendDegrees: isFixed90 ? 90 : entry.specs?.bendDegrees,
+        bendStyle: isSBend ? 'pulled' : entry.specs?.bendStyle,
         bendEndConfiguration: switchingToOrFromSweepTee ? 'PE' : entry.specs?.bendEndConfiguration,
         nominalBoreMm: nbInvalidForSweepTee ? undefined : entry.specs?.nominalBoreMm,
+        tangentLengths: isSBend ? undefined : entry.specs?.tangentLengths,
+        numberOfStubs: isSBend ? 0 : entry.specs?.numberOfStubs,
+        stubs: isSBend ? undefined : entry.specs?.stubs,
         duckfootBasePlateXMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateXMm : undefined,
         duckfootBasePlateYMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateYMm : undefined,
         duckfootRibThicknessT2Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootRibThicknessT2Mm : undefined,
@@ -364,12 +369,14 @@ function BendFormComponent({
     fetchAndSetPipeALength();
   }, [entry.specs?.bendItemType, entry.specs?.nominalBoreMm, entry.specs?.bendRadiusType, entry.specs?.bendType, isCurrentlySegmented, lastFetchedParams, entry.id, entry.specs, onUpdateEntry]);
 
+  const isFixedAngle90Type = entry.specs?.bendItemType === 'SWEEP_TEE' || entry.specs?.bendItemType === 'DUCKFOOT_BEND' || entry.specs?.bendItemType === 'S_BEND';
+
   return (
               <>
               <SplitPaneLayout
                 entryId={entry.id}
                 itemType="bend"
-                showSplitToggle={entry.specs?.nominalBoreMm && entry.specs?.bendDegrees}
+                showSplitToggle={entry.specs?.nominalBoreMm && (entry.specs?.bendDegrees || isFixedAngle90Type)}
                 formContent={
                   <>
                 {/* Item Description */}
@@ -416,6 +423,8 @@ function BendFormComponent({
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                         >
                           <option value="BEND">Bend</option>
+                          <option value="S_BEND">S-Bend</option>
+                          <option value="OFFSET_BEND">Offset Bend</option>
                           <option value="DUCKFOOT_BEND">Duckfoot Bend</option>
                           <option value="SWEEP_TEE">Sweep Tee</option>
                         </select>
@@ -925,7 +934,7 @@ function BendFormComponent({
                             value={entry.specs?.bendType || ''}
                             onChange={(bendType) => {
                               const isSweepTee = entry.specs?.bendItemType === 'SWEEP_TEE';
-                              const isFixed90 = isSweepTee || entry.specs?.bendItemType === 'DUCKFOOT_BEND';
+                              const isFixed90 = isSweepTee || entry.specs?.bendItemType === 'DUCKFOOT_BEND' || entry.specs?.bendItemType === 'S_BEND';
                               const updatedEntry: any = {
                                 ...entry,
                                 specs: {
@@ -1008,7 +1017,7 @@ function BendFormComponent({
                     ? getSabs62AvailableAngles(pulledBendType, currentNB)
                     : [];
 
-                  const isFixedAngle90 = entry.specs?.bendItemType === 'SWEEP_TEE' || entry.specs?.bendItemType === 'DUCKFOOT_BEND';
+                  const isFixedAngle90 = entry.specs?.bendItemType === 'SWEEP_TEE' || entry.specs?.bendItemType === 'DUCKFOOT_BEND' || entry.specs?.bendItemType === 'S_BEND';
                   const isMissingBendAngle = entry.specs?.nominalBoreMm && !entry.specs?.bendDegrees && !isFixedAngle90;
 
                   const AngleDropdown = (
@@ -1023,7 +1032,7 @@ function BendFormComponent({
                           value="90°"
                           disabled
                           className="w-full px-2 py-1.5 border border-green-300 rounded text-xs bg-green-50 text-green-900 font-medium cursor-not-allowed"
-                          title="Sweep Tees and Duckfoot Bends are always 90°"
+                          title="Sweep Tees, Duckfoot Bends, and S-Bends are always 90°"
                         />
                       ) : (() => {
                         const selectId = `bend-angle-${entry.id}`;
@@ -1791,8 +1800,8 @@ function BendFormComponent({
                   </div>
                 )}
 
-                {/* Tangent Extensions Row - hide for Sweep Tees and Duckfoot Bends */}
-                {entry.specs?.bendItemType !== 'SWEEP_TEE' && entry.specs?.bendItemType !== 'DUCKFOOT_BEND' && (
+                {/* Tangent Extensions Row - hide for Sweep Tees, Duckfoot Bends, and S-Bends */}
+                {entry.specs?.bendItemType !== 'SWEEP_TEE' && entry.specs?.bendItemType !== 'DUCKFOOT_BEND' && entry.specs?.bendItemType !== 'S_BEND' && (
                   <TangentExtensionsSection
                     entryId={entry.id}
                     numberOfTangents={entry.specs?.numberOfTangents || 0}
@@ -1802,8 +1811,8 @@ function BendFormComponent({
                   />
                 )}
 
-                {/* Stub Connections Section - hide for Sweep Tees and Duckfoot Bends */}
-                {entry.specs?.bendItemType !== 'SWEEP_TEE' && entry.specs?.bendItemType !== 'DUCKFOOT_BEND' && (
+                {/* Stub Connections Section - hide for Sweep Tees, Duckfoot Bends, and S-Bends */}
+                {entry.specs?.bendItemType !== 'SWEEP_TEE' && entry.specs?.bendItemType !== 'DUCKFOOT_BEND' && entry.specs?.bendItemType !== 'S_BEND' && (
                 <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-3 mt-3">
                   <div className="mb-2">
                     <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
@@ -2728,7 +2737,7 @@ function BendFormComponent({
                       <div className="absolute inset-0 bg-blue-500 opacity-0 group-hover:opacity-10 rounded-lg transition-opacity" />
                     </div>
                   ) : Bend3DPreview ? (() => {
-                    const canRenderPreview = entry.specs?.nominalBoreMm && entry.specs?.bendDegrees;
+                    const canRenderPreview = entry.specs?.nominalBoreMm && (entry.specs?.bendDegrees || isFixedAngle90Type);
                     log.info(`🎨 BendForm preview check - entry.id: ${entry.id}, nominalBoreMm: ${entry.specs?.nominalBoreMm}, bendDegrees: ${entry.specs?.bendDegrees}, canRender: ${!!canRenderPreview}`);
                     if (!canRenderPreview) {
                       return (
@@ -2751,7 +2760,7 @@ function BendFormComponent({
                         nominalBore={entry.specs.nominalBoreMm}
                         outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}
                         wallThickness={entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5}
-                        bendAngle={entry.specs.bendDegrees}
+                        bendAngle={entry.specs.bendDegrees || (isFixedAngle90Type ? 90 : 0)}
                         bendType={entry.specs.bendType || '1.5D'}
                         tangent1={entry.specs?.tangentLengths?.[0] || 0}
                         tangent2={entry.specs?.tangentLengths?.[1] || 0}
