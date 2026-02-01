@@ -417,13 +417,14 @@ function BendFormComponent({
                         </label>
                         <select
                           id={`bend-item-type-${entry.id}`}
+                          data-nix-target="bend-item-type"
                           value={entry.specs?.bendItemType || 'BEND'}
                           onChange={handleItemTypeChange}
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                         >
                           <option value="BEND">Bend</option>
-                          <option value="DUCKFOOT_BEND">Duckfoot Bend</option>
-                          <option value="SWEEP_TEE">Sweep Tee</option>
+                          <option value="DUCKFOOT_BEND" data-nix-target="bend-item-type-duckfoot">Duckfoot Bend</option>
+                          <option value="SWEEP_TEE" data-nix-target="bend-item-type-sweep-tee">Sweep Tee</option>
                         </select>
                       </div>
                       {/* Steel Specification Dropdown */}
@@ -629,7 +630,7 @@ function BendFormComponent({
 
                   // NB Dropdown (shared logic but different placement)
                   const NBDropdown = (
-                    <div>
+                    <div data-nix-target="bend-nb-select">
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Nominal Bore (mm) *
                         <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Internal pipe diameter designation. NB (Nominal Bore) is the standard way to specify pipe size. Actual OD (Outside Diameter) varies by schedule.">?</span>
@@ -775,7 +776,7 @@ function BendFormComponent({
 
                   // Schedule Dropdown (shared)
                   const ScheduleDropdown = (
-                    <div>
+                    <div data-nix-target="bend-schedule-select">
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Schedule *
                         <span className="ml-1 text-gray-400 font-normal cursor-help" title="Schedule determines wall thickness. Auto-selected based on ASME B31.3 pressure requirements when working pressure is set. Higher schedules = thicker walls = higher pressure rating.">?</span>
@@ -823,7 +824,7 @@ function BendFormComponent({
 
                   // Bend Style Dropdown (Segmented vs Pulled)
                   const BendStyleDropdown = (
-                    <div>
+                    <div data-nix-target="bend-style-select">
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Bend Style *
                         <span className="ml-1 text-gray-400 font-normal cursor-help" title="Segmented = welded mitre segments (SABS 719). Pulled = smooth induction bends (SABS 62). Steel spec may restrict options.">?</span>
@@ -910,7 +911,7 @@ function BendFormComponent({
 
                   // Pulled Bend Type Dropdown (1D, 1.5D, 2D, etc.)
                   const BendTypeDropdown = (
-                    <div>
+                    <div data-nix-target="bend-radius-select">
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Bend Radius *
                         <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Radius multiplier of nominal bore. 1D = tight elbow (radius = 1×NB). 1.5D = short radius (1.5×NB). 2D = standard (2×NB). 3D = long radius (3×NB). 5D = extra long (5×NB). Larger D = gentler curve, lower pressure drop.">?</span>
@@ -961,7 +962,7 @@ function BendFormComponent({
 
                   // Segmented Bend Radius Type Dropdown (Short/Medium/Long)
                   const RadiusTypeDropdown = (
-                    <div>
+                    <div data-nix-target="bend-radius-select">
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Bend Radius *
                         <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="LRSE = Long Radius (3D, gentler curve). MRSE = Medium Radius (2.5D, tighter curve). Larger radius = lower pressure drop, easier flow.">?</span>
@@ -1116,7 +1117,7 @@ function BendFormComponent({
 
                   // SABS 719 Segments Dropdown
                   const SegmentsDropdown = (
-                    <div>
+                    <div data-nix-target="bend-segments-select">
                       {(() => {
                         const bendRadiusType = entry.specs?.bendRadiusType;
                         const bendDeg = entry.specs?.bendDegrees || 0;
@@ -1222,7 +1223,7 @@ function BendFormComponent({
 
                   // Quantity Input (shared by both layouts)
                   const QuantityInput = (
-                    <div className="relative">
+                    <div className="relative" data-nix-target="bend-quantity-input">
                       <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                         Quantity * {isUnregisteredCustomer && <span className="text-gray-400 font-normal">(fixed)</span>}
                       </label>
@@ -1575,7 +1576,7 @@ function BendFormComponent({
                             </div>
                           )}
                         </div>
-                        <div>
+                        <div data-nix-target="bend-end-config-select">
                           <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                             Config
                             <span className="ml-1 text-gray-400 font-normal cursor-help" title="PE = Plain End (for butt welding). FOE = Flanged One End. FBE = Flanged Both Ends. L/F = Loose Flange (slip-on). R/F = Rotating Flange (backing ring).">?</span>
@@ -2753,6 +2754,7 @@ function BendFormComponent({
                     const steelSpecName = masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName || '';
                     const previewIsSABS719 = steelSpecName.includes('SABS 719') || steelSpecName.includes('SANS 719');
                     return (
+                      <div data-nix-target="bend-3d-preview">
                       <Bend3DPreview
                         nominalBore={entry.specs.nominalBoreMm}
                         outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}
@@ -2799,6 +2801,7 @@ function BendFormComponent({
                         duckfootGussetPointCDegrees={entry.specs?.duckfootGussetPointCDegrees}
                         sweepTeePipeALengthMm={entry.specs?.sweepTeePipeALengthMm}
                       />
+                      </div>
                     );
                   })() : (
                     <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 text-center text-blue-600 text-sm font-medium">

@@ -32,10 +32,11 @@ interface SelectProps {
   'aria-invalid'?: boolean;
   'aria-describedby'?: string;
   'aria-label'?: string;
+  'data-nix-target'?: string;
 }
 
 const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
-  ({ id, value, onChange, options, groupedOptions, placeholder = 'Select...', className, disabled, loading, open: controlledOpen, onOpenChange, 'aria-required': ariaRequired, 'aria-invalid': ariaInvalid, 'aria-describedby': ariaDescribedby, 'aria-label': ariaLabel }, ref) => {
+  ({ id, value, onChange, options, groupedOptions, placeholder = 'Select...', className, disabled, loading, open: controlledOpen, onOpenChange, 'aria-required': ariaRequired, 'aria-invalid': ariaInvalid, 'aria-describedby': ariaDescribedby, 'aria-label': ariaLabel, 'data-nix-target': dataNixTarget }, ref) => {
     const [internalOpen, setInternalOpen] = React.useState(false);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [highlightedIndex, setHighlightedIndex] = React.useState(0);
@@ -162,6 +163,7 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
             aria-invalid={ariaInvalid}
             aria-describedby={ariaDescribedby}
             aria-label={ariaLabel}
+            data-nix-target={dataNixTarget}
             className={`flex items-center justify-between w-full px-2 py-1.5 text-xs border border-gray-300 rounded bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-left ${className || ''}`}
           >
             <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>

@@ -505,7 +505,7 @@ function StraightPipeFormComponent({
                     {(() => {
                       const isMissingForPreview = entry.specs?.individualPipeLength && !entry.specs?.nominalBoreMm;
                       return (
-                        <div className={isMissingForPreview ? 'ring-2 ring-red-500 rounded-md p-1 bg-red-50' : ''}>
+                        <div data-nix-target="pipe-nb-select" className={isMissingForPreview ? 'ring-2 ring-red-500 rounded-md p-1 bg-red-50' : ''}>
                           <label htmlFor={`pipe-nb-pressure-${entry.id}`} className={`block text-xs font-semibold mb-1 ${isMissingForPreview ? 'text-red-700' : 'text-gray-900'}`}>
                             Nominal Bore (mm) * {isMissingForPreview && <span className="text-red-600 font-bold">⚠ Required for preview</span>}
                           </label>
@@ -647,7 +647,7 @@ function StraightPipeFormComponent({
                     </div>
 
                     {/* Schedule */}
-                    <div>
+                    <div data-nix-target="pipe-schedule-select">
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Schedule
                         <span className="ml-1 text-gray-400 font-normal cursor-help" title="★ = Minimum schedule meeting ASME B31.3 pressure requirements with 1.2x safety margin. Higher schedules provide thicker walls and greater pressure capacity.">?</span>
@@ -1162,7 +1162,7 @@ function StraightPipeFormComponent({
                           </div>
 
                           {/* Pipe End Configuration */}
-                          <div>
+                          <div data-nix-target="pipe-end-config-select">
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
                               Config
                               <span className="ml-1 text-gray-400 font-normal cursor-help" title="PE = Plain End (no flanges, for butt welding to other pipes). FOE = Flanged One End (connect to equipment/valve). FBE = Flanged Both Ends (spool piece). L/F = Loose Flange (slip-on, easier bolt alignment). R/F = Rotating Flange (backing ring allows rotation for bolt hole alignment).">?</span>
@@ -1606,7 +1606,7 @@ function StraightPipeFormComponent({
                   {(() => {
                     const isMissingForPreview = entry.specs?.nominalBoreMm && !entry.specs?.individualPipeLength;
                     return (
-                      <div className={isMissingForPreview ? 'ring-2 ring-red-500 rounded-md p-1 bg-red-50' : ''}>
+                      <div data-nix-target="pipe-length-input" className={isMissingForPreview ? 'ring-2 ring-red-500 rounded-md p-1 bg-red-50' : ''}>
                         <div className="flex items-center gap-2 mb-1">
                           <label className={`text-xs font-semibold ${isMissingForPreview ? 'text-red-700' : 'text-gray-900 dark:text-gray-100'}`}>
                             Pipe Length (m) {isMissingForPreview && <span className="text-red-600 font-bold">⚠ Required for preview</span>}
@@ -1700,7 +1700,7 @@ function StraightPipeFormComponent({
                   )}
 
                   {/* Quantity */}
-                  <div className="relative">
+                  <div className="relative" data-nix-target="pipe-quantity-input">
                     <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                       Qty (Each) {isUnregisteredCustomer && <span className="text-gray-400 font-normal">(fixed)</span>}
                     </label>
@@ -1780,6 +1780,7 @@ function StraightPipeFormComponent({
                     const flangeStandardName = flangeStandard?.code === 'SABS_1123' ? 'SABS 1123' : flangeStandard?.code === 'BS_4504' ? 'BS 4504' : flangeStandard?.code?.replace(/_/g, ' ') || '';
                     const pressureClassDesignation = pressureClass?.designation || '';
                     return (
+                      <div data-nix-target="pipe-3d-preview">
                       <Pipe3DPreview
                         length={entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M}
                         outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}
@@ -1817,6 +1818,7 @@ function StraightPipeFormComponent({
                         puddleFlangeThicknessMm={entry.specs?.puddleFlangeThicknessMm}
                         puddleFlangeLocationMm={entry.specs?.puddleFlangeLocationMm}
                       />
+                      </div>
                     );
                   })() : (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">

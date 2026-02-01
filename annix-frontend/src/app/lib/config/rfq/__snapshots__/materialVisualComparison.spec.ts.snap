@@ -1,0 +1,130 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Material Visual Comparison Tests > Material Configuration Snapshots > flange materials should match expected configuration 1`] = `
+{
+  "blank": {
+    "color": "#cc3300",
+    "envMapIntensity": 1.2,
+    "metalness": 0.85,
+    "roughness": 0.2,
+  },
+  "bolt": {
+    "color": "#b0b0b0",
+    "envMapIntensity": 1.3,
+    "metalness": 0.9,
+    "roughness": 0.15,
+  },
+  "standard": {
+    "color": "#888888",
+    "envMapIntensity": 1.3,
+    "metalness": 0.9,
+    "roughness": 0.15,
+  },
+}
+`;
+
+exports[`Material Visual Comparison Tests > Material Configuration Snapshots > lighting configuration should match expected setup 1`] = `
+{
+  "ambient": {
+    "intensity": 0.4,
+  },
+  "environment": {
+    "background": false,
+    "preset": "warehouse",
+  },
+  "fillLight": {
+    "intensity": 1.5,
+    "position": [
+      -8,
+      10,
+      -5,
+    ],
+  },
+  "keyLight": {
+    "intensity": 2.5,
+    "position": [
+      10,
+      15,
+      10,
+    ],
+  },
+  "rimLight": {
+    "intensity": 0.8,
+    "position": [
+      0,
+      -5,
+      0,
+    ],
+  },
+  "shadowMapSize": 1024,
+}
+`;
+
+exports[`Material Visual Comparison Tests > Material Configuration Snapshots > pipe materials should match expected configuration 1`] = `
+{
+  "end": {
+    "color": "#4ADE80",
+    "envMapIntensity": 1,
+    "metalness": 0.8,
+    "roughness": 0.2,
+  },
+  "inner": {
+    "color": "#1a3a1a",
+    "envMapIntensity": 0.8,
+    "metalness": 0.7,
+    "roughness": 0.4,
+  },
+  "outer": {
+    "color": "#2E8B57",
+    "envMapIntensity": 1.2,
+    "metalness": 0.85,
+    "roughness": 0.25,
+  },
+}
+`;
+
+exports[`Material Visual Comparison Tests > Material Configuration Snapshots > steelwork materials should match expected configuration 1`] = `
+{
+  "basePlate": {
+    "color": "#555555",
+    "envMapIntensity": 1.2,
+    "metalness": 0.85,
+    "roughness": 0.2,
+  },
+  "gussetBlue": {
+    "color": "#0066cc",
+    "envMapIntensity": 1,
+    "metalness": 0.8,
+    "roughness": 0.25,
+  },
+  "gussetYellow": {
+    "color": "#cc8800",
+    "envMapIntensity": 1,
+    "metalness": 0.8,
+    "roughness": 0.25,
+  },
+  "rib": {
+    "color": "#666666",
+    "envMapIntensity": 1,
+    "metalness": 0.8,
+    "roughness": 0.25,
+  },
+}
+`;
+
+exports[`Material Visual Comparison Tests > Material Configuration Snapshots > weld materials should match expected configuration 1`] = `
+{
+  "highlighted": {
+    "color": "#444444",
+    "envMapIntensity": 0.6,
+    "metalness": 0.5,
+    "roughness": 0.6,
+  },
+  "standard": {
+    "color": "#2a2a2a",
+    "envMapIntensity": 0.5,
+    "metalness": 0.6,
+    "roughness": 0.7,
+  },
+}
+`;
