@@ -1940,6 +1940,33 @@ export function calculateButtWeldVolume(params: {
   return { volumeMm3, volumeCm3, weldLengthMm };
 }
 
+// Steinmetz factor: Arc length of bicylindric curve for equal diameter cylinders at 90°
+// L = 4r × ∫₀^(π/2) √[1 + sin²(θ)] dθ ≈ 2.701 × OD
+const STEINMETZ_FACTOR = 2.7;
+
+export function calculateSaddleWeldVolume(params: {
+  branchOdMm: number;
+  mainOdMm: number;
+  wallThicknessMm: number;
+  config?: WeldVolumeConfig;
+}): { volumeMm3: number; volumeCm3: number; legSizeMm: number; weldLengthMm: number } {
+  const { branchOdMm, mainOdMm, wallThicknessMm, config } = params;
+
+  // For equal diameters: weld length = 2.7 × OD (Steinmetz factor)
+  // For unequal diameters: L ≈ π × d × √[1 + (d/D)²] where d=branch, D=main
+  const diameterRatio = branchOdMm / mainOdMm;
+  const weldLengthMm = diameterRatio >= 0.95
+    ? STEINMETZ_FACTOR * branchOdMm // Equal diameters - use Steinmetz
+    : Math.PI * branchOdMm * Math.sqrt(1 + diameterRatio * diameterRatio); // Unequal - approximation
+
+  const legSizeMm = config?.filletLegSizeMm || calculateFilletWeldLegSize(wallThicknessMm);
+  const crossSectionMm2 = filletWeldCrossSectionMm2(legSizeMm);
+  const volumeMm3 = crossSectionMm2 * weldLengthMm;
+  const volumeCm3 = volumeMm3 / 1000;
+
+  return { volumeMm3, volumeCm3, legSizeMm, weldLengthMm };
+}
+
 export function calculateTotalWeldVolume(params: {
   outsideDiameterMm: number;
   wallThicknessMm: number;
@@ -1982,13 +2009,14 @@ export function calculateBendWeldVolume(params: {
   mainWallThicknessMm: number;
   numberOfFlangeWelds: number;
   numberOfMitreWelds: number;
+  hasSweepTeeSaddleWeld?: boolean;
   stubs?: Array<{
     odMm: number;
     wallThicknessMm: number;
     hasFlangeWeld: boolean;
   }>;
   config?: WeldVolumeConfig;
-}): WeldVolumeResult & { stubWeldVolumeMm3: number; stubWeldVolumeCm3: number } {
+}): WeldVolumeResult & { stubWeldVolumeMm3: number; stubWeldVolumeCm3: number; saddleWeldVolumeMm3: number; saddleWeldVolumeCm3: number } {
   const mainFlangeWeld = calculateFlangeWeldVolume({
     outsideDiameterMm: params.mainOdMm,
     wallThicknessMm: params.mainWallThicknessMm,
@@ -2002,6 +2030,20 @@ export function calculateBendWeldVolume(params: {
     numberOfButtWelds: params.numberOfMitreWelds,
     config: params.config,
   });
+
+  // Sweep tee saddle weld (Steinmetz curve at 90° intersection)
+  let saddleWeldVolumeMm3 = 0;
+  let saddleWeldVolumeCm3 = 0;
+  if (params.hasSweepTeeSaddleWeld) {
+    const saddleWeld = calculateSaddleWeldVolume({
+      branchOdMm: params.mainOdMm, // Equal diameter for sweep tees
+      mainOdMm: params.mainOdMm,
+      wallThicknessMm: params.mainWallThicknessMm,
+      config: params.config,
+    });
+    saddleWeldVolumeMm3 = saddleWeld.volumeMm3;
+    saddleWeldVolumeCm3 = saddleWeld.volumeCm3;
+  }
 
   let stubWeldVolumeMm3 = 0;
   if (params.stubs) {
@@ -2019,18 +2061,20 @@ export function calculateBendWeldVolume(params: {
   }
   const stubWeldVolumeCm3 = stubWeldVolumeMm3 / 1000;
 
-  const totalVolumeMm3 = mainFlangeWeld.volumeMm3 + mitreWeld.volumeMm3 + stubWeldVolumeMm3;
+  const totalVolumeMm3 = mainFlangeWeld.volumeMm3 + mitreWeld.volumeMm3 + stubWeldVolumeMm3 + saddleWeldVolumeMm3;
   const totalVolumeCm3 = totalVolumeMm3 / 1000;
   const WELD_METAL_DENSITY_KG_CM3 = STEEL_DENSITY_KG_CM3;
   const weldMetalWeightKg = totalVolumeCm3 * WELD_METAL_DENSITY_KG_CM3;
 
   return {
-    filletVolumeMm3: mainFlangeWeld.volumeMm3 + stubWeldVolumeMm3,
-    filletVolumeCm3: (mainFlangeWeld.volumeMm3 + stubWeldVolumeMm3) / 1000,
+    filletVolumeMm3: mainFlangeWeld.volumeMm3 + stubWeldVolumeMm3 + saddleWeldVolumeMm3,
+    filletVolumeCm3: (mainFlangeWeld.volumeMm3 + stubWeldVolumeMm3 + saddleWeldVolumeMm3) / 1000,
     buttWeldVolumeMm3: mitreWeld.volumeMm3,
     buttWeldVolumeCm3: mitreWeld.volumeCm3,
     stubWeldVolumeMm3,
     stubWeldVolumeCm3,
+    saddleWeldVolumeMm3,
+    saddleWeldVolumeCm3,
     totalVolumeMm3,
     totalVolumeCm3,
     weldMetalWeightKg,

@@ -6,6 +6,15 @@ import { OrbitControls, Center, Environment, ContactShadows, Tube, Text, Billboa
 import * as THREE from 'three'
 import { log } from '@/app/lib/logger'
 import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs'
+import {
+  PIPE_MATERIALS,
+  WELD_MATERIALS,
+  FLANGE_MATERIALS,
+  GEOMETRY_CONSTANTS,
+  NB_TO_OD_LOOKUP,
+  nbToOd,
+  calculateVisualWallThickness,
+} from '@/app/lib/config/rfq/rendering3DStandards'
 
 interface SimpleLineProps {
   points: Array<[number, number, number]>
@@ -99,27 +108,13 @@ interface Props {
   sweepTeePipeALengthMm?: number
 }
 
-const SCALE = 200
-
-const NB_TO_OD: Record<number, number> = {
-  15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9,
-  100: 114.3, 125: 139.7, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
-  350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 550: 559.0, 600: 609.6
-}
-
-const nbToOd = (nb: number): number => NB_TO_OD[nb] || nb * 1.05
-
-const visualWallThickness = (od: number, actualWt: number): number => {
-  const minVisualWt = od * 0.08
-  return Math.max(actualWt, minVisualWt)
-}
-
-const pipeOuterMat = { color: '#2E8B57', metalness: 0.3, roughness: 0.5 }
-const pipeInnerMat = { color: '#1a3a1a', metalness: 0.2, roughness: 0.7 }
-const pipeEndMat = { color: '#4ADE80', metalness: 0.5, roughness: 0.3 }
-const weldColor = { color: '#1a1a1a', metalness: 0.2, roughness: 0.9 }
-const flangeColor = { color: '#888888', metalness: 0.6, roughness: 0.4 }
-const blankFlangeColor = { color: '#cc3300', metalness: 0.6, roughness: 0.4 }
+const SCALE = GEOMETRY_CONSTANTS.SCALE
+const pipeOuterMat = PIPE_MATERIALS.outer
+const pipeInnerMat = PIPE_MATERIALS.inner
+const pipeEndMat = PIPE_MATERIALS.end
+const weldColor = WELD_MATERIALS.standard
+const flangeColor = FLANGE_MATERIALS.standard
+const blankFlangeColor = FLANGE_MATERIALS.blank
 
 const FLANGE_DATA: { [key: number]: { flangeOD: number; pcd: number; boltHoles: number; holeID: number; boltSize: number; boltLength: number; thickness: number } } = {
   15: { flangeOD: 95, pcd: 65, boltHoles: 4, holeID: 14, boltSize: 12, boltLength: 55, thickness: 14 },
@@ -423,114 +418,195 @@ interface DimensionLineProps {
   end: THREE.Vector3
   label: string
   offset?: number
+  offsetDirection?: 'y' | 'x' | 'z' | THREE.Vector3
   color?: string
+  hideStartExtension?: boolean
   hideEndExtension?: boolean
+  textAbove?: boolean
+  fontSize?: number
+  arrowStyle?: 'open' | 'filled' | 'tick'
+  lineWeight?: 'thin' | 'normal' | 'bold'
 }
 
-const DimensionLine = ({ start, end, label, offset = 0.5, color = '#333333', hideEndExtension = false }: DimensionLineProps) => {
-  const offsetY = offset
-  const startOffset = new THREE.Vector3(start.x, start.y + offsetY, start.z)
-  const endOffset = new THREE.Vector3(end.x, end.y + offsetY, end.z)
+const DimensionLine = ({
+  start,
+  end,
+  label,
+  offset = 0.5,
+  offsetDirection = 'y',
+  color = '#333333',
+  hideStartExtension = false,
+  hideEndExtension = false,
+  textAbove = true,
+  fontSize = 0.16,
+  arrowStyle = 'open',
+  lineWeight = 'normal'
+}: DimensionLineProps) => {
+  const offsetVector = useMemo(() => {
+    if (offsetDirection instanceof THREE.Vector3) {
+      return offsetDirection.clone().normalize().multiplyScalar(offset)
+    }
+    const vec = new THREE.Vector3()
+    vec[offsetDirection] = offset
+    return vec
+  }, [offset, offsetDirection])
 
-  const midPoint = new THREE.Vector3().lerpVectors(startOffset, endOffset, 0.5)
-  const direction = new THREE.Vector3().subVectors(endOffset, startOffset)
-  const length = direction.length()
+  const startOffset = useMemo(() => start.clone().add(offsetVector), [start, offsetVector])
+  const endOffset = useMemo(() => end.clone().add(offsetVector), [end, offsetVector])
+
+  const midPoint = useMemo(() => new THREE.Vector3().lerpVectors(startOffset, endOffset, 0.5), [startOffset, endOffset])
+  const direction = useMemo(() => {
+    const dir = new THREE.Vector3().subVectors(endOffset, startOffset)
+    const len = dir.length()
+    return len > 0.001 ? dir.normalize() : new THREE.Vector3(1, 0, 0)
+  }, [startOffset, endOffset])
+  const length = useMemo(() => new THREE.Vector3().subVectors(endOffset, startOffset).length(), [startOffset, endOffset])
 
   if (length < 0.01) return null
 
-  direction.normalize()
-
   const textRotationY = -Math.atan2(direction.z, direction.x)
 
-  const arrowSize = Math.min(0.12, length * 0.15)
-  const arrowAngle = Math.PI * 0.85
+  const lineWidths = { thin: 1.5, normal: 2, bold: 3 }
+  const dimLineWidth = lineWidths[lineWeight]
+  const extLineWidth = Math.max(1, dimLineWidth - 0.5)
 
-  const leftArrow1 = startOffset.clone().add(
-    new THREE.Vector3(
-      direction.x * Math.cos(arrowAngle) - direction.z * Math.sin(arrowAngle),
-      0,
-      direction.x * Math.sin(arrowAngle) + direction.z * Math.cos(arrowAngle)
-    ).multiplyScalar(arrowSize)
-  )
-  const leftArrow2 = startOffset.clone().add(
-    new THREE.Vector3(
-      direction.x * Math.cos(-arrowAngle) - direction.z * Math.sin(-arrowAngle),
-      0,
-      direction.x * Math.sin(-arrowAngle) + direction.z * Math.cos(-arrowAngle)
-    ).multiplyScalar(arrowSize)
-  )
+  const arrowSize = Math.min(0.1, Math.max(0.04, length * 0.08))
+  const arrowAngle = Math.PI * 0.89
 
-  const rightDir = direction.clone().negate()
-  const rightArrow1 = endOffset.clone().add(
-    new THREE.Vector3(
-      rightDir.x * Math.cos(arrowAngle) - rightDir.z * Math.sin(arrowAngle),
-      0,
-      rightDir.x * Math.sin(arrowAngle) + rightDir.z * Math.cos(arrowAngle)
-    ).multiplyScalar(arrowSize)
-  )
-  const rightArrow2 = endOffset.clone().add(
-    new THREE.Vector3(
-      rightDir.x * Math.cos(-arrowAngle) - rightDir.z * Math.sin(-arrowAngle),
-      0,
-      rightDir.x * Math.sin(-arrowAngle) + rightDir.z * Math.cos(-arrowAngle)
-    ).multiplyScalar(arrowSize)
-  )
+  const extensionGap = 0.02
+  const extensionOvershoot = 0.04
+
+  const extStartGap = useMemo(() => {
+    const gapDir = offsetVector.clone().normalize()
+    return start.clone().add(gapDir.multiplyScalar(extensionGap * Math.sign(offset)))
+  }, [start, offsetVector, offset])
+
+  const extEndGap = useMemo(() => {
+    const gapDir = offsetVector.clone().normalize()
+    return end.clone().add(gapDir.multiplyScalar(extensionGap * Math.sign(offset)))
+  }, [end, offsetVector, offset])
+
+  const extStartOvershoot = useMemo(() => {
+    const overshootDir = offsetVector.clone().normalize()
+    return startOffset.clone().add(overshootDir.multiplyScalar(extensionOvershoot * Math.sign(offset)))
+  }, [startOffset, offsetVector, offset])
+
+  const extEndOvershoot = useMemo(() => {
+    const overshootDir = offsetVector.clone().normalize()
+    return endOffset.clone().add(overshootDir.multiplyScalar(extensionOvershoot * Math.sign(offset)))
+  }, [endOffset, offsetVector, offset])
+
+  const createArrowPoints = (tip: THREE.Vector3, dir: THREE.Vector3): [number, number, number][] => {
+    const arrow1 = tip.clone().add(
+      new THREE.Vector3(
+        dir.x * Math.cos(arrowAngle) - dir.z * Math.sin(arrowAngle),
+        0,
+        dir.x * Math.sin(arrowAngle) + dir.z * Math.cos(arrowAngle)
+      ).multiplyScalar(arrowSize)
+    )
+    const arrow2 = tip.clone().add(
+      new THREE.Vector3(
+        dir.x * Math.cos(-arrowAngle) - dir.z * Math.sin(-arrowAngle),
+        0,
+        dir.x * Math.sin(-arrowAngle) + dir.z * Math.cos(-arrowAngle)
+      ).multiplyScalar(arrowSize)
+    )
+    return [
+      [arrow1.x, arrow1.y, arrow1.z],
+      [tip.x, tip.y, tip.z],
+      [arrow2.x, arrow2.y, arrow2.z]
+    ]
+  }
+
+  const createTickPoints = (point: THREE.Vector3, perpDir: THREE.Vector3): [number, number, number][] => {
+    const tickSize = arrowSize * 0.8
+    const tick1 = point.clone().add(perpDir.clone().multiplyScalar(tickSize))
+    const tick2 = point.clone().sub(perpDir.clone().multiplyScalar(tickSize))
+    return [
+      [tick1.x, tick1.y, tick1.z],
+      [tick2.x, tick2.y, tick2.z]
+    ]
+  }
+
+  const createFilledArrowGeometry = (tip: THREE.Vector3, dir: THREE.Vector3): THREE.BufferGeometry => {
+    const arrowWidth = arrowSize * 0.4
+    const perpendicular = new THREE.Vector3(-dir.z, 0, dir.x)
+    const base = tip.clone().add(dir.clone().multiplyScalar(arrowSize))
+    const corner1 = base.clone().add(perpendicular.clone().multiplyScalar(arrowWidth))
+    const corner2 = base.clone().sub(perpendicular.clone().multiplyScalar(arrowWidth))
+    const geometry = new THREE.BufferGeometry()
+    const vertices = new Float32Array([
+      tip.x, tip.y, tip.z,
+      corner1.x, corner1.y, corner1.z,
+      corner2.x, corner2.y, corner2.z
+    ])
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+    geometry.computeVertexNormals()
+    return geometry
+  }
+
+  const perpDir = new THREE.Vector3(-direction.z, 0, direction.x)
+  const leftArrowPoints = createArrowPoints(startOffset, direction)
+  const rightArrowPoints = createArrowPoints(endOffset, direction.clone().negate())
+  const leftTickPoints = createTickPoints(startOffset, perpDir)
+  const rightTickPoints = createTickPoints(endOffset, perpDir)
+
+  const textOffset = textAbove ? 0.12 : -0.12
 
   return (
     <group>
       <Line
         points={[[startOffset.x, startOffset.y, startOffset.z], [endOffset.x, endOffset.y, endOffset.z]]}
         color={color}
-        lineWidth={3}
+        lineWidth={dimLineWidth}
       />
 
-      <Line
-        points={[[startOffset.x, startOffset.y, startOffset.z], [leftArrow1.x, leftArrow1.y, leftArrow1.z]]}
-        color={color}
-        lineWidth={3}
-      />
-      <Line
-        points={[[startOffset.x, startOffset.y, startOffset.z], [leftArrow2.x, leftArrow2.y, leftArrow2.z]]}
-        color={color}
-        lineWidth={3}
-      />
+      {arrowStyle === 'open' && (
+        <>
+          <Line points={leftArrowPoints} color={color} lineWidth={dimLineWidth} />
+          <Line points={rightArrowPoints} color={color} lineWidth={dimLineWidth} />
+        </>
+      )}
 
-      <Line
-        points={[[endOffset.x, endOffset.y, endOffset.z], [rightArrow1.x, rightArrow1.y, rightArrow1.z]]}
-        color={color}
-        lineWidth={3}
-      />
-      <Line
-        points={[[endOffset.x, endOffset.y, endOffset.z], [rightArrow2.x, rightArrow2.y, rightArrow2.z]]}
-        color={color}
-        lineWidth={3}
-      />
+      {arrowStyle === 'tick' && (
+        <>
+          <Line points={leftTickPoints} color={color} lineWidth={dimLineWidth} />
+          <Line points={rightTickPoints} color={color} lineWidth={dimLineWidth} />
+        </>
+      )}
 
-      <Line
-        points={[[start.x, start.y, start.z], [startOffset.x, startOffset.y, startOffset.z]]}
-        color={color}
-        lineWidth={2}
-        dashed
-        dashSize={0.03}
-        gapSize={0.02}
-      />
+      {arrowStyle === 'filled' && (
+        <>
+          <mesh geometry={createFilledArrowGeometry(startOffset, direction.clone().negate())}>
+            <meshBasicMaterial color={color} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh geometry={createFilledArrowGeometry(endOffset, direction)}>
+            <meshBasicMaterial color={color} side={THREE.DoubleSide} />
+          </mesh>
+        </>
+      )}
+
+      {!hideStartExtension && (
+        <Line
+          points={[[extStartGap.x, extStartGap.y, extStartGap.z], [extStartOvershoot.x, extStartOvershoot.y, extStartOvershoot.z]]}
+          color={color}
+          lineWidth={extLineWidth}
+        />
+      )}
       {!hideEndExtension && (
         <Line
-          points={[[end.x, end.y, end.z], [endOffset.x, endOffset.y, endOffset.z]]}
+          points={[[extEndGap.x, extEndGap.y, extEndGap.z], [extEndOvershoot.x, extEndOvershoot.y, extEndOvershoot.z]]}
           color={color}
-          lineWidth={2}
-          dashed
-          dashSize={0.03}
-          gapSize={0.02}
+          lineWidth={extLineWidth}
         />
       )}
 
       <Text
-        position={[midPoint.x, midPoint.y + 0.15, midPoint.z]}
-        fontSize={0.18}
+        position={[midPoint.x, midPoint.y + textOffset, midPoint.z]}
+        fontSize={fontSize}
         color={color}
         anchorX="center"
-        anchorY="bottom"
+        anchorY={textAbove ? 'bottom' : 'top'}
         fontWeight="bold"
         rotation={[0, textRotationY, 0]}
       >
@@ -540,6 +616,237 @@ const DimensionLine = ({ start, end, label, offset = 0.5, color = '#333333', hid
   )
 }
 
+interface AngularDimensionProps {
+  center: THREE.Vector3
+  radius: number
+  startAngle: number
+  endAngle: number
+  plane?: 'xy' | 'xz' | 'yz'
+  color?: string
+  fontSize?: number
+  showArrows?: boolean
+  arrowStyle?: 'open' | 'filled'
+  lineWeight?: number
+  label?: string
+  textRotation?: [number, number, number]
+}
+
+const AngularDimension = ({
+  center,
+  radius,
+  startAngle,
+  endAngle,
+  plane = 'xz',
+  color = '#cc6600',
+  fontSize = 0.1,
+  showArrows = true,
+  arrowStyle = 'open',
+  lineWeight = 2,
+  label,
+  textRotation = [0, 0, 0]
+}: AngularDimensionProps) => {
+  const arcSegments = 32
+  const angleDiff = endAngle - startAngle
+  const angleDegrees = Math.round(Math.abs(angleDiff) * (180 / Math.PI))
+  const displayLabel = label ?? `${angleDegrees}°`
+
+  const arcPoints = useMemo(() => {
+    const points: [number, number, number][] = []
+    for (let i = 0; i <= arcSegments; i++) {
+      const t = i / arcSegments
+      const angle = startAngle + t * angleDiff
+      const cos = Math.cos(angle)
+      const sin = Math.sin(angle)
+      if (plane === 'xy') {
+        points.push([center.x + radius * cos, center.y + radius * sin, center.z])
+      } else if (plane === 'xz') {
+        points.push([center.x + radius * cos, center.y, center.z + radius * sin])
+      } else {
+        points.push([center.x, center.y + radius * cos, center.z + radius * sin])
+      }
+    }
+    return points
+  }, [center, radius, startAngle, endAngle, plane, angleDiff])
+
+  const midAngle = startAngle + angleDiff / 2
+  const textPosition = useMemo(() => {
+    const cos = Math.cos(midAngle)
+    const sin = Math.sin(midAngle)
+    const textRadius = radius * 0.65
+    if (plane === 'xy') {
+      return new THREE.Vector3(center.x + textRadius * cos, center.y + textRadius * sin, center.z)
+    } else if (plane === 'xz') {
+      return new THREE.Vector3(center.x + textRadius * cos, center.y, center.z + textRadius * sin)
+    } else {
+      return new THREE.Vector3(center.x, center.y + textRadius * cos, center.z + textRadius * sin)
+    }
+  }, [center, radius, midAngle, plane])
+
+  const arrowSize = Math.min(0.08, radius * 0.15)
+
+  const startArrowGeometry = useMemo(() => {
+    if (!showArrows || arrowStyle !== 'filled') return null
+    const startCos = Math.cos(startAngle)
+    const startSin = Math.sin(startAngle)
+    const tangentAngle = startAngle + Math.PI / 2 + (angleDiff > 0 ? 0 : Math.PI)
+    const tangentCos = Math.cos(tangentAngle)
+    const tangentSin = Math.sin(tangentAngle)
+    let tip: THREE.Vector3, dir: THREE.Vector3
+    if (plane === 'xy') {
+      tip = new THREE.Vector3(center.x + radius * startCos, center.y + radius * startSin, center.z)
+      dir = new THREE.Vector3(tangentCos, tangentSin, 0)
+    } else if (plane === 'xz') {
+      tip = new THREE.Vector3(center.x + radius * startCos, center.y, center.z + radius * startSin)
+      dir = new THREE.Vector3(tangentCos, 0, tangentSin)
+    } else {
+      tip = new THREE.Vector3(center.x, center.y + radius * startCos, center.z + radius * startSin)
+      dir = new THREE.Vector3(0, tangentCos, tangentSin)
+    }
+    const base = tip.clone().add(dir.clone().multiplyScalar(arrowSize))
+    let perpendicular: THREE.Vector3
+    if (plane === 'xy') perpendicular = new THREE.Vector3(-dir.y, dir.x, 0)
+    else if (plane === 'xz') perpendicular = new THREE.Vector3(-dir.z, 0, dir.x)
+    else perpendicular = new THREE.Vector3(0, -dir.z, dir.y)
+    const width = arrowSize * 0.4
+    const corner1 = base.clone().add(perpendicular.clone().multiplyScalar(width))
+    const corner2 = base.clone().sub(perpendicular.clone().multiplyScalar(width))
+    const geometry = new THREE.BufferGeometry()
+    const vertices = new Float32Array([tip.x, tip.y, tip.z, corner1.x, corner1.y, corner1.z, corner2.x, corner2.y, corner2.z])
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+    geometry.computeVertexNormals()
+    return geometry
+  }, [center, radius, startAngle, plane, showArrows, arrowStyle, arrowSize, angleDiff])
+
+  const endArrowGeometry = useMemo(() => {
+    if (!showArrows || arrowStyle !== 'filled') return null
+    const endCos = Math.cos(endAngle)
+    const endSin = Math.sin(endAngle)
+    const tangentAngle = endAngle - Math.PI / 2 + (angleDiff > 0 ? 0 : Math.PI)
+    const tangentCos = Math.cos(tangentAngle)
+    const tangentSin = Math.sin(tangentAngle)
+    let tip: THREE.Vector3, dir: THREE.Vector3
+    if (plane === 'xy') {
+      tip = new THREE.Vector3(center.x + radius * endCos, center.y + radius * endSin, center.z)
+      dir = new THREE.Vector3(tangentCos, tangentSin, 0)
+    } else if (plane === 'xz') {
+      tip = new THREE.Vector3(center.x + radius * endCos, center.y, center.z + radius * endSin)
+      dir = new THREE.Vector3(tangentCos, 0, tangentSin)
+    } else {
+      tip = new THREE.Vector3(center.x, center.y + radius * endCos, center.z + radius * endSin)
+      dir = new THREE.Vector3(0, tangentCos, tangentSin)
+    }
+    const base = tip.clone().add(dir.clone().multiplyScalar(arrowSize))
+    let perpendicular: THREE.Vector3
+    if (plane === 'xy') perpendicular = new THREE.Vector3(-dir.y, dir.x, 0)
+    else if (plane === 'xz') perpendicular = new THREE.Vector3(-dir.z, 0, dir.x)
+    else perpendicular = new THREE.Vector3(0, -dir.z, dir.y)
+    const width = arrowSize * 0.4
+    const corner1 = base.clone().add(perpendicular.clone().multiplyScalar(width))
+    const corner2 = base.clone().sub(perpendicular.clone().multiplyScalar(width))
+    const geometry = new THREE.BufferGeometry()
+    const vertices = new Float32Array([tip.x, tip.y, tip.z, corner1.x, corner1.y, corner1.z, corner2.x, corner2.y, corner2.z])
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+    geometry.computeVertexNormals()
+    return geometry
+  }, [center, radius, endAngle, plane, showArrows, arrowStyle, arrowSize, angleDiff])
+
+  const openArrowPoints = useMemo(() => {
+    if (!showArrows || arrowStyle !== 'open') return { start: null, end: null }
+    const startCos = Math.cos(startAngle)
+    const startSin = Math.sin(startAngle)
+    const endCos = Math.cos(endAngle)
+    const endSin = Math.sin(endAngle)
+    const startTangentAngle = startAngle + Math.PI / 2 + (angleDiff > 0 ? 0 : Math.PI)
+    const endTangentAngle = endAngle - Math.PI / 2 + (angleDiff > 0 ? 0 : Math.PI)
+    let startTip: THREE.Vector3, endTip: THREE.Vector3, startDir: THREE.Vector3, endDir: THREE.Vector3
+    if (plane === 'xy') {
+      startTip = new THREE.Vector3(center.x + radius * startCos, center.y + radius * startSin, center.z)
+      endTip = new THREE.Vector3(center.x + radius * endCos, center.y + radius * endSin, center.z)
+      startDir = new THREE.Vector3(Math.cos(startTangentAngle), Math.sin(startTangentAngle), 0)
+      endDir = new THREE.Vector3(Math.cos(endTangentAngle), Math.sin(endTangentAngle), 0)
+    } else if (plane === 'xz') {
+      startTip = new THREE.Vector3(center.x + radius * startCos, center.y, center.z + radius * startSin)
+      endTip = new THREE.Vector3(center.x + radius * endCos, center.y, center.z + radius * endSin)
+      startDir = new THREE.Vector3(Math.cos(startTangentAngle), 0, Math.sin(startTangentAngle))
+      endDir = new THREE.Vector3(Math.cos(endTangentAngle), 0, Math.sin(endTangentAngle))
+    } else {
+      startTip = new THREE.Vector3(center.x, center.y + radius * startCos, center.z + radius * startSin)
+      endTip = new THREE.Vector3(center.x, center.y + radius * endCos, center.z + radius * endSin)
+      startDir = new THREE.Vector3(0, Math.cos(startTangentAngle), Math.sin(startTangentAngle))
+      endDir = new THREE.Vector3(0, Math.cos(endTangentAngle), Math.sin(endTangentAngle))
+    }
+    const arrowAngle = Math.PI * 0.89
+    const createOpenArrow = (tip: THREE.Vector3, dir: THREE.Vector3): [number, number, number][] => {
+      const rotated1 = new THREE.Vector3(
+        dir.x * Math.cos(arrowAngle) - dir.y * Math.sin(arrowAngle),
+        dir.x * Math.sin(arrowAngle) + dir.y * Math.cos(arrowAngle),
+        dir.z
+      ).multiplyScalar(arrowSize)
+      const rotated2 = new THREE.Vector3(
+        dir.x * Math.cos(-arrowAngle) - dir.y * Math.sin(-arrowAngle),
+        dir.x * Math.sin(-arrowAngle) + dir.y * Math.cos(-arrowAngle),
+        dir.z
+      ).multiplyScalar(arrowSize)
+      const p1 = tip.clone().add(rotated1)
+      const p2 = tip.clone().add(rotated2)
+      return [[p1.x, p1.y, p1.z], [tip.x, tip.y, tip.z], [p2.x, p2.y, p2.z]]
+    }
+    return {
+      start: createOpenArrow(startTip, startDir),
+      end: createOpenArrow(endTip, endDir)
+    }
+  }, [center, radius, startAngle, endAngle, plane, showArrows, arrowStyle, arrowSize, angleDiff])
+
+  return (
+    <group>
+      <Line points={arcPoints} color={color} lineWidth={lineWeight} />
+
+      {showArrows && arrowStyle === 'filled' && startArrowGeometry && (
+        <mesh geometry={startArrowGeometry}>
+          <meshBasicMaterial color={color} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      {showArrows && arrowStyle === 'filled' && endArrowGeometry && (
+        <mesh geometry={endArrowGeometry}>
+          <meshBasicMaterial color={color} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      {showArrows && arrowStyle === 'open' && openArrowPoints.start && (
+        <Line points={openArrowPoints.start} color={color} lineWidth={lineWeight} />
+      )}
+      {showArrows && arrowStyle === 'open' && openArrowPoints.end && (
+        <Line points={openArrowPoints.end} color={color} lineWidth={lineWeight} />
+      )}
+
+      <Text
+        position={[textPosition.x, textPosition.y, textPosition.z]}
+        fontSize={fontSize}
+        color={color}
+        anchorX="center"
+        anchorY="middle"
+        fontWeight="bold"
+        rotation={textRotation}
+      >
+        {displayLabel}
+      </Text>
+    </group>
+  )
+}
+
+// Steinmetz Curve (Bicylindric Curve) - 3D intersection of two cylinders
+// Mathematical basis: When two cylinders of radii r and R intersect at 90°
+// Parametric: x = r·cos(θ), y = r·sin(θ), z = √(R² - saddleCoord²)
+//
+// EQUAL RADII (r = R): Forms two intersecting ellipses
+//   Arc length L = 4r × ∫₀^(π/2) √[1 + sin²(θ)] dθ where integral ≈ 1.3506
+//   Total: L ≈ 2.701 × D ≈ 2.7 × OD (the Steinmetz factor)
+//
+// UNEQUAL RADII (r < R): More complex elliptic integral
+//   For small r/R ratios: L ≈ π × d (approaches circular)
+//   For r/R → 1: L → 2.7 × d (approaches Steinmetz)
+//   General approximation: L ≈ π × d × √[1 + (d/D)²] where d=branch OD, D=main OD
+//
+// Reference: AWS D1.1 Clause 9.5.4, Steinmetz solid geometry
 class SaddleCurve extends THREE.Curve<THREE.Vector3> {
   stubRadius: number
   mainPipeRadius: number
@@ -1123,7 +1430,7 @@ const RetainingRing = ({
     <group position={[center.x, center.y, center.z]} rotation={[euler.x, euler.y, euler.z]}>
       <mesh>
         <torusGeometry args={[torusRadius, tubeRadius, 16, 32]} />
-        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} />
+        <meshStandardMaterial color="#b0b0b0" metalness={0.9} roughness={0.15} envMapIntensity={1.3} />
       </mesh>
     </group>
   )
@@ -1245,7 +1552,7 @@ const Scene = (props: Props) => {
   })
 
   const odMm = outerDiameter || nbToOd(nominalBore)
-  const wtMm = visualWallThickness(odMm, wallThickness || 6)
+  const wtMm = calculateVisualWallThickness(odMm, wallThickness || 6)
 
   const outerR = odMm / SCALE / 2
   const innerR = (odMm - 2 * wtMm) / SCALE / 2
@@ -1316,7 +1623,7 @@ const Scene = (props: Props) => {
       .filter((s) => s.locationFromFlange != null && s.length != null && s.nominalBoreMm != null)
       .map((s) => {
         const sOd = nbToOd(s.nominalBoreMm!)
-        const sWt = visualWallThickness(sOd, wtMm * 0.8)
+        const sWt = calculateVisualWallThickness(sOd, wtMm * 0.8)
         const distFromFlange = s.locationFromFlange! / SCALE
 
         return {
@@ -1337,13 +1644,26 @@ const Scene = (props: Props) => {
   const defaultPipeALengthMm = nominalBore * 3
   const effectivePipeALengthMm = sweepTeePipeALengthMm || (isSweepTee ? defaultPipeALengthMm : 0)
   const pipeALength = effectivePipeALengthMm / SCALE
-  const bendTiltZ = 0.00; // No tilt
+  const bendTiltZ = 0.00
   const duckfootRotation: [number, number, number] = isDuckfoot ? [-Math.PI / 2, Math.PI, -Math.PI + bendTiltZ] : [0, 0, 0]
 
-  const duckfootXOffset = isDuckfoot ? -24.5 : 0
-  const duckfootYOffset = isDuckfoot ? 8 : 0
-  const bendPositionAdjustY = isDuckfoot ? 5 : 0
-  const bendPositionAdjustZ = isDuckfoot ? -10 : 0
+  // Duckfoot geometry calculations based on actual bend dimensions
+  // After rotation, the 90° bend sits with inlet horizontal and outlet vertical
+  // The extrados at 45° (midpoint) is the reference for steelwork positioning
+  const extradosR = bendR + outerR
+  const midAngle = Math.PI / 4 // 45 degrees - midpoint of the 90° bend
+  // At 45°, the extrados point in rotated coordinates:
+  // X offset: how far from origin the midpoint of the bend is horizontally
+  const duckfootExtradosMidX = -extradosR * Math.sin(midAngle)
+  // Y offset: height of extrados at 45° relative to bend center
+  const duckfootExtradosMidY = bendR - extradosR * Math.cos(midAngle)
+
+  // Position the bend group so the base plate sits at y=0 (ground level)
+  // The base plate top should be where the steelwork meets the gussets
+  const duckfootXOffset = isDuckfoot ? duckfootExtradosMidX : 0
+  const duckfootYOffset = isDuckfoot ? duckfootExtradosMidY : 0
+  const bendPositionAdjustY = isDuckfoot ? outerR * 0.5 : 0
+  const bendPositionAdjustZ = isDuckfoot ? -outerR * 0.8 : 0
 
   return (
     <Center>
@@ -1494,8 +1814,8 @@ const Scene = (props: Props) => {
           //
           // For a proper saddle connection where the bend MERGES into Pipe A:
           // - The extrados (outer curve) merges into the top of Pipe A
-          // - The bend curves AWAY from the viewer (+Z direction)
-          // - No Y rotation means bend curves in +Z direction
+          // - The bend curves TOWARD the viewer (-Z direction)
+          // - Adding 180° Y rotation flips the bend to curve in -Z direction
           //
           // Position the bend at the right end of Pipe A, against the flange
           const bendZOffset = pipeAHalfLength
@@ -1504,8 +1824,8 @@ const Scene = (props: Props) => {
           const localBendCenter = new THREE.Vector3(-bendR, 0, 0)
 
           // End of bend position in world coordinates:
-          // Without Y rotation, the bend curves away from viewer, so end is at z = bendZOffset + bendR
-          const sweepEndPos = new THREE.Vector3(0, bendR, bendZOffset + bendR)
+          // With 180° Y rotation, the bend curves toward -Z, so end is at z = bendZOffset - bendR
+          const sweepEndPos = new THREE.Vector3(0, bendR, bendZOffset - bendR)
           const sweepEndDir = new THREE.Vector3(0, 1, 0)
 
           return (
@@ -1527,7 +1847,7 @@ const Scene = (props: Props) => {
                     {/* Black closure piece connected directly to pipe end */}
                     <mesh position={[0, 0, -pipeAHalfLength - closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
                       <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
-                      <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+                      <meshStandardMaterial color="#2a2a2a" metalness={0.6} roughness={0.6} envMapIntensity={0.5} side={THREE.DoubleSide} />
                     </mesh>
                     <mesh position={[0, 0, -pipeAHalfLength - closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
                       <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
@@ -1576,7 +1896,7 @@ const Scene = (props: Props) => {
                     {/* Black closure piece connected directly to pipe end */}
                     <mesh position={[0, 0, pipeAHalfLength + closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
                       <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
-                      <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+                      <meshStandardMaterial color="#2a2a2a" metalness={0.6} roughness={0.6} envMapIntensity={0.5} side={THREE.DoubleSide} />
                     </mesh>
                     <mesh position={[0, 0, pipeAHalfLength + closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
                       <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
@@ -1619,8 +1939,8 @@ const Scene = (props: Props) => {
               )}
 
               {/* Sweep branch - 90° bend with extrados connecting to top of Pipe A */}
-              {/* Position shifts bend, no Y flip curves away from viewer, -90° Z puts in YZ plane */}
-              <group position={[0, 0, bendZOffset]} rotation={[0, 0, -Math.PI / 2]}>
+              {/* Position shifts bend right, 180° Y flips to curve toward viewer, -90° Z puts in YZ plane */}
+              <group position={[0, 0, bendZOffset]} rotation={[0, Math.PI, -Math.PI / 2]}>
                 {isSegmented && numberOfSegments && numberOfSegments > 1 ? (
                   <SegmentedBendPipe
                     bendCenter={localBendCenter}
@@ -1673,9 +1993,11 @@ const Scene = (props: Props) => {
                 )
               )}
 
-              {/* Saddle weld at junction where sweep bend meets Pipe A */}
-              {/* Positioned at the top of Pipe A where the bend emerges */}
-              <group position={[0, outerR, bendZOffset]} rotation={[Math.PI / 2, 0, 0]}>
+              {/* Saddle weld at junction where sweep bend meets Pipe A
+                  The Steinmetz curve weld wraps around the intersection where the bend
+                  emerges from the top of Pipe A. Position at z=bendZOffset where the
+                  bend joins, rotate 90° around Y so the curve wraps around Pipe A (Z axis). */}
+              <group position={[0, outerR, bendZOffset]} rotation={[-Math.PI / 2, 0, 0]}>
                 <SaddleWeld
                   stubRadius={outerR}
                   mainPipeRadius={outerR}
@@ -1737,48 +2059,17 @@ const Scene = (props: Props) => {
                       {`C/F: ${cfValue}mm`}
                     </Text>
                     {/* 3D 90° angle arc at corner */}
-                    {(() => {
-                      const arcRadius3D = outerR * 0.8
-                      const arcSegments = 32
-                      const arcPoints: [number, number, number][] = []
-
-                      for (let i = 0; i <= arcSegments; i++) {
-                        const t = i / arcSegments
-                        const currentAngle = t * (Math.PI / 2)
-                        arcPoints.push([
-                          0,
-                          arcRadius3D * Math.sin(currentAngle),
-                          aLineZ - arcRadius3D * (1 - Math.cos(currentAngle))
-                        ])
-                      }
-
-                      const textPos = new THREE.Vector3(
-                        0,
-                        arcRadius3D * 0.4,
-                        aLineZ - arcRadius3D * 0.4
-                      )
-
-                      return (
-                        <>
-                          <Line
-                            points={arcPoints}
-                            color="#cc6600"
-                            lineWidth={2}
-                          />
-                          <Text
-                            position={[textPos.x + 0.01, textPos.y, textPos.z]}
-                            fontSize={outerR * 0.4}
-                            color="#cc6600"
-                            anchorX="center"
-                            anchorY="middle"
-                            fontWeight="bold"
-                            rotation={[0, -Math.PI / 2, 0]}
-                          >
-                            90°
-                          </Text>
-                        </>
-                      )
-                    })()}
+                    <AngularDimension
+                      center={new THREE.Vector3(0, 0, aLineZ)}
+                      radius={outerR * 0.8}
+                      startAngle={0}
+                      endAngle={Math.PI / 2}
+                      plane="yz"
+                      color="#cc6600"
+                      fontSize={outerR * 0.4}
+                      showArrows={false}
+                      textRotation={[0, -Math.PI / 2, 0]}
+                    />
                   </>
                 )
               })()}
@@ -1845,7 +2136,7 @@ const Scene = (props: Props) => {
                     {/* Black closure piece connected directly to pipe end */}
                     <mesh position={[0, 0, -closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
                       <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
-                      <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+                      <meshStandardMaterial color="#2a2a2a" metalness={0.6} roughness={0.6} envMapIntensity={0.5} side={THREE.DoubleSide} />
                     </mesh>
                     <mesh position={[0, 0, -closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
                       <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
@@ -1924,7 +2215,7 @@ const Scene = (props: Props) => {
                     {/* Black closure piece connected directly to pipe end */}
                     <mesh position={[-2 * bendR, 0, 2 * bendR + closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
                       <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
-                      <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+                      <meshStandardMaterial color="#2a2a2a" metalness={0.6} roughness={0.6} envMapIntensity={0.5} side={THREE.DoubleSide} />
                     </mesh>
                     <mesh position={[-2 * bendR, 0, 2 * bendR + closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
                       <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
@@ -2069,59 +2360,37 @@ const Scene = (props: Props) => {
               {/* 90° arc at inlet corner - where vertical C/F line meets horizontal line */}
               {(() => {
                 const arcRadius = outerR * 1.2
-                const arcSegments = 32
-                const arcPoints: [number, number, number][] = []
                 const cornerY = -outerR * 1.5
-
-                for (let i = 0; i <= arcSegments; i++) {
-                  const t = i / arcSegments
-                  const currentAngle = Math.PI + t * (Math.PI / 2)
-                  arcPoints.push([
-                    arcRadius * Math.cos(currentAngle),
-                    cornerY,
-                    bendR + arcRadius * Math.sin(currentAngle)
-                  ])
-                }
-
                 return (
-                  <>
-                    <Line points={arcPoints} color="#0066cc" lineWidth={2} />
-                    <Billboard position={[-arcRadius * 0.3, cornerY, bendR - arcRadius * 0.3]}>
-                      <Text fontSize={outerR * 0.4} color="#0066cc" anchorX="center" anchorY="middle" fontWeight="bold">
-                        90°
-                      </Text>
-                    </Billboard>
-                  </>
+                  <AngularDimension
+                    center={new THREE.Vector3(0, cornerY, bendR)}
+                    radius={arcRadius}
+                    startAngle={Math.PI}
+                    endAngle={Math.PI * 1.5}
+                    plane="xz"
+                    color="#0066cc"
+                    fontSize={outerR * 0.4}
+                    showArrows={false}
+                  />
                 )
               })()}
 
               {/* 90° arc at outlet corner - where horizontal line meets vertical C/F line */}
               {(() => {
                 const arcRadius = outerR * 1.2
-                const arcSegments = 32
-                const arcPoints: [number, number, number][] = []
                 const cornerY = -outerR * 1.5
                 const cornerX = -2 * bendR
-
-                for (let i = 0; i <= arcSegments; i++) {
-                  const t = i / arcSegments
-                  const currentAngle = t * (Math.PI / 2)
-                  arcPoints.push([
-                    cornerX + arcRadius * Math.cos(currentAngle),
-                    cornerY,
-                    bendR + arcRadius * Math.sin(currentAngle)
-                  ])
-                }
-
                 return (
-                  <>
-                    <Line points={arcPoints} color="#0066cc" lineWidth={2} />
-                    <Billboard position={[cornerX + arcRadius * 0.3, cornerY, bendR + arcRadius * 0.3]}>
-                      <Text fontSize={outerR * 0.4} color="#0066cc" anchorX="center" anchorY="middle" fontWeight="bold">
-                        90°
-                      </Text>
-                    </Billboard>
-                  </>
+                  <AngularDimension
+                    center={new THREE.Vector3(cornerX, cornerY, bendR)}
+                    radius={arcRadius}
+                    startAngle={0}
+                    endAngle={Math.PI / 2}
+                    plane="xz"
+                    color="#0066cc"
+                    fontSize={outerR * 0.4}
+                    showArrows={false}
+                  />
                 )
               })()}
             </>
@@ -2143,20 +2412,24 @@ const Scene = (props: Props) => {
               {/* T1 dimension - hide for duckfoot bends (no tangents) */}
               {!isDuckfoot && t1 > 0 && (() => {
                 const dimX = -outerR - outerR * 0.5;
+                const extGap = 0.02;
+                const extOvershoot = 0.04;
+                const arrowLen = Math.min(0.1, t1 * 0.12);
+                const arrowWidth = arrowLen * 0.4;
                 return (
                   <group>
-                    {/* Extension lines */}
-                    <Line points={[[-outerR, 0, 0], [dimX, 0, 0]]} color="#0066cc" lineWidth={2} />
-                    <Line points={[[-outerR, 0, t1], [dimX, 0, t1]]} color="#0066cc" lineWidth={2} />
+                    {/* Extension lines - solid with gap and overshoot per ISO standards */}
+                    <Line points={[[-outerR - extGap, 0, 0], [dimX - extOvershoot, 0, 0]]} color="#0066cc" lineWidth={1.5} />
+                    <Line points={[[-outerR - extGap, 0, t1], [dimX - extOvershoot, 0, t1]]} color="#0066cc" lineWidth={1.5} />
                     {/* Main dimension line */}
-                    <Line points={[[dimX, 0, 0], [dimX, 0, t1]]} color="#0066cc" lineWidth={3} />
-                    {/* Arrow heads */}
-                    <Line points={[[dimX + 0.05, 0, 0.1], [dimX, 0, 0], [dimX - 0.05, 0, 0.1]]} color="#0066cc" lineWidth={2} />
-                    <Line points={[[dimX + 0.05, 0, t1 - 0.1], [dimX, 0, t1], [dimX - 0.05, 0, t1 - 0.1]]} color="#0066cc" lineWidth={2} />
+                    <Line points={[[dimX, 0, 0], [dimX, 0, t1]]} color="#0066cc" lineWidth={2} />
+                    {/* Arrow heads - proportional 20° angle */}
+                    <Line points={[[dimX + arrowWidth, 0, arrowLen], [dimX, 0, 0], [dimX - arrowWidth, 0, arrowLen]]} color="#0066cc" lineWidth={2} />
+                    <Line points={[[dimX + arrowWidth, 0, t1 - arrowLen], [dimX, 0, t1], [dimX - arrowWidth, 0, t1 - arrowLen]]} color="#0066cc" lineWidth={2} />
                     {/* Label */}
                     <Text
                       position={[dimX - outerR * 0.3, 0, t1 / 2]}
-                      fontSize={outerR * 0.4}
+                      fontSize={Math.max(0.12, outerR * 0.35)}
                       color="#0066cc"
                       anchorX="center"
                       anchorY="middle"
@@ -2172,21 +2445,44 @@ const Scene = (props: Props) => {
               {/* T2 dimension - hide for duckfoot bends (no tangents) */}
               {!isDuckfoot && t2 > 0 && (() => {
                 const dimOffset = outerR * 1.5;
+                const extGap = 0.02;
+                const extOvershoot = 0.04;
                 const t2Dir = new THREE.Vector3().subVectors(outletEnd, bendEndPoint).normalize();
-                const perpDir = new THREE.Vector3(-t2Dir.z, 0, t2Dir.x).multiplyScalar(dimOffset);
-                const dimStart = bendEndPoint.clone().add(perpDir);
-                const dimEnd = outletEnd.clone().add(perpDir);
+                const perpDir = new THREE.Vector3(-t2Dir.z, 0, t2Dir.x);
+                const perpDirScaled = perpDir.clone().multiplyScalar(dimOffset);
+                const dimStart = bendEndPoint.clone().add(perpDirScaled);
+                const dimEnd = outletEnd.clone().add(perpDirScaled);
+                const extStartGap = bendEndPoint.clone().add(perpDir.clone().multiplyScalar(extGap));
+                const extEndGap = outletEnd.clone().add(perpDir.clone().multiplyScalar(extGap));
+                const extStartOver = dimStart.clone().add(perpDir.clone().multiplyScalar(extOvershoot));
+                const extEndOver = dimEnd.clone().add(perpDir.clone().multiplyScalar(extOvershoot));
+                const dimLen = dimStart.distanceTo(dimEnd);
+                const arrowLen = Math.min(0.1, dimLen * 0.12);
+                const arrowWidth = arrowLen * 0.4;
+                const arrowPerpOffset = perpDir.clone().multiplyScalar(arrowWidth);
                 return (
                   <group>
-                    {/* Extension lines */}
-                    <Line points={[[bendEndPoint.x, bendEndPoint.y, bendEndPoint.z], [dimStart.x, dimStart.y, dimStart.z]]} color="#cc0000" lineWidth={2} />
-                    <Line points={[[outletEnd.x, outletEnd.y, outletEnd.z], [dimEnd.x, dimEnd.y, dimEnd.z]]} color="#cc0000" lineWidth={2} />
+                    {/* Extension lines - solid with gap and overshoot */}
+                    <Line points={[[extStartGap.x, extStartGap.y, extStartGap.z], [extStartOver.x, extStartOver.y, extStartOver.z]]} color="#cc0000" lineWidth={1.5} />
+                    <Line points={[[extEndGap.x, extEndGap.y, extEndGap.z], [extEndOver.x, extEndOver.y, extEndOver.z]]} color="#cc0000" lineWidth={1.5} />
                     {/* Main dimension line */}
-                    <Line points={[[dimStart.x, dimStart.y, dimStart.z], [dimEnd.x, dimEnd.y, dimEnd.z]]} color="#cc0000" lineWidth={3} />
+                    <Line points={[[dimStart.x, dimStart.y, dimStart.z], [dimEnd.x, dimEnd.y, dimEnd.z]]} color="#cc0000" lineWidth={2} />
+                    {/* Arrow heads - at start */}
+                    <Line points={[
+                      [dimStart.x + t2Dir.x * arrowLen + arrowPerpOffset.x, 0, dimStart.z + t2Dir.z * arrowLen + arrowPerpOffset.z],
+                      [dimStart.x, dimStart.y, dimStart.z],
+                      [dimStart.x + t2Dir.x * arrowLen - arrowPerpOffset.x, 0, dimStart.z + t2Dir.z * arrowLen - arrowPerpOffset.z]
+                    ]} color="#cc0000" lineWidth={2} />
+                    {/* Arrow heads - at end */}
+                    <Line points={[
+                      [dimEnd.x - t2Dir.x * arrowLen + arrowPerpOffset.x, 0, dimEnd.z - t2Dir.z * arrowLen + arrowPerpOffset.z],
+                      [dimEnd.x, dimEnd.y, dimEnd.z],
+                      [dimEnd.x - t2Dir.x * arrowLen - arrowPerpOffset.x, 0, dimEnd.z - t2Dir.z * arrowLen - arrowPerpOffset.z]
+                    ]} color="#cc0000" lineWidth={2} />
                     {/* Label */}
                     <Text
-                      position={[(dimStart.x + dimEnd.x) / 2 + perpDir.x * outerR * 0.3, 0.01, (dimStart.z + dimEnd.z) / 2 + perpDir.z * outerR * 0.3]}
-                      fontSize={outerR * 0.35}
+                      position={[(dimStart.x + dimEnd.x) / 2 + perpDir.x * outerR * 0.25, 0.01, (dimStart.z + dimEnd.z) / 2 + perpDir.z * outerR * 0.25]}
+                      fontSize={Math.max(0.12, outerR * 0.35)}
                       color="#cc0000"
                       anchorX="center"
                       anchorY="middle"
@@ -2293,8 +2589,8 @@ const Scene = (props: Props) => {
           );
         })()}
 
-        {/* Stubs - hide for duckfoot bends */}
-        {!isDuckfoot && stubsData.map((stub, i) => {
+        {/* Stubs - hide for duckfoot bends and sweep tees (sweep tees have their own branch) */}
+        {!isDuckfoot && !isSweepTee && stubsData.map((stub, i) => {
           const isOutletStub = i === 1
           const tangentLength = isOutletStub ? t2 : t1
 
@@ -2505,7 +2801,7 @@ const Scene = (props: Props) => {
               {/* Black closure piece connected directly to pipe end */}
               <mesh position={[0, 0, -closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
                 <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
-                <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+                <meshStandardMaterial color="#2a2a2a" metalness={0.6} roughness={0.6} envMapIntensity={0.5} side={THREE.DoubleSide} />
               </mesh>
               <mesh position={[0, 0, -closureLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
                 <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
@@ -2523,21 +2819,24 @@ const Scene = (props: Props) => {
               {(() => {
                 const dimX = -outerR - outerR * 0.3;
                 const dimXOuter = -outerR - outerR * 0.8;
+                const extGap = 0.02;
+                const extOvershoot = 0.04;
+                const arrowLen = Math.min(0.08, closureLength * 0.1);
+                const arrowWidth = arrowLen * 0.4;
                 return (
                   <>
-                    {/* Extension line from pipe end */}
-                    <Line points={[[dimX, 0, 0], [dimXOuter, 0, 0]]} color="#cc6600" lineWidth={2} />
-                    {/* Extension line from closure end */}
-                    <Line points={[[dimX, 0, -closureLength], [dimXOuter, 0, -closureLength]]} color="#cc6600" lineWidth={2} />
+                    {/* Extension lines - solid with gap and overshoot per ISO standards */}
+                    <Line points={[[dimX + extGap, 0, 0], [dimXOuter - extOvershoot, 0, 0]]} color="#cc6600" lineWidth={1.5} />
+                    <Line points={[[dimX + extGap, 0, -closureLength], [dimXOuter - extOvershoot, 0, -closureLength]]} color="#cc6600" lineWidth={1.5} />
                     {/* Dimension line connecting */}
-                    <Line points={[[dimXOuter, 0, 0], [dimXOuter, 0, -closureLength]]} color="#cc6600" lineWidth={3} />
-                    {/* Arrow heads */}
-                    <Line points={[[dimXOuter + 0.05, 0, 0.05], [dimXOuter, 0, 0], [dimXOuter - 0.05, 0, 0.05]]} color="#cc6600" lineWidth={2} />
-                    <Line points={[[dimXOuter + 0.05, 0, -closureLength - 0.05], [dimXOuter, 0, -closureLength], [dimXOuter - 0.05, 0, -closureLength - 0.05]]} color="#cc6600" lineWidth={2} />
+                    <Line points={[[dimXOuter, 0, 0], [dimXOuter, 0, -closureLength]]} color="#cc6600" lineWidth={2} />
+                    {/* Arrow heads - proportional */}
+                    <Line points={[[dimXOuter + arrowWidth, 0, -arrowLen], [dimXOuter, 0, 0], [dimXOuter - arrowWidth, 0, -arrowLen]]} color="#cc6600" lineWidth={2} />
+                    <Line points={[[dimXOuter + arrowWidth, 0, -closureLength + arrowLen], [dimXOuter, 0, -closureLength], [dimXOuter - arrowWidth, 0, -closureLength + arrowLen]]} color="#cc6600" lineWidth={2} />
                     {/* Closure length text - large font, rotated to align with pipe */}
                     <Text
                       position={[dimXOuter - outerR * 0.3, 0, -closureLength / 2]}
-                      fontSize={outerR * 0.5}
+                      fontSize={Math.max(0.12, outerR * 0.4)}
                       color="#cc6600"
                       anchorX="center"
                       anchorY="middle"
@@ -2604,7 +2903,7 @@ const Scene = (props: Props) => {
                   <>
                     <mesh position={closureCenterPos.toArray()} rotation={[euler.x, euler.y, euler.z]}>
                       <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
-                      <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.7} side={THREE.DoubleSide} />
+                      <meshStandardMaterial color="#2a2a2a" metalness={0.6} roughness={0.6} envMapIntensity={0.5} side={THREE.DoubleSide} />
                     </mesh>
                     <mesh position={closureCenterPos.toArray()} rotation={[euler.x, euler.y, euler.z]}>
                       <cylinderGeometry args={[innerR, innerR, closureLength + 0.01, 32, 1, true]} />
@@ -2750,21 +3049,28 @@ const Scene = (props: Props) => {
         const plateThickness = (duckfootRibThicknessT2Mm || defaults.t2) / SCALE;
         const ribHeightH = defaults.h / SCALE;
 
-        const basePlateColor = { color: '#555555', metalness: 0.6, roughness: 0.4 };
-        const ribColor = { color: '#666666', metalness: 0.5, roughness: 0.5 };
+        const basePlateColor = { color: '#555555', metalness: 0.85, roughness: 0.2, envMapIntensity: 1.2 };
+        const ribColor = { color: '#666666', metalness: 0.8, roughness: 0.25, envMapIntensity: 1.0 };
 
-        const bendMidpointX = -Math.sin(Math.PI / 4) * bendR; // 45 degrees - midpoint of bend
-        const gussetRefX = bendMidpointX;
-        const steelworkX = -25; // Move toward the bend
-        const steelworkY = -ribHeightH;
-        const steelworkZ = -10;
-        const steelworkRotationY = -Math.PI;
-        const steelworkTiltZ = 0.00; // No tilt
-        const visualOffsetY = -10;
+        // Calculate steelwork position based on bend geometry
+        // The extrados at 45° determines where the gussets meet the pipe
+        const extradosR = bendR + outerR
+        const midAngle = Math.PI / 4 // 45 degrees
+        const bendMidpointX = -extradosR * Math.sin(midAngle)
+        const bendMidpointY = bendR - extradosR * Math.cos(midAngle)
+        const gussetRefX = bendMidpointX
+
+        // Position steelwork so base plate is horizontal below the bend
+        // Account for the duckfoot group transforms applied above
+        const steelworkX = bendMidpointX - duckfootXOffset
+        const steelworkY = -ribHeightH - duckfootYOffset - bendPositionAdjustY
+        const steelworkZ = -bendPositionAdjustZ
+        const steelworkRotationY = -Math.PI
+        const steelworkTiltZ = 0.00
 
 
         return (
-          <group position={[steelworkX, steelworkY + visualOffsetY, steelworkZ]} rotation={[0, steelworkRotationY, steelworkTiltZ]}>
+          <group position={[steelworkX, steelworkY, steelworkZ]} rotation={[0, steelworkRotationY, steelworkTiltZ]}>
             {/* Base Plate - horizontal at bottom */}
             <mesh position={[0, -plateThickness / 2, 0]}>
               <boxGeometry args={[basePlateXDim, plateThickness, basePlateYDim]} />
@@ -2873,7 +3179,7 @@ const Scene = (props: Props) => {
                   rotation={[0, Math.PI / 2, 0]}
                 >
                   <extrudeGeometry args={[gusset2Shape, { depth: ribThickness, bevelEnabled: false }]} />
-                  <meshStandardMaterial color="#0066cc" metalness={0.5} roughness={0.5} />
+                  <meshStandardMaterial color="#0066cc" metalness={0.8} roughness={0.25} envMapIntensity={1.0} />
                 </mesh>
               );
             })()}
@@ -2956,7 +3262,7 @@ const Scene = (props: Props) => {
                   {/* Gusset plate - shape in XY plane, extruded in Z */}
                   <mesh position={[0, 0, -yellowThickness / 2]}>
                     <extrudeGeometry args={[yellowShape, { depth: yellowThickness, bevelEnabled: false }]} />
-                    <meshStandardMaterial color="#cc8800" metalness={0.5} roughness={0.5} />
+                    <meshStandardMaterial color="#cc8800" metalness={0.8} roughness={0.25} envMapIntensity={1.0} />
                   </mesh>
                   {/* Corner labels */}
                   <Text
@@ -3258,10 +3564,11 @@ export default function CSGBend3DPreview(props: Props) {
     <div data-bend-preview className="w-full bg-slate-50 rounded-md border overflow-hidden relative" style={{ height: '500px', minHeight: '500px' }}>
       <Canvas shadows dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }} camera={{ position: cameraPosition, fov: 45, near: 0.01, far: 50000 }} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
         <CaptureHelper captureRef={captureRef} />
-        <ambientLight intensity={0.7} />
-        <spotLight position={[10, 10, 10]} intensity={1} castShadow />
-        <pointLight position={[-5, 5, -5]} intensity={0.5} />
-        <Environment preset="city" />
+        <ambientLight intensity={0.4} />
+        <directionalLight position={[10, 15, 10]} intensity={2.5} castShadow shadow-mapSize={[1024, 1024]} />
+        <directionalLight position={[-8, 10, -5]} intensity={1.5} />
+        <pointLight position={[0, -5, 0]} intensity={0.8} />
+        <Environment preset="warehouse" background={false} />
         <Scene {...props} />
         <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={15} />
         <OrbitControls makeDefault enablePan target={cameraTarget} />
@@ -3553,10 +3860,11 @@ export default function CSGBend3DPreview(props: Props) {
           <div className="relative w-full h-full max-w-[95vw] max-h-[90vh] bg-slate-100 rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setExpanded(false)} className="absolute top-4 right-4 z-[10001] bg-white p-2 rounded-full shadow">✕</button>
             <Canvas shadows dpr={[1, 2]} camera={{ position: cameraPosition, fov: 40, near: 0.01, far: 50000 }} style={{ width: '100%', height: '100%' }}>
-              <ambientLight intensity={0.7} />
-              <spotLight position={[10, 10, 10]} intensity={1} castShadow />
-              <pointLight position={[-5, 5, -5]} intensity={0.5} />
-              <Environment preset="city" />
+              <ambientLight intensity={0.4} />
+              <directionalLight position={[10, 15, 10]} intensity={2.5} castShadow shadow-mapSize={[1024, 1024]} />
+              <directionalLight position={[-8, 10, -5]} intensity={1.5} />
+              <pointLight position={[0, -5, 0]} intensity={0.8} />
+              <Environment preset="warehouse" background={false} />
               <Scene {...props} />
               <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={15} />
               <OrbitControls makeDefault enablePan target={cameraTarget} />

@@ -2000,16 +2000,16 @@ function StraightPipeFormComponent({
                                   {totalSpigotWeight > 0 && (
                                     <p>Spigots: {totalSpigotWeight.toFixed(2)}kg ({spigotCount}×{singleSpigotWeight.toFixed(2)}kg)</p>
                                   )}
-                                  {hasSpigotFlanges && totalSpigotFlangeCount > 0 && (
+                                  {totalSpigotFlangeWeight > 0 && (
                                     <p>Spigot Flanges: {totalSpigotFlangeWeight.toFixed(2)}kg ({totalSpigotFlangeCount}×{singleSpigotFlangeWeight.toFixed(2)}kg)</p>
                                   )}
-                                  {isSpigotRF && totalSpigotFlangeCount > 0 && (
+                                  {totalSpigotRingWeight > 0 && (
                                     <p>Spigot R/F Rings: {totalSpigotRingWeight.toFixed(2)}kg ({totalSpigotFlangeCount}×{singleSpigotRingWeight.toFixed(2)}kg)</p>
                                   )}
-                                  {hasSpigotFlanges && spigotBlankCount > 0 && (
+                                  {totalSpigotBlankWeight > 0 && (
                                     <p>Spigot Blanks: {totalSpigotBlankWeight.toFixed(2)}kg ({spigotBlankCount}×{singleSpigotBlankWeight.toFixed(2)}kg)</p>
                                   )}
-                                  {isPuddlePipe && totalPuddleFlangeWeight > 0 && (
+                                  {totalPuddleFlangeWeight > 0 && (
                                     <p>Puddle Flange: {totalPuddleFlangeWeight.toFixed(2)}kg</p>
                                   )}
                                 </div>
@@ -2103,7 +2103,7 @@ function StraightPipeFormComponent({
                                   {blankFlangeCount > 0 && (
                                     <p>{blankFlangeCount} x {nominalBore}NB Blank {pressureClassDesignation}</p>
                                   )}
-                                  {hasPuddleFlange && (
+                                  {puddleFlangeCount > 0 && (
                                     <p>{puddleFlangeCount} x Puddle Flange (OD:{puddleOd}mm{puddlePcd ? ` PCD:${puddlePcd}mm` : ''})</p>
                                   )}
                                   {totalSpigotFlangeCount > 0 && (
@@ -2120,7 +2120,7 @@ function StraightPipeFormComponent({
                                   {blankFlangeCount > 0 && (
                                     <p>{blankFlangeCount} × {blankWeightPerUnit.toFixed(2)}kg = <span className="font-semibold text-amber-600">{totalBlankFlangeWeight.toFixed(2)}kg</span></p>
                                   )}
-                                  {hasPuddleFlange && (
+                                  {totalPuddleWeight > 0 && (
                                     <p>{puddleFlangeCount} × {singlePuddleWeight.toFixed(2)}kg = <span className="font-semibold text-amber-600">{totalPuddleWeight.toFixed(2)}kg</span></p>
                                   )}
                                   {totalSpigotFlangeCount > 0 && (

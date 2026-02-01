@@ -122,14 +122,6 @@ function BendFormComponent({
   const isUnregisteredCustomer = isUnregisteredCustomerProp ?? !isAuthenticated;
   const MAX_QUANTITY_UNREGISTERED = 1;
   const [quantityLimitPopup, setQuantityLimitPopup] = useState<{ x: number; y: number } | null>(null);
-  const [sBendLiningPopup, setSBendLiningPopup] = useState<{ x: number; y: number } | null>(null);
-
-  const hasSurfaceProtection = requiredProducts.includes('surface_protection');
-  const externalCoatingType = globalSpecs?.externalCoatingType;
-  const internalLiningType = globalSpecs?.internalLiningType;
-  const isGalvanized = externalCoatingType === 'Galvanized';
-  const hasInternalLining = !!internalLiningType;
-  const isSBendDisabled = hasSurfaceProtection && !isGalvanized && hasInternalLining;
 
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
 
@@ -258,24 +250,25 @@ function BendFormComponent({
   const handleItemTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const newItemType = e.target.value;
     const oldItemType = entry.specs?.bendItemType || 'BEND';
-    const isFixed90 = newItemType === 'SWEEP_TEE' || newItemType === 'DUCKFOOT_BEND' || newItemType === 'S_BEND';
-    const isSBend = newItemType === 'S_BEND';
+    const isFixed90 = newItemType === 'SWEEP_TEE' || newItemType === 'DUCKFOOT_BEND';
     const switchingToOrFromSweepTee = (newItemType === 'SWEEP_TEE') !== (oldItemType === 'SWEEP_TEE');
     const currentNB = entry.specs?.nominalBoreMm;
     const sweepTeeValidNBs = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900];
     const nbInvalidForSweepTee = newItemType === 'SWEEP_TEE' && currentNB && !sweepTeeValidNBs.includes(currentNB);
+    const hideTangentsAndStubs = newItemType === 'SWEEP_TEE' || newItemType === 'DUCKFOOT_BEND';
     const updatedEntry: any = {
       ...entry,
       specs: {
         ...entry.specs,
         bendItemType: newItemType,
         bendDegrees: isFixed90 ? 90 : entry.specs?.bendDegrees,
-        bendStyle: isSBend ? 'pulled' : entry.specs?.bendStyle,
         bendEndConfiguration: switchingToOrFromSweepTee ? 'PE' : entry.specs?.bendEndConfiguration,
         nominalBoreMm: nbInvalidForSweepTee ? undefined : entry.specs?.nominalBoreMm,
-        tangentLengths: isSBend ? undefined : entry.specs?.tangentLengths,
-        numberOfStubs: isSBend ? 0 : entry.specs?.numberOfStubs,
-        stubs: isSBend ? undefined : entry.specs?.stubs,
+        numberOfTangents: hideTangentsAndStubs ? 0 : entry.specs?.numberOfTangents,
+        tangentLengths: hideTangentsAndStubs ? [] : entry.specs?.tangentLengths,
+        numberOfStubs: hideTangentsAndStubs ? 0 : entry.specs?.numberOfStubs,
+        stubs: hideTangentsAndStubs ? [] : entry.specs?.stubs,
+        closureLengthMm: hideTangentsAndStubs ? undefined : entry.specs?.closureLengthMm,
         duckfootBasePlateXMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateXMm : undefined,
         duckfootBasePlateYMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateYMm : undefined,
         duckfootRibThicknessT2Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootRibThicknessT2Mm : undefined,
@@ -377,14 +370,12 @@ function BendFormComponent({
     fetchAndSetPipeALength();
   }, [entry.specs?.bendItemType, entry.specs?.nominalBoreMm, entry.specs?.bendRadiusType, entry.specs?.bendType, isCurrentlySegmented, lastFetchedParams, entry.id, entry.specs, onUpdateEntry]);
 
-  const isFixedAngle90Type = entry.specs?.bendItemType === 'SWEEP_TEE' || entry.specs?.bendItemType === 'DUCKFOOT_BEND' || entry.specs?.bendItemType === 'S_BEND';
-
   return (
               <>
               <SplitPaneLayout
                 entryId={entry.id}
                 itemType="bend"
-                showSplitToggle={entry.specs?.nominalBoreMm && (entry.specs?.bendDegrees || isFixedAngle90Type)}
+                showSplitToggle={entry.specs?.nominalBoreMm && entry.specs?.bendDegrees}
                 formContent={
                   <>
                 {/* Item Description */}
@@ -420,53 +411,20 @@ function BendFormComponent({
                   extraFields={
                     <>
                       {/* Item Type Dropdown */}
-                      <div className="relative">
+                      <div>
                         <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                           Item Type
                         </label>
                         <select
                           id={`bend-item-type-${entry.id}`}
                           value={entry.specs?.bendItemType || 'BEND'}
-                          onChange={(e) => {
-                            if (e.target.value === 'S_BEND' && isSBendDisabled) {
-                              const rect = e.target.getBoundingClientRect();
-                              setSBendLiningPopup({ x: rect.left + rect.width / 2, y: rect.bottom + 5 });
-                              e.target.value = entry.specs?.bendItemType || 'BEND';
-                              return;
-                            }
-                            handleItemTypeChange(e);
-                          }}
+                          onChange={handleItemTypeChange}
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                         >
                           <option value="BEND">Bend</option>
-                          <option value="S_BEND" disabled={isSBendDisabled} className={isSBendDisabled ? 'text-gray-400' : ''}>
-                            S-Bend {isSBendDisabled ? '(Not available)' : ''}
-                          </option>
                           <option value="DUCKFOOT_BEND">Duckfoot Bend</option>
                           <option value="SWEEP_TEE">Sweep Tee</option>
                         </select>
-                        {sBendLiningPopup && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-40"
-                              onClick={() => setSBendLiningPopup(null)}
-                            />
-                            <div
-                              className="fixed z-50 bg-red-600 text-white text-xs px-3 py-2 rounded-lg shadow-lg max-w-xs"
-                              style={{ left: sBendLiningPopup.x, top: sBendLiningPopup.y, transform: 'translateX(-50%)' }}
-                            >
-                              <div className="font-semibold mb-1">S-Bends Not Available</div>
-                              <div>S-Bends are not available for internal lining. Please select galvanizing or no lining on page 2 to enable S-Bends.</div>
-                              <button
-                                type="button"
-                                onClick={() => setSBendLiningPopup(null)}
-                                className="mt-2 w-full bg-white text-red-600 px-2 py-1 rounded text-xs font-medium hover:bg-red-50"
-                              >
-                                OK
-                              </button>
-                            </div>
-                          </>
-                        )}
                       </div>
                       {/* Steel Specification Dropdown */}
                       <div>
@@ -973,23 +931,16 @@ function BendFormComponent({
                             value={entry.specs?.bendType || ''}
                             onChange={(bendType) => {
                               const isSweepTee = entry.specs?.bendItemType === 'SWEEP_TEE';
-                              const isFixed90 = isSweepTee || entry.specs?.bendItemType === 'DUCKFOOT_BEND' || entry.specs?.bendItemType === 'S_BEND';
-                              const nominalBore = entry.specs?.nominalBoreMm;
-                              const bendDegrees = isFixed90 ? 90 : entry.specs?.bendDegrees;
-                              const newBendRadius = bendType && nominalBore
-                                ? SABS62_BEND_RADIUS[bendType as SABS62BendType]?.[nominalBore]
-                                : undefined;
-                              const newCenterToFace = bendType && nominalBore && bendDegrees
-                                ? getSabs62CFInterpolated(bendType as SABS62BendType, bendDegrees, nominalBore)
-                                : undefined;
+                              const isFixed90 = isSweepTee || entry.specs?.bendItemType === 'DUCKFOOT_BEND';
                               const updatedEntry: any = {
                                 ...entry,
                                 specs: {
                                   ...entry.specs,
                                   bendType: bendType || undefined,
-                                  bendDegrees: bendDegrees,
-                                  centerToFaceMm: newCenterToFace,
-                                  bendRadiusMm: newBendRadius,
+                                  nominalBoreMm: undefined,
+                                  bendDegrees: isFixed90 ? 90 : undefined,
+                                  centerToFaceMm: undefined,
+                                  bendRadiusMm: undefined,
                                   sweepTeePipeALengthMm: isSweepTee ? undefined : entry.specs?.sweepTeePipeALengthMm
                                 }
                               };
@@ -1028,26 +979,16 @@ function BendFormComponent({
                             value={entry.specs?.bendRadiusType || ''}
                             onChange={(radiusType) => {
                               const isSweepTee = entry.specs?.bendItemType === 'SWEEP_TEE';
-                              const nominalBore = entry.specs?.nominalBoreMm;
-                              const segments = entry.specs?.numberOfSegments;
-                              let newCenterToFace: number | undefined;
-                              let newBendRadius: number | undefined;
-                              if (radiusType && nominalBore && segments) {
-                                const cfResult = getSABS719CenterToFaceBySegments(radiusType, nominalBore, segments);
-                                if (cfResult) {
-                                  newCenterToFace = cfResult.centerToFace;
-                                  newBendRadius = cfResult.radius;
-                                }
-                              }
                               const updatedEntry: any = {
                                 ...entry,
                                 specs: {
                                   ...entry.specs,
                                   bendRadiusType: radiusType || undefined,
                                   bendType: undefined,
-                                  centerToFaceMm: newCenterToFace,
-                                  bendRadiusMm: newBendRadius,
-                                  bendDegrees: isSweepTee ? 90 : entry.specs?.bendDegrees,
+                                  numberOfSegments: undefined,
+                                  centerToFaceMm: undefined,
+                                  bendRadiusMm: undefined,
+                                  bendDegrees: isSweepTee ? 90 : undefined,
                                   sweepTeePipeALengthMm: isSweepTee ? undefined : entry.specs?.sweepTeePipeALengthMm
                                 }
                               };
@@ -1073,7 +1014,7 @@ function BendFormComponent({
                     ? getSabs62AvailableAngles(pulledBendType, currentNB)
                     : [];
 
-                  const isFixedAngle90 = entry.specs?.bendItemType === 'SWEEP_TEE' || entry.specs?.bendItemType === 'DUCKFOOT_BEND' || entry.specs?.bendItemType === 'S_BEND';
+                  const isFixedAngle90 = entry.specs?.bendItemType === 'SWEEP_TEE' || entry.specs?.bendItemType === 'DUCKFOOT_BEND';
                   const isMissingBendAngle = entry.specs?.nominalBoreMm && !entry.specs?.bendDegrees && !isFixedAngle90;
 
                   const AngleDropdown = (
@@ -1088,7 +1029,7 @@ function BendFormComponent({
                           value="90°"
                           disabled
                           className="w-full px-2 py-1.5 border border-green-300 rounded text-xs bg-green-50 text-green-900 font-medium cursor-not-allowed"
-                          title="Sweep Tees, Duckfoot Bends, and S-Bends are always 90°"
+                          title="Sweep Tees and Duckfoot Bends are always 90°"
                         />
                       ) : (() => {
                         const selectId = `bend-angle-${entry.id}`;
@@ -1856,8 +1797,8 @@ function BendFormComponent({
                   </div>
                 )}
 
-                {/* Tangent Extensions Row - hide for Sweep Tees, Duckfoot Bends, and S-Bends */}
-                {entry.specs?.bendItemType !== 'SWEEP_TEE' && entry.specs?.bendItemType !== 'DUCKFOOT_BEND' && entry.specs?.bendItemType !== 'S_BEND' && (
+                {/* Tangent Extensions Row - hide for Sweep Tees and Duckfoot Bends */}
+                {entry.specs?.bendItemType !== 'SWEEP_TEE' && entry.specs?.bendItemType !== 'DUCKFOOT_BEND' && (
                   <TangentExtensionsSection
                     entryId={entry.id}
                     numberOfTangents={entry.specs?.numberOfTangents || 0}
@@ -1867,8 +1808,8 @@ function BendFormComponent({
                   />
                 )}
 
-                {/* Stub Connections Section - hide for Sweep Tees, Duckfoot Bends, and S-Bends */}
-                {entry.specs?.bendItemType !== 'SWEEP_TEE' && entry.specs?.bendItemType !== 'DUCKFOOT_BEND' && entry.specs?.bendItemType !== 'S_BEND' && (
+                {/* Stub Connections Section - hide for Sweep Tees and Duckfoot Bends */}
+                {entry.specs?.bendItemType !== 'SWEEP_TEE' && entry.specs?.bendItemType !== 'DUCKFOOT_BEND' && (
                 <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-3 mt-3">
                   <div className="mb-2">
                     <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
@@ -2793,7 +2734,7 @@ function BendFormComponent({
                       <div className="absolute inset-0 bg-blue-500 opacity-0 group-hover:opacity-10 rounded-lg transition-opacity" />
                     </div>
                   ) : Bend3DPreview ? (() => {
-                    const canRenderPreview = entry.specs?.nominalBoreMm && (entry.specs?.bendDegrees || isFixedAngle90Type);
+                    const canRenderPreview = entry.specs?.nominalBoreMm && entry.specs?.bendDegrees;
                     log.info(`🎨 BendForm preview check - entry.id: ${entry.id}, nominalBoreMm: ${entry.specs?.nominalBoreMm}, bendDegrees: ${entry.specs?.bendDegrees}, canRender: ${!!canRenderPreview}`);
                     if (!canRenderPreview) {
                       return (
@@ -2816,7 +2757,7 @@ function BendFormComponent({
                         nominalBore={entry.specs.nominalBoreMm}
                         outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}
                         wallThickness={entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5}
-                        bendAngle={entry.specs.bendDegrees || (isFixedAngle90Type ? 90 : 0)}
+                        bendAngle={entry.specs.bendDegrees}
                         bendType={entry.specs.bendType || '1.5D'}
                         tangent1={entry.specs?.tangentLengths?.[0] || 0}
                         tangent2={entry.specs?.tangentLengths?.[1] || 0}
@@ -2926,7 +2867,6 @@ function BendFormComponent({
                             cfDisplay = `${cf.toFixed(0)}`;
                           }
                           const isSweepTeeItem = entry.specs?.bendItemType === 'SWEEP_TEE';
-                          const isSBendItem = entry.specs?.bendItemType === 'S_BEND';
                           const bendFlangeCount = isSweepTeeItem
                             ? getFlangeCountPerFitting(bendEndConfig)
                             : getFlangeCountPerBend(bendEndConfig);
@@ -2963,6 +2903,8 @@ function BendFormComponent({
 
                           const mainOdMm = dn ? (NB_TO_OD_LOOKUP[dn] || dn * 1.05) : 0;
                           const mitreWeldCount = numSegments > 1 ? numSegments - 1 : 0;
+                          // Steinmetz curve saddle weld for sweep tees (bicylindric intersection)
+                          // AWS D1.1 Clause 9.5.4: Total weld length for 90° equal-diameter intersection ≈ 2.7 × OD
                           const isSweepTeeCalc = entry.specs?.bendItemType === 'SWEEP_TEE';
                           const STEINMETZ_FACTOR = 2.7;
                           const saddleWeldLinear = isSweepTeeCalc ? STEINMETZ_FACTOR * mainOdMm : 0;
@@ -2976,6 +2918,7 @@ function BendFormComponent({
                             mainWallThicknessMm: pipeWallThickness,
                             numberOfFlangeWelds: bendFlangeWeldCount,
                             numberOfMitreWelds: mitreWeldCount + tangentButtWeldCount,
+                            hasSweepTeeSaddleWeld: isSweepTeeCalc,
                             stubs: [
                               stub1NB && stub1HasFlange ? { odMm: NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05, wallThicknessMm: pipeWallThickness, hasFlangeWeld: true } : null,
                               stub2NB && stub2HasFlange ? { odMm: NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05, wallThicknessMm: pipeWallThickness, hasFlangeWeld: true } : null,
@@ -3067,8 +3010,7 @@ function BendFormComponent({
                             ? (mainCrossSection / 1000000) * (pipeALengthMm / 1000) * STEEL_DENSITY_KG_M3
                             : 0;
 
-                          const bendWeightFromCalcRaw = entry.calculation.bendWeight || 0;
-                          const bendWeightFromCalc = isSBendItem ? bendWeightFromCalcRaw * 2 : bendWeightFromCalcRaw;
+                          const bendWeightFromCalc = entry.calculation.bendWeight || 0;
                           const bendWeightOnly = bendWeightFromCalc > tangentWeight ? bendWeightFromCalc - tangentWeight : bendWeightFromCalc;
                           const totalWeight = bendWeightFromCalc + stub1PipeWeight + stub2PipeWeight + dynamicTotalFlangeWeight + totalBlankFlangeWeight + tackWeldTotalWeight + closureTotalWeight + pipeAWeight;
 
@@ -3134,52 +3076,17 @@ function BendFormComponent({
                               {/* Dimensions info */}
                               <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
                                 <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Dimensions</p>
-                                {isSBendItem ? (() => {
-                                  const sBendCF = Number(entry.specs?.centerToFaceMm) || 0;
-                                  const sBendRadius = Number(entry.specs?.bendRadiusMm) || (dn ? dn * 1.5 : 0);
-                                  const sBendOffset = sBendRadius * 2;
-                                  const sBendConfig = (entry.specs?.bendEndConfiguration || 'PE').toUpperCase();
-                                  const hasLooseInlet = sBendConfig === 'FOE_LF' || sBendConfig === '2XLF';
-                                  const hasLooseOutlet = sBendConfig === '2XLF';
-                                  const closureLen = closureLengthMm || 0;
-                                  const inletClosureLen = hasLooseInlet ? closureLen : 0;
-                                  const outletClosureLen = hasLooseOutlet ? closureLen : 0;
-                                  const sBendTotal = inletClosureLen + sBendCF + sBendOffset + sBendCF + outletClosureLen;
-                                  const mainDims = `${sBendCF.toFixed(0)}×${sBendOffset.toFixed(0)}×${sBendCF.toFixed(0)}`;
-                                  const closureParts = [
-                                    inletClosureLen > 0 ? `+${inletClosureLen.toFixed(0)}mm` : null,
-                                    outletClosureLen > 0 ? `+${outletClosureLen.toFixed(0)}mm` : null
-                                  ].filter(Boolean).join(' ');
-                                  return (
-                                    <>
-                                      <p className="text-lg font-bold text-purple-900 dark:text-purple-100">
-                                        {mainDims}{closureParts ? ` ${closureParts}` : ''}
-                                      </p>
-                                      <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">Total: {sBendTotal.toFixed(0)}mm</p>
-                                      <p className="text-xs text-purple-500 dark:text-purple-400">Radius: {sBendRadius.toFixed(0)}mm</p>
-                                    </>
-                                  );
-                                })() : (
-                                  <>
-                                    <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{cfDisplay} C/F</p>
-                                    {entry.specs?.bendItemType === 'SWEEP_TEE' && entry.specs?.sweepTeePipeALengthMm && (
-                                      <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">{entry.specs.sweepTeePipeALengthMm}mm Pipe A</p>
-                                    )}
-                                    <p className="text-xs text-purple-500 dark:text-purple-400">Radius: {Number(entry.specs?.bendRadiusMm || 0).toFixed(0)}mm</p>
-                                  </>
+                                <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{cfDisplay} C/F</p>
+                                {entry.specs?.sweepTeePipeALengthMm > 0 && (
+                                  <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">{entry.specs.sweepTeePipeALengthMm}mm Pipe A</p>
                                 )}
-                                {isSBendItem ? (
-                                  <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">2×90° {dn}NB bends</p>
-                                ) : (
-                                  <>
-                                    <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{mainLengthDisplay}</p>
-                                    {stubLengthDisplay && (
-                                      <p className="text-xs text-purple-500 dark:text-purple-400">+ {stubLengthDisplay}</p>
-                                    )}
-                                    {closureLengthMm > 0 && (
-                                      <p className="text-xs text-purple-500 dark:text-purple-400">Closure: {closureLengthMm}mm</p>
-                                    )}
-                                  </>
+                                <p className="text-xs text-purple-500 dark:text-purple-400">Radius: {Number(entry.specs?.bendRadiusMm || 0).toFixed(0)}mm</p>
+                                <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{mainLengthDisplay}</p>
+                                {stubLengthDisplay && (
+                                  <p className="text-xs text-purple-500 dark:text-purple-400">+ {stubLengthDisplay}</p>
+                                )}
+                                {closureLengthMm > 0 && (
+                                  <p className="text-xs text-purple-500 dark:text-purple-400">Closure: {closureLengthMm}mm</p>
                                 )}
                               </div>
                               <div className="bg-amber-100 dark:bg-amber-900/40 p-2 rounded text-center">
@@ -3218,7 +3125,7 @@ function BendFormComponent({
                                 <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Weight Breakdown</p>
                                 <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{totalWeight.toFixed(2)}kg</p>
                                 <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">
-                                  <p>{isSBendItem ? '2×90° Bend' : 'Bend'}: {bendWeightOnly.toFixed(2)}kg</p>
+                                  <p>Bend: {bendWeightOnly.toFixed(2)}kg</p>
                                   {tangentWeight > 0 && (
                                     <p>Tangents: {tangentWeight.toFixed(2)}kg</p>
                                   )}
@@ -3251,29 +3158,28 @@ function BendFormComponent({
                                 const stub2Circ = stub2NB ? Math.PI * (NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05) : 0;
                                 const stub1FlangeWeldLinear = stub1FlangeCount * 2 * stub1Circ;
                                 const stub2FlangeWeldLinear = stub2FlangeCount * 2 * stub2Circ;
-                                const branchFlangeConfig = isSweepTeeItem ? getFittingFlangeConfig(bendEndConfig) : null;
+                                const hasBranchConnection = (entry.specs?.sweepTeePipeALengthMm || 0) > 0;
+                                const branchFlangeConfig = hasBranchConnection ? getFittingFlangeConfig(bendEndConfig) : null;
                                 const branchHasWeldableFlange = branchFlangeConfig?.hasBranch && branchFlangeConfig?.branchType !== 'loose';
                                 const branchFlangeWeldCount = branchHasWeldableFlange ? 1 : 0;
                                 const branchFlangeWeldLinear = branchFlangeWeldCount * 2 * mainCirc;
                                 const totalFlangeWeldLinear = mainFlangeWeldLinear + stub1FlangeWeldLinear + stub2FlangeWeldLinear + branchFlangeWeldLinear;
                                 const totalFlangeWeldCount = bendFlangeWeldCount + stub1FlangeCount + stub2FlangeCount + branchFlangeWeldCount;
 
-                                // Saddle weld for sweep tees (Steinmetz curve: ~2.7 × OD for equal pipe intersection)
+                                // Saddle weld for sweep tees - Steinmetz curve intersection
+                                // When two equal-radius cylinders (r) intersect at 90°, the weld follows a bicylindric curve
+                                // Parametric: x = r·cos(θ), y = r·cos(θ), z = r·sin(θ)
+                                // Arc length: L = 4r × ∫₀^(π/2) √[1 + sin²(θ)] dθ where integral ≈ 1.3506
+                                // For diameter D = 2r: L = 4(D/2) × 1.3506 ≈ 2.701 × D ≈ 2.7 × OD
+                                // AWS D1.1 Clause 9.5.4: lw = total weld length, effective = lw × (1/1.5) = 66.7%
+                                // DATA-DRIVEN: Calculate when Pipe A length exists (sweep tee geometry)
                                 const STEINMETZ_FACTOR = 2.7;
-                                const isSweepTee = entry.specs?.bendItemType === 'SWEEP_TEE';
-                                const saddleWeldLinear = isSweepTee ? STEINMETZ_FACTOR * mainOdMm : 0;
-
-                                // S-Bend weld calculations
-                                const isSBend = entry.specs?.bendItemType === 'S_BEND';
-                                const sBendConfig = entry.specs?.bendEndConfiguration || 'PE';
-                                const hasLooseInletFlangeSBend = sBendConfig === 'FOE_LF' || sBendConfig === '2XLF';
-                                const hasLooseOutletFlangeSBend = sBendConfig === '2XLF';
-                                const sBendConnectionButtWeld = isSBend ? mainCirc : 0;
-                                const closureButtWeldCount = isSBend ? (hasLooseInletFlangeSBend ? 1 : 0) + (hasLooseOutletFlangeSBend ? 1 : 0) : 0;
-                                const closureButtWeldLinear = closureButtWeldCount * mainCirc;
+                                const AWS_EFFECTIVE_FACTOR = 1 / 1.5;
+                                const hasSweepTeeGeometry = (entry.specs?.sweepTeePipeALengthMm || 0) > 0;
+                                const saddleWeldLinear = hasSweepTeeGeometry && mainOdMm > 0 ? STEINMETZ_FACTOR * mainOdMm : 0;
 
                                 // Duckfoot weld calculations
-                                const isDuckfootBend = entry.specs?.bendItemType === 'DUCKFOOT_BEND';
+                                // DATA-DRIVEN: Calculate when duckfoot base plate dimensions exist
                                 const duckfootWeldDefaults: Record<number, { x: number; y: number; h: number }> = {
                                   200: { x: 355, y: 230, h: 255 },
                                   250: { x: 405, y: 280, h: 280 },
@@ -3292,8 +3198,11 @@ function BendFormComponent({
                                   900: { x: 1070, y: 933, h: 610 }
                                 };
                                 const duckfootDefaults = dn && duckfootWeldDefaults[dn] ? duckfootWeldDefaults[dn] : { x: 500, y: 400, h: 400 };
-                                const duckfootBasePlateXMm = entry.specs?.duckfootBasePlateXMm || duckfootDefaults.x;
-                                const duckfootBasePlateYMm = entry.specs?.duckfootBasePlateYMm || duckfootDefaults.y;
+                                const duckfootBasePlateXMm = entry.specs?.duckfootBasePlateXMm || 0;
+                                const duckfootBasePlateYMm = entry.specs?.duckfootBasePlateYMm || 0;
+                                const hasDuckfootGeometry = duckfootBasePlateXMm > 0 || duckfootBasePlateYMm > 0;
+                                const effectiveDuckfootX = duckfootBasePlateXMm || duckfootDefaults.x;
+                                const effectiveDuckfootY = duckfootBasePlateYMm || duckfootDefaults.y;
                                 const duckfootRibHeightMm = duckfootDefaults.h;
                                 const duckfootPointDDeg = entry.specs?.duckfootGussetPointDDegrees || 15;
                                 const duckfootPointCDeg = entry.specs?.duckfootGussetPointCDegrees || 75;
@@ -3304,58 +3213,53 @@ function BendFormComponent({
                                 const duckfootYOffsetMm = 800;
 
                                 // Blue gusset cutout weld (semicircle where it welds to pipe)
-                                const blueGussetCutoutWeld = isDuckfootBend ? Math.PI * outerRadiusMm : 0;
+                                const blueGussetCutoutWeld = hasDuckfootGeometry ? Math.PI * outerRadiusMm : 0;
 
                                 // Yellow gusset curve weld (arc from point D to point C along extrados)
                                 const pointDRad = (duckfootPointDDeg * Math.PI) / 180;
                                 const pointCRad = (duckfootPointCDeg * Math.PI) / 180;
-                                const yellowGussetCurveWeld = isDuckfootBend ? extradosRadiusMm * (pointCRad - pointDRad) : 0;
+                                const yellowGussetCurveWeld = hasDuckfootGeometry ? extradosRadiusMm * (pointCRad - pointDRad) : 0;
 
                                 // Gusset intersection weld (4 corners from base plate to where gussets meet)
                                 const extradosAt45Y = bendRadiusMm - extradosRadiusMm * Math.cos(Math.PI / 4) + duckfootYOffsetMm + duckfootRibHeightMm;
                                 const gussetIntersectionHeight = extradosAt45Y - outerRadiusMm / 2;
-                                const gussetIntersectionWeld = isDuckfootBend ? 4 * gussetIntersectionHeight : 0;
+                                const gussetIntersectionWeld = hasDuckfootGeometry ? 4 * gussetIntersectionHeight : 0;
 
                                 // Blue gusset to base plate weld (both sides of the plate)
-                                const blueGussetToBaseWeld = isDuckfootBend ? 2 * duckfootBasePlateYMm : 0;
+                                const blueGussetToBaseWeld = hasDuckfootGeometry ? 2 * effectiveDuckfootY : 0;
 
                                 // Yellow gusset to base plate weld (both sides of the plate)
-                                const yellowGussetToBaseWeld = isDuckfootBend ? 2 * duckfootBasePlateXMm : 0;
+                                const yellowGussetToBaseWeld = hasDuckfootGeometry ? 2 * effectiveDuckfootX : 0;
 
                                 const totalDuckfootWeld = blueGussetCutoutWeld + yellowGussetCurveWeld + gussetIntersectionWeld + blueGussetToBaseWeld + yellowGussetToBaseWeld;
 
                                 // Tack weld calculation (8 tack welds × 20mm per end for L/F configuration)
                                 const tackWeldLinear = tackWeldEnds * 8 * 20;
 
-                                // For S-Bends, exclude mitre welds (pulled bends don't have mitre welds)
-                                const effectiveMitreWeldLinear = isSBend ? 0 : mitreWeldLinear;
-                                const calculatedTotalWeld = effectiveMitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear + saddleWeldLinear + totalDuckfootWeld + tackWeldLinear + sBendConnectionButtWeld + closureButtWeldLinear;
+                                const calculatedTotalWeld = mitreWeldLinear + buttWeldLinear + totalFlangeWeldLinear + teeTotalLinear + saddleWeldLinear + totalDuckfootWeld + tackWeldLinear;
 
                                 return (
                                   <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
                                     <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Weld (mm)</p>
                                     <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{calculatedTotalWeld.toFixed(0)}</p>
-                                    <div className="text-xs text-purple-500 dark:text-purple-400 mt-1 text-center space-y-0.5 whitespace-nowrap">
-                                      {mitreWeldCount > 0 && !isSBend && <p>{mitreWeldCount}×Mitre={mitreWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
-                                      {saddleWeldLinear > 0 && !isSweepTee && <p>Saddle={saddleWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
+                                    <div className="text-xs text-purple-500 dark:text-purple-400 mt-1 text-left space-y-0.5 whitespace-nowrap">
+                                      {mitreWeldCount > 0 && <p>{mitreWeldCount}×Mitre={mitreWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
                                       {buttWeldCount > 0 && <p>{buttWeldCount}×Butt={buttWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
-                                      {isSBend && sBendConnectionButtWeld > 0 && <p>1×Butt(S-Bend)={sBendConnectionButtWeld.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
-                                      {isSBend && closureButtWeldCount > 0 && <p>{closureButtWeldCount}×Butt(Closure)={closureButtWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
-                                      {bendFlangeWeldCount > 0 && <p>{bendFlangeWeldCount}×{isSweepTeeItem ? 'Run ' : ''}Flg={mainFlangeWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
+                                      {bendFlangeWeldCount > 0 && <p>{bendFlangeWeldCount}×{hasSweepTeeGeometry ? 'Run ' : ''}Flg={mainFlangeWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
                                       {branchFlangeWeldCount > 0 && <p>{branchFlangeWeldCount}×BranchFlg={branchFlangeWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
                                       {stub1FlangeCount > 0 && <p>{stub1FlangeCount}×Stub1Flg={stub1FlangeWeldLinear.toFixed(0)}@{stub1Wt?.toFixed(1)}</p>}
                                       {stub2FlangeCount > 0 && <p>{stub2FlangeCount}×Stub2Flg={stub2FlangeWeldLinear.toFixed(0)}@{stub2Wt?.toFixed(1)}</p>}
-                                      {teeStub1NB && <p>Tee({teeStub1NB}NB)={teeStub1Circ.toFixed(0)}@{teeStub1Wt?.toFixed(1)}</p>}
-                                      {teeStub2NB && <p>Tee({teeStub2NB}NB)={teeStub2Circ.toFixed(0)}@{teeStub2Wt?.toFixed(1)}</p>}
-                                      {isSweepTee && saddleWeldLinear > 0 && <p>Saddle={saddleWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
-                                      {isDuckfootBend && (
+                                      {teeStub1NB && teeStub1Circ > 0 && <p>Tee({teeStub1NB}NB)={teeStub1Circ.toFixed(0)}@{teeStub1Wt?.toFixed(1)}</p>}
+                                      {teeStub2NB && teeStub2Circ > 0 && <p>Tee({teeStub2NB}NB)={teeStub2Circ.toFixed(0)}@{teeStub2Wt?.toFixed(1)}</p>}
+                                      {saddleWeldLinear > 0 && <p>Saddle={saddleWeldLinear.toFixed(0)}@{effectiveWt?.toFixed(1) || pipeWallThickness?.toFixed(1)}</p>}
+                                      {totalDuckfootWeld > 0 && (
                                         <>
                                           <p className="font-medium text-purple-600 dark:text-purple-400 mt-1 border-t border-purple-200 pt-1">Duckfoot:</p>
-                                          <p>BlueCut={blueGussetCutoutWeld.toFixed(0)}</p>
-                                          <p>YellowCurve={yellowGussetCurveWeld.toFixed(0)}</p>
-                                          <p>Corners={gussetIntersectionWeld.toFixed(0)}</p>
-                                          <p>Blue→Base={blueGussetToBaseWeld.toFixed(0)}</p>
-                                          <p>Yellow→Base={yellowGussetToBaseWeld.toFixed(0)}</p>
+                                          {blueGussetCutoutWeld > 0 && <p>BlueCut={blueGussetCutoutWeld.toFixed(0)}</p>}
+                                          {yellowGussetCurveWeld > 0 && <p>YellowCurve={yellowGussetCurveWeld.toFixed(0)}</p>}
+                                          {gussetIntersectionWeld > 0 && <p>Corners={gussetIntersectionWeld.toFixed(0)}</p>}
+                                          {blueGussetToBaseWeld > 0 && <p>Blue→Base={blueGussetToBaseWeld.toFixed(0)}</p>}
+                                          {yellowGussetToBaseWeld > 0 && <p>Yellow→Base={yellowGussetToBaseWeld.toFixed(0)}</p>}
                                         </>
                                       )}
                                       {tackWeldLinear > 0 && <p>{tackWeldEnds}×L/F Tack={tackWeldLinear.toFixed(0)}</p>}
@@ -3422,7 +3326,7 @@ function BendFormComponent({
                                 const stub2FlangeExtFaceM2 = stub2FlangeCount > 0 ? stub2FlangeCount * (Math.PI / 4) * (stub2FlangeOdM * stub2FlangeOdM - stub2OdM * stub2OdM) : 0;
                                 const stub2FlangeIntFaceM2 = stub2FlangeCount > 0 ? stub2FlangeCount * (Math.PI / 4) * (stub2RaisedFaceM * stub2RaisedFaceM - stub2FlangeBoreM * stub2FlangeBoreM) : 0;
 
-                                const branchFlangeCountForArea = isSweepTeeItem && getFittingFlangeConfig(bendEndConfig).hasBranch ? 1 : 0;
+                                const branchFlangeCountForArea = pipeALengthMm > 0 && getFittingFlangeConfig(bendEndConfig).hasBranch ? 1 : 0;
                                 const branchFlangeExtFaceM2 = branchFlangeCountForArea > 0 ? branchFlangeCountForArea * (Math.PI / 4) * (mainFlangeOdM * mainFlangeOdM - mainOdM * mainOdM) : 0;
                                 const branchFlangeIntFaceM2 = branchFlangeCountForArea > 0 ? branchFlangeCountForArea * (Math.PI / 4) * (mainRaisedFaceM * mainRaisedFaceM - mainFlangeBoreM * mainFlangeBoreM) : 0;
 

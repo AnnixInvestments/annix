@@ -6,6 +6,11 @@ import { OrbitControls, Center, Environment, Text, Line as DreiLine, ContactShad
 import * as THREE from 'three';
 import { log } from '@/app/lib/logger';
 import { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
+import {
+  PIPE_MATERIALS,
+  WELD_MATERIALS,
+  FLANGE_MATERIALS,
+} from '@/app/lib/config/rfq/rendering3DStandards';
 
 const Line = (props: React.ComponentProps<typeof DreiLine>) => {
   const { size } = useThree();
@@ -139,19 +144,31 @@ const getFlangeSpecs = (nominalBore: number, apiSpecs?: FlangeSpecData | null): 
   return { specs: flangeData[closestSize] || flangeData[50], isFromApi: false };
 };
 
+const pipeOuterMat = PIPE_MATERIALS.outer
+const pipeInnerMat = PIPE_MATERIALS.inner
+const pipeEndMat = PIPE_MATERIALS.end
+const weldColor = WELD_MATERIALS.standard
+const flangeColor = FLANGE_MATERIALS.standard
+const blankFlangeColor = FLANGE_MATERIALS.blank
+const boltColor = FLANGE_MATERIALS.bolt
+const nutColor = { color: '#78350f', metalness: 0.8, roughness: 0.35, envMapIntensity: 1.0 }
+const closureColor = { color: '#2a2a2a', metalness: 0.6, roughness: 0.6, envMapIntensity: 0.5 }
+const spigotColor = { color: '#f97316', metalness: 0.7, roughness: 0.3, envMapIntensity: 1.0 }
+const rotatingFlangeColor = { color: '#4a90d9', metalness: 0.85, roughness: 0.2, envMapIntensity: 1.2 }
+
 const getMaterialProps = (name: string = '') => {
   const n = name.toLowerCase();
-  if (n.includes('sabs 62')) return { color: '#C0C0C0', metalness: 0.4, roughness: 0.5, name: 'Galvanized Steel' };
-  if (n.includes('stainless') || n.includes('304') || n.includes('316')) return { color: '#E0E0E0', metalness: 0.9, roughness: 0.15, name: 'Stainless Steel' };
-  if (n.includes('pvc') || n.includes('plastic')) return { color: '#E6F2FF', metalness: 0.1, roughness: 0.9, name: 'PVC/Plastic' };
-  return { color: '#1e3a5f', metalness: 0.6, roughness: 0.7, name: 'Carbon Steel' };
+  if (n.includes('sabs 62')) return { color: '#C0C0C0', metalness: 0.85, roughness: 0.25, envMapIntensity: 1.2, name: 'Galvanized Steel' };
+  if (n.includes('stainless') || n.includes('304') || n.includes('316')) return { color: '#E0E0E0', metalness: 0.9, roughness: 0.15, envMapIntensity: 1.3, name: 'Stainless Steel' };
+  if (n.includes('pvc') || n.includes('plastic')) return { color: '#E6F2FF', metalness: 0.1, roughness: 0.9, envMapIntensity: 0.3, name: 'PVC/Plastic' };
+  return { ...pipeOuterMat, name: 'Carbon Steel' };
 };
 
 const WeldBead = ({ position, diameter }: { position: [number, number, number], diameter: number }) => {
   return (
     <mesh position={position} rotation={[0, Math.PI / 2, 0]}>
       <torusGeometry args={[diameter / 2, diameter * 0.02, 8, 32]} />
-      <meshStandardMaterial color="#333" roughness={0.9} metalness={0.4} />
+      <meshStandardMaterial {...weldColor} />
     </mesh>
   );
 };
@@ -180,22 +197,22 @@ const SimpleFlange = ({ position, outerDiameter, holeDiameter, thickness, actual
       {/* Outer cylinder wall - open ended tube */}
       <mesh>
         <cylinderGeometry args={[flangeRadius, flangeRadius, thickness, 32, 1, true]} />
-        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} side={THREE.DoubleSide} />
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
       </mesh>
       {/* Inner bore wall - pipe OD (the hole through the flange) */}
       <mesh>
         <cylinderGeometry args={[boreRadius, boreRadius, thickness, 32, 1, true]} />
-        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} side={THREE.BackSide} />
+        <meshStandardMaterial {...flangeColor} side={THREE.BackSide} />
       </mesh>
       {/* Front face ring - annulus from pipe OD to flange OD */}
       <mesh position={[0, thickness / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[boreRadius, flangeRadius, 32]} />
-        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} side={THREE.DoubleSide} />
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
       </mesh>
       {/* Back face ring - annulus from pipe OD to flange OD */}
       <mesh position={[0, -thickness / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[boreRadius, flangeRadius, 32]} />
-        <meshStandardMaterial color="#666" metalness={0.7} roughness={0.4} side={THREE.DoubleSide} />
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
       </mesh>
       {/* Bolt holes */}
       {boltHoles.map((hole, i) => (
@@ -207,7 +224,7 @@ const SimpleFlange = ({ position, outerDiameter, holeDiameter, thickness, actual
       {/* Raised ring (gasket face) */}
       <mesh position={[0, thickness / 2 + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[boreRadius * 1.1, boreRadius * 1.4, 32]} />
-        <meshStandardMaterial color="#888" metalness={0.6} roughness={0.4} />
+        <meshStandardMaterial {...flangeColor} />
       </mesh>
     </group>
   );
@@ -228,22 +245,22 @@ const RetainingRing = ({ position, pipeOuterRadius, pipeInnerRadius, wallThickne
       {/* Outer cylinder wall - open ended */}
       <mesh>
         <cylinderGeometry args={[ringOuterRadius, ringOuterRadius, ringThickness, 32, 1, true]} />
-        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} side={THREE.DoubleSide} />
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
       </mesh>
       {/* Inner bore wall - pipe OD (retaining ring slips over pipe) */}
       <mesh>
         <cylinderGeometry args={[pipeOuterRadius, pipeOuterRadius, ringThickness, 32, 1, true]} />
-        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} side={THREE.BackSide} />
+        <meshStandardMaterial {...flangeColor} side={THREE.BackSide} />
       </mesh>
       {/* Front face ring */}
       <mesh position={[0, ringThickness / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[pipeOuterRadius, ringOuterRadius, 32]} />
-        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} side={THREE.DoubleSide} />
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
       </mesh>
       {/* Back face ring */}
       <mesh position={[0, -ringThickness / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[pipeOuterRadius, ringOuterRadius, 32]} />
-        <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.3} side={THREE.DoubleSide} />
+        <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
@@ -270,7 +287,7 @@ const BlankFlange = ({ position, outerDiameter, thickness }: { position: [number
     <group position={position} rotation={[0, 0, Math.PI / 2]}>
       <mesh>
         <cylinderGeometry args={[flangeRadius, flangeRadius, thickness, 32]} />
-        <meshStandardMaterial color="#cc3300" metalness={0.6} roughness={0.4} />
+        <meshStandardMaterial {...blankFlangeColor} />
       </mesh>
       {boltHoles.map((hole, i) => (
         <mesh key={i} position={[hole.x, 0, hole.z]}>
@@ -326,7 +343,7 @@ const Spigot = ({
         {/* Inner bore - visible dark interior */}
         <mesh>
           <cylinderGeometry args={[spigotInnerRadius, spigotInnerRadius, spigotLength + 0.01, 24, 1, true]} />
-          <meshStandardMaterial color="#2a2a2a" metalness={0.2} roughness={0.8} side={THREE.DoubleSide} />
+          <meshStandardMaterial {...pipeInnerMat} side={THREE.DoubleSide} />
         </mesh>
         {/* Top cap ring - shows the pipe wall thickness (only if no flange) */}
         {!hasFlanges && (
@@ -361,22 +378,22 @@ const Spigot = ({
               {/* Loose flange ring (blue tint for R/F) - hollow */}
               <mesh>
                 <cylinderGeometry args={[flangeOd, flangeOd, flangeThickness, 32, 1, true]} />
-                <meshStandardMaterial color="#4a90d9" metalness={0.6} roughness={0.3} side={THREE.DoubleSide} />
+                <meshStandardMaterial {...rotatingFlangeColor} side={THREE.DoubleSide} />
               </mesh>
               {/* Inner bore wall - spigot OD */}
               <mesh>
                 <cylinderGeometry args={[spigotOuterRadius, spigotOuterRadius, flangeThickness, 32, 1, true]} />
-                <meshStandardMaterial color="#4a90d9" metalness={0.6} roughness={0.3} side={THREE.BackSide} />
+                <meshStandardMaterial {...rotatingFlangeColor} side={THREE.BackSide} />
               </mesh>
               {/* Front face ring */}
               <mesh position={[0, flangeThickness / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                 <ringGeometry args={[spigotOuterRadius, flangeOd, 32]} />
-                <meshStandardMaterial color="#4a90d9" metalness={0.6} roughness={0.3} side={THREE.DoubleSide} />
+                <meshStandardMaterial {...rotatingFlangeColor} side={THREE.DoubleSide} />
               </mesh>
               {/* Back face ring */}
               <mesh position={[0, -flangeThickness / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
                 <ringGeometry args={[spigotOuterRadius, flangeOd, 32]} />
-                <meshStandardMaterial color="#4a90d9" metalness={0.6} roughness={0.3} side={THREE.DoubleSide} />
+                <meshStandardMaterial {...rotatingFlangeColor} side={THREE.DoubleSide} />
               </mesh>
             </>
           ) : (
@@ -411,7 +428,7 @@ const Spigot = ({
             return (
               <mesh key={`bolt-${i}`} position={[boltX, 0, boltZ]}>
                 <cylinderGeometry args={[flangeOd * 0.05, flangeOd * 0.05, flangeThickness + 0.01, 8]} />
-                <meshStandardMaterial color="#1a1a1a" />
+                <meshStandardMaterial color="#111" />
               </mesh>
             );
           })}
@@ -423,7 +440,7 @@ const Spigot = ({
         <group position={[0, mainPipeRadius + spigotLength + flangeThickness + 0.005 + flangeThickness / 2, 0]}>
           <mesh>
             <cylinderGeometry args={[flangeOd, flangeOd, flangeThickness, 32]} />
-            <meshStandardMaterial color="#f97316" metalness={0.5} roughness={0.4} />
+            <meshStandardMaterial {...blankFlangeColor} />
           </mesh>
           <Text
             position={[0, flangeThickness / 2 + 0.03, 0]}
@@ -441,7 +458,7 @@ const Spigot = ({
       {/* Weld bead at base */}
       <mesh position={[0, mainPipeRadius, 0]}>
         <torusGeometry args={[spigotOuterRadius, spigotOuterRadius * 0.08, 8, 24]} />
-        <meshStandardMaterial color="#333" roughness={0.9} metalness={0.4} />
+        <meshStandardMaterial {...weldColor} />
       </mesh>
       {/* Label */}
       <Text
@@ -527,22 +544,22 @@ const PuddleFlange = ({
       {/* Weld bead where puddle flange meets pipe - front */}
       <mesh position={[0, thickness / 2 + 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[pipeOuterRadius, pipeOuterRadius * 0.06, 8, 24]} />
-        <meshStandardMaterial color="#333" roughness={0.9} metalness={0.4} />
+        <meshStandardMaterial {...weldColor} />
       </mesh>
       {/* Weld bead where puddle flange meets pipe - back */}
       <mesh position={[0, -thickness / 2 - 0.003, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[pipeOuterRadius, pipeOuterRadius * 0.06, 8, 24]} />
-        <meshStandardMaterial color="#333" roughness={0.9} metalness={0.4} />
+        <meshStandardMaterial {...weldColor} />
       </mesh>
       {/* Outer edge highlight ring - front */}
       <mesh position={[0, thickness / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[flangeOuterRadius - 0.002, 0.003, 8, 32]} />
-        <meshStandardMaterial color="#92400e" roughness={0.6} metalness={0.5} side={THREE.DoubleSide} />
+        <meshStandardMaterial {...boltColor} side={THREE.DoubleSide} />
       </mesh>
       {/* Outer edge highlight ring - back */}
       <mesh position={[0, -thickness / 2 - 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[flangeOuterRadius - 0.002, 0.003, 8, 32]} />
-        <meshStandardMaterial color="#92400e" roughness={0.6} metalness={0.5} side={THREE.DoubleSide} />
+        <meshStandardMaterial {...boltColor} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
@@ -636,7 +653,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
         {/* Inner bore - BackSide material to show dark interior */}
         <mesh>
           <cylinderGeometry args={[innerRadius, innerRadius, safeLength + 0.01, 32, 1, true]} />
-          <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+          <meshStandardMaterial {...pipeInnerMat} side={THREE.BackSide} />
         </mesh>
         {/* Left end cap ring - only if no left flange */}
         {!hasLeftFlange && (
@@ -667,7 +684,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
                 </mesh>
                 <mesh>
                   <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32, 1, true]} />
-                  <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                  <meshStandardMaterial {...pipeInnerMat} side={THREE.BackSide} />
                 </mesh>
               </group>
               {/* Loose flange positioned 100mm after closure piece */}
@@ -723,7 +740,7 @@ const HollowPipeScene = ({ length, outerDiameter, wallThickness, endConfiguratio
                 </mesh>
                 <mesh>
                   <cylinderGeometry args={[innerRadius, innerRadius, closureLength + 0.01, 32, 1, true]} />
-                  <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                  <meshStandardMaterial {...pipeInnerMat} side={THREE.BackSide} />
                 </mesh>
               </group>
               {/* Loose flange positioned 100mm after closure piece */}

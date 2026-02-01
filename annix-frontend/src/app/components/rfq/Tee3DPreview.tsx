@@ -5,6 +5,13 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, Center, Text, Line as DreiLine } from '@react-three/drei';
 import { log } from '@/app/lib/logger';
 import * as THREE from 'three';
+import {
+  PIPE_MATERIALS,
+  WELD_MATERIALS,
+  FLANGE_MATERIALS,
+  STEELWORK_MATERIALS,
+  NB_TO_OD_LOOKUP,
+} from '@/app/lib/config/rfq/rendering3DStandards';
 
 const Line = (props: React.ComponentProps<typeof DreiLine>) => {
   const { size } = useThree();
@@ -58,6 +65,16 @@ const SCALE_FACTOR = 100;
 const PREVIEW_SCALE = 1.1;
 const MIN_CAMERA_DISTANCE = 1.2;
 const MAX_CAMERA_DISTANCE = 120;
+
+const pipeOuterMat = PIPE_MATERIALS.outer
+const pipeInnerMat = PIPE_MATERIALS.inner
+const pipeEndMat = PIPE_MATERIALS.end
+const weldColor = WELD_MATERIALS.standard
+const flangeColor = FLANGE_MATERIALS.standard
+const blankFlangeColor = FLANGE_MATERIALS.blank
+const closureColor = { color: '#2a2a2a', metalness: 0.6, roughness: 0.6, envMapIntensity: 0.5 }
+const rotatingFlangeColor = { color: '#4a90d9', metalness: 0.85, roughness: 0.2, envMapIntensity: 1.2 }
+const gussetColor = STEELWORK_MATERIALS.rib
 
 // Flange type for rendering
 type FlangeType = 'fixed' | 'loose' | 'rotating' | null;
@@ -238,7 +255,7 @@ function BlankFlangeComponent({
 
   return (
     <mesh position={position} rotation={rotation || [0, 0, 0]} geometry={blankGeometry} castShadow receiveShadow>
-      <meshStandardMaterial color="#cc3300" metalness={0.6} roughness={0.4} />
+      <meshStandardMaterial {...blankFlangeColor} />
     </mesh>
   );
 }
@@ -272,7 +289,7 @@ function RetainingRingComponent({
 
   return (
     <mesh position={position} rotation={rotation || [0, 0, 0]} geometry={geometry} castShadow receiveShadow>
-      <meshStandardMaterial color="#606060" metalness={0.6} roughness={0.4} />
+      <meshStandardMaterial {...flangeColor} />
     </mesh>
   );
 }
@@ -323,7 +340,7 @@ function RotatingFlangeComponent({
 
   return (
     <mesh position={position} rotation={rotation || [0, 0, 0]} geometry={flangeGeometry} castShadow receiveShadow>
-      <meshStandardMaterial color="#404040" metalness={0.7} roughness={0.3} />
+      <meshStandardMaterial {...flangeColor} />
     </mesh>
   );
 }
@@ -371,7 +388,7 @@ function FlangeComponent({
 
   return (
     <mesh position={position} rotation={rotation || [0, 0, 0]} geometry={flangeGeometry} castShadow receiveShadow>
-      <meshStandardMaterial color="#404040" metalness={0.7} roughness={0.3} />
+      <meshStandardMaterial {...flangeColor} />
     </mesh>
   );
 }
@@ -455,12 +472,7 @@ function GussetPlate({
 
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
-      <meshStandardMaterial
-        color="#4a7c4e"
-        metalness={0.6}
-        roughness={0.4}
-        side={THREE.DoubleSide}
-      />
+      <meshStandardMaterial {...gussetColor} side={THREE.DoubleSide} />
     </mesh>
   );
 }
@@ -498,7 +510,7 @@ function GussetWeld({
   return (
     <mesh>
       <tubeGeometry args={[curve, 16, weldRadius, 8, false]} />
-      <meshStandardMaterial color="#2a2a2a" metalness={0.3} roughness={0.8} />
+      <meshStandardMaterial {...weldColor} />
     </mesh>
   );
 }
@@ -598,7 +610,7 @@ function TeeScene(props: Tee3DPreviewProps) {
           receiveShadow
         >
           <primitive object={createPipeGeometry(outerRadius, innerRadius, halfRunLength * 2)} attach="geometry" />
-          <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.4} />
+          <meshStandardMaterial {...gussetColor} />
         </mesh>
 
         {/* Branch pipe (vertical, going up) - positioned based on branchPositionMm */}
@@ -609,13 +621,13 @@ function TeeScene(props: Tee3DPreviewProps) {
           receiveShadow
         >
           <primitive object={createPipeGeometry(branchOuterRadius, branchInnerRadius, height - outerRadius)} attach="geometry" />
-          <meshStandardMaterial color="#b0b0b0" metalness={0.5} roughness={0.4} />
+          <meshStandardMaterial {...gussetColor} />
         </mesh>
 
         {/* Reinforcement collar at branch junction */}
         <mesh position={[branchOffsetX, outerRadius - 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow>
           <torusGeometry args={[branchOuterRadius + 0.02, 0.05, 16, 32]} />
-          <meshStandardMaterial color="#808080" metalness={0.6} roughness={0.3} />
+          <meshStandardMaterial {...gussetColor} />
         </mesh>
 
         {/* Gusset plates for Gusset Tees - curved reinforcement plates on both sides of branch */}
@@ -707,11 +719,11 @@ function TeeScene(props: Tee3DPreviewProps) {
                 <group position={[-halfRunLength - (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
                   <mesh>
                     <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32, 1, true]} />
-                    <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} side={THREE.DoubleSide} />
+                    <meshStandardMaterial {...pipeOuterMat} side={THREE.DoubleSide} />
                   </mesh>
                   <mesh>
                     <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32, 1, true]} />
-                    <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                    <meshStandardMaterial {...pipeInnerMat} side={THREE.BackSide} />
                   </mesh>
                 </group>
                 {/* Loose flange floating 100mm (1.0 scene units) away from closure piece */}
@@ -830,11 +842,11 @@ function TeeScene(props: Tee3DPreviewProps) {
                 <group position={[halfRunLength + (closureLengthMm / scaleFactor / 2), 0, 0]} rotation={[0, 0, Math.PI / 2]}>
                   <mesh>
                     <cylinderGeometry args={[outerRadius, outerRadius, closureLengthMm / scaleFactor, 32, 1, true]} />
-                    <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} side={THREE.DoubleSide} />
+                    <meshStandardMaterial {...pipeOuterMat} side={THREE.DoubleSide} />
                   </mesh>
                   <mesh>
                     <cylinderGeometry args={[innerRadius, innerRadius, closureLengthMm / scaleFactor + 0.01, 32, 1, true]} />
-                    <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                    <meshStandardMaterial {...pipeInnerMat} side={THREE.BackSide} />
                   </mesh>
                 </group>
                 {/* Loose flange floating 100mm (1.0 scene units) away from closure piece */}
@@ -953,11 +965,11 @@ function TeeScene(props: Tee3DPreviewProps) {
                 <group position={[branchOffsetX, height + (closureLengthMm / scaleFactor / 2), 0]}>
                   <mesh>
                     <cylinderGeometry args={[branchOuterRadius, branchOuterRadius, closureLengthMm / scaleFactor, 32, 1, true]} />
-                    <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} side={THREE.DoubleSide} />
+                    <meshStandardMaterial {...pipeOuterMat} side={THREE.DoubleSide} />
                   </mesh>
                   <mesh>
                     <cylinderGeometry args={[branchInnerRadius, branchInnerRadius, closureLengthMm / scaleFactor + 0.01, 32, 1, true]} />
-                    <meshStandardMaterial color="#1a1a1a" side={THREE.BackSide} />
+                    <meshStandardMaterial {...pipeInnerMat} side={THREE.BackSide} />
                   </mesh>
                 </group>
                 {/* Loose flange floating 100mm (1.0 scene units) above closure piece */}

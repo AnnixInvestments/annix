@@ -8,6 +8,7 @@ import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, boqApi, anonymousDraftsApi, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
 import { adminApiClient } from '@/app/lib/api/adminApi';
 import { nixApi, NixAiPopup, NixFloatingAvatar, NixClarificationPopup, NixProcessingPopup, type NixExtractedItem, type NixClarificationDto } from '@/app/lib/nix';
+import NixFormHelper, { NixMinimizedButton } from './NixFormHelper';
 import { consolidateBoqData } from '@/app/lib/utils/boqConsolidation';
 import { useToast } from '@/app/components/Toast';
 import { log } from '@/app/lib/logger';
@@ -334,6 +335,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const [nixClarifications, setNixClarifications] = useState<NixClarificationDto[]>([]);
   const [currentClarificationIndex, setCurrentClarificationIndex] = useState(0);
   const [showNixClarification, setShowNixClarification] = useState(false);
+  const [nixFormHelperVisible, setNixFormHelperVisible] = useState(true);
+  const [nixFormHelperMinimized, setNixFormHelperMinimized] = useState(false);
   // Ref for scrollable content container
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -400,6 +403,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     updateRfqField('useNix', false);
     updateRfqField('nixPopupShown', false);
   };
+
+  const handleNixFormHelperClose = useCallback(() => {
+    setNixFormHelperVisible(false);
+    setNixFormHelperMinimized(true);
+  }, []);
+
+  const handleNixFormHelperReactivate = useCallback(() => {
+    setNixFormHelperVisible(true);
+    setNixFormHelperMinimized(false);
+  }, []);
 
   const handleItemsPageReady = useCallback(() => {
     if (isNixProcessing) {
@@ -3863,6 +3876,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               <div className="text-sm text-gray-500">
                 {rfqData?.projectName || 'New RFQ'}
               </div>
+              {nixFormHelperMinimized && !rfqData.useNix && currentStep === 3 && (
+                <NixMinimizedButton onClick={handleNixFormHelperReactivate} />
+              )}
               <button
                 onClick={() => {
                   const isDraft = searchParams?.get('draft') || searchParams?.get('draftId');
@@ -3963,6 +3979,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           </div>
         </div>
       </div>
+
+      {/* Nix Form Helper - shows on step 3 (items page) when not using Nix AI mode */}
+      {!rfqData.useNix && currentStep === 3 && (
+        <NixFormHelper
+          isVisible={nixFormHelperVisible}
+          onClose={handleNixFormHelperClose}
+          onReactivate={handleNixFormHelperReactivate}
+          isMinimized={nixFormHelperMinimized}
+        />
+      )}
 
       {/* Fixed Bottom Navigation Toolbar - always visible at bottom */}
       <div
