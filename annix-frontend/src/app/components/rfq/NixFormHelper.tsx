@@ -522,14 +522,18 @@ export default function NixFormHelper({
       mutationObserverRef.current = null
     }
 
-    const elements = document.querySelectorAll(`[data-nix-target="${dataTarget}"]`)
-    console.log(`[Nix Debug] Found ${elements.length} elements for target "${dataTarget}"`)
+    const allElements = document.querySelectorAll(`[data-nix-target="${dataTarget}"]`)
+    const elements = Array.from(allElements).filter(el => {
+      const rect = el.getBoundingClientRect()
+      return rect.width > 0 && rect.height > 0
+    })
+    console.log(`[Nix Debug] Found ${allElements.length} elements for target "${dataTarget}", ${elements.length} visible`)
     elements.forEach((el, i) => {
       const rect = el.getBoundingClientRect()
-      console.log(`[Nix Debug]   Element ${i}: top=${rect.top.toFixed(0)}, left=${rect.left.toFixed(0)}, text="${el.textContent?.slice(0, 50)}"`)
+      console.log(`[Nix Debug]   Element ${i}: top=${rect.top.toFixed(0)}, left=${rect.left.toFixed(0)}, width=${rect.width.toFixed(0)}, height=${rect.height.toFixed(0)}, text="${el.textContent?.slice(0, 50)}"`)
     })
-    // For add buttons, use FIRST element; for form fields (multiple entries), use LAST element
-    const useFirstElement = dataTarget.startsWith('add-')
+    // For add buttons (not sections), use FIRST element; for form fields (multiple entries), use LAST element
+    const useFirstElement = dataTarget.startsWith('add-') && dataTarget !== 'add-item-section'
     const element = elements.length > 0
       ? (useFirstElement ? elements[0] : elements[elements.length - 1])
       : null
@@ -538,7 +542,8 @@ export default function NixFormHelper({
       const fallbackSelectors: Record<string, string> = {
         'add-bend-button': 'button:has(span:contains("Bend"))',
         'add-fitting-button': 'button:has(span:contains("Fitting"))',
-        'add-pipe-button': 'button:has(span:contains("Item"))'
+        'add-pipe-button': 'button:has(span:contains("Item"))',
+        'add-item-section': '.border-dashed:has(span:contains("Add another item"))'
       }
       const fallbackSelector = fallbackSelectors[dataTarget]
       const fallback = fallbackSelector ? document.querySelector(fallbackSelector) : null
