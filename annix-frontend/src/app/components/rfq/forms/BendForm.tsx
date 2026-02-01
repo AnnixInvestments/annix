@@ -1117,7 +1117,7 @@ function BendFormComponent({
 
                   // SABS 719 Segments Dropdown
                   const SegmentsDropdown = (
-                    <div data-nix-target="bend-segments-select">
+                    <div>
                       {(() => {
                         const bendRadiusType = entry.specs?.bendRadiusType;
                         const bendDeg = entry.specs?.bendDegrees || 0;
@@ -1129,7 +1129,7 @@ function BendFormComponent({
                               <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                                 Segments <span className="text-purple-600 text-xs ml-1">(SABS 719)</span>
                               </label>
-                              <input type="text" value="Select radius & angle" disabled className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs bg-gray-100 text-gray-500 cursor-not-allowed" />
+                              <input type="text" value="Select radius & angle" disabled data-nix-target="bend-segments-select" className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs bg-gray-100 text-gray-500 cursor-not-allowed" />
                             </>
                           );
                         }
@@ -1176,7 +1176,7 @@ function BendFormComponent({
                               <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                                 Segments <span className="text-green-600 text-xs ml-1">(Auto: 2)</span>
                               </label>
-                              <input type="text" value="2 segments" disabled className="w-full px-2 py-1.5 border border-green-300 rounded text-xs bg-green-50 text-green-900 font-medium cursor-not-allowed" />
+                              <input type="text" value="2 segments" disabled data-nix-target="bend-segments-select" className="w-full px-2 py-1.5 border border-green-300 rounded text-xs bg-green-50 text-green-900 font-medium cursor-not-allowed" />
                             </>
                           );
                         }
@@ -1208,6 +1208,7 @@ function BendFormComponent({
                                   debouncedCalculate();
                                 }
                               }}
+                              data-nix-target="bend-segments-select"
                               className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                             >
                               <option value="">Select</option>

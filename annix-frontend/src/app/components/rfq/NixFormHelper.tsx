@@ -630,6 +630,13 @@ export default function NixFormHelper({
 
       const isSelectElement = freshElement.tagName === 'SELECT'
       const isCombobox = freshElement.getAttribute('role') === 'combobox'
+      const isDisabled = (freshElement as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled
+
+      if (isDisabled) {
+        console.log(`[Nix Debug] Element "${dataTarget}" is disabled, auto-advancing after brief pause`)
+        setTimeout(advanceToNextStep, 1500)
+        return
+      }
 
       if (isSelectElement) {
         freshElement.addEventListener('change', advanceToNextStep)
