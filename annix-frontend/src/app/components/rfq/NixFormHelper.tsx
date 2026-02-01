@@ -151,19 +151,17 @@ function generateFormGuidance(question: string): { response: string; actions: Ni
       response: `I'll guide you through creating a Sweep Tee step by step. Follow along as I show you each field!
 
 Sweep tees are in the BENDS section because they include a curved 90° branch connection. Steel spec, schedule, and flange settings are already set from page 2.`,
-      actions: [{ type: 'point', dataTarget: 'add-item-section', message: 'Step 1: Go to Add Item section' }],
+      actions: [{ type: 'point', dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button' }],
       guidanceSteps: [
-        { dataTarget: 'add-item-section', message: 'Step 1: Go to Add Item section', instruction: 'Scroll down to the "Add another item" section at the bottom of your items.' },
-        { dataTarget: 'add-bend-button', message: 'Step 2: Click Bend button', instruction: 'Click the purple Bend button to add a new bend item.' },
-        { dataTarget: 'bend-item-type', message: 'Step 3: Select "Sweep Tee"', instruction: 'Click this dropdown and select "Sweep Tee" from the list.' },
-        { dataTarget: 'bend-nb-select', message: 'Step 4: Select pipe size (NB)', instruction: 'Choose your Nominal Bore (pipe size). Sweep tees are only available in sizes 200-900 NB.' },
-        { dataTarget: 'bend-style-select', message: 'Step 5: Select Bend Style', instruction: 'Choose Segmented or Pulled bend style. This affects manufacturing method.' },
-        { dataTarget: 'bend-radius-select', message: 'Step 6: Select Bend Radius', instruction: 'Choose the bend radius (Elbow, Medium, Long). Larger = gentler curve.' },
-        { dataTarget: 'bend-angle-select', message: 'Step 7: Select Bend Angle', instruction: 'Choose the angle for your sweep tee (typically 90°).' },
-        { dataTarget: 'bend-segments-select', message: 'Step 8: Number of Segments', instruction: 'For segmented style: choose the number of mitre segments. This affects welding requirements.' },
-        { dataTarget: 'bend-quantity-input', message: 'Step 9: Set Quantity', instruction: 'Enter how many of this sweep tee you need.' },
-        { dataTarget: 'bend-end-config-select', message: 'Step 10: End Configuration', instruction: 'Choose end type: PE (plain end), FOE (flanged one end), FBE (flanged both ends).' },
-        { dataTarget: 'bend-3d-preview', message: 'Step 11: Review 3D Preview', instruction: 'Check the 3D preview to make sure this looks correct. You can rotate the view to inspect from all angles!' }
+        { dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button', instruction: 'Click the purple Bend button to add a new bend item.' },
+        { dataTarget: 'bend-item-type', message: 'Step 2: Select "Sweep Tee"', instruction: 'Click this dropdown and select "Sweep Tee" from the list.' },
+        { dataTarget: 'bend-nb-select', message: 'Step 3: Select pipe size (NB)', instruction: 'Choose your Nominal Bore (pipe size). Sweep tees are only available in sizes 200-900 NB.' },
+        { dataTarget: 'bend-style-select', message: 'Step 4: Select Bend Style', instruction: 'Choose Segmented or Pulled bend style. This affects manufacturing method.' },
+        { dataTarget: 'bend-radius-select', message: 'Step 5: Select Bend Radius', instruction: 'Choose the bend radius (Elbow, Medium, Long). Larger = gentler curve.' },
+        { dataTarget: 'bend-angle-select', message: 'Step 6: Select Bend Angle', instruction: 'Choose the angle for your sweep tee (typically 90°).' },
+        { dataTarget: 'bend-segments-select', message: 'Step 7: Number of Segments', instruction: 'For segmented style: choose the number of mitre segments. This affects welding requirements.' },
+        { dataTarget: 'bend-end-config-select', message: 'Step 8: End Configuration', instruction: 'Choose end type: PE (plain end), FOE (flanged one end), FBE (flanged both ends).' },
+        { dataTarget: 'bend-3d-preview', message: 'Step 9: Review 3D Preview', instruction: 'Check the 3D preview to make sure this looks correct. You can rotate the view to inspect from all angles!' }
       ]
     }
   }
@@ -174,18 +172,16 @@ Sweep tees are in the BENDS section because they include a curved 90° branch co
       response: `I'll guide you through creating a Duckfoot Bend step by step!
 
 Duckfoot bends include integrated steelwork base plate for floor mounting. The bend angle is fixed at 90°. Steel spec, schedule, and flange settings are already set from page 2.`,
-      actions: [{ type: 'point', dataTarget: 'add-item-section', message: 'Step 1: Go to Add Item section' }],
+      actions: [{ type: 'point', dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button' }],
       guidanceSteps: [
-        { dataTarget: 'add-item-section', message: 'Step 1: Go to Add Item section', instruction: 'Scroll down to the "Add another item" section at the bottom of your items.' },
-        { dataTarget: 'add-bend-button', message: 'Step 2: Click Bend button', instruction: 'Click the purple Bend button to add a new bend item.' },
-        { dataTarget: 'bend-item-type', message: 'Step 3: Select "Duckfoot Bend"', instruction: 'Click this dropdown and select "Duckfoot Bend" from the list.' },
-        { dataTarget: 'bend-nb-select', message: 'Step 4: Select pipe size (NB)', instruction: 'Choose your Nominal Bore. Steelwork dimensions will auto-populate based on your selection.' },
-        { dataTarget: 'bend-style-select', message: 'Step 5: Select Bend Style', instruction: 'Choose Segmented or Pulled bend style.' },
-        { dataTarget: 'bend-radius-select', message: 'Step 6: Select Bend Radius', instruction: 'Choose the bend radius. The angle is fixed at 90° for duckfoot bends.' },
-        { dataTarget: 'bend-segments-select', message: 'Step 7: Number of Segments', instruction: 'For segmented style: choose the number of mitre segments. This affects welding requirements.' },
-        { dataTarget: 'bend-quantity-input', message: 'Step 8: Set Quantity', instruction: 'Enter how many duckfoot bends you need.' },
-        { dataTarget: 'bend-end-config-select', message: 'Step 9: End Configuration', instruction: 'Choose end type for the pipe end (the base has integrated steelwork).' },
-        { dataTarget: 'bend-3d-preview', message: 'Step 10: Review 3D Preview', instruction: 'Check the 3D preview showing the bend with its steelwork base plate. Make sure it looks correct!' }
+        { dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button', instruction: 'Click the purple Bend button to add a new bend item.' },
+        { dataTarget: 'bend-item-type', message: 'Step 2: Select "Duckfoot Bend"', instruction: 'Click this dropdown and select "Duckfoot Bend" from the list.' },
+        { dataTarget: 'bend-nb-select', message: 'Step 3: Select pipe size (NB)', instruction: 'Choose your Nominal Bore. Steelwork dimensions will auto-populate based on your selection.' },
+        { dataTarget: 'bend-style-select', message: 'Step 4: Select Bend Style', instruction: 'Choose Segmented or Pulled bend style.' },
+        { dataTarget: 'bend-radius-select', message: 'Step 5: Select Bend Radius', instruction: 'Choose the bend radius. The angle is fixed at 90° for duckfoot bends.' },
+        { dataTarget: 'bend-segments-select', message: 'Step 6: Number of Segments', instruction: 'For segmented style: choose the number of mitre segments. This affects welding requirements.' },
+        { dataTarget: 'bend-end-config-select', message: 'Step 7: End Configuration', instruction: 'Choose end type for the pipe end (the base has integrated steelwork).' },
+        { dataTarget: 'bend-3d-preview', message: 'Step 8: Review 3D Preview', instruction: 'Check the 3D preview showing the bend with its steelwork base plate. Make sure it looks correct!' }
       ]
     }
   }
@@ -213,18 +209,16 @@ For a curved branch (Sweep Tee), use the Bends section instead.`,
         response: `I'll guide you through creating a Standard Bend step by step!
 
 You can choose between Pulled (SABS 62) or Segmented (SABS 719) bend styles. Steel spec, schedule, and flange settings are already set from page 2.`,
-        actions: [{ type: 'point', dataTarget: 'add-item-section', message: 'Step 1: Go to Add Item section' }],
+        actions: [{ type: 'point', dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button' }],
         guidanceSteps: [
-          { dataTarget: 'add-item-section', message: 'Step 1: Go to Add Item section', instruction: 'Scroll down to the "Add another item" section at the bottom of your items.' },
-          { dataTarget: 'add-bend-button', message: 'Step 2: Click Bend button', instruction: 'Click the purple Bend button to add a new bend item.' },
-          { dataTarget: 'bend-item-type', message: 'Step 3: Keep "Bend" selected', instruction: 'The Item Type should already be set to "Bend". Leave it as is for a standard bend.' },
-          { dataTarget: 'bend-nb-select', message: 'Step 4: Select pipe size (NB)', instruction: 'Choose your Nominal Bore (pipe size) for the bend.' },
-          { dataTarget: 'bend-style-select', message: 'Step 5: Select Bend Style', instruction: 'Choose "Pulled" (smooth, SABS 62) or "Segmented" (welded mitres, SABS 719).' },
-          { dataTarget: 'bend-radius-select', message: 'Step 6: Select Bend Radius', instruction: 'For Pulled: 1D, 1.5D, 2D, 3D, 5D. For Segmented: Elbow, Medium, Long radius.' },
-          { dataTarget: 'bend-segments-select', message: 'Step 7: Number of Segments', instruction: 'For segmented bends only: choose number of mitre segments (affects welding).' },
-          { dataTarget: 'bend-quantity-input', message: 'Step 8: Set Quantity', instruction: 'Enter how many of this bend you need.' },
-          { dataTarget: 'bend-end-config-select', message: 'Step 9: End Configuration', instruction: 'Choose end type: PE (plain), FOE (flanged one end), FBE (flanged both ends).' },
-          { dataTarget: 'bend-3d-preview', message: 'Step 10: Review 3D Preview', instruction: 'Check the 3D preview to verify your bend configuration. Rotate to inspect all angles!' }
+          { dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button', instruction: 'Click the purple Bend button to add a new bend item.' },
+          { dataTarget: 'bend-item-type', message: 'Step 2: Keep "Bend" selected', instruction: 'The Item Type should already be set to "Bend". Leave it as is for a standard bend.' },
+          { dataTarget: 'bend-nb-select', message: 'Step 3: Select pipe size (NB)', instruction: 'Choose your Nominal Bore (pipe size) for the bend.' },
+          { dataTarget: 'bend-style-select', message: 'Step 4: Select Bend Style', instruction: 'Choose "Pulled" (smooth, SABS 62) or "Segmented" (welded mitres, SABS 719).' },
+          { dataTarget: 'bend-radius-select', message: 'Step 5: Select Bend Radius', instruction: 'For Pulled: 1D, 1.5D, 2D, 3D, 5D. For Segmented: Elbow, Medium, Long radius.' },
+          { dataTarget: 'bend-segments-select', message: 'Step 6: Number of Segments', instruction: 'For segmented bends only: choose number of mitre segments (affects welding).' },
+          { dataTarget: 'bend-end-config-select', message: 'Step 7: End Configuration', instruction: 'Choose end type: PE (plain), FOE (flanged one end), FBE (flanged both ends).' },
+          { dataTarget: 'bend-3d-preview', message: 'Step 8: Review 3D Preview', instruction: 'Check the 3D preview to verify your bend configuration. Rotate to inspect all angles!' }
         ]
       }
     }
@@ -259,18 +253,16 @@ Larger radius = smoother flow but needs more space.`,
 
     return {
       response: `Standard bends are regular pipe bends at various angles. Let me guide you through creating one!`,
-      actions: [{ type: 'point', dataTarget: 'add-item-section', message: 'Go to Add Item section' }],
+      actions: [{ type: 'point', dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button' }],
       guidanceSteps: [
-        { dataTarget: 'add-item-section', message: 'Step 1: Go to Add Item section', instruction: 'Scroll down to the "Add another item" section.' },
-        { dataTarget: 'add-bend-button', message: 'Step 2: Click Bend button', instruction: 'Click the purple Bend button to start.' },
-        { dataTarget: 'bend-nb-select', message: 'Step 3: Select NB', instruction: 'Choose your pipe size (Nominal Bore).' },
-        { dataTarget: 'bend-style-select', message: 'Step 4: Select Style', instruction: 'Choose Pulled or Segmented bend style.' },
-        { dataTarget: 'bend-radius-select', message: 'Step 5: Select Radius', instruction: 'Choose the bend radius type.' },
-        { dataTarget: 'bend-angle-select', message: 'Step 6: Select Angle', instruction: 'Choose the bend angle (15°, 22.5°, 30°, 45°, 60°, or 90°).' },
-        { dataTarget: 'bend-segments-select', message: 'Step 7: Number of Segments', instruction: 'For segmented style: choose the number of mitre segments.' },
-        { dataTarget: 'bend-quantity-input', message: 'Step 8: Set Quantity', instruction: 'Enter how many bends you need.' },
-        { dataTarget: 'bend-end-config-select', message: 'Step 9: End Configuration', instruction: 'Choose end type: PE, FOE, or FBE.' },
-        { dataTarget: 'bend-3d-preview', message: 'Step 10: Review', instruction: 'Check the 3D preview!' }
+        { dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button', instruction: 'Click the purple Bend button to start.' },
+        { dataTarget: 'bend-nb-select', message: 'Step 2: Select NB', instruction: 'Choose your pipe size (Nominal Bore).' },
+        { dataTarget: 'bend-style-select', message: 'Step 3: Select Style', instruction: 'Choose Pulled or Segmented bend style.' },
+        { dataTarget: 'bend-radius-select', message: 'Step 4: Select Radius', instruction: 'Choose the bend radius type.' },
+        { dataTarget: 'bend-angle-select', message: 'Step 5: Select Angle', instruction: 'Choose the bend angle (15°, 22.5°, 30°, 45°, 60°, or 90°).' },
+        { dataTarget: 'bend-segments-select', message: 'Step 6: Number of Segments', instruction: 'For segmented style: choose the number of mitre segments.' },
+        { dataTarget: 'bend-end-config-select', message: 'Step 7: End Configuration', instruction: 'Choose end type: PE, FOE, or FBE.' },
+        { dataTarget: 'bend-3d-preview', message: 'Step 8: Review', instruction: 'Check the 3D preview!' }
       ]
     }
   }
@@ -283,29 +275,26 @@ Larger radius = smoother flow but needs more space.`,
         response: `I'll guide you through creating a Straight Pipe step by step!
 
 Straight pipes are the basic pipeline sections that connect everything together. Steel spec, schedule, and flange settings are already set from page 2.`,
-        actions: [{ type: 'point', dataTarget: 'add-item-section', message: 'Step 1: Go to Add Item section' }],
+        actions: [{ type: 'point', dataTarget: 'add-pipe-button', message: 'Step 1: Click Pipe button' }],
         guidanceSteps: [
-          { dataTarget: 'add-item-section', message: 'Step 1: Go to Add Item section', instruction: 'Scroll down to the "Add another item" section at the bottom of your items.' },
-          { dataTarget: 'add-pipe-button', message: 'Step 2: Click Pipe button', instruction: 'Click the blue "Pipe" button to add a new straight pipe.' },
-          { dataTarget: 'pipe-nb-select', message: 'Step 3: Select pipe size (NB)', instruction: 'Choose your Nominal Bore (pipe size). Common sizes: 50, 80, 100, 150, 200 NB.' },
-          { dataTarget: 'pipe-length-input', message: 'Step 4: Enter Pipe Length', instruction: 'Enter the individual pipe length in meters. Common lengths: 6m, 12m. Or click a preset button.' },
-          { dataTarget: 'pipe-quantity-input', message: 'Step 5: Set Quantity', instruction: 'Enter how many pipes of this length you need.' },
-          { dataTarget: 'pipe-end-config-select', message: 'Step 6: End Configuration', instruction: 'Choose end type: PE (plain end for welding), FOE (flanged one end), FBE (flanged both ends).' },
-          { dataTarget: 'pipe-3d-preview', message: 'Step 7: Review 3D Preview', instruction: 'Check the 3D preview to verify your pipe configuration. The preview shows flanges if selected!' }
+          { dataTarget: 'add-pipe-button', message: 'Step 1: Click Pipe button', instruction: 'Click the blue "Pipe" button to add a new straight pipe.' },
+          { dataTarget: 'pipe-nb-select', message: 'Step 2: Select pipe size (NB)', instruction: 'Choose your Nominal Bore (pipe size). Common sizes: 50, 80, 100, 150, 200 NB.' },
+          { dataTarget: 'pipe-length-input', message: 'Step 3: Enter Pipe Length', instruction: 'Enter the individual pipe length in meters. Common lengths: 6m, 12m. Or click a preset button.' },
+          { dataTarget: 'pipe-end-config-select', message: 'Step 4: End Configuration', instruction: 'Choose end type: PE (plain end for welding), FOE (flanged one end), FBE (flanged both ends).' },
+          { dataTarget: 'pipe-3d-preview', message: 'Step 5: Review 3D Preview', instruction: 'Check the 3D preview to verify your pipe configuration. The preview shows flanges if selected!' }
         ]
       }
     }
 
     return {
       response: `Straight pipes are standard pipeline sections. Let me guide you!`,
-      actions: [{ type: 'point', dataTarget: 'add-item-section', message: 'Go to Add Item section' }],
+      actions: [{ type: 'point', dataTarget: 'add-pipe-button', message: 'Step 1: Click Pipe button' }],
       guidanceSteps: [
-        { dataTarget: 'add-item-section', message: 'Step 1: Go to Add Item section', instruction: 'Scroll down to the "Add another item" section.' },
-        { dataTarget: 'add-pipe-button', message: 'Step 2: Click Pipe', instruction: 'Click the blue Pipe button to add a pipe.' },
-        { dataTarget: 'pipe-nb-select', message: 'Step 3: Select NB', instruction: 'Choose your pipe size.' },
-        { dataTarget: 'pipe-length-input', message: 'Step 4: Set Length', instruction: 'Enter the pipe length in meters.' },
-        { dataTarget: 'pipe-end-config-select', message: 'Step 5: End Config', instruction: 'Choose plain end or flanged.' },
-        { dataTarget: 'pipe-3d-preview', message: 'Step 6: Review', instruction: 'Check the 3D preview!' }
+        { dataTarget: 'add-pipe-button', message: 'Step 1: Click Pipe button', instruction: 'Click the blue Pipe button to add a pipe.' },
+        { dataTarget: 'pipe-nb-select', message: 'Step 2: Select NB', instruction: 'Choose your pipe size.' },
+        { dataTarget: 'pipe-length-input', message: 'Step 3: Set Length', instruction: 'Enter the pipe length in meters.' },
+        { dataTarget: 'pipe-end-config-select', message: 'Step 4: End Config', instruction: 'Choose plain end or flanged.' },
+        { dataTarget: 'pipe-3d-preview', message: 'Step 5: Review', instruction: 'Check the 3D preview!' }
       ]
     }
   }
@@ -530,12 +519,20 @@ export default function NixFormHelper({
     console.log(`[Nix Debug] Found ${allElements.length} elements for target "${dataTarget}", ${elements.length} visible`)
     elements.forEach((el, i) => {
       const rect = el.getBoundingClientRect()
-      console.log(`[Nix Debug]   Element ${i}: top=${rect.top.toFixed(0)}, left=${rect.left.toFixed(0)}, width=${rect.width.toFixed(0)}, height=${rect.height.toFixed(0)}, text="${el.textContent?.slice(0, 50)}"`)
+      const tagName = el.tagName
+      const isDisabled = (el as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled
+      console.log(`[Nix Debug]   Element ${i}: tag=${tagName}, disabled=${isDisabled}, top=${rect.top.toFixed(0)}, left=${rect.left.toFixed(0)}, width=${rect.width.toFixed(0)}, height=${rect.height.toFixed(0)}, text="${el.textContent?.slice(0, 50)}"`)
     })
     // For add buttons (not sections), use FIRST element; for form fields (multiple entries), use LAST element
     const useFirstElement = dataTarget.startsWith('add-') && dataTarget !== 'add-item-section'
-    const element = elements.length > 0
-      ? (useFirstElement ? elements[0] : elements[elements.length - 1])
+
+    // Prioritize SELECT elements over disabled inputs (important for segments dropdown)
+    const selectElements = elements.filter(el => el.tagName === 'SELECT')
+    const enabledElements = elements.filter(el => !(el as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled)
+    const preferredElements = selectElements.length > 0 ? selectElements : (enabledElements.length > 0 ? enabledElements : elements)
+
+    const element = preferredElements.length > 0
+      ? (useFirstElement ? preferredElements[0] : preferredElements[preferredElements.length - 1])
       : null
 
     if (!element) {
@@ -567,16 +564,31 @@ export default function NixFormHelper({
     const targetElement = element || document.querySelector(`[data-nix-target="${dataTarget}"]`)
     if (!targetElement) return
 
-    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    targetElement.scrollIntoView({ behavior: 'instant', block: 'center' })
 
     setTimeout(() => {
-      const freshElements = document.querySelectorAll(`[data-nix-target="${dataTarget}"]`)
-      // For add buttons, use FIRST element; for form fields (multiple entries), use LAST element
-      const freshElement = (freshElements.length > 0
-        ? (useFirstElement ? freshElements[0] : freshElements[freshElements.length - 1])
-        : null) || targetElement
+      const allFreshElements = document.querySelectorAll(`[data-nix-target="${dataTarget}"]`)
+      const visibleFreshElements = Array.from(allFreshElements).filter(el => {
+        const rect = el.getBoundingClientRect()
+        return rect.width > 0 && rect.height > 0
+      })
+      // Prioritize SELECT elements over disabled inputs (important for segments dropdown)
+      const freshSelectElements = visibleFreshElements.filter(el => el.tagName === 'SELECT')
+      const freshEnabledElements = visibleFreshElements.filter(el => !(el as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled)
+      const freshPreferredElements = freshSelectElements.length > 0 ? freshSelectElements : (freshEnabledElements.length > 0 ? freshEnabledElements : visibleFreshElements)
+
+      const freshElement = (freshPreferredElements.length > 0
+        ? (useFirstElement ? freshPreferredElements[0] : freshPreferredElements[freshPreferredElements.length - 1])
+        : null) as HTMLElement
+      if (!freshElement) {
+        console.log(`[Nix Debug] Element "${dataTarget}" not found after scroll (${allFreshElements.length} total, ${visibleFreshElements.length} visible)`)
+        return
+      }
       const updatedRect = freshElement.getBoundingClientRect()
-      console.log(`[Nix Debug] After scroll - element rect: top=${updatedRect.top.toFixed(0)}, left=${updatedRect.left.toFixed(0)}, height=${updatedRect.height.toFixed(0)}, text="${freshElement.textContent?.slice(0, 50)}"`)
+      console.log(`[Nix Debug] After scroll - target="${dataTarget}", using ${useFirstElement ? 'FIRST' : 'LAST'} of ${freshPreferredElements.length} preferred elements (${freshSelectElements.length} SELECTs, ${freshEnabledElements.length} enabled)`)
+      console.log(`[Nix Debug] Selected element: tag=${freshElement.tagName}, disabled=${(freshElement as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled}`)
+      console.log(`[Nix Debug] Rect: top=${updatedRect.top.toFixed(0)}, left=${updatedRect.left.toFixed(0)}, width=${updatedRect.width.toFixed(0)}, height=${updatedRect.height.toFixed(0)}`)
+      console.log(`[Nix Debug] Element text: "${freshElement.textContent?.slice(0, 50)}"`)
       console.log(`[Nix Debug] Viewport: innerHeight=${window.innerHeight}, scrollY=${window.scrollY.toFixed(0)}`)
 
       setShowChatWindow(false)
@@ -620,7 +632,7 @@ export default function NixFormHelper({
             setTimeout(() => {
               const step = prev.steps[nextStep]
               pointAtElement(step.dataTarget, step.message, step.instruction)
-            }, 1200)
+            }, 1800)
             return { ...prev, currentStep: nextStep }
           }
           endGuidance()
@@ -632,8 +644,63 @@ export default function NixFormHelper({
       const isCombobox = freshElement.getAttribute('role') === 'combobox'
       const isDisabled = (freshElement as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled
 
+      // Special handling for segments field - MUST wait for actual SELECT element
+      if (dataTarget === 'bend-segments-select' && !isSelectElement) {
+        console.log(`[Nix Debug] Segments field found but not a SELECT (tag=${freshElement.tagName}, disabled=${isDisabled}), waiting for SELECT to appear`)
+        const waitForSelect = setInterval(() => {
+          const allWaitElements = document.querySelectorAll(`[data-nix-target="${dataTarget}"]`)
+          const selectElement = Array.from(allWaitElements).find(el => {
+            const rect = el.getBoundingClientRect()
+            return el.tagName === 'SELECT' && rect.width > 0 && rect.height > 0
+          }) as HTMLElement
+          if (selectElement) {
+            clearInterval(waitForSelect)
+            console.log(`[Nix Debug] Segments SELECT element found, re-pointing`)
+            pointAtElement(dataTarget, message, instruction)
+          }
+        }, 500)
+        setTimeout(() => {
+          clearInterval(waitForSelect)
+          console.log(`[Nix Debug] Timeout waiting for segments SELECT, advancing`)
+          advanceToNextStep()
+        }, 15000)
+        return
+      }
+
       if (isDisabled) {
-        console.log(`[Nix Debug] Element "${dataTarget}" is disabled, auto-advancing after brief pause`)
+        const elementText = freshElement.textContent?.trim() || (freshElement as HTMLInputElement).value || ''
+        const isWaitingForInput = elementText.toLowerCase().includes('select') && !elementText.includes('(fixed)')
+        if (isWaitingForInput) {
+          console.log(`[Nix Debug] Element "${dataTarget}" is disabled but waiting for prior input ("${elementText}"), waiting for element to become enabled`)
+          const waitForEnabled = setInterval(() => {
+            const allWaitElements = document.querySelectorAll(`[data-nix-target="${dataTarget}"]`)
+            const visibleWaitElements = Array.from(allWaitElements).filter(el => {
+              const rect = el.getBoundingClientRect()
+              return rect.width > 0 && rect.height > 0
+            })
+            // Prioritize SELECT elements
+            const waitSelectElements = visibleWaitElements.filter(el => el.tagName === 'SELECT')
+            const waitEnabledElements = visibleWaitElements.filter(el => !(el as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled)
+            const waitPreferredElements = waitSelectElements.length > 0 ? waitSelectElements : (waitEnabledElements.length > 0 ? waitEnabledElements : visibleWaitElements)
+            const waitElement = (waitPreferredElements.length > 0
+              ? (useFirstElement ? waitPreferredElements[0] : waitPreferredElements[waitPreferredElements.length - 1])
+              : null) as HTMLElement
+            if (waitElement) {
+              const isNowSelect = waitElement.tagName === 'SELECT'
+              const waitDisabled = (waitElement as HTMLInputElement | HTMLSelectElement | HTMLButtonElement).disabled
+              if (isNowSelect || !waitDisabled) {
+                clearInterval(waitForEnabled)
+                console.log(`[Nix Debug] Element "${dataTarget}" is now ready (SELECT=${isNowSelect}, disabled=${waitDisabled}), re-pointing`)
+                pointAtElement(dataTarget, message, instruction)
+              }
+            }
+          }, 500)
+          setTimeout(() => {
+            clearInterval(waitForEnabled)
+          }, 30000)
+          return
+        }
+        console.log(`[Nix Debug] Element "${dataTarget}" is disabled and auto-filled ("${elementText}"), auto-advancing after brief pause`)
         setTimeout(advanceToNextStep, 1500)
         return
       }
@@ -642,13 +709,26 @@ export default function NixFormHelper({
         freshElement.addEventListener('change', advanceToNextStep)
         targetChangeHandlerRef.current = advanceToNextStep
       } else if (isCombobox) {
+        const initialText = freshElement.textContent?.trim() || ''
         let wasExpanded = false
         const observer = new MutationObserver((mutations) => {
           mutations.forEach((mutation) => {
             if (mutation.type === 'attributes' && mutation.attributeName === 'aria-expanded') {
               const currentlyExpanded = freshElement.getAttribute('aria-expanded') === 'true'
               if (wasExpanded && !currentlyExpanded) {
-                advanceToNextStep()
+                setTimeout(() => {
+                  const currentText = freshElement.textContent?.trim() || ''
+                  const hasSelection = currentText !== initialText &&
+                    currentText !== 'Select...' &&
+                    currentText !== 'Select' &&
+                    !currentText.includes('Loading')
+                  if (hasSelection) {
+                    console.log(`[Nix Debug] Combobox selection confirmed: "${initialText}" -> "${currentText}"`)
+                    advanceToNextStep()
+                  } else {
+                    console.log(`[Nix Debug] Combobox closed without selection change: "${currentText}"`)
+                  }
+                }, 300)
               }
               wasExpanded = currentlyExpanded
             }
@@ -660,7 +740,7 @@ export default function NixFormHelper({
         freshElement.addEventListener('click', advanceToNextStep)
         targetClickHandlerRef.current = advanceToNextStep
       }
-    }, 500)
+    }, 800)
   }, [position, savedPosition, endGuidance])
 
   const clearHighlight = useCallback(() => {
