@@ -141,19 +141,105 @@ const Z_INDEX_AVATAR = 10001
 const Z_INDEX_DIALOG = 10002
 const Z_INDEX_CHAT = 10003
 
+interface QuickAction {
+  label: string
+  query: string
+  icon: 'pipe' | 'bend' | 'fitting' | 'help'
+  category: 'add' | 'help'
+}
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { label: 'Pipe', query: 'How do I add a straight pipe?', icon: 'pipe', category: 'add' },
+  { label: 'Bend', query: 'How do I add a bend?', icon: 'bend', category: 'add' },
+  { label: 'Duckfoot', query: 'How do I add a duckfoot bend?', icon: 'bend', category: 'add' },
+  { label: 'Sweep Tee', query: 'How do I add a sweep tee?', icon: 'bend', category: 'add' },
+  { label: 'Tee Fitting', query: 'How do I add a tee fitting?', icon: 'fitting', category: 'add' },
+  { label: 'Reducer', query: 'How do I add a reducer?', icon: 'fitting', category: 'add' },
+  { label: 'NB Help', query: 'What NB should I select?', icon: 'help', category: 'help' },
+  { label: 'Schedule Help', query: 'What schedule should I use?', icon: 'help', category: 'help' },
+]
+
+interface IntentMatch {
+  intent: string
+  score: number
+}
+
+const normalizeText = (text: string): string =>
+  text.toLowerCase().replace(/[''`-]/g, '').replace(/\s+/g, ' ').trim()
+
+const INTENT_KEYWORDS: Record<string, string[]> = {
+  sweep_tee: ['sweep tee', 'sweeptee', 'curved tee', 'sweep branch'],
+  duckfoot_bend: ['duckfoot', 'duck foot', 'ducks foot', 'floor mount bend', 'base plate bend'],
+  standard_bend: ['bend', 'elbow', 'pipe bend'],
+  tee_fitting: ['tee', 'tee fitting', 't fitting', 't junction', 'branch'],
+  lateral: ['lateral', '45 degree branch', 'angled branch'],
+  reducer: ['reducer', 'reducing', 'concentric', 'eccentric', 'size change'],
+  straight_pipe: ['pipe', 'straight pipe', 'straight', 'pipeline'],
+  fitting: ['fitting', 'fittings'],
+  steel_work: ['steel work', 'steelwork', 'support', 'bracket', 'saddle'],
+  expansion_joint: ['expansion joint', 'expansion', 'bellows'],
+  nb_help: ['nb', 'nominal bore', 'pipe size', 'what size'],
+  schedule_help: ['schedule', 'wall thickness', 'sch'],
+  angle_help: ['angle', 'degrees', 'bend angle'],
+  radius_help: ['radius', 'bend radius', '1.5d', '3d', '5d'],
+}
+
+const INTENT_EXCLUSIONS: Record<string, string[]> = {
+  standard_bend: ['sweep', 'duck', 's-bend', 'sbend', 'offset'],
+  tee_fitting: ['sweep'],
+}
+
+const matchIntent = (query: string): IntentMatch | null => {
+  const normalized = normalizeText(query)
+  const words = normalized.split(' ')
+
+  let bestMatch: IntentMatch | null = null
+
+  for (const [intent, keywords] of Object.entries(INTENT_KEYWORDS)) {
+    const exclusions = INTENT_EXCLUSIONS[intent] || []
+    const isExcluded = exclusions.some(ex => normalized.includes(normalizeText(ex)))
+    if (isExcluded) continue
+
+    for (const keyword of keywords) {
+      const normalizedKeyword = normalizeText(keyword)
+
+      if (normalized.includes(normalizedKeyword)) {
+        const score = normalizedKeyword.length / normalized.length + (normalizedKeyword.split(' ').length * 0.1)
+        if (!bestMatch || score > bestMatch.score) {
+          bestMatch = { intent, score }
+        }
+      }
+
+      const keywordWords = normalizedKeyword.split(' ')
+      const matchedWords = keywordWords.filter(kw => words.some(w => w.includes(kw) || kw.includes(w)))
+      if (matchedWords.length === keywordWords.length && matchedWords.length > 0) {
+        const score = (matchedWords.length / words.length) + (keywordWords.length * 0.15)
+        if (!bestMatch || score > bestMatch.score) {
+          bestMatch = { intent, score }
+        }
+      }
+    }
+  }
+
+  return bestMatch
+}
+
 function generateFormGuidance(question: string): { response: string; actions: NixFormAction[]; guidanceSteps?: GuidanceStep[] } {
   const q = question.toLowerCase()
   const actions: NixFormAction[] = []
+  const intentMatch = matchIntent(question)
+  const isAtTop = q.includes('at top')
+  const buttonSuffix = isAtTop ? '-top' : ''
+  const positionText = isAtTop ? ' at the top of your list' : ''
 
-  // SWEEP TEE - Full guidance (skips global fields from page 2: steel spec, schedule, flange settings)
-  if (q.includes('sweep tee') || q.includes('sweeptee') || q.includes('sweep-tee')) {
+  if (intentMatch?.intent === 'sweep_tee') {
     return {
-      response: `I'll guide you through creating a Sweep Tee step by step. Follow along as I show you each field!
+      response: `I'll guide you through creating a Sweep Tee${positionText} step by step. Follow along as I show you each field!
 
 Sweep tees are in the BENDS section because they include a curved 90° branch connection. Steel spec, schedule, and flange settings are already set from page 2.`,
-      actions: [{ type: 'point', dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button' }],
+      actions: [{ type: 'point', dataTarget: `add-bend-button${buttonSuffix}`, message: 'Step 1: Click Bend button' }],
       guidanceSteps: [
-        { dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button', instruction: 'Click the purple Bend button to add a new bend item.' },
+        { dataTarget: `add-bend-button${buttonSuffix}`, message: 'Step 1: Click Bend button', instruction: 'Click the purple Bend button to add a new bend item.' },
         { dataTarget: 'bend-item-type', message: 'Step 2: Select "Sweep Tee"', instruction: 'Click this dropdown and select "Sweep Tee" from the list.' },
         { dataTarget: 'bend-nb-select', message: 'Step 3: Select pipe size (NB)', instruction: 'Choose your Nominal Bore (pipe size). Sweep tees are only available in sizes 200-900 NB.' },
         { dataTarget: 'bend-style-select', message: 'Step 4: Select Bend Style', instruction: 'Choose Segmented or Pulled bend style. This affects manufacturing method.' },
@@ -166,15 +252,14 @@ Sweep tees are in the BENDS section because they include a curved 90° branch co
     }
   }
 
-  // DUCKFOOT BEND - Full guidance (skips global fields from page 2)
-  if (q.includes('duckfoot')) {
+  if (intentMatch?.intent === 'duckfoot_bend') {
     return {
-      response: `I'll guide you through creating a Duckfoot Bend step by step!
+      response: `I'll guide you through creating a Duckfoot Bend${positionText} step by step!
 
 Duckfoot bends include integrated steelwork base plate for floor mounting. The bend angle is fixed at 90°. Steel spec, schedule, and flange settings are already set from page 2.`,
-      actions: [{ type: 'point', dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button' }],
+      actions: [{ type: 'point', dataTarget: `add-bend-button${buttonSuffix}`, message: 'Step 1: Click Bend button' }],
       guidanceSteps: [
-        { dataTarget: 'add-bend-button', message: 'Step 1: Click Bend button', instruction: 'Click the purple Bend button to add a new bend item.' },
+        { dataTarget: `add-bend-button${buttonSuffix}`, message: 'Step 1: Click Bend button', instruction: 'Click the purple Bend button to add a new bend item.' },
         { dataTarget: 'bend-item-type', message: 'Step 2: Select "Duckfoot Bend"', instruction: 'Click this dropdown and select "Duckfoot Bend" from the list.' },
         { dataTarget: 'bend-nb-select', message: 'Step 3: Select pipe size (NB)', instruction: 'Choose your Nominal Bore. Steelwork dimensions will auto-populate based on your selection.' },
         { dataTarget: 'bend-style-select', message: 'Step 4: Select Bend Style', instruction: 'Choose Segmented or Pulled bend style.' },
@@ -453,6 +538,7 @@ export default function NixFormHelper({
   const [savedPosition, setSavedPosition] = useState<Position | null>(null)
   const [guidanceFlow, setGuidanceFlow] = useState<GuidanceFlow | null>(null)
   const [currentInstruction, setCurrentInstruction] = useState<string | null>(null)
+  const [pendingAction, setPendingAction] = useState<{ query: string; itemType: string } | null>(null)
   const avatarRef = useRef<HTMLDivElement>(null)
   const chatInputRef = useRef<HTMLInputElement>(null)
   const chatMessagesRef = useRef<HTMLDivElement>(null)
@@ -905,23 +991,51 @@ export default function NixFormHelper({
     scrollToBottom()
   }, [chatMessages, scrollToBottom])
 
-  const handleSendMessage = useCallback(async () => {
-    if (!inputValue.trim() || isLoading) return
+  const moveToPosition = useCallback((location: 'top' | 'bottom') => {
+    const targetSelector = location === 'top'
+      ? '[data-nix-target="add-item-section-top"]'
+      : '[data-nix-target="add-item-section"]'
 
-    const userMessage = inputValue.trim()
-    setInputValue('')
-    setChatMessages((prev) => [...prev, { role: 'user', content: userMessage }])
+    const targetElement = document.querySelector(targetSelector)
+    if (targetElement) {
+      const rect = targetElement.getBoundingClientRect()
+      const avatarSize = 64
+      const padding = 20
+
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+      setTimeout(() => {
+        const updatedRect = targetElement.getBoundingClientRect()
+        const newX = Math.min(
+          Math.max(padding, updatedRect.right + padding),
+          window.innerWidth - avatarSize - padding
+        )
+        const newY = Math.min(
+          Math.max(padding, updatedRect.top),
+          window.innerHeight - avatarSize - BOTTOM_TOOLBAR_HEIGHT - padding
+        )
+
+        setPosition({ x: newX, y: newY })
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: newX, y: newY }))
+      }, 400)
+    }
+  }, [])
+
+  const executeQuery = useCallback(async (query: string) => {
+    if (isLoading) return
+
+    setChatMessages((prev) => [...prev, { role: 'user', content: query }])
     setIsLoading(true)
 
     try {
-      const { response, actions, guidanceSteps } = generateFormGuidance(userMessage)
+      const { response, actions, guidanceSteps } = generateFormGuidance(query)
       setChatMessages((prev) => [...prev, { role: 'assistant', content: response, actions }])
 
       if (guidanceSteps && guidanceSteps.length > 0) {
         setGuidanceFlow({
           steps: guidanceSteps,
           currentStep: 0,
-          name: userMessage
+          name: query
         })
         const firstStep = guidanceSteps[0]
         setTimeout(() => {
@@ -947,7 +1061,14 @@ export default function NixFormHelper({
     } finally {
       setIsLoading(false)
     }
-  }, [inputValue, isLoading, onFormAction, pointAtElement])
+  }, [isLoading, onFormAction, pointAtElement])
+
+  const handleSendMessage = useCallback(async () => {
+    if (!inputValue.trim() || isLoading) return
+    const userMessage = inputValue.trim()
+    setInputValue('')
+    executeQuery(userMessage)
+  }, [inputValue, isLoading, executeQuery])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -1003,7 +1124,7 @@ export default function NixFormHelper({
             }}
           />
           <div
-            className="absolute border-4 border-orange-400 rounded-lg animate-pulse"
+            className="absolute border-4 border-amix-orange rounded-lg animate-pulse"
             style={{
               top: highlightOverlay.rect.top - 4,
               left: highlightOverlay.rect.left - 4,
@@ -1012,7 +1133,7 @@ export default function NixFormHelper({
             }}
           />
           <div
-            className="absolute bg-orange-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-lg whitespace-nowrap"
+            className="absolute bg-amix-orange text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-lg whitespace-nowrap"
             style={{
               top: highlightOverlay.rect.top - 40,
               left: highlightOverlay.rect.left + highlightOverlay.rect.width / 2,
@@ -1021,7 +1142,7 @@ export default function NixFormHelper({
           >
             {highlightOverlay.message}
             <div
-              className="absolute w-3 h-3 bg-orange-500 rotate-45"
+              className="absolute w-3 h-3 bg-amix-orange rotate-45"
               style={{ bottom: -6, left: '50%', marginLeft: -6 }}
             />
           </div>
@@ -1045,9 +1166,9 @@ export default function NixFormHelper({
       <div className="relative">
         <div
           onClick={handleAvatarClick}
-          className={`w-16 h-16 rounded-full overflow-hidden shadow-lg border-3 border-orange-400 hover:border-orange-500 transition-all duration-200 ${
+          className={`w-16 h-16 rounded-full overflow-hidden shadow-lg border-3 border-amix-orange hover:border-amix-orange-dark transition-all duration-200 ${
             isDragging ? 'scale-110 shadow-xl' : 'hover:scale-105'
-          } ${showChatWindow ? 'ring-2 ring-orange-300 ring-offset-2' : ''}`}
+          } ${showChatWindow ? 'ring-2 ring-amix-orange-light ring-offset-2' : ''}`}
           style={{
             boxShadow: isDragging
               ? '0 20px 40px rgba(0, 0, 0, 0.3)'
@@ -1108,7 +1229,7 @@ export default function NixFormHelper({
         )}
       </div>
 
-      {showHoverDialog && !isDragging && !showChatWindow && (
+      {showHoverDialog && !isDragging && !showChatWindow && !guidanceFlow && !isPointingAt && (
         <div
           className="absolute bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-72"
           style={{
@@ -1122,7 +1243,7 @@ export default function NixFormHelper({
           }}
         >
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden border-2 border-orange-400">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden border-2 border-amix-orange">
               <Image
                 src="/nix-avatar.png"
                 alt="Nix"
@@ -1171,7 +1292,7 @@ export default function NixFormHelper({
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-orange-400 rounded-t-lg">
+          <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-gradient-to-r from-amix-orange to-amix-orange-light rounded-t-lg">
             <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
               <Image
                 src="/nix-avatar.png"
@@ -1183,41 +1304,89 @@ export default function NixFormHelper({
             </div>
             <div className="flex-1">
               <h4 className="font-semibold text-white text-sm">Nix Form Helper</h4>
-              <p className="text-xs text-orange-100">Ask me how to fill out your RFQ</p>
+              <p className="text-xs text-white/80">Ask me how to fill out your RFQ</p>
             </div>
             <button
               onClick={() => setShowChatWindow(false)}
-              className="w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center text-xs transition-colors"
+              className="w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center text-xs transition-colors z-[10010] relative"
             >
               x
             </button>
           </div>
 
           <div ref={chatMessagesRef} className="flex-1 overflow-y-auto p-3 space-y-3 min-h-56 max-h-80">
-            {chatMessages.length === 0 && (
-              <div className="text-center text-gray-500 text-sm py-4">
-                <p className="font-medium">Hi! I&apos;m Nix.</p>
-                <p className="mt-2 text-xs">Ask me things like:</p>
-                <div className="mt-2 space-y-1">
+            {chatMessages.length === 0 && !pendingAction && (
+              <div className="text-gray-500 text-sm py-2">
+                <p className="font-medium text-center">Hi! I&apos;m Nix. What would you like to add?</p>
+                <div className="mt-3">
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {QUICK_ACTIONS.filter(a => a.category === 'add').map((action) => (
+                      <button
+                        key={action.label}
+                        onClick={() => setPendingAction({ query: action.query, itemType: action.label })}
+                        className="px-3 py-1.5 text-xs bg-amix-orange/10 hover:bg-amix-orange/20 rounded-full text-amix-orange-dark transition-colors border border-amix-orange/20 hover:border-amix-orange/40"
+                      >
+                        + {action.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <p className="text-xs text-gray-400 mb-2 text-center">Need help?</p>
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {QUICK_ACTIONS.filter(a => a.category === 'help').map((action) => (
+                      <button
+                        key={action.label}
+                        onClick={() => executeQuery(action.query)}
+                        className="px-2.5 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors border border-gray-200 hover:border-gray-300"
+                      >
+                        ? {action.label.replace(' Help', '')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-4 text-xs text-gray-400 text-center">Or type your question below</p>
+              </div>
+            )}
+            {pendingAction && chatMessages.length === 0 && (
+              <div className="text-gray-600 text-sm py-2">
+                <p className="font-medium text-center">Where would you like to add this {pendingAction.itemType}?</p>
+                <div className="mt-4 flex gap-3 justify-center">
                   <button
-                    onClick={() => setInputValue('How do I add a sweep tee?')}
-                    className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50 hover:bg-orange-100 rounded-lg text-orange-700 transition-colors"
+                    onClick={() => {
+                      const query = pendingAction.query;
+                      setPendingAction(null);
+                      moveToPosition('top');
+                      setTimeout(() => executeQuery(`${query} at top`), 400);
+                    }}
+                    className="px-4 py-2 text-sm bg-blue-50 hover:bg-blue-100 rounded-lg text-blue-700 transition-colors border border-blue-200 hover:border-blue-300 flex items-center gap-2"
                   >
-                    &quot;How do I add a sweep tee?&quot;
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                    At the top
                   </button>
                   <button
-                    onClick={() => setInputValue('Where do I set the bend angle?')}
-                    className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50 hover:bg-orange-100 rounded-lg text-orange-700 transition-colors"
+                    onClick={() => {
+                      const query = pendingAction.query;
+                      setPendingAction(null);
+                      moveToPosition('bottom');
+                      setTimeout(() => executeQuery(query), 400);
+                    }}
+                    className="px-4 py-2 text-sm bg-amix-orange/10 hover:bg-amix-orange/20 rounded-lg text-amix-orange-dark transition-colors border border-amix-orange/20 hover:border-amix-orange/40 flex items-center gap-2"
                   >
-                    &quot;Where do I set the bend angle?&quot;
-                  </button>
-                  <button
-                    onClick={() => setInputValue('How do I add a tee fitting?')}
-                    className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50 hover:bg-orange-100 rounded-lg text-orange-700 transition-colors"
-                  >
-                    &quot;How do I add a tee fitting?&quot;
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    At the bottom
                   </button>
                 </div>
+                <button
+                  onClick={() => setPendingAction(null)}
+                  className="mt-3 text-xs text-gray-400 hover:text-gray-600 block mx-auto"
+                >
+                  Cancel
+                </button>
               </div>
             )}
             {chatMessages.map((msg, idx) => (
@@ -1225,7 +1394,7 @@ export default function NixFormHelper({
                 <div
                   className={`max-w-[90%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
                     msg.role === 'user'
-                      ? 'bg-orange-500 text-white rounded-br-none'
+                      ? 'bg-amix-orange text-white rounded-br-none'
                       : 'bg-gray-100 text-gray-800 rounded-bl-none'
                   }`}
                 >
@@ -1256,7 +1425,7 @@ export default function NixFormHelper({
             {highlightOverlay && (
               <div className="pt-2 space-y-2">
                 {currentInstruction && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-sm text-orange-800">
+                  <div className="bg-amix-orange/10 border border-amix-orange/30 rounded-lg p-2 text-sm text-amix-orange-dark">
                     {currentInstruction}
                   </div>
                 )}
@@ -1286,13 +1455,13 @@ export default function NixFormHelper({
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask me how to fill out the form..."
-                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amix-orange focus:border-transparent"
                 disabled={isLoading}
               />
               <button
                 onClick={handleSendMessage}
                 disabled={isLoading || !inputValue.trim()}
-                className="px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-2 bg-amix-orange text-white rounded-lg hover:bg-amix-orange-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1319,7 +1488,7 @@ export function NixMinimizedButton({ onClick }: { onClick: () => void }) {
       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-sm hover:shadow-md"
       title="Click to reactivate Nix helper"
     >
-      <div className="w-6 h-6 rounded-full overflow-hidden border-2 border-orange-300 shadow-sm">
+      <div className="w-6 h-6 rounded-full overflow-hidden border-2 border-amix-orange-light shadow-sm">
         <Image
           src="/nix-avatar.png"
           alt="Nix"

@@ -989,6 +989,121 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
     prefetchSchedules();
   }, [masterData.nominalBores?.length, entries, availableSchedulesMap, globalSpecs?.steelSpecificationId, fetchAvailableSchedules]);
 
+  const addItemButtons = (insertAtStart?: boolean) => (
+    <div className="flex gap-2" data-nix-target={insertAtStart ? 'add-item-section-top' : undefined}>
+      <button
+        data-nix-target={insertAtStart ? 'add-pipe-button-top' : undefined}
+        onClick={!canAddMoreItems ? showRestrictionPopup('itemLimit') : () => {
+          const existingIds = new Set(
+            Array.from(document.querySelectorAll('[id^="pipe-nb-"]')).map(el => el.id)
+          );
+
+          onAddEntry(undefined, insertAtStart);
+
+          const tryFocus = (attempt: number) => {
+            if (attempt > 10) return;
+            setTimeout(() => {
+              const allNbSelects = document.querySelectorAll('[id^="pipe-nb-"]');
+              let newSelect: Element | null = null;
+
+              for (const select of allNbSelects) {
+                if (!existingIds.has(select.id)) {
+                  newSelect = select;
+                  break;
+                }
+              }
+
+              if (newSelect) {
+                const button = newSelect as HTMLElement;
+                button.click();
+                button.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } else {
+                tryFocus(attempt + 1);
+              }
+            }, 150 + (attempt * 100));
+          };
+          tryFocus(0);
+        }}
+        className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+          !canAddMoreItems
+            ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+            : 'bg-blue-100 hover:bg-blue-200 border-blue-300'
+        }`}
+      >
+        {!canAddMoreItems && (
+          <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+          </svg>
+        )}
+        <svg className={`w-4 h-4 ${!canAddMoreItems ? 'text-gray-400' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        <span className={`text-xs font-semibold ${!canAddMoreItems ? 'text-gray-500' : 'text-blue-700'}`}>Pipe</span>
+      </button>
+      <button
+        data-nix-target={insertAtStart ? 'add-bend-button-top' : undefined}
+        onClick={!canAddMoreItems ? showRestrictionPopup('itemLimit') : () => onAddBendEntry(undefined, insertAtStart)}
+        className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+          !canAddMoreItems
+            ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+            : 'bg-purple-100 hover:bg-purple-200 border-purple-300'
+        }`}
+      >
+        {!canAddMoreItems && (
+          <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+          </svg>
+        )}
+        <svg className={`w-4 h-4 ${!canAddMoreItems ? 'text-gray-400' : 'text-purple-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        <span className={`text-xs font-semibold ${!canAddMoreItems ? 'text-gray-500' : 'text-purple-700'}`}>Bend</span>
+      </button>
+      <button
+        data-nix-target={insertAtStart ? 'add-fitting-button-top' : undefined}
+        onClick={isUnregisteredCustomer ? showRestrictionPopup('fittings') : () => onAddFittingEntry(undefined, insertAtStart)}
+        onMouseEnter={isUnregisteredCustomer ? showRestrictionPopup('fittings') : undefined}
+        className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+          isUnregisteredCustomer
+            ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+            : 'bg-green-100 hover:bg-green-200 border-green-300'
+        }`}
+      >
+        {isUnregisteredCustomer && (
+          <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+          </svg>
+        )}
+        <svg className={`w-4 h-4 ${isUnregisteredCustomer ? 'text-gray-400' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        <span className={`text-xs font-semibold ${isUnregisteredCustomer ? 'text-gray-500' : 'text-green-700'}`}>Fitting</span>
+      </button>
+      {requiredProducts.includes('pipe_steel_work') && onAddPipeSteelWorkEntry && (
+        <button
+          onClick={() => onAddPipeSteelWorkEntry(undefined, insertAtStart)}
+          className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 rounded-md border border-orange-300 transition-colors"
+        >
+          <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span className="text-xs font-semibold text-orange-700">Steel Work</span>
+        </button>
+      )}
+      {requiredProducts.includes('expansion_joint') && onAddExpansionJointEntry && (
+        <button
+          onClick={() => onAddExpansionJointEntry(undefined, insertAtStart)}
+          className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 rounded-md border border-purple-300 transition-colors"
+        >
+          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span className="text-xs font-semibold text-purple-700">Expansion Joint</span>
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div>
       {/* Show item type selection buttons when no items exist */}
@@ -1079,6 +1194,7 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                 <span className="text-green-700 font-semibold">Auto-calculating</span>
                 <span className="text-xs text-green-600">Results update automatically</span>
               </div>
+              {addItemButtons(true)}
             </div>
           </div>
 
@@ -1163,6 +1279,28 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
                   </svg>
                   <span className={`text-sm font-semibold ${isUnregisteredCustomer ? 'text-gray-500' : 'text-green-700'}`}>Fitting</span>
                 </button>
+                {requiredProducts.includes('pipe_steel_work') && onAddPipeSteelWorkEntry && (
+                  <button
+                    onClick={() => onAddPipeSteelWorkEntry()}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all bg-orange-50 hover:bg-orange-100 border-orange-400 hover:border-orange-500 hover:shadow-md"
+                  >
+                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span className="text-sm font-semibold text-orange-700">Steel Work</span>
+                  </button>
+                )}
+                {requiredProducts.includes('expansion_joint') && onAddExpansionJointEntry && (
+                  <button
+                    onClick={() => onAddExpansionJointEntry()}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all bg-purple-50 hover:bg-purple-100 border-purple-400 hover:border-purple-500 hover:shadow-md"
+                  >
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span className="text-sm font-semibold text-purple-700">Expansion Joint</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
