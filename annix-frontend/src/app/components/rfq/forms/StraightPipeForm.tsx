@@ -1780,7 +1780,7 @@ function StraightPipeFormComponent({
                     const flangeStandardName = flangeStandard?.code === 'SABS_1123' ? 'SABS 1123' : flangeStandard?.code === 'BS_4504' ? 'BS 4504' : flangeStandard?.code?.replace(/_/g, ' ') || '';
                     const pressureClassDesignation = pressureClass?.designation || '';
                     return (
-                      <div data-nix-target="pipe-3d-preview">
+                      <div data-nix-target="pipe-3d-preview" className="h-full">
                       <Pipe3DPreview
                         length={entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M}
                         outerDiameter={entry.calculation?.outsideDiameterMm || (entry.specs.nominalBoreMm * 1.1)}

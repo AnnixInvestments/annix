@@ -2755,7 +2755,7 @@ function BendFormComponent({
                     const steelSpecName = masterData.steelSpecs.find((s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId))?.steelSpecName || '';
                     const previewIsSABS719 = steelSpecName.includes('SABS 719') || steelSpecName.includes('SANS 719');
                     return (
-                      <div data-nix-target="bend-3d-preview">
+                      <div data-nix-target="bend-3d-preview" className="h-full">
                       <Bend3DPreview
                         nominalBore={entry.specs.nominalBoreMm}
                         outerDiameter={entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] || (entry.specs.nominalBoreMm * 1.05)}

@@ -549,12 +549,18 @@ export default function NixFormHelper({
   const targetChangeHandlerRef = useRef<(() => void) | null>(null)
   const currentTargetRef = useRef<Element | null>(null)
   const mutationObserverRef = useRef<MutationObserver | null>(null)
+  const waitingForElementRef = useRef<NodeJS.Timeout | null>(null)
+  const waitingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const hasAdvancedRef = useRef<boolean>(false)
+  const pendingStepTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const currentStepIndexRef = useRef<number>(-1)
 
   const endGuidance = useCallback(() => {
     setHighlightOverlay(null)
     setIsPointingAt(null)
     setGuidanceFlow(null)
     setCurrentInstruction(null)
+    currentStepIndexRef.current = -1
     if (highlightTimeoutRef.current) {
       clearTimeout(highlightTimeoutRef.current)
       highlightTimeoutRef.current = null
@@ -581,6 +587,26 @@ export default function NixFormHelper({
   }, [savedPosition])
 
   const pointAtElement = useCallback((dataTarget: string, message: string, instruction?: string) => {
+    console.log(`[Nix Debug] pointAtElement called for "${dataTarget}"`)
+
+    // Reset advance guard for this new step
+    hasAdvancedRef.current = false
+
+    // Cancel any pending step timeout (prevents duplicate calls)
+    if (pendingStepTimeoutRef.current) {
+      clearTimeout(pendingStepTimeoutRef.current)
+      pendingStepTimeoutRef.current = null
+    }
+
+    // Clean up any pending waits from previous calls
+    if (waitingForElementRef.current) {
+      clearTimeout(waitingForElementRef.current)
+      waitingForElementRef.current = null
+    }
+    if (waitingIntervalRef.current) {
+      clearInterval(waitingIntervalRef.current)
+      waitingIntervalRef.current = null
+    }
     if (currentTargetRef.current) {
       if (targetClickHandlerRef.current) {
         currentTargetRef.current.removeEventListener('click', targetClickHandlerRef.current)
@@ -622,6 +648,59 @@ export default function NixFormHelper({
       : null
 
     if (!element) {
+      if (dataTarget === 'bend-segments-select') {
+        console.log(`[Nix Debug] Segments element not found yet, waiting for it to appear...`)
+        const stepIndexWhenStarted = currentStepIndexRef.current
+        waitingIntervalRef.current = setInterval(() => {
+          if (currentStepIndexRef.current !== stepIndexWhenStarted) {
+            console.log(`[Nix Debug] Segments wait interval cancelled - step changed from ${stepIndexWhenStarted} to ${currentStepIndexRef.current}`)
+            if (waitingIntervalRef.current) {
+              clearInterval(waitingIntervalRef.current)
+              waitingIntervalRef.current = null
+            }
+            return
+          }
+          const segmentElements = document.querySelectorAll(`[data-nix-target="${dataTarget}"]`)
+          const visibleSegmentElements = Array.from(segmentElements).filter(el => {
+            const rect = el.getBoundingClientRect()
+            return rect.width > 0 && rect.height > 0
+          })
+          const segmentSelect = visibleSegmentElements.find(el => el.tagName === 'SELECT') as HTMLElement
+          if (segmentSelect) {
+            if (waitingIntervalRef.current) {
+              clearInterval(waitingIntervalRef.current)
+              waitingIntervalRef.current = null
+            }
+            console.log(`[Nix Debug] Segments SELECT element appeared, pointing at it`)
+            pointAtElement(dataTarget, message, instruction)
+          }
+        }, 500)
+        waitingForElementRef.current = setTimeout(() => {
+          if (waitingIntervalRef.current) {
+            clearInterval(waitingIntervalRef.current)
+            waitingIntervalRef.current = null
+          }
+          if (currentStepIndexRef.current !== stepIndexWhenStarted) {
+            console.log(`[Nix Debug] Segments timeout cancelled - step already changed`)
+            return
+          }
+          console.log(`[Nix Debug] Timeout waiting for segments element, advancing`)
+          setGuidanceFlow((prev) => {
+            if (prev && prev.currentStep < prev.steps.length - 1) {
+              const nextStep = prev.currentStep + 1
+              currentStepIndexRef.current = nextStep
+              setTimeout(() => {
+                const step = prev.steps[nextStep]
+                pointAtElement(step.dataTarget, step.message, step.instruction)
+              }, 500)
+              return { ...prev, currentStep: nextStep }
+            }
+            return prev
+          })
+        }, 20000)
+        return
+      }
+
       const fallbackSelectors: Record<string, string> = {
         'add-bend-button': 'button:has(span:contains("Bend"))',
         'add-fitting-button': 'button:has(span:contains("Fitting"))',
@@ -635,7 +714,12 @@ export default function NixFormHelper({
         setGuidanceFlow((prev) => {
           if (prev && prev.currentStep < prev.steps.length - 1) {
             const nextStep = prev.currentStep + 1
-            setTimeout(() => {
+            currentStepIndexRef.current = nextStep
+            if (pendingStepTimeoutRef.current) {
+              clearTimeout(pendingStepTimeoutRef.current)
+            }
+            pendingStepTimeoutRef.current = setTimeout(() => {
+              pendingStepTimeoutRef.current = null
               const step = prev.steps[nextStep]
               pointAtElement(step.dataTarget, step.message, step.instruction)
             }, 500)
@@ -650,7 +734,11 @@ export default function NixFormHelper({
     const targetElement = element || document.querySelector(`[data-nix-target="${dataTarget}"]`)
     if (!targetElement) return
 
-    targetElement.scrollIntoView({ behavior: 'instant', block: 'center' })
+    const is3DPreview = dataTarget.includes('3d-preview')
+    targetElement.scrollIntoView({ behavior: 'instant', block: is3DPreview ? 'start' : 'center' })
+    if (is3DPreview) {
+      window.scrollBy({ top: -100, behavior: 'instant' })
+    }
 
     setTimeout(() => {
       const allFreshElements = document.querySelectorAll(`[data-nix-target="${dataTarget}"]`)
@@ -698,6 +786,18 @@ export default function NixFormHelper({
       currentTargetRef.current = freshElement
 
       const advanceToNextStep = () => {
+        // Prevent double-firing
+        if (hasAdvancedRef.current) {
+          console.log(`[Nix Debug] advanceToNextStep called but already advanced, ignoring`)
+          return
+        }
+        hasAdvancedRef.current = true
+
+        // Clean up listeners
+        if (waitingIntervalRef.current) {
+          clearInterval(waitingIntervalRef.current)
+          waitingIntervalRef.current = null
+        }
         if (targetClickHandlerRef.current) {
           freshElement.removeEventListener('click', targetClickHandlerRef.current)
           targetClickHandlerRef.current = null
@@ -712,18 +812,37 @@ export default function NixFormHelper({
         }
         currentTargetRef.current = null
 
+        // Cancel any pending step timeout before scheduling new one
+        if (pendingStepTimeoutRef.current) {
+          clearTimeout(pendingStepTimeoutRef.current)
+          pendingStepTimeoutRef.current = null
+        }
+
+        // Get current guidance flow state to calculate next step
+        let nextStepInfo: { dataTarget: string; message: string; instruction: string; delayMs: number } | null = null
+
         setGuidanceFlow((prev) => {
           if (prev && prev.currentStep < prev.steps.length - 1) {
             const nextStep = prev.currentStep + 1
-            setTimeout(() => {
-              const step = prev.steps[nextStep]
-              pointAtElement(step.dataTarget, step.message, step.instruction)
-            }, 1800)
+            const step = prev.steps[nextStep]
+            const delayMs = step.dataTarget === 'bend-segments-select' ? 5000 : 1800
+            console.log(`[Nix Debug] Advancing from step ${prev.currentStep} to step ${nextStep} (${step.dataTarget})`)
+            currentStepIndexRef.current = nextStep
+            nextStepInfo = { dataTarget: step.dataTarget, message: step.message, instruction: step.instruction, delayMs }
             return { ...prev, currentStep: nextStep }
           }
           endGuidance()
           return null
         })
+
+        // Schedule the next step OUTSIDE of state updater
+        if (nextStepInfo) {
+          const { dataTarget: nextTarget, message: nextMessage, instruction: nextInstruction, delayMs } = nextStepInfo
+          pendingStepTimeoutRef.current = setTimeout(() => {
+            pendingStepTimeoutRef.current = null
+            pointAtElement(nextTarget, nextMessage, nextInstruction)
+          }, delayMs)
+        }
       }
 
       const isSelectElement = freshElement.tagName === 'SELECT'
@@ -733,32 +852,46 @@ export default function NixFormHelper({
       // Special handling for segments field - MUST wait for actual SELECT element
       if (dataTarget === 'bend-segments-select' && !isSelectElement) {
         console.log(`[Nix Debug] Segments field found but not a SELECT (tag=${freshElement.tagName}, disabled=${isDisabled}), waiting for SELECT to appear`)
-        const waitForSelect = setInterval(() => {
+        const stepIndexWhenStarted = currentStepIndexRef.current
+        waitingIntervalRef.current = setInterval(() => {
+          if (currentStepIndexRef.current !== stepIndexWhenStarted) {
+            console.log(`[Nix Debug] Segments wait cancelled - step changed`)
+            if (waitingIntervalRef.current) {
+              clearInterval(waitingIntervalRef.current)
+              waitingIntervalRef.current = null
+            }
+            return
+          }
           const allWaitElements = document.querySelectorAll(`[data-nix-target="${dataTarget}"]`)
           const selectElement = Array.from(allWaitElements).find(el => {
             const rect = el.getBoundingClientRect()
             return el.tagName === 'SELECT' && rect.width > 0 && rect.height > 0
           }) as HTMLElement
           if (selectElement) {
-            clearInterval(waitForSelect)
+            if (waitingIntervalRef.current) {
+              clearInterval(waitingIntervalRef.current)
+              waitingIntervalRef.current = null
+            }
             console.log(`[Nix Debug] Segments SELECT element found, re-pointing`)
             pointAtElement(dataTarget, message, instruction)
           }
         }, 500)
-        setTimeout(() => {
-          clearInterval(waitForSelect)
-          console.log(`[Nix Debug] Timeout waiting for segments SELECT, advancing`)
-          advanceToNextStep()
-        }, 15000)
+        // No auto-advance timeout - wait for user interaction only
         return
       }
 
-      if (isDisabled) {
+      if (isDisabled && dataTarget !== 'bend-segments-select' && dataTarget !== 'bend-end-config-select') {
         const elementText = freshElement.textContent?.trim() || (freshElement as HTMLInputElement).value || ''
         const isWaitingForInput = elementText.toLowerCase().includes('select') && !elementText.includes('(fixed)')
         if (isWaitingForInput) {
           console.log(`[Nix Debug] Element "${dataTarget}" is disabled but waiting for prior input ("${elementText}"), waiting for element to become enabled`)
+          const stepIndexWhenStarted = currentStepIndexRef.current
           const waitForEnabled = setInterval(() => {
+            if (currentStepIndexRef.current !== stepIndexWhenStarted) {
+              console.log(`[Nix Debug] Wait for enabled cancelled - step changed`)
+              clearInterval(waitForEnabled)
+              return
+            }
             const allWaitElements = document.querySelectorAll(`[data-nix-target="${dataTarget}"]`)
             const visibleWaitElements = Array.from(allWaitElements).filter(el => {
               const rect = el.getBoundingClientRect()
@@ -791,9 +924,84 @@ export default function NixFormHelper({
         return
       }
 
+      // For segments or end-config field, if disabled, wait for it to become enabled
+      if (isDisabled && (dataTarget === 'bend-segments-select' || dataTarget === 'bend-end-config-select')) {
+        console.log(`[Nix Debug] ${dataTarget} is disabled, waiting for it to become enabled...`)
+        const stepIndexWhenStarted = currentStepIndexRef.current
+        waitingIntervalRef.current = setInterval(() => {
+          if (currentStepIndexRef.current !== stepIndexWhenStarted) {
+            console.log(`[Nix Debug] ${dataTarget} wait cancelled - step changed`)
+            if (waitingIntervalRef.current) {
+              clearInterval(waitingIntervalRef.current)
+              waitingIntervalRef.current = null
+            }
+            return
+          }
+          const elements = document.querySelectorAll(`[data-nix-target="${dataTarget}"]`)
+          const enabledEl = Array.from(elements).find(el => {
+            const rect = el.getBoundingClientRect()
+            return el.tagName === 'SELECT' && rect.width > 0 && rect.height > 0 && !(el as HTMLSelectElement).disabled
+          })
+          if (enabledEl) {
+            if (waitingIntervalRef.current) {
+              clearInterval(waitingIntervalRef.current)
+              waitingIntervalRef.current = null
+            }
+            console.log(`[Nix Debug] ${dataTarget} is now enabled, re-pointing`)
+            pointAtElement(dataTarget, message, instruction)
+          }
+        }, 500)
+        waitingForElementRef.current = setTimeout(() => {
+          if (waitingIntervalRef.current) {
+            clearInterval(waitingIntervalRef.current)
+            waitingIntervalRef.current = null
+          }
+        }, 30000)
+        return
+      }
+
       if (isSelectElement) {
-        freshElement.addEventListener('change', advanceToNextStep)
-        targetChangeHandlerRef.current = advanceToNextStep
+        const selectEl = freshElement as HTMLSelectElement
+        const initialValue = selectEl.value
+        const initialSelectedIndex = selectEl.selectedIndex
+        console.log(`[Nix Debug] SELECT "${dataTarget}" - initial value: "${initialValue}", index: ${initialSelectedIndex}`)
+
+        // Use both change event AND polling to detect user selection
+        const checkForChange = () => {
+          const currentValue = selectEl.value
+          const currentIndex = selectEl.selectedIndex
+          if (currentValue !== initialValue || (currentIndex !== initialSelectedIndex && currentIndex > 0)) {
+            console.log(`[Nix Debug] SELECT "${dataTarget}" - user selected: "${currentValue}" (was: "${initialValue}")`)
+            return true
+          }
+          return false
+        }
+
+        // Native change event handler
+        const handleChange = () => {
+          if (checkForChange()) {
+            console.log(`[Nix Debug] SELECT "${dataTarget}" - change event fired, advancing`)
+            advanceToNextStep()
+          }
+        }
+        freshElement.addEventListener('change', handleChange)
+        targetChangeHandlerRef.current = handleChange
+
+        // Also poll for changes in case change event doesn't fire (React controlled components)
+        const pollInterval = setInterval(() => {
+          if (checkForChange()) {
+            clearInterval(pollInterval)
+            // Remove the change listener to prevent double-firing
+            freshElement.removeEventListener('change', handleChange)
+            console.log(`[Nix Debug] SELECT "${dataTarget}" - polling detected change, advancing`)
+            advanceToNextStep()
+          }
+        }, 300)
+
+        // Store interval for cleanup
+        waitingIntervalRef.current = pollInterval
+
+        console.log(`[Nix Debug] Added change listener and polling to SELECT "${dataTarget}"`)
       } else if (isCombobox) {
         const initialText = freshElement.textContent?.trim() || ''
         let wasExpanded = false
@@ -826,7 +1034,7 @@ export default function NixFormHelper({
         freshElement.addEventListener('click', advanceToNextStep)
         targetClickHandlerRef.current = advanceToNextStep
       }
-    }, 800)
+    }, dataTarget.includes('3d-preview') ? 1200 : (dataTarget === 'bend-segments-select' ? 2000 : 800))
   }, [position, savedPosition, endGuidance])
 
   const clearHighlight = useCallback(() => {
@@ -1032,13 +1240,19 @@ export default function NixFormHelper({
       setChatMessages((prev) => [...prev, { role: 'assistant', content: response, actions }])
 
       if (guidanceSteps && guidanceSteps.length > 0) {
+        currentStepIndexRef.current = 0
         setGuidanceFlow({
           steps: guidanceSteps,
           currentStep: 0,
           name: query
         })
         const firstStep = guidanceSteps[0]
-        setTimeout(() => {
+        // Cancel any existing timeout and use the ref to prevent duplicates
+        if (pendingStepTimeoutRef.current) {
+          clearTimeout(pendingStepTimeoutRef.current)
+        }
+        pendingStepTimeoutRef.current = setTimeout(() => {
+          pendingStepTimeoutRef.current = null
           pointAtElement(firstStep.dataTarget, firstStep.message, firstStep.instruction)
         }, 500)
       } else {
