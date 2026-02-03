@@ -32,6 +32,8 @@ import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { EmailService } from '../email/email.service';
+import { DocumentVerificationService } from '../nix/services/document-verification.service';
+import { AutoApprovalService } from '../nix/services/auto-approval.service';
 
 @ApiTags('Customer Administration')
 @Controller('admin/customers')
@@ -42,6 +44,8 @@ export class CustomerAdminController {
   constructor(
     private readonly customerAdminService: CustomerAdminService,
     private readonly emailService: EmailService,
+    private readonly documentVerificationService: DocumentVerificationService,
+    private readonly autoApprovalService: AutoApprovalService,
   ) {}
 
   @Get()
@@ -67,6 +71,31 @@ export class CustomerAdminController {
     @Query() query: CustomerQueryDto,
   ): Promise<CustomerListResponseDto> {
     return this.customerAdminService.listCustomers(query);
+  }
+
+  @Get('documents/:documentId/url')
+  @ApiOperation({ summary: 'Get presigned URL for customer document' })
+  @ApiParam({ name: 'documentId', description: 'Document ID' })
+  @ApiResponse({ status: 200, description: 'Presigned URL for document' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async getDocumentUrl(@Param('documentId', ParseIntPipe) documentId: number) {
+    return this.customerAdminService.getDocumentUrl(documentId);
+  }
+
+  @Get('onboarding/pending-review')
+  @ApiOperation({ summary: 'Get customers pending onboarding review' })
+  @ApiResponse({ status: 200, description: 'Pending review list' })
+  async getPendingReview() {
+    return this.customerAdminService.getPendingReviewCustomers();
+  }
+
+  @Get('onboarding/:id')
+  @ApiOperation({ summary: 'Get onboarding details for review' })
+  @ApiParam({ name: 'id', description: 'Onboarding ID' })
+  @ApiResponse({ status: 200, description: 'Onboarding details' })
+  @ApiResponse({ status: 404, description: 'Onboarding not found' })
+  async getOnboardingForReview(@Param('id', ParseIntPipe) id: number) {
+    return this.customerAdminService.getOnboardingForReview(id);
   }
 
   @Get(':id')
@@ -171,24 +200,6 @@ export class CustomerAdminController {
     return this.customerAdminService.getCustomerDocuments(id);
   }
 
-  // Review Queue Endpoints
-
-  @Get('onboarding/pending-review')
-  @ApiOperation({ summary: 'Get customers pending onboarding review' })
-  @ApiResponse({ status: 200, description: 'Pending review list' })
-  async getPendingReview() {
-    return this.customerAdminService.getPendingReviewCustomers();
-  }
-
-  @Get('onboarding/:id')
-  @ApiOperation({ summary: 'Get onboarding details for review' })
-  @ApiParam({ name: 'id', description: 'Onboarding ID' })
-  @ApiResponse({ status: 200, description: 'Onboarding details' })
-  @ApiResponse({ status: 404, description: 'Onboarding not found' })
-  async getOnboardingForReview(@Param('id', ParseIntPipe) id: number) {
-    return this.customerAdminService.getOnboardingForReview(id);
-  }
-
   @Post('onboarding/:id/approve')
   @ApiOperation({ summary: 'Approve customer onboarding' })
   @ApiParam({ name: 'id', description: 'Onboarding ID' })
@@ -247,6 +258,47 @@ export class CustomerAdminController {
       adminUserId,
       clientIp,
     );
+  }
+
+  @Get('documents/:id/review-data')
+  @ApiOperation({ summary: 'Get document review data with OCR comparison' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiResponse({ status: 200, description: 'Document review data' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async getDocumentReviewData(@Param('id', ParseIntPipe) id: number) {
+    return this.customerAdminService.getDocumentReviewData(id);
+  }
+
+  @Get('documents/:id/preview-images')
+  @ApiOperation({ summary: 'Get document preview as images (converts PDF to images)' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiResponse({ status: 200, description: 'Document preview images' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async getDocumentPreviewImages(@Param('id', ParseIntPipe) id: number) {
+    return this.customerAdminService.getDocumentPreviewImages(id);
+  }
+
+  @Post('documents/:id/re-verify')
+  @ApiOperation({ summary: 'Re-verify a customer document' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiResponse({ status: 200, description: 'Re-verification triggered' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async reVerifyDocument(@Param('id', ParseIntPipe) id: number) {
+    const document = await this.customerAdminService.getDocumentById(id);
+    const result = await this.documentVerificationService.verifyDocument({
+      entityType: 'customer',
+      entityId: document.customerId,
+      documentId: id,
+    });
+    return result;
+  }
+
+  @Post(':id/check-auto-approval')
+  @ApiOperation({ summary: 'Check if customer can be auto-approved' })
+  @ApiParam({ name: 'id', description: 'Customer ID' })
+  @ApiResponse({ status: 200, description: 'Auto-approval check result' })
+  async checkAutoApproval(@Param('id', ParseIntPipe) id: number) {
+    return this.autoApprovalService.checkAndAutoApprove('customer', id);
   }
 
   // Invitation Endpoints

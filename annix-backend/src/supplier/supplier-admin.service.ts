@@ -28,6 +28,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { EmailService } from '../email/email.service';
 import { User } from '../user/entities/user.entity';
+import { S3StorageService } from '../storage/s3-storage.service';
 
 @Injectable()
 export class SupplierAdminService {
@@ -46,6 +47,7 @@ export class SupplierAdminService {
     private readonly userRepo: Repository<User>,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
+    private readonly storageService: S3StorageService,
   ) {}
 
   /**
@@ -467,5 +469,104 @@ export class SupplierAdminService {
     });
 
     return { success: true };
+  }
+
+  async getDocumentReviewData(supplierId: number, documentId: number) {
+    const document = await this.documentRepo.findOne({
+      where: { id: documentId, supplierId },
+      relations: ['supplier', 'supplier.company', 'reviewedBy'],
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const url = await this.storageService.getPresignedUrl(document.filePath);
+    const company = document.supplier.company;
+
+    const expectedData = {
+      companyName: company.legalName,
+      tradingName: company.tradingName,
+      registrationNumber: company.registrationNumber,
+      vatNumber: company.vatNumber,
+      streetAddress: company.streetAddress,
+      city: company.city,
+      provinceState: company.provinceState,
+      postalCode: company.postalCode,
+      beeLevel: company.beeLevel,
+      beeCertificateExpiry: company.beeCertificateExpiry,
+      beeVerificationAgency: company.beeVerificationAgency,
+    };
+
+    const extractedData = document.ocrExtractedData ?? {};
+
+    const fieldComparison = this.buildFieldComparison(expectedData, extractedData, document.fieldResults ?? []);
+
+    return {
+      documentId: document.id,
+      documentType: document.documentType,
+      fileName: document.fileName,
+      mimeType: document.mimeType,
+      fileSize: document.fileSize,
+      uploadedAt: document.uploadedAt,
+      validationStatus: document.validationStatus,
+      validationNotes: document.validationNotes,
+      presignedUrl: url,
+      ocrProcessedAt: document.ocrProcessedAt,
+      ocrFailed: document.ocrFailed,
+      verificationConfidence: document.verificationConfidence,
+      allFieldsMatch: document.allFieldsMatch,
+      expectedData,
+      extractedData,
+      fieldComparison,
+      reviewedBy: document.reviewedBy?.username ?? null,
+      reviewedAt: document.reviewedAt,
+      supplier: {
+        id: document.supplier.id,
+        firstName: document.supplier.firstName,
+        lastName: document.supplier.lastName,
+      },
+    };
+  }
+
+  private buildFieldComparison(
+    expected: Record<string, any>,
+    extracted: Record<string, any>,
+    fieldResults: { fieldName: string; expected: string; extracted: string; matches: boolean; similarity: number }[],
+  ) {
+    const fieldResultsMap = new Map(fieldResults.map((fr) => [fr.fieldName, fr]));
+
+    const fields = ['companyName', 'registrationNumber', 'vatNumber', 'streetAddress', 'city', 'provinceState', 'postalCode', 'beeLevel'];
+
+    return fields.map((field) => {
+      const storedResult = fieldResultsMap.get(field);
+      const expectedValue = expected[field];
+      const extractedValue = extracted[field];
+
+      if (storedResult) {
+        return {
+          field,
+          expected: expectedValue ?? null,
+          extracted: extractedValue ?? null,
+          matches: storedResult.matches,
+          similarity: storedResult.similarity,
+        };
+      }
+
+      const matches = this.valuesMatch(expectedValue, extractedValue);
+      return {
+        field,
+        expected: expectedValue ?? null,
+        extracted: extractedValue ?? null,
+        matches,
+        similarity: matches ? 100 : 0,
+      };
+    });
+  }
+
+  private valuesMatch(expected: any, extracted: any): boolean {
+    if (expected === null || expected === undefined) return true;
+    if (extracted === null || extracted === undefined) return false;
+    return String(expected).toUpperCase().trim() === String(extracted).toUpperCase().trim();
   }
 }

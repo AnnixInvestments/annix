@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createWorker } from 'tesseract.js';
 import { AiExtractionService } from '../ai-providers/ai-extraction.service';
+import { DocumentAnnotationService } from './document-annotation.service';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParseModule = require('pdf-parse');
@@ -33,6 +34,7 @@ export interface ExtractedRegistrationData {
   rawText?: string;
   confidence: number;
   fieldsExtracted: string[];
+  usedLearnedRegions?: boolean;
 }
 
 export interface FieldVerificationResult {
@@ -53,7 +55,7 @@ export interface RegistrationVerificationResult {
   allFieldsMatch: boolean;
   autoCorrections: Array<{ field: string; value: string | number }>;
   warnings: string[];
-  ocrMethod: 'pdf-parse' | 'tesseract' | 'ai' | 'none';
+  ocrMethod: 'pdf-parse' | 'tesseract' | 'ai' | 'region' | 'none';
   processingTimeMs: number;
 }
 
@@ -112,7 +114,10 @@ export class RegistrationDocumentVerifierService {
     'WESTERN CAPE',
   ];
 
-  constructor(private readonly aiExtractor: AiExtractionService) {}
+  constructor(
+    private readonly aiExtractor: AiExtractionService,
+    private readonly documentAnnotationService: DocumentAnnotationService,
+  ) {}
 
   async verifyDocument(
     file: Express.Multer.File,
@@ -149,6 +154,12 @@ export class RegistrationDocumentVerifierService {
         );
       }
 
+      const ocrMethod = extractedData.usedLearnedRegions
+        ? 'region'
+        : extractedData.rawText
+        ? 'pdf-parse'
+        : 'none';
+
       return {
         success: true,
         documentType,
@@ -158,7 +169,7 @@ export class RegistrationDocumentVerifierService {
         allFieldsMatch,
         autoCorrections,
         warnings,
-        ocrMethod: extractedData.rawText ? 'pdf-parse' : 'none',
+        ocrMethod,
         processingTimeMs: Date.now() - startTime,
       };
     } catch (error) {
@@ -201,6 +212,80 @@ export class RegistrationDocumentVerifierService {
     let rawText = '';
     let ocrConfidence = 0.8;
 
+    const regionResults = await this.documentAnnotationService.extractUsingLearnedRegions(
+      file.buffer,
+      documentType,
+    );
+
+    if (regionResults.size > 0) {
+      this.logger.log(
+        `Extracted ${regionResults.size} fields using learned regions for ${documentType}`,
+      );
+
+      const regionExtracted: Partial<ExtractedRegistrationData> = {
+        fieldsExtracted: [],
+        confidence: 0.9,
+      };
+
+      let totalConfidence = 0;
+      let fieldCount = 0;
+
+      regionResults.forEach((result, fieldName) => {
+        (regionExtracted as any)[fieldName] = result.text;
+        regionExtracted.fieldsExtracted!.push(fieldName);
+        totalConfidence += result.confidence;
+        fieldCount++;
+      });
+
+      if (fieldCount > 0) {
+        regionExtracted.confidence = totalConfidence / fieldCount;
+      }
+
+      const expectedFields = this.expectedFieldsForDocumentType(documentType);
+      const missingFields = expectedFields.filter(
+        (f) => !regionExtracted.fieldsExtracted!.includes(f),
+      );
+
+      if (missingFields.length === 0) {
+        this.logger.log('All expected fields extracted from learned regions');
+        regionExtracted.usedLearnedRegions = true;
+        return regionExtracted as ExtractedRegistrationData;
+      }
+
+      this.logger.log(
+        `Missing fields from regions: ${missingFields.join(', ')}. Falling back to additional extraction.`,
+      );
+
+      if (mimeType === 'application/pdf') {
+        const pdfResult = await this.extractFromPdf(file.buffer);
+        rawText = pdfResult.text;
+        ocrConfidence = pdfResult.confidence;
+      } else if (mimeType.startsWith('image/')) {
+        const imageResult = await this.extractFromImage(file.buffer);
+        rawText = imageResult.text;
+        ocrConfidence = imageResult.confidence;
+      }
+
+      if (rawText && rawText.trim().length >= 10) {
+        const patternExtracted = this.extractWithPatterns(
+          rawText,
+          documentType,
+          ocrConfidence,
+        );
+
+        missingFields.forEach((field) => {
+          if ((patternExtracted as any)[field]) {
+            (regionExtracted as any)[field] = (patternExtracted as any)[field];
+            regionExtracted.fieldsExtracted!.push(field);
+          }
+        });
+      }
+
+      regionExtracted.rawText = rawText;
+      regionExtracted.usedLearnedRegions = true;
+      return regionExtracted as ExtractedRegistrationData;
+    }
+
     if (mimeType === 'application/pdf') {
       const pdfResult = await this.extractFromPdf(file.buffer);
       rawText = pdfResult.text;
@@ -240,6 +325,26 @@ export class RegistrationDocumentVerifierService {
     }
 
     return this.extractWithPatterns(rawText, documentType, ocrConfidence);
+  }
+
+  private expectedFieldsForDocumentType(documentType: RegistrationDocumentType): string[] {
+    switch (documentType) {
+      case 'vat':
+        return ['vatNumber', 'registrationNumber', 'companyName'];
+      case 'registration':
+        return [
+          'registrationNumber',
+          'companyName',
+          'streetAddress',
+          'city',
+          'provinceState',
+          'postalCode',
+        ];
+      case 'bee':
+        return ['beeLevel', 'companyName', 'beeExpiryDate', 'verificationAgency'];
+      default:
+        return [];
+    }
   }
 
   private async extractFromPdf(

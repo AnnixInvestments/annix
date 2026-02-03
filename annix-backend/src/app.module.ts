@@ -70,6 +70,7 @@ import { FlangeTypeWeightModule } from './flange-type-weight/flange-type-weight.
 import { BnwSetWeightModule } from './bnw-set-weight/bnw-set-weight.module';
 import { RetainingRingWeightModule } from './retaining-ring-weight/retaining-ring-weight.module';
 import { NbOdLookupModule } from './nb-od-lookup/nb-od-lookup.module';
+import { MessagingModule } from './messaging/messaging.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -141,6 +142,7 @@ import typeormConfig from './config/typeorm';
     BnwSetWeightModule,
     RetainingRingWeightModule,
     NbOdLookupModule,
+    MessagingModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

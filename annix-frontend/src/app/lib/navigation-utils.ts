@@ -3,5 +3,9 @@ export const shouldShowGlobalNavigation = (pathname: string): boolean => {
     return false;
   }
 
+  if (pathname.startsWith('/customer/messages') || pathname.startsWith('/supplier/messages')) {
+    return false;
+  }
+
   return true;
 };

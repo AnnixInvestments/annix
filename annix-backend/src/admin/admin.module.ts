@@ -10,8 +10,10 @@ import { AdminDashboardService } from './admin-dashboard.service';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminRfqService } from './admin-rfq.service';
 import { AdminRfqController } from './admin-rfq.controller';
+import { AdminMessagingController } from './admin-messaging.controller';
 import { AdminAuthGuard } from './guards/admin-auth.guard';
 import { AuditModule } from '../audit/audit.module';
+import { MessagingModule } from '../messaging/messaging.module';
 import { RfqModule } from '../rfq/rfq.module';
 import { CustomerProfile } from '../customer/entities/customer-profile.entity';
 import { CustomerOnboarding } from '../customer/entities/customer-onboarding.entity';
@@ -54,6 +56,7 @@ import { AuditLog } from '../audit/entities/audit-log.entity';
       inject: [ConfigService],
     }),
     AuditModule,
+    MessagingModule,
   ],
   providers: [
     AdminAuthService,
@@ -65,6 +68,7 @@ import { AuditLog } from '../audit/entities/audit-log.entity';
     AdminAuthController,
     AdminDashboardController,
     AdminRfqController,
+    AdminMessagingController,
   ],
   exports: [AdminAuthService, AdminAuthGuard, JwtModule],
 })

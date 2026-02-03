@@ -56,7 +56,7 @@ export class SupplierOnboarding {
   reviewedBy: User;
 
   @Column({ name: 'reviewed_by', nullable: true })
-  reviewedById: number;
+  reviewedById: number | null;
 
   @Column({
     name: 'rejection_reason',

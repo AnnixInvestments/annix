@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
   Param,
   ParseIntPipe,
@@ -10,6 +11,8 @@ import {
   UploadedFiles,
   BadRequestException,
   UseGuards,
+  Inject,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
@@ -20,6 +23,7 @@ import {
   ApiBody,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { NixService } from './nix.service';
 import {
   ProcessDocumentDto,
@@ -33,6 +37,12 @@ import {
   VerifyRegistrationDocumentResponseDto,
   VerifyRegistrationBatchResponseDto,
 } from './dto/verify-registration-document.dto';
+import {
+  SaveExtractionRegionDto,
+  ExtractFromRegionDto,
+  PdfPagesResponseDto,
+  ExtractionRegionResponseDto,
+} from './dto/extraction-region.dto';
 import { NixExtraction } from './entities/nix-extraction.entity';
 import { NixClarification } from './entities/nix-clarification.entity';
 import { NixLearning } from './entities/nix-learning.entity';
@@ -41,9 +51,15 @@ import {
   RegistrationDocumentType,
   ExpectedCompanyData,
 } from './services/registration-document-verifier.service';
+import { DocumentAnnotationService } from './services/document-annotation.service';
 import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CustomerDocument } from '../customer/entities/customer-document.entity';
+import { SupplierDocument } from '../supplier/entities/supplier-document.entity';
 
 @ApiTags('Nix AI Assistant')
 @Controller('nix')
@@ -51,6 +67,13 @@ export class NixController {
   constructor(
     private readonly nixService: NixService,
     private readonly registrationVerifier: RegistrationDocumentVerifierService,
+    private readonly documentAnnotationService: DocumentAnnotationService,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
+    @InjectRepository(CustomerDocument)
+    private readonly customerDocumentRepo: Repository<CustomerDocument>,
+    @InjectRepository(SupplierDocument)
+    private readonly supplierDocumentRepo: Repository<SupplierDocument>,
   ) {}
 
   @Post('process')
@@ -448,5 +471,127 @@ export class NixController {
     }>;
   }> {
     return this.nixService.listNixSecureDocuments();
+  }
+
+  @Get('admin/document-pages/:entityType/:documentId')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Fetch stored document as page images for training' })
+  @ApiResponse({ status: 200, description: 'PDF pages as base64 images', type: PdfPagesResponseDto })
+  async documentPagesForTraining(
+    @Param('entityType') entityType: 'customer' | 'supplier',
+    @Param('documentId', ParseIntPipe) documentId: number,
+  ): Promise<PdfPagesResponseDto> {
+    const document = entityType === 'customer'
+      ? await this.customerDocumentRepo.findOne({ where: { id: documentId } })
+      : await this.supplierDocumentRepo.findOne({ where: { id: documentId } });
+
+    if (!document) {
+      throw new BadRequestException('Document not found');
+    }
+
+    const buffer = await this.storageService.download(document.filePath);
+    return this.documentAnnotationService.convertPdfToImages(buffer);
+  }
+
+  @Post('admin/extract-from-region/:entityType/:documentId')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Extract text from a drawn bounding box region' })
+  @ApiResponse({ status: 201, description: 'Extraction result' })
+  async extractFromRegion(
+    @Param('entityType') entityType: 'customer' | 'supplier',
+    @Param('documentId', ParseIntPipe) documentId: number,
+    @Body() dto: ExtractFromRegionDto,
+  ): Promise<{ text: string; confidence: number }> {
+    const document = entityType === 'customer'
+      ? await this.customerDocumentRepo.findOne({ where: { id: documentId } })
+      : await this.supplierDocumentRepo.findOne({ where: { id: documentId } });
+
+    if (!document) {
+      throw new BadRequestException('Document not found');
+    }
+
+    const buffer = await this.storageService.download(document.filePath);
+    return this.documentAnnotationService.extractFromRegion(
+      buffer,
+      dto.regionCoordinates,
+      dto.fieldName,
+    );
+  }
+
+  @Post('admin/extraction-regions')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Save a trained extraction region mapping' })
+  @ApiResponse({ status: 201, description: 'Region saved successfully' })
+  async saveExtractionRegion(
+    @Body() dto: SaveExtractionRegionDto,
+    @Req() req: Request,
+  ): Promise<{ success: boolean; id: number }> {
+    const adminUser = (req as any).user;
+    const region = await this.documentAnnotationService.saveExtractionRegion(
+      dto,
+      adminUser?.id,
+    );
+    return { success: true, id: region.id };
+  }
+
+  @Get('admin/extraction-regions/:documentCategory')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List extraction regions for a document category' })
+  @ApiResponse({ status: 200, description: 'List of regions', type: [ExtractionRegionResponseDto] })
+  async listExtractionRegions(
+    @Param('documentCategory') documentCategory: string,
+  ): Promise<ExtractionRegionResponseDto[]> {
+    const regions = await this.documentAnnotationService.findRegionsForDocument(documentCategory);
+    return regions.map((r) => ({
+      id: r.id,
+      documentCategory: r.documentCategory,
+      fieldName: r.fieldName,
+      regionCoordinates: r.regionCoordinates,
+      extractionPattern: r.extractionPattern || undefined,
+      sampleValue: r.sampleValue || undefined,
+      useCount: r.useCount,
+      successCount: r.successCount,
+    }));
+  }
+
+  @Get('admin/extraction-regions')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all extraction regions' })
+  @ApiResponse({ status: 200, description: 'List of all regions', type: [ExtractionRegionResponseDto] })
+  async listAllExtractionRegions(): Promise<ExtractionRegionResponseDto[]> {
+    const regions = await this.documentAnnotationService.allRegions();
+    return regions.map((r) => ({
+      id: r.id,
+      documentCategory: r.documentCategory,
+      fieldName: r.fieldName,
+      regionCoordinates: r.regionCoordinates,
+      extractionPattern: r.extractionPattern || undefined,
+      sampleValue: r.sampleValue || undefined,
+      useCount: r.useCount,
+      successCount: r.successCount,
+    }));
+  }
+
+  @Delete('admin/extraction-regions/:id')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deactivate an extraction region' })
+  @ApiResponse({ status: 200, description: 'Region deactivated' })
+  async deleteExtractionRegion(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ success: boolean }> {
+    await this.documentAnnotationService.deleteRegion(id);
+    return { success: true };
   }
 }

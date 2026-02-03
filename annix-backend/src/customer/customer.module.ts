@@ -37,6 +37,7 @@ import { CustomerAdminController } from './customer-admin.controller';
 import { CustomerOnboardingController } from './customer-onboarding.controller';
 import { CustomerDocumentController } from './customer-document.controller';
 import { CustomerSupplierController } from './customer-supplier.controller';
+import { CustomerMessagingController } from './customer-messaging.controller';
 
 // Guards
 import { CustomerAuthGuard } from './guards/customer-auth.guard';
@@ -47,6 +48,8 @@ import { AuditModule } from '../audit/audit.module';
 import { EmailModule } from '../email/email.module';
 import { StorageModule } from '../storage/storage.module';
 import { AdminModule } from '../admin/admin.module';
+import { NixModule } from '../nix/nix.module';
+import { MessagingModule } from '../messaging/messaging.module';
 
 @Module({
   imports: [
@@ -81,6 +84,8 @@ import { AdminModule } from '../admin/admin.module';
     EmailModule,
     StorageModule,
     AdminModule,
+    NixModule,
+    MessagingModule,
   ],
   controllers: [
     CustomerAuthController,
@@ -89,6 +94,7 @@ import { AdminModule } from '../admin/admin.module';
     CustomerOnboardingController,
     CustomerDocumentController,
     CustomerSupplierController,
+    CustomerMessagingController,
   ],
   providers: [
     CustomerAuthService,

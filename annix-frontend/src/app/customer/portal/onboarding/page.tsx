@@ -49,6 +49,7 @@ export default function CustomerOnboardingPage() {
     country: 'South Africa',
     currencyCode: DEFAULT_CURRENCY,
     primaryPhone: '',
+    beeLevel: null as number | null,
   });
 
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
@@ -321,12 +322,32 @@ export default function CustomerOnboardingPage() {
                 <strong>Steps to fix:</strong> {onboardingStatus.remediationSteps}
               </p>
             )}
-            <button
-              onClick={() => setCurrentStep('company')}
-              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-            >
-              Update Application
-            </button>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {onboardingStatus.rejectionReason?.toLowerCase().includes('document') ? (
+                <a
+                  href="/customer/portal/documents"
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 inline-flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Go to Documents
+                </a>
+              ) : (
+                <button
+                  onClick={() => setCurrentStep('company')}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  Update Application
+                </button>
+              )}
+              <button
+                onClick={() => setCurrentStep('company')}
+                className="px-4 py-2 border border-red-600 text-red-600 rounded-md hover:bg-red-50"
+              >
+                Edit Company Details
+              </button>
+            </div>
           </div>
         )}
 
@@ -452,6 +473,35 @@ export default function CustomerOnboardingPage() {
             onChange={(e) => handleCompanyChange('vatNumber', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">B-BBEE Level</label>
+          <select
+            value={companyData.beeLevel === null ? '' : String(companyData.beeLevel)}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === '') {
+                setCompanyData(prev => ({ ...prev, beeLevel: null }));
+              } else if (value === '0') {
+                setCompanyData(prev => ({ ...prev, beeLevel: 0 }));
+              } else {
+                setCompanyData(prev => ({ ...prev, beeLevel: parseInt(value, 10) }));
+              }
+            }}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">Select B-BBEE Level</option>
+            <option value="1">Level 1</option>
+            <option value="2">Level 2</option>
+            <option value="3">Level 3</option>
+            <option value="4">Level 4</option>
+            <option value="5">Level 5</option>
+            <option value="6">Level 6</option>
+            <option value="7">Level 7</option>
+            <option value="8">Level 8</option>
+            <option value="0">Non-Compliant</option>
+          </select>
         </div>
 
         <div>

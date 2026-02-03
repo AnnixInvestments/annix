@@ -166,6 +166,74 @@ export interface CustomerDocument {
   uploadedAt: string;
   validationStatus?: string;
   validationNotes?: string;
+  ocrProcessedAt?: string;
+  ocrFailed?: boolean;
+  verificationConfidence?: number;
+  allFieldsMatch?: boolean;
+}
+
+export interface FieldComparisonResult {
+  field: string;
+  expected: string | number | null;
+  extracted: string | number | null;
+  matches: boolean;
+  similarity: number;
+}
+
+export interface DocumentReviewData {
+  documentId: number;
+  documentType: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  uploadedAt: string;
+  validationStatus: string;
+  validationNotes: string | null;
+  presignedUrl: string;
+  ocrProcessedAt: string | null;
+  ocrFailed: boolean;
+  verificationConfidence: number | null;
+  allFieldsMatch: boolean | null;
+  expectedData: Record<string, any>;
+  extractedData: Record<string, any>;
+  fieldComparison: FieldComparisonResult[];
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  customer?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
+  supplier?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
+}
+
+export interface VerificationResult {
+  success: boolean;
+  documentId: number;
+  entityType: 'customer' | 'supplier';
+  validationStatus: string;
+  allFieldsMatch: boolean;
+  requiresManualReview: boolean;
+  errorMessage?: string;
+}
+
+export interface AutoApprovalResult {
+  entityType: 'customer' | 'supplier';
+  entityId: number;
+  approved: boolean;
+  reason: string;
+  missingDocuments: string[];
+}
+
+export interface DocumentPreviewImages {
+  pages: string[];
+  totalPages: number;
+  invalidDocuments: string[];
+  manualReviewDocuments: string[];
 }
 
 export interface SecureDocument {
@@ -500,6 +568,10 @@ class AdminApiClient {
     return this.request<CustomerDocument[]>(`/admin/customers/${id}/documents`);
   }
 
+  async getCustomerDocumentUrl(documentId: number): Promise<{ url: string; filename: string; mimeType: string }> {
+    return this.request<{ url: string; filename: string; mimeType: string }>(`/admin/customers/documents/${documentId}/url`);
+  }
+
   async getPendingReviewCustomers(): Promise<any[]> {
     return this.request<any[]>('/admin/customers/onboarding/pending-review');
   }
@@ -525,6 +597,26 @@ class AdminApiClient {
     return this.request<void>(`/admin/customers/documents/${id}/review`, {
       method: 'POST',
       body: JSON.stringify({ validationStatus, validationNotes }),
+    });
+  }
+
+  async getCustomerDocumentReviewData(documentId: number): Promise<DocumentReviewData> {
+    return this.request<DocumentReviewData>(`/admin/customers/documents/${documentId}/review-data`);
+  }
+
+  async getCustomerDocumentPreviewImages(documentId: number): Promise<DocumentPreviewImages> {
+    return this.request<DocumentPreviewImages>(`/admin/customers/documents/${documentId}/preview-images`);
+  }
+
+  async reVerifyCustomerDocument(documentId: number): Promise<VerificationResult> {
+    return this.request<VerificationResult>(`/admin/customers/documents/${documentId}/re-verify`, {
+      method: 'POST',
+    });
+  }
+
+  async checkCustomerAutoApproval(customerId: number): Promise<AutoApprovalResult> {
+    return this.request<AutoApprovalResult>(`/admin/customers/${customerId}/check-auto-approval`, {
+      method: 'POST',
     });
   }
 
@@ -605,6 +697,22 @@ class AdminApiClient {
     return this.request<{ success: boolean; message: string }>('/admin/suppliers/invite', {
       method: 'POST',
       body: JSON.stringify({ email, message }),
+    });
+  }
+
+  async getSupplierDocumentReviewData(supplierId: number, documentId: number): Promise<DocumentReviewData> {
+    return this.request<DocumentReviewData>(`/admin/suppliers/${supplierId}/documents/${documentId}/review-data`);
+  }
+
+  async reVerifySupplierDocument(supplierId: number, documentId: number): Promise<VerificationResult> {
+    return this.request<VerificationResult>(`/admin/suppliers/${supplierId}/documents/${documentId}/re-verify`, {
+      method: 'POST',
+    });
+  }
+
+  async checkSupplierAutoApproval(supplierId: number): Promise<AutoApprovalResult> {
+    return this.request<AutoApprovalResult>(`/admin/suppliers/${supplierId}/check-auto-approval`, {
+      method: 'POST',
     });
   }
 
@@ -731,6 +839,45 @@ class AdminApiClient {
   async listNixDocuments(): Promise<NixDocumentListResponse> {
     return this.request<NixDocumentListResponse>('/nix/admin/documents');
   }
+
+  async documentPagesForTraining(
+    entityType: 'customer' | 'supplier',
+    documentId: number,
+  ): Promise<PdfPagesResponse> {
+    return this.request<PdfPagesResponse>(`/nix/admin/document-pages/${entityType}/${documentId}`);
+  }
+
+  async extractFromRegion(
+    entityType: 'customer' | 'supplier',
+    documentId: number,
+    regionCoordinates: RegionCoordinates,
+    fieldName: string,
+  ): Promise<ExtractionResult> {
+    return this.request<ExtractionResult>(`/nix/admin/extract-from-region/${entityType}/${documentId}`, {
+      method: 'POST',
+      body: JSON.stringify({ regionCoordinates, fieldName }),
+    });
+  }
+
+  async saveExtractionRegion(data: SaveExtractionRegionDto): Promise<{ success: boolean; id: number }> {
+    return this.request<{ success: boolean; id: number }>('/nix/admin/extraction-regions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async listExtractionRegions(documentCategory?: string): Promise<ExtractionRegion[]> {
+    const path = documentCategory
+      ? `/nix/admin/extraction-regions/${encodeURIComponent(documentCategory)}`
+      : '/nix/admin/extraction-regions';
+    return this.request<ExtractionRegion[]>(path);
+  }
+
+  async deleteExtractionRegion(id: number): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/nix/admin/extraction-regions/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export interface NixUploadResponse {
@@ -752,6 +899,50 @@ export interface NixDocument {
 
 export interface NixDocumentListResponse {
   documents: NixDocument[];
+}
+
+export interface RegionCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  pageNumber: number;
+}
+
+export interface PdfPageImage {
+  pageNumber: number;
+  imageData: string;
+  width: number;
+  height: number;
+}
+
+export interface PdfPagesResponse {
+  totalPages: number;
+  pages: PdfPageImage[];
+}
+
+export interface ExtractionResult {
+  text: string;
+  confidence: number;
+}
+
+export interface SaveExtractionRegionDto {
+  documentCategory: string;
+  fieldName: string;
+  regionCoordinates: RegionCoordinates;
+  extractionPattern?: string;
+  sampleValue?: string;
+}
+
+export interface ExtractionRegion {
+  id: number;
+  documentCategory: string;
+  fieldName: string;
+  regionCoordinates: RegionCoordinates;
+  extractionPattern?: string;
+  sampleValue?: string;
+  useCount: number;
+  successCount: number;
 }
 
 export const adminApiClient = new AdminApiClient();

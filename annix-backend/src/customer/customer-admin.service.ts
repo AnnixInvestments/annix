@@ -33,6 +33,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { User } from '../user/entities/user.entity';
 import { EmailService } from '../email/email.service';
+import { S3StorageService } from '../storage/s3-storage.service';
 
 @Injectable()
 export class CustomerAdminService {
@@ -55,6 +56,7 @@ export class CustomerAdminService {
     private readonly userRepo: Repository<User>,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
+    private readonly storageService: S3StorageService,
   ) {}
 
   /**
@@ -715,6 +717,7 @@ export class CustomerAdminService {
   ) {
     const document = await this.documentRepo.findOne({
       where: { id: documentId },
+      relations: ['customer', 'customer.user', 'customer.company'],
     });
 
     if (!document) {
@@ -742,6 +745,81 @@ export class CustomerAdminService {
       },
       ipAddress: clientIp,
     });
+
+    if (validationStatus === CustomerDocumentValidationStatus.INVALID) {
+      const onboarding = await this.onboardingRepo.findOne({
+        where: { customerId: document.customerId },
+      });
+
+      if (onboarding && onboarding.status !== CustomerOnboardingStatus.REJECTED) {
+        onboarding.status = CustomerOnboardingStatus.REJECTED;
+        onboarding.rejectionReason = `Document rejected: ${document.documentType}`;
+        onboarding.remediationSteps = validationNotes || 'Please re-upload the rejected document with the correct information.';
+        onboarding.reviewedAt = now().toJSDate();
+        onboarding.reviewedById = adminUserId;
+        await this.onboardingRepo.save(onboarding);
+
+        await this.auditService.log({
+          entityType: 'customer_onboarding',
+          entityId: onboarding.id,
+          action: AuditAction.UPDATE,
+          performedBy: adminUser || undefined,
+          newValues: {
+            status: CustomerOnboardingStatus.REJECTED,
+            rejectionReason: onboarding.rejectionReason,
+            event: 'onboarding_rejected_due_to_document',
+          },
+          ipAddress: clientIp,
+        });
+
+        if (document.customer?.user?.email) {
+          const documentTypeLabels: Record<string, string> = {
+            company_registration: 'Company Registration (CIPC)',
+            vat_registration: 'VAT Registration',
+            bee_certificate: 'B-BBEE Certificate',
+            proof_of_banking: 'Proof of Banking',
+          };
+          const docLabel = documentTypeLabels[document.documentType] || document.documentType;
+          const actionUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/customer/portal/documents`;
+
+          await this.emailService.sendEmail({
+            to: document.customer.user.email,
+            subject: 'Document Review - Action Required',
+            html: `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="utf-8">
+                <title>Document Review - Action Required</title>
+              </head>
+              <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h1 style="color: #dc2626;">Document Review - Action Required</h1>
+                  <p>Dear ${document.customer.firstName || 'Customer'},</p>
+                  <p>Your <strong>${docLabel}</strong> document has been reviewed and requires attention.</p>
+                  <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                    <p style="margin: 0; color: #991b1b;"><strong>Reason:</strong></p>
+                    <p style="margin: 8px 0 0 0; color: #7f1d1d;">${validationNotes || 'The document could not be verified. Please upload a valid document.'}</p>
+                  </div>
+                  <p>Please log in to your account and upload a corrected version of the document.</p>
+                  <p style="margin: 30px 0;">
+                    <a href="${actionUrl}"
+                       style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                      Go to Documents
+                    </a>
+                  </p>
+                  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                  <p style="color: #999; font-size: 12px;">
+                    If you have any questions, please contact our support team.
+                  </p>
+                </div>
+              </body>
+              </html>
+            `,
+          });
+        }
+      }
+    }
 
     return {
       success: true,
@@ -774,5 +852,233 @@ export class CustomerAdminService {
       expiryDate: doc.expiryDate,
       isRequired: doc.isRequired,
     }));
+  }
+
+  async getDocumentUrl(documentId: number) {
+    const document = await this.documentRepo.findOne({
+      where: { id: documentId },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const url = await this.storageService.getPresignedUrl(document.filePath);
+
+    return {
+      url,
+      filename: document.fileName,
+      mimeType: document.mimeType,
+    };
+  }
+
+  async getDocumentById(documentId: number) {
+    const document = await this.documentRepo.findOne({
+      where: { id: documentId },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    return document;
+  }
+
+  async getDocumentReviewData(documentId: number) {
+    const document = await this.documentRepo.findOne({
+      where: { id: documentId },
+      relations: ['customer', 'customer.company', 'reviewedBy'],
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const url = await this.storageService.getPresignedUrl(document.filePath);
+    const company = document.customer.company;
+
+    const expectedData = {
+      companyName: company.legalName,
+      tradingName: company.tradingName,
+      registrationNumber: company.registrationNumber,
+      vatNumber: company.vatNumber,
+      streetAddress: company.streetAddress,
+      city: company.city,
+      provinceState: company.provinceState,
+      postalCode: company.postalCode,
+      beeLevel: company.beeLevel,
+      beeCertificateExpiry: company.beeCertificateExpiry,
+      beeVerificationAgency: company.beeVerificationAgency,
+    };
+
+    const extractedData = document.ocrExtractedData ?? {};
+
+    const fieldComparison = this.buildFieldComparison(expectedData, extractedData, document.fieldResults ?? []);
+
+    return {
+      documentId: document.id,
+      documentType: document.documentType,
+      fileName: document.fileName,
+      mimeType: document.mimeType,
+      fileSize: document.fileSize,
+      uploadedAt: document.uploadedAt,
+      validationStatus: document.validationStatus,
+      validationNotes: document.validationNotes,
+      presignedUrl: url,
+      ocrProcessedAt: document.ocrProcessedAt,
+      ocrFailed: document.ocrFailed,
+      verificationConfidence: document.verificationConfidence,
+      allFieldsMatch: document.allFieldsMatch,
+      expectedData,
+      extractedData,
+      fieldComparison,
+      reviewedBy: document.reviewedBy?.username ?? null,
+      reviewedAt: document.reviewedAt,
+      customer: {
+        id: document.customer.id,
+        firstName: document.customer.firstName,
+        lastName: document.customer.lastName,
+      },
+    };
+  }
+
+  private buildFieldComparison(
+    expected: Record<string, any>,
+    extracted: Record<string, any>,
+    fieldResults: { fieldName: string; expected: string; extracted: string; matches: boolean; similarity: number }[],
+  ) {
+    const fieldResultsMap = new Map(fieldResults.map((fr) => [fr.fieldName, fr]));
+
+    const fields = ['companyName', 'registrationNumber', 'vatNumber', 'streetAddress', 'city', 'provinceState', 'postalCode', 'beeLevel'];
+
+    return fields.map((field) => {
+      const storedResult = fieldResultsMap.get(field);
+      const expectedValue = expected[field];
+      const extractedValue = extracted[field];
+
+      if (storedResult) {
+        return {
+          field,
+          expected: expectedValue ?? null,
+          extracted: extractedValue ?? null,
+          matches: storedResult.matches,
+          similarity: storedResult.similarity,
+        };
+      }
+
+      const matches = this.valuesMatch(expectedValue, extractedValue);
+      return {
+        field,
+        expected: expectedValue ?? null,
+        extracted: extractedValue ?? null,
+        matches,
+        similarity: matches ? 100 : 0,
+      };
+    });
+  }
+
+  private valuesMatch(expected: any, extracted: any): boolean {
+    if (expected === null || expected === undefined) return true;
+    if (extracted === null || extracted === undefined) return false;
+    return String(expected).toUpperCase().trim() === String(extracted).toUpperCase().trim();
+  }
+
+  async getDocumentPreviewImages(documentId: number): Promise<{ pages: string[]; totalPages: number }> {
+    const document = await this.documentRepo.findOne({
+      where: { id: documentId },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    if (document.mimeType !== 'application/pdf') {
+      const url = await this.storageService.getPresignedUrl(document.filePath);
+      return {
+        pages: [url],
+        totalPages: 1,
+      };
+    }
+
+    const buffer = await this.storageService.download(document.filePath);
+    const pages = await this.convertPdfToImages(buffer);
+
+    return {
+      pages,
+      totalPages: pages.length,
+    };
+  }
+
+  private async convertPdfToImages(pdfBuffer: Buffer): Promise<string[]> {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const os = await import('os');
+
+    const execAsync = promisify(exec);
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pdf-preview-'));
+    const inputPath = path.join(tempDir, 'input.pdf');
+    const outputPattern = path.join(tempDir, 'page-%d.png');
+
+    console.log('[PDF Preview] Starting conversion');
+    console.log('[PDF Preview] Temp dir:', tempDir);
+    console.log('[PDF Preview] PDF buffer size:', pdfBuffer.length);
+
+    try {
+      await fs.writeFile(inputPath, pdfBuffer);
+      console.log('[PDF Preview] Wrote input PDF to:', inputPath);
+
+      const gsCommand = process.platform === 'win32'
+        ? '"C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe"'
+        : 'gs';
+      const command = `${gsCommand} -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r150 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 "-sOutputFile=${outputPattern}" "${inputPath}"`;
+
+      console.log('[PDF Preview] Running command:', command);
+
+      const { stdout, stderr } = await execAsync(command, { timeout: 60000 });
+      console.log('[PDF Preview] GS stdout:', stdout);
+      if (stderr) {
+        console.log('[PDF Preview] GS stderr:', stderr);
+      }
+
+      const files = await fs.readdir(tempDir);
+      console.log('[PDF Preview] Files in temp dir:', files);
+
+      const pngFiles = files
+        .filter((f) => f.startsWith('page-') && f.endsWith('.png'))
+        .sort((a, b) => {
+          const numA = parseInt(a.match(/page-(\d+)\.png/)?.[1] || '0');
+          const numB = parseInt(b.match(/page-(\d+)\.png/)?.[1] || '0');
+          return numA - numB;
+        });
+
+      console.log('[PDF Preview] PNG files found:', pngFiles);
+
+      const pages: string[] = [];
+      for (const file of pngFiles) {
+        const filePath = path.join(tempDir, file);
+        const imageBuffer = await fs.readFile(filePath);
+        const base64 = imageBuffer.toString('base64');
+        pages.push(`data:image/png;base64,${base64}`);
+        console.log('[PDF Preview] Converted', file, 'size:', imageBuffer.length);
+      }
+
+      console.log('[PDF Preview] Total pages converted:', pages.length);
+      return pages;
+    } catch (error) {
+      console.error('[PDF Preview] Error during conversion:', error);
+      throw error;
+    } finally {
+      try {
+        const files = await fs.readdir(tempDir);
+        for (const file of files) {
+          await fs.unlink(path.join(tempDir, file));
+        }
+        await fs.rmdir(tempDir);
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   }
 }

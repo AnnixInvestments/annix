@@ -226,9 +226,9 @@ export class VerifyRegistrationDocumentResponseDto {
 
   @ApiProperty({
     description: 'OCR method used',
-    enum: ['pdf-parse', 'tesseract', 'ai', 'none'],
+    enum: ['pdf-parse', 'tesseract', 'ai', 'region', 'none'],
   })
-  ocrMethod: 'pdf-parse' | 'tesseract' | 'ai' | 'none';
+  ocrMethod: 'pdf-parse' | 'tesseract' | 'ai' | 'region' | 'none';
 
   @ApiProperty({ description: 'Processing time in milliseconds' })
   processingTimeMs: number;

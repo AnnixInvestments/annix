@@ -21,6 +21,7 @@ export interface CustomerCompanyDto {
   faxNumber?: string;
   generalEmail?: string;
   website?: string;
+  beeLevel?: number | null;
 }
 
 // UserDetailsDto from backend - includes email and password

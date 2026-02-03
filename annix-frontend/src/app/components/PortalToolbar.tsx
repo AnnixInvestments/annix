@@ -12,6 +12,7 @@ import { useLayout } from '@/app/context/LayoutContext';
 export interface NavItem {
   href: string;
   label: string;
+  sublabel?: string;
   icon: string;
   roles?: string[];
 }
@@ -36,6 +37,7 @@ export interface PortalToolbarProps {
 // Descriptive tooltips for navigation items
 const NAV_TOOLTIPS: Record<string, string> = {
   'Dashboard': 'View your portal overview and key metrics',
+  'Customer Portal': 'View your portal overview and key metrics',
   'Customers': 'Manage customer accounts and onboarding',
   'Suppliers': 'Manage supplier accounts and approvals',
   'RFQs': 'View and manage request for quotations',
@@ -95,17 +97,19 @@ export default function PortalToolbar({
       style={{ backgroundColor: colors.background }}
     >
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">
               <Link href={config.homeHref} className="flex items-center space-x-3">
                 <AmixLogo size="sm" showText={true} />
-                <span
-                  className="text-lg font-semibold hidden md:block"
-                  style={{ color: corpId.colors.accent.orange }}
-                >
-                  {config.title}
-                </span>
+                {config.title && (
+                  <span
+                    className="text-lg font-semibold hidden md:block"
+                    style={{ color: corpId.colors.accent.orange }}
+                  >
+                    {config.title}
+                  </span>
+                )}
               </Link>
             </div>
             <div className="hidden xl:ml-8 xl:flex xl:space-x-1">
@@ -115,33 +119,38 @@ export default function PortalToolbar({
                   <Tooltip key={item.href} text={getNavTooltip(item.label)} position="bottom">
                     <Link
                       href={item.href}
-                      className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+                      className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md transition-colors"
                       style={{
-                        color: isActive ? corpId.colors.accent.orange : colors.text,
+                        color: corpId.colors.accent.orange,
                         backgroundColor: isActive ? colors.active : 'transparent',
                       }}
                       onMouseEnter={(e) => {
                         if (!isActive) {
                           e.currentTarget.style.backgroundColor = colors.hover;
-                          e.currentTarget.style.color = corpId.colors.accent.orange;
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (!isActive) {
                           e.currentTarget.style.backgroundColor = 'transparent';
-                          e.currentTarget.style.color = colors.text;
                         }
                       }}
                     >
                       <svg
-                        className="w-5 h-5 mr-2"
+                        className="w-6 h-6 mr-2 flex-shrink-0"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
                       </svg>
-                      {item.label}
+                      {item.sublabel ? (
+                        <span className="flex flex-col leading-tight">
+                          <span className="text-base font-semibold">{item.label}</span>
+                          <span className="text-sm">{item.sublabel}</span>
+                        </span>
+                      ) : (
+                        item.label
+                      )}
                     </Link>
                   </Tooltip>
                 );
@@ -157,19 +166,17 @@ export default function PortalToolbar({
             <Tooltip text="Return back to Annix Landing Page" position="bottom">
               <Link
                 href="/"
-                className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors"
-                style={{ color: colors.text }}
+                className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md transition-colors"
+                style={{ color: corpId.colors.accent.orange }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = colors.hover;
-                  e.currentTarget.style.color = corpId.colors.accent.orange;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = colors.text;
                 }}
               >
-                <svg className="w-4 h-4 sm:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                <svg className="w-6 h-6 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
                 <span className="hidden sm:inline">Back Home</span>
               </Link>
@@ -184,8 +191,8 @@ export default function PortalToolbar({
               >
                 <div className="flex items-center space-x-2">
                   <span
-                    className="hidden md:block text-sm font-medium"
-                    style={{ color: colors.text }}
+                    className="hidden md:block text-base font-medium"
+                    style={{ color: corpId.colors.accent.orange }}
                   >
                     {user?.firstName} {user?.lastName}
                   </span>
@@ -269,6 +276,35 @@ export default function PortalToolbar({
                       </Link>
                     )}
 
+                    {portalType === 'customer' && (
+                      <>
+                        <Link
+                          href="/customer/portal/onboarding"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          <div className="flex items-center">
+                            <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                            Onboarding Status
+                          </div>
+                        </Link>
+                        <Link
+                          href="/customer/portal/documents"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          <div className="flex items-center">
+                            <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            My Documents
+                          </div>
+                        </Link>
+                      </>
+                    )}
+
                     {portalType === 'admin' && (
                       <Link
                         href="/admin/portal/settings"
@@ -330,31 +366,29 @@ export default function PortalToolbar({
                 <Tooltip key={item.href} text={getNavTooltip(item.label)} position="top">
                   <Link
                     href={item.href}
-                    className="inline-flex items-center justify-center p-2 rounded-md transition-colors"
+                    className="inline-flex items-center justify-center p-3 rounded-md transition-colors"
                     style={{
-                      color: isActive ? corpId.colors.accent.orange : colors.text,
+                      color: corpId.colors.accent.orange,
                       backgroundColor: isActive ? colors.active : 'transparent',
                     }}
                     onMouseEnter={(e) => {
                       if (!isActive) {
                         e.currentTarget.style.backgroundColor = colors.hover;
-                        e.currentTarget.style.color = corpId.colors.accent.orange;
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!isActive) {
                         e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = colors.text;
                       }
                     }}
                   >
                     <svg
-                      className="w-5 h-5"
+                      className="w-6 h-6"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
                     </svg>
                   </Link>
                 </Tooltip>

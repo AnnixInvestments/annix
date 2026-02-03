@@ -520,6 +520,71 @@ export class EmailService {
     });
   }
 
+  async sendSupplierManualReviewNotification(
+    companyName: string,
+    supplierEmail: string,
+    supplierId: number,
+    documentType: string,
+    reason: string,
+  ): Promise<boolean> {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const adminLink = `${frontendUrl}/admin/suppliers/${supplierId}`;
+    const supportEmail =
+      this.configService.get<string>('SUPPORT_EMAIL') || 'info@annix.co.za';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Manual Review Required - Annix</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #dc2626;">Manual Document Review Required</h1>
+          <p>A supplier registration requires manual document verification.</p>
+
+          <div style="background-color: #f3f4f6; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
+            <strong>Supplier Details:</strong>
+            <p style="margin: 5px 0 0 0;">
+              <strong>Company:</strong> ${companyName}<br/>
+              <strong>Email:</strong> ${supplierEmail}<br/>
+              <strong>Supplier ID:</strong> ${supplierId}
+            </p>
+          </div>
+
+          <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
+            <strong>Document Issue:</strong>
+            <p style="margin: 5px 0 0 0;">
+              <strong>Document Type:</strong> ${documentType}<br/>
+              <strong>Reason:</strong> ${reason}
+            </p>
+          </div>
+
+          <p style="margin: 30px 0;">
+            <a href="${adminLink}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Review Supplier Documents
+            </a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated notification from the Annix platform.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: supportEmail,
+      subject: `Manual Review Required - ${companyName} Supplier Registration`,
+      html,
+    });
+  }
+
   // Admin Portal Email Methods
 
   async sendCustomerInvitationEmail(

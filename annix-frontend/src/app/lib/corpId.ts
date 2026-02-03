@@ -92,17 +92,17 @@ export type PortalType = 'admin' | 'customer' | 'supplier';
 
 export const portalConfig = {
   admin: {
-    title: 'Admin Portal',
+    title: '',
     homeHref: '/admin/portal/dashboard',
     loginHref: '/admin/login',
   },
   customer: {
-    title: 'Customer Portal',
+    title: '',
     homeHref: '/customer/portal/dashboard',
     loginHref: '/customer/login',
   },
   supplier: {
-    title: 'Supplier Portal',
+    title: '',
     homeHref: '/supplier/portal/dashboard',
     loginHref: '/supplier/login',
   },

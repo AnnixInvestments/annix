@@ -63,6 +63,18 @@ export class CustomerCompany {
   @Column({ name: 'website', length: 255, nullable: true })
   website: string;
 
+  @Column({ name: 'bee_level', type: 'int', nullable: true })
+  beeLevel: number | null;
+
+  @Column({ name: 'bee_certificate_expiry', type: 'date', nullable: true })
+  beeCertificateExpiry: Date | null;
+
+  @Column({ name: 'bee_verification_agency', type: 'varchar', length: 255, nullable: true })
+  beeVerificationAgency: string | null;
+
+  @Column({ name: 'is_exempt_micro_enterprise', default: false })
+  isExemptMicroEnterprise: boolean;
+
   @OneToMany(() => CustomerProfile, (profile) => profile.company)
   profiles: CustomerProfile[];
 

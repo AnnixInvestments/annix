@@ -111,6 +111,48 @@ export class SupplierDocument {
   @Column({ name: 'is_required', default: true })
   isRequired: boolean;
 
+  @Column({ name: 'ocr_extracted_data', type: 'jsonb', nullable: true })
+  ocrExtractedData: {
+    vatNumber?: string;
+    registrationNumber?: string;
+    companyName?: string;
+    streetAddress?: string;
+    city?: string;
+    provinceState?: string;
+    postalCode?: string;
+    beeLevel?: number;
+    beeExpiryDate?: string;
+    rawText?: string;
+    confidence?: string;
+  } | null;
+
+  @Column({ name: 'ocr_processed_at', type: 'timestamp', nullable: true })
+  ocrProcessedAt: Date | null;
+
+  @Column({ name: 'ocr_failed', default: false })
+  ocrFailed: boolean;
+
+  @Column({
+    name: 'verification_confidence',
+    type: 'decimal',
+    precision: 5,
+    scale: 4,
+    nullable: true,
+  })
+  verificationConfidence: number | null;
+
+  @Column({ name: 'all_fields_match', type: 'boolean', nullable: true })
+  allFieldsMatch: boolean | null;
+
+  @Column({ name: 'field_results', type: 'jsonb', nullable: true })
+  fieldResults: {
+    fieldName: string;
+    expected: string;
+    extracted: string;
+    matches: boolean;
+    similarity: number;
+  }[] | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

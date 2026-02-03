@@ -27,6 +27,7 @@ import { SupplierAuthController } from './supplier-auth.controller';
 import { SupplierController } from './supplier.controller';
 import { SupplierAdminController } from './supplier-admin.controller';
 import { SupplierBoqController } from './supplier-boq.controller';
+import { SupplierMessagingController } from './supplier-messaging.controller';
 
 // Guards
 import { SupplierAuthGuard } from './guards/supplier-auth.guard';
@@ -37,6 +38,9 @@ import { AuditModule } from '../audit/audit.module';
 import { EmailModule } from '../email/email.module';
 import { AdminModule } from '../admin/admin.module';
 import { BoqModule } from '../boq/boq.module';
+import { NixModule } from '../nix/nix.module';
+import { StorageModule } from '../storage/storage.module';
+import { MessagingModule } from '../messaging/messaging.module';
 
 @Module({
   imports: [
@@ -67,12 +71,16 @@ import { BoqModule } from '../boq/boq.module';
     EmailModule,
     AdminModule,
     forwardRef(() => BoqModule),
+    NixModule,
+    StorageModule,
+    MessagingModule,
   ],
   controllers: [
     SupplierAuthController,
     SupplierController,
     SupplierAdminController,
     SupplierBoqController,
+    SupplierMessagingController,
   ],
   providers: [
     SupplierAuthService,

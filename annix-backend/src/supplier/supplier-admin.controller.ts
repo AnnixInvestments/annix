@@ -24,6 +24,8 @@ import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { EmailService } from '../email/email.service';
+import { DocumentVerificationService } from '../nix/services/document-verification.service';
+import { AutoApprovalService } from '../nix/services/auto-approval.service';
 import {
   RejectSupplierDto,
   SuspendSupplierDto,
@@ -40,6 +42,8 @@ export class SupplierAdminController {
   constructor(
     private readonly supplierAdminService: SupplierAdminService,
     private readonly emailService: EmailService,
+    private readonly documentVerificationService: DocumentVerificationService,
+    private readonly autoApprovalService: AutoApprovalService,
   ) {}
 
   @Get()
@@ -205,6 +209,40 @@ export class SupplierAdminController {
         ? `Invitation sent to ${body.email}`
         : 'Failed to send invitation',
     };
+  }
+
+  @Get(':id/documents/:docId/review-data')
+  @ApiOperation({ summary: 'Get document review data with OCR comparison' })
+  @ApiResponse({ status: 200, description: 'Document review data' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async getDocumentReviewData(
+    @Param('id', ParseIntPipe) supplierId: number,
+    @Param('docId', ParseIntPipe) documentId: number,
+  ) {
+    return this.supplierAdminService.getDocumentReviewData(supplierId, documentId);
+  }
+
+  @Post(':id/documents/:docId/re-verify')
+  @ApiOperation({ summary: 'Re-verify a supplier document' })
+  @ApiResponse({ status: 200, description: 'Re-verification triggered' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async reVerifyDocument(
+    @Param('id', ParseIntPipe) supplierId: number,
+    @Param('docId', ParseIntPipe) documentId: number,
+  ) {
+    const result = await this.documentVerificationService.verifyDocument({
+      entityType: 'supplier',
+      entityId: supplierId,
+      documentId,
+    });
+    return result;
+  }
+
+  @Post(':id/check-auto-approval')
+  @ApiOperation({ summary: 'Check if supplier can be auto-approved' })
+  @ApiResponse({ status: 200, description: 'Auto-approval check result' })
+  async checkAutoApproval(@Param('id', ParseIntPipe) id: number) {
+    return this.autoApprovalService.checkAndAutoApprove('supplier', id);
   }
 
   private getClientIp(req: Request): string {

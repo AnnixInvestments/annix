@@ -3,6 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -23,6 +26,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { EmailService } from '../email/email.service';
 import { S3StorageService } from '../storage/s3-storage.service';
+import { DocumentVerificationService } from '../nix/services/document-verification.service';
 
 // File constraints
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -35,6 +39,8 @@ const ALLOWED_MIME_TYPES = [
 
 @Injectable()
 export class CustomerDocumentService {
+  private readonly logger = new Logger(CustomerDocumentService.name);
+
   constructor(
     @InjectRepository(CustomerDocument)
     private readonly documentRepo: Repository<CustomerDocument>,
@@ -45,6 +51,8 @@ export class CustomerDocumentService {
     private readonly storageService: S3StorageService,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
+    @Inject(forwardRef(() => DocumentVerificationService))
+    private readonly documentVerificationService: DocumentVerificationService,
   ) {}
 
   async getDocuments(customerId: number) {
@@ -83,12 +91,22 @@ export class CustomerDocumentService {
       throw new NotFoundException('Onboarding record not found');
     }
 
-    // Only allow uploads in DRAFT or REJECTED status
+    // Check if there's an existing invalid document of this type that needs replacement
+    const existingInvalidDoc = await this.documentRepo.findOne({
+      where: {
+        customerId,
+        documentType,
+        validationStatus: CustomerDocumentValidationStatus.INVALID,
+      },
+    });
+
+    // Allow uploads in DRAFT/REJECTED status OR if replacing an invalid document
     if (
       ![
         CustomerOnboardingStatus.DRAFT,
         CustomerOnboardingStatus.REJECTED,
-      ].includes(onboarding.status)
+      ].includes(onboarding.status) &&
+      !existingInvalidDoc
     ) {
       throw new ForbiddenException('Cannot upload documents at this stage');
     }
@@ -153,6 +171,8 @@ export class CustomerDocumentService {
         ipAddress: clientIp,
       });
 
+      this.triggerVerification(customerId, savedDoc.id);
+
       return {
         id: savedDoc.id,
         documentType: savedDoc.documentType,
@@ -190,6 +210,8 @@ export class CustomerDocumentService {
       ipAddress: clientIp,
     });
 
+    this.triggerVerification(customerId, savedDoc.id);
+
     return {
       id: savedDoc.id,
       documentType: savedDoc.documentType,
@@ -198,6 +220,22 @@ export class CustomerDocumentService {
       validationStatus: savedDoc.validationStatus,
       uploadedAt: savedDoc.uploadedAt,
     };
+  }
+
+  private triggerVerification(customerId: number, documentId: number): void {
+    setImmediate(async () => {
+      try {
+        this.logger.log(`Triggering verification for document ${documentId}`);
+        await this.documentVerificationService.verifyDocument({
+          entityType: 'customer',
+          entityId: customerId,
+          documentId,
+        });
+        this.logger.log(`Verification completed for document ${documentId}`);
+      } catch (error: any) {
+        this.logger.error(`Verification failed for document ${documentId}: ${error.message}`);
+      }
+    });
   }
 
   async deleteDocument(
@@ -213,17 +251,21 @@ export class CustomerDocumentService {
       throw new NotFoundException('Document not found');
     }
 
-    // Validate onboarding status
+    // Validate onboarding status - allow deletion if document is invalid (rejected)
     const onboarding = await this.onboardingRepo.findOne({
       where: { customerId },
     });
+
+    const isInvalidDocument =
+      document.validationStatus === CustomerDocumentValidationStatus.INVALID;
 
     if (
       onboarding &&
       ![
         CustomerOnboardingStatus.DRAFT,
         CustomerOnboardingStatus.REJECTED,
-      ].includes(onboarding.status)
+      ].includes(onboarding.status) &&
+      !isInvalidDocument
     ) {
       throw new ForbiddenException('Cannot delete documents at this stage');
     }

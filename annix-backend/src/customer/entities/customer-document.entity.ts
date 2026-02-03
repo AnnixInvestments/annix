@@ -12,6 +12,7 @@ import { User } from '../../user/entities/user.entity';
 
 export enum CustomerDocumentType {
   REGISTRATION_CERT = 'registration_cert',
+  VAT_CERT = 'vat_cert',
   TAX_CLEARANCE = 'tax_clearance',
   BEE_CERT = 'bee_cert',
   INSURANCE = 'insurance',
@@ -128,6 +129,27 @@ export class CustomerDocument {
 
   @Column({ name: 'ocr_failed', default: false })
   ocrFailed: boolean;
+
+  @Column({
+    name: 'verification_confidence',
+    type: 'decimal',
+    precision: 5,
+    scale: 4,
+    nullable: true,
+  })
+  verificationConfidence: number | null;
+
+  @Column({ name: 'all_fields_match', type: 'boolean', nullable: true })
+  allFieldsMatch: boolean | null;
+
+  @Column({ name: 'field_results', type: 'jsonb', nullable: true })
+  fieldResults: {
+    fieldName: string;
+    expected: string;
+    extracted: string;
+    matches: boolean;
+    similarity: number;
+  }[] | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

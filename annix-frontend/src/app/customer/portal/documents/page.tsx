@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   customerDocumentApi,
   customerOnboardingApi,
@@ -34,7 +35,11 @@ export default function CustomerDocumentsPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [previewModal, setPreviewModal] = useState<PreviewModalState>(initialPreviewState);
 
-  const canUpload = onboardingStatus?.status === 'draft' || onboardingStatus?.status === 'rejected';
+  const hasRejectedDocuments = documents.some(d => d.validationStatus === 'invalid');
+  const canUpload = onboardingStatus?.status === 'draft' || onboardingStatus?.status === 'rejected' || hasRejectedDocuments;
+  const canDeleteDocument = (doc: CustomerDocument) => {
+    return onboardingStatus?.status === 'draft' || onboardingStatus?.status === 'rejected' || doc.validationStatus === 'invalid';
+  };
 
   useEffect(() => {
     loadData();
@@ -141,6 +146,7 @@ export default function CustomerDocumentsPage() {
     setSelectedType('');
     setExpiryDate('');
     setUploadError(null);
+    setReuploadDocType(null);
   };
 
   const getDocumentTypeLabel = (type: string) => {
@@ -173,6 +179,16 @@ export default function CustomerDocumentsPage() {
     return formatDateZA(dateString);
   };
 
+  const [reuploadDocType, setReuploadDocType] = useState<string | null>(null);
+
+  const rejectedDocuments = documents.filter(d => d.validationStatus === 'invalid');
+
+  const handleReupload = (docType: string) => {
+    setReuploadDocType(docType);
+    setSelectedType(docType);
+    setShowUploadModal(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -186,6 +202,65 @@ export default function CustomerDocumentsPage() {
 
   return (
     <div className="w-full">
+      {rejectedDocuments.length > 0 && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-6 h-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-red-800">Action Required - Documents Rejected</h3>
+              <p className="text-sm text-red-700 mt-1">
+                {rejectedDocuments.length === 1
+                  ? 'One of your documents has been rejected and needs to be re-uploaded.'
+                  : `${rejectedDocuments.length} documents have been rejected and need to be re-uploaded.`}
+              </p>
+              <p className="text-sm text-red-700 mt-2">
+                Please review the rejection reasons below, then either delete and re-upload the document with correct information,
+                or <Link href="/customer/portal/company" className="font-semibold underline hover:text-red-900">review your company profile</Link> to ensure all details are accurate.
+              </p>
+              <div className="mt-3 space-y-2">
+                {rejectedDocuments.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between bg-white rounded-lg p-3 border border-red-200">
+                    <div>
+                      <span className="font-medium text-gray-900">{getDocumentTypeLabel(doc.documentType)}</span>
+                      {doc.validationNotes && (
+                        <p className="text-sm text-red-600 mt-1">Reason: {doc.validationNotes}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleDelete(doc.id)}
+                        className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => handleReupload(doc.documentType)}
+                        className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors"
+                      >
+                        Re-upload
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex gap-3">
+                <Link
+                  href="/customer/portal/company"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  Review Company Profile
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
@@ -289,14 +364,24 @@ export default function CustomerDocumentsPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <DocumentActionButtons
-                      filename={doc.fileName}
-                      onView={() => handlePreview(doc)}
-                      onDownload={() => handleDownload(doc)}
-                      onDelete={() => handleDelete(doc.id)}
-                      canDelete={canUpload}
-                      deleteDisabledReason="Cannot delete when onboarding is under review"
-                    />
+                    <div className="flex items-center justify-end gap-2">
+                      {doc.validationStatus === 'invalid' && (
+                        <button
+                          onClick={() => handleReupload(doc.documentType)}
+                          className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700 transition-colors"
+                        >
+                          Re-upload
+                        </button>
+                      )}
+                      <DocumentActionButtons
+                        filename={doc.fileName}
+                        onView={() => handlePreview(doc)}
+                        onDownload={() => handleDownload(doc)}
+                        onDelete={() => handleDelete(doc.id)}
+                        canDelete={canDeleteDocument(doc)}
+                        deleteDisabledReason={doc.validationStatus === 'invalid' ? undefined : 'Cannot delete when onboarding is under review'}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

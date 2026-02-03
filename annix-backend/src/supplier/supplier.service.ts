@@ -31,6 +31,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
 import { BoqDistributionService } from '../boq/boq-distribution.service';
+import { DocumentVerificationService } from '../nix/services/document-verification.service';
 
 // Required documents for onboarding
 const REQUIRED_DOCUMENT_TYPES = [
@@ -60,6 +61,8 @@ export class SupplierService {
     private readonly auditService: AuditService,
     @Inject(forwardRef(() => BoqDistributionService))
     private readonly boqDistributionService: BoqDistributionService,
+    @Inject(forwardRef(() => DocumentVerificationService))
+    private readonly documentVerificationService: DocumentVerificationService,
   ) {}
 
   /**
@@ -350,6 +353,8 @@ export class SupplierService {
       ipAddress: clientIp,
     });
 
+    this.triggerVerification(supplierId, savedDocument.id);
+
     return {
       id: savedDocument.id,
       documentType: savedDocument.documentType,
@@ -361,6 +366,22 @@ export class SupplierService {
       expiryDate: savedDocument.expiryDate ?? undefined,
       isRequired: savedDocument.isRequired,
     };
+  }
+
+  private triggerVerification(supplierId: number, documentId: number): void {
+    setImmediate(async () => {
+      try {
+        this.logger.log(`Triggering verification for supplier document ${documentId}`);
+        await this.documentVerificationService.verifyDocument({
+          entityType: 'supplier',
+          entityId: supplierId,
+          documentId,
+        });
+        this.logger.log(`Verification completed for supplier document ${documentId}`);
+      } catch (error: any) {
+        this.logger.error(`Verification failed for supplier document ${documentId}: ${error.message}`);
+      }
+    });
   }
 
   /**
