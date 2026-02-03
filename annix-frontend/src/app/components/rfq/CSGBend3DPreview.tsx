@@ -101,6 +101,7 @@ interface Props {
   bendItemType?: string
   duckfootBasePlateXMm?: number
   duckfootBasePlateYMm?: number
+  duckfootInletCentreHeightMm?: number
   duckfootPlateThicknessT1Mm?: number
   duckfootRibThicknessT2Mm?: number
   duckfootGussetPointDDegrees?: number
@@ -1531,6 +1532,7 @@ const Scene = (props: Props) => {
     bendItemType,
     duckfootBasePlateXMm,
     duckfootBasePlateYMm,
+    duckfootInletCentreHeightMm,
     duckfootPlateThicknessT1Mm,
     duckfootRibThicknessT2Mm,
     duckfootGussetPointDDegrees,
@@ -3024,30 +3026,35 @@ const Scene = (props: Props) => {
 
       {/* Duckfoot Base Plate and Gusset Ribs - OUTSIDE rotation group to stay horizontal */}
       {isDuckfoot && (() => {
-        const duckfootDefaults: Record<number, { x: number; y: number; t1: number; t2: number; h: number }> = {
-          200: { x: 355, y: 230, t1: 6, t2: 10, h: 255 },
-          250: { x: 405, y: 280, t1: 6, t2: 10, h: 280 },
-          300: { x: 460, y: 330, t1: 6, t2: 10, h: 305 },
-          350: { x: 510, y: 380, t1: 8, t2: 12, h: 330 },
-          400: { x: 560, y: 430, t1: 8, t2: 12, h: 355 },
-          450: { x: 610, y: 485, t1: 8, t2: 12, h: 380 },
-          500: { x: 660, y: 535, t1: 10, t2: 14, h: 405 },
-          550: { x: 710, y: 585, t1: 10, t2: 14, h: 430 },
-          600: { x: 760, y: 635, t1: 10, t2: 14, h: 460 },
-          650: { x: 815, y: 693, t1: 12, t2: 16, h: 485 },
-          700: { x: 865, y: 733, t1: 12, t2: 16, h: 510 },
-          750: { x: 915, y: 793, t1: 12, t2: 16, h: 535 },
-          800: { x: 970, y: 833, t1: 14, t2: 18, h: 560 },
-          850: { x: 1020, y: 883, t1: 14, t2: 18, h: 585 },
-          900: { x: 1070, y: 933, t1: 14, t2: 18, h: 610 }
+        const duckfootDefaults: Record<number, { x: number; y: number; t1: number; t2: number; inletH: number }> = {
+          200: { x: 355, y: 230, t1: 6, t2: 10, inletH: 365 },
+          250: { x: 405, y: 280, t1: 6, t2: 10, inletH: 417 },
+          300: { x: 460, y: 330, t1: 6, t2: 10, inletH: 467 },
+          350: { x: 510, y: 380, t1: 8, t2: 12, inletH: 519 },
+          400: { x: 560, y: 430, t1: 8, t2: 12, inletH: 559 },
+          450: { x: 610, y: 485, t1: 8, t2: 12, inletH: 633 },
+          500: { x: 660, y: 535, t1: 10, t2: 14, inletH: 703 },
+          550: { x: 710, y: 585, t1: 10, t2: 14, inletH: 752 },
+          600: { x: 760, y: 635, t1: 10, t2: 14, inletH: 790 },
+          650: { x: 815, y: 693, t1: 12, t2: 16, inletH: 847 },
+          700: { x: 865, y: 733, t1: 12, t2: 16, inletH: 892 },
+          750: { x: 915, y: 793, t1: 12, t2: 16, inletH: 940 },
+          800: { x: 970, y: 833, t1: 14, t2: 18, inletH: 991 },
+          850: { x: 1020, y: 883, t1: 14, t2: 18, inletH: 1016 },
+          900: { x: 1070, y: 933, t1: 14, t2: 18, inletH: 1067 }
         };
-        const defaults = duckfootDefaults[nominalBore] || { x: 500, y: 400, t1: 10, t2: 12, h: 400 };
+        const defaults = duckfootDefaults[nominalBore] || { x: 500, y: 400, t1: 10, t2: 12, inletH: 500 };
 
         const basePlateXDim = (duckfootBasePlateXMm || defaults.x) / SCALE;
         const basePlateYDim = (duckfootBasePlateYMm || defaults.y) / SCALE;
         const ribThickness = (duckfootPlateThicknessT1Mm || defaults.t1) / SCALE;
         const plateThickness = (duckfootRibThicknessT2Mm || defaults.t2) / SCALE;
-        const ribHeightH = defaults.h / SCALE;
+
+        const inletCentreHeightMm = duckfootInletCentreHeightMm || defaults.inletH;
+        const outerDiameterMm = nominalBore ? (NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.1) : 200;
+        const innerDiameterMm = outerDiameterMm - 2 * wtMm * SCALE;
+        const ribHeightMm = inletCentreHeightMm - (wtMm * SCALE) - (innerDiameterMm / 2);
+        const ribHeightH = ribHeightMm / SCALE;
 
         const basePlateColor = { color: '#555555', metalness: 0.85, roughness: 0.2, envMapIntensity: 1.2 };
         const ribColor = { color: '#666666', metalness: 0.8, roughness: 0.25, envMapIntensity: 1.0 };

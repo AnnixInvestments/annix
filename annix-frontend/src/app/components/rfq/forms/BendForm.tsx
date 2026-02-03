@@ -271,6 +271,7 @@ function BendFormComponent({
         closureLengthMm: hideTangentsAndStubs ? undefined : entry.specs?.closureLengthMm,
         duckfootBasePlateXMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateXMm : undefined,
         duckfootBasePlateYMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootBasePlateYMm : undefined,
+        duckfootInletCentreHeightMm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootInletCentreHeightMm : undefined,
         duckfootRibThicknessT2Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootRibThicknessT2Mm : undefined,
         duckfootPlateThicknessT1Mm: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootPlateThicknessT1Mm : undefined,
         duckfootGussetPointDDegrees: newItemType === 'DUCKFOOT_BEND' ? entry.specs?.duckfootGussetPointDDegrees : undefined,
@@ -1642,32 +1643,32 @@ function BendFormComponent({
                     </div>
                     {(() => {
                       const nominalBore = entry.specs?.nominalBoreMm;
-                      const duckfootDefaults: Record<number, { x: number; y: number; t1: number; t2: number }> = {
-                        200: { x: 355, y: 230, t1: 6, t2: 10 },
-                        250: { x: 405, y: 280, t1: 6, t2: 10 },
-                        300: { x: 460, y: 330, t1: 6, t2: 10 },
-                        350: { x: 510, y: 380, t1: 8, t2: 12 },
-                        400: { x: 560, y: 430, t1: 8, t2: 12 },
-                        450: { x: 610, y: 485, t1: 8, t2: 12 },
-                        500: { x: 660, y: 535, t1: 10, t2: 14 },
-                        550: { x: 710, y: 585, t1: 10, t2: 14 },
-                        600: { x: 760, y: 635, t1: 10, t2: 14 },
-                        650: { x: 815, y: 693, t1: 12, t2: 16 },
-                        700: { x: 865, y: 733, t1: 12, t2: 16 },
-                        750: { x: 915, y: 793, t1: 12, t2: 16 },
-                        800: { x: 970, y: 833, t1: 14, t2: 18 },
-                        850: { x: 1020, y: 883, t1: 14, t2: 18 },
-                        900: { x: 1070, y: 933, t1: 14, t2: 18 }
+                      const duckfootDefaults: Record<number, { x: number; y: number; t1: number; t2: number; inletH: number }> = {
+                        200: { x: 355, y: 230, t1: 6, t2: 10, inletH: 365 },
+                        250: { x: 405, y: 280, t1: 6, t2: 10, inletH: 417 },
+                        300: { x: 460, y: 330, t1: 6, t2: 10, inletH: 467 },
+                        350: { x: 510, y: 380, t1: 8, t2: 12, inletH: 519 },
+                        400: { x: 560, y: 430, t1: 8, t2: 12, inletH: 559 },
+                        450: { x: 610, y: 485, t1: 8, t2: 12, inletH: 633 },
+                        500: { x: 660, y: 535, t1: 10, t2: 14, inletH: 703 },
+                        550: { x: 710, y: 585, t1: 10, t2: 14, inletH: 752 },
+                        600: { x: 760, y: 635, t1: 10, t2: 14, inletH: 790 },
+                        650: { x: 815, y: 693, t1: 12, t2: 16, inletH: 847 },
+                        700: { x: 865, y: 733, t1: 12, t2: 16, inletH: 892 },
+                        750: { x: 915, y: 793, t1: 12, t2: 16, inletH: 940 },
+                        800: { x: 970, y: 833, t1: 14, t2: 18, inletH: 991 },
+                        850: { x: 1020, y: 883, t1: 14, t2: 18, inletH: 1016 },
+                        900: { x: 1070, y: 933, t1: 14, t2: 18, inletH: 1067 }
                       };
                       const defaults = nominalBore && duckfootDefaults[nominalBore] ? duckfootDefaults[nominalBore] : null;
                       const hasDefaults = !!defaults;
 
                       return (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
                           <div>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                              Base Plate X (mm)
-                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Width of the duckfoot base plate (longer dimension)">?</span>
+                            <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Plate X
+                              <span className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Width of the duckfoot base plate (longer dimension) in mm">?</span>
                             </label>
                             <input
                               type="number"
@@ -1678,15 +1679,15 @@ function BendFormComponent({
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
-                              placeholder={hasDefaults ? `Default: ${defaults.x}` : 'Enter X'}
-                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              placeholder={hasDefaults ? `${defaults.x}` : 'X'}
+                              className="w-full px-1.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                               min="100"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                              Base Plate Y (mm)
-                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Depth of the duckfoot base plate (shorter dimension)">?</span>
+                            <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Plate Y
+                              <span className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Depth of the duckfoot base plate (shorter dimension) in mm">?</span>
                             </label>
                             <input
                               type="number"
@@ -1697,15 +1698,34 @@ function BendFormComponent({
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
-                              placeholder={hasDefaults ? `Default: ${defaults.y}` : 'Enter Y'}
-                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              placeholder={hasDefaults ? `${defaults.y}` : 'Y'}
+                              className="w-full px-1.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                               min="100"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                              Rib Thickness T1 (mm)
-                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Thickness of the vertical ribs supporting the pipe">?</span>
+                            <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Plate Height
+                              <span className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Height from base plate to centre of inlet opening in mm. Steelwork height is calculated from this minus wall thickness and half inner diameter.">?</span>
+                            </label>
+                            <input
+                              type="number"
+                              value={entry.specs?.duckfootInletCentreHeightMm || defaults?.inletH || ''}
+                              onChange={(e) => {
+                                const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                const updatedEntry = { ...entry, specs: { ...entry.specs, duckfootInletCentreHeightMm: value } };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+                              }}
+                              placeholder={hasDefaults ? `${defaults.inletH}` : 'H'}
+                              className="w-full px-1.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              min="100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Rib T1
+                              <span className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Thickness of the vertical ribs supporting the pipe in mm">?</span>
                             </label>
                             <input
                               type="number"
@@ -1716,15 +1736,15 @@ function BendFormComponent({
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
-                              placeholder={hasDefaults ? `Default: ${defaults.t1}` : 'Enter T1'}
-                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              placeholder={hasDefaults ? `${defaults.t1}` : 'T1'}
+                              className="w-full px-1.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                               min="4"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                              Base Plate T2 (mm)
-                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Thickness of the base plate">?</span>
+                            <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Plate T2
+                              <span className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Thickness of the base plate in mm">?</span>
                             </label>
                             <input
                               type="number"
@@ -1735,15 +1755,15 @@ function BendFormComponent({
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
-                              placeholder={hasDefaults ? `Default: ${defaults.t2}` : 'Enter T2'}
-                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              placeholder={hasDefaults ? `${defaults.t2}` : 'T2'}
+                              className="w-full px-1.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                               min="6"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                              Point C Location
-                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Angle position of Point C on the yellow gusset (degrees from bend start)">?</span>
+                            <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Pt C
+                              <span className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Angle position of Point C on the yellow gusset (degrees from bend start)">?</span>
                             </label>
                             <select
                               value={entry.specs?.duckfootGussetPointDDegrees || 15}
@@ -1753,7 +1773,7 @@ function BendFormComponent({
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
-                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              className="w-full px-1 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                             >
                               <option value={5}>5°</option>
                               <option value={10}>10°</option>
@@ -1765,9 +1785,9 @@ function BendFormComponent({
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                              Point D Location
-                              <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Angle position of Point D on the yellow gusset (degrees from bend start)">?</span>
+                            <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              Pt D
+                              <span className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help" title="Angle position of Point D on the yellow gusset (degrees from bend start)">?</span>
                             </label>
                             <select
                               value={entry.specs?.duckfootGussetPointCDegrees || 75}
@@ -1777,7 +1797,7 @@ function BendFormComponent({
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
-                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                              className="w-full px-1 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                             >
                               <option value={55}>55°</option>
                               <option value={60}>60°</option>
@@ -2796,6 +2816,7 @@ function BendFormComponent({
                         bendItemType={entry.specs?.bendItemType}
                         duckfootBasePlateXMm={entry.specs?.duckfootBasePlateXMm}
                         duckfootBasePlateYMm={entry.specs?.duckfootBasePlateYMm}
+                        duckfootInletCentreHeightMm={entry.specs?.duckfootInletCentreHeightMm}
                         duckfootPlateThicknessT1Mm={entry.specs?.duckfootPlateThicknessT1Mm}
                         duckfootRibThicknessT2Mm={entry.specs?.duckfootRibThicknessT2Mm}
                         duckfootGussetPointDDegrees={entry.specs?.duckfootGussetPointDDegrees}
