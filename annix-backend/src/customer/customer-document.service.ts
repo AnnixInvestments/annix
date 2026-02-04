@@ -100,13 +100,31 @@ export class CustomerDocumentService {
       },
     });
 
-    // Allow uploads in DRAFT/REJECTED status OR if replacing an invalid document
+    // Check if this is an expired BEE certificate being replaced
+    let isExpiredBeeCertReplacement = false;
+    if (documentType === CustomerDocumentType.BEE_CERT) {
+      const existingBeeDoc = await this.documentRepo.findOne({
+        where: { customerId, documentType: CustomerDocumentType.BEE_CERT },
+      });
+      if (existingBeeDoc?.expiryDate) {
+        const today = now().startOf('day');
+        const expiry = now().set({
+          year: existingBeeDoc.expiryDate.getFullYear(),
+          month: existingBeeDoc.expiryDate.getMonth() + 1,
+          day: existingBeeDoc.expiryDate.getDate(),
+        }).startOf('day');
+        isExpiredBeeCertReplacement = expiry <= today;
+      }
+    }
+
+    // Allow uploads in DRAFT/REJECTED status, replacing invalid document, or replacing expired BEE cert
     if (
       ![
         CustomerOnboardingStatus.DRAFT,
         CustomerOnboardingStatus.REJECTED,
       ].includes(onboarding.status) &&
-      !existingInvalidDoc
+      !existingInvalidDoc &&
+      !isExpiredBeeCertReplacement
     ) {
       throw new ForbiddenException('Cannot upload documents at this stage');
     }

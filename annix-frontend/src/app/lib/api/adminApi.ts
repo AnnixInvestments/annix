@@ -131,9 +131,11 @@ export interface CustomerDetail {
     postalCode?: string;
   };
   onboarding?: {
+    id: number;
     status: string;
     submittedAt?: string;
     reviewedAt?: string;
+    reviewedByName?: string | null;
   };
 }
 
@@ -878,6 +880,29 @@ class AdminApiClient {
       method: 'DELETE',
     });
   }
+
+  async saveCustomFieldValue(data: SaveCustomFieldValueDto): Promise<{ success: boolean; id: number }> {
+    return this.request<{ success: boolean; id: number }>('/nix/admin/custom-field-values', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async customFieldValues(
+    entityType: 'customer' | 'supplier',
+    entityId: number,
+  ): Promise<{ fields: CustomFieldValue[] }> {
+    return this.request<{ fields: CustomFieldValue[] }>(
+      `/nix/admin/custom-field-values/${entityType}/${entityId}`,
+    );
+  }
+
+  async customFieldDefinitions(documentCategory?: string): Promise<{ definitions: CustomFieldDefinition[] }> {
+    const path = documentCategory
+      ? `/nix/admin/custom-field-definitions/${encodeURIComponent(documentCategory)}`
+      : '/nix/admin/custom-field-definitions';
+    return this.request<{ definitions: CustomFieldDefinition[] }>(path);
+  }
 }
 
 export interface NixUploadResponse {
@@ -930,8 +955,36 @@ export interface SaveExtractionRegionDto {
   documentCategory: string;
   fieldName: string;
   regionCoordinates: RegionCoordinates;
+  labelCoordinates?: RegionCoordinates;
+  labelText?: string;
   extractionPattern?: string;
   sampleValue?: string;
+  isCustomField?: boolean;
+}
+
+export interface SaveCustomFieldValueDto {
+  entityType: 'customer' | 'supplier';
+  entityId: number;
+  fieldName: string;
+  fieldValue?: string;
+  documentCategory: string;
+  extractedFromDocumentId?: number;
+  confidence?: number;
+}
+
+export interface CustomFieldValue {
+  id: number;
+  fieldName: string;
+  fieldValue: string | null;
+  documentCategory: string;
+  confidence: number | null;
+  isVerified: boolean;
+}
+
+export interface CustomFieldDefinition {
+  fieldName: string;
+  documentCategory: string;
+  sampleValue: string | null;
 }
 
 export interface ExtractionRegion {

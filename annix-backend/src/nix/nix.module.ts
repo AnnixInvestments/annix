@@ -8,7 +8,9 @@ import { NixLearning } from './entities/nix-learning.entity';
 import { NixUserPreference } from './entities/nix-user-preference.entity';
 import { NixClarification } from './entities/nix-clarification.entity';
 import { NixExtractionRegion } from './entities/nix-extraction-region.entity';
+import { CustomFieldValue } from './entities/custom-field-value.entity';
 import { ExcelExtractorService } from './services/excel-extractor.service';
+import { CustomFieldService } from './services/custom-field.service';
 import { PdfExtractorService } from './services/pdf-extractor.service';
 import { WordExtractorService } from './services/word-extractor.service';
 import { AiExtractionService } from './ai-providers/ai-extraction.service';
@@ -36,6 +38,7 @@ import { AuditModule } from '../audit/audit.module';
       NixUserPreference,
       NixClarification,
       NixExtractionRegion,
+      CustomFieldValue,
       CustomerDocument,
       CustomerProfile,
       CustomerOnboarding,
@@ -58,6 +61,7 @@ import { AuditModule } from '../audit/audit.module';
   controllers: [NixController],
   providers: [
     DocumentAnnotationService,
+    CustomFieldService,
     NixService,
     ExcelExtractorService,
     PdfExtractorService,
@@ -74,6 +78,7 @@ import { AuditModule } from '../audit/audit.module';
     DocumentVerificationService,
     AutoApprovalService,
     DocumentAnnotationService,
+    CustomFieldService,
   ],
 })
 export class NixModule {}

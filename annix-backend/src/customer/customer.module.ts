@@ -29,6 +29,7 @@ import { CustomerOnboardingService } from './customer-onboarding.service';
 import { CustomerDocumentService } from './customer-document.service';
 import { CustomerSupplierService } from './customer-supplier.service';
 import { DocumentOcrService } from './document-ocr.service';
+import { CertificateExpiryService } from './services/certificate-expiry.service';
 
 // Controllers
 import { CustomerAuthController } from './customer-auth.controller';
@@ -104,6 +105,7 @@ import { MessagingModule } from '../messaging/messaging.module';
     CustomerDocumentService,
     CustomerSupplierService,
     DocumentOcrService,
+    CertificateExpiryService,
     CustomerAuthGuard,
   ],
   exports: [

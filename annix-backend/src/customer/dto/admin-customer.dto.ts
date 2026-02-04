@@ -200,4 +200,13 @@ export class CustomerDetailDto {
     ipAddress: string;
     ipMismatchWarning: boolean;
   }[];
+
+  @ApiPropertyOptional()
+  onboarding?: {
+    id: number;
+    status: string;
+    submittedAt?: Date | null;
+    reviewedAt?: Date | null;
+    reviewedByName?: string | null;
+  } | null;
 }

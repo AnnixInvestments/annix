@@ -42,7 +42,9 @@ import {
   ExtractFromRegionDto,
   PdfPagesResponseDto,
   ExtractionRegionResponseDto,
+  SaveCustomFieldValueDto,
 } from './dto/extraction-region.dto';
+import { CustomFieldService } from './services/custom-field.service';
 import { NixExtraction } from './entities/nix-extraction.entity';
 import { NixClarification } from './entities/nix-clarification.entity';
 import { NixLearning } from './entities/nix-learning.entity';
@@ -68,6 +70,7 @@ export class NixController {
     private readonly nixService: NixService,
     private readonly registrationVerifier: RegistrationDocumentVerifierService,
     private readonly documentAnnotationService: DocumentAnnotationService,
+    private readonly customFieldService: CustomFieldService,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     @InjectRepository(CustomerDocument)
@@ -593,5 +596,100 @@ export class NixController {
   ): Promise<{ success: boolean }> {
     await this.documentAnnotationService.deleteRegion(id);
     return { success: true };
+  }
+
+  @Post('admin/custom-field-values')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Save a custom field value for an entity' })
+  @ApiResponse({ status: 201, description: 'Custom field value saved' })
+  async saveCustomFieldValue(
+    @Body() dto: SaveCustomFieldValueDto,
+  ): Promise<{ success: boolean; id: number }> {
+    const result = await this.customFieldService.saveCustomFieldValue({
+      entityType: dto.entityType,
+      entityId: dto.entityId,
+      fieldName: dto.fieldName,
+      fieldValue: dto.fieldValue ?? null,
+      documentCategory: dto.documentCategory,
+      extractedFromDocumentId: dto.extractedFromDocumentId,
+      confidence: dto.confidence,
+    });
+    return { success: true, id: result.id };
+  }
+
+  @Get('admin/custom-field-values/:entityType/:entityId')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get custom field values for an entity' })
+  @ApiResponse({ status: 200, description: 'Custom field values' })
+  async customFieldValues(
+    @Param('entityType') entityType: 'customer' | 'supplier',
+    @Param('entityId', ParseIntPipe) entityId: number,
+  ): Promise<{
+    fields: Array<{
+      id: number;
+      fieldName: string;
+      fieldValue: string | null;
+      documentCategory: string;
+      confidence: number | null;
+      isVerified: boolean;
+    }>;
+  }> {
+    const fields = await this.customFieldService.customFieldsForEntity(
+      entityType,
+      entityId,
+    );
+    return {
+      fields: fields.map((f) => ({
+        id: f.id,
+        fieldName: f.fieldName,
+        fieldValue: f.fieldValue,
+        documentCategory: f.documentCategory,
+        confidence: f.confidence,
+        isVerified: f.isVerified,
+      })),
+    };
+  }
+
+  @Get('admin/custom-field-definitions')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all custom field definitions' })
+  @ApiResponse({ status: 200, description: 'Custom field definitions' })
+  async customFieldDefinitions(): Promise<{
+    definitions: Array<{
+      fieldName: string;
+      documentCategory: string;
+      sampleValue: string | null;
+    }>;
+  }> {
+    const definitions = await this.customFieldService.customFieldDefinitions();
+    return { definitions };
+  }
+
+  @Get('admin/custom-field-definitions/:documentCategory')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get custom field definitions for a document category' })
+  @ApiResponse({ status: 200, description: 'Custom field definitions' })
+  async customFieldDefinitionsForCategory(
+    @Param('documentCategory') documentCategory: string,
+  ): Promise<{
+    definitions: Array<{
+      fieldName: string;
+      documentCategory: string;
+      sampleValue: string | null;
+    }>;
+  }> {
+    const definitions =
+      await this.customFieldService.customFieldDefinitionsForDocumentCategory(
+        documentCategory,
+      );
+    return { definitions };
   }
 }

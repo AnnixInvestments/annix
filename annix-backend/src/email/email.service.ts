@@ -1012,4 +1012,103 @@ export class EmailService {
       html,
     });
   }
+
+  async sendBeeExpiryNotificationEmail(
+    email: string,
+    companyName: string,
+    contactName: string,
+    expiryDate: string,
+    beeLevel: number | null,
+  ): Promise<boolean> {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const documentsLink = `${frontendUrl}/customer/portal/documents`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>BEE Certificate Expiry Notice - Annix</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin-bottom: 20px;">
+            <h2 style="color: #b45309; margin: 0 0 10px 0;">BEE Certificate Expiry Notice</h2>
+            <p style="margin: 0; color: #92400e;">Your BEE certificate has expired or is expiring today.</p>
+          </div>
+
+          <p>Dear ${contactName},</p>
+
+          <p>This is a reminder that the BEE certificate for <strong>${companyName}</strong> has reached its expiry date.</p>
+
+          <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280;">Company:</td>
+                <td style="padding: 8px 0; font-weight: bold;">${companyName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280;">Current BEE Level:</td>
+                <td style="padding: 8px 0; font-weight: bold;">${beeLevel !== null ? `Level ${beeLevel}` : 'Not specified'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280;">Expiry Date:</td>
+                <td style="padding: 8px 0; font-weight: bold; color: #dc2626;">${expiryDate}</td>
+              </tr>
+            </table>
+          </div>
+
+          <p><strong>Action Required:</strong></p>
+          <p>Please upload your renewed BEE certificate as soon as possible to ensure continued compliance. You can upload your new certificate through the customer portal.</p>
+
+          <p style="margin: 30px 0;">
+            <a href="${documentsLink}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Upload New BEE Certificate
+            </a>
+          </p>
+
+          <p style="color: #6b7280; font-size: 14px;">
+            Once uploaded, your new certificate will be verified by our system. If additional review is required, our admin team will review and approve it.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated notification from Annix. If you have already renewed your certificate, please upload it at your earliest convenience.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+BEE Certificate Expiry Notice
+
+Dear ${contactName},
+
+This is a reminder that the BEE certificate for ${companyName} has reached its expiry date.
+
+Company: ${companyName}
+Current BEE Level: ${beeLevel !== null ? `Level ${beeLevel}` : 'Not specified'}
+Expiry Date: ${expiryDate}
+
+Action Required:
+Please upload your renewed BEE certificate as soon as possible to ensure continued compliance.
+
+Upload your new certificate here: ${documentsLink}
+
+Once uploaded, your new certificate will be verified by our system.
+
+Thank you,
+Annix Team
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `BEE Certificate Expiry Notice - ${companyName} - Annix`,
+      html,
+      text,
+    });
+  }
 }

@@ -710,8 +710,9 @@ export function DocumentReviewModal({
             <NixTrainingModal
               isOpen={showTrainingModal}
               documentId={data.documentId}
+              entityId={entityType === 'supplier' ? data.supplier?.id ?? 0 : data.customer?.id ?? 0}
               entityType={entityType}
-              documentType={data.documentType as 'vat' | 'registration' | 'bee'}
+              documentType={data.documentType}
               fieldComparison={data.fieldComparison}
               onClose={() => setShowTrainingModal(false)}
               onTrainingComplete={() => {

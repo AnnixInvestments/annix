@@ -75,6 +75,9 @@ export class CustomerCompany {
   @Column({ name: 'is_exempt_micro_enterprise', default: false })
   isExemptMicroEnterprise: boolean;
 
+  @Column({ name: 'bee_expiry_notification_sent_at', type: 'timestamp', nullable: true })
+  beeExpiryNotificationSentAt: Date | null;
+
   @OneToMany(() => CustomerProfile, (profile) => profile.company)
   profiles: CustomerProfile[];
 

@@ -164,6 +164,11 @@ export class CustomerAdminService {
       (b) => b.isActive && b.isPrimary,
     );
 
+    const onboarding = await this.onboardingRepo.findOne({
+      where: { customerId },
+      relations: ['reviewedBy'],
+    });
+
     return {
       id: profile.id,
       firstName: profile.firstName,
@@ -212,6 +217,17 @@ export class CustomerAdminService {
         ipAddress: login.ipAddress,
         ipMismatchWarning: login.ipMismatchWarning,
       })),
+      onboarding: onboarding
+        ? {
+            id: onboarding.id,
+            status: onboarding.status,
+            submittedAt: onboarding.submittedAt,
+            reviewedAt: onboarding.reviewedAt,
+            reviewedByName: onboarding.reviewedBy
+              ? `${onboarding.reviewedBy.firstName} ${onboarding.reviewedBy.lastName}`
+              : null,
+          }
+        : null,
     };
   }
 

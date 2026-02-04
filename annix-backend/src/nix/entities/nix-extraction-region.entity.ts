@@ -30,6 +30,17 @@ export class NixExtractionRegion {
   @Column({ name: 'region_coordinates', type: 'jsonb' })
   regionCoordinates: RegionCoordinates;
 
+  @Column({ name: 'label_coordinates', type: 'jsonb', nullable: true })
+  labelCoordinates: RegionCoordinates | null;
+
+  @Column({
+    name: 'label_text',
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
+  labelText: string | null;
+
   @Column({
     name: 'extraction_pattern',
     type: 'varchar',
@@ -60,6 +71,9 @@ export class NixExtractionRegion {
 
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
+
+  @Column({ name: 'is_custom_field', type: 'boolean', default: false })
+  isCustomField: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

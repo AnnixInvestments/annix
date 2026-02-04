@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { adminApiClient, CustomerDetail, CustomerDocument, LoginHistoryItem, AdminRfqListItem, DocumentReviewData } from '@/app/lib/api/adminApi';
+import { adminApiClient, CustomerDetail, CustomerDocument, LoginHistoryItem, AdminRfqListItem, DocumentReviewData, CustomFieldValue } from '@/app/lib/api/adminApi';
 import { useToast } from '@/app/components/Toast';
 import { formatDateTimeZA, formatDateZA } from '@/app/lib/datetime';
 import { StatusBadge } from '@/app/admin/components';
@@ -27,28 +27,32 @@ export default function CustomerDetailPage() {
 
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   const [suspendReason, setSuspendReason] = useState('');
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewState, setPreviewState] = useState<PreviewModalState>(initialPreviewState);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewData, setReviewData] = useState<DocumentReviewData | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [customFields, setCustomFields] = useState<CustomFieldValue[]>([]);
 
   const fetchCustomerDetail = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const [customerData, loginHistoryData, documentsData, rfqsData] = await Promise.all([
+      const [customerData, loginHistoryData, documentsData, rfqsData, customFieldsData] = await Promise.all([
         adminApiClient.getCustomerDetail(customerId),
         adminApiClient.getCustomerLoginHistory(customerId, 20),
         adminApiClient.getCustomerDocuments(customerId),
         adminApiClient.listRfqs({ customerId, limit: 100 }),
+        adminApiClient.customFieldValues('customer', customerId).catch(() => ({ fields: [] })),
       ]);
 
       setCustomer(customerData);
       setLoginHistory(loginHistoryData);
       setDocuments(documentsData);
       setCustomerRfqs(rfqsData.items);
+      setCustomFields(customFieldsData.fields);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch customer details');
       console.error('Error fetching customer:', err);
@@ -198,6 +202,34 @@ export default function CustomerDetailPage() {
     }
   };
 
+  const handleApproveCustomer = async () => {
+    if (!customer?.onboarding?.id) {
+      showToast('No onboarding record found', 'error');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await adminApiClient.approveCustomerOnboarding(customer.onboarding.id);
+      setApproveDialogOpen(false);
+      showToast('Customer approved successfully', 'success');
+      fetchCustomerDetail();
+    } catch (err: any) {
+      showToast(`Failed to approve customer: ${err.message}`, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const canApproveCustomer = (): boolean => {
+    if (!customer) return false;
+    if (customer.accountStatus !== 'pending') return false;
+    if (!customer.onboarding) return false;
+    if (!['submitted', 'under_review'].includes(customer.onboarding.status)) return false;
+    const allDocsValid = documents.length > 0 && documents.every(doc => doc.validationStatus === 'valid');
+    return allDocsValid;
+  };
+
   const getStatusBadgeClass = (status: string): string => {
     switch (status) {
       case 'active':
@@ -293,6 +325,18 @@ export default function CustomerDetailPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Reactivate Account
+            </button>
+          )}
+          {canApproveCustomer() && (
+            <button
+              onClick={() => setApproveDialogOpen(true)}
+              disabled={isSubmitting}
+              className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Approve Customer
             </button>
           )}
           {customer.deviceBound && (
@@ -482,7 +526,17 @@ export default function CustomerDetailPage() {
               <dl className="space-y-3">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Status</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{customer.onboarding.status}</dd>
+                  <dd className="mt-1">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      customer.onboarding.status === 'approved'
+                        ? 'bg-green-100 text-green-800'
+                        : customer.onboarding.status === 'rejected'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {customer.onboarding.status}
+                    </span>
+                  </dd>
                 </div>
                 {customer.onboarding.submittedAt && (
                   <div>
@@ -492,10 +546,68 @@ export default function CustomerDetailPage() {
                 )}
                 {customer.onboarding.reviewedAt && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Reviewed At</dt>
+                    <dt className="text-sm font-medium text-gray-500">Approved At</dt>
                     <dd className="mt-1 text-sm text-gray-900">{formatDate(customer.onboarding.reviewedAt)}</dd>
                   </div>
                 )}
+                {customer.onboarding.reviewedByName && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Approved By</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{customer.onboarding.reviewedByName}</dd>
+                  </div>
+                )}
+              </dl>
+              {customer.accountStatus === 'pending' && customer.onboarding.status !== 'approved' && (
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-800">
+                    {documents.length === 0 ? (
+                      'No documents uploaded. Customer must upload required documents before approval.'
+                    ) : documents.every(doc => doc.validationStatus === 'valid') ? (
+                      'All documents are valid. This customer can be approved.'
+                    ) : (
+                      <>
+                        <strong>Documents pending review:</strong>{' '}
+                        {documents.filter(doc => doc.validationStatus !== 'valid').length} document(s) need attention before approval.
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Custom Fields (Nix Extracted) */}
+          {customFields.length > 0 && (
+            <div className="bg-white shadow rounded-lg p-6 lg:col-span-2">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Additional Information
+                <span className="ml-2 text-xs font-normal text-indigo-600">(Nix Extracted)</span>
+              </h2>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {customFields.map((field) => (
+                  <div key={field.id} className="bg-gray-50 rounded-lg p-3">
+                    <dt className="text-sm font-medium text-gray-500 capitalize">
+                      {field.fieldName.replace(/([A-Z])/g, ' $1').trim()}
+                    </dt>
+                    <dd className="mt-1 text-sm text-gray-900 flex items-center gap-2">
+                      {field.fieldValue || '-'}
+                      {field.isVerified ? (
+                        <span className="text-green-600" title="Verified">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </span>
+                      ) : field.confidence !== null ? (
+                        <span className="text-xs text-gray-400" title={`Confidence: ${Math.round(field.confidence * 100)}%`}>
+                          ({Math.round(field.confidence * 100)}%)
+                        </span>
+                      ) : null}
+                    </dd>
+                    <dd className="text-xs text-gray-400 mt-1">
+                      From: {field.documentCategory}
+                    </dd>
+                  </div>
+                ))}
               </dl>
             </div>
           )}
@@ -736,6 +848,82 @@ export default function CustomerDetailPage() {
               >
                 {isSubmitting ? 'Suspending...' : 'Suspend Account'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {approveDialogOpen && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-white">Approve Customer</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">
+                You are about to approve <strong>{customer?.firstName} {customer?.lastName}</strong> from <strong>{customer?.company?.name}</strong>.
+              </p>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <h4 className="text-sm font-medium text-green-800 mb-2">This action will:</h4>
+                <ul className="text-sm text-green-700 space-y-1">
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Activate the customer account
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Send a confirmation email
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Record your approval with timestamp
+                  </li>
+                </ul>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setApproveDialogOpen(false)}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleApproveCustomer}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Approving...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Approve Customer
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
