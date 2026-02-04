@@ -284,7 +284,14 @@ export default function SupplierRegistrationPage() {
     corrections.forEach(({ field, value }) => {
       if (field in company || field === 'companyName') {
         const companyField = field === 'companyName' ? 'legalName' : field;
-        setCompany(prev => ({ ...prev, [companyField]: value }));
+        if (companyField === 'beeLevel') {
+          const levelMatch = String(value).match(/\d+/);
+          if (levelMatch) {
+            setCompany(prev => ({ ...prev, beeLevel: parseInt(levelMatch[0], 10) }));
+          }
+        } else {
+          setCompany(prev => ({ ...prev, [companyField]: value }));
+        }
       }
     });
 
@@ -391,8 +398,24 @@ export default function SupplierRegistrationPage() {
     try {
       const formData = new FormData();
 
+      // Sanitize beeLevel to ensure it's a number
+      let sanitizedBeeLevel: number | null = null;
+      if (typeof company.beeLevel === 'number') {
+        sanitizedBeeLevel = company.beeLevel;
+      } else if (company.beeLevel) {
+        const beeLevelStr = String(company.beeLevel);
+        const match = beeLevelStr.match(/\d+/);
+        if (match) {
+          sanitizedBeeLevel = parseInt(match[0], 10);
+        }
+      }
+      const sanitizedCompany = {
+        ...company,
+        beeLevel: sanitizedBeeLevel,
+      };
+
       // Add company data
-      formData.append('company', JSON.stringify(company));
+      formData.append('company', JSON.stringify(sanitizedCompany));
 
       // Add profile data
       formData.append('profile', JSON.stringify({
