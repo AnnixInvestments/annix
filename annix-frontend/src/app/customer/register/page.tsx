@@ -205,7 +205,6 @@ export default function CustomerRegistrationPage() {
 
     try {
       const files = [
-        { file: documents.vatDocument, documentType: 'vat' as const },
         { file: documents.companyRegDocument, documentType: 'registration' as const },
       ];
 
@@ -535,7 +534,7 @@ export default function CustomerRegistrationPage() {
         {renderDocumentUploadBox(
           'vat',
           'VAT Registration Certificate',
-          'Your official SARS VAT registration document',
+          'Your official SARS VAT registration document (verified manually by admin)',
           documents.vatDocument,
           dragState.vatDragging
         )}
@@ -568,7 +567,7 @@ export default function CustomerRegistrationPage() {
           <div>
             <p className="text-sm font-medium text-orange-800">Nix AI Assistant</p>
             <p className="text-xs text-orange-700 mt-1">
-              Once you upload both documents and click confirm, I will read them and automatically fill in your company details. You can review and edit the information on the next page.
+              Once you upload both documents and click confirm, I will read your Company Registration document and automatically fill in your company details. Your VAT certificate will be verified manually by our admin team. You can review and edit the information on the next page.
             </p>
           </div>
         </div>

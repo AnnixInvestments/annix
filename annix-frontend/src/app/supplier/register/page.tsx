@@ -210,6 +210,12 @@ export default function SupplierRegistrationPage() {
 
     if (!file) return;
 
+    if (documentType === 'vat') {
+      setPendingManualReview(prev => ({ ...prev, vat: true }));
+      setDocumentsValidated(prev => ({ ...prev, vat: true }));
+      return;
+    }
+
     setNixVerification({
       isVisible: true,
       isProcessing: true,
@@ -220,13 +226,7 @@ export default function SupplierRegistrationPage() {
     try {
       let expectedData: any;
 
-      if (documentType === 'vat') {
-        expectedData = {
-          vatNumber: company.vatNumber,
-          registrationNumber: company.registrationNumber,
-          companyName: company.legalName,
-        };
-      } else if (documentType === 'registration') {
+      if (documentType === 'registration') {
         expectedData = {
           registrationNumber: company.registrationNumber,
           companyName: company.legalName,
@@ -838,7 +838,7 @@ export default function SupplierRegistrationPage() {
             VAT Registration Certificate <span className="text-red-500">*</span>
           </label>
           <p className="text-xs text-gray-500 mb-3">
-            Upload your official VAT registration certificate.
+            Upload your official VAT registration certificate. This document will be verified manually by our admin team.
           </p>
           <input
             type="file"
@@ -847,7 +847,10 @@ export default function SupplierRegistrationPage() {
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
           {documents.vatDocument && (
-            <p className="mt-2 text-sm text-green-600">Selected: {documents.vatDocument.name}</p>
+            <div className="mt-2">
+              <p className="text-sm text-green-600">Selected: {documents.vatDocument.name}</p>
+              <p className="text-xs text-orange-600 mt-1">Pending manual verification by admin</p>
+            </div>
           )}
         </div>
 
