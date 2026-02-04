@@ -50,6 +50,8 @@ const NAV_TOOLTIPS: Record<string, string> = {
   'Documents': 'View and upload your documents',
   'Onboarding': 'Complete your account setup',
   'BOQs': 'View and respond to bill of quantities',
+  'Submitted BOQs': 'View and amend your submitted quotes',
+  'Products & Services': 'Select the products and services you can offer',
 };
 
 const getNavTooltip = (label: string): string => NAV_TOOLTIPS[label] || label;
@@ -266,10 +268,10 @@ export default function PortalToolbar({
                       </Link>
                     )}
 
-                    {portalType === 'customer' && (
+                    {(portalType === 'customer' || portalType === 'supplier') && (
                       <>
                         <Link
-                          href="/customer/portal/onboarding"
+                          href={`/${portalType}/portal/onboarding`}
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => setIsUserMenuOpen(false)}
                         >
@@ -281,7 +283,7 @@ export default function PortalToolbar({
                           </div>
                         </Link>
                         <Link
-                          href="/customer/portal/documents"
+                          href={`/${portalType}/portal/documents`}
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => setIsUserMenuOpen(false)}
                         >
