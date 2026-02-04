@@ -57,8 +57,8 @@ function AdminNavigation() {
   const { admin, logout } = useAdminAuth();
 
   const handleLogout = async () => {
-    router.push('/');
     await logout();
+    window.location.href = '/';
   };
 
   return (

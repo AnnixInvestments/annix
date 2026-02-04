@@ -64,7 +64,7 @@ export class AdminMessagingController {
     @Req() req: Request,
     @Query() filters: ConversationFilterDto,
   ): Promise<{ conversations: ConversationSummaryDto[]; total: number }> {
-    const userId = req['admin'].userId;
+    const userId = req['user'].id;
     return this.messagingService.conversationsForUser(userId, filters);
   }
 
@@ -78,7 +78,7 @@ export class AdminMessagingController {
     @Req() req: Request,
     @Body() dto: CreateConversationDto,
   ): Promise<ConversationDetailDto> {
-    const userId = req['admin'].userId;
+    const userId = req['user'].id;
     return this.messagingService.createConversation(userId, dto);
   }
 
@@ -93,7 +93,7 @@ export class AdminMessagingController {
     @Req() req: Request,
     @Param('id', ParseIntPipe) conversationId: number,
   ): Promise<ConversationDetailDto> {
-    const userId = req['admin'].userId;
+    const userId = req['user'].id;
     return this.messagingService.conversationDetail(conversationId, userId);
   }
 
@@ -109,7 +109,7 @@ export class AdminMessagingController {
     @Param('id', ParseIntPipe) conversationId: number,
     @Query() pagination: MessagePaginationDto,
   ): Promise<{ messages: MessageDto[]; hasMore: boolean }> {
-    const userId = req['admin'].userId;
+    const userId = req['user'].id;
     return this.messagingService.messagesForConversation(
       conversationId,
       userId,
@@ -129,7 +129,7 @@ export class AdminMessagingController {
     @Param('id', ParseIntPipe) conversationId: number,
     @Body() dto: SendMessageDto,
   ): Promise<MessageDto> {
-    const userId = req['admin'].userId;
+    const userId = req['user'].id;
     return this.messagingService.sendMessage(conversationId, userId, dto);
   }
 
@@ -155,7 +155,7 @@ export class AdminMessagingController {
     @Req() req: Request,
     @Body() dto: CreateBroadcastDto,
   ): Promise<BroadcastDetailDto> {
-    const userId = req['admin'].userId;
+    const userId = req['user'].id;
     return this.broadcastService.createBroadcast(userId, dto);
   }
 
@@ -170,7 +170,7 @@ export class AdminMessagingController {
     @Req() req: Request,
     @Param('id', ParseIntPipe) broadcastId: number,
   ): Promise<BroadcastDetailDto> {
-    const userId = req['admin'].userId;
+    const userId = req['user'].id;
     return this.broadcastService.broadcastDetail(broadcastId, userId);
   }
 

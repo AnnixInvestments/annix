@@ -301,10 +301,13 @@ export interface AdminRfqListItem {
   customerName: string;
   customerEmail: string;
   status: string;
+  isUnregistered?: boolean;
   createdAt: string;
   updatedAt: string;
   itemCount: number;
   documentCount?: number;
+  requiredDate?: string;
+  isPastDeadline?: boolean;
 }
 
 export interface AdminRfqListResponse {

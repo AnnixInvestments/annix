@@ -29,6 +29,10 @@ export class DocumentAnnotationService {
     private readonly regionRepository: Repository<NixExtractionRegion>,
   ) {}
 
+  private normalizeDocumentCategory(category: string): string {
+    return category.toLowerCase().replace('_cert', '');
+  }
+
   async convertPdfToImages(
     buffer: Buffer,
     scale: number = 2.0,
@@ -113,30 +117,71 @@ export class DocumentAnnotationService {
     const outputPath = path.join(tempDir, 'page.png');
 
     try {
-      this.logger.log(`Extracting text from region for field: ${fieldName}`);
+      this.logger.log(`[extractFromRegion] Starting extraction for field: ${fieldName}`);
+      this.logger.log(`[extractFromRegion] Coordinates: ${JSON.stringify(regionCoordinates)}`);
+      this.logger.log(`[extractFromRegion] Buffer type: ${typeof buffer}, isBuffer: ${Buffer.isBuffer(buffer)}, length: ${buffer?.length ?? 'undefined'}`);
+
+      if (!buffer || !Buffer.isBuffer(buffer)) {
+        this.logger.error(`[extractFromRegion] Invalid buffer provided for field ${fieldName}`);
+        return { text: '', confidence: 0 };
+      }
 
       await fs.writeFile(inputPath, buffer);
+      this.logger.log(`[extractFromRegion] Wrote PDF to ${inputPath}, size: ${buffer.length} bytes`);
 
       const gsCommand =
         process.platform === 'win32'
           ? '"C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe"'
           : 'gs';
-      const command = `${gsCommand} -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r300 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -dFirstPage=${regionCoordinates.pageNumber} -dLastPage=${regionCoordinates.pageNumber} "-sOutputFile=${outputPath}" "${inputPath}"`;
+      const extractionDpi = 300;
+      const command = `${gsCommand} -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r${extractionDpi} -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -dFirstPage=${regionCoordinates.pageNumber} -dLastPage=${regionCoordinates.pageNumber} "-sOutputFile=${outputPath}" "${inputPath}"`;
 
-      await execAsync(command, { timeout: 60000 });
+      this.logger.log(`[extractFromRegion] Running Ghostscript command for page ${regionCoordinates.pageNumber}`);
+      this.logger.log(`[extractFromRegion] GS command: ${command}`);
+
+      const { stdout, stderr } = await execAsync(command, { timeout: 60000 });
+      this.logger.log(`[extractFromRegion] Ghostscript completed, stdout: ${stdout?.substring(0, 200) || 'empty'}`);
+      if (stderr) {
+        this.logger.warn(`[extractFromRegion] Ghostscript stderr: ${stderr}`);
+      }
+
+      const outputExists = await fs.access(outputPath).then(() => true).catch(() => false);
+      this.logger.log(`[extractFromRegion] Output file exists: ${outputExists}`);
+      if (!outputExists) {
+        this.logger.error(`[extractFromRegion] Ghostscript did not create output file at ${outputPath}`);
+        return { text: '', confidence: 0 };
+      }
 
       const pageImageBuffer = await fs.readFile(outputPath);
+      this.logger.log(`[extractFromRegion] Page image buffer size: ${pageImageBuffer.length} bytes`);
 
+      const imageMetadata = await sharp(pageImageBuffer).metadata();
+      this.logger.log(`[extractFromRegion] Image dimensions: ${imageMetadata.width}x${imageMetadata.height}`);
+      this.logger.log(`[extractFromRegion] Region to extract: x=${regionCoordinates.x}, y=${regionCoordinates.y}, w=${regionCoordinates.width}, h=${regionCoordinates.height}`);
+
+      const imgWidth = imageMetadata.width || 0;
+      const imgHeight = imageMetadata.height || 0;
+      const regionRight = regionCoordinates.x + regionCoordinates.width;
+      const regionBottom = regionCoordinates.y + regionCoordinates.height;
+
+      if (regionCoordinates.x < 0 || regionCoordinates.y < 0 || regionRight > imgWidth || regionBottom > imgHeight) {
+        this.logger.warn(`[extractFromRegion] Region extends beyond image bounds! Region: (${regionCoordinates.x},${regionCoordinates.y}) to (${regionRight},${regionBottom}), Image: ${imgWidth}x${imgHeight}`);
+      }
+
+      this.logger.log(`[extractFromRegion] Creating Tesseract worker...`);
       worker = await createWorker('eng');
+      this.logger.log(`[extractFromRegion] Tesseract worker created`);
 
-      const { data } = await worker.recognize(pageImageBuffer, {
-        rectangle: {
-          left: Math.floor(regionCoordinates.x),
-          top: Math.floor(regionCoordinates.y),
-          width: Math.floor(regionCoordinates.width),
-          height: Math.floor(regionCoordinates.height),
-        },
-      });
+      const rectangle = {
+        left: Math.floor(regionCoordinates.x),
+        top: Math.floor(regionCoordinates.y),
+        width: Math.floor(regionCoordinates.width),
+        height: Math.floor(regionCoordinates.height),
+      };
+      this.logger.log(`[extractFromRegion] OCR rectangle: ${JSON.stringify(rectangle)}`);
+
+      const { data } = await worker.recognize(pageImageBuffer, { rectangle });
+      this.logger.log(`[extractFromRegion] Tesseract recognition complete`);
 
       await worker.terminate();
       worker = null;
@@ -144,9 +189,8 @@ export class DocumentAnnotationService {
       const text = data.text?.trim() || '';
       const confidence = data.confidence / 100;
 
-      this.logger.log(
-        `Extracted from region: "${text}" (confidence: ${confidence})`,
-      );
+      this.logger.log(`[extractFromRegion] Extracted text: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`);
+      this.logger.log(`[extractFromRegion] Confidence: ${confidence}`);
       return { text, confidence };
     } catch (error) {
       if (worker) {
@@ -154,7 +198,8 @@ export class DocumentAnnotationService {
           await worker.terminate();
         } catch {}
       }
-      this.logger.error(`Region extraction failed: ${error.message}`);
+      this.logger.error(`[extractFromRegion] FAILED for ${fieldName}: ${error.message}`);
+      this.logger.error(`[extractFromRegion] Error stack: ${error.stack}`);
       return { text: '', confidence: 0 };
     } finally {
       try {
@@ -173,13 +218,14 @@ export class DocumentAnnotationService {
     dto: SaveExtractionRegionDto,
     userId?: number,
   ): Promise<NixExtractionRegion> {
+    const normalizedCategory = this.normalizeDocumentCategory(dto.documentCategory);
     this.logger.log(
-      `Saving extraction region for ${dto.documentCategory}:${dto.fieldName}`,
+      `Saving extraction region for ${normalizedCategory}:${dto.fieldName}`,
     );
 
     const existingRegion = await this.regionRepository.findOne({
       where: {
-        documentCategory: dto.documentCategory,
+        documentCategory: normalizedCategory,
         fieldName: dto.fieldName,
         isActive: true,
       },
@@ -196,7 +242,7 @@ export class DocumentAnnotationService {
     }
 
     const region = this.regionRepository.create({
-      documentCategory: dto.documentCategory,
+      documentCategory: normalizedCategory,
       fieldName: dto.fieldName,
       regionCoordinates: dto.regionCoordinates,
       labelCoordinates: dto.labelCoordinates || null,
@@ -213,9 +259,10 @@ export class DocumentAnnotationService {
   async findRegionsForDocument(
     documentCategory: string,
   ): Promise<NixExtractionRegion[]> {
+    const normalizedCategory = this.normalizeDocumentCategory(documentCategory);
     return this.regionRepository.find({
       where: {
-        documentCategory,
+        documentCategory: normalizedCategory,
         isActive: true,
       },
       order: {
@@ -249,6 +296,10 @@ export class DocumentAnnotationService {
         region.fieldName,
       );
 
+      this.logger.log(
+        `Region extraction for ${region.fieldName}: text="${extracted.text?.substring(0, 50) || ''}", confidence=${extracted.confidence.toFixed(2)}, threshold=${region.confidenceThreshold}`,
+      );
+
       if (
         extracted.text &&
         extracted.confidence >= region.confidenceThreshold
@@ -258,6 +309,9 @@ export class DocumentAnnotationService {
         region.successCount += 1;
         await this.regionRepository.save(region);
       } else {
+        this.logger.warn(
+          `Region extraction failed for ${region.fieldName}: ${!extracted.text ? 'empty text' : `confidence ${extracted.confidence.toFixed(2)} below threshold ${region.confidenceThreshold}`}`,
+        );
         region.useCount += 1;
         await this.regionRepository.save(region);
       }

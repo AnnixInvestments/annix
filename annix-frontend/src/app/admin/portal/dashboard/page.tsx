@@ -224,6 +224,29 @@ export default function AdminDashboardPage() {
         </button>
       </div>
 
+      {/* System Health Section */}
+      {stats.systemHealth && (
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">System Health</h3>
+            <dl className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+              <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
+                <dt className="text-sm font-medium text-gray-500 truncate">Active Customer Sessions</dt>
+                <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.systemHealth.activeCustomerSessions}</dd>
+              </div>
+              <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
+                <dt className="text-sm font-medium text-gray-500 truncate">Active Supplier Sessions</dt>
+                <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.systemHealth.activeSupplierSessions}</dd>
+              </div>
+              <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
+                <dt className="text-sm font-medium text-gray-500 truncate">Active Admin Sessions</dt>
+                <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.systemHealth.activeAdminSessions}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      )}
+
       {/* Recent Activity Section */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
@@ -280,29 +303,6 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
-
-      {/* System Health Section */}
-      {stats.systemHealth && (
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">System Health</h3>
-            <dl className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-              <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
-                <dt className="text-sm font-medium text-gray-500 truncate">Active Customer Sessions</dt>
-                <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.systemHealth.activeCustomerSessions}</dd>
-              </div>
-              <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
-                <dt className="text-sm font-medium text-gray-500 truncate">Active Supplier Sessions</dt>
-                <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.systemHealth.activeSupplierSessions}</dd>
-              </div>
-              <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
-                <dt className="text-sm font-medium text-gray-500 truncate">Active Admin Sessions</dt>
-                <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.systemHealth.activeAdminSessions}</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

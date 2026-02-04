@@ -102,6 +102,16 @@ export default function PortalToolbar({
             <div className="flex-shrink-0 flex items-center">
               <Link href={config.homeHref} className="flex items-center space-x-3">
                 <AmixLogo size="sm" showText={true} />
+                <Tooltip text="Return to Annix Landing Page" position="bottom">
+                  <svg
+                    className="w-5 h-5 opacity-60 hover:opacity-100 transition-opacity"
+                    fill="none"
+                    stroke={corpId.colors.accent.orange}
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+                </Tooltip>
                 {config.title && (
                   <span
                     className="text-lg font-semibold hidden md:block"
@@ -161,26 +171,6 @@ export default function PortalToolbar({
           <div className="flex items-center space-x-4">
             {statusBadge}
             {additionalActions}
-
-            {/* Back Home button */}
-            <Tooltip text="Return back to Annix Landing Page" position="bottom">
-              <Link
-                href="/"
-                className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md transition-colors"
-                style={{ color: corpId.colors.accent.orange }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = colors.hover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <svg className="w-6 h-6 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-                <span className="hidden sm:inline">Back Home</span>
-              </Link>
-            </Tooltip>
 
             <ThemeToggle />
 

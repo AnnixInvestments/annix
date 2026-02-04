@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createWorker } from 'tesseract.js';
+import * as fs from 'fs/promises';
 import { AiExtractionService } from '../ai-providers/ai-extraction.service';
 import { DocumentAnnotationService } from './document-annotation.service';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParseModule = require('pdf-parse');
-const pdfParse = pdfParseModule.default || pdfParseModule;
+const pdfParse = require('pdf-parse').default || require('pdf-parse');
 
 export type RegistrationDocumentType = 'vat' | 'registration' | 'bee';
 
@@ -204,6 +204,17 @@ export class RegistrationDocumentVerifierService {
     return results;
   }
 
+  private async fileBuffer(file: Express.Multer.File): Promise<Buffer> {
+    if (file.buffer && Buffer.isBuffer(file.buffer)) {
+      return file.buffer;
+    }
+    if (file.path) {
+      this.logger.log(`Reading file from disk: ${file.path}`);
+      return fs.readFile(file.path);
+    }
+    throw new Error('No file buffer or path available');
+  }
+
   private async extractDocumentData(
     file: Express.Multer.File,
     documentType: RegistrationDocumentType,
@@ -212,10 +223,17 @@ export class RegistrationDocumentVerifierService {
     let rawText = '';
     let ocrConfidence = 0.8;
 
+    this.logger.log(`Starting document extraction for type: ${documentType}`);
+
+    const buffer = await this.fileBuffer(file);
+    this.logger.log(`File buffer obtained, size: ${buffer.length} bytes`);
+
     const regionResults = await this.documentAnnotationService.extractUsingLearnedRegions(
-      file.buffer,
+      buffer,
       documentType,
     );
+
+    this.logger.log(`Learned regions extraction returned ${regionResults.size} fields for ${documentType}`);
 
     if (regionResults.size > 0) {
       this.logger.log(
@@ -257,11 +275,11 @@ export class RegistrationDocumentVerifierService {
       );
 
       if (mimeType === 'application/pdf') {
-        const pdfResult = await this.extractFromPdf(file.buffer);
+        const pdfResult = await this.extractFromPdf(buffer);
         rawText = pdfResult.text;
         ocrConfidence = pdfResult.confidence;
       } else if (mimeType.startsWith('image/')) {
-        const imageResult = await this.extractFromImage(file.buffer);
+        const imageResult = await this.extractFromImage(buffer);
         rawText = imageResult.text;
         ocrConfidence = imageResult.confidence;
       }
@@ -286,19 +304,24 @@ export class RegistrationDocumentVerifierService {
       return regionExtracted as ExtractedRegistrationData;
     }
 
+    this.logger.log(`No learned regions returned useful data, falling back to traditional OCR for ${documentType}`);
+
     if (mimeType === 'application/pdf') {
-      const pdfResult = await this.extractFromPdf(file.buffer);
+      const pdfResult = await this.extractFromPdf(buffer);
       rawText = pdfResult.text;
       ocrConfidence = pdfResult.confidence;
+      this.logger.log(`PDF extraction returned ${rawText.length} chars with confidence ${ocrConfidence}`);
     } else if (mimeType.startsWith('image/')) {
-      const imageResult = await this.extractFromImage(file.buffer);
+      const imageResult = await this.extractFromImage(buffer);
       rawText = imageResult.text;
       ocrConfidence = imageResult.confidence;
+      this.logger.log(`Image OCR returned ${rawText.length} chars with confidence ${ocrConfidence}`);
     } else {
       throw new Error(`Unsupported file type: ${mimeType}`);
     }
 
     if (!rawText || rawText.trim().length < 10) {
+      this.logger.warn(`Insufficient text extracted (${rawText?.length || 0} chars), returning empty result`);
       return {
         confidence: 0,
         fieldsExtracted: [],

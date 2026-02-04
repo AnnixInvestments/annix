@@ -220,6 +220,9 @@ export default function AdminRfqsPage() {
                     Items
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Deadline
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Created
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -243,6 +246,11 @@ export default function AdminRfqsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{rfq.customerName}</div>
                       <div className="text-sm text-gray-500">{rfq.customerEmail}</div>
+                      {rfq.isUnregistered && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 mt-1">
+                          Unregistered
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <StatusBadge status={rfq.status} />
@@ -253,6 +261,22 @@ export default function AdminRfqsPage() {
                         <span className="ml-2 text-gray-400">
                           ({rfq.documentCount} doc{rfq.documentCount !== 1 ? 's' : ''})
                         </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {rfq.requiredDate ? (
+                        <div className="flex items-center">
+                          <span className={rfq.isPastDeadline ? 'text-red-600 font-medium' : 'text-gray-500'}>
+                            {formatDateZA(rfq.requiredDate)}
+                          </span>
+                          {rfq.isPastDeadline && (
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                              CLOSED
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

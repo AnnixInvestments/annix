@@ -84,18 +84,32 @@ export class AdminDashboardService {
     // Get recent activity (last 10 audit log entries)
     const recentActivity = await this.getRecentActivity(10);
 
-    // Get active session counts
+    // Get active session counts - only count sessions with recent activity (last 30 minutes)
     const currentTime = now().toJSDate();
+    const recentActivityThreshold = now().minus({ minutes: 30 }).toJSDate();
+
     const activeCustomerSessions = await this.customerSessionRepo.count({
-      where: { expiresAt: MoreThan(currentTime) },
+      where: {
+        isActive: true,
+        expiresAt: MoreThan(currentTime),
+        lastActivity: MoreThan(recentActivityThreshold),
+      },
     });
 
     const activeSupplierSessions = await this.supplierSessionRepo.count({
-      where: { expiresAt: MoreThan(currentTime) },
+      where: {
+        isActive: true,
+        expiresAt: MoreThan(currentTime),
+        lastActivity: MoreThan(recentActivityThreshold),
+      },
     });
 
     const activeAdminSessions = await this.adminSessionRepo.count({
-      where: { isRevoked: false, expiresAt: MoreThan(currentTime) },
+      where: {
+        isRevoked: false,
+        expiresAt: MoreThan(currentTime),
+        lastActiveAt: MoreThan(recentActivityThreshold),
+      },
     });
 
     return {

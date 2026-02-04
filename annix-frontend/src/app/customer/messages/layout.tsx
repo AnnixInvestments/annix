@@ -19,8 +19,8 @@ function CustomerNavigation() {
   const { customer, logout } = useCustomerAuth();
 
   const handleLogout = async () => {
-    router.push('/');
     await logout();
+    window.location.href = '/';
   };
 
   return (

@@ -60,10 +60,13 @@ export class RfqListItemDto {
   customerName: string;
   customerEmail: string;
   status: string;
+  isUnregistered?: boolean;
   createdAt: Date;
   updatedAt: Date;
   itemCount: number;
   documentCount?: number;
+  requiredDate?: Date;
+  isPastDeadline?: boolean;
 }
 
 export class RfqListResponseDto {
@@ -83,6 +86,7 @@ export class RfqDetailDto {
   customerEmail: string;
   customerPhone?: string;
   status: string;
+  isUnregistered?: boolean;
   createdAt: Date;
   updatedAt: Date;
   createdBy?: {

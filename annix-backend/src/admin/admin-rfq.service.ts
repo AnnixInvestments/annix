@@ -10,7 +10,7 @@ import { Repository, Like, Between } from 'typeorm';
 import * as fs from 'fs';
 import { createReadStream } from 'fs';
 import { StreamableFile } from '@nestjs/common';
-import { fromISO } from '../lib/datetime';
+import { fromISO, now } from '../lib/datetime';
 
 import { Rfq } from '../rfq/entities/rfq.entity';
 import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
@@ -146,28 +146,52 @@ export class AdminRfqService {
     }
 
     // Map registered drafts to DTOs
-    const registeredItems: RfqListItemDto[] = registeredDrafts.map((draft) => ({
-      id: draft.id,
-      projectName: draft.projectName || draft.draftNumber,
-      customerName: draft.createdBy?.username || '',
-      customerEmail: draft.createdBy?.email || '',
-      status: draft.isConverted ? 'SUBMITTED' : 'DRAFT',
-      createdAt: draft.createdAt,
-      updatedAt: draft.updatedAt,
-      itemCount: draft.straightPipeEntries?.length || 0,
-    }));
+    const today = now().startOf('day');
+    const registeredItems: RfqListItemDto[] = registeredDrafts.map((draft) => {
+      const requiredDate = draft.formData?.requiredDate
+        ? new Date(draft.formData.requiredDate)
+        : undefined;
+      const isPastDeadline = requiredDate
+        ? fromISO(draft.formData.requiredDate).startOf('day') < today
+        : false;
+
+      return {
+        id: draft.id,
+        projectName: draft.projectName || draft.draftNumber,
+        customerName: draft.createdBy?.username || '',
+        customerEmail: draft.createdBy?.email || '',
+        status: draft.isConverted ? 'SUBMITTED' : 'DRAFT',
+        createdAt: draft.createdAt,
+        updatedAt: draft.updatedAt,
+        itemCount: draft.straightPipeEntries?.length || 0,
+        requiredDate,
+        isPastDeadline,
+      };
+    });
 
     // Map anonymous drafts to DTOs (use negative IDs to distinguish them)
-    const anonymousItems: RfqListItemDto[] = anonymousDrafts.map((draft) => ({
-      id: -draft.id,
-      projectName: draft.projectName || `Anonymous Draft`,
-      customerName: draft.formData?.customerName || 'Unregistered',
-      customerEmail: draft.customerEmail || '',
-      status: 'UNREGISTERED',
-      createdAt: draft.createdAt,
-      updatedAt: draft.updatedAt,
-      itemCount: draft.entries?.length || 0,
-    }));
+    const anonymousItems: RfqListItemDto[] = anonymousDrafts.map((draft) => {
+      const requiredDate = draft.formData?.requiredDate
+        ? new Date(draft.formData.requiredDate)
+        : undefined;
+      const isPastDeadline = requiredDate
+        ? fromISO(draft.formData.requiredDate).startOf('day') < today
+        : false;
+
+      return {
+        id: -draft.id,
+        projectName: draft.projectName || `Anonymous Draft`,
+        customerName: draft.formData?.customerName || draft.formData?.companyName || 'Unknown',
+        customerEmail: draft.customerEmail || '',
+        status: 'DRAFT',
+        isUnregistered: true,
+        createdAt: draft.createdAt,
+        updatedAt: draft.updatedAt,
+        itemCount: draft.entries?.length || 0,
+        requiredDate,
+        isPastDeadline,
+      };
+    });
 
     // Combine and sort all items
     const allItems = [...registeredItems, ...anonymousItems];
@@ -194,8 +218,34 @@ export class AdminRfqService {
 
   /**
    * Get RFQ Draft detail by ID (VIEW-ONLY)
+   * Negative IDs indicate anonymous drafts
    */
   async getRfqDetail(rfqId: number): Promise<RfqDetailDto> {
+    if (rfqId < 0) {
+      const anonDraft = await this.anonymousDraftRepo.findOne({
+        where: { id: Math.abs(rfqId) },
+      });
+
+      if (!anonDraft) {
+        throw new NotFoundException(`Anonymous RFQ Draft with ID ${Math.abs(rfqId)} not found`);
+      }
+
+      return {
+        id: rfqId,
+        projectName: anonDraft.projectName || `Anonymous Draft`,
+        description: anonDraft.formData?.description || undefined,
+        requiredDate: anonDraft.formData?.requiredDate || undefined,
+        customerName: anonDraft.formData?.customerName || anonDraft.formData?.companyName || 'Unknown',
+        customerEmail: anonDraft.customerEmail || '',
+        customerPhone: anonDraft.formData?.customerPhone || undefined,
+        status: 'DRAFT',
+        isUnregistered: true,
+        createdAt: anonDraft.createdAt,
+        updatedAt: anonDraft.updatedAt,
+        createdBy: undefined,
+      };
+    }
+
     const draft = await this.rfqDraftRepo.findOne({
       where: { id: rfqId },
       relations: ['createdBy'],
@@ -228,8 +278,36 @@ export class AdminRfqService {
 
   /**
    * Get full RFQ Draft data for editing
+   * Negative IDs indicate anonymous drafts
    */
   async getRfqFullDraft(rfqId: number): Promise<RfqFullDraftDto> {
+    if (rfqId < 0) {
+      const anonDraft = await this.anonymousDraftRepo.findOne({
+        where: { id: Math.abs(rfqId) },
+      });
+
+      if (!anonDraft) {
+        throw new NotFoundException(`Anonymous RFQ Draft with ID ${Math.abs(rfqId)} not found`);
+      }
+
+      return {
+        id: rfqId,
+        draftNumber: `ANON-${anonDraft.id}`,
+        projectName: anonDraft.projectName,
+        currentStep: anonDraft.currentStep,
+        completionPercentage: Math.round((anonDraft.currentStep / 5) * 100),
+        isConverted: false,
+        convertedRfqId: undefined,
+        formData: anonDraft.formData || {},
+        globalSpecs: anonDraft.globalSpecs,
+        requiredProducts: anonDraft.requiredProducts,
+        straightPipeEntries: anonDraft.entries,
+        pendingDocuments: undefined,
+        createdAt: anonDraft.createdAt,
+        updatedAt: anonDraft.updatedAt,
+      };
+    }
+
     const draft = await this.rfqDraftRepo.findOne({
       where: { id: rfqId },
     });
@@ -258,8 +336,31 @@ export class AdminRfqService {
 
   /**
    * Get RFQ Draft items with specifications (VIEW-ONLY)
+   * Negative IDs indicate anonymous drafts
    */
   async getRfqItems(rfqId: number): Promise<RfqItemDetailDto[]> {
+    if (rfqId < 0) {
+      const anonDraft = await this.anonymousDraftRepo.findOne({
+        where: { id: Math.abs(rfqId) },
+      });
+
+      if (!anonDraft) {
+        throw new NotFoundException(`Anonymous RFQ Draft with ID ${Math.abs(rfqId)} not found`);
+      }
+
+      const entries = anonDraft.entries || [];
+      return entries.map((entry, index) => ({
+        id: index + 1,
+        type: 'STRAIGHT_PIPE',
+        quantity: entry.quantity || 1,
+        weightPerUnit: entry.weightPerUnit || undefined,
+        totalWeight: entry.totalWeight || undefined,
+        unitPrice: undefined,
+        totalPrice: undefined,
+        specifications: entry,
+      }));
+    }
+
     const draft = await this.rfqDraftRepo.findOne({
       where: { id: rfqId },
     });

@@ -32,8 +32,8 @@ export default function SupplierPortalLayout({
   }, [isLoading, isAuthenticated, router]);
 
   const handleLogout = async () => {
-    router.push('/');
     await logout();
+    window.location.href = '/';
   };
 
   if (isLoading) {

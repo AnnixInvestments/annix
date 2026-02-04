@@ -329,15 +329,23 @@ export function NixTrainingModal({
     drawCanvas();
   }, [drawCanvas]);
 
+  const canvasToImageCoords = (clientX: number, clientY: number, canvas: HTMLCanvasElement): { x: number; y: number } => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  };
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!selectedField || !drawingPhase) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = canvasToImageCoords(e.clientX, e.clientY, canvas);
 
     setDrawingState({
       isDrawing: true,
@@ -354,9 +362,7 @@ export function NixTrainingModal({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = canvasToImageCoords(e.clientX, e.clientY, canvas);
 
     setDrawingState((prev) => ({
       ...prev,
