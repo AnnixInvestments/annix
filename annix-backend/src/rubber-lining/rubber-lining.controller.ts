@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  NotFoundException,
+} from '@nestjs/common';
 import { RubberLiningService } from './rubber-lining.service';
 import {
   RubberTypeDto,
@@ -10,6 +20,29 @@ import {
   RubberRecommendationDto,
   LineCalloutDto,
 } from './dto/rubber-lining.dto';
+import {
+  ProductCodingType,
+} from './entities/rubber-product-coding.entity';
+import { RubberOrderStatus } from './entities/rubber-order.entity';
+import {
+  RubberProductCodingDto,
+  CreateRubberProductCodingDto,
+  UpdateRubberProductCodingDto,
+  RubberPricingTierDto,
+  CreateRubberPricingTierDto,
+  UpdateRubberPricingTierDto,
+  RubberCompanyDto,
+  CreateRubberCompanyDto,
+  UpdateRubberCompanyDto,
+  RubberProductDto,
+  CreateRubberProductDto,
+  UpdateRubberProductDto,
+  RubberOrderDto,
+  CreateRubberOrderDto,
+  UpdateRubberOrderDto,
+  RubberPriceCalculationRequestDto,
+  RubberPriceCalculationDto,
+} from './dto/rubber-portal.dto';
 
 @Controller('rubber-lining')
 export class RubberLiningController {
@@ -216,5 +249,236 @@ export class RubberLiningController {
       { value: 'food_processing', label: 'Food Processing' },
       { value: 'general_industrial', label: 'General Industrial' },
     ];
+  }
+
+  @Get('portal/product-codings')
+  async productCodings(
+    @Query('codingType') codingType?: ProductCodingType,
+  ): Promise<RubberProductCodingDto[]> {
+    return this.rubberLiningService.allProductCodings(codingType);
+  }
+
+  @Get('portal/product-codings/:id')
+  async productCodingById(
+    @Param('id') id: string,
+  ): Promise<RubberProductCodingDto> {
+    const coding = await this.rubberLiningService.productCodingById(Number(id));
+    if (!coding) throw new NotFoundException('Product coding not found');
+    return coding;
+  }
+
+  @Post('portal/product-codings')
+  async createProductCoding(
+    @Body() dto: CreateRubberProductCodingDto,
+  ): Promise<RubberProductCodingDto> {
+    return this.rubberLiningService.createProductCoding(dto);
+  }
+
+  @Put('portal/product-codings/:id')
+  async updateProductCoding(
+    @Param('id') id: string,
+    @Body() dto: UpdateRubberProductCodingDto,
+  ): Promise<RubberProductCodingDto> {
+    const coding = await this.rubberLiningService.updateProductCoding(
+      Number(id),
+      dto,
+    );
+    if (!coding) throw new NotFoundException('Product coding not found');
+    return coding;
+  }
+
+  @Delete('portal/product-codings/:id')
+  async deleteProductCoding(@Param('id') id: string): Promise<void> {
+    const deleted = await this.rubberLiningService.deleteProductCoding(
+      Number(id),
+    );
+    if (!deleted) throw new NotFoundException('Product coding not found');
+  }
+
+  @Get('portal/pricing-tiers')
+  async pricingTiers(): Promise<RubberPricingTierDto[]> {
+    return this.rubberLiningService.allPricingTiers();
+  }
+
+  @Get('portal/pricing-tiers/:id')
+  async pricingTierById(
+    @Param('id') id: string,
+  ): Promise<RubberPricingTierDto> {
+    const tier = await this.rubberLiningService.pricingTierById(Number(id));
+    if (!tier) throw new NotFoundException('Pricing tier not found');
+    return tier;
+  }
+
+  @Post('portal/pricing-tiers')
+  async createPricingTier(
+    @Body() dto: CreateRubberPricingTierDto,
+  ): Promise<RubberPricingTierDto> {
+    return this.rubberLiningService.createPricingTier(dto);
+  }
+
+  @Put('portal/pricing-tiers/:id')
+  async updatePricingTier(
+    @Param('id') id: string,
+    @Body() dto: UpdateRubberPricingTierDto,
+  ): Promise<RubberPricingTierDto> {
+    const tier = await this.rubberLiningService.updatePricingTier(
+      Number(id),
+      dto,
+    );
+    if (!tier) throw new NotFoundException('Pricing tier not found');
+    return tier;
+  }
+
+  @Delete('portal/pricing-tiers/:id')
+  async deletePricingTier(@Param('id') id: string): Promise<void> {
+    const deleted = await this.rubberLiningService.deletePricingTier(Number(id));
+    if (!deleted) throw new NotFoundException('Pricing tier not found');
+  }
+
+  @Get('portal/companies')
+  async companies(): Promise<RubberCompanyDto[]> {
+    return this.rubberLiningService.allCompanies();
+  }
+
+  @Get('portal/companies/:id')
+  async companyById(@Param('id') id: string): Promise<RubberCompanyDto> {
+    const company = await this.rubberLiningService.companyById(Number(id));
+    if (!company) throw new NotFoundException('Company not found');
+    return company;
+  }
+
+  @Post('portal/companies')
+  async createCompany(
+    @Body() dto: CreateRubberCompanyDto,
+  ): Promise<RubberCompanyDto> {
+    return this.rubberLiningService.createCompany(dto);
+  }
+
+  @Put('portal/companies/:id')
+  async updateCompany(
+    @Param('id') id: string,
+    @Body() dto: UpdateRubberCompanyDto,
+  ): Promise<RubberCompanyDto> {
+    const company = await this.rubberLiningService.updateCompany(
+      Number(id),
+      dto,
+    );
+    if (!company) throw new NotFoundException('Company not found');
+    return company;
+  }
+
+  @Delete('portal/companies/:id')
+  async deleteCompany(@Param('id') id: string): Promise<void> {
+    const deleted = await this.rubberLiningService.deleteCompany(Number(id));
+    if (!deleted) throw new NotFoundException('Company not found');
+  }
+
+  @Get('portal/products')
+  async products(): Promise<RubberProductDto[]> {
+    return this.rubberLiningService.allProducts();
+  }
+
+  @Get('portal/products/:id')
+  async productById(@Param('id') id: string): Promise<RubberProductDto> {
+    const product = await this.rubberLiningService.productById(Number(id));
+    if (!product) throw new NotFoundException('Product not found');
+    return product;
+  }
+
+  @Post('portal/products')
+  async createProduct(
+    @Body() dto: CreateRubberProductDto,
+  ): Promise<RubberProductDto> {
+    return this.rubberLiningService.createProduct(dto);
+  }
+
+  @Put('portal/products/:id')
+  async updateProduct(
+    @Param('id') id: string,
+    @Body() dto: UpdateRubberProductDto,
+  ): Promise<RubberProductDto> {
+    const product = await this.rubberLiningService.updateProduct(
+      Number(id),
+      dto,
+    );
+    if (!product) throw new NotFoundException('Product not found');
+    return product;
+  }
+
+  @Delete('portal/products/:id')
+  async deleteProduct(@Param('id') id: string): Promise<void> {
+    const deleted = await this.rubberLiningService.deleteProduct(Number(id));
+    if (!deleted) throw new NotFoundException('Product not found');
+  }
+
+  @Get('portal/orders')
+  async orders(@Query('status') status?: string): Promise<RubberOrderDto[]> {
+    const orderStatus =
+      status !== undefined ? (Number(status) as RubberOrderStatus) : undefined;
+    return this.rubberLiningService.allOrders(orderStatus);
+  }
+
+  @Get('portal/orders/:id')
+  async orderById(@Param('id') id: string): Promise<RubberOrderDto> {
+    const order = await this.rubberLiningService.orderById(Number(id));
+    if (!order) throw new NotFoundException('Order not found');
+    return order;
+  }
+
+  @Post('portal/orders')
+  async createOrder(@Body() dto: CreateRubberOrderDto): Promise<RubberOrderDto> {
+    return this.rubberLiningService.createOrder(dto);
+  }
+
+  @Put('portal/orders/:id')
+  async updateOrder(
+    @Param('id') id: string,
+    @Body() dto: UpdateRubberOrderDto,
+  ): Promise<RubberOrderDto> {
+    const order = await this.rubberLiningService.updateOrder(Number(id), dto);
+    if (!order) throw new NotFoundException('Order not found');
+    return order;
+  }
+
+  @Delete('portal/orders/:id')
+  async deleteOrder(@Param('id') id: string): Promise<void> {
+    const deleted = await this.rubberLiningService.deleteOrder(Number(id));
+    if (!deleted) throw new NotFoundException('Order not found');
+  }
+
+  @Get('portal/order-statuses')
+  async orderStatuses(): Promise<{ value: number; label: string }[]> {
+    return [
+      { value: -1, label: 'New' },
+      { value: 0, label: 'Draft' },
+      { value: 1, label: 'Cancelled' },
+      { value: 2, label: 'Partially Submitted' },
+      { value: 3, label: 'Submitted' },
+      { value: 4, label: 'Manufacturing' },
+      { value: 5, label: 'Delivering' },
+      { value: 6, label: 'Complete' },
+    ];
+  }
+
+  @Get('portal/coding-types')
+  async codingTypes(): Promise<{ value: string; label: string }[]> {
+    return [
+      { value: 'COLOUR', label: 'Colour' },
+      { value: 'COMPOUND', label: 'Compound' },
+      { value: 'CURING_METHOD', label: 'Curing Method' },
+      { value: 'GRADE', label: 'Grade' },
+      { value: 'HARDNESS', label: 'Hardness' },
+      { value: 'TYPE', label: 'Type' },
+    ];
+  }
+
+  @Post('portal/calculate-price')
+  async calculatePrice(
+    @Body() request: RubberPriceCalculationRequestDto,
+  ): Promise<RubberPriceCalculationDto> {
+    const result = await this.rubberLiningService.calculatePrice(request);
+    if (!result)
+      throw new NotFoundException('Product or company not found');
+    return result;
   }
 }

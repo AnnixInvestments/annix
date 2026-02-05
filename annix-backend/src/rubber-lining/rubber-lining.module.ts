@@ -9,6 +9,12 @@ import {
   RubberThicknessRecommendation,
   RubberAdhesionRequirement,
 } from './entities/rubber-application.entity';
+import { RubberProductCoding } from './entities/rubber-product-coding.entity';
+import { RubberPricingTier } from './entities/rubber-pricing-tier.entity';
+import { RubberCompany } from './entities/rubber-company.entity';
+import { RubberProduct } from './entities/rubber-product.entity';
+import { RubberOrder } from './entities/rubber-order.entity';
+import { RubberOrderItem } from './entities/rubber-order-item.entity';
 
 @Module({
   imports: [
@@ -18,6 +24,12 @@ import {
       RubberApplicationRating,
       RubberThicknessRecommendation,
       RubberAdhesionRequirement,
+      RubberProductCoding,
+      RubberPricingTier,
+      RubberCompany,
+      RubberProduct,
+      RubberOrder,
+      RubberOrderItem,
     ]),
   ],
   controllers: [RubberLiningController],

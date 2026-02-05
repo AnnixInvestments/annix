@@ -9,6 +9,15 @@ import {
   RubberAdhesionRequirement,
 } from './entities/rubber-application.entity';
 import {
+  RubberProductCoding,
+  ProductCodingType,
+} from './entities/rubber-product-coding.entity';
+import { RubberPricingTier } from './entities/rubber-pricing-tier.entity';
+import { RubberCompany } from './entities/rubber-company.entity';
+import { RubberProduct } from './entities/rubber-product.entity';
+import { RubberOrder, RubberOrderStatus } from './entities/rubber-order.entity';
+import { RubberOrderItem } from './entities/rubber-order-item.entity';
+import {
   RubberTypeDto,
   RubberSpecificationDto,
   RubberApplicationRatingDto,
@@ -18,6 +27,26 @@ import {
   RubberRecommendationDto,
   LineCalloutDto,
 } from './dto/rubber-lining.dto';
+import {
+  RubberProductCodingDto,
+  CreateRubberProductCodingDto,
+  UpdateRubberProductCodingDto,
+  RubberPricingTierDto,
+  CreateRubberPricingTierDto,
+  UpdateRubberPricingTierDto,
+  RubberCompanyDto,
+  CreateRubberCompanyDto,
+  UpdateRubberCompanyDto,
+  RubberProductDto,
+  CreateRubberProductDto,
+  UpdateRubberProductDto,
+  RubberOrderDto,
+  RubberOrderItemDto,
+  CreateRubberOrderDto,
+  UpdateRubberOrderDto,
+  RubberPriceCalculationRequestDto,
+  RubberPriceCalculationDto,
+} from './dto/rubber-portal.dto';
 
 @Injectable()
 export class RubberLiningService {
@@ -32,6 +61,18 @@ export class RubberLiningService {
     private thicknessRepository: Repository<RubberThicknessRecommendation>,
     @InjectRepository(RubberAdhesionRequirement)
     private adhesionRepository: Repository<RubberAdhesionRequirement>,
+    @InjectRepository(RubberProductCoding)
+    private productCodingRepository: Repository<RubberProductCoding>,
+    @InjectRepository(RubberPricingTier)
+    private pricingTierRepository: Repository<RubberPricingTier>,
+    @InjectRepository(RubberCompany)
+    private companyRepository: Repository<RubberCompany>,
+    @InjectRepository(RubberProduct)
+    private productRepository: Repository<RubberProduct>,
+    @InjectRepository(RubberOrder)
+    private orderRepository: Repository<RubberOrder>,
+    @InjectRepository(RubberOrderItem)
+    private orderItemRepository: Repository<RubberOrderItem>,
   ) {}
 
   async allRubberTypes(): Promise<RubberTypeDto[]> {
@@ -438,6 +479,511 @@ export class RubberLiningService {
       vulcanizationMethod: req.vulcanizationMethod,
       minAdhesionNPerMm: Number(req.minAdhesionNPerMm),
       testStandard: req.testStandard,
+    };
+  }
+
+  async allProductCodings(
+    codingType?: ProductCodingType,
+  ): Promise<RubberProductCodingDto[]> {
+    const where = codingType ? { codingType } : {};
+    const codings = await this.productCodingRepository.find({
+      where,
+      order: { codingType: 'ASC', code: 'ASC' },
+    });
+    return codings.map(this.mapProductCodingToDto);
+  }
+
+  async productCodingById(id: number): Promise<RubberProductCodingDto | null> {
+    const coding = await this.productCodingRepository.findOne({ where: { id } });
+    return coding ? this.mapProductCodingToDto(coding) : null;
+  }
+
+  async createProductCoding(
+    dto: CreateRubberProductCodingDto,
+  ): Promise<RubberProductCodingDto> {
+    const coding = this.productCodingRepository.create({
+      ...dto,
+      firebaseUid: `pg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    });
+    const saved = await this.productCodingRepository.save(coding);
+    return this.mapProductCodingToDto(saved);
+  }
+
+  async updateProductCoding(
+    id: number,
+    dto: UpdateRubberProductCodingDto,
+  ): Promise<RubberProductCodingDto | null> {
+    const coding = await this.productCodingRepository.findOne({ where: { id } });
+    if (!coding) return null;
+    Object.assign(coding, dto);
+    const saved = await this.productCodingRepository.save(coding);
+    return this.mapProductCodingToDto(saved);
+  }
+
+  async deleteProductCoding(id: number): Promise<boolean> {
+    const result = await this.productCodingRepository.delete(id);
+    return (result.affected || 0) > 0;
+  }
+
+  async allPricingTiers(): Promise<RubberPricingTierDto[]> {
+    const tiers = await this.pricingTierRepository.find({
+      order: { pricingFactor: 'ASC' },
+    });
+    return tiers.map(this.mapPricingTierToDto);
+  }
+
+  async pricingTierById(id: number): Promise<RubberPricingTierDto | null> {
+    const tier = await this.pricingTierRepository.findOne({ where: { id } });
+    return tier ? this.mapPricingTierToDto(tier) : null;
+  }
+
+  async createPricingTier(
+    dto: CreateRubberPricingTierDto,
+  ): Promise<RubberPricingTierDto> {
+    const tier = this.pricingTierRepository.create({
+      ...dto,
+      firebaseUid: `pg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    });
+    const saved = await this.pricingTierRepository.save(tier);
+    return this.mapPricingTierToDto(saved);
+  }
+
+  async updatePricingTier(
+    id: number,
+    dto: UpdateRubberPricingTierDto,
+  ): Promise<RubberPricingTierDto | null> {
+    const tier = await this.pricingTierRepository.findOne({ where: { id } });
+    if (!tier) return null;
+    Object.assign(tier, dto);
+    const saved = await this.pricingTierRepository.save(tier);
+    return this.mapPricingTierToDto(saved);
+  }
+
+  async deletePricingTier(id: number): Promise<boolean> {
+    const result = await this.pricingTierRepository.delete(id);
+    return (result.affected || 0) > 0;
+  }
+
+  async allCompanies(): Promise<RubberCompanyDto[]> {
+    const companies = await this.companyRepository.find({
+      relations: ['pricingTier'],
+      order: { name: 'ASC' },
+    });
+    return companies.map((c) => this.mapCompanyToDto(c));
+  }
+
+  async companyById(id: number): Promise<RubberCompanyDto | null> {
+    const company = await this.companyRepository.findOne({
+      where: { id },
+      relations: ['pricingTier'],
+    });
+    return company ? this.mapCompanyToDto(company) : null;
+  }
+
+  async createCompany(dto: CreateRubberCompanyDto): Promise<RubberCompanyDto> {
+    const company = new RubberCompany();
+    company.firebaseUid = `pg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    company.name = dto.name;
+    company.code = dto.code || null;
+    company.pricingTierId = dto.pricingTierId || null;
+    company.availableProducts = dto.availableProducts || [];
+    company.isCompoundOwner = dto.isCompoundOwner || false;
+    company.vatNumber = dto.vatNumber || null;
+    company.registrationNumber = dto.registrationNumber || null;
+    company.address = dto.address || null;
+    company.notes = dto.notes || null;
+
+    const saved = await this.companyRepository.save(company);
+    const result = await this.companyRepository.findOne({
+      where: { id: saved.id },
+      relations: ['pricingTier'],
+    });
+    return this.mapCompanyToDto(result!);
+  }
+
+  async updateCompany(
+    id: number,
+    dto: UpdateRubberCompanyDto,
+  ): Promise<RubberCompanyDto | null> {
+    const company = await this.companyRepository.findOne({ where: { id } });
+    if (!company) return null;
+
+    if (dto.name !== undefined) company.name = dto.name;
+    if (dto.code !== undefined) company.code = dto.code || null;
+    if (dto.pricingTierId !== undefined)
+      company.pricingTierId = dto.pricingTierId || null;
+    if (dto.availableProducts !== undefined)
+      company.availableProducts = dto.availableProducts;
+    if (dto.isCompoundOwner !== undefined)
+      company.isCompoundOwner = dto.isCompoundOwner;
+    if (dto.vatNumber !== undefined) company.vatNumber = dto.vatNumber || null;
+    if (dto.registrationNumber !== undefined)
+      company.registrationNumber = dto.registrationNumber || null;
+    if (dto.address !== undefined) company.address = dto.address || null;
+    if (dto.notes !== undefined) company.notes = dto.notes || null;
+
+    await this.companyRepository.save(company);
+    const result = await this.companyRepository.findOne({
+      where: { id },
+      relations: ['pricingTier'],
+    });
+    return this.mapCompanyToDto(result!);
+  }
+
+  async deleteCompany(id: number): Promise<boolean> {
+    const result = await this.companyRepository.delete(id);
+    return (result.affected || 0) > 0;
+  }
+
+  async allProducts(): Promise<RubberProductDto[]> {
+    const products = await this.productRepository.find({
+      order: { title: 'ASC' },
+    });
+    const codings = await this.productCodingRepository.find();
+    const companies = await this.companyRepository.find();
+    return products.map((p) => this.mapProductToDto(p, codings, companies));
+  }
+
+  async productById(id: number): Promise<RubberProductDto | null> {
+    const product = await this.productRepository.findOne({ where: { id } });
+    if (!product) return null;
+    const codings = await this.productCodingRepository.find();
+    const companies = await this.companyRepository.find();
+    return this.mapProductToDto(product, codings, companies);
+  }
+
+  async createProduct(dto: CreateRubberProductDto): Promise<RubberProductDto> {
+    const product = this.productRepository.create({
+      firebaseUid: `pg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      title: dto.title || null,
+      description: dto.description || null,
+      specificGravity: dto.specificGravity || null,
+      compoundOwnerFirebaseUid: dto.compoundOwnerFirebaseUid || null,
+      compoundFirebaseUid: dto.compoundFirebaseUid || null,
+      typeFirebaseUid: dto.typeFirebaseUid || null,
+      costPerKg: dto.costPerKg || null,
+      colourFirebaseUid: dto.colourFirebaseUid || null,
+      hardnessFirebaseUid: dto.hardnessFirebaseUid || null,
+      curingMethodFirebaseUid: dto.curingMethodFirebaseUid || null,
+      gradeFirebaseUid: dto.gradeFirebaseUid || null,
+      markup: dto.markup || null,
+    });
+    const saved = await this.productRepository.save(product);
+    const codings = await this.productCodingRepository.find();
+    const companies = await this.companyRepository.find();
+    return this.mapProductToDto(saved, codings, companies);
+  }
+
+  async updateProduct(
+    id: number,
+    dto: UpdateRubberProductDto,
+  ): Promise<RubberProductDto | null> {
+    const product = await this.productRepository.findOne({ where: { id } });
+    if (!product) return null;
+
+    if (dto.title !== undefined) product.title = dto.title || null;
+    if (dto.description !== undefined)
+      product.description = dto.description || null;
+    if (dto.specificGravity !== undefined)
+      product.specificGravity = dto.specificGravity || null;
+    if (dto.compoundOwnerFirebaseUid !== undefined)
+      product.compoundOwnerFirebaseUid = dto.compoundOwnerFirebaseUid || null;
+    if (dto.compoundFirebaseUid !== undefined)
+      product.compoundFirebaseUid = dto.compoundFirebaseUid || null;
+    if (dto.typeFirebaseUid !== undefined)
+      product.typeFirebaseUid = dto.typeFirebaseUid || null;
+    if (dto.costPerKg !== undefined) product.costPerKg = dto.costPerKg || null;
+    if (dto.colourFirebaseUid !== undefined)
+      product.colourFirebaseUid = dto.colourFirebaseUid || null;
+    if (dto.hardnessFirebaseUid !== undefined)
+      product.hardnessFirebaseUid = dto.hardnessFirebaseUid || null;
+    if (dto.curingMethodFirebaseUid !== undefined)
+      product.curingMethodFirebaseUid = dto.curingMethodFirebaseUid || null;
+    if (dto.gradeFirebaseUid !== undefined)
+      product.gradeFirebaseUid = dto.gradeFirebaseUid || null;
+    if (dto.markup !== undefined) product.markup = dto.markup || null;
+
+    const saved = await this.productRepository.save(product);
+    const codings = await this.productCodingRepository.find();
+    const companies = await this.companyRepository.find();
+    return this.mapProductToDto(saved, codings, companies);
+  }
+
+  async deleteProduct(id: number): Promise<boolean> {
+    const result = await this.productRepository.delete(id);
+    return (result.affected || 0) > 0;
+  }
+
+  async allOrders(status?: RubberOrderStatus): Promise<RubberOrderDto[]> {
+    const where = status !== undefined ? { status } : {};
+    const orders = await this.orderRepository.find({
+      where,
+      relations: ['company', 'items', 'items.product'],
+      order: { createdAt: 'DESC' },
+    });
+    return orders.map((o) => this.mapOrderToDto(o));
+  }
+
+  async orderById(id: number): Promise<RubberOrderDto | null> {
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['company', 'items', 'items.product'],
+    });
+    return order ? this.mapOrderToDto(order) : null;
+  }
+
+  async createOrder(dto: CreateRubberOrderDto): Promise<RubberOrderDto> {
+    const lastOrder = await this.orderRepository
+      .createQueryBuilder('order')
+      .orderBy('order.id', 'DESC')
+      .getOne();
+    const nextNumber = (lastOrder?.id || 0) + 1;
+    const orderNumber = dto.orderNumber || `ORD-${String(nextNumber).padStart(5, '0')}`;
+
+    const order = this.orderRepository.create({
+      firebaseUid: `pg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      orderNumber,
+      companyOrderNumber: dto.companyOrderNumber || null,
+      status: RubberOrderStatus.DRAFT,
+      companyId: dto.companyId || null,
+    });
+    const savedOrder = await this.orderRepository.save(order);
+
+    if (dto.items && dto.items.length > 0) {
+      const items = dto.items.map((item) =>
+        this.orderItemRepository.create({
+          orderId: savedOrder.id,
+          productId: item.productId || null,
+          thickness: item.thickness || null,
+          width: item.width || null,
+          length: item.length || null,
+          quantity: item.quantity || null,
+          callOffs: item.callOffs || [],
+        }),
+      );
+      await this.orderItemRepository.save(items);
+    }
+
+    const result = await this.orderRepository.findOne({
+      where: { id: savedOrder.id },
+      relations: ['company', 'items', 'items.product'],
+    });
+    return this.mapOrderToDto(result!);
+  }
+
+  async updateOrder(
+    id: number,
+    dto: UpdateRubberOrderDto,
+  ): Promise<RubberOrderDto | null> {
+    const order = await this.orderRepository.findOne({ where: { id } });
+    if (!order) return null;
+
+    if (dto.companyOrderNumber !== undefined)
+      order.companyOrderNumber = dto.companyOrderNumber || null;
+    if (dto.status !== undefined) order.status = dto.status;
+    if (dto.companyId !== undefined) order.companyId = dto.companyId || null;
+
+    await this.orderRepository.save(order);
+
+    if (dto.items !== undefined) {
+      await this.orderItemRepository.delete({ orderId: id });
+      const items = dto.items.map((item) =>
+        this.orderItemRepository.create({
+          orderId: id,
+          productId: item.productId || null,
+          thickness: item.thickness || null,
+          width: item.width || null,
+          length: item.length || null,
+          quantity: item.quantity || null,
+          callOffs: item.callOffs || [],
+        }),
+      );
+      await this.orderItemRepository.save(items);
+    }
+
+    const result = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['company', 'items', 'items.product'],
+    });
+    return this.mapOrderToDto(result!);
+  }
+
+  async deleteOrder(id: number): Promise<boolean> {
+    const result = await this.orderRepository.delete(id);
+    return (result.affected || 0) > 0;
+  }
+
+  async calculatePrice(
+    request: RubberPriceCalculationRequestDto,
+  ): Promise<RubberPriceCalculationDto | null> {
+    const product = await this.productRepository.findOne({
+      where: { id: request.productId },
+    });
+    const company = await this.companyRepository.findOne({
+      where: { id: request.companyId },
+      relations: ['pricingTier'],
+    });
+
+    if (!product || !company) return null;
+
+    const specificGravity = Number(product.specificGravity) || 1;
+    const costPerKg = Number(product.costPerKg) || 0;
+    const markup = Number(product.markup) || 100;
+    const pricingFactor = Number(company.pricingTier?.pricingFactor) || 100;
+
+    const pricePerKg = costPerKg * (markup / 100);
+    const salePricePerKg = pricePerKg * (pricingFactor / 100);
+    const kgPerRoll =
+      request.thickness * (request.width / 1000) * request.length * specificGravity;
+    const totalKg = kgPerRoll * request.quantity;
+    const totalPrice = totalKg * salePricePerKg;
+
+    return {
+      productTitle: product.title,
+      companyName: company.name,
+      specificGravity,
+      costPerKg,
+      markup,
+      pricePerKg,
+      pricingFactor,
+      salePricePerKg,
+      kgPerRoll,
+      totalKg,
+      totalPrice,
+    };
+  }
+
+  private mapProductCodingToDto(
+    coding: RubberProductCoding,
+  ): RubberProductCodingDto {
+    return {
+      id: coding.id,
+      codingType: coding.codingType,
+      code: coding.code,
+      name: coding.name,
+    };
+  }
+
+  private mapPricingTierToDto(tier: RubberPricingTier): RubberPricingTierDto {
+    return {
+      id: tier.id,
+      name: tier.name,
+      pricingFactor: Number(tier.pricingFactor),
+    };
+  }
+
+  private mapCompanyToDto(company: RubberCompany): RubberCompanyDto {
+    return {
+      id: company.id,
+      name: company.name,
+      code: company.code,
+      pricingTierId: company.pricingTierId,
+      pricingTierName: company.pricingTier?.name || null,
+      pricingFactor: company.pricingTier
+        ? Number(company.pricingTier.pricingFactor)
+        : null,
+      availableProducts: company.availableProducts,
+      isCompoundOwner: company.isCompoundOwner,
+      vatNumber: company.vatNumber,
+      registrationNumber: company.registrationNumber,
+      address: company.address,
+      notes: company.notes,
+    };
+  }
+
+  private mapProductToDto(
+    product: RubberProduct,
+    codings: RubberProductCoding[],
+    companies: RubberCompany[],
+  ): RubberProductDto {
+    const codingName = (uid: string | null): string | null => {
+      if (!uid) return null;
+      const coding = codings.find((c) => c.firebaseUid === uid);
+      return coding ? coding.name : null;
+    };
+
+    const companyName = (uid: string | null): string | null => {
+      if (!uid) return null;
+      const company = companies.find((c) => c.firebaseUid === uid);
+      return company ? company.name : null;
+    };
+
+    const costPerKg = Number(product.costPerKg) || 0;
+    const markup = Number(product.markup) || 100;
+    const pricePerKg = costPerKg * (markup / 100);
+
+    return {
+      id: product.id,
+      title: product.title,
+      description: product.description,
+      specificGravity: product.specificGravity
+        ? Number(product.specificGravity)
+        : null,
+      compoundOwnerName: companyName(product.compoundOwnerFirebaseUid),
+      compoundName: codingName(product.compoundFirebaseUid),
+      typeName: codingName(product.typeFirebaseUid),
+      costPerKg: costPerKg || null,
+      colourName: codingName(product.colourFirebaseUid),
+      hardnessName: codingName(product.hardnessFirebaseUid),
+      curingMethodName: codingName(product.curingMethodFirebaseUid),
+      gradeName: codingName(product.gradeFirebaseUid),
+      markup: markup !== 100 ? markup : null,
+      pricePerKg: pricePerKg || null,
+    };
+  }
+
+  private mapOrderToDto(order: RubberOrder): RubberOrderDto {
+    const statusLabels: Record<RubberOrderStatus, string> = {
+      [RubberOrderStatus.NEW]: 'New',
+      [RubberOrderStatus.DRAFT]: 'Draft',
+      [RubberOrderStatus.CANCELLED]: 'Cancelled',
+      [RubberOrderStatus.PARTIALLY_SUBMITTED]: 'Partially Submitted',
+      [RubberOrderStatus.SUBMITTED]: 'Submitted',
+      [RubberOrderStatus.MANUFACTURING]: 'Manufacturing',
+      [RubberOrderStatus.DELIVERING]: 'Delivering',
+      [RubberOrderStatus.COMPLETE]: 'Complete',
+    };
+
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      companyOrderNumber: order.companyOrderNumber,
+      status: order.status,
+      statusLabel: statusLabels[order.status] || 'Unknown',
+      companyId: order.companyId,
+      companyName: order.company?.name || null,
+      items: (order.items || []).map((item) => this.mapOrderItemToDto(item)),
+      createdAt: order.createdAt.toISOString(),
+      updatedAt: order.updatedAt.toISOString(),
+    };
+  }
+
+  private mapOrderItemToDto(item: RubberOrderItem): RubberOrderItemDto {
+    const thickness = Number(item.thickness) || 0;
+    const width = Number(item.width) || 0;
+    const length = Number(item.length) || 0;
+    const quantity = Number(item.quantity) || 0;
+    const specificGravity = item.product
+      ? Number(item.product.specificGravity) || 1
+      : 1;
+
+    const kgPerRoll =
+      thickness && width && length
+        ? thickness * (width / 1000) * length * specificGravity
+        : null;
+    const totalKg = kgPerRoll && quantity ? kgPerRoll * quantity : null;
+
+    return {
+      id: item.id,
+      productId: item.productId,
+      productTitle: item.product?.title || null,
+      thickness: thickness || null,
+      width: width || null,
+      length: length || null,
+      quantity: quantity || null,
+      callOffs: item.callOffs,
+      kgPerRoll,
+      totalKg,
     };
   }
 }

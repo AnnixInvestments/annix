@@ -1,0 +1,445 @@
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsObject,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { ProductCodingType } from '../entities/rubber-product-coding.entity';
+import { RubberOrderStatus } from '../entities/rubber-order.entity';
+import { CallOff } from '../entities/rubber-order-item.entity';
+
+export class RubberProductCodingDto {
+  id: number;
+  codingType: ProductCodingType;
+  code: string;
+  name: string;
+}
+
+export class CreateRubberProductCodingDto {
+  @IsEnum(ProductCodingType)
+  codingType: ProductCodingType;
+
+  @IsString()
+  code: string;
+
+  @IsString()
+  name: string;
+}
+
+export class UpdateRubberProductCodingDto {
+  @IsOptional()
+  @IsEnum(ProductCodingType)
+  codingType?: ProductCodingType;
+
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+}
+
+export class RubberPricingTierDto {
+  id: number;
+  name: string;
+  pricingFactor: number;
+}
+
+export class CreateRubberPricingTierDto {
+  @IsString()
+  name: string;
+
+  @IsNumber()
+  pricingFactor: number;
+}
+
+export class UpdateRubberPricingTierDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsNumber()
+  pricingFactor?: number;
+}
+
+export type CompanyAddressDto = Record<string, string>;
+
+export class RubberCompanyDto {
+  id: number;
+  name: string;
+  code: string | null;
+  pricingTierId: number | null;
+  pricingTierName: string | null;
+  pricingFactor: number | null;
+  availableProducts: string[];
+  isCompoundOwner: boolean;
+  vatNumber: string | null;
+  registrationNumber: string | null;
+  address: CompanyAddressDto | null;
+  notes: string | null;
+}
+
+export class CreateRubberCompanyDto {
+  @IsString()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsNumber()
+  pricingTierId?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  availableProducts?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  isCompoundOwner?: boolean;
+
+  @IsOptional()
+  @IsString()
+  vatNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  registrationNumber?: string;
+
+  @IsOptional()
+  @IsObject()
+  address?: CompanyAddressDto;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class UpdateRubberCompanyDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsNumber()
+  pricingTierId?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  availableProducts?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  isCompoundOwner?: boolean;
+
+  @IsOptional()
+  @IsString()
+  vatNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  registrationNumber?: string;
+
+  @IsOptional()
+  @IsObject()
+  address?: CompanyAddressDto;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class RubberProductDto {
+  id: number;
+  title: string | null;
+  description: string | null;
+  specificGravity: number | null;
+  compoundOwnerName: string | null;
+  compoundName: string | null;
+  typeName: string | null;
+  costPerKg: number | null;
+  colourName: string | null;
+  hardnessName: string | null;
+  curingMethodName: string | null;
+  gradeName: string | null;
+  markup: number | null;
+  pricePerKg: number | null;
+}
+
+export class CreateRubberProductDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsNumber()
+  specificGravity?: number;
+
+  @IsOptional()
+  @IsString()
+  compoundOwnerFirebaseUid?: string;
+
+  @IsOptional()
+  @IsString()
+  compoundFirebaseUid?: string;
+
+  @IsOptional()
+  @IsString()
+  typeFirebaseUid?: string;
+
+  @IsOptional()
+  @IsNumber()
+  costPerKg?: number;
+
+  @IsOptional()
+  @IsString()
+  colourFirebaseUid?: string;
+
+  @IsOptional()
+  @IsString()
+  hardnessFirebaseUid?: string;
+
+  @IsOptional()
+  @IsString()
+  curingMethodFirebaseUid?: string;
+
+  @IsOptional()
+  @IsString()
+  gradeFirebaseUid?: string;
+
+  @IsOptional()
+  @IsNumber()
+  markup?: number;
+}
+
+export class UpdateRubberProductDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsNumber()
+  specificGravity?: number;
+
+  @IsOptional()
+  @IsString()
+  compoundOwnerFirebaseUid?: string;
+
+  @IsOptional()
+  @IsString()
+  compoundFirebaseUid?: string;
+
+  @IsOptional()
+  @IsString()
+  typeFirebaseUid?: string;
+
+  @IsOptional()
+  @IsNumber()
+  costPerKg?: number;
+
+  @IsOptional()
+  @IsString()
+  colourFirebaseUid?: string;
+
+  @IsOptional()
+  @IsString()
+  hardnessFirebaseUid?: string;
+
+  @IsOptional()
+  @IsString()
+  curingMethodFirebaseUid?: string;
+
+  @IsOptional()
+  @IsString()
+  gradeFirebaseUid?: string;
+
+  @IsOptional()
+  @IsNumber()
+  markup?: number;
+}
+
+export class RubberOrderItemDto {
+  id: number;
+  productId: number | null;
+  productTitle: string | null;
+  thickness: number | null;
+  width: number | null;
+  length: number | null;
+  quantity: number | null;
+  callOffs: CallOff[];
+  kgPerRoll: number | null;
+  totalKg: number | null;
+}
+
+export class CreateRubberOrderItemDto {
+  @IsOptional()
+  @IsNumber()
+  productId?: number;
+
+  @IsOptional()
+  @IsNumber()
+  thickness?: number;
+
+  @IsOptional()
+  @IsNumber()
+  width?: number;
+
+  @IsOptional()
+  @IsNumber()
+  length?: number;
+
+  @IsOptional()
+  @IsNumber()
+  quantity?: number;
+
+  @IsOptional()
+  @IsArray()
+  callOffs?: CallOff[];
+}
+
+export class UpdateRubberOrderItemDto {
+  @IsOptional()
+  @IsNumber()
+  productId?: number;
+
+  @IsOptional()
+  @IsNumber()
+  thickness?: number;
+
+  @IsOptional()
+  @IsNumber()
+  width?: number;
+
+  @IsOptional()
+  @IsNumber()
+  length?: number;
+
+  @IsOptional()
+  @IsNumber()
+  quantity?: number;
+
+  @IsOptional()
+  @IsArray()
+  callOffs?: CallOff[];
+}
+
+export class RubberOrderDto {
+  id: number;
+  orderNumber: string;
+  companyOrderNumber: string | null;
+  status: RubberOrderStatus;
+  statusLabel: string;
+  companyId: number | null;
+  companyName: string | null;
+  items: RubberOrderItemDto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export class CreateRubberOrderDto {
+  @IsOptional()
+  @IsString()
+  orderNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  companyOrderNumber?: string;
+
+  @IsOptional()
+  @IsNumber()
+  companyId?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateRubberOrderItemDto)
+  items?: CreateRubberOrderItemDto[];
+}
+
+export class UpdateRubberOrderDto {
+  @IsOptional()
+  @IsString()
+  companyOrderNumber?: string;
+
+  @IsOptional()
+  @IsEnum(RubberOrderStatus)
+  status?: RubberOrderStatus;
+
+  @IsOptional()
+  @IsNumber()
+  companyId?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateRubberOrderItemDto)
+  items?: CreateRubberOrderItemDto[];
+}
+
+export class RubberRollCalculationDto {
+  thickness: number;
+  width: number;
+  length: number;
+  specificGravity: number;
+  quantity: number;
+  kgPerRoll: number;
+  totalKg: number;
+  pricePerKg: number;
+  totalPrice: number;
+}
+
+export class RubberPriceCalculationRequestDto {
+  @IsNumber()
+  productId: number;
+
+  @IsNumber()
+  companyId: number;
+
+  @IsNumber()
+  thickness: number;
+
+  @IsNumber()
+  width: number;
+
+  @IsNumber()
+  length: number;
+
+  @IsNumber()
+  quantity: number;
+}
+
+export class RubberPriceCalculationDto {
+  productTitle: string | null;
+  companyName: string | null;
+  specificGravity: number;
+  costPerKg: number;
+  markup: number;
+  pricePerKg: number;
+  pricingFactor: number;
+  salePricePerKg: number;
+  kgPerRoll: number;
+  totalKg: number;
+  totalPrice: number;
+}
