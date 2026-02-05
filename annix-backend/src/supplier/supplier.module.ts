@@ -71,7 +71,7 @@ import { MessagingModule } from '../messaging/messaging.module';
     EmailModule,
     AdminModule,
     forwardRef(() => BoqModule),
-    NixModule,
+    forwardRef(() => NixModule),
     StorageModule,
     MessagingModule,
   ],

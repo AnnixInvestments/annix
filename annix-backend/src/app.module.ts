@@ -72,6 +72,7 @@ import { BnwSetWeightModule } from './bnw-set-weight/bnw-set-weight.module';
 import { RetainingRingWeightModule } from './retaining-ring-weight/retaining-ring-weight.module';
 import { NbOdLookupModule } from './nb-od-lookup/nb-od-lookup.module';
 import { MessagingModule } from './messaging/messaging.module';
+import { AuthSharedModule } from './shared/auth/auth-shared.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -79,6 +80,7 @@ import typeormConfig from './config/typeorm';
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot(typeormConfig()),
+    AuthSharedModule,
     SteelSpecificationModule,
     NominalOutsideDiameterMmModule,
     UserModule,
