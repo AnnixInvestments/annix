@@ -52,8 +52,8 @@ import { TangentExtensionsSection } from '@/app/components/rfq/TangentExtensions
 import {
   SABS62_NB_OPTIONS,
   SABS62_BEND_RADIUS,
-  getSabs62CFInterpolated,
-  getSabs62AvailableAngles,
+  sabs62CFInterpolated,
+  sabs62AvailableAngles,
   SABS62BendType,
 } from '@/app/lib/utils/sabs62CfData';
 import { groupSteelSpecifications } from '@/app/lib/utils/steelSpecGroups';
@@ -69,6 +69,7 @@ import {
   segmentedBendDeratingFactor,
   type BendFabricationType,
 } from '@/app/lib/config/rfq';
+import { useBendCalculations } from '@/app/hooks/useBendCalculations';
 
 export interface BendFormProps {
   entry: any;
@@ -122,6 +123,8 @@ function BendFormComponent({
   const isUnregisteredCustomer = isUnregisteredCustomerProp ?? !isAuthenticated;
   const MAX_QUANTITY_UNREGISTERED = 1;
   const [quantityLimitPopup, setQuantityLimitPopup] = useState<{ x: number; y: number } | null>(null);
+
+  const bendCalcs = useBendCalculations(entry, globalSpecs, masterData);
 
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
 
@@ -726,7 +729,7 @@ function BendFormComponent({
 
                                 if (!isSegmentedStyle && entry.specs?.bendType && entry.specs?.bendDegrees) {
                                   const bendType = entry.specs.bendType as SABS62BendType;
-                                  newCenterToFace = getSabs62CFInterpolated(bendType, entry.specs.bendDegrees, nominalBore);
+                                  newCenterToFace = sabs62CFInterpolated(bendType, entry.specs.bendDegrees, nominalBore);
                                   newBendRadius = SABS62_BEND_RADIUS[bendType]?.[nominalBore];
                                 }
 
@@ -878,7 +881,7 @@ function BendFormComponent({
                                 };
                                 newBendType = segmentedToPulledMap[currentRadiusType];
                                 if (newBendType && nominalBore && bendDegrees) {
-                                  newCenterToFace = getSabs62CFInterpolated(newBendType as SABS62BendType, bendDegrees, nominalBore);
+                                  newCenterToFace = sabs62CFInterpolated(newBendType as SABS62BendType, bendDegrees, nominalBore);
                                   newBendRadius = SABS62_BEND_RADIUS[newBendType as SABS62BendType]?.[nominalBore];
                                 }
                               }
@@ -1013,7 +1016,7 @@ function BendFormComponent({
                   const pulledBendType = entry.specs?.bendType as SABS62BendType | undefined;
                   const currentNB = entry.specs?.nominalBoreMm;
                   const availableAngles = !isSegmentedStyle && pulledBendType && currentNB
-                    ? getSabs62AvailableAngles(pulledBendType, currentNB)
+                    ? sabs62AvailableAngles(pulledBendType, currentNB)
                     : [];
 
                   const isFixedAngle90 = entry.specs?.bendItemType === 'SWEEP_TEE' || entry.specs?.bendItemType === 'DUCKFOOT_BEND';
@@ -1072,7 +1075,7 @@ function BendFormComponent({
                               let bendRadiusMm: number | undefined;
                               if (!isSegmentedStyle && bendDegrees && entry.specs?.nominalBoreMm && entry.specs?.bendType) {
                                 const bendType = entry.specs.bendType as SABS62BendType;
-                                centerToFaceMm = getSabs62CFInterpolated(bendType, bendDegrees, entry.specs.nominalBoreMm);
+                                centerToFaceMm = sabs62CFInterpolated(bendType, bendDegrees, entry.specs.nominalBoreMm);
                                 bendRadiusMm = SABS62_BEND_RADIUS[bendType]?.[entry.specs.nominalBoreMm];
                               }
                               const updatedEntry: any = {
